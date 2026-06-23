@@ -8,7 +8,7 @@ const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 
 const q    = Astro.url.searchParams.get('q') ?? '';
-const type = (Astro.url.searchParams.get('type') ?? 'anime') as any;
+const type = (Astro.url.searchParams.get('type') ?? 'all') as any;
 ---
 
 <BaseLayout title={`${t.search.title} — Metadea`} lang={lang} activePage="search">

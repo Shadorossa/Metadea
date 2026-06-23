@@ -1,6 +1,6 @@
 import { API_URL } from '../config';
 
-export type MediaType = 'anime' | 'manga' | 'novel' | 'game' | 'vn' | 'movie' | 'series' | 'book';
+export type MediaType = 'all' | 'anime' | 'manga' | 'novel' | 'game' | 'vn' | 'movie' | 'series' | 'book' | 'user';
 
 export interface SearchResult {
   id: string;
@@ -44,25 +44,29 @@ const ANILIST_QUERY = `
 
 async function searchAniList(
   q: string,
-  type: 'ANIME' | 'MANGA',
+  anilistType: 'ANIME' | 'MANGA',
+  mediaType: MediaType,
   signal: AbortSignal,
+  format?: string,
 ): Promise<SearchResult[]> {
   const res = await fetch('https://graphql.anilist.co', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: ANILIST_QUERY, variables: { q, type, page: 1 } }),
+    body: JSON.stringify({
+      query: ANILIST_QUERY,
+      variables: { q, type: anilistType, page: 1, format: format ?? null },
+    }),
     signal,
   });
 
   if (!res.ok) return [];
 
   const json: AniListResponse = await res.json();
-  const mediaType = type === 'ANIME' ? 'anime' : 'manga';
 
   return (json.data?.Page?.media ?? []).map((m): SearchResult => ({
     id: String(m.id),
     externalId: `${mediaType}:${m.id}`,
-    type: mediaType as MediaType,
+    type: mediaType,
     title: m.title.romaji ?? m.title.native ?? 'Unknown',
     cover: m.coverImage?.large ?? null,
     year: m.startDate?.year ?? null,
@@ -87,9 +91,11 @@ export async function search(
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
   switch (type) {
-    case 'anime':  return searchAniList(q, 'ANIME', signal);
-    case 'manga':  return searchAniList(q, 'MANGA', signal);
+    case 'anime':  return searchAniList(q, 'ANIME', 'anime', signal);
+    case 'manga':  return searchAniList(q, 'MANGA', 'manga', signal);
+    case 'novel':  return searchAniList(q, 'MANGA', 'novel', signal, 'NOVEL');
     case 'game':   return searchIGDB(q, signal);
+    // vn, movie, series, book: fuentes pendientes de integrar
     default:       return [];
   }
 }
