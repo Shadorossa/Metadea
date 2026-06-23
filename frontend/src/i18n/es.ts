@@ -3,8 +3,26 @@ export const es = {
     title: 'Tu biblioteca personal de medios',
   },
   nav: {
-    login: 'Iniciar sesión',
-    register: 'Registrarse',
+    home:          'Inicio',
+    search:        'Buscar',
+    notifications: 'Notificaciones',
+    account:       'Mi cuenta',
+  },
+  auth: {
+    login:            'Iniciar sesión',
+    register:         'Registrarse',
+    email:            'Correo electrónico',
+    username:         'Nombre de usuario',
+    password:         'Contraseña',
+    login_submit:     'Entrar',
+    register_submit:  'Crear cuenta',
+    login_hint:       '¿No tienes cuenta?',
+    register_hint:    '¿Ya tienes cuenta?',
+    coming_soon:      'El sistema de cuentas estará disponible próximamente.',
+  },
+  notifications: {
+    title:       'Notificaciones',
+    coming_soon: 'Las notificaciones estarán disponibles próximamente.',
   },
   search: {
     title: 'Buscar',

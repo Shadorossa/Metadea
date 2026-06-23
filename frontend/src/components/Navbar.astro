@@ -1,20 +1,23 @@
 ---
+import type { Translations } from '../i18n/index';
+
 interface Props {
-  activePage?: 'home' | 'search';
+  activePage?: 'home' | 'search' | 'notifications';
+  i18n: Translations['nav'];
 }
-const { activePage } = Astro.props;
+const { activePage, i18n } = Astro.props;
 ---
 
 <header class="navbar">
   <!-- Izquierda: home + search -->
   <div class="nav-group">
-    <a href="/home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title="Inicio">
+    <a href="/home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
         <polyline points="9 21 9 12 15 12 15 21"/>
       </svg>
     </a>
-    <a href="/search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title="Buscar">
+    <a href="/search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.search}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="7"/>
         <line x1="16.5" y1="16.5" x2="22" y2="22"/>
@@ -22,14 +25,25 @@ const { activePage } = Astro.props;
     </a>
   </div>
 
-  <!-- Derecha: usuario -->
+  <!-- Derecha: notificaciones + usuario -->
   <div class="nav-group">
-    <a href="/login" class="nav-icon-btn" title="Mi cuenta">
+    <a href="/notifications" class={`nav-icon-btn${activePage === 'notifications' ? ' active' : ''}`} title={i18n.notifications}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    </a>
+    <button id="open-auth-modal" class="nav-icon-btn" title={i18n.account}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="8" r="4"/>
         <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
       </svg>
-    </a>
+    </button>
   </div>
 </header>
 
+<script>
+  document.getElementById('open-auth-modal')?.addEventListener('click', () => {
+    (document.getElementById('auth-modal') as HTMLDialogElement)?.showModal();
+  });
+</script>

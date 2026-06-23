@@ -3,8 +3,26 @@ export const en = {
     title: 'Your personal media library',
   },
   nav: {
-    login: 'Log in',
-    register: 'Sign up',
+    home:          'Home',
+    search:        'Search',
+    notifications: 'Notifications',
+    account:       'My account',
+  },
+  auth: {
+    login:            'Log in',
+    register:         'Sign up',
+    email:            'Email address',
+    username:         'Username',
+    password:         'Password',
+    login_submit:     'Sign in',
+    register_submit:  'Create account',
+    login_hint:       "Don't have an account?",
+    register_hint:    'Already have an account?',
+    coming_soon:      'The accounts system will be available soon.',
+  },
+  notifications: {
+    title:       'Notifications',
+    coming_soon: 'Notifications will be available soon.',
   },
   search: {
     title: 'Search',
