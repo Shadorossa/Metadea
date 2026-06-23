@@ -30,22 +30,6 @@
   min-width: 0;
 }
 
-/* Iconos de nav integrados en el header */
-.nav-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: 6px;
-  color: var(--text-muted);
-  transition: color var(--anim-fast) var(--anim-ease), background var(--anim-fast) var(--anim-ease);
-}
-.nav-icon-btn:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.06);
-}
 
 .search-tab {
   display: flex;
@@ -76,12 +60,6 @@
   background: var(--accent-soft);
   border-color: var(--accent-border);
 }
-/* Icono del tab — un poco más pequeño y sin el emoji */
-.search-tab-icon {
-  font-size: 0.8rem;
-  line-height: 1;
-}
-
 /* ── Search bar ─────────────────────────────────────────────────────────── */
 .search-bar-row {
   max-width: 80rem;

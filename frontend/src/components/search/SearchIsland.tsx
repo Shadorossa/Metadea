@@ -23,21 +23,33 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
   const [results, setResults] = useState<SearchResult[]>([]);
   const [status, setStatus]   = useState<Status>(initialQ ? 'loading' : 'idle');
   const debounceRef           = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef              = useRef<AbortController | null>(null);
 
   const runSearch = useCallback(async (query: string, mediaType: MediaType) => {
     if (query.length < 2) { setStatus('idle'); setResults([]); return; }
+
+    // Cancela la petición anterior antes de lanzar la nueva
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setStatus('loading');
     try {
-      const data = await search(query, mediaType);
+      const data = await search(query, mediaType, signal);
       setResults(data);
       setStatus('done');
-    } catch {
-      setStatus('error');
+    } catch (err) {
+      // AbortError no es un error real — la petición fue cancelada intencionalmente
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setStatus('error');
+      }
     }
   }, []);
 
+  // Limpia el AbortController al desmontar
   useEffect(() => {
     if (initialQ) runSearch(initialQ, initialType);
+    return () => abortRef.current?.abort();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInput = (value: string) => {
@@ -60,7 +72,6 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
   return (
     <div className="min-h-screen flex flex-col">
 
-      {/* ── Sticky header: solo tabs + buscador, sin barra visual ── */}
       <div className="search-header">
         <div className="search-tabs-row">
           <div className="search-tabs-inner">
@@ -91,7 +102,6 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
         </div>
       </div>
 
-      {/* ── Resultados ── */}
       <div className="results-zone flex-1">
         {status === 'idle' && (
           <div className="search-idle">

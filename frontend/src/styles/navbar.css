@@ -24,7 +24,7 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: color var(--anim-fast) var(--anim-ease), background var(--anim-fast) var(--anim-ease);
 }

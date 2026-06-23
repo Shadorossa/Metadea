@@ -4,6 +4,8 @@ import { validateExternalId } from "../lib/validation";
 import { getTursoClient, saveLibraryItem } from "../lib/turso";
 import type { CloudflareEnv, LibrarySyncRequest, SyncResponse } from "../types/index";
 
+const MAX_ITEMS_PER_SYNC = 500;
+
 export async function syncLibrary(
   request: IRequest,
   env: CloudflareEnv
@@ -12,27 +14,33 @@ export async function syncLibrary(
     const body = (await request.json()) as LibrarySyncRequest;
     const { userId, items } = body;
 
-    if (!userId || !Array.isArray(items) || items.length === 0) {
-      return jsonError("Missing userId or empty items array", 400);
+    if (!userId || typeof userId !== "string" || userId.trim().length === 0) {
+      return jsonError("Missing or invalid userId", 400);
     }
 
-    const validatedItems = [];
-    const rejectedIds: string[] = [];
-
-    for (const item of items) {
-      const isValid = await validateExternalId(item.externalId, item.type);
-      if (isValid) {
-        validatedItems.push(item);
-      } else {
-        rejectedIds.push(item.externalId);
-      }
+    if (!Array.isArray(items) || items.length === 0) {
+      return jsonError("Empty items array", 400);
     }
+
+    if (items.length > MAX_ITEMS_PER_SYNC) {
+      return jsonError(`Max ${MAX_ITEMS_PER_SYNC} items per sync`, 400);
+    }
+
+    // Validate all items in parallel
+    const validationResults = await Promise.all(
+      items.map(async (item) => ({
+        item,
+        valid: await validateExternalId(item.externalId, item.type),
+      }))
+    );
+
+    const validatedItems = validationResults.filter((r) => r.valid).map((r) => r.item);
+    const rejectedIds    = validationResults.filter((r) => !r.valid).map((r) => r.item.externalId);
 
     const db = getTursoClient(env);
 
-    for (const item of validatedItems) {
-      await saveLibraryItem(db, userId, item);
-    }
+    // Save all valid items in parallel
+    await Promise.all(validatedItems.map((item) => saveLibraryItem(db, userId, item)));
 
     const response: SyncResponse = {
       success: true,
