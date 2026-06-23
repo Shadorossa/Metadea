@@ -13,6 +13,11 @@ const type = (Astro.url.searchParams.get('type') ?? 'anime') as any;
 
 <BaseLayout title={`${t.search.title} — Metadea`} lang={lang} activePage="search">
   <main>
-    <SearchIsland client:load initialQ={q} initialType={type} />
+    <SearchIsland
+      client:load
+      initialQ={q}
+      initialType={type}
+      i18n={t.search}
+    />
   </main>
 </BaseLayout>

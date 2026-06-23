@@ -1,23 +1,27 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { search, type MediaType, type SearchResult } from '../../lib/api/search';
+import type { Translations } from '../../i18n/index';
 
-const TYPES: { id: MediaType; label: string }[] = [
-  { id: 'anime',  label: 'Anime'    },
-  { id: 'manga',  label: 'Manga'    },
-  { id: 'game',   label: 'Juegos'   },
-  { id: 'movie',  label: 'Películas'},
-  { id: 'series', label: 'Series'   },
-  { id: 'book',   label: 'Libros'   },
-];
+type SearchI18n = Translations['search'];
+
+const TYPE_IDS: MediaType[] = ['anime', 'manga', 'game', 'movie', 'series', 'book'];
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
 
 interface Props {
   initialQ?: string;
   initialType?: MediaType;
+  i18n: SearchI18n;
 }
 
-export default function SearchIsland({ initialQ = '', initialType = 'anime' }: Props) {
+function interpolate(template: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce(
+    (str, [key, val]) => str.replace(`{${key}}`, val),
+    template,
+  );
+}
+
+export default function SearchIsland({ initialQ = '', initialType = 'anime', i18n }: Props) {
   const [q, setQ]             = useState(initialQ);
   const [type, setType]       = useState<MediaType>(initialType);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -28,7 +32,6 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
   const runSearch = useCallback(async (query: string, mediaType: MediaType) => {
     if (query.length < 2) { setStatus('idle'); setResults([]); return; }
 
-    // Cancela la petición anterior antes de lanzar la nueva
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     const { signal } = abortRef.current;
@@ -39,14 +42,12 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
       setResults(data);
       setStatus('done');
     } catch (err) {
-      // AbortError no es un error real — la petición fue cancelada intencionalmente
       if (err instanceof Error && err.name !== 'AbortError') {
         setStatus('error');
       }
     }
   }, []);
 
-  // Limpia el AbortController al desmontar
   useEffect(() => {
     if (initialQ) runSearch(initialQ, initialType);
     return () => abortRef.current?.abort();
@@ -67,7 +68,7 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
     if (q.length >= 2) runSearch(q, next);
   };
 
-  const activeLabel = TYPES.find(t => t.id === type)?.label ?? '';
+  const activeLabel = i18n.types[type].toLowerCase();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -75,13 +76,13 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
       <div className="search-header">
         <div className="search-tabs-row">
           <div className="search-tabs-inner">
-            {TYPES.map(t => (
+            {TYPE_IDS.map(id => (
               <button
-                key={t.id}
-                onClick={() => handleType(t.id)}
-                className={`search-tab${type === t.id ? ' active' : ''}`}
+                key={id}
+                onClick={() => handleType(id)}
+                className={`search-tab${type === id ? ' active' : ''}`}
               >
-                {t.label}
+                {i18n.types[id]}
               </button>
             ))}
           </div>
@@ -93,7 +94,7 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
               type="search"
               value={q}
               onChange={e => handleInput(e.target.value)}
-              placeholder={`Buscar ${activeLabel.toLowerCase()}...`}
+              placeholder={interpolate(i18n.placeholder, { type: activeLabel })}
               autoFocus
               className="search-input"
             />
@@ -105,20 +106,22 @@ export default function SearchIsland({ initialQ = '', initialType = 'anime' }: P
       <div className="results-zone flex-1">
         {status === 'idle' && (
           <div className="search-idle">
-            <p className="search-idle-label">Busca {activeLabel.toLowerCase()}</p>
-            <p className="search-idle-hint">Escribe al menos 2 caracteres</p>
+            <p className="search-idle-label">
+              {interpolate(i18n.idle_label, { type: activeLabel })}
+            </p>
+            <p className="search-idle-hint">{i18n.idle_hint}</p>
           </div>
         )}
 
         {status === 'error' && (
           <div className="results-empty" style={{ color: '#f87171' }}>
-            Error al buscar. Inténtalo de nuevo.
+            {i18n.error}
           </div>
         )}
 
         {status === 'done' && results.length === 0 && (
           <div className="results-empty">
-            Sin resultados para <strong style={{ color: 'var(--text-main)' }}>"{q}"</strong>
+            {interpolate(i18n.no_results, { q })}
           </div>
         )}
 

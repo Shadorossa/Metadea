@@ -1,6 +1,6 @@
 import { API_URL } from '../config';
 
-export type MediaType = 'anime' | 'manga' | 'game' | 'movie' | 'series' | 'book';
+export type MediaType = 'anime' | 'manga' | 'novel' | 'game' | 'vn' | 'movie' | 'series' | 'book';
 
 export interface SearchResult {
   id: string;
@@ -33,9 +33,9 @@ interface AniListResponse {
 // ── AniList ──────────────────────────────────────────────────────────────────
 
 const ANILIST_QUERY = `
-  query Search($q: String!, $type: MediaType!, $page: Int) {
+  query Search($q: String!, $type: MediaType!, $page: Int, $format: MediaFormat) {
     Page(page: $page, perPage: 20) {
-      media(search: $q, type: $type, sort: SEARCH_MATCH) {
+      media(search: $q, type: $type, format: $format, sort: SEARCH_MATCH) {
         id title { romaji native } coverImage { large } startDate { year } averageScore
       }
     }
