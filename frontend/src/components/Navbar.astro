@@ -1,0 +1,35 @@
+---
+interface Props {
+  activePage?: 'home' | 'search';
+}
+const { activePage } = Astro.props;
+---
+
+<header class="navbar">
+  <!-- Izquierda: home + search -->
+  <div class="nav-group">
+    <a href="/home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title="Inicio">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+        <polyline points="9 21 9 12 15 12 15 21"/>
+      </svg>
+    </a>
+    <a href="/search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title="Buscar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+      </svg>
+    </a>
+  </div>
+
+  <!-- Derecha: usuario -->
+  <div class="nav-group">
+    <a href="/login" class="nav-icon-btn" title="Mi cuenta">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </a>
+  </div>
+</header>
+

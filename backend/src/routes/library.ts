@@ -1,5 +1,5 @@
 import type { IRequest } from "itty-router";
-import { jsonResponse, jsonError, corsHeaders } from "../lib/cors";
+import { jsonResponse, jsonError } from "../lib/cors";
 import { validateExternalId } from "../lib/validation";
 import { getTursoClient, saveLibraryItem } from "../lib/turso";
 import type { CloudflareEnv, LibrarySyncRequest, SyncResponse } from "../types/index";
@@ -17,14 +17,14 @@ export async function syncLibrary(
     }
 
     const validatedItems = [];
-    const rejectedItems: string[] = [];
+    const rejectedIds: string[] = [];
 
     for (const item of items) {
       const isValid = await validateExternalId(item.externalId, item.type);
       if (isValid) {
         validatedItems.push(item);
       } else {
-        rejectedItems.push(item.externalId);
+        rejectedIds.push(item.externalId);
       }
     }
 
@@ -37,11 +37,11 @@ export async function syncLibrary(
     const response: SyncResponse = {
       success: true,
       saved: validatedItems.length,
-      rejected: rejectedItems.length,
-      rejectedIds: rejectedItems,
+      rejected: rejectedIds.length,
+      rejectedIds,
     };
 
-    return jsonResponse(response, 200);
+    return jsonResponse(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return jsonError(`Sync failed: ${message}`, 500);

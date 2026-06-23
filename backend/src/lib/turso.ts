@@ -1,4 +1,4 @@
-﻿import { createClient, Client } from "@libsql/client/web";
+import { createClient, type Client } from "@libsql/client/web";
 import type { CloudflareEnv, LibraryItemInput } from "../types/index";
 
 export function getTursoClient(env: CloudflareEnv): Client {
@@ -26,14 +26,14 @@ export async function saveLibraryItem(
       userId,
       item.externalId,
       item.type,
-      item.status || "planning",
+      item.status ?? "planning",
       item.rating ?? null,
       item.progress ?? 0,
       item.minutes_spent ?? 0,
       item.is_favorite ? 1 : 0,
       item.is_platinum ? 1 : 0,
-      item.tags || "",
-      item.notes || "",
+      item.tags ?? "",
+      item.notes ?? "",
       now,
     ],
   });

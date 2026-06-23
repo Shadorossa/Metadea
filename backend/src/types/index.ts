@@ -1,3 +1,8 @@
+export interface CloudflareEnv {
+  TURSO_URL: string;
+  TURSO_TOKEN: string;
+}
+
 export interface LibrarySyncRequest {
   userId: string;
   items: LibraryItemInput[];
@@ -25,9 +30,4 @@ export interface SyncResponse {
   saved: number;
   rejected: number;
   rejectedIds: string[];
-}
-
-export interface CloudflareEnv {
-  TURSO_URL: string;
-  TURSO_TOKEN: string;
 }

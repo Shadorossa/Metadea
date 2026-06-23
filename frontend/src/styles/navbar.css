@@ -1,0 +1,37 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  pointer-events: none; /* el área no bloquea clics al contenido */
+}
+
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  pointer-events: auto;
+}
+
+.nav-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color var(--anim-fast) var(--anim-ease), background var(--anim-fast) var(--anim-ease);
+}
+.nav-icon-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.07);
+}
+.nav-icon-btn.active {
+  color: var(--accent);
+}

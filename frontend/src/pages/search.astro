@@ -1,0 +1,27 @@
+---
+import '../styles/global.css';
+import '../styles/components.css';
+import '../styles/search.css';
+import { getLang, useTranslations } from '../i18n/index';
+import SearchIsland from '../components/search/SearchIsland';
+
+const lang = getLang(Astro.url);
+const t    = useTranslations(lang);
+
+const q    = Astro.url.searchParams.get('q') ?? '';
+const type = (Astro.url.searchParams.get('type') ?? 'anime') as any;
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{t.search.title} — Metadea</title>
+  </head>
+  <body>
+    <main>
+      <SearchIsland client:load initialQ={q} initialType={type} />
+    </main>
+  </body>
+</html>
