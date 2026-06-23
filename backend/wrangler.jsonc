@@ -1,0 +1,16 @@
+﻿{
+  "name": "metamedia-api",
+  "main": "src/index.ts",
+  "type": "javascript",
+  "compatibility_date": "2024-01-01",
+
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production",
+        "TURSO_URL": "libsql://metadea-app-shadorossa.aws-eu-west-1.turso.io",
+        "TURSO_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODIyNDM3NjMsImlkIjoiMDE5ZWY2MDEtNzkwMS03MjkyLWFmM2ItOGI0YWM1NTMwOTMxIiwicmlkIjoiM2Q3NmMyMTEtNWE3MS00NGMxLWE1ZjUtZGYxODEyYzk2M2YxIn0.owiokuXbSmUaYoExJ0XqwZH1KU8_uLqkhdWC35aEMfCmWYFVEMV7Q-YUt7pL8SIaNKkJ7eh4Zy72H8lVIlvVDA"
+      }
+    }
+  }
+}
