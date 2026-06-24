@@ -1,0 +1,282 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/media.css';
+import { getLang } from '../i18n/index';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Media — Metadea" lang={lang}>
+  <div class="media-page">
+    <div id="media-root"></div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { fetchAniListDetail } from '../lib/search/providers/anilist';
+  import type { AniListMediaDetail } from '../lib/search/providers/anilist';
+
+  const root = document.getElementById('media-root')!;
+
+  // ── Parse URL param ──────────────────────────────────────────────────────
+  const params  = new URLSearchParams(window.location.search);
+  const rawId   = params.get('id') ?? '';         // e.g. "anime:918"
+  const [type, numericStr] = rawId.split(':');
+  const numericId = parseInt(numericStr ?? '', 10);
+
+  if (!numericId || !['anime', 'manga', 'novel'].includes(type)) {
+    root.innerHTML = renderError('ID no válido.');
+  } else {
+    root.innerHTML = renderLoading();
+    fetchAniListDetail(numericId).then(media => {
+      if (!media) { root.innerHTML = renderError('No se encontró la obra.'); return; }
+      root.innerHTML = buildMediaHtml(media, type);
+      initInteractions();
+    });
+  }
+
+  // ── Loading / Error ───────────────────────────────────────────────────────
+  function renderLoading(): string {
+    return `<div class="media-loading"><div class="spinner"></div></div>`;
+  }
+
+  function renderError(msg: string): string {
+    return `<div class="media-error"><span>${msg}</span><a href="/search" style="color:var(--accent);font-size:0.78rem">← Volver a búsqueda</a></div>`;
+  }
+
+  // ── Label helpers ─────────────────────────────────────────────────────────
+  const FORMAT_LABELS: Record<string, string> = {
+    TV: 'TV', TV_SHORT: 'TV Corto', MOVIE: 'Película', OVA: 'OVA',
+    ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música',
+    MANGA: 'Manga', ONE_SHOT: 'One-Shot', NOVEL: 'Novela ligera',
+  };
+
+  const STATUS_LABELS: Record<string, string> = {
+    FINISHED:         'Finalizado',
+    RELEASING:        'En emisión',
+    NOT_YET_RELEASED: 'Próximamente',
+    CANCELLED:        'Cancelado',
+    HIATUS:           'En hiato',
+  };
+
+  const STATUS_CLASS: Record<string, string> = {
+    RELEASING:        'media-badge--status-airing',
+    NOT_YET_RELEASED: 'media-badge--status-upcoming',
+  };
+
+  const SEASON_LABELS: Record<string, string> = {
+    WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño',
+  };
+
+  const RELATION_LABELS: Record<string, string> = {
+    SEQUEL: 'Secuela', PREQUEL: 'Precuela', SIDE_STORY: 'Historia paralela',
+    ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Original',
+    SUMMARY: 'Resumen', SPIN_OFF: 'Spin-off', OTHER: 'Otro',
+    CHARACTER: 'Personaje', CONTAINS: 'Contiene',
+  };
+
+  const SOURCE_LABELS: Record<string, string> = {
+    MANGA: 'Manga', LIGHT_NOVEL: 'Novela ligera', VISUAL_NOVEL: 'Novela visual',
+    VIDEO_GAME: 'Videojuego', ORIGINAL: 'Original', NOVEL: 'Novela',
+    DOUJINSHI: 'Doujinshi', ANIME: 'Anime', WEB_NOVEL: 'Web novel',
+    LIVE_ACTION: 'Live action', GAME: 'Juego', COMIC: 'Comic',
+    MULTIMEDIA_PROJECT: 'Proyecto multimedia',
+  };
+
+  type NullableDate = { year: number | null; month: number | null; day: number | null } | null;
+  function fmtDate(d: NullableDate): string {
+    if (!d?.year) return '';
+    if (!d.month) return String(d.year);
+    const date = new Date(d.year, d.month - 1, d.day ?? 1);
+    return date.toLocaleDateString('es', { year: 'numeric', month: 'short', day: d.day ? 'numeric' : undefined });
+  }
+
+  // ── Main render ───────────────────────────────────────────────────────────
+
+  function buildMediaHtml(media: AniListMediaDetail, mediaType: string): string {
+    const titleMain   = media.title.romaji ?? media.title.english ?? media.title.native ?? '—';
+    const titleNative = media.title.native && media.title.native !== titleMain ? media.title.native : '';
+    const titleEng    = media.title.english && media.title.english !== titleMain ? media.title.english : '';
+
+    const coverSrc  = media.coverImage?.extraLarge ?? media.coverImage?.large ?? '';
+    const coverColor = media.coverImage?.color ?? '#1a1a2e';
+
+    // Banner
+    const bannerHtml = media.bannerImage
+      ? `<img class="media-banner-img" src="${media.bannerImage}" alt="" loading="lazy">`
+      : '';
+    const bannerClass = media.bannerImage ? 'media-banner' : 'media-banner media-banner--color';
+    const bannerStyle = media.bannerImage ? '' : `style="--banner-color: linear-gradient(135deg, ${coverColor}22, ${coverColor}44)"`;
+
+    // Meta badges
+    const formatLabel = FORMAT_LABELS[media.format ?? ''] ?? media.format ?? '';
+    const statusLabel = STATUS_LABELS[media.status ?? ''] ?? media.status ?? '';
+    const statusClass = STATUS_CLASS[media.status ?? ''] ?? '';
+
+    const episodeInfo = media.episodes  ? `${media.episodes} ep.`    : '';
+    const chapterInfo = media.chapters  ? `${media.chapters} cap.`   : '';
+    const volumeInfo  = media.volumes   ? `· ${media.volumes} vol.`  : '';
+    const durationInfo = media.duration ? `${media.duration} min/ep` : '';
+    const countInfo   = episodeInfo || (chapterInfo + ' ' + volumeInfo).trim();
+
+    const seasonInfo = (media.season && media.seasonYear)
+      ? `${SEASON_LABELS[media.season] ?? media.season} ${media.seasonYear}`
+      : fmtDate(media.startDate);
+
+    const studio = media.studios.nodes[0]?.name ?? '';
+    const source = media.source ? SOURCE_LABELS[media.source] ?? media.source : '';
+
+    // Score
+    const score = media.averageScore ? (media.averageScore / 10).toFixed(1) : null;
+
+    // Stats column items
+    const statItems: [string, string][] = [
+      ...(formatLabel ? [['Formato',    formatLabel] as [string,string]] : []),
+      ...(media.episodes  ? [['Episodios', String(media.episodes)] as [string,string]] : []),
+      ...(media.chapters  ? [['Capítulos', String(media.chapters)] as [string,string]] : []),
+      ...(media.volumes   ? [['Volúmenes', String(media.volumes)]  as [string,string]] : []),
+      ...(durationInfo    ? [['Duración',  durationInfo]            as [string,string]] : []),
+      ...(seasonInfo      ? [['Temporada', seasonInfo]              as [string,string]] : []),
+      ...(source          ? [['Fuente',    source]                  as [string,string]] : []),
+      ...(studio          ? [['Estudio',   studio]                  as [string,string]] : []),
+      ...(score           ? [['Puntuación',`★ ${score}`]            as [string,string]] : []),
+    ];
+    const statsHtml = statItems.map(([label, val]) => `
+      <div class="media-stat-item">
+        <span class="media-stat-label">${label}</span>
+        <span class="media-stat-value">${val}</span>
+      </div>`).join('');
+
+    // Genres as dot-separated text
+    const genreDots = media.genres.join(' · ');
+
+    // Description
+    const desc = media.description ?? '';
+
+    // Characters
+    const charCards = media.characters.nodes.map(c => `
+      <div class="media-char-card">
+        <img class="media-char-img" src="${c.image.medium ?? ''}" alt="${c.name.full}" loading="lazy">
+        <span class="media-char-name">${c.name.full}</span>
+      </div>
+    `).join('');
+
+    // Relations
+    const validRelations = media.relations.edges.filter(e =>
+      e.relationType !== 'CHARACTER' && e.node.coverImage?.medium,
+    );
+    const relationCards = validRelations.map(e => `
+      <div class="media-relation-card">
+        <img class="media-relation-img" src="${e.node.coverImage!.medium!}" alt="${e.node.title.romaji ?? ''}" loading="lazy">
+        <div class="media-relation-info">
+          <span class="media-relation-type">${RELATION_LABELS[e.relationType] ?? e.relationType}</span>
+          <span class="media-relation-title">${e.node.title.romaji ?? ''}</span>
+        </div>
+      </div>
+    `).join('');
+
+    const PLUS_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const CHECK_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    return `
+      <!-- Hero -->
+      <div class="media-hero">
+        <div class="${bannerClass}" ${bannerStyle}>
+          ${bannerHtml}
+        </div>
+
+        <div class="media-hero-body">
+          <!-- Izquierda: títulos -->
+          <div class="media-hero-left">
+            <h1 class="media-title-main">${titleMain}</h1>
+            ${titleNative ? `<p class="media-title-native">${titleNative}</p>` : ''}
+            ${titleEng    ? `<p class="media-title-english">${titleEng}</p>`  : ''}
+          </div>
+
+          <!-- Centro: cover -->
+          <div class="media-cover-wrap" id="media-add-btn"
+               data-external-id="${mediaType}:${media.id}" data-type="${mediaType}"
+               role="button" tabindex="0" aria-label="Añadir a biblioteca">
+            ${coverSrc ? `<img class="media-cover-img" src="${coverSrc}" alt="${titleMain}">` : ''}
+            <div class="media-cover-overlay">
+              <div class="media-cover-overlay-inner">
+                <span class="media-cover-overlay-icon">${PLUS_ICON}</span>
+                <span class="media-cover-overlay-label">Añadir a<br>biblioteca</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Derecha: géneros + estado -->
+          <div class="media-hero-right">
+            ${statusLabel ? `<span class="media-badge ${statusClass}">${statusLabel}</span>` : ''}
+            ${genreDots   ? `<p class="media-genres-dots">${genreDots}</p>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Body: 3 columns -->
+      <div class="media-body">
+
+        <!-- Col 1: Synopsis -->
+        <div class="media-col-synopsis">
+          ${desc ? `
+            <p class="section-label">Sinopsis</p>
+            <div class="media-description-text">${desc}</div>
+          ` : ''}
+        </div>
+
+        <!-- Col 2: Related -->
+        <div class="media-col-related">
+          ${relationCards ? `
+            <p class="section-label">Relacionados</p>
+            <div class="media-relations-grid">${relationCards}</div>
+          ` : ''}
+        </div>
+
+        <!-- Col 3: Stats -->
+        <div class="media-col-stats">
+          <p class="section-label">Datos</p>
+          <div class="media-stats-list">${statsHtml}</div>
+        </div>
+
+      </div>
+
+      <!-- Characters (full-width) -->
+      ${charCards ? `
+        <div class="media-chars-section">
+          <p class="section-label">Personajes</p>
+          <div class="media-chars-grid">${charCards}</div>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  // ── Interactions ─────────────────────────────────────────────────────────
+  function initInteractions() {
+    // Cover = add-to-library trigger
+    const coverWrap = document.getElementById('media-add-btn');
+    if (coverWrap) {
+      const overlay      = coverWrap.querySelector<HTMLElement>('.media-cover-overlay');
+      const overlayIcon  = coverWrap.querySelector<HTMLElement>('.media-cover-overlay-icon');
+      const overlayLabel = coverWrap.querySelector<HTMLElement>('.media-cover-overlay-label');
+
+      function setInLibrary(inLib: boolean) {
+        coverWrap.classList.toggle('in-library', inLib);
+        if (overlayIcon)  overlayIcon.innerHTML  = inLib
+          ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+          : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+        if (overlayLabel) overlayLabel.innerHTML = inLib ? 'En<br>biblioteca' : 'Añadir a<br>biblioteca';
+      }
+
+      coverWrap.addEventListener('click', () => {
+        // TODO: conectar con flujo de biblioteca real
+        const next = !coverWrap.classList.contains('in-library');
+        setInLibrary(next);
+      });
+      coverWrap.addEventListener('keydown', (e: Event) => {
+        const ke = e as KeyboardEvent;
+        if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); coverWrap.click(); }
+      });
+    }
+  }
+</script>

@@ -184,6 +184,84 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Button system ───────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background var(--anim-fast), color var(--anim-fast), transform var(--anim-fast), border-color var(--anim-fast);
+}
+
+/* Size modifier — compact (settings, toolbars) */
+.btn--sm {
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn--primary:hover { background: #a855f7; transform: translateY(-1px); }
+
+.btn--secondary {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+.btn--secondary:hover { background: rgba(255, 255, 255, 0.07); }
+
+/* Destructive ghost — hover rojo, para eliminar/desconectar */
+.btn--ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+}
+.btn--ghost:hover {
+  color: var(--color-error);
+  border-color: rgba(248, 113, 113, 0.25);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+/* Accent outline — "ya en biblioteca", estados secundarios con acento */
+.btn--accent-outline {
+  background: var(--bg-elevated);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+.btn--accent-outline:hover { background: var(--accent-soft); transform: none; }
+
+/* ── Section label ───────────────────────────────────────────────────────── */
+/* Cabecera de sección: SINOPSIS, PERSONAJES, RELACIONADOS, etc. */
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin: 0 0 0.75rem;
+}
+
 /* ── Placeholder pages ───────────────────────────────────────────────────── */
 .placeholder-page {
   display: flex;

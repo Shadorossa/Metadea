@@ -1,5 +1,96 @@
 import type { MediaType, SearchResult } from '../index';
 
+// ── Detail types ──────────────────────────────────────────────────────────────
+
+export interface AniListCharacter {
+  id: number;
+  name: { full: string };
+  image: { medium: string | null };
+}
+
+export interface AniListStudio {
+  name: string;
+  siteUrl: string | null;
+}
+
+export interface AniListRelationEdge {
+  relationType: string;
+  node: {
+    id: number;
+    type: string;
+    format: string | null;
+    title: { romaji: string | null };
+    coverImage: { medium: string | null };
+  };
+}
+
+export interface AniListMediaDetail {
+  id: number;
+  title: { romaji: string | null; english: string | null; native: string | null };
+  bannerImage: string | null;
+  coverImage: { extraLarge: string | null; large: string | null; color: string | null } | null;
+  description: string | null;
+  format: string | null;
+  status: string | null;
+  episodes: number | null;
+  chapters: number | null;
+  volumes: number | null;
+  duration: number | null;
+  averageScore: number | null;
+  popularity: number | null;
+  favourites: number | null;
+  genres: string[];
+  season: string | null;
+  seasonYear: number | null;
+  startDate: { year: number | null; month: number | null; day: number | null } | null;
+  endDate: { year: number | null; month: number | null; day: number | null } | null;
+  source: string | null;
+  studios: { nodes: AniListStudio[] };
+  characters: { nodes: AniListCharacter[] };
+  relations: { edges: AniListRelationEdge[] };
+}
+
+const DETAIL_QUERY = `
+  query Media($id: Int!) {
+    Media(id: $id) {
+      id
+      title { romaji english native }
+      bannerImage
+      coverImage { extraLarge large color }
+      description(asHtml: true)
+      format status episodes chapters volumes duration
+      averageScore popularity favourites genres
+      season seasonYear
+      startDate { year month day }
+      endDate   { year month day }
+      source
+      studios(isMain: true) { nodes { name siteUrl } }
+      characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
+        nodes { id name { full } image { medium } }
+      }
+      relations {
+        edges {
+          relationType
+          node { id type format title { romaji } coverImage { medium } }
+        }
+      }
+    }
+  }
+`;
+
+export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail | null> {
+  try {
+    const res = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: DETAIL_QUERY, variables: { id } }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json() as { data?: { Media?: AniListMediaDetail } };
+    return json.data?.Media ?? null;
+  } catch { return null; }
+}
+
 interface AniListMedia {
   id: number;
   format: string | null;

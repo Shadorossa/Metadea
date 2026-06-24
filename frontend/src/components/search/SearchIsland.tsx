@@ -189,9 +189,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
+const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel'];
+
 function MediaCard({ result }: { result: SearchResult }) {
+  const hasDetail = DETAIL_SUPPORTED.includes(result.type);
+
+  function handleClick() {
+    if (hasDetail) {
+      window.location.href = `/media?id=${result.externalId}`;
+    }
+  }
+
   return (
-    <div className="group flex flex-col card-cursor">
+    <div
+      className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
+      onClick={handleClick}
+      role={hasDetail ? 'button' : undefined}
+      tabIndex={hasDetail ? 0 : undefined}
+      onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
+    >
       <div className="card-media-base aspect-[3/4] mb-1.5">
         {result.coverUrl ? (
           <img

@@ -24,13 +24,10 @@
   top: 4.5rem;
 }
 
+/* Extiende .section-label con el padding específico del sidebar */
 .settings-sidebar-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-dim);
   padding: 0.5rem 0.85rem 0.25rem;
+  font-size: 0.6rem;
 }
 
 .settings-tab {
@@ -215,44 +212,6 @@
   display: flex;
   gap: 0.5rem;
   margin-top: 0.75rem;
-}
-
-/* ── Buttons ──────────────────────────────────────────────────────────────── */
-.settings-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: var(--radius-md);
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: background var(--anim-fast), color var(--anim-fast);
-}
-
-.settings-btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-.settings-btn-primary:hover { background: #a855f7; }
-
-.settings-btn-secondary {
-  background: var(--bg-elevated);
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
-}
-.settings-btn-secondary:hover { background: rgba(255,255,255,0.07); }
-
-.settings-btn-ghost {
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid transparent;
-}
-.settings-btn-ghost:hover {
-  color: var(--color-error);
-  border-color: rgba(248,113,113,0.25);
-  background: rgba(248,113,113,0.06);
 }
 
 /* ── Theme picker ─────────────────────────────────────────────────────────── */

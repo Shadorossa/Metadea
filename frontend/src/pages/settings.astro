@@ -12,12 +12,12 @@ const lang = getLang(Astro.url);
 
       <!-- Sidebar vertical -->
       <aside class="settings-sidebar">
-        <span class="settings-sidebar-label">Cuenta</span>
+        <span class="section-label settings-sidebar-label">Cuenta</span>
         <button class="settings-tab active" data-tab="profile">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           Perfil
         </button>
-        <span class="settings-sidebar-label" style="margin-top:0.5rem">Apariencia</span>
+        <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">Apariencia</span>
         <button class="settings-tab" data-tab="appearance">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
           Tema
@@ -41,8 +41,8 @@ const lang = getLang(Astro.url);
                 <!-- populated by script -->
               </div>
               <div class="avatar-upload-btns">
-                <button class="settings-btn settings-btn-secondary" id="avatar-upload-btn">Cambiar foto</button>
-                <button class="settings-btn settings-btn-ghost" id="avatar-remove-btn">Eliminar</button>
+                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">Cambiar foto</button>
+                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">Eliminar</button>
               </div>
               <input type="file" id="avatar-input" accept="image/*" hidden>
             </div>
@@ -57,8 +57,8 @@ const lang = getLang(Astro.url);
                 </div>
               </div>
               <div class="banner-actions">
-                <button class="settings-btn settings-btn-secondary" id="banner-upload-btn">Subir imagen</button>
-                <button class="settings-btn settings-btn-ghost" id="banner-remove-btn">Eliminar banner</button>
+                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">Subir imagen</button>
+                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">Eliminar banner</button>
               </div>
               <input type="file" id="banner-input" accept="image/*" hidden>
             </div>

@@ -29,7 +29,7 @@ body {
 /* ── Cyberpunk specific shape overrides ───────────────────────────────────── */
 
 /* Apply clip-path to buttons, tabs, input fields, cards and previews */
-.settings-btn, 
+.btn,
 .settings-tab, 
 .google-btn, 
 .input-dark,
@@ -42,7 +42,10 @@ body {
 .nav-user-dropdown::before,
 .hof-btn,
 .hof-container,
-.hof-card {
+.hof-card,
+.search-input,
+.search-action-btn,
+.search-tab {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
@@ -57,6 +60,8 @@ body {
 .theme-card.active .theme-card-preview,
 .nav-icon-btn.active,
 .hof-btn--active,
+.search-tab.active,
+.search-input:focus,
 .input-dark:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 10px var(--accent-glow) !important;
@@ -64,7 +69,13 @@ body {
   color: var(--accent) !important;
 }
 
-.nav-dropdown-item:hover {
+.search-tab {
+  border-bottom: 1px solid var(--border-color) !important; /* overrides standard border-bottom none in global */
+  margin-right: 4px;
+}
+
+.nav-dropdown-item:hover,
+.search-tab:hover {
   background: var(--accent-soft) !important;
   color: var(--accent) !important;
   border-color: var(--accent) !important;

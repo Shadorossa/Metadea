@@ -28,7 +28,7 @@ body {
 /* ── Newspaper editorial specific shape overrides ────────────────────────── */
 
 /* Double borders to simulate vintage print advertisements/sections */
-.settings-btn, 
+.btn,
 .settings-tab, 
 .google-btn, 
 .input-dark,
@@ -41,7 +41,10 @@ body {
 .nav-user-dropdown::before,
 .hof-btn,
 .hof-container,
-.hof-card {
+.hof-card,
+.search-input,
+.search-action-btn,
+.search-tab {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -51,12 +54,13 @@ body {
 }
 
 /* Hover/Active states simulate vintage ink press highlight (inverted or solid dark borders) */
-.settings-btn:hover,
+.btn:hover,
 .settings-tab:hover,
 .google-btn:hover,
 .nav-dropdown-item:hover,
 .nav-icon-btn:hover,
-.hof-btn:hover {
+.hof-btn:hover,
+.search-tab:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
@@ -65,15 +69,21 @@ body {
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
 .nav-icon-btn.active,
-.hof-btn--active {
+.hof-btn--active,
+.search-tab.active {
   border: 3px double var(--accent) !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
 }
 
-.input-dark:focus {
+.input-dark:focus,
+.search-input:focus {
   border-color: var(--text-main) !important;
   background: var(--bg-elevated) !important;
+}
+
+.search-tab {
+  margin-right: 4px;
 }
 
 /* Header underlines looking like newspaper section dividers */

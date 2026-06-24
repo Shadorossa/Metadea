@@ -174,7 +174,17 @@
 }
 
 .card-cursor {
+  cursor: default;
+}
+.card-clickable {
   cursor: pointer;
+}
+.card-clickable .card-media-base {
+  transition: transform 200ms var(--anim-ease), box-shadow 200ms var(--anim-ease);
+}
+.card-clickable:hover .card-media-base {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .card-media-placeholder {
