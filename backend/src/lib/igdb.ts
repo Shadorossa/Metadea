@@ -1,60 +1,174 @@
 import type { CloudflareEnv } from '../types/index';
 
-interface IGDBGame {
+interface IgdbGame {
   id: number;
   name: string;
+  category?: number;
   cover?: { url: string };
   first_release_date?: number;
   rating?: number;
+  total_rating?: number;
+  genres?: Array<{ id?: number; name?: string }>;
+  version_parent?: { id: number; genres?: Array<{ id?: number }> } | null;
+  parent_game?:    { id: number; genres?: Array<{ id?: number }> } | null;
+  alternative_names?: Array<{ name: string; comment?: string }>;
 }
 
-// Token cache dentro del isolate (dura 60 días en IGDB)
-let cachedToken: string | null = null;
+interface IgdbTokenResponse {
+  access_token: string;
+}
 
-async function getToken(env: CloudflareEnv): Promise<string> {
+const IGDB_GENRE_VISUAL_NOVEL = 34;
+const IGDB_GENRE_RPG          = 12;
+const IGDB_GENRE_FIGHTING      = 4;
+
+// game_type values from IGDB API
+const IGDB_CATEGORY_LABELS: Record<number, string> = {
+  0:  'base_game',
+  1:  'dlc',
+  2:  'expansion',
+  3:  'bundle',
+  4:  'standalone_expansion',
+  5:  'mod',
+  6:  'episode',
+  7:  'season',
+  8:  'remake',
+  9:  'remaster',
+  10: 'expanded_game',
+  11: 'port',
+  12: 'fork',
+  13: 'pack',
+  14: 'update',
+};
+
+// Token cached within the Worker isolate — IGDB tokens last 60 days
+let cachedAccessToken: string | null = null;
+
+async function fetchAccessToken(env: CloudflareEnv): Promise<string> {
   if (env.IGDB_ACCESS_TOKEN) return env.IGDB_ACCESS_TOKEN;
-  if (cachedToken) return cachedToken;
+  if (cachedAccessToken) return cachedAccessToken;
 
-  const res = await fetch(
+  const response = await fetch(
     `https://id.twitch.tv/oauth2/token?client_id=${env.IGDB_CLIENT_ID}&client_secret=${env.IGDB_CLIENT_SECRET}&grant_type=client_credentials`,
     { method: 'POST' },
   );
-  if (!res.ok) throw new Error('IGDB token fetch failed');
-  const data = await res.json() as { access_token: string };
-  cachedToken = data.access_token;
-  return cachedToken;
+  if (!response.ok) throw new Error('IGDB token fetch failed');
+
+  const data = await response.json() as IgdbTokenResponse;
+  cachedAccessToken = data.access_token;
+  return cachedAccessToken;
 }
 
-function coverUrl(raw: string): string {
-  // IGDB returns "//images.igdb.com/.../t_thumb/co1234.jpg"
-  return `https:${raw.replace('t_thumb', 't_cover_big')}`;
+function buildCoverImageUrl(rawUrl: string): string {
+  // IGDB returns protocol-relative URLs with t_thumb size — upgrade to t_cover_big
+  return `https:${rawUrl.replace('t_thumb', 't_cover_big')}`;
 }
 
-export async function searchGames(q: string, env: CloudflareEnv): Promise<IGDBGame[]> {
-  const token = await getToken(env);
+function parseDateFromUnixTimestamp(unixTimestamp: number): { year: number; month: number; day: number } {
+  const date = new Date(unixTimestamp * 1000);
+  return {
+    year:  date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day:   date.getUTCDate(),
+  };
+}
 
-  const res = await fetch('https://api.igdb.com/v4/games', {
+function extractJapaneseName(alternativeNames?: Array<{ name: string; comment?: string }>): string | null {
+  if (!alternativeNames) return null;
+  const japaneseEntry = alternativeNames.find(entry => {
+    const comment = (entry.comment ?? '').toLowerCase();
+    return comment.includes('japanese') || comment.includes('jp') || /[぀-ヿ一-龯]/.test(entry.name);
+  });
+  return japaneseEntry?.name ?? null;
+}
+
+/**
+ * Determines whether a game qualifies as a Visual Novel based on IGDB genre tags.
+ * VN genre (ID 34) must appear in the top 3 genres, and the game must not be
+ * classified as RPG (12) or Fighting (4), which share VN elements but are distinct.
+ * If the game itself has no genres, the parent's genre tags are used (inherited genre).
+ */
+function classifyAsVisualNovel(game: IgdbGame): boolean {
+  const allGenreIds    = (game.genres ?? []).map(genre => genre.id);
+  const topThreeGenreIds = (game.genres ?? []).slice(0, 3).map(genre => genre.id);
+
+  const isRpg      = allGenreIds.includes(IGDB_GENRE_RPG);
+  const isFighting = allGenreIds.includes(IGDB_GENRE_FIGHTING);
+  const isVisualNovel = topThreeGenreIds.includes(IGDB_GENRE_VISUAL_NOVEL) && !isRpg && !isFighting;
+
+  if (isVisualNovel) return true;
+
+  // Inherited genre: check if version_parent or parent_game is a VN
+  const parent = game.version_parent ?? game.parent_game;
+  if (parent?.genres) {
+    const parentAllGenreIds     = parent.genres.map(genre => genre.id);
+    const parentTopThreeGenreIds = parent.genres.slice(0, 3).map(genre => genre.id);
+    const parentIsRpg      = parentAllGenreIds.includes(IGDB_GENRE_RPG);
+    const parentIsFighting = parentAllGenreIds.includes(IGDB_GENRE_FIGHTING);
+    if (parentTopThreeGenreIds.includes(IGDB_GENRE_VISUAL_NOVEL) && !parentIsRpg && !parentIsFighting) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function searchGames(
+  searchQuery: string,
+  env: CloudflareEnv,
+  options: { visualNovelsOnly?: boolean } = {},
+): Promise<IgdbGame[]> {
+  const accessToken = await fetchAccessToken(env);
+
+  const response = await fetch('https://api.igdb.com/v4/games', {
     method: 'POST',
     headers: {
       'Client-ID': env.IGDB_CLIENT_ID,
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'text/plain',
     },
-    body: `search "${q.replace(/"/g, '')}"; fields name,cover.url,first_release_date,rating; limit 20;`,
+    body: [
+      `search "${searchQuery.replace(/"/g, '\\"')}";`,
+      `fields name, category, cover.url, first_release_date, rating, total_rating,`,
+      `       genres.id, genres.name,`,
+      `       version_parent.id, version_parent.genres.id,`,
+      `       parent_game.id, parent_game.genres.id,`,
+      `       alternative_names.name, alternative_names.comment;`,
+      `limit 50;`,
+    ].join('\n'),
   });
 
-  if (!res.ok) return [];
-  return res.json() as Promise<IGDBGame[]>;
+  if (!response.ok) return [];
+  const games = await response.json() as IgdbGame[];
+
+  return games.filter(game => {
+    // Exclude packaging variants (Collector's Edition, Game of the Year, etc.)
+    if (game.version_parent) return false;
+
+    const isVisualNovel = classifyAsVisualNovel(game);
+    return options.visualNovelsOnly ? isVisualNovel : !isVisualNovel;
+  });
 }
 
-export function mapGame(game: IGDBGame) {
+export function mapIgdbGameToSearchResult(game: IgdbGame) {
+  const releaseDate = game.first_release_date
+    ? parseDateFromUnixTimestamp(game.first_release_date)
+    : null;
+
+  const score = game.total_rating ?? game.rating ?? null;
+
   return {
-    id: String(game.id),
-    externalId: `game:${game.id}`,
-    type: 'game' as const,
-    title: game.name,
-    cover: game.cover ? coverUrl(game.cover.url) : null,
-    year: game.first_release_date ? new Date(game.first_release_date * 1000).getFullYear() : null,
-    score: game.rating ? Math.round(game.rating) / 10 : null,
+    externalId:   `game:${game.id}`,
+    type:         'game' as const,
+    format:       game.category !== undefined ? (IGDB_CATEGORY_LABELS[game.category] ?? '') : '',
+    source:       'igdb' as const,
+    titleMain:    game.name,
+    titleRomaji:  null,
+    titleNative:  extractJapaneseName(game.alternative_names),
+    coverUrl:     game.cover ? buildCoverImageUrl(game.cover.url) : null,
+    releaseYear:  releaseDate?.year   ?? null,
+    releaseMonth: releaseDate?.month  ?? null,
+    releaseDay:   releaseDate?.day    ?? null,
+    scoreGlobal:  score ? Math.round(score) / 10 : null,
   };
 }

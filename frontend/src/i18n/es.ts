@@ -32,7 +32,7 @@ export const es = {
       manga:  'Manga',
       novel:  'Novela Ligera',
       game:   'Videojuegos',
-      vn:     'Novela Visual',
+      vnovel:     'Novela Visual',
       movie:  'Películas',
       series: 'Series',
       book:   'Libros',
