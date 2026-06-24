@@ -1,5 +1,5 @@
-import { API_URL } from '../config';
-import type { MediaType, SearchResult } from '../search';
+import { API_URL } from '../../config';
+import type { MediaType, SearchResult } from '../index';
 
 export async function searchGames(
   searchQuery: string,

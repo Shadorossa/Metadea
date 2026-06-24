@@ -10,13 +10,16 @@
 .profile-banner {
   position: relative;
   width: 100%;
-  height: 280px;
+  height: 380px;
   background:
     radial-gradient(ellipse 120% 100% at 50% 0%, rgba(120, 50, 220, 0.25) 0%, transparent 60%),
     linear-gradient(180deg, #0e0820 0%, #07070e 100%);
-  overflow: hidden;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
 }
+
+/* Custom banner image */
+.profile-banner.has-custom-bg::after { display: none; }
 
 /* Subtle grid texture on banner */
 .profile-banner::after {
@@ -30,69 +33,47 @@
   pointer-events: none;
 }
 
-.profile-banner-signout {
-  position: absolute;
-  top: 1rem;
-  right: 1.25rem;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.7rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: color var(--anim-fast), border-color var(--anim-fast), background var(--anim-fast);
-  backdrop-filter: blur(6px);
-}
-.profile-banner-signout:hover {
-  color: var(--color-error);
-  border-color: rgba(248, 113, 113, 0.35);
-  background: rgba(248, 113, 113, 0.07);
-}
-
 /* Avatar + username inside banner */
 .profile-banner-content {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
+  gap: 1.25rem;
   z-index: 5;
-  padding: 0 1rem;
+  padding: calc(8.5rem - 46px) 1rem 0;
 }
 
 .profile-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(192, 132, 252, 0.4);
-  box-shadow: 0 0 24px rgba(192, 132, 252, 0.2);
+  height: 340px;
+  width: auto;
+  max-width: 740px;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .profile-avatar-placeholder {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(192, 132, 252, 0.2), rgba(80, 30, 140, 0.4));
-  border: 2px solid rgba(192, 132, 252, 0.4);
+  height: 340px;
+  width: 340px;
+  border-radius: var(--radius-md);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--accent);
   font-size: 1.75rem;
   font-weight: 700;
-  box-shadow: 0 0 24px rgba(192, 132, 252, 0.15);
+  flex-shrink: 0;
 }
 
 .profile-username-large {
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(3.5rem, 8vw, 5.5rem);
   font-weight: 900;
   color: #fff;
-  letter-spacing: -1px;
+  letter-spacing: -2px;
   line-height: 1;
   margin: 0;
   text-align: center;
@@ -104,18 +85,30 @@
      0 0 40px rgba(192, 132, 252, 0.3);
 }
 
+/* ── Tabs divider (centrado como las stats) ────────────────────────────────── */
+.profile-tabs-divider {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1.5rem 0;
+}
+
+.profile-divider-line {
+  width: 100%;
+  height: 1px;
+  background: var(--border-color);
+}
+
 /* ── Icon tabs ────────────────────────────────────────────────────────────── */
 .profile-tabs {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .profile-tab {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 3.25rem;
+  height: 3.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -127,7 +120,7 @@
   transition: background var(--anim-fast), color var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast);
   position: relative;
 }
-.profile-tab svg { width: 17px; height: 17px; flex-shrink: 0; }
+.profile-tab svg { width: 20px; height: 20px; flex-shrink: 0; }
 .profile-tab:hover {
   color: var(--text-main);
   background: rgba(255,255,255,0.06);
@@ -163,55 +156,51 @@
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 .profile-tab-content {
   flex: 1;
-  padding: 1.5rem;
-  max-width: 960px;
+  padding: 1.25rem 15%;
   width: 100%;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
-.profile-tab-content.hidden { display: none; }
 
 /* ── Stats bar (centrada, dentro del tab de perfil) ───────────────────────── */
 .profile-stats-bar {
   display: flex;
   justify-content: center;
-  gap: clamp(1.5rem, 4vw, 4rem);
-  padding: 1.25rem 1rem 0.25rem;
+  flex-wrap: nowrap;
+  gap: clamp(1.5rem, 4vw, 5rem);
+  padding: 2rem 0;
   border-top: 1px solid var(--border-color);
-  overflow-x: auto;
-  scrollbar-width: none;
+  border-bottom: 1px solid var(--border-color);
 }
-.profile-stats-bar::-webkit-scrollbar { display: none; }
 
 .profile-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
+  gap: 0.5rem;
+  flex-shrink: 1;
+  min-width: 0;
   cursor: default;
 }
 
 .profile-stat-value {
-  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-size: clamp(1.4rem, 3vw, 2.5rem);
   font-weight: 900;
   color: var(--text-main);
   line-height: 1;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .profile-stat-label {
-  font-size: 0.58rem;
+  font-size: clamp(0.5rem, 0.9vw, 0.65rem);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  white-space: nowrap;
 }
 
 /* ── Section label ────────────────────────────────────────────────────────── */
@@ -322,4 +311,367 @@
   color: var(--text-dim);
   text-align: center;
   font-size: 0.8rem;
+}
+
+/* ── Hall of Fame ─────────────────────────────────────────────────────────── */
+.hof-wrapper {
+  width: 100%;
+}
+
+.hof-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.hof-container {
+  display: flex;
+  flex-direction: row;
+  height: 368px;
+  flex: 1;
+  gap: 2px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.hof-view-hidden {
+  display: none;
+}
+
+/* ── HOF sidebar buttons ──────────────────────────────────────────────────── */
+.hof-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 1rem;
+}
+
+.hof-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background var(--anim-fast), color var(--anim-fast);
+  flex-shrink: 0;
+}
+
+.hof-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.hof-btn--active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.hof-sidebar-divider {
+  width: 1px;
+  height: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.hof-card {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-width: 1.5rem;
+  cursor: default;
+  transition: flex 0.4s ease-in-out;
+}
+
+.hof-card:hover { flex: 3; }
+
+.hof-card--empty {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hof-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  transition: background 0.4s ease;
+  pointer-events: none;
+}
+
+.hof-card:hover .hof-card-overlay {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.hof-card-rank {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 2px 5px;
+  border-radius: 4px;
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.hof-card:hover .hof-card-rank { opacity: 0; }
+
+.hof-card-label {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  rotate: 180deg;
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  max-height: 85%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.hof-card:hover .hof-card-label { opacity: 0; }
+
+.hof-card-content {
+  position: absolute;
+  inset: 0;
+  padding: 1rem;
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hof-card:hover .hof-card-content {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.35s;
+}
+
+.hof-card-type {
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 0.2rem;
+}
+
+.hof-card-id {
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.hof-card-rating {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-top: 0.3rem;
+}
+
+/* ── Bottom grid (monthly history + activity) ─────────────────────────────── */
+.profile-bottom-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.profile-bottom-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* ── Monthly History ──────────────────────────────────────────────────────── */
+.monthly-history {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.mh-track {
+  display: flex;
+  flex-direction: row;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
+}
+.mh-track::-webkit-scrollbar { display: none; }
+
+.mh-group {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mh-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  padding: 0.5rem 0.3rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  gap: 0.15rem;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.mh-badge-month {
+  font-size: 0.52rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.mh-badge-year {
+  font-size: 0.42rem;
+  color: var(--text-dim);
+  line-height: 1;
+}
+
+.mh-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mh-row {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+}
+
+.mh-card {
+  width: 56px;
+  height: 78px;
+  border-radius: var(--radius-sm);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: default;
+  transition: transform 0.2s ease;
+}
+
+.mh-card:hover { transform: translateY(-2px); }
+
+.mh-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mh-card-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  font-size: 0.38rem;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 2px 3px;
+  background: rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Recent Activity ──────────────────────────────────────────────────────── */
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.act-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.65rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  min-height: 52px;
+  transition: border-color var(--anim-fast);
+}
+
+.act-card:hover { border-color: rgba(255, 255, 255, 0.1); }
+
+.act-cover {
+  width: 32px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.act-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.act-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.act-meta {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+}
+
+.act-date {
+  font-size: 0.58rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.act-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
 }

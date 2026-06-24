@@ -55,11 +55,14 @@ export async function clearAuthToken(): Promise<void> {
 // ─── Database ────────────────────────────────────────────────────────────────
 
 interface LibraryItem {
-  id?:        number;
-  external_id: string;
-  item_type:   string;
-  rating?:     number;
-  status?:     string;
+  id?:               number;
+  external_id:       string;
+  item_type:         string;
+  rating?:           number;
+  status?:           string;
+  progress_minutes?: number;
+  created_at?:       string;
+  updated_at?:       string;
 }
 
 export async function initTauriDatabase(): Promise<string> {

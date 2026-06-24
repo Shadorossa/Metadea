@@ -10,8 +10,11 @@ const lang = getLang(Astro.url);
   <main class="profile-page">
 
     <div class="profile-banner">
-      <button class="profile-banner-signout" id="sign-out-btn">Cerrar sesión</button>
       <div class="profile-banner-content" id="banner-content"></div>
+    </div>
+
+    <div class="profile-tabs-divider">
+      <div class="profile-divider-line"></div>
     </div>
 
     <nav class="profile-tabs">
@@ -32,9 +35,10 @@ const lang = getLang(Astro.url);
 </BaseLayout>
 
 <script>
-  import { getAuthToken, clearAuthToken, getLibraryItems } from '../lib/tauri';
+  import { getAuthToken, getLibraryItems } from '../lib/tauri';
   import { decodeJwtPayload } from '../lib/profile/utils';
   import { renderOverview, renderLibrary, renderStats } from '../lib/profile/render';
+  import { getImage } from '../lib/storage/images';
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
@@ -73,18 +77,27 @@ const lang = getLang(Astro.url);
     const avatar   = payload.avatar as string | null;
     const username = session.username;
 
+    // Custom banner image
+    const bannerEl = document.querySelector('.profile-banner') as HTMLElement | null;
+    const customBanner = await getImage('profile_banner_custom');
+    if (bannerEl && customBanner) {
+      bannerEl.style.backgroundImage = `url('${customBanner}')`;
+      bannerEl.style.backgroundSize = 'cover';
+      bannerEl.style.backgroundPosition = 'center';
+      bannerEl.classList.add('has-custom-bg');
+    }
+
+    // Custom avatar takes priority over Google avatar
+    const customAvatar = await getImage('profile_avatar_custom');
+    const avatarSrc = customAvatar || avatar;
+
     const bannerContent = document.getElementById('banner-content');
     if (bannerContent) {
-      const avatarHtml = avatar
-        ? `<img class="profile-avatar" src="${avatar}" alt="${username}" referrerpolicy="no-referrer">`
+      const avatarHtml = avatarSrc
+        ? `<img class="profile-avatar" src="${avatarSrc}" alt="${username}" referrerpolicy="no-referrer">`
         : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
       bannerContent.innerHTML = `${avatarHtml}<h1 class="profile-username-large">${username}</h1>`;
     }
-
-    document.getElementById('sign-out-btn')?.addEventListener('click', async () => {
-      await clearAuthToken();
-      window.location.replace('/login');
-    });
 
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));

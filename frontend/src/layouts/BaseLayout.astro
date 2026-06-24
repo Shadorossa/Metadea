@@ -53,7 +53,7 @@ const t = useTranslations(lang);
     </dialog>
 
     <script>
-      import { getAuthToken } from '../lib/tauri';
+      import { getAuthToken, clearAuthToken } from '../lib/tauri';
       import { API_URL } from '../lib/config';
 
       const modal    = document.getElementById('auth-modal') as HTMLDialogElement;
@@ -61,6 +61,15 @@ const t = useTranslations(lang);
 
       closeBtn?.addEventListener('click', () => modal?.close());
       modal?.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+
+      // Inicializar estado del dropdown según sesión
+      (async () => {
+        const session = await getAuthToken();
+        const wrap = document.getElementById('nav-user-wrap');
+        if (session?.token) {
+          wrap?.classList.add('is-logged-in');
+        }
+      })();
 
       // Botón del perfil: si hay sesión → ir al perfil, si no → abrir modal
       document.getElementById('open-auth-modal')?.addEventListener('click', async () => {
@@ -70,6 +79,12 @@ const t = useTranslations(lang);
         } else {
           modal?.showModal();
         }
+      });
+
+      // Cerrar sesión desde el dropdown
+      document.getElementById('nav-signout-btn')?.addEventListener('click', async () => {
+        await clearAuthToken();
+        window.location.replace('/login');
       });
 
       // Botón Google dentro del modal

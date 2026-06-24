@@ -1,4 +1,4 @@
-import type { SearchResult } from '../search';
+import type { SearchResult } from '../index';
 
 const OPENLIBRARY_BASE_URL = 'https://openlibrary.org';
 const OPENLIBRARY_COVERS_URL = 'https://covers.openlibrary.org/b/id';

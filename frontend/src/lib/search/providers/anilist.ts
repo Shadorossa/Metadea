@@ -1,4 +1,4 @@
-import type { MediaType, SearchResult } from '../search';
+import type { MediaType, SearchResult } from '../index';
 
 interface AniListMedia {
   id: number;

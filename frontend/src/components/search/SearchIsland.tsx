@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { search, type MediaType, type SearchResult } from '../../lib/search';
+import { search, type MediaType, type SearchResult } from '../../lib/search/index';
 import type { Translations } from '../../i18n/index';
 
 type SearchTranslations = Translations['search'];
