@@ -44,7 +44,10 @@ body {
 .search-tab,
 .media-relation-card,
 .media-relation-thumb,
-.media-banner-date-badge {
+.media-banner-date-badge,
+.media-library-widget-box,
+.status-dropdown-trigger,
+.status-dropdown-tray {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -67,7 +70,8 @@ body {
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
 .hof-btn--active,
-.search-tab.active {
+.search-tab.active,
+.media-relation-card:hover {
   border: 3px double var(--accent) !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
@@ -106,4 +110,8 @@ h2, h3, .settings-panel-title {
 .auth-modal-box {
   border-radius: 0px !important;
   border: 6px double var(--text-main) !important;
+}
+
+.tray-status-btn {
+  border-radius: 0px !important;
 }

@@ -48,7 +48,10 @@ body {
 .search-tab,
 .media-relation-card,
 .media-relation-thumb,
-.media-banner-date-badge {
+.media-banner-date-badge,
+.media-library-widget-box,
+.status-dropdown-trigger,
+.status-dropdown-tray {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
@@ -65,7 +68,8 @@ body {
 .hof-btn--active,
 .search-tab.active,
 .search-input:focus,
-.input-dark:focus {
+.input-dark:focus,
+.media-relation-card:hover {
   border-color: var(--accent) !important;
   box-shadow: 0 0 10px var(--accent-glow) !important;
   background: var(--accent-soft) !important;
@@ -105,4 +109,8 @@ body {
   border-radius: 0px !important;
   border: 2px solid var(--border-color) !important;
   clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px)) !important;
+}
+
+.tray-status-btn {
+  border-radius: 0px !important;
 }

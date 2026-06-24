@@ -79,6 +79,7 @@ export const es = {
     stat_source:    'Fuente',
     stat_studio:    'Estudio',
     stat_score:     'Puntuación',
+    stat_status:    'Estado',
     stat_start_date: 'Fecha de inicio',
     stat_end_date:   'Fecha de finalización',
     formats: {
@@ -98,7 +99,7 @@ export const es = {
     },
     relations: {
       SEQUEL: 'Secuela', PREQUEL: 'Precuela', SIDE_STORY: 'Historia paralela',
-      ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Original',
+      ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Fuente',
       SUMMARY: 'Resumen', SPIN_OFF: 'Spin-off', OTHER: 'Otro',
       CHARACTER: 'Personaje', CONTAINS: 'Contiene',
     },

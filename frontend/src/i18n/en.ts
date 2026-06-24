@@ -79,6 +79,7 @@ export const en = {
     stat_source:    'Source',
     stat_studio:    'Studio',
     stat_score:     'Score',
+    stat_status:    'Status',
     stat_start_date: 'Start Date',
     stat_end_date:   'End Date',
     formats: {

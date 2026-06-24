@@ -16,6 +16,7 @@ const lang = getLang(Astro.url);
   import { fetchAniListDetail } from '../lib/search/providers/anilist';
   import type { AniListMediaDetail } from '../lib/search/providers/anilist';
   import { getT, getLangCode } from '../i18n/client';
+  import { getLibraryItems, saveLibraryItem } from '../lib/tauri';
 
   const t    = getT();
   const tm   = t.media;
@@ -95,33 +96,23 @@ const lang = getLang(Astro.url);
       }
     }
 
-    const seasonInfo = (media.season && media.seasonYear)
-      ? `${(tm.seasons as Record<string, string>)[media.season] ?? media.season} ${media.seasonYear}`
-      : fmtDate(media.startDate);
-
-    const studio = media.studios.nodes[0]?.name ?? '';
+    const studiosList = media.studios.nodes.map(n => n.name).join(', ');
     const source = media.source ? (tm.sources as Record<string, string>)[media.source] ?? media.source : '';
 
     // Score
     const score = media.averageScore ? (media.averageScore / 10).toFixed(1) : null;
 
-    const startDateStr = fmtDate(media.startDate);
-    const endDateStr = fmtDate(media.endDate);
+    let quickMeta = formatLabel;
+    if (mediaType === 'anime') {
+      if (media.episodes) quickMeta += ` · ${media.episodes} ep`;
+      if (media.duration) quickMeta += ` · ${media.duration} min`;
+    } else {
+      if (media.chapters) quickMeta += ` · ${media.chapters} cap`;
+      if (media.volumes) quickMeta += ` · ${media.volumes} vol`;
+    }
 
-    // Stats column items
-    const statItems: [string, string][] = [
-      ...(formatLabel     ? [[tm.stat_format,   formatLabel]          as [string,string]] : []),
-      ...(media.episodes  ? [[tm.stat_episodes, String(media.episodes)] as [string,string]] : []),
-      ...(media.chapters  ? [[tm.stat_chapters, String(media.chapters)] as [string,string]] : []),
-      ...(media.volumes   ? [[tm.stat_volumes,  String(media.volumes)]  as [string,string]] : []),
-      ...(durationInfo    ? [[tm.stat_duration, durationInfo]           as [string,string]] : []),
-      ...(seasonInfo      ? [[tm.stat_season,   seasonInfo]             as [string,string]] : []),
-      ...(startDateStr    ? [[tm.stat_start_date, startDateStr]         as [string,string]] : []),
-      ...(endDateStr      ? [[tm.stat_end_date,   endDateStr]           as [string,string]] : []),
-      ...(source          ? [[tm.stat_source,   source]                 as [string,string]] : []),
-      ...(studio          ? [[tm.stat_studio,   studio]                 as [string,string]] : []),
-      ...(score           ? [[tm.stat_score,    `★ ${score}`]           as [string,string]] : []),
-    ];
+    // Stats column items (removed status, source, and score as requested)
+    const statItems: [string, string][] = [];
     const statsHtml = statItems.map(([label, val]) => `
       <div class="media-stat-item">
         <span class="media-stat-label">${label}</span>
@@ -167,7 +158,7 @@ const lang = getLang(Astro.url);
       const relTitle = e.node.title.romaji ?? e.node.title.english ?? e.node.title.native ?? '';
       let relTypeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
       if (e.relationType === 'ADAPTATION' && mediaType === 'anime' && e.node.type === 'MANGA') {
-        relTypeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Original';
+        relTypeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Fuente';
       }
       const relCover = e.node.coverImage?.medium ?? e.node.coverImage?.large ?? '';
       const relPrefix = e.node.type?.toLowerCase() === 'anime' ? 'anime' : 'manga';
@@ -199,6 +190,9 @@ const lang = getLang(Astro.url);
     const PLUS_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     const CHECK_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
+    const progressLabel = mediaType === 'anime' ? 'Viendo' : (mediaType === 'manga' || mediaType === 'novel' ? 'Leyendo' : 'Progreso');
+    const progressStatus = mediaType === 'anime' ? 'watching' : (mediaType === 'manga' || mediaType === 'novel' ? 'reading' : 'watching');
+
     return `
       <!-- Hero -->
       <div class="media-hero">
@@ -216,28 +210,88 @@ const lang = getLang(Astro.url);
           </div>
 
           <!-- Centro: cover -->
-          <div class="media-cover-wrap" id="media-add-btn"
-               data-external-id="${mediaType}:${media.id}" data-type="${mediaType}"
-               role="button" tabindex="0" aria-label="${tm.add_to_library.replace('\n', ' ')}">
-            ${coverSrc ? `<img class="media-cover-img" src="${coverSrc}" alt="${titleMain}">` : ''}
-            <div class="media-cover-overlay">
-              <div class="media-cover-overlay-inner">
-                <span class="media-cover-overlay-icon">${PLUS_ICON}</span>
-                <span class="media-cover-overlay-label">${tm.add_to_library.replace('\n', '<br>')}</span>
+          <div class="media-cover-column">
+            <div class="media-cover-wrap" id="media-add-btn"
+                 data-external-id="${mediaType}:${media.id}" data-type="${mediaType}"
+                 role="button" tabindex="0" aria-label="${tm.add_to_library.replace('\n', ' ')}">
+              ${coverSrc ? `<img class="media-cover-img" src="${coverSrc}" alt="${titleMain}">` : ''}
+              <div class="media-cover-overlay">
+                <div class="media-cover-overlay-inner">
+                  <span class="media-cover-overlay-icon">${PLUS_ICON}</span>
+                  <span class="media-cover-overlay-label">${tm.add_to_library.replace('\n', '<br>')}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Library interactive section (horizontal box) -->
+            <div class="media-library-widget-box" data-external-id="${mediaType}:${media.id}" data-type="${mediaType}">
+              <div class="media-library-row-horizontal">
+                <!-- Status selector dropdown horizontal -->
+                <div class="media-status-dropdown-container group/status">
+                  <button class="status-dropdown-trigger" id="status-dropdown-trigger-btn" aria-label="Cambiar estado">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                  <div class="status-dropdown-tray">
+                    <button class="tray-status-btn" data-status="planning" title="Pendiente">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1z" /><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1z" /></svg>
+                    </button>
+                    <button class="tray-status-btn" data-status="${progressStatus}" title="${progressLabel}">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </button>
+                    <button class="tray-status-btn" data-status="completed" title="Terminado">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <button class="tray-status-btn" data-status="paused" title="Pausa">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                    </button>
+                    <button class="tray-status-btn" data-status="dropped" title="Abandonado">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Rating stars -->
+                <div class="media-library-rating" id="media-rating-stars">
+                  ${[1, 2, 3, 4, 5].map(v => `
+                    <div class="star-container animate-hover" data-value="${v}">
+                      <svg class="star-icon star-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/>
+                      </svg>
+                      <div class="star-filled-wrap page-star-fill" data-star-value="${v}" style="width: 0%;">
+                        <svg class="star-icon star-filled" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/>
+                        </svg>
+                      </div>
+                      <div class="star-preview-full">
+                        <svg class="star-icon star-filled" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/>
+                        </svg>
+                      </div>
+                      <div class="star-preview-half">
+                        <svg class="star-icon star-filled" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/>
+                        </svg>
+                      </div>
+                      <button type="button" data-rate="${v}" data-half="false" class="star-zone zone-right" aria-label="${v} estrellas"></button>
+                      <button type="button" data-rate="${v - 0.5}" data-half="true" class="star-zone zone-left" aria-label="${v - 0.5} estrellas"></button>
+                    </div>
+                  `).join('')}
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Derecha: géneros + estado -->
+          <!-- Derecha: géneros + estudios -->
           <div class="media-hero-right">
-            ${statusLabel ? `<span class="media-badge ${statusClass}">${statusLabel}</span>` : ''}
             ${genreDots   ? `<p class="media-genres-dots">${genreDots}</p>` : ''}
+            ${studiosList ? `<p class="media-studios-label">${studiosList}</p>` : ''}
+            ${quickMeta   ? `<p class="media-cover-meta">${quickMeta}</p>` : ''}
           </div>
         </div>
       </div>
 
       <!-- Body: 3 columns -->
-      <div class="media-body">
+      <div class="media-body ${statsHtml ? '' : 'media-body--no-stats'}">
 
         <!-- Col 1: Synopsis -->
         <div class="media-col-synopsis">
@@ -255,11 +309,13 @@ const lang = getLang(Astro.url);
           ` : ''}
         </div>
 
-        <!-- Col 3: Stats -->
+        <!-- Col 3: Stats (Conditional) -->
+        ${statsHtml ? `
         <div class="media-col-stats">
           <p class="section-label">${tm.section_data}</p>
           <div class="media-stats-list">${statsHtml}</div>
         </div>
+        ` : ''}
 
       </div>
 
@@ -275,30 +331,199 @@ const lang = getLang(Astro.url);
 
   // ── Interactions ─────────────────────────────────────────────────────────
   function initInteractions() {
-    // Cover = add-to-library trigger
     const coverWrap = document.getElementById('media-add-btn');
-    if (coverWrap) {
-      const overlay      = coverWrap.querySelector<HTMLElement>('.media-cover-overlay');
+    if (!coverWrap) return;
+    const extId = coverWrap.getAttribute('data-external-id') ?? '';
+    const itemType = coverWrap.getAttribute('data-type') ?? '';
+
+    const PLUS_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const CHECK_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    const statusIcons: Record<string, string> = {
+      '': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+      'planning': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1z" /><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1z" /></svg>`,
+      'watching': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+      'reading': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+      'completed': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+      'paused': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+      'dropped': `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+    };
+
+    const statusColors: Record<string, string> = {
+      '': 'text-muted',
+      'planning': 'text-planning',
+      'watching': 'text-watching',
+      'reading': 'text-reading',
+      'completed': 'text-completed',
+      'paused': 'text-paused',
+      'dropped': 'text-dropped'
+    };
+
+    let currentStatus = '';
+    let currentRating = 0;
+
+    // Load status and rating from SQLite
+    getLibraryItems().then(items => {
+      const dbItem = items.find(item => item.external_id === extId);
+      if (dbItem) {
+        currentStatus = dbItem.status ?? '';
+        currentRating = dbItem.rating ?? 0;
+        updateLibraryUI();
+      }
+    }).catch(err => console.error("Error loading library items:", err));
+
+    function updateLibraryUI() {
+      // 1. Cover overlay "En biblioteca"
+      const inLib = !!currentStatus;
+      coverWrap.classList.toggle('in-library', inLib);
       const overlayIcon  = coverWrap.querySelector<HTMLElement>('.media-cover-overlay-icon');
       const overlayLabel = coverWrap.querySelector<HTMLElement>('.media-cover-overlay-label');
+      if (overlayIcon)  overlayIcon.innerHTML  = inLib ? CHECK_ICON : PLUS_ICON;
+      if (overlayLabel) overlayLabel.innerHTML = (inLib ? tm.in_library : tm.add_to_library).replace('\n', '<br>');
 
-      function setInLibrary(inLib: boolean) {
-        coverWrap.classList.toggle('in-library', inLib);
-        if (overlayIcon)  overlayIcon.innerHTML  = inLib
-          ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-          : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-        if (overlayLabel) overlayLabel.innerHTML = (inLib ? tm.in_library : tm.add_to_library).replace('\n', '<br>');
+      // 2. Status dropdown trigger icon
+      const triggerBtn = document.getElementById('status-dropdown-trigger-btn');
+      if (triggerBtn) {
+        triggerBtn.innerHTML = statusIcons[currentStatus] ?? statusIcons[''];
+        triggerBtn.className = 'status-dropdown-trigger ' + (statusColors[currentStatus] ?? 'text-muted');
       }
 
-      coverWrap.addEventListener('click', () => {
-        // TODO: conectar con flujo de biblioteca real
-        const next = !coverWrap.classList.contains('in-library');
-        setInLibrary(next);
+      // Tray active item highlight
+      document.querySelectorAll('.tray-status-btn').forEach(btn => {
+        const status = btn.getAttribute('data-status');
+        btn.classList.toggle('active', status === currentStatus);
       });
-      coverWrap.addEventListener('keydown', (e: Event) => {
-        const ke = e as KeyboardEvent;
-        if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); coverWrap.click(); }
+
+      // 3. Stars rating
+      const displayRating = currentRating / 2; // e.g. 10 rating = 5 stars, 9 rating = 4.5 stars
+      document.querySelectorAll('.star-container .page-star-fill').forEach(fill => {
+        const starValue = parseInt((fill as HTMLElement).dataset.starValue ?? '0', 10);
+        if (displayRating >= starValue) {
+          (fill as HTMLElement).style.width = '100%';
+        } else if (displayRating === starValue - 0.5) {
+          (fill as HTMLElement).style.width = '50%';
+        } else {
+          (fill as HTMLElement).style.width = '0%';
+        }
       });
+    }
+
+    // Cover toggle click -> planning
+    coverWrap.addEventListener('click', async () => {
+      const nextStatus = currentStatus ? '' : 'planning';
+      currentStatus = nextStatus;
+      updateLibraryUI();
+      try {
+        await saveLibraryItem(extId, itemType, { status: currentStatus || undefined, rating: currentRating || undefined });
+      } catch (err) {
+        console.error("Error saving library item status via cover:", err);
+      }
+    });
+
+    coverWrap.addEventListener('keydown', (e: Event) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'Enter' || ke.key === ' ') { ke.preventDefault(); coverWrap.click(); }
+    });
+
+    // Tray status button clicks
+    document.querySelectorAll('.tray-status-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const clickedStatus = btn.getAttribute('data-status') ?? '';
+        if (clickedStatus === currentStatus) {
+          currentStatus = '';
+        } else {
+          currentStatus = clickedStatus;
+        }
+        updateLibraryUI();
+        try {
+          await saveLibraryItem(extId, itemType, { status: currentStatus || undefined, rating: currentRating || undefined });
+        } catch (err) {
+          console.error("Error saving status from tray:", err);
+        }
+      });
+    });
+
+    // Rating star hover & clicks
+    const starsContainer = document.getElementById('media-rating-stars');
+    if (starsContainer) {
+      const stars = Array.from(starsContainer.querySelectorAll('.star-container')) as HTMLElement[];
+      const hideFills = () => starsContainer.querySelectorAll('.page-star-fill').forEach(f => ((f as HTMLElement).style.visibility = 'hidden'));
+      const restoreFills = () => {
+        starsContainer.querySelectorAll('.page-star-fill').forEach(f => ((f as HTMLElement).style.visibility = ''));
+        starsContainer.querySelectorAll('.star-preview-full, .star-preview-half').forEach(el => ((el as HTMLElement).style.opacity = '0'));
+      };
+
+      stars.forEach((star, idx) => {
+        const leftBtn = star.querySelector('.zone-left') as HTMLButtonElement | null;
+        const rightBtn = star.querySelector('.zone-right') as HTMLButtonElement | null;
+
+        if (leftBtn) {
+          leftBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const rate = parseFloat(leftBtn.getAttribute('data-rate') ?? '0');
+            const dbRate = rate * 2;
+            if (currentRating === dbRate) {
+              currentRating = 0;
+            } else {
+              currentRating = dbRate;
+            }
+            if (!currentStatus) {
+              currentStatus = 'planning';
+            }
+            updateLibraryUI();
+            try {
+              await saveLibraryItem(extId, itemType, { status: currentStatus, rating: currentRating });
+            } catch (err) {
+              console.error("Error saving rating:", err);
+            }
+          });
+
+          leftBtn.addEventListener('mouseenter', () => {
+            hideFills();
+            stars.forEach((s, i) => {
+              const pFull = s.querySelector('.star-preview-full') as HTMLElement | null;
+              if (pFull) pFull.style.opacity = i < idx ? '1' : '0';
+              const pHalf = s.querySelector('.star-preview-half') as HTMLElement | null;
+              if (pHalf) pHalf.style.opacity = i === idx ? '1' : '0';
+            });
+          });
+        }
+
+        if (rightBtn) {
+          rightBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const rate = parseFloat(rightBtn.getAttribute('data-rate') ?? '0');
+            const dbRate = rate * 2;
+            if (currentRating === dbRate) {
+              currentRating = 0;
+            } else {
+              currentRating = dbRate;
+            }
+            if (!currentStatus) {
+              currentStatus = 'planning';
+            }
+            updateLibraryUI();
+            try {
+              await saveLibraryItem(extId, itemType, { status: currentStatus, rating: currentRating });
+            } catch (err) {
+              console.error("Error saving rating:", err);
+            }
+          });
+
+          rightBtn.addEventListener('mouseenter', () => {
+            hideFills();
+            stars.forEach((s, i) => {
+              const pFull = s.querySelector('.star-preview-full') as HTMLElement | null;
+              if (pFull) pFull.style.opacity = i <= idx ? '1' : '0';
+              const pHalf = s.querySelector('.star-preview-half') as HTMLElement | null;
+              if (pHalf) pHalf.style.opacity = '0';
+            });
+          });
+        }
+      });
+
+      starsContainer.addEventListener('mouseleave', restoreFills);
     }
   }
 </script>

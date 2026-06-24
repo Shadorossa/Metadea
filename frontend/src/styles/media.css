@@ -65,7 +65,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding-bottom: 2.5rem;
+  padding-bottom: 1.2rem;
 }
 
 .media-hero-right {
@@ -74,7 +74,14 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.6rem;
-  padding-bottom: 2.5rem;
+  padding-bottom: 1.2rem;
+}
+
+.media-hero-right .media-cover-meta {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
 .media-genres-dots {
@@ -82,6 +89,32 @@
   color: var(--text-muted);
   line-height: 1.8;
   margin: 0;
+}
+
+.media-studios-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin: 0;
+}
+
+.media-cover-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  width: 185px;
+  z-index: 5;
+  position: relative;
+}
+
+.media-cover-meta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* ── Cover ───────────────────────────────────────────────────────────────── */
@@ -242,7 +275,7 @@
   display: grid;
   grid-template-columns: 1.1fr 3fr 0.9fr;
   gap: 2.5rem;
-  padding: 2rem 15%;
+  padding: 4.5rem 15% 2rem;
   align-items: start;
 }
 
@@ -475,8 +508,244 @@
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  background: rgba(7, 7, 14, 0.75);
+  background: var(--bg-primary);
   color: var(--text-main);
   border: 1px solid var(--border-color);
   backdrop-filter: blur(8px);
+}
+
+/* ── Library Widget (Horizontal Status + Stars Box) ─────────────────────── */
+.media-library-widget-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 210px;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.media-library-row-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+  position: relative;
+}
+
+/* Dropdown Container */
+.media-status-dropdown-container {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dropdown-trigger {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.status-dropdown-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+
+.status-dropdown-trigger:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Horizontal Tray expanding on hover */
+.status-dropdown-tray {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 28px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0 0.15rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: scaleX(0.9);
+  transform-origin: left;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+}
+
+.media-status-dropdown-container:hover .status-dropdown-tray {
+  opacity: 1;
+  visibility: visible;
+  transform: scaleX(1);
+}
+
+.tray-status-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.tray-status-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.tray-status-btn:hover {
+  background: var(--accent-soft);
+  color: var(--text-main);
+}
+
+/* Active Status Colors */
+.tray-status-btn.active[data-status="planning"],
+.status-dropdown-trigger.text-planning {
+  color: #fbbf24;
+}
+.tray-status-btn.active[data-status="watching"],
+.tray-status-btn.active[data-status="reading"],
+.status-dropdown-trigger.text-watching,
+.status-dropdown-trigger.text-reading {
+  color: var(--accent);
+}
+.tray-status-btn.active[data-status="completed"],
+.status-dropdown-trigger.text-completed {
+  color: #34d399;
+}
+.tray-status-btn.active[data-status="paused"],
+.status-dropdown-trigger.text-paused {
+  color: #60a5fa;
+}
+.tray-status-btn.active[data-status="dropped"],
+.status-dropdown-trigger.text-dropped {
+  color: #f87171;
+}
+
+
+
+/* Stars Rating */
+.media-library-rating {
+  display: flex;
+  gap: 0.2rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.star-container {
+  position: relative;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.star-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.star-empty {
+  color: var(--text-dim);
+  opacity: 0.35;
+}
+
+.star-filled-wrap {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  height: 18px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.star-filled-wrap svg {
+  color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
+
+.star-preview-full,
+.star-preview-half {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  height: 18px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+}
+
+.star-preview-full svg,
+.star-preview-half svg {
+  color: var(--accent);
+  opacity: 0.5;
+  width: 18px;
+  height: 18px;
+}
+
+.star-preview-half {
+  width: 9px;
+}
+
+.star-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 30;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.zone-left {
+  left: 0;
+  width: 50%;
+}
+
+.zone-right {
+  right: 0;
+  width: 50%;
+}
+
+/* Ajustes de layout para media-body sin datos */
+.media-body.media-body--no-stats {
+  grid-template-columns: 1.2fr 3.8fr;
+  padding: 4.5rem 15% 2rem;
 }
