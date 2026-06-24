@@ -24,11 +24,13 @@ function buildPosterUrl(posterPath: string | null): string | null {
 
 function parseDateParts(dateString?: string): { year: number | null; month: number | null; day: number | null } {
   if (!dateString) return { year: null, month: null, day: null };
+  // TMDB dates are "YYYY-MM-DD" with no time component — JS parses them as UTC midnight,
+  // so local-time methods (getFullYear etc.) can return the previous day in negative offsets.
   const date = new Date(dateString);
   return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate(),
+    year:  date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day:   date.getUTCDate(),
   };
 }
 

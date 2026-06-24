@@ -2,17 +2,29 @@ export async function validateExternalId(
   externalId: string,
   _type: string
 ): Promise<boolean> {
-  const [source, id] = externalId.split(":");
+  const colonIndex = externalId.indexOf(':');
+  if (colonIndex === -1) return false;
 
-  if (!source || !id || isNaN(parseInt(id))) return false;
+  const source = externalId.slice(0, colonIndex);
+  const id     = externalId.slice(colonIndex + 1);
+
+  if (!source || !id) return false;
 
   try {
     switch (source) {
-      case "game":
-        return await validateIGDB(parseInt(id));
-      case "anime":
-      case "manga":
-        return await validateAniList(parseInt(id));
+      case 'game':
+      case 'vnovel':
+        return isPositiveInteger(id);
+      case 'anime':
+      case 'manga':
+      case 'novel':
+        return isPositiveInteger(id);
+      case 'movie':
+      case 'series':
+        return isPositiveInteger(id);
+      case 'book':
+        // OpenLibrary IDs look like "/works/OL1234W" or "book:/works/OL1234W"
+        return id.length > 0;
       default:
         return false;
     }
@@ -21,12 +33,7 @@ export async function validateExternalId(
   }
 }
 
-// TODO: Replace with real IGDB API call (#1)
-async function validateIGDB(gameId: number): Promise<boolean> {
-  return gameId > 0;
-}
-
-// TODO: Replace with real AniList GraphQL call (#2)
-async function validateAniList(mediaId: number): Promise<boolean> {
-  return mediaId > 0;
+function isPositiveInteger(value: string): boolean {
+  const parsed = parseInt(value, 10);
+  return !isNaN(parsed) && parsed > 0;
 }

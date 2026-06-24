@@ -70,7 +70,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   useEffect(() => {
     if (initialQuery) executeSearch(initialQuery, initialType);
-    return () => abortControllerRef.current?.abort();
+    return () => {
+      abortControllerRef.current?.abort();
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleQueryChange = (value: string) => {

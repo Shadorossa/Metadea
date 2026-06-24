@@ -7,15 +7,20 @@ import SearchIsland from '../components/search/SearchIsland';
 const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 
-const q    = Astro.url.searchParams.get('q') ?? '';
-const type = (Astro.url.searchParams.get('type') ?? 'all') as any;
+import type { MediaType } from '../lib/search';
+
+const VALID_MEDIA_TYPES: MediaType[] = ['all', 'anime', 'manga', 'novel', 'game', 'vnovel', 'movie', 'series', 'book', 'user'];
+
+const q             = Astro.url.searchParams.get('q') ?? '';
+const rawType       = Astro.url.searchParams.get('type') ?? 'all';
+const type: MediaType = (VALID_MEDIA_TYPES as string[]).includes(rawType) ? rawType as MediaType : 'all';
 ---
 
 <BaseLayout title={`${t.search.title} — Metadea`} lang={lang} activePage="search">
   <main>
     <SearchIsland
       client:load
-      initialQ={q}
+      initialQuery={q}
       initialType={type}
       i18n={t.search}
     />

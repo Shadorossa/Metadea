@@ -52,7 +52,7 @@ export async function search(
     case 'movie':  return searchMovies(searchQuery, signal);
     case 'series': return searchSeries(searchQuery, signal);
     case 'book':   return searchBooks(searchQuery, signal);
-    // 'all', 'vnovel', 'user': pendientes de integrar
+    // 'all', 'user': pendientes de integrar
     default:       return [];
   }
 }
