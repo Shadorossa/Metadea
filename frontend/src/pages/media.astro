@@ -15,21 +15,24 @@ const lang = getLang(Astro.url);
 <script>
   import { fetchAniListDetail } from '../lib/search/providers/anilist';
   import type { AniListMediaDetail } from '../lib/search/providers/anilist';
+  import { getT, getLangCode } from '../i18n/client';
 
+  const t    = getT();
+  const tm   = t.media;
   const root = document.getElementById('media-root')!;
 
   // ── Parse URL param ──────────────────────────────────────────────────────
   const params  = new URLSearchParams(window.location.search);
-  const rawId   = params.get('id') ?? '';         // e.g. "anime:918"
+  const rawId   = params.get('id') ?? '';
   const [type, numericStr] = rawId.split(':');
   const numericId = parseInt(numericStr ?? '', 10);
 
   if (!numericId || !['anime', 'manga', 'novel'].includes(type)) {
-    root.innerHTML = renderError('ID no válido.');
+    root.innerHTML = renderError(tm.not_found);
   } else {
     root.innerHTML = renderLoading();
     fetchAniListDetail(numericId).then(media => {
-      if (!media) { root.innerHTML = renderError('No se encontró la obra.'); return; }
+      if (!media) { root.innerHTML = renderError(tm.not_found); return; }
       root.innerHTML = buildMediaHtml(media, type);
       initInteractions();
     });
@@ -41,46 +44,13 @@ const lang = getLang(Astro.url);
   }
 
   function renderError(msg: string): string {
-    return `<div class="media-error"><span>${msg}</span><a href="/search" style="color:var(--accent);font-size:0.78rem">← Volver a búsqueda</a></div>`;
+    return `<div class="media-error"><span>${msg}</span></div>`;
   }
 
-  // ── Label helpers ─────────────────────────────────────────────────────────
-  const FORMAT_LABELS: Record<string, string> = {
-    TV: 'TV', TV_SHORT: 'TV Corto', MOVIE: 'Película', OVA: 'OVA',
-    ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música',
-    MANGA: 'Manga', ONE_SHOT: 'One-Shot', NOVEL: 'Novela ligera',
-  };
-
-  const STATUS_LABELS: Record<string, string> = {
-    FINISHED:         'Finalizado',
-    RELEASING:        'En emisión',
-    NOT_YET_RELEASED: 'Próximamente',
-    CANCELLED:        'Cancelado',
-    HIATUS:           'En hiato',
-  };
-
+  // ── Status CSS class (no i18n — valores de API) ───────────────────────────
   const STATUS_CLASS: Record<string, string> = {
     RELEASING:        'media-badge--status-airing',
     NOT_YET_RELEASED: 'media-badge--status-upcoming',
-  };
-
-  const SEASON_LABELS: Record<string, string> = {
-    WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño',
-  };
-
-  const RELATION_LABELS: Record<string, string> = {
-    SEQUEL: 'Secuela', PREQUEL: 'Precuela', SIDE_STORY: 'Historia paralela',
-    ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Original',
-    SUMMARY: 'Resumen', SPIN_OFF: 'Spin-off', OTHER: 'Otro',
-    CHARACTER: 'Personaje', CONTAINS: 'Contiene',
-  };
-
-  const SOURCE_LABELS: Record<string, string> = {
-    MANGA: 'Manga', LIGHT_NOVEL: 'Novela ligera', VISUAL_NOVEL: 'Novela visual',
-    VIDEO_GAME: 'Videojuego', ORIGINAL: 'Original', NOVEL: 'Novela',
-    DOUJINSHI: 'Doujinshi', ANIME: 'Anime', WEB_NOVEL: 'Web novel',
-    LIVE_ACTION: 'Live action', GAME: 'Juego', COMIC: 'Comic',
-    MULTIMEDIA_PROJECT: 'Proyecto multimedia',
   };
 
   type NullableDate = { year: number | null; month: number | null; day: number | null } | null;
@@ -88,7 +58,7 @@ const lang = getLang(Astro.url);
     if (!d?.year) return '';
     if (!d.month) return String(d.year);
     const date = new Date(d.year, d.month - 1, d.day ?? 1);
-    return date.toLocaleDateString('es', { year: 'numeric', month: 'short', day: d.day ? 'numeric' : undefined });
+    return date.toLocaleDateString(getLangCode(), { year: 'numeric', month: 'short', day: d.day ? 'numeric' : undefined });
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -109,37 +79,48 @@ const lang = getLang(Astro.url);
     const bannerStyle = media.bannerImage ? '' : `style="--banner-color: linear-gradient(135deg, ${coverColor}22, ${coverColor}44)"`;
 
     // Meta badges
-    const formatLabel = FORMAT_LABELS[media.format ?? ''] ?? media.format ?? '';
-    const statusLabel = STATUS_LABELS[media.status ?? ''] ?? media.status ?? '';
+    const formatLabel = (tm.formats as Record<string, string>)[media.format ?? ''] ?? media.format ?? '';
+    const statusLabel = (tm.statuses as Record<string, string>)[media.status ?? ''] ?? media.status ?? '';
     const statusClass = STATUS_CLASS[media.status ?? ''] ?? '';
 
-    const episodeInfo = media.episodes  ? `${media.episodes} ep.`    : '';
-    const chapterInfo = media.chapters  ? `${media.chapters} cap.`   : '';
-    const volumeInfo  = media.volumes   ? `· ${media.volumes} vol.`  : '';
     const durationInfo = media.duration ? `${media.duration} min/ep` : '';
-    const countInfo   = episodeInfo || (chapterInfo + ' ' + volumeInfo).trim();
+
+    const startDateFormatted = fmtDate(media.startDate);
+    const endDateFormatted = fmtDate(media.endDate);
+    let dateBadgeHtml = '';
+    if (startDateFormatted) {
+      dateBadgeHtml = startDateFormatted;
+      if (endDateFormatted) {
+        dateBadgeHtml += ` - ${endDateFormatted}`;
+      }
+    }
 
     const seasonInfo = (media.season && media.seasonYear)
-      ? `${SEASON_LABELS[media.season] ?? media.season} ${media.seasonYear}`
+      ? `${(tm.seasons as Record<string, string>)[media.season] ?? media.season} ${media.seasonYear}`
       : fmtDate(media.startDate);
 
     const studio = media.studios.nodes[0]?.name ?? '';
-    const source = media.source ? SOURCE_LABELS[media.source] ?? media.source : '';
+    const source = media.source ? (tm.sources as Record<string, string>)[media.source] ?? media.source : '';
 
     // Score
     const score = media.averageScore ? (media.averageScore / 10).toFixed(1) : null;
 
+    const startDateStr = fmtDate(media.startDate);
+    const endDateStr = fmtDate(media.endDate);
+
     // Stats column items
     const statItems: [string, string][] = [
-      ...(formatLabel ? [['Formato',    formatLabel] as [string,string]] : []),
-      ...(media.episodes  ? [['Episodios', String(media.episodes)] as [string,string]] : []),
-      ...(media.chapters  ? [['Capítulos', String(media.chapters)] as [string,string]] : []),
-      ...(media.volumes   ? [['Volúmenes', String(media.volumes)]  as [string,string]] : []),
-      ...(durationInfo    ? [['Duración',  durationInfo]            as [string,string]] : []),
-      ...(seasonInfo      ? [['Temporada', seasonInfo]              as [string,string]] : []),
-      ...(source          ? [['Fuente',    source]                  as [string,string]] : []),
-      ...(studio          ? [['Estudio',   studio]                  as [string,string]] : []),
-      ...(score           ? [['Puntuación',`★ ${score}`]            as [string,string]] : []),
+      ...(formatLabel     ? [[tm.stat_format,   formatLabel]          as [string,string]] : []),
+      ...(media.episodes  ? [[tm.stat_episodes, String(media.episodes)] as [string,string]] : []),
+      ...(media.chapters  ? [[tm.stat_chapters, String(media.chapters)] as [string,string]] : []),
+      ...(media.volumes   ? [[tm.stat_volumes,  String(media.volumes)]  as [string,string]] : []),
+      ...(durationInfo    ? [[tm.stat_duration, durationInfo]           as [string,string]] : []),
+      ...(seasonInfo      ? [[tm.stat_season,   seasonInfo]             as [string,string]] : []),
+      ...(startDateStr    ? [[tm.stat_start_date, startDateStr]         as [string,string]] : []),
+      ...(endDateStr      ? [[tm.stat_end_date,   endDateStr]           as [string,string]] : []),
+      ...(source          ? [[tm.stat_source,   source]                 as [string,string]] : []),
+      ...(studio          ? [[tm.stat_studio,   studio]                 as [string,string]] : []),
+      ...(score           ? [[tm.stat_score,    `★ ${score}`]           as [string,string]] : []),
     ];
     const statsHtml = statItems.map(([label, val]) => `
       <div class="media-stat-item">
@@ -165,15 +146,55 @@ const lang = getLang(Astro.url);
     const validRelations = media.relations.edges.filter(e =>
       e.relationType !== 'CHARACTER' && e.node.coverImage?.medium,
     );
-    const relationCards = validRelations.map(e => `
-      <div class="media-relation-card">
-        <img class="media-relation-img" src="${e.node.coverImage!.medium!}" alt="${e.node.title.romaji ?? ''}" loading="lazy">
-        <div class="media-relation-info">
-          <span class="media-relation-type">${RELATION_LABELS[e.relationType] ?? e.relationType}</span>
-          <span class="media-relation-title">${e.node.title.romaji ?? ''}</span>
-        </div>
-      </div>
-    `).join('');
+
+    const RELATION_PRIORITY: Record<string, number> = {
+      PARENT: 1,      // Source / Original
+      ADAPTATION: 2,  // Source / Adaptation
+      PREQUEL: 3,     // Prequel
+      SEQUEL: 4,      // Sequel
+      SPIN_OFF: 5,    // Spin-off
+      ALTERNATIVE: 6, // Alternative
+      SUMMARY: 7,     // Summary
+    };
+
+    validRelations.sort((a, b) => {
+      const prioA = RELATION_PRIORITY[a.relationType] ?? 99;
+      const prioB = RELATION_PRIORITY[b.relationType] ?? 99;
+      return prioA - prioB;
+    });
+
+    const relationCards = validRelations.map(e => {
+      const relTitle = e.node.title.romaji ?? e.node.title.english ?? e.node.title.native ?? '';
+      let relTypeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
+      if (e.relationType === 'ADAPTATION' && mediaType === 'anime' && e.node.type === 'MANGA') {
+        relTypeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Original';
+      }
+      const relCover = e.node.coverImage?.medium ?? e.node.coverImage?.large ?? '';
+      const relPrefix = e.node.type?.toLowerCase() === 'anime' ? 'anime' : 'manga';
+      const relUrl = `/media?id=${relPrefix}:${e.node.id}`;
+
+      return `
+        <a href="${relUrl}" class="media-relation-card group">
+          <!-- Background cover blur -->
+          <div class="media-relation-bg-layer">
+            ${relCover ? `<img src="${relCover}" alt="" loading="lazy">` : ''}
+          </div>
+          <div class="media-relation-card-overlay"></div>
+          
+          <div class="media-relation-card-content">
+            <!-- Floating thumbnail -->
+            <div class="media-relation-thumb">
+              ${relCover ? `<img src="${relCover}" alt="${relTitle}" loading="lazy">` : ''}
+            </div>
+            <!-- Info -->
+            <div class="media-relation-info">
+              <span class="media-relation-type">${relTypeLabel}</span>
+              <span class="media-relation-title">${relTitle}</span>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
 
     const PLUS_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     const CHECK_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -184,6 +205,7 @@ const lang = getLang(Astro.url);
         <div class="${bannerClass}" ${bannerStyle}>
           ${bannerHtml}
         </div>
+        ${dateBadgeHtml ? `<div class="media-banner-date-badge">${dateBadgeHtml}</div>` : ''}
 
         <div class="media-hero-body">
           <!-- Izquierda: títulos -->
@@ -196,12 +218,12 @@ const lang = getLang(Astro.url);
           <!-- Centro: cover -->
           <div class="media-cover-wrap" id="media-add-btn"
                data-external-id="${mediaType}:${media.id}" data-type="${mediaType}"
-               role="button" tabindex="0" aria-label="Añadir a biblioteca">
+               role="button" tabindex="0" aria-label="${tm.add_to_library.replace('\n', ' ')}">
             ${coverSrc ? `<img class="media-cover-img" src="${coverSrc}" alt="${titleMain}">` : ''}
             <div class="media-cover-overlay">
               <div class="media-cover-overlay-inner">
                 <span class="media-cover-overlay-icon">${PLUS_ICON}</span>
-                <span class="media-cover-overlay-label">Añadir a<br>biblioteca</span>
+                <span class="media-cover-overlay-label">${tm.add_to_library.replace('\n', '<br>')}</span>
               </div>
             </div>
           </div>
@@ -220,7 +242,7 @@ const lang = getLang(Astro.url);
         <!-- Col 1: Synopsis -->
         <div class="media-col-synopsis">
           ${desc ? `
-            <p class="section-label">Sinopsis</p>
+            <p class="section-label">${tm.section_synopsis}</p>
             <div class="media-description-text">${desc}</div>
           ` : ''}
         </div>
@@ -228,14 +250,14 @@ const lang = getLang(Astro.url);
         <!-- Col 2: Related -->
         <div class="media-col-related">
           ${relationCards ? `
-            <p class="section-label">Relacionados</p>
+            <p class="section-label">${tm.section_related}</p>
             <div class="media-relations-grid">${relationCards}</div>
           ` : ''}
         </div>
 
         <!-- Col 3: Stats -->
         <div class="media-col-stats">
-          <p class="section-label">Datos</p>
+          <p class="section-label">${tm.section_data}</p>
           <div class="media-stats-list">${statsHtml}</div>
         </div>
 
@@ -244,7 +266,7 @@ const lang = getLang(Astro.url);
       <!-- Characters (full-width) -->
       ${charCards ? `
         <div class="media-chars-section">
-          <p class="section-label">Personajes</p>
+          <p class="section-label">${tm.section_characters}</p>
           <div class="media-chars-grid">${charCards}</div>
         </div>
       ` : ''}
@@ -265,7 +287,7 @@ const lang = getLang(Astro.url);
         if (overlayIcon)  overlayIcon.innerHTML  = inLib
           ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
           : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-        if (overlayLabel) overlayLabel.innerHTML = inLib ? 'En<br>biblioteca' : 'Añadir a<br>biblioteca';
+        if (overlayLabel) overlayLabel.innerHTML = (inLib ? tm.in_library : tm.add_to_library).replace('\n', '<br>');
       }
 
       coverWrap.addEventListener('click', () => {

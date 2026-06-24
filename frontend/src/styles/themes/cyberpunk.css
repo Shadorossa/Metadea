@@ -45,7 +45,10 @@ body {
 .hof-card,
 .search-input,
 .search-action-btn,
-.search-tab {
+.search-tab,
+.media-relation-card,
+.media-relation-thumb,
+.media-banner-date-badge {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;

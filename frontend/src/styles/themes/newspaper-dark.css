@@ -36,15 +36,15 @@ body {
 .avatar-preview-wrap,
 .banner-drop-zone,
 .card-media-base,
-.nav-icon-btn,
-.nav-dropdown-item,
-.nav-user-dropdown::before,
 .hof-btn,
 .hof-container,
 .hof-card,
 .search-input,
 .search-action-btn,
-.search-tab {
+.search-tab,
+.media-relation-card,
+.media-relation-thumb,
+.media-banner-date-badge {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -57,8 +57,6 @@ body {
 .btn:hover,
 .settings-tab:hover,
 .google-btn:hover,
-.nav-dropdown-item:hover,
-.nav-icon-btn:hover,
 .hof-btn:hover,
 .search-tab:hover {
   background: var(--text-main) !important;
@@ -68,7 +66,6 @@ body {
 
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
-.nav-icon-btn.active,
 .hof-btn--active,
 .search-tab.active {
   border: 3px double var(--accent) !important;
