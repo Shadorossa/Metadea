@@ -1,5 +1,5 @@
 import { HOF_GRADIENTS } from './hof';
-import { typeLabel, statusLabel } from './utils';
+import { typeLabel, statusLabel, formatShortDate } from './utils';
 import { getT } from '../../i18n/client';
 import type { getLibraryItems } from '../tauri';
 
@@ -7,8 +7,6 @@ type Items = Awaited<ReturnType<typeof getLibraryItems>>;
 type P     = ReturnType<typeof getT>['profile'];
 
 export function buildActivityHtml(items: Items, p: P): string {
-  const lang = document.documentElement.lang || 'es';
-
   const recent = [...items]
     .sort((a, b) => {
       const ta = a.updated_at ?? a.created_at ?? '';
@@ -27,9 +25,7 @@ export function buildActivityHtml(items: Items, p: P): string {
     const type   = typeLabel(item.item_type);
     const status = statusLabel(item.status ?? 'planning');
     const raw    = item.updated_at ?? item.created_at;
-    const date   = raw
-      ? new Date(raw).toLocaleDateString(lang, { day: 'numeric', month: 'short' })
-      : '';
+    const date   = raw ? formatShortDate(raw) : '';
 
     return `<div class="act-card">
       <div class="act-cover" style="background:${bg}"></div>

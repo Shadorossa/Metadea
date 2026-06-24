@@ -1,11 +1,10 @@
 import { HOF_GRADIENTS } from './hof';
+import { formatMonthLabel } from './utils';
 import type { getLibraryItems } from '../tauri';
 
 type Items = Awaited<ReturnType<typeof getLibraryItems>>;
 
 export function buildMonthlyHistoryHtml(items: Items): string {
-  const lang = document.documentElement.lang || 'es';
-
   const sorted = [...items].sort((a, b) => {
     if (a.created_at && b.created_at) return b.created_at.localeCompare(a.created_at);
     return (b.id ?? 0) - (a.id ?? 0);
@@ -26,10 +25,7 @@ export function buildMonthlyHistoryHtml(items: Items): string {
     if (key !== '__') {
       const [y, m] = key.split('-');
       yearLabel  = y;
-      monthLabel = new Date(Number(y), Number(m) - 1)
-        .toLocaleDateString(lang, { month: 'short' })
-        .toUpperCase()
-        .replace('.', '');
+      monthLabel = formatMonthLabel(Number(y), Number(m));
     }
 
     const row1 = its.filter((_, i) => i % 2 === 0);
