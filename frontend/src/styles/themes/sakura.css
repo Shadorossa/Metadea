@@ -1,0 +1,10 @@
+:root {
+  --bg-primary: #0d060b;
+}
+
+#app-bg {
+  background:
+    radial-gradient(ellipse 55% 48% at 92% -8%, rgba(244, 114, 182, 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 8% 92%, rgba(232, 121, 249, 0.13) 0%, transparent 60%);
+  animation: th-breathe 10s ease-in-out infinite 2s;
+}

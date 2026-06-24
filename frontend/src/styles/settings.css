@@ -255,6 +255,88 @@
   background: rgba(248,113,113,0.06);
 }
 
+/* ── Theme picker ─────────────────────────────────────────────────────────── */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.theme-card {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-radius: var(--radius-lg);
+  transition: transform var(--anim-fast);
+}
+.theme-card:hover { transform: translateY(-3px); }
+
+.theme-card-preview {
+  height: 84px;
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  transition: border-color var(--anim-base), box-shadow var(--anim-base);
+}
+.theme-card.active .theme-card-preview {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-border), 0 0 20px var(--accent-glow);
+}
+
+/* Shine overlay */
+.theme-card-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.07) 0%, transparent 55%);
+  z-index: 1;
+}
+
+/* Sweep on hover */
+.theme-card-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  transform: translateX(-110%);
+  transition: transform 0.55s ease;
+  z-index: 2;
+}
+.theme-card:hover .theme-card-preview::after { transform: translateX(110%); }
+
+/* Active check badge */
+.theme-card-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+.theme-card.active .theme-card-check { display: flex; }
+.theme-card-check svg { display: block; }
+
+.theme-card-name {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  transition: color var(--anim-fast);
+}
+.theme-card.active .theme-card-name { color: var(--accent); }
+.theme-card:hover .theme-card-name  { color: var(--text-main); }
+
 /* ── Saved toast ──────────────────────────────────────────────────────────── */
 .settings-toast {
   position: fixed;

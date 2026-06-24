@@ -39,16 +39,31 @@ html {
 }
 
 body {
-  background-color: var(--bg-primary);
+  background: transparent;
   color: var(--text-main);
   font-family: 'Inter', 'SF Pro Text', system-ui, -apple-system, sans-serif;
-  background-image: radial-gradient(
-    ellipse 80% 40% at 50% -10%,
-    rgba(100, 60, 180, 0.12) 0%,
-    transparent 70%
-  );
-  background-attachment: fixed;
 }
+
+/* ── Dynamic background layer ────────────────────────────────────────────── */
+@keyframes th-breathe {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.12); }
+}
+@keyframes th-drift {
+  0%   { transform: translate(0,   0)   scale(1);    }
+  33%  { transform: translate(3%, -4%)  scale(1.06); }
+  66%  { transform: translate(-2%, 3%)  scale(0.97); }
+  100% { transform: translate(0,   0)   scale(1);    }
+}
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+
 
 /* Film grain */
 body::before {

@@ -17,6 +17,11 @@ const lang = getLang(Astro.url);
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           Perfil
         </button>
+        <span class="settings-sidebar-label" style="margin-top:0.5rem">Apariencia</span>
+        <button class="settings-tab" data-tab="appearance">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          Tema
+        </button>
       </aside>
 
       <!-- Contenido -->
@@ -58,6 +63,16 @@ const lang = getLang(Astro.url);
               <input type="file" id="banner-input" accept="image/*" hidden>
             </div>
 
+          </div>
+        </div>
+
+        <!-- Tab: Apariencia -->
+        <div class="settings-panel hidden" id="panel-appearance">
+          <h2 class="settings-panel-title">Apariencia</h2>
+          <div class="settings-section">
+            <h3 class="settings-section-title">Fondo dinámico</h3>
+            <p class="settings-hint">El fondo animado se aplica a toda la aplicación y se guarda entre sesiones.</p>
+            <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
 
@@ -109,7 +124,6 @@ const lang = getLang(Astro.url);
     return file.size > maxMB * 1024 * 1024;
   }
 
-  // Redimensiona y comprime la imagen via canvas para que quepa en localStorage
   function compressImage(dataUrl: string, maxWidth: number, quality = 0.82): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
@@ -125,19 +139,10 @@ const lang = getLang(Astro.url);
     });
   }
 
-  function safeLocalStorageSet(key: string, value: string): boolean {
-    try {
-      localStorage.setItem(key, value);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   // ── Avatar ─────────────────────────────────────────────────────────────────
   function initAvatar(googleAvatar: string | null, username: string) {
-    const preview  = document.getElementById('avatar-preview')!;
-    const input    = document.getElementById('avatar-input') as HTMLInputElement;
+    const preview   = document.getElementById('avatar-preview')!;
+    const input     = document.getElementById('avatar-input') as HTMLInputElement;
     const uploadBtn = document.getElementById('avatar-upload-btn')!;
     const removeBtn = document.getElementById('avatar-remove-btn')!;
 
@@ -185,7 +190,6 @@ const lang = getLang(Astro.url);
 
     async function renderBannerPreview() {
       const src = await getImage('profile_banner_custom');
-      // remove existing img
       dropZone.querySelector('img')?.remove();
       if (src) {
         const img = document.createElement('img');
@@ -226,7 +230,6 @@ const lang = getLang(Astro.url);
       showToast('Banner eliminado');
     });
 
-    // Drag & drop
     dropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
       dropZone.classList.add('drag-over');
@@ -239,6 +242,83 @@ const lang = getLang(Astro.url);
       if (file) await handleFile(file);
     });
   }
+
+  // ── Theme picker ───────────────────────────────────────────────────────────
+  const THEMES = [
+    {
+      id: 'nebula',
+      name: 'Nebulosa',
+      bg: 'radial-gradient(ellipse 80% 70% at 50% -10%, rgba(120,70,210,0.75) 0%, transparent 72%), #07070e',
+    },
+    {
+      id: 'aurora',
+      name: 'Aurora',
+      bg: 'radial-gradient(ellipse 90% 70% at 15% -10%, rgba(0,200,130,0.8) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 85% 100%, rgba(10,160,100,0.5) 0%, transparent 65%), #040e0a',
+    },
+    {
+      id: 'cosmos',
+      name: 'Cosmos',
+      bg: 'radial-gradient(ellipse 70% 65% at 15% 20%, rgba(80,120,230,0.75) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 82% 72%, rgba(100,80,240,0.55) 0%, transparent 65%), #050711',
+    },
+    {
+      id: 'ember',
+      name: 'Ember',
+      bg: 'radial-gradient(ellipse 85% 75% at 50% 120%, rgba(240,120,20,0.85) 0%, transparent 68%), radial-gradient(ellipse 45% 40% at 8% 80%, rgba(245,158,11,0.4) 0%, transparent 60%), #0c0804',
+    },
+    {
+      id: 'ocean',
+      name: 'Océano',
+      bg: 'radial-gradient(ellipse 80% 70% at 0% 100%, rgba(6,182,212,0.75) 0%, transparent 68%), radial-gradient(ellipse 55% 50% at 100% 0%, rgba(2,132,199,0.55) 0%, transparent 65%), #040b0e',
+    },
+    {
+      id: 'sakura',
+      name: 'Sakura',
+      bg: 'radial-gradient(ellipse 80% 70% at 92% -10%, rgba(244,114,182,0.8) 0%, transparent 68%), radial-gradient(ellipse 45% 40% at 8% 90%, rgba(232,121,249,0.45) 0%, transparent 60%), #0d060b',
+    },
+    {
+      id: 'cyberpunk',
+      name: 'Cyberpunk',
+      bg: 'linear-gradient(135deg, #ff0055 0%, #00f0ff 100%)',
+    },
+    {
+      id: 'newspaper-dark',
+      name: 'Newspaper Dark',
+      bg: 'linear-gradient(135deg, #151413 0%, #252422 50%, #dca364 100%)',
+    },
+  ] as const;
+
+  function initThemePicker() {
+    const grid    = document.getElementById('theme-grid')!;
+    const current = document.documentElement.getAttribute('data-theme') || 'nebula';
+
+    const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    grid.innerHTML = THEMES.map(t => `
+      <button class="theme-card${t.id === current ? ' active' : ''}" data-theme-id="${t.id}">
+        <div class="theme-card-preview" style="background:${t.bg}">
+          <span class="theme-card-check">${CHECK_SVG}</span>
+        </div>
+        <span class="theme-card-name">${t.name}</span>
+      </button>
+    `).join('');
+
+    grid.querySelectorAll<HTMLButtonElement>('.theme-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const id = card.dataset.themeId!;
+        localStorage.setItem('app_theme', id);
+        if (typeof (window as any).__updateTheme === 'function') {
+          (window as any).__updateTheme(id);
+        } else {
+          document.documentElement.setAttribute('data-theme', id);
+        }
+        grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        showToast('Tema aplicado');
+      });
+    });
+  }
+
+  initThemePicker();
 
   // ── Tab switching ──────────────────────────────────────────────────────────
   document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {

@@ -1,0 +1,102 @@
+:root {
+  --bg-primary: #121110;
+  --bg-elevated: #1a1918;
+  --bg-card: #201f1e;
+
+  --text-main: #e6dfd3; /* Eggshell / newsprint paper */
+  --text-muted: #9c9384;
+  --text-dim: #6e6557;
+
+  --border-color: #3e3a35;
+
+  --accent: #dca364; /* Ink gold */
+  --accent-rgb: 220 163 100;
+  --accent-soft: rgba(220, 163, 100, 0.08);
+  --accent-border: #9c9384;
+  --accent-glow: transparent;
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+/* ── Newspaper editorial specific shape overrides ────────────────────────── */
+
+/* Double borders to simulate vintage print advertisements/sections */
+.settings-btn, 
+.settings-tab, 
+.google-btn, 
+.input-dark,
+.theme-card-preview,
+.avatar-preview-wrap,
+.banner-drop-zone,
+.card-media-base,
+.nav-icon-btn,
+.nav-dropdown-item,
+.nav-user-dropdown::before,
+.hof-btn,
+.hof-container,
+.hof-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  text-transform: capitalize !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Hover/Active states simulate vintage ink press highlight (inverted or solid dark borders) */
+.settings-btn:hover,
+.settings-tab:hover,
+.google-btn:hover,
+.nav-dropdown-item:hover,
+.nav-icon-btn:hover,
+.hof-btn:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+}
+
+.settings-tab.active,
+.theme-card.active .theme-card-preview,
+.nav-icon-btn.active,
+.hof-btn--active {
+  border: 3px double var(--accent) !important;
+  background: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+}
+
+.input-dark:focus {
+  border-color: var(--text-main) !important;
+  background: var(--bg-elevated) !important;
+}
+
+/* Header underlines looking like newspaper section dividers */
+h2, h3, .settings-panel-title {
+  border-bottom: 2px solid var(--text-main) !important;
+  font-style: italic;
+}
+
+#app-bg {
+  background: #121110;
+  background-image: radial-gradient(rgba(230, 223, 211, 0.02) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+/* Check badges style */
+.card-rating-badge,
+.theme-card-check {
+  border-radius: 0px !important;
+  border: 1px solid var(--text-main) !important;
+  background: var(--bg-primary) !important;
+}
+
+.auth-modal-box {
+  border-radius: 0px !important;
+  border: 6px double var(--text-main) !important;
+}
