@@ -1,0 +1,98 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/profile.css';
+import { getLang } from '../i18n/index';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Perfil — Metadea" lang={lang} activePage="profile">
+  <main class="profile-page">
+
+    <div class="profile-banner">
+      <button class="profile-banner-signout" id="sign-out-btn">Cerrar sesión</button>
+      <div class="profile-banner-content" id="banner-content"></div>
+    </div>
+
+    <nav class="profile-tabs">
+      <button class="profile-tab active" data-tab="overview" title="Perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </button>
+      <button class="profile-tab" data-tab="library" title="Biblioteca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </button>
+      <button class="profile-tab" data-tab="stats" title="Estadísticas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </button>
+    </nav>
+
+    <div id="profile-tab-content" class="profile-tab-content"></div>
+
+  </main>
+</BaseLayout>
+
+<script>
+  import { getAuthToken, clearAuthToken, getLibraryItems } from '../lib/tauri';
+  import { decodeJwtPayload } from '../lib/profile/utils';
+  import { renderOverview, renderLibrary, renderStats } from '../lib/profile/render';
+
+  (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
+
+  const TABS = ['overview', 'library', 'stats'] as const;
+  type Tab = typeof TABS[number];
+
+  function getTabFromHash(): Tab {
+    const h = location.hash.replace('#', '') as Tab;
+    return TABS.includes(h) ? h : 'overview';
+  }
+
+  let cachedItems: Awaited<ReturnType<typeof getLibraryItems>> = [];
+  let activeTab: Tab = getTabFromHash();
+
+  async function switchTab(tab: Tab) {
+    activeTab = tab;
+    history.replaceState(null, '', tab === 'overview' ? '/profile' : `/profile#${tab}`);
+
+    document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    const content = document.getElementById('profile-tab-content');
+    if (!content) return;
+
+    if (tab === 'overview')     await renderOverview(content, cachedItems);
+    else if (tab === 'library') await renderLibrary(content);
+    else                        renderStats(content);
+  }
+
+  async function init() {
+    const session = await getAuthToken().catch(() => null);
+    if (!session?.token) { window.location.replace('/login'); return; }
+
+    const payload  = decodeJwtPayload(session.token);
+    const avatar   = payload.avatar as string | null;
+    const username = session.username;
+
+    const bannerContent = document.getElementById('banner-content');
+    if (bannerContent) {
+      const avatarHtml = avatar
+        ? `<img class="profile-avatar" src="${avatar}" alt="${username}" referrerpolicy="no-referrer">`
+        : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
+      bannerContent.innerHTML = `${avatarHtml}<h1 class="profile-username-large">${username}</h1>`;
+    }
+
+    document.getElementById('sign-out-btn')?.addEventListener('click', async () => {
+      await clearAuthToken();
+      window.location.replace('/login');
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));
+    });
+
+    cachedItems = await getLibraryItems().catch(() => []);
+    await switchTab(activeTab);
+  }
+
+  init();
+</script>

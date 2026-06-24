@@ -26,6 +26,9 @@
   --anim-ease:  cubic-bezier(0.25, 0, 0.15, 1);
   --anim-fast:  120ms;
   --anim-base:  220ms;
+
+  --color-error:   #f87171;
+  --color-on-light: #1a1a1a;
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */

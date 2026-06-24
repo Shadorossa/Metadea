@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@libsql/client/web";
-import type { CloudflareEnv, LibraryItemInput } from "../types/index";
+import type { CloudflareEnv, LibraryItemInput } from "../types";
 
 export function getTursoClient(env: CloudflareEnv): Client {
   return createClient({

@@ -1,4 +1,4 @@
-import type { CloudflareEnv } from '../types/index';
+import type { CloudflareEnv } from '../types';
 
 interface IgdbGame {
   id: number;
@@ -20,9 +20,8 @@ interface IgdbTokenResponse {
 
 const IGDB_GENRE_VISUAL_NOVEL = 34;
 const IGDB_GENRE_RPG          = 12;
-const IGDB_GENRE_FIGHTING      = 4;
+const IGDB_GENRE_FIGHTING     = 4;
 
-// game_type values from IGDB API
 const IGDB_CATEGORY_LABELS: Record<number, string> = {
   0:  'base_game',
   1:  'dlc',
@@ -41,7 +40,6 @@ const IGDB_CATEGORY_LABELS: Record<number, string> = {
   14: 'update',
 };
 
-// Token cached within the Worker isolate — IGDB tokens last 60 days
 let cachedAccessToken: string | null = null;
 
 async function fetchAccessToken(env: CloudflareEnv): Promise<string> {
@@ -60,7 +58,6 @@ async function fetchAccessToken(env: CloudflareEnv): Promise<string> {
 }
 
 function buildCoverImageUrl(rawUrl: string): string {
-  // IGDB returns protocol-relative URLs with t_thumb size — upgrade to t_cover_big
   return `https:${rawUrl.replace('t_thumb', 't_cover_big')}`;
 }
 
@@ -82,12 +79,6 @@ function extractJapaneseName(alternativeNames?: Array<{ name: string; comment?: 
   return japaneseEntry?.name ?? null;
 }
 
-/**
- * Determines whether a game qualifies as a Visual Novel based on IGDB genre tags.
- * VN genre (ID 34) must appear in the top 3 genres, and the game must not be
- * classified as RPG (12) or Fighting (4), which share VN elements but are distinct.
- * If the game itself has no genres, the parent's genre tags are used (inherited genre).
- */
 function classifyAsVisualNovel(game: IgdbGame): boolean {
   const allGenreIds    = (game.genres ?? []).map(genre => genre.id);
   const topThreeGenreIds = (game.genres ?? []).slice(0, 3).map(genre => genre.id);
@@ -98,7 +89,6 @@ function classifyAsVisualNovel(game: IgdbGame): boolean {
 
   if (isVisualNovel) return true;
 
-  // Inherited genre: check if version_parent or parent_game is a VN
   const parent = game.version_parent ?? game.parent_game;
   if (parent?.genres) {
     const parentAllGenreIds     = parent.genres.map(genre => genre.id);
@@ -142,9 +132,7 @@ export async function searchGames(
   const games = await response.json() as IgdbGame[];
 
   return games.filter(game => {
-    // Exclude packaging variants (Collector's Edition, Game of the Year, etc.)
     if (game.version_parent) return false;
-
     const isVisualNovel = classifyAsVisualNovel(game);
     return options.visualNovelsOnly ? isVisualNovel : !isVisualNovel;
   });

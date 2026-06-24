@@ -14,16 +14,13 @@ export async function validateExternalId(
     switch (source) {
       case 'game':
       case 'vnovel':
-        return isPositiveInteger(id);
       case 'anime':
       case 'manga':
       case 'novel':
-        return isPositiveInteger(id);
       case 'movie':
       case 'series':
         return isPositiveInteger(id);
       case 'book':
-        // OpenLibrary IDs look like "/works/OL1234W" or "book:/works/OL1234W"
         return id.length > 0;
       default:
         return false;

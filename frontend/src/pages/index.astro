@@ -1,3 +1,28 @@
 ---
-return Astro.redirect('/home', 302);
+// Punto de entrada: inicializa la DB y comprueba sesión
 ---
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>body { margin: 0; background: #0a0a0a; }</style>
+  </head>
+  <body>
+    <script>
+      import { initTauriDatabase, getAuthToken } from '../lib/tauri';
+
+      async function boot() {
+        try {
+          await initTauriDatabase();
+          const session = await getAuthToken();
+          window.location.replace(session ? '/home' : '/login');
+        } catch {
+          // Fallback navegador sin Tauri
+          const token = localStorage.getItem('auth_token');
+          window.location.replace(token ? '/home' : '/login');
+        }
+      }
+
+      boot();
+    </script>
+  </body>
+</html>

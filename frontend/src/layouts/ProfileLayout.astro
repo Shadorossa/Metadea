@@ -1,0 +1,156 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import '../styles/profile.css';
+import { getLang } from '../i18n/index';
+
+interface Props {
+  activeTab: 'overview' | 'library' | 'stats';
+  lang?: string;
+}
+
+const { activeTab } = Astro.props;
+const lang = Astro.props.lang ?? getLang(Astro.url);
+
+const TABS = [
+  {
+    id: 'overview',
+    href: '/profile',
+    title: 'Perfil',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`,
+  },
+  {
+    id: 'library',
+    href: '/profile/library',
+    title: 'Biblioteca',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  },
+  {
+    id: 'stats',
+    href: '/profile/stats',
+    title: 'Estadísticas',
+    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  },
+] as const;
+---
+
+<BaseLayout title="Perfil — Metadea" lang={lang} activePage="profile">
+  <main class="profile-page">
+
+    <!-- Banner (populated by script) -->
+    <div class="profile-banner">
+      <button class="profile-banner-signout" id="sign-out-btn">Cerrar sesión</button>
+      <div class="profile-banner-content" id="banner-content">
+        <!-- avatar + username rendered by script -->
+      </div>
+    </div>
+
+    <!-- Tabs (static — active state via CSS class set here) -->
+    <nav class="profile-tabs">
+      {TABS.map(tab => (
+        <a
+          href={tab.href}
+          class={`profile-tab${activeTab === tab.id ? ' active' : ''}`}
+          title={tab.title}
+          set:html={tab.icon}
+        />
+      ))}
+    </nav>
+
+    <!-- Tab content (each subpage populates this) -->
+    <div id="profile-tab-content" class="profile-tab-content">
+      <slot />
+    </div>
+
+    <!-- Stats bar (populated by script) -->
+    <div class="profile-stats-bar" id="profile-stats-bar"></div>
+
+  </main>
+</BaseLayout>
+
+<script>
+  import { getAuthToken, clearAuthToken, getLibraryItems } from '../lib/tauri';
+
+  // Cerrar el modal de auth — nunca debe verse en el perfil
+  (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
+
+  const TYPE_LABELS: Record<string, string> = {
+    anime: 'Anime', manga: 'Manga', novel: 'Novel', game: 'Juego',
+    vnovel: 'VN', movie: 'Película', series: 'Serie', book: 'Libro',
+  };
+
+  function decodeJwtPayload(token: string): Record<string, unknown> {
+    try {
+      const [, payload] = token.split('.');
+      return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    } catch { return {}; }
+  }
+
+  function pad(n: number): string {
+    if (n < 10)  return '00' + n;
+    if (n < 100) return '0'  + n;
+    return String(n);
+  }
+
+  async function initProfileShell() {
+    const session = await getAuthToken().catch(() => null);
+    if (!session?.token) { window.location.replace('/login'); return; }
+
+    const payload  = decodeJwtPayload(session.token);
+    const avatar   = payload.avatar as string | null;
+    const username = session.username;
+
+    // ── Banner ──────────────────────────────────────────────────────────────
+    const avatarHtml = avatar
+      ? `<img class="profile-avatar" src="${avatar}" alt="${username}" referrerpolicy="no-referrer">`
+      : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
+
+    const bannerContent = document.getElementById('banner-content');
+    if (bannerContent) {
+      bannerContent.innerHTML = `
+        ${avatarHtml}
+        <h1 class="profile-username-large">${username}</h1>
+      `;
+    }
+
+    // Sign out
+    document.getElementById('sign-out-btn')?.addEventListener('click', async () => {
+      await clearAuthToken();
+      window.location.replace('/login');
+    });
+
+    // ── Stats bar ────────────────────────────────────────────────────────────
+    const items = await getLibraryItems().catch(() => []);
+
+    // Expose for subpage scripts
+    (window as any).__profileItems = items;
+    window.dispatchEvent(new CustomEvent('profile-ready', { detail: { items } }));
+
+    let total = items.length;
+    let completed = 0, inProgress = 0, planning = 0, dropped = 0;
+    for (const item of items) {
+      const s = item.status ?? 'planning';
+      if (s === 'completed') completed++;
+      else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
+      else if (s === 'planning') planning++;
+      else if (s === 'dropped') dropped++;
+    }
+
+    const statsBar = document.getElementById('profile-stats-bar');
+    if (statsBar) {
+      statsBar.innerHTML = [
+        ['Total de obras', pad(total)],
+        ['En progreso',    pad(inProgress)],
+        ['Completadas',    pad(completed)],
+        ['Pendientes',     pad(planning)],
+        ['Abandonadas',    pad(dropped)],
+      ].map(([label, value]) =>
+        `<div class="profile-stat">
+           <span class="profile-stat-value">${value}</span>
+           <span class="profile-stat-label">${label}</span>
+         </div>`
+      ).join('');
+    }
+  }
+
+  initProfileShell();
+</script>

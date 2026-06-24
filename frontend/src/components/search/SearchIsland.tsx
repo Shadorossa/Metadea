@@ -168,7 +168,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         )}
 
         {status === 'error' && (
-          <div className="results-empty" style={{ color: '#f87171' }}>{i18n.error}</div>
+          <div className="results-empty results-error">{i18n.error}</div>
         )}
 
         {status === 'done' && results.length === 0 && (
@@ -191,7 +191,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
 function MediaCard({ result }: { result: SearchResult }) {
   return (
-    <div className="group flex flex-col" style={{ cursor: 'pointer' }}>
+    <div className="group flex flex-col card-cursor">
       <div className="card-media-base aspect-[3/4] mb-1.5">
         {result.coverUrl ? (
           <img
@@ -201,25 +201,15 @@ function MediaCard({ result }: { result: SearchResult }) {
             loading="lazy"
           />
         ) : (
-          <div
-            className="w-full h-full"
-            style={{ background: 'linear-gradient(160deg, var(--bg-card), rgba(192,132,252,0.08))' }}
-          />
+          <div className="card-media-placeholder" />
         )}
         {result.scoreGlobal !== null && (
           <div className="card-rating-badge">{result.scoreGlobal.toFixed(1)}</div>
         )}
       </div>
-      <p
-        className="text-[12px] font-medium line-clamp-1 leading-snug tracking-tight px-0.5"
-        style={{ color: 'var(--text-muted)' }}
-      >
-        {result.titleMain}
-      </p>
+      <p className="card-title">{result.titleMain}</p>
       {result.releaseYear && (
-        <p className="text-[10px] mt-0.5 px-0.5" style={{ color: 'var(--text-dim)' }}>
-          {result.releaseYear}
-        </p>
+        <p className="card-year">{result.releaseYear}</p>
       )}
     </div>
   );

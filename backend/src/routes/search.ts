@@ -1,6 +1,6 @@
-import { jsonResponse } from '../lib/cors';
-import { searchGames, mapIgdbGameToSearchResult } from '../lib/igdb';
-import type { CloudflareEnv } from '../types/index';
+import { jsonResponse } from '../middleware/cors';
+import { searchGames, mapIgdbGameToSearchResult } from '../services/igdb';
+import type { CloudflareEnv } from '../types';
 
 export async function searchGamesRoute(
   request: Request,

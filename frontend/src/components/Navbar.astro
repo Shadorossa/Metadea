@@ -2,7 +2,7 @@
 import type { Translations } from '../i18n/index';
 
 interface Props {
-  activePage?: 'home' | 'search' | 'notifications';
+  activePage?: 'home' | 'search' | 'notifications' | 'profile';
   i18n: Translations['nav'];
 }
 const { activePage, i18n } = Astro.props;
@@ -33,7 +33,7 @@ const { activePage, i18n } = Astro.props;
         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
       </svg>
     </a>
-    <button id="open-auth-modal" class="nav-icon-btn" title={i18n.account}>
+    <button id="open-auth-modal" class={`nav-icon-btn${activePage === 'profile' ? ' active' : ''}`} title={i18n.account}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="8" r="4"/>
         <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
@@ -41,9 +41,3 @@ const { activePage, i18n } = Astro.props;
     </button>
   </div>
 </header>
-
-<script>
-  document.getElementById('open-auth-modal')?.addEventListener('click', () => {
-    (document.getElementById('auth-modal') as HTMLDialogElement)?.showModal();
-  });
-</script>

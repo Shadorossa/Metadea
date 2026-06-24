@@ -1,8 +1,8 @@
 import type { IRequest } from "itty-router";
-import { jsonResponse, jsonError } from "../lib/cors";
-import { validateExternalId } from "../lib/validation";
-import { getTursoClient, saveLibraryItem } from "../lib/turso";
-import type { CloudflareEnv, LibrarySyncRequest, SyncResponse } from "../types/index";
+import { jsonResponse, jsonError } from "../middleware/cors";
+import { validateExternalId } from "../services/validation";
+import { getTursoClient, saveLibraryItem } from "../services/database";
+import type { CloudflareEnv, LibrarySyncRequest, SyncResponse } from "../types";
 
 const MAX_ITEMS_PER_SYNC = 500;
 

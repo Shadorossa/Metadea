@@ -1,19 +1,4 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { getLang, useTranslations } from '../i18n/index';
-
-const lang = getLang(Astro.url);
-const t    = useTranslations(lang);
+// /register ya no existe — el registro es vía Google OAuth en /login
 ---
-
-<BaseLayout title={`${t.auth.register} — Metadea`} lang={lang}>
-  <main class="placeholder-page">
-    <p class="placeholder-text">{t.auth.coming_soon}</p>
-  </main>
-</BaseLayout>
-
-
-<script>
-  // Redirige al home y abre el modal en la pestaña de registro
-  window.location.replace('/home#register');
-</script>
+<script>window.location.replace('/login');</script>

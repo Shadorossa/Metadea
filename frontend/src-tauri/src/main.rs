@@ -1,10 +1,8 @@
-// Prevents additional console window on Windows in release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod db;
 mod commands;
 
-use tauri::Manager;
 use commands::*;
 use db::Database;
 
@@ -14,8 +12,8 @@ fn main() {
     .setup(|app| {
       #[cfg(debug_assertions)]
       {
-        let window = app.get_webview_window("main");
-        if let Some(window) = window {
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
           let _ = window.open_devtools();
         }
       }
@@ -23,6 +21,9 @@ fn main() {
     })
     .invoke_handler(tauri::generate_handler![
       init_database,
+      store_auth_token,
+      get_auth_token,
+      clear_auth_token,
       save_library_item,
       get_library_items,
       get_library_stats,

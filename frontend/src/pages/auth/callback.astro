@@ -1,0 +1,39 @@
+---
+import '../../styles/global.css';
+import '../../styles/login.css';
+---
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Autenticando…</title>
+  </head>
+  <body class="callback-body">
+    <p id="status">Iniciando sesión…</p>
+
+    <script>
+      import { storeAuthToken } from '../../lib/tauri';
+
+      const params   = new URLSearchParams(window.location.search);
+      const token    = params.get('token');
+      const username = params.get('username') ?? '';
+      const error    = params.get('error');
+
+      const status = document.getElementById('status')!;
+
+      if (error) {
+        status.textContent = `Error: ${decodeURIComponent(error)}`;
+        setTimeout(() => { window.location.replace('/login'); }, 2000);
+      } else if (token) {
+        storeAuthToken(decodeURIComponent(token), username)
+          .then(() => { window.location.replace('/home'); })
+          .catch((err) => {
+            status.textContent = `Error guardando sesión: ${err?.message ?? String(err)}`;
+            console.error('[callback] storeAuthToken failed:', err);
+            setTimeout(() => { window.location.replace('/login'); }, 3000);
+          });
+      } else {
+        window.location.replace('/login');
+      }
+    </script>
+  </body>
+</html>
