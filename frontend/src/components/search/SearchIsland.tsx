@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { search, type MediaType, type SearchResult } from '../../lib/search/index';
+import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
 
 type SearchTranslations = Translations['search'];
@@ -194,6 +195,10 @@ const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book'];
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = DETAIL_SUPPORTED.includes(result.type);
 
+  function handleMouseEnter() {
+    if (hasDetail) prefetchMediaData(result.externalId);
+  }
+
   function handleClick() {
     if (hasDetail) {
       if (result.authorNames?.length) {
@@ -210,6 +215,7 @@ function MediaCard({ result }: { result: SearchResult }) {
     <div
       className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
       onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
       role={hasDetail ? 'button' : undefined}
       tabIndex={hasDetail ? 0 : undefined}
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}

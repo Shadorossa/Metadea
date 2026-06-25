@@ -1,7 +1,8 @@
 :root {
-  --bg-primary: #05020a;
+  --bg-primary:  #05020a;
   --bg-elevated: #110022;
-  --bg-card: #0a0016;
+  --bg-card:     #0a0016;
+  --bg-card-rgb: 10 0 22;
 
   --text-main: #00ff66; /* Neon green */
   --text-muted: #ff0055; /* Neon magenta */
@@ -48,6 +49,8 @@ body {
 .search-tab,
 .media-relation-card,
 .media-relation-thumb,
+.media-char-card,
+.media-char-thumb,
 .media-banner-date-badge,
 .media-library-widget-box,
 .status-dropdown-trigger,
@@ -69,7 +72,8 @@ body {
 .search-tab.active,
 .search-input:focus,
 .input-dark:focus,
-.media-relation-card:hover {
+.media-relation-card:hover,
+.media-char-card:hover {
   border-color: var(--accent) !important;
   box-shadow: 0 0 10px var(--accent-glow) !important;
   background: var(--accent-soft) !important;
@@ -113,4 +117,16 @@ body {
 
 .tray-status-btn {
   border-radius: 0px !important;
+}
+
+/* Role and relation type badges */
+.media-char-role,
+.media-relation-type {
+  border-radius: 0px !important;
+  border: 1px solid var(--accent) !important;
+  background: rgba(0, 240, 255, 0.05) !important;
+  color: var(--accent) !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  text-transform: uppercase !important;
+  clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px)) !important;
 }

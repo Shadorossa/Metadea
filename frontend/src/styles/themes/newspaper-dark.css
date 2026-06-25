@@ -1,18 +1,19 @@
 :root {
-  --bg-primary: #121110;
-  --bg-elevated: #1a1918;
-  --bg-card: #201f1e;
+  --bg-primary:  #12110f;
+  --bg-elevated: #1c1a17;
+  --bg-card:     #282521;
+  --bg-card-rgb: 40 37 33;
 
-  --text-main: #e6dfd3; /* Eggshell / newsprint paper */
-  --text-muted: #9c9384;
-  --text-dim: #6e6557;
+  --text-main: #f5f2eb;
+  --text-muted: #9c8f80;
+  --text-dim: #7a726a;
 
-  --border-color: #3e3a35;
+  --border-color: #4a4237;
 
-  --accent: #dca364; /* Ink gold */
-  --accent-rgb: 220 163 100;
-  --accent-soft: rgba(220, 163, 100, 0.08);
-  --accent-border: #9c9384;
+  --accent: #c94a4a; /* Rojo editorial */
+  --accent-rgb: 201 74 74;
+  --accent-soft: rgba(201, 74, 74, 0.08);
+  --accent-border: #9c8f80;
   --accent-glow: transparent;
 
   --radius-sm: 0px;
@@ -44,6 +45,8 @@ body {
 .search-tab,
 .media-relation-card,
 .media-relation-thumb,
+.media-char-card,
+.media-char-thumb,
 .media-banner-date-badge,
 .media-library-widget-box,
 .status-dropdown-trigger,
@@ -71,7 +74,8 @@ body {
 .theme-card.active .theme-card-preview,
 .hof-btn--active,
 .search-tab.active,
-.media-relation-card:hover {
+.media-relation-card:hover,
+.media-char-card:hover {
   border: 3px double var(--accent) !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
@@ -114,4 +118,15 @@ h2, h3, .settings-panel-title {
 
 .tray-status-btn {
   border-radius: 0px !important;
+}
+
+/* Role and relation type badges */
+.media-char-role,
+.media-relation-type {
+  border-radius: 0px !important;
+  border: 1px dashed var(--border-color) !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  text-transform: uppercase !important;
 }

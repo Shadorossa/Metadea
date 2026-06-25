@@ -8,6 +8,11 @@ export interface AniListCharacter {
   image: { medium: string | null };
 }
 
+export interface AniListCharacterEdge {
+  role: string;
+  node: AniListCharacter;
+}
+
 export interface AniListStudio {
   name: string;
   siteUrl: string | null;
@@ -21,6 +26,7 @@ export interface AniListRelationEdge {
     format: string | null;
     title: { romaji: string | null };
     coverImage: { medium: string | null };
+    startDate: { year: number | null; month: number | null; day: number | null } | null;
   };
 }
 
@@ -46,7 +52,7 @@ export interface AniListMediaDetail {
   endDate: { year: number | null; month: number | null; day: number | null } | null;
   source: string | null;
   studios: { nodes: AniListStudio[] };
-  characters: { nodes: AniListCharacter[] };
+  characters: { pageInfo: { hasNextPage: boolean }; edges: AniListCharacterEdge[] };
   relations: { edges: AniListRelationEdge[] };
 }
 
@@ -66,29 +72,70 @@ const DETAIL_QUERY = `
       source
       studios(isMain: true) { nodes { name siteUrl } }
       characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
-        nodes { id name { full } image { medium } }
+        pageInfo { hasNextPage }
+        edges { role node { id name { full } image { medium } } }
       }
       relations {
         edges {
           relationType
-          node { id type format title { romaji } coverImage { medium } }
+          node { id type format title { romaji } coverImage { medium } startDate { year month day } }
         }
       }
     }
   }
 `;
 
-export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail | null> {
+const CHARACTERS_QUERY = `
+  query MediaCharacters($id: Int!, $page: Int!) {
+    Media(id: $id) {
+      characters(sort: [ROLE, RELEVANCE], page: $page, perPage: 25) {
+        pageInfo { hasNextPage }
+        edges { role node { id name { full } image { medium } } }
+      }
+    }
+  }
+`;
+
+async function anilistPost<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
   try {
     const res = await fetch('https://graphql.anilist.co', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: DETAIL_QUERY, variables: { id } }),
+      body: JSON.stringify({ query, variables }),
     });
     if (!res.ok) return null;
-    const json = await res.json() as { data?: { Media?: AniListMediaDetail } };
-    return json.data?.Media ?? null;
+    return (await res.json() as { data?: T }).data ?? null;
   } catch { return null; }
+}
+
+export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail | null> {
+  const data = await anilistPost<{ Media: AniListMediaDetail }>( DETAIL_QUERY, { id });
+  const media = data?.Media ?? null;
+  if (!media) return null;
+
+  // Si hay más páginas de personajes, las pedimos todas en serie
+  if (media.characters.pageInfo.hasNextPage) {
+    let page = 2;
+    const extraEdges: AniListCharacterEdge[] = [];
+
+    while (true) {
+      const pageData = await anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(
+        CHARACTERS_QUERY, { id, page }
+      );
+      const chars = pageData?.Media?.characters;
+      if (!chars) break;
+      extraEdges.push(...chars.edges);
+      if (!chars.pageInfo.hasNextPage) break;
+      page++;
+    }
+
+    media.characters.edges = [
+      ...media.characters.edges,
+      ...extraEdges,
+    ];
+  }
+
+  return media;
 }
 
 interface AniListMedia {

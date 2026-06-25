@@ -25,6 +25,14 @@ function fmtDate(d: NullableDate): string {
   });
 }
 
+function formatDescription(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined;
+  return raw.replace(
+    /\(Source:\s*([^)]+)\)/g,
+    '<span class="media-description-source">&nbsp;&nbsp;—&nbsp;Source: $1</span>'
+  );
+}
+
 export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): MediaPageData {
   const tm = getT().media;
 
@@ -63,14 +71,24 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
 
   const genreDots = raw.genres.join(' · ');
 
-  const characters = raw.characters.nodes.map(c => ({
-    name:  c.name.full,
-    image: c.image.medium ?? undefined,
+  const characters = raw.characters.edges.map(e => ({
+    name:  e.node.name.full,
+    image: e.node.image.medium ?? undefined,
+    role:  e.role,
   }));
 
   const relations: MediaRelation[] = raw.relations.edges
     .filter(e => e.relationType !== 'CHARACTER' && e.node.coverImage?.medium)
-    .sort((a, b) => (RELATION_PRIORITY[a.relationType] ?? 99) - (RELATION_PRIORITY[b.relationType] ?? 99))
+    .sort((a, b) => {
+      const typePriority = (RELATION_PRIORITY[a.relationType] ?? 99) - (RELATION_PRIORITY[b.relationType] ?? 99);
+      if (typePriority !== 0) return typePriority;
+      // Dentro del mismo tipo, ordenar por startDate (más antiguo primero)
+      const aYear = a.node.startDate?.year ?? 0;
+      const aMonth = a.node.startDate?.month ?? 0;
+      const bYear = b.node.startDate?.year ?? 0;
+      const bMonth = b.node.startDate?.month ?? 0;
+      return (aYear * 12 + aMonth) - (bYear * 12 + bMonth);
+    })
     .map(e => {
       let typeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
       if (e.relationType === 'ADAPTATION' && mediaType === 'anime' && e.node.type === 'MANGA') {
@@ -104,7 +122,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     genreDots,
     metaLines,
     dateBadge,
-    description:  raw.description ?? undefined,
+    description:  formatDescription(raw.description),
     stats: [],
     characters,
     relations,
