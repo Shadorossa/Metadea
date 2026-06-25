@@ -1,8 +1,8 @@
-:root {
+html[data-theme="newspaper-dark"], [data-theme="newspaper-dark"] {
   --bg-primary:  #12110f;
   --bg-elevated: #1c1a17;
   --bg-card:     #282521;
-  --bg-card-rgb: 40 37 33;
+  --bg-card-rgb: 40, 37, 33;
 
   --text-main: #f5f2eb;
   --text-muted: #9c8f80;
@@ -10,10 +10,10 @@
 
   --border-color: #4a4237;
 
-  --accent: #c94a4a; /* Rojo editorial */
-  --accent-rgb: 201 74 74;
-  --accent-soft: rgba(201, 74, 74, 0.08);
-  --accent-border: #9c8f80;
+  --accent: #a69a7d; /* Muted golden accent from Metamedia Newspaper Dark */
+  --accent-rgb: 166 154 125;
+  --accent-soft: rgba(166, 154, 125, 0.08);
+  --accent-border: #4a4237;
   --accent-glow: transparent;
 
   --radius-sm: 0px;
@@ -43,10 +43,6 @@ body {
 .search-input,
 .search-action-btn,
 .search-tab,
-.media-relation-card,
-.media-relation-thumb,
-.media-char-card,
-.media-char-thumb,
 .media-banner-date-badge,
 .media-library-widget-box,
 .status-dropdown-trigger,
@@ -73,9 +69,7 @@ body {
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
 .hof-btn--active,
-.search-tab.active,
-.media-relation-card:hover,
-.media-char-card:hover {
+.search-tab.active {
   border: 3px double var(--accent) !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
@@ -92,9 +86,10 @@ body {
 }
 
 /* Header underlines looking like newspaper section dividers */
-h2, h3, .settings-panel-title {
+h2, h3, .settings-panel-title, .section-label {
   border-bottom: 2px solid var(--text-main) !important;
   font-style: italic;
+  padding-bottom: 4px;
 }
 
 #app-bg {
@@ -129,4 +124,213 @@ h2, h3, .settings-panel-title {
   color: var(--text-muted) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   text-transform: uppercase !important;
+}
+
+/* Star rating color overrides to match Metamedia Newspaper Dark (golden stars) */
+#media-rating-stars .page-star-fill svg,
+.star-filled-wrap svg,
+.star-preview-full svg,
+.star-preview-half svg {
+  color: var(--accent) !important;
+}
+
+.star-empty {
+  color: rgba(255, 255, 255, 0.2) !important;
+  opacity: 1 !important;
+}
+
+/* Status colors override to match Metamedia Newspaper Dark muted palette */
+.tray-status-btn.active[data-status="planning"],
+.status-dropdown-trigger.text-planning {
+  color: #a69a7d !important;
+}
+.tray-status-btn.active[data-status="watching"],
+.tray-status-btn.active[data-status="reading"],
+.status-dropdown-trigger.text-watching,
+.status-dropdown-trigger.text-reading {
+  color: #c94a4a !important;
+}
+.tray-status-btn.active[data-status="completed"],
+.status-dropdown-trigger.text-completed {
+  color: #8da67d !important;
+}
+.tray-status-btn.active[data-status="paused"],
+.status-dropdown-trigger.text-paused {
+  color: #7da2a6 !important;
+}
+.tray-status-btn.active[data-status="dropped"],
+.status-dropdown-trigger.text-dropped {
+  color: #9c8f80 !important;
+}
+
+/* ── Media Page Overrides for Newspaper Dark ────────────────────────────── */
+
+.media-cover-img {
+  filter: grayscale(0.35) sepia(0.15) !important;
+}
+
+.media-relation-thumb img {
+  filter: none !important;
+}
+
+.media-char-thumb img {
+  filter: none !important;
+}
+
+.media-char-card-overlay, 
+.media-relation-card-overlay {
+  background: none !important;
+}
+
+.media-relation-bg-layer img {
+  filter: none !important;
+  opacity: 0.12 !important;
+}
+
+.media-char-bg-layer img {
+  filter: none !important;
+  opacity: 0.12 !important;
+}
+
+.media-char-name,
+.media-relation-title {
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.media-genres-dots {
+  color: var(--text-muted) !important;
+}
+
+.media-studios-label,
+.media-cover-meta {
+  color: var(--text-dim) !important;
+}
+
+.media-title-main {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+}
+
+.media-title-native {
+  color: var(--text-muted) !important;
+}
+
+.media-title-english {
+  color: var(--text-dim) !important;
+}
+
+.media-stat-label {
+  color: var(--text-muted) !important;
+}
+
+.media-stat-value {
+  color: var(--text-main) !important;
+}
+
+.media-stat-item {
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.media-stat-item:first-child {
+  border-top: 1px solid var(--border-color) !important;
+}
+
+.media-description-text {
+  color: var(--text-muted) !important;
+}
+
+.media-description-text strong, 
+.media-description-text b {
+  color: var(--text-main) !important;
+}
+
+/* Related items and Characters Cards Style */
+.media-relation-card,
+.media-char-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 3px 3px 0px #080706 !important;
+  transition: all 0.2s ease !important;
+  background-color: var(--bg-card) !important;
+}
+
+.media-relation-card:hover,
+.media-char-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px #080706 !important;
+  border: 3px double var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+.media-relation-thumb,
+.media-char-thumb {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.media-cover-wrap {
+  box-shadow: 5px 5px 0px #080706 !important;
+  transition: all 0.2s ease !important;
+}
+
+.media-cover-wrap:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 8px 8px 0px #080706 !important;
+}
+
+.media-library-widget-box {
+  background: var(--bg-elevated) !important;
+  box-shadow: 4px 4px 0px #080706 !important;
+}
+
+.status-dropdown-trigger {
+  border-radius: 0px !important;
+}
+
+.status-dropdown-tray {
+  border-radius: 0px !important;
+  box-shadow: 3px 3px 0px #080706 !important;
+}
+
+.media-pagination-page {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-muted) !important;
+  box-shadow: 2px 2px 0px #080706 !important;
+  transition: all 0.2s ease !important;
+}
+
+.media-pagination-page:hover {
+  background-color: var(--bg-card) !important;
+  color: var(--accent) !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px #080706 !important;
+}
+
+.media-pagination-page.active {
+  background-color: var(--accent) !important;
+  color: #12110f !important;
+  border-color: var(--border-color) !important;
+}
+
+.media-load-more-btn {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 3px 3px 0px #080706 !important;
+  transition: all 0.2s ease !important;
+}
+
+.media-load-more-btn:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0px #080706 !important;
 }
