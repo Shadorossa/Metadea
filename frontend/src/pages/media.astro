@@ -14,184 +14,129 @@ const lang = getLang(Astro.url);
 
 <script>
   import { fetchAniListDetail } from '../lib/search/providers/anilist';
-  import type { AniListMediaDetail } from '../lib/search/providers/anilist';
-  import { getT, getLangCode } from '../i18n/client';
+  import { fetchOpenLibWork, fetchOpenLibAuthor } from '../lib/search/providers/openlibrary';
+  import { mapAniListToMedia } from '../lib/media/anilist-mapper';
+  import { mapOpenLibToMedia } from '../lib/media/openlibrary-mapper';
+  import type { MediaPageData } from '../lib/media/types';
+  import { getT } from '../i18n/client';
   import { getLibraryItems, saveLibraryItem } from '../lib/tauri';
 
-  const t    = getT();
-  const tm   = t.media;
+  const tm   = getT().media;
   const root = document.getElementById('media-root')!;
 
   // ── Parse URL param ──────────────────────────────────────────────────────
-  const params  = new URLSearchParams(window.location.search);
-  const rawId   = params.get('id') ?? '';
-  const [type, numericStr] = rawId.split(':');
-  const numericId = parseInt(numericStr ?? '', 10);
+  const rawId      = new URLSearchParams(window.location.search).get('id') ?? '';
+  const firstColon = rawId.indexOf(':');
+  const type       = rawId.slice(0, firstColon);
+  const idStr      = rawId.slice(firstColon + 1);
 
-  if (!numericId || !['anime', 'manga', 'novel'].includes(type)) {
-    root.innerHTML = renderError(tm.not_found);
-  } else {
-    root.innerHTML = renderLoading();
-    fetchAniListDetail(numericId).then(media => {
-      if (!media) { root.innerHTML = renderError(tm.not_found); return; }
-      root.innerHTML = buildMediaHtml(media, type);
+  const ANILIST_TYPES     = ['anime', 'manga', 'novel'];
+  const OPENLIBRARY_TYPES = ['book'];
+
+  // ── Router ───────────────────────────────────────────────────────────────
+  root.innerHTML = renderLoading();
+
+  if (ANILIST_TYPES.includes(type)) {
+    const numericId = parseInt(idStr, 10);
+    if (!numericId) { root.innerHTML = renderError(tm.not_found); }
+    else {
+      fetchAniListDetail(numericId).then(raw => {
+        if (!raw) { root.innerHTML = renderError(tm.not_found); return; }
+        root.innerHTML = buildMediaHtml(mapAniListToMedia(raw, type));
+        initInteractions();
+      });
+    }
+  } else if (OPENLIBRARY_TYPES.includes(type)) {
+    const cachedNames  = sessionStorage.getItem(`book_authors:${rawId}`);
+    const cachedKey    = sessionStorage.getItem(`book_author_key:${rawId}`);
+    const preloadNames: string[] | null = cachedNames ? JSON.parse(cachedNames) : null;
+
+    const workPromise   = fetchOpenLibWork(idStr);
+
+    // Si tenemos el key en caché arrancamos ambos fetches en paralelo;
+    // si no, esperamos la obra para extraer el key (caso directo por URL)
+    const authorPromise = cachedKey
+      ? fetchOpenLibAuthor(cachedKey)
+      : workPromise.then(w => {
+          const key = w?.authors?.[0]?.author?.key ?? null;
+          return key ? fetchOpenLibAuthor(key) : null;
+        });
+
+    Promise.all([workPromise, authorPromise]).then(([work, authorDetail]) => {
+      if (!work) { root.innerHTML = renderError(tm.not_found); return; }
+
+      const authorNames = preloadNames ?? (authorDetail ? [authorDetail] : []);
+
+      root.innerHTML = buildMediaHtml(mapOpenLibToMedia(work, authorNames, rawId));
       initInteractions();
     });
+  } else {
+    root.innerHTML = renderError(tm.not_found);
   }
 
   // ── Loading / Error ───────────────────────────────────────────────────────
   function renderLoading(): string {
     return `<div class="media-loading"><div class="spinner"></div></div>`;
   }
-
   function renderError(msg: string): string {
     return `<div class="media-error"><span>${msg}</span></div>`;
   }
 
-  // ── Status CSS class (no i18n — valores de API) ───────────────────────────
-  const STATUS_CLASS: Record<string, string> = {
-    RELEASING:        'media-badge--status-airing',
-    NOT_YET_RELEASED: 'media-badge--status-upcoming',
-  };
-
-  type NullableDate = { year: number | null; month: number | null; day: number | null } | null;
-  function fmtDate(d: NullableDate): string {
-    if (!d?.year) return '';
-    if (!d.month) return String(d.year);
-    const date = new Date(d.year, d.month - 1, d.day ?? 1);
-    return date.toLocaleDateString(getLangCode(), { year: 'numeric', month: 'short', day: d.day ? 'numeric' : undefined });
-  }
-
-  // ── Main render ───────────────────────────────────────────────────────────
-
-  function buildMediaHtml(media: AniListMediaDetail, mediaType: string): string {
-    const titleMain   = media.title.romaji ?? media.title.english ?? media.title.native ?? '—';
-    const titleNative = media.title.native && media.title.native !== titleMain ? media.title.native : '';
-    const titleEng    = media.title.english && media.title.english !== titleMain ? media.title.english : '';
-
-    const coverSrc  = media.coverImage?.extraLarge ?? media.coverImage?.large ?? '';
-    const coverColor = media.coverImage?.color ?? '#1a1a2e';
-
-    // Banner
-    const bannerHtml = media.bannerImage
-      ? `<img class="media-banner-img" src="${media.bannerImage}" alt="" loading="lazy">`
-      : '';
-    const bannerClass = media.bannerImage ? 'media-banner' : 'media-banner media-banner--color';
-    const bannerStyle = media.bannerImage ? '' : `style="--banner-color: linear-gradient(135deg, ${coverColor}22, ${coverColor}44)"`;
-
-    // Meta badges
-    const formatLabel = (tm.formats as Record<string, string>)[media.format ?? ''] ?? media.format ?? '';
-    const statusLabel = (tm.statuses as Record<string, string>)[media.status ?? ''] ?? media.status ?? '';
-    const statusClass = STATUS_CLASS[media.status ?? ''] ?? '';
-
-    const durationInfo = media.duration ? `${media.duration} min/ep` : '';
-
-    const startDateFormatted = fmtDate(media.startDate);
-    const endDateFormatted = fmtDate(media.endDate);
-    let dateBadgeHtml = '';
-    if (startDateFormatted) {
-      dateBadgeHtml = startDateFormatted;
-      if (endDateFormatted) {
-        dateBadgeHtml += ` - ${endDateFormatted}`;
-      }
-    }
-
-    const studiosList = media.studios.nodes.map(n => n.name).join(', ');
-    const source = media.source ? (tm.sources as Record<string, string>)[media.source] ?? media.source : '';
-
-    // Score
-    const score = media.averageScore ? (media.averageScore / 10).toFixed(1) : null;
-
-    let quickMeta = formatLabel;
-    if (mediaType === 'anime') {
-      if (media.episodes) quickMeta += ` · ${media.episodes} ep`;
-      if (media.duration) quickMeta += ` · ${media.duration} min`;
-    } else {
-      if (media.chapters) quickMeta += ` · ${media.chapters} cap`;
-      if (media.volumes) quickMeta += ` · ${media.volumes} vol`;
-    }
-
-    // Stats column items (removed status, source, and score as requested)
-    const statItems: [string, string][] = [];
-    const statsHtml = statItems.map(([label, val]) => `
+  // ── Main render (acepta MediaPageData normalizado) ────────────────────────
+  function buildMediaHtml(data: MediaPageData): string {
+    const titleMain    = data.titleMain;
+    const titleNative  = data.titleNative  ?? '';
+    const titleEng     = data.titleEnglish ?? '';
+    const coverSrc     = data.cover ?? '';
+    const statusLabel  = data.statusLabel  ?? '';
+    const statusClass  = data.statusClass  ?? '';
+    const genreDots    = data.genreDots    ?? '';
+    const studiosList  = data.metaLines[0] ?? '';
+    const quickMeta    = data.metaLines[1] ?? '';
+    const dateBadgeHtml = data.dateBadge   ?? '';
+    const desc         = data.description  ?? '';
+    const statsHtml = data.stats.map(s => `
       <div class="media-stat-item">
-        <span class="media-stat-label">${label}</span>
-        <span class="media-stat-value">${val}</span>
+        <span class="media-stat-label">${s.label}</span>
+        <span class="media-stat-value">${s.value}</span>
       </div>`).join('');
 
-    // Genres as dot-separated text
-    const genreDots = media.genres.join(' · ');
+    const bannerHtml  = data.bannerImage
+      ? `<img class="media-banner-img" src="${data.bannerImage}" alt="" loading="lazy">`
+      : '';
+    const bannerClass = data.bannerImage ? 'media-banner' : 'media-banner media-banner--color';
+    const bannerStyle = data.bannerImage ? '' : `style="--banner-color: ${data.bannerColor}"`;
 
-    // Description
-    const desc = media.description ?? '';
-
-    // Characters
-    const charCards = media.characters.nodes.map(c => `
+    const charCards = data.characters.map(c => `
       <div class="media-char-card">
-        <img class="media-char-img" src="${c.image.medium ?? ''}" alt="${c.name.full}" loading="lazy">
-        <span class="media-char-name">${c.name.full}</span>
+        ${c.image ? `<img class="media-char-img" src="${c.image}" alt="${c.name}" loading="lazy">` : '<div class="media-char-img"></div>'}
+        <span class="media-char-name">${c.name}</span>
       </div>
     `).join('');
 
-    // Relations
-    const validRelations = media.relations.edges.filter(e =>
-      e.relationType !== 'CHARACTER' && e.node.coverImage?.medium,
-    );
-
-    const RELATION_PRIORITY: Record<string, number> = {
-      PARENT: 1,      // Source / Original
-      ADAPTATION: 2,  // Source / Adaptation
-      PREQUEL: 3,     // Prequel
-      SEQUEL: 4,      // Sequel
-      SPIN_OFF: 5,    // Spin-off
-      ALTERNATIVE: 6, // Alternative
-      SUMMARY: 7,     // Summary
-    };
-
-    validRelations.sort((a, b) => {
-      const prioA = RELATION_PRIORITY[a.relationType] ?? 99;
-      const prioB = RELATION_PRIORITY[b.relationType] ?? 99;
-      return prioA - prioB;
-    });
-
-    const relationCards = validRelations.map(e => {
-      const relTitle = e.node.title.romaji ?? e.node.title.english ?? e.node.title.native ?? '';
-      let relTypeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
-      if (e.relationType === 'ADAPTATION' && mediaType === 'anime' && e.node.type === 'MANGA') {
-        relTypeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Fuente';
-      }
-      const relCover = e.node.coverImage?.medium ?? e.node.coverImage?.large ?? '';
-      const relPrefix = e.node.type?.toLowerCase() === 'anime' ? 'anime' : 'manga';
-      const relUrl = `/media?id=${relPrefix}:${e.node.id}`;
-
-      return `
-        <a href="${relUrl}" class="media-relation-card group">
-          <!-- Background cover blur -->
-          <div class="media-relation-bg-layer">
-            ${relCover ? `<img src="${relCover}" alt="" loading="lazy">` : ''}
+    const relationCards = data.relations.map(r => `
+      <a href="${r.url ?? '#'}" class="media-relation-card group">
+        <div class="media-relation-bg-layer">
+          ${r.cover ? `<img src="${r.cover}" alt="" loading="lazy">` : ''}
+        </div>
+        <div class="media-relation-card-overlay"></div>
+        <div class="media-relation-card-content">
+          <div class="media-relation-thumb">
+            ${r.cover ? `<img src="${r.cover}" alt="${r.title}" loading="lazy">` : ''}
           </div>
-          <div class="media-relation-card-overlay"></div>
-          
-          <div class="media-relation-card-content">
-            <!-- Floating thumbnail -->
-            <div class="media-relation-thumb">
-              ${relCover ? `<img src="${relCover}" alt="${relTitle}" loading="lazy">` : ''}
-            </div>
-            <!-- Info -->
-            <div class="media-relation-info">
-              <span class="media-relation-type">${relTypeLabel}</span>
-              <span class="media-relation-title">${relTitle}</span>
-            </div>
+          <div class="media-relation-info">
+            <span class="media-relation-type">${r.typeLabel}</span>
+            <span class="media-relation-title">${r.title}</span>
           </div>
-        </a>
-      `;
-    }).join('');
+        </div>
+      </a>
+    `).join('');
 
-    const PLUS_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const PLUS_ICON  = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
     const CHECK_ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
-    const progressLabel = mediaType === 'anime' ? 'Viendo' : (mediaType === 'manga' || mediaType === 'novel' ? 'Leyendo' : 'Progreso');
-    const progressStatus = mediaType === 'anime' ? 'watching' : (mediaType === 'manga' || mediaType === 'novel' ? 'reading' : 'watching');
+    const progressLabel  = data.progressLabel;
+    const progressStatus = data.progressStatus;
 
     return `
       <!-- Hero -->
@@ -212,7 +157,7 @@ const lang = getLang(Astro.url);
           <!-- Centro: cover -->
           <div class="media-cover-column">
             <div class="media-cover-wrap" id="media-add-btn"
-                 data-external-id="${mediaType}:${media.id}" data-type="${mediaType}"
+                 data-external-id="${data.externalId}" data-type="${data.type}"
                  role="button" tabindex="0" aria-label="${tm.add_to_library.replace('\n', ' ')}">
               ${coverSrc ? `<img class="media-cover-img" src="${coverSrc}" alt="${titleMain}">` : ''}
               <div class="media-cover-overlay">
@@ -224,7 +169,7 @@ const lang = getLang(Astro.url);
             </div>
 
             <!-- Library interactive section (horizontal box) -->
-            <div class="media-library-widget-box" data-external-id="${mediaType}:${media.id}" data-type="${mediaType}">
+            <div class="media-library-widget-box" data-external-id="${data.externalId}" data-type="${data.type}">
               <div class="media-library-row-horizontal">
                 <!-- Status selector dropdown horizontal -->
                 <div class="media-status-dropdown-container group/status">

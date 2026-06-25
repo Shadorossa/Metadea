@@ -36,6 +36,10 @@ export interface SearchResult {
   releaseDay: number | null;
   /** Matches media_catalog.score_global — normalised to 0–10 */
   scoreGlobal: number | null;
+  /** Author names — populated by OpenLibrary search, null for other providers */
+  authorNames?: string[] | null;
+  /** First author key e.g. "/authors/OL26320A" — OpenLibrary only */
+  authorKey?: string | null;
 }
 
 export async function search(
