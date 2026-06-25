@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/local.css';
+import { getLang } from '../i18n/index';
+import LocalLibrary from '../components/local/LocalLibrary';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Biblioteca local — Metadea" lang={lang} activePage="local">
+  <div class="local-page">
+    <LocalLibrary client:load />
+  </div>
+</BaseLayout>

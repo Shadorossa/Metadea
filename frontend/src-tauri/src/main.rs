@@ -2,13 +2,16 @@
 
 mod db;
 mod commands;
+mod igdb;
 
 use commands::*;
 use db::Database;
+use igdb::IgdbTokenCache;
 
 fn main() {
   tauri::Builder::default()
     .manage(Database::new())
+    .manage(IgdbTokenCache::default())
     .setup(|app| {
       #[cfg(debug_assertions)]
       {
@@ -27,6 +30,14 @@ fn main() {
       save_library_item,
       get_library_items,
       get_library_stats,
+      scan_all_games,
+      pick_folder,
+      scan_folder_contents,
+      get_local_folders,
+      save_local_folders,
+      read_env_config,
+      write_env_config,
+      igdb_search,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

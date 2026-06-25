@@ -317,3 +317,76 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* ── Environment panel ────────────────────────────────────────────────────────── */
+
+.env-service-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 1.25rem;
+}
+
+.env-service-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.env-service-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.env-service-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.env-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.env-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.env-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.env-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  font-family: 'Courier New', monospace;
+  outline: none;
+  transition: border-color var(--anim-base) var(--anim-ease);
+  width: 100%;
+}
+
+.env-input:focus {
+  border-color: var(--accent);
+}
+
+.env-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+

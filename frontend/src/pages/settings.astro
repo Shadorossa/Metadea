@@ -17,6 +17,10 @@ const lang = getLang(Astro.url);
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           Perfil
         </button>
+        <button class="settings-tab" data-tab="environment">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
+          Entorno
+        </button>
         <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">Apariencia</span>
         <button class="settings-tab" data-tab="appearance">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
@@ -63,6 +67,38 @@ const lang = getLang(Astro.url);
               <input type="file" id="banner-input" accept="image/*" hidden>
             </div>
 
+          </div>
+        </div>
+
+        <!-- Tab: Entorno -->
+        <div class="settings-panel hidden" id="panel-environment">
+          <h2 class="settings-panel-title">Entorno</h2>
+
+          <div class="settings-section">
+            <h3 class="settings-section-title">Claves de API</h3>
+            <p class="settings-hint">Estas claves se guardan solo en tu dispositivo y nunca se envían a ningún servidor.</p>
+
+            <!-- IGDB -->
+            <div class="env-service-block">
+              <div class="env-service-header">
+                <span class="env-service-name">IGDB</span>
+                <span class="env-service-hint">Obtén tus claves en <strong>dev.twitch.tv</strong> con una cuenta de Twitch</span>
+              </div>
+              <div class="env-fields">
+                <div class="env-field">
+                  <label class="env-label" for="igdb-client-id">Client ID</label>
+                  <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="env-field">
+                  <label class="env-label" for="igdb-client-secret">Client Secret</label>
+                  <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
+                </div>
+              </div>
+              <div class="env-actions">
+                <button class="btn btn--sm btn--primary" id="igdb-save-btn">Guardar</button>
+                <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">Limpiar</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -319,6 +355,50 @@ const lang = getLang(Astro.url);
   }
 
   initThemePicker();
+
+  // ── Environment / IGDB keys ────────────────────────────────────────────────
+  async function initEnvironment() {
+    const clientIdInput     = document.getElementById('igdb-client-id')     as HTMLInputElement;
+    const clientSecretInput = document.getElementById('igdb-client-secret') as HTMLInputElement;
+    const saveBtn           = document.getElementById('igdb-save-btn')!;
+    const clearBtn          = document.getElementById('igdb-clear-btn')!;
+
+    const { readEnvConfig, writeEnvConfig } = await import('../lib/tauri');
+
+    // Load saved values from env.json
+    try {
+      const cfg = await readEnvConfig();
+      clientIdInput.value     = cfg.igdb_client_id     ?? '';
+      clientSecretInput.value = cfg.igdb_client_secret ?? '';
+    } catch {
+      // Not in Tauri or file doesn't exist yet
+    }
+
+    saveBtn.addEventListener('click', async () => {
+      try {
+        await writeEnvConfig({
+          igdb_client_id:     clientIdInput.value.trim() || undefined,
+          igdb_client_secret: clientSecretInput.value.trim() || undefined,
+        });
+        showToast('Claves de IGDB guardadas');
+      } catch {
+        showToast('Error al guardar');
+      }
+    });
+
+    clearBtn.addEventListener('click', async () => {
+      try {
+        await writeEnvConfig({});
+        clientIdInput.value     = '';
+        clientSecretInput.value = '';
+        showToast('Claves eliminadas');
+      } catch {
+        showToast('Error al eliminar');
+      }
+    });
+  }
+
+  initEnvironment();
 
   // ── Tab switching ──────────────────────────────────────────────────────────
   document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {

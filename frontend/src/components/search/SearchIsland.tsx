@@ -63,7 +63,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       setResults(searchResults);
       setStatus('done');
     } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
+      const isAbort = error instanceof Error && error.name === 'AbortError';
+      if (!isAbort) {
+        console.error('[search]', error);
         setStatus('error');
       }
     }
