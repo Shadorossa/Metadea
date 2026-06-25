@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   scanAllGames, pickFolder, scanFolderContents,
-  getLocalFolders, saveLocalFolders,
+  getLocalFolders, saveLocalFolders, debugScanInfo,
   type LocalGame, type LocalFolderEntry, type SavedFolder,
 } from '../../lib/tauri';
 
@@ -269,6 +269,8 @@ export default function LocalLibrary() {
   const [newLabel,         setNewLabel]         = useState('');
   const [activePlatform,   setActivePlatform]   = useState<PlatformId | null>(null);
   const [selectedGame,     setSelectedGame]     = useState<LocalGame | null>(null);
+  const [scanError,        setScanError]        = useState<string | null>(null);
+  const [debugInfo,        setDebugInfo]        = useState<string | null>(null);
 
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -295,12 +297,17 @@ export default function LocalLibrary() {
 
   const loadGames = useCallback(() => {
     setGamesState('loading');
+    setScanError(null);
+    setDebugInfo(null);
     scanAllGames()
       .then(g => {
         setGames(g);
         setGamesState(g.length === 0 ? 'empty' : 'done');
       })
-      .catch(() => setGamesState('empty'));
+      .catch((e: unknown) => {
+        setScanError(typeof e === 'string' ? e : String(e));
+        setGamesState('empty');
+      });
   }, []);
 
   // Auto-load games on first render of videojuegos category
@@ -458,6 +465,23 @@ export default function LocalLibrary() {
                 <IconMonitor />
                 <p>No se encontraron juegos instalados</p>
                 <span>Steam, Epic, GOG, Xbox y EA son compatibles</span>
+                {scanError && (
+                  <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
+                    Error: {scanError}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
+                  onClick={() => debugScanInfo().then(setDebugInfo).catch(e => setDebugInfo(String(e)))}
+                >
+                  Diagnóstico
+                </button>
+                {debugInfo && (
+                  <pre style={{ fontSize: '0.65rem', textAlign: 'left', marginTop: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: '4px', maxWidth: '500px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                    {debugInfo}
+                  </pre>
+                )}
               </div>
             ) : (
               Array.from(groupedGames.entries()).map(([launcher, list], idx) => (

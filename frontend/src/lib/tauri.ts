@@ -181,3 +181,9 @@ export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
 export async function igdbSearch(name: string): Promise<IgdbGame[]> {
   return invoke<IgdbGame[]>('igdb_search', { name });
 }
+
+// ─── Debug ────────────────────────────────────────────────────────────────────
+
+export async function debugScanInfo(): Promise<string> {
+  return invoke<string>('debug_scan_info');
+}
