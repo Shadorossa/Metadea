@@ -161,9 +161,13 @@ function IgdbPickerModal({ game, onClose, onPicked }: {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [applying, setApplying]     = useState<number | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const searchTimerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    igdbSearchCandidates(game.name).then(r => {
+  const runSearch = useCallback((query: string) => {
+    setLoading(true);
+    setError(null);
+    igdbSearchCandidates(query).then(r => {
       setCandidates(r);
       setLoading(false);
     }).catch(e => {
@@ -171,7 +175,20 @@ function IgdbPickerModal({ game, onClose, onPicked }: {
       setError(String(e));
       setLoading(false);
     });
-  }, [game.name]);
+  }, []);
+
+  // Initial search on open
+  useEffect(() => { runSearch(game.name); }, [game.name, runSearch]);
+
+  // Debounced search as user types
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearchText(val);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      runSearch(val.trim() || game.name);
+    }, 500);
+  };
 
   const handlePick = async (candidate: IgdbCandidate) => {
     if (!game.app_id) return;
@@ -192,6 +209,22 @@ function IgdbPickerModal({ game, onClose, onPicked }: {
         <div className="igdb-picker-header">
           <span>Seleccionar juego en IGDB</span>
           <button className="igdb-picker-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="igdb-picker-search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            className="igdb-picker-search-input"
+            type="text"
+            placeholder={game.name}
+            value={searchText}
+            onChange={handleSearchChange}
+            autoFocus
+          />
+          {searchText && (
+            <button className="igdb-picker-search-clear" onClick={() => { setSearchText(''); runSearch(game.name); }}>✕</button>
+          )}
         </div>
         {loading ? (
           <div className="igdb-picker-loading">Buscando...</div>
