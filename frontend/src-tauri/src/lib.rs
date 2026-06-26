@@ -688,6 +688,28 @@ async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String
     Ok(token)
 }
 
+async fn igdb_query(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    endpoint: &str,
+    body: &str,
+) -> Result<serde_json::Value, String> {
+    let resp = client
+        .post(endpoint)
+        .header("Client-ID", client_id)
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Content-Type", "text/plain")
+        .body(body.to_string())
+        .send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        let s = resp.status();
+        let b = resp.text().await.unwrap_or_default();
+        return Err(format!("IGDB error (HTTP {}): {}", s, b));
+    }
+    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+}
+
 fn sanitize_folder_name(name: &str) -> String {
     name.chars()
         .map(|c| match c {
@@ -700,9 +722,38 @@ fn sanitize_folder_name(name: &str) -> String {
         .to_string()
 }
 
-/// Downloads the IGDB cover for a Steam game.
-/// Saves to `{app_data}/metadata/{game_name}/{image_id}_cover.jpg`.
-/// Returns the absolute path, or None if no cover found in IGDB.
+/// Extracts (cover_image_id, igdb_game_id) from a /games IGDB entry.
+fn extract_cover(game: &serde_json::Value) -> (Option<String>, Option<u64>) {
+    let cover   = game["cover"]["image_id"].as_str().map(String::from);
+    let game_id = game["id"].as_u64();
+    (cover, game_id)
+}
+
+/// Fetches a banner image_id from IGDB using a known game ID.
+/// Tries /artworks (opaque only, alpha_channel=false) first, then /screenshots.
+async fn fetch_banner_id(
+    client:    &reqwest::Client,
+    client_id: &str,
+    token:     &str,
+    game_id:   u64,
+) -> Option<String> {
+    // alpha_channel = false excludes transparent logos/keyart with no background
+    let art = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/artworks",
+        &format!("fields image_id; where game = {} & alpha_channel = false; limit 1;", game_id),
+    ).await.ok()?;
+    if let Some(id) = art[0]["image_id"].as_str() {
+        return Some(id.to_string());
+    }
+    let ss = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/screenshots",
+        &format!("fields image_id; where game = {}; limit 1;", game_id),
+    ).await.ok()?;
+    ss[0]["image_id"].as_str().map(String::from)
+}
+
+/// Downloads cover + banner for a Steam game from IGDB.
+/// Files saved under `{app_data}/metadata/{app_id}/`.
 #[tauri::command]
 async fn igdb_get_cover_by_steam_id(
     app_handle: tauri::AppHandle,
@@ -710,19 +761,21 @@ async fn igdb_get_cover_by_steam_id(
     game_name: String,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    let meta_root = app_data_dir.join("metadata");
-    let game_dir  = meta_root.join(&app_id);
+    let meta_root    = app_data_dir.join("metadata");
+    let game_dir     = meta_root.join(&app_id);
 
-    // Early exit: if we already have a _cover.jpg for this game, skip IGDB entirely.
+    // Early exit only when BOTH cover and banner already exist on disk.
     if game_dir.exists() {
+        let mut has_cover = false;
+        let mut has_banner = false;
         if let Ok(entries) = std::fs::read_dir(&game_dir) {
-            for entry in entries.flatten() {
-                let fname = entry.file_name().to_string_lossy().to_string();
-                if fname.ends_with("_cover.jpg") {
-                    return Ok(Some(entry.path().to_string_lossy().to_string()));
-                }
+            for e in entries.flatten() {
+                let n = e.file_name().to_string_lossy().to_string();
+                if n.ends_with("_cover.jpg")  { has_cover  = true; }
+                if n.ends_with("_banner.jpg") { has_banner = true; }
             }
         }
+        if has_cover && has_banner { return Ok(Some(game_dir.to_string_lossy().to_string())); }
     }
 
     let cfg = {
@@ -731,91 +784,130 @@ async fn igdb_get_cover_by_steam_id(
         let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
         serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())?
     };
-
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
 
-    let client = reqwest::Client::new();
+    let client    = reqwest::Client::new();
+    let safe      = game_name.replace('"', "");
+    let name_low  = game_name.to_lowercase();
 
-    // 1. Try Steam external_games lookup (exact match)
-    let ext_http = client
-        .post("https://api.igdb.com/v4/external_games")
-        .header("Client-ID", &client_id)
-        .header("Authorization", format!("Bearer {}", token))
-        .header("Content-Type", "text/plain")
-        .body(format!("fields game.cover.image_id; where uid = \"{}\" & category = 1; limit 1;", app_id))
-        .send().await.map_err(|e| e.to_string())?;
-    if !ext_http.status().is_success() {
-        let s = ext_http.status();
-        let b = ext_http.text().await.unwrap_or_default();
-        return Err(format!("IGDB error (HTTP {}): {}", s, b));
-    }
-    let ext_resp = ext_http.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
+    // Only cover + game id needed from /games; artworks/screenshots queried separately
+    // because IGDB v4 does not support inline expansion of array relations.
+    const GAME_FIELDS: &str = "id,cover.image_id";
 
-    let image_id = if let Some(id) = ext_resp[0]["game"]["cover"]["image_id"].as_str() {
-        id.to_string()
+    // 1. Steam external_games — uid is globally unique, no category filter needed
+    let ext = igdb_query(&client, &client_id, &token,
+        "https://api.igdb.com/v4/external_games",
+        &format!("fields game.id,game.cover.image_id; where uid = \"{app_id}\"; limit 1;"),
+    ).await?;
+    let (cover_id, igdb_game_id) = if !ext[0]["game"].is_null() {
+        let ids = extract_cover(&ext[0]["game"]);
+        eprintln!("[IGDB] '{}' via external_games → cover={:?} game_id={:?}", game_name, ids.0, ids.1);
+        ids
     } else {
-        // 2. Fallback: fuzzy name search
-        let name_http = client
-            .post("https://api.igdb.com/v4/games")
-            .header("Client-ID", &client_id)
-            .header("Authorization", format!("Bearer {}", token))
-            .header("Content-Type", "text/plain")
-            .body(format!(
-                "fields cover.image_id; search \"{}\"; where cover != null; limit 1;",
-                game_name.replace('"', "")
-            ))
-            .send().await.map_err(|e| e.to_string())?;
-        if !name_http.status().is_success() {
-            let s = name_http.status();
-            let b = name_http.text().await.unwrap_or_default();
-            return Err(format!("IGDB error (HTTP {}): {}", s, b));
-        }
-        let name_resp = name_http.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
-        match name_resp[0]["cover"]["image_id"].as_str() {
-            Some(id) => id.to_string(),
-            None     => return Ok(None),
+        // 2. Exact name match — prevents "Max Payne" → "Max Payne 2"
+        let exact = igdb_query(&client, &client_id, &token,
+            "https://api.igdb.com/v4/games",
+            &format!("fields {GAME_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
+        ).await?;
+        let (c, gid) = extract_cover(&exact[0]);
+        if c.is_some() {
+            eprintln!("[IGDB] '{}' via exact → cover={:?} game_id={:?}", game_name, c, gid);
+            (c, gid)
+        } else {
+            // 3. Fuzzy search — 5 candidates, pick best name match
+            let search = igdb_query(&client, &client_id, &token,
+                "https://api.igdb.com/v4/games",
+                &format!("fields name,{GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 5;"),
+            ).await?;
+            let best = search.as_array().and_then(|arr| {
+                arr.iter()
+                    .find(|r| r["name"].as_str().map(|n| n.to_lowercase() == name_low).unwrap_or(false))
+                    .or_else(|| arr.iter().find(|r| {
+                        r["name"].as_str().map(|n| n.to_lowercase().starts_with(&name_low)).unwrap_or(false)
+                    }))
+                    .or_else(|| arr.first())
+            });
+            let ids = best.map(|r| extract_cover(r)).unwrap_or((None, None));
+            eprintln!("[IGDB] '{}' via search → cover={:?} game_id={:?}", game_name, ids.0, ids.1);
+            ids
         }
     };
 
-    // Download cover image
-    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
-    let cover_path = game_dir.join(format!("{}_cover.jpg", image_id));
+    let cover_image_id = match cover_id {
+        Some(id) => id,
+        None     => return Ok(None),
+    };
 
+    // Fetch banner separately via /artworks then /screenshots (array relations
+    // cannot be expanded inline in /games queries in IGDB v4)
+    let banner_id = if let Some(gid) = igdb_game_id {
+        let bid = fetch_banner_id(&client, &client_id, &token, gid).await;
+        eprintln!("[IGDB] '{}' banner → {:?}", game_name, bid);
+        bid
+    } else {
+        None
+    };
+
+    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
+
+    // Download cover  (t_cover_big ≈ 264×374)
+    let cover_path = game_dir.join(format!("{}_cover.jpg", cover_image_id));
     if !cover_path.exists() {
         let bytes = client
-            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", image_id))
+            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id))
             .send().await.map_err(|e| e.to_string())?
             .bytes().await.map_err(|e| e.to_string())?;
         std::fs::write(&cover_path, &bytes).map_err(|e| e.to_string())?;
     }
 
+    // Download banner (t_screenshot_big ≈ 1280×720)
+    let mut banner_entry = serde_json::Value::Null;
+    if let Some(bid) = banner_id {
+        let banner_path = game_dir.join(format!("{}_banner.jpg", bid));
+        if !banner_path.exists() {
+            if let Ok(resp) = client
+                .get(format!("https://images.igdb.com/igdb/image/upload/t_screenshot_big/{}.jpg", bid))
+                .send().await
+            {
+                if let Ok(bytes) = resp.bytes().await {
+                    let _ = std::fs::write(&banner_path, &bytes);
+                }
+            }
+        }
+        banner_entry = serde_json::json!({
+            "image_id": bid,
+            "path":     banner_path.to_string_lossy(),
+        });
+    }
+
     // Update metadata/index.json
     let index_path = meta_root.join("index.json");
     let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
+        .ok().and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_else(|| serde_json::json!({}));
     if let Some(obj) = index.as_object_mut() {
-        obj.insert(app_id.clone(), serde_json::json!({
+        let mut entry = serde_json::json!({
             "name":     game_name,
-            "image_id": image_id,
-            "file":     format!("{}/{}_cover.jpg", app_id, image_id),
+            "image_id": cover_image_id,
             "path":     cover_path.to_string_lossy(),
-        }));
+        });
+        if !banner_entry.is_null() {
+            entry["banner"] = banner_entry;
+        }
+        obj.insert(app_id.clone(), entry);
     }
     let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
 
     Ok(Some(cover_path.to_string_lossy().to_string()))
 }
 
-/// Reads metadata/index.json and returns { app_id → "data:image/jpeg;base64,..." }
-/// for all covers that exist on disk.
+/// Returns { app_id → { cover?: dataUrl, banner?: dataUrl } } for all downloaded assets.
 #[tauri::command]
 async fn read_metadata_index(
     app_handle: tauri::AppHandle,
-) -> Result<std::collections::HashMap<String, String>, String> {
+) -> Result<std::collections::HashMap<String, serde_json::Value>, String> {
     let meta_root  = app_handle.path().app_data_dir().map_err(|e| e.to_string())?.join("metadata");
     let index_path = meta_root.join("index.json");
     if !index_path.exists() {
@@ -826,16 +918,25 @@ async fn read_metadata_index(
     let mut out = std::collections::HashMap::new();
     if let Some(obj) = index.as_object() {
         for (app_id, entry) in obj {
-            // Prefer the stored absolute path; fall back to reconstructing from "file"
-            let file_path = if let Some(p) = entry["path"].as_str() {
-                std::path::PathBuf::from(p)
-            } else if let Some(file) = entry["file"].as_str() {
-                file.split('/').fold(meta_root.clone(), |p, s| p.join(s))
-            } else {
-                continue;
-            };
-            if let Ok(bytes) = std::fs::read(&file_path) {
-                out.insert(app_id.clone(), format!("data:image/jpeg;base64,{}", base64_encode(&bytes)));
+            let mut result = serde_json::json!({});
+            // Cover
+            if let Some(p) = entry["path"].as_str() {
+                if let Ok(bytes) = std::fs::read(p) {
+                    result["cover"] = serde_json::Value::String(
+                        format!("data:image/jpeg;base64,{}", base64_encode(&bytes))
+                    );
+                }
+            }
+            // Banner
+            if let Some(p) = entry["banner"]["path"].as_str() {
+                if let Ok(bytes) = std::fs::read(p) {
+                    result["banner"] = serde_json::Value::String(
+                        format!("data:image/jpeg;base64,{}", base64_encode(&bytes))
+                    );
+                }
+            }
+            if result.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
+                out.insert(app_id.clone(), result);
             }
         }
     }

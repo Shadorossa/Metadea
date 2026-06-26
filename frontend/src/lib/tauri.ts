@@ -278,10 +278,15 @@ export async function igdbGetCoverBySteamId(
   return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
 }
 
-/** Returns { app_id → "data:image/jpeg;base64,..." } for all downloaded covers. */
-export async function readMetadataIndex(): Promise<Record<string, string>> {
+export interface MetaEntry {
+  cover?:  string; // data:image/jpeg;base64,...
+  banner?: string; // data:image/jpeg;base64,...
+}
+
+/** Returns { app_id → { cover?, banner? } } for all downloaded assets. */
+export async function readMetadataIndex(): Promise<Record<string, MetaEntry>> {
   if (!isTauri()) return {};
-  return invoke<Record<string, string>>('read_metadata_index');
+  return invoke<Record<string, MetaEntry>>('read_metadata_index');
 }
 
 // ─── Debug ────────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import {
   scanAllGames, pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
   igdbGetCoverBySteamId, readMetadataIndex,
-  type LocalGame, type LocalFolderEntry,
+  type LocalGame, type LocalFolderEntry, type MetaEntry,
 } from '../../lib/tauri';
 
 // ── Platform config ───────────────────────────────────────────────────────────
@@ -110,14 +110,13 @@ function IconX() {
 
 interface GameCardProps {
   game: LocalGame;
-  coverCache: Record<string, string>;
+  coverCache: Record<string, MetaEntry>;
   onClick: (game: LocalGame) => void;
 }
 
 function GameCard({ game, coverCache, onClick }: GameCardProps) {
-  // coverCache values are data URLs ("data:image/jpeg;base64,...") from read_metadata_index
-  const dataUrl = game.app_id ? coverCache[game.app_id] : undefined;
-  const cover = dataUrl ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
+  const entry = game.app_id ? coverCache[game.app_id] : undefined;
+  const cover = entry?.cover ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
 
   return (
     <div className="local-game-card" onClick={() => onClick(game)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick(game)}>
@@ -136,13 +135,15 @@ function GameCard({ game, coverCache, onClick }: GameCardProps) {
 
 interface GameDetailPanelProps {
   game: LocalGame;
+  coverCache: Record<string, MetaEntry>;
   onClose: () => void;
 }
 
-function GameDetailPanel({ game, onClose }: GameDetailPanelProps) {
-  const cover = game.launcher === 'steam' && game.app_id
-    ? STEAM_COVER(game.app_id)
-    : null;
+function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
+  const entry  = game.app_id ? coverCache[game.app_id] : undefined;
+  // Banner: IGDB artwork/screenshot; fallback to cover, then Steam CDN
+  const banner = entry?.banner ?? entry?.cover ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
+  const cover  = entry?.cover  ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
 
   const handlePlay = () => {
     // Por ahora solo un placeholder - se puede implementar abrir carpeta con Tauri
@@ -152,8 +153,8 @@ function GameDetailPanel({ game, onClose }: GameDetailPanelProps) {
   return (
     <div className="local-game-detail-panel">
         <div className="local-game-detail-header">
-          {cover ? (
-            <img src={cover} alt={game.name} />
+          {banner ? (
+            <img src={banner} alt={game.name} />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
               <IconMonitor />
@@ -320,7 +321,7 @@ export default function LocalLibrary() {
   const [selectedGame,   setSelectedGame]   = useState<LocalGame | null>(null);
   const [scanError,      setScanError]      = useState<string | null>(null);
   const [debugInfo,      setDebugInfo]      = useState<string | null>(null);
-  const [coverCache,     setCoverCache]     = useState<Record<string, string>>({});
+  const [coverCache,     setCoverCache]     = useState<Record<string, MetaEntry>>({});
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
 
   const cancelRef = useRef(false);
@@ -631,7 +632,7 @@ export default function LocalLibrary() {
           )}
         </div>
 
-        {selectedGame && <GameDetailPanel game={selectedGame} onClose={() => setSelectedGame(null)} />}
+        {selectedGame && <GameDetailPanel game={selectedGame} coverCache={coverCache} onClose={() => setSelectedGame(null)} />}
       </div>
     </div>
     </>
