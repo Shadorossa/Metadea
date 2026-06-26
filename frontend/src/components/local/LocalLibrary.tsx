@@ -4,7 +4,7 @@ import {
   pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
   igdbGetCoverBySteamId, readMetadataIndex, readGameInfo, pathToDataUrl,
-  steamGetPlayerAchievements, steamAchievementIcon,
+  steamGetPlayerAchievements, steamAchievementIcon, steamAchievementsDownload,
   type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo, type SteamAchievement,
 } from '../../lib/tauri';
 import { scanGamesWithSteam } from '../../lib/local/steam-merge';
@@ -367,6 +367,74 @@ function FolderEntryCard({ entry }: { entry: LocalFolderEntry }) {
   );
 }
 
+// ── Metadata type selector modal ──────────────────────────────────────────────
+
+type MetaType = 'basic' | 'achievements';
+
+interface MetaTypeSelectorProps {
+  onConfirm: (types: MetaType[]) => void;
+  onCancel:  () => void;
+}
+
+function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps) {
+  const [selected, setSelected] = useState<Set<MetaType>>(new Set(['basic']));
+
+  function toggle(t: MetaType) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  }
+
+  return (
+    <div className="meta-modal-overlay">
+      <div className="meta-modal">
+        <h3 className="meta-modal-title">¿Qué metadatos descargar?</h3>
+        <p className="meta-modal-subtitle">Selecciona uno o varios tipos</p>
+
+        <div className="meta-type-list">
+          {([
+            { id: 'basic' as MetaType,        label: 'Básico',            desc: 'Portada, banner, géneros, sinopsis, fecha de lanzamiento y editor' },
+            { id: 'achievements' as MetaType, label: 'Logros de Steam',   desc: 'Iconos y textos de todos los logros del juego (requiere API key de Steam)' },
+          ] as { id: MetaType; label: string; desc: string }[]).map(({ id, label, desc }) => (
+            <button
+              key={id}
+              type="button"
+              className={`meta-type-option${selected.has(id) ? ' selected' : ''}`}
+              onClick={() => toggle(id)}
+            >
+              <span className="meta-type-check">
+                {selected.has(id) && (
+                  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                )}
+              </span>
+              <span className="meta-type-text">
+                <span className="meta-type-label">{label}</span>
+                <span className="meta-type-desc">{desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="meta-modal-actions">
+          <button type="button" className="meta-modal-cancel" onClick={onCancel}>Cancelar</button>
+          <button
+            type="button"
+            className="meta-modal-confirm"
+            disabled={selected.size === 0}
+            onClick={() => onConfirm(Array.from(selected))}
+          >
+            Descargar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Metadata progress modal ───────────────────────────────────────────────────
 
 interface MetaProgress {
@@ -471,6 +539,7 @@ export default function LocalLibrary() {
   const [pathCache,      setPathCache]      = useState<Record<string, MetaEntry>>({});
   const [coverCache,     setCoverCache]     = useState<Record<string, { cover?: string; banner?: string }>>({});
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
+  const [metaSelector,   setMetaSelector]   = useState(false);
 
   const cancelRef = useRef(false);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -582,37 +651,57 @@ export default function LocalLibrary() {
     await writeRoutes(updated).catch(() => {});
   }, [routes]);
 
-  // ── Fetch IGDB metadata ────────────────────────────────────────────────────
+  // ── Fetch metadata ────────────────────────────────────────────────────────
 
-  const handleFetchMetadata = useCallback(async () => {
-    const steamGames = (Array.isArray(games) ? games : []).filter(
-      g => g.launcher === 'steam' && g.app_id,
-    );
-    if (steamGames.length === 0) return;
+  const handleFetchMetadata = useCallback(async (types: MetaType[]) => {
+    const doBasic        = types.includes('basic');
+    const doAchievements = types.includes('achievements');
 
+    const allSteam = (Array.isArray(games) ? games : []).filter(g => g.launcher === 'steam' && g.app_id);
+
+    // Skip games that already have everything they need
+    const pending = allSteam.filter(g => {
+      const cached = pathCache[g.app_id!];
+      const basicDone = !doBasic || !!(cached?.cover_path && cached?.banner_path);
+      // achievements skip logic is handled Rust-side
+      return !basicDone || doAchievements;
+    });
+
+    if (pending.length === 0) return;
+    setMetaSelector(false);
     cancelRef.current = false;
-    setMetaProgress({ total: steamGames.length, current: 0, currentName: 'Iniciando…', cancelled: false });
 
-    for (let i = 0; i < steamGames.length; i++) {
-      if (cancelRef.current) break;
-      const game = steamGames[i];
-      setMetaProgress({ total: steamGames.length, current: i + 1, currentName: game.name, cancelled: false });
+    const total   = pending.length;
+    let   done    = 0;
+    setMetaProgress({ total, current: 0, currentName: 'Iniciando…', cancelled: false });
 
+    const CONCURRENCY = 3;
+    const queue = [...pending];
+
+    async function processOne(game: LocalGame) {
+      setMetaProgress({ total, current: done + 1, currentName: game.name, cancelled: false });
       try {
-        // Rust handles the file-existence check; no JS-side skip needed
-        await igdbGetCoverBySteamId(game.app_id!, game.name);
+        if (doBasic) await igdbGetCoverBySteamId(game.app_id!, game.name);
+        if (doAchievements) await steamAchievementsDownload(game.app_id!).catch(() => {});
       } catch (err) {
         console.error('[META]', game.name, err);
       }
-
-      // Small delay to stay within IGDB rate limits (4 req/s)
-      await new Promise(r => setTimeout(r, 300));
+      done++;
     }
 
-    // Reload all covers from disk as data URLs
+    // Worker: pulls from queue until empty or cancelled
+    async function worker() {
+      while (queue.length > 0 && !cancelRef.current) {
+        const game = queue.shift()!;
+        await processOne(game);
+      }
+    }
+
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
     readMetadataIndex().then(setCoverCache).catch(() => {});
     setMetaProgress(null);
-  }, [games]);
+  }, [games, pathCache]);
 
   // Group games by launcher
   const safeGames: LocalGame[] = Array.isArray(games) ? games : [];
@@ -649,6 +738,13 @@ export default function LocalLibrary() {
     <>
       {navCenterSlot ? createPortal(tabBar, navCenterSlot) : tabBar}
 
+      {metaSelector && !metaProgress && (
+        <MetaTypeSelector
+          onConfirm={handleFetchMetadata}
+          onCancel={() => setMetaSelector(false)}
+        />
+      )}
+
       {metaProgress && (
         <MetadataModal
           progress={metaProgress}
@@ -664,7 +760,7 @@ export default function LocalLibrary() {
           activePlatform={activePlatform}
           availablePlatforms={availablePlatforms}
           onSelect={scrollToPlatform}
-          onFetchMetadata={handleFetchMetadata}
+          onFetchMetadata={() => setMetaSelector(true)}
         />
       )}
 

@@ -393,6 +393,11 @@ export interface SteamAchievement {
   icon_locked?:    string;      // local filename: {apiname}_locked.jpg
 }
 
+export async function steamAchievementsDownload(appId: string): Promise<void> {
+  if (!isTauri()) return;
+  await invoke<void>('steam_achievements_download', { appId, lang: steamLang() });
+}
+
 export async function steamAchievementIcon(appId: string, filename: string): Promise<string | null> {
   if (!isTauri()) return null;
   try {

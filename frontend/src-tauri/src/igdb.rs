@@ -338,28 +338,35 @@ pub async fn igdb_get_cover_by_steam_id(
 
     std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
 
-    let cover_path = game_dir.join(format!("{}_cover.jpg", cover_image_id));
-    if !cover_path.exists() {
-        let bytes = client
-            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id))
-            .send().await.map_err(|e| e.to_string())?
-            .bytes().await.map_err(|e| e.to_string())?;
-        std::fs::write(&cover_path, &bytes).map_err(|e| e.to_string())?;
-    }
+    let cover_path  = game_dir.join(format!("{}_cover.jpg",  cover_image_id));
+    let banner_path = banner_id.as_ref().map(|bid| game_dir.join(format!("{}_banner.jpg", bid)));
 
-    if let Some(bid) = &banner_id {
-        let banner_path = game_dir.join(format!("{}_banner.jpg", bid));
-        if !banner_path.exists() {
+    // Download cover and banner in parallel
+    let cover_fut = async {
+        if cover_path.exists() { return; }
+        if let Ok(resp) = client
+            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id))
+            .send().await
+        {
+            if let Ok(bytes) = resp.bytes().await {
+                let _ = std::fs::write(&cover_path, &bytes);
+            }
+        }
+    };
+    let banner_fut = async {
+        if let (Some(bid), Some(bpath)) = (&banner_id, &banner_path) {
+            if bpath.exists() { return; }
             if let Ok(resp) = client
                 .get(format!("https://images.igdb.com/igdb/image/upload/t_screenshot_big/{}.jpg", bid))
                 .send().await
             {
                 if let Ok(bytes) = resp.bytes().await {
-                    let _ = std::fs::write(&banner_path, &bytes);
+                    let _ = std::fs::write(bpath, &bytes);
                 }
             }
         }
-    }
+    };
+    futures::join!(cover_fut, banner_fut);
 
     if !igdb_game.is_null() {
         let _ = save_game_info(&game_dir, &igdb_game, &app_id);
@@ -374,9 +381,8 @@ pub async fn igdb_get_cover_by_steam_id(
             "name": game_name,
             "cover": cover_path.to_string_lossy(),
         });
-        if let Some(bid) = &banner_id {
-            let banner_path = game_dir.join(format!("{}_banner.jpg", bid));
-            entry["banner"] = serde_json::Value::String(banner_path.to_string_lossy().to_string());
+        if let Some(bpath) = &banner_path {
+            entry["banner"] = serde_json::Value::String(bpath.to_string_lossy().to_string());
         }
         obj.insert(app_id.clone(), entry);
     }

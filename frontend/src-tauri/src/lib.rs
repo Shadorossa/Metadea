@@ -54,6 +54,7 @@ pub fn run() {
             user_metadata::remove_user_image,
             user_metadata::save_user_info,
             user_metadata::get_user_info,
+            steam::steam_achievements_download,
             steam::steam_achievement_icon,
             steam::steam_get_owned_games,
             steam::steam_get_player_achievements,

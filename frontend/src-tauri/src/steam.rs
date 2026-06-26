@@ -164,6 +164,20 @@ pub fn detect_steam_user_id() -> Option<String> {
 }
 
 #[tauri::command]
+pub async fn steam_achievements_download(
+    app_handle: tauri::AppHandle,
+    app_id: String,
+    lang: Option<String>,
+) -> Result<(), String> {
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let game_dir = app_data_dir.join("metadata").join(&app_id);
+    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
+    let l = lang.unwrap_or_else(|| "spanish".to_string());
+    download_achievements(&app_handle, &app_id, &game_dir, &l).await;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn steam_achievement_icon(
     app_handle: tauri::AppHandle,
     app_id: String,
