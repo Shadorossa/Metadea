@@ -803,7 +803,9 @@ pub async fn igdb_search_candidates(
     let token         = get_twitch_token(&client_id, &client_secret).await?;
     let client        = get_http_client();
 
-    let search_query = game_name
+    // Clean the name and strip edition/version keywords so the search casts
+    // a wider net — "Batman: Arkham City GOTY Edition" → "Batman Arkham City"
+    let tokens: Vec<String> = game_name
         .chars()
         .map(|c| match c {
             '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ',
@@ -812,8 +814,18 @@ pub async fn igdb_search_candidates(
         })
         .collect::<String>()
         .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
+        .filter(|t| {
+            let tl = t.to_lowercase();
+            // Remove pure edition/version/qualifier tokens
+            !EDITION_KEYWORDS.contains(&tl.as_str())
+            && !matches!(tl.as_str(), "the" | "a" | "an" | "of" | "in" | "on" | "for")
+        })
+        .map(String::from)
+        .collect();
+
+    // Take up to 50% of meaningful tokens (min 2) to allow name variations
+    let take = (tokens.len() / 2).max(2).min(tokens.len());
+    let search_query = tokens[..take].join(" ");
 
     // Search with only flat/2-level fields — involved_companies.company.name
     // (3 levels) causes 400 when combined with `search`
