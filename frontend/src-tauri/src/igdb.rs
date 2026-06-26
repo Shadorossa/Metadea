@@ -547,9 +547,14 @@ pub async fn igdb_get_cover_by_steam_id(
             "name": game_name,
             "cover": cover_path.to_string_lossy(),
         });
-        if let Some(banner_id) = igdb_game_id {
-            let banner_path = game_dir.join(format!("{}_banner.webp", banner_id));
-            if banner_path.exists() {
+        // Banner filename uses image_id hash, not igdb_game_id number.
+        // Scan for any *_banner.webp file in the game directory.
+        if let Ok(entries) = std::fs::read_dir(game_dir) {
+            if let Some(banner_path) = entries
+                .flatten()
+                .find(|e| e.file_name().to_string_lossy().ends_with("_banner.webp"))
+                .map(|e| e.path())
+            {
                 entry["banner"] = serde_json::Value::String(banner_path.to_string_lossy().to_string());
             }
         }
