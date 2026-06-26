@@ -25,7 +25,7 @@ const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_dat
 /// Only excludes when category is explicitly set to a non-game value.
 /// Games with no category set (null → 0 in JSON) are treated as main_game.
 fn is_non_game(game: &serde_json::Value) -> bool {
-    const EXCLUDED: &[u64] = &[1, 5, 6, 7, 13, 14]; // dlc_addon, mod, episode, season, pack, update
+    const EXCLUDED: &[u64] = &[1, 3, 5, 6, 7, 13, 14]; // dlc_addon, bundle, mod, episode, season, pack, update
     game["category"].as_u64().map(|c| EXCLUDED.contains(&c)).unwrap_or(false)
 }
 
