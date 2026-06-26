@@ -222,9 +222,12 @@ function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
   }, [game.app_id]);
 
   useEffect(() => {
-    if (game.launcher !== 'steam' || !game.app_id) return;
+    if (game.launcher !== 'steam' || !game.app_id) {
+      setAchievements(null);
+      return;
+    }
     steamGetPlayerAchievements(Number(game.app_id)).then(res => {
-      if (res) setAchievements(res);
+      setAchievements(res || null);
     });
   }, [game.app_id, game.launcher]);
 
