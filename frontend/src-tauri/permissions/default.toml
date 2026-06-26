@@ -1,0 +1,22 @@
+[[permission]]
+identifier = "allow-all-commands"
+description = "Allows all custom Metadea commands"
+commands.allow = [
+  "init_database",
+  "store_auth_token",
+  "get_auth_token",
+  "clear_auth_token",
+  "save_library_item",
+  "get_library_items",
+  "get_library_stats",
+  "scan_all_games",
+  "pick_folder",
+  "scan_folder_contents",
+  "get_local_folders",
+  "save_local_folders",
+  "read_env_config",
+  "write_env_config",
+  "igdb_search",
+  "debug_scan_info",
+  "open_env_folder",
+]

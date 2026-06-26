@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   scanAllGames, pickFolder, scanFolderContents,
   getLocalFolders, saveLocalFolders, debugScanInfo,
@@ -276,7 +276,9 @@ export default function LocalLibrary() {
 
   // Load saved folders on mount
   useEffect(() => {
-    getLocalFolders().then(setFolders).catch(() => {});
+    getLocalFolders()
+      .then(f => setFolders(Array.isArray(f) ? f : []))
+      .catch(() => setFolders([]));
   }, []);
 
   // Load folder contents when viewing a custom folder
@@ -284,7 +286,7 @@ export default function LocalLibrary() {
     if (activeCategory === 'videojuegos') return;
     setFolderLoading(true);
     setFolderFiles([]);
-    const folder = folders.find(f => f.path === activeCategory);
+    const folder = (Array.isArray(folders) ? folders : []).find(f => f.path === activeCategory);
     if (folder) {
       scanFolderContents(folder.path)
         .then(setFolderFiles)
@@ -301,8 +303,10 @@ export default function LocalLibrary() {
     setDebugInfo(null);
     scanAllGames()
       .then(g => {
-        setGames(g);
-        setGamesState(g.length === 0 ? 'empty' : 'done');
+        // Defensive: some Rust errors return a string/object instead of an array
+        const list: LocalGame[] = Array.isArray(g) ? g : [];
+        setGames(list);
+        setGamesState(list.length === 0 ? 'empty' : 'done');
       })
       .catch((e: unknown) => {
         setScanError(typeof e === 'string' ? e : String(e));
@@ -343,7 +347,8 @@ export default function LocalLibrary() {
   const handleAddFolder = useCallback(async () => {
     const path = await pickFolder().catch(() => null);
     if (!path || !newLabel.trim()) return;
-    const updated = [...folders, { path, label: newLabel.trim() }];
+    const current = Array.isArray(folders) ? folders : [];
+    const updated = [...current, { path, label: newLabel.trim() }];
     setFolders(updated);
     await saveLocalFolders(updated).catch(() => {});
     setAddingFolder(false);
@@ -351,20 +356,22 @@ export default function LocalLibrary() {
   }, [folders, newLabel]);
 
   const handleRemoveFolder = useCallback((path: string) => {
-    const updated = folders.filter(f => f.path !== path);
+    const updated = (Array.isArray(folders) ? folders : []).filter(f => f.path !== path);
     setFolders(updated);
     saveLocalFolders(updated).catch(() => {});
     if (activeCategory === path) setActiveCategory('videojuegos');
   }, [folders, activeCategory]);
 
   // Group games by launcher
+  const safeGames: LocalGame[] = Array.isArray(games) ? games : [];
+  const safeFolders: SavedFolder[] = Array.isArray(folders) ? folders : [];
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, LocalGame[]>>((acc, id) => {
-    const list = games.filter(g => g.launcher === id);
+    const list = safeGames.filter(g => g.launcher === id);
     if (list.length > 0) acc.set(id, list);
     return acc;
   }, new Map());
 
-  const availablePlatforms = new Set(games.map(g => g.launcher));
+  const availablePlatforms = new Set(safeGames.map(g => g.launcher));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -398,7 +405,7 @@ export default function LocalLibrary() {
           ))}
 
           {/* Custom folders */}
-          {folders.map(f => (
+          {safeFolders.map(f => (
             <button
               key={f.path}
               type="button"

@@ -77,6 +77,9 @@ const lang = getLang(Astro.url);
           <div class="settings-section">
             <h3 class="settings-section-title">Claves de API</h3>
             <p class="settings-hint">Estas claves se guardan solo en tu dispositivo y nunca se envían a ningún servidor.</p>
+            <button class="btn btn--sm btn--ghost" id="open-env-folder-btn" style="margin-bottom: 1rem;">
+              📁 Abrir carpeta
+            </button>
 
             <!-- IGDB -->
             <div class="env-service-block">
@@ -362,8 +365,9 @@ const lang = getLang(Astro.url);
     const clientSecretInput = document.getElementById('igdb-client-secret') as HTMLInputElement;
     const saveBtn           = document.getElementById('igdb-save-btn')!;
     const clearBtn          = document.getElementById('igdb-clear-btn')!;
+    const openFolderBtn     = document.getElementById('open-env-folder-btn')!;
 
-    const { readEnvConfig, writeEnvConfig } = await import('../lib/tauri');
+    const { readEnvConfig, writeEnvConfig, openEnvFolder } = await import('../lib/tauri');
 
     // Load saved values from env.json
     try {
@@ -381,8 +385,9 @@ const lang = getLang(Astro.url);
           igdb_client_secret: clientSecretInput.value.trim() || undefined,
         });
         showToast('Claves de IGDB guardadas');
-      } catch {
-        showToast('Error al guardar');
+      } catch (err: any) {
+        showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
+        console.error('writeEnvConfig error:', err);
       }
     });
 
@@ -394,6 +399,16 @@ const lang = getLang(Astro.url);
         showToast('Claves eliminadas');
       } catch {
         showToast('Error al eliminar');
+      }
+    });
+
+    openFolderBtn.addEventListener('click', async () => {
+      try {
+        await openEnvFolder();
+        showToast('Carpeta abierta');
+      } catch (err: any) {
+        console.error('openEnvFolder error:', err);
+        showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
       }
     });
   }

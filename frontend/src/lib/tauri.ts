@@ -1,8 +1,36 @@
-const isTauri = () => typeof window !== 'undefined' && '__TAURI__' in window;
+const isTauri = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  // __TAURI_IPC__ is always injected by the Tauri webview (most reliable)
+  if ('__TAURI_IPC__' in window) return true;
+  // __TAURI__ is available when withGlobalTauri: true
+  if ('__TAURI__' in window) return true;
+  return false;
+};
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const { invoke: tauriInvoke } = await import('@tauri-apps/api/core');
-  return tauriInvoke<T>(cmd, args);
+  if (!isTauri()) {
+    console.warn(`[Tauri] Command "${cmd}" called outside Tauri environment.`);
+    throw new Error('Tauri not available');
+  }
+  // Use window.__TAURI__.core.invoke (available with withGlobalTauri: true)
+  // This works in both dev and production static builds
+  const tauri = (window as any).__TAURI__;
+  if (tauri?.core?.invoke) {
+    return tauri.core.invoke(cmd, args);
+  }
+  // Fallback for older Tauri versions
+  const ipc = (window as any).__TAURI_IPC__;
+  if (ipc) {
+    return new Promise((resolve, reject) => {
+      const id = Math.random().toString(36).slice(2);
+      (window as any)[`_tauri_cb_${id}`] = (r: any) => {
+        delete (window as any)[`_tauri_cb_${id}`];
+        if (r.error) reject(new Error(r.error)); else resolve(r.payload);
+      };
+      ipc({ cmd, args: args ?? {}, callback: `_tauri_cb_${id}`, error: `_tauri_cb_${id}` });
+    });
+  }
+  throw new Error('Tauri IPC not available');
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -67,8 +95,11 @@ interface LibraryItem {
 
 export async function initTauriDatabase(): Promise<string> {
   if (!isTauri()) return 'not-tauri';
-  const { appDataDir } = await import('@tauri-apps/api/path');
-  const dataDir = await appDataDir();
+  // Use path API from window.__TAURI__ global
+  const tauri = (window as any).__TAURI__;
+  const dataDir = tauri?.path?.appDataDir
+    ? await tauri.path.appDataDir()
+    : 'unknown';
   return invoke<string>('init_database', { app_data_dir: dataDir });
 }
 
@@ -114,23 +145,45 @@ export interface SavedFolder {
   label: string;
 }
 
-export async function scanAllGames(): Promise<LocalGame[]> {
-  return invoke<LocalGame[]>('scan_all_games');
-}
-
 export async function pickFolder(): Promise<string | null> {
+  if (!isTauri()) {
+    // Fallback: no picker disponible en browser
+    return null;
+  }
   return invoke<string | null>('pick_folder');
 }
 
 export async function scanFolderContents(path: string): Promise<LocalFolderEntry[]> {
+  if (!isTauri()) {
+    // Fallback: no access al filesystem en browser
+    return [];
+  }
   return invoke<LocalFolderEntry[]>('scan_folder_contents', { path });
 }
 
+export async function scanAllGames(): Promise<LocalGame[]> {
+  if (!isTauri()) {
+    // Fallback: retorna array vacío
+    return [];
+  }
+  return invoke<LocalGame[]>('scan_all_games');
+}
+
 export async function getLocalFolders(): Promise<SavedFolder[]> {
+  if (!isTauri()) {
+    // Fallback a localStorage
+    const stored = localStorage.getItem('local_folders');
+    return stored ? JSON.parse(stored) : [];
+  }
   return invoke<SavedFolder[]>('get_local_folders');
 }
 
 export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
+  if (!isTauri()) {
+    // Fallback a localStorage
+    localStorage.setItem('local_folders', JSON.stringify(folders));
+    return;
+  }
   return invoke<void>('save_local_folders', { folders_json: JSON.stringify(folders) });
 }
 
@@ -142,11 +195,35 @@ export interface EnvConfig {
 }
 
 export async function readEnvConfig(): Promise<EnvConfig> {
-  return invoke<EnvConfig>('read_env_config');
+  // In Tauri: always read from disk (env.json) — it's the source of truth
+  if (isTauri()) {
+    try {
+      const cfg = await invoke<EnvConfig>('read_env_config');
+      // Keep localStorage in sync for quick access
+      localStorage.setItem('env_config', JSON.stringify(cfg));
+      return cfg;
+    } catch {
+      // fall through to localStorage
+    }
+  }
+  // Browser fallback: localStorage
+  const stored = localStorage.getItem('env_config');
+  if (stored) return JSON.parse(stored);
+  return { igdb_client_id: undefined, igdb_client_secret: undefined };
 }
 
 export async function writeEnvConfig(config: EnvConfig): Promise<void> {
-  return invoke<void>('write_env_config', { config });
+  // Always sync localStorage
+  localStorage.setItem('env_config', JSON.stringify(config));
+
+  // In Tauri: write to disk (env.json) — this is what persists across sessions
+  if (isTauri()) {
+    try {
+      await invoke<void>('write_env_config', { config });
+    } catch (err) {
+      throw new Error(`write_env_config failed: ${err}`);
+    }
+  }
 }
 
 // ─── IGDB ─────────────────────────────────────────────────────────────────────
@@ -185,5 +262,16 @@ export async function igdbSearch(name: string): Promise<IgdbGame[]> {
 // ─── Debug ────────────────────────────────────────────────────────────────────
 
 export async function debugScanInfo(): Promise<string> {
+  if (!isTauri()) {
+    return 'Tauri not available - using fallback';
+  }
   return invoke<string>('debug_scan_info');
+}
+
+export async function openEnvFolder(): Promise<void> {
+  if (!isTauri()) {
+    console.warn('Cannot open folder outside Tauri');
+    return;
+  }
+  return invoke<void>('open_env_folder');
 }

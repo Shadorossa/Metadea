@@ -67,3 +67,42 @@ const { activePage, i18n } = Astro.props;
     </div>
   </div>
 </header>
+
+<script>
+  // Dropdown del usuario
+  const dropdown = document.getElementById('nav-user-dropdown');
+  const userWrap = document.getElementById('nav-user-wrap');
+  const authBtn = document.getElementById('open-auth-modal');
+  const signoutBtn = document.getElementById('nav-signout-btn');
+
+  // Toggle dropdown
+  authBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown?.classList.toggle('is-open');
+  });
+
+  // Cerrar dropdown al hacer clic fuera
+  document.addEventListener('click', () => {
+    dropdown?.classList.remove('is-open');
+  });
+
+  // Logout
+  signoutBtn?.addEventListener('click', async () => {
+    try {
+      const { clearAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
+      await clearAuthToken();
+    } catch {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_username');
+    }
+    window.location.href = '/';
+  });
+</script>
+
+<style>
+  .nav-user-dropdown.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+</style>
