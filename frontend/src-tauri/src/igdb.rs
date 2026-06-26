@@ -182,7 +182,7 @@ fn normalize_name(s: &str) -> String {
     s.chars()
         .map(|c| match c {
             '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
-            ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ', // punctuation
+            ':' | ';' | '_' | '-' | '\'' | '\u{2019}' | '"' => ' ',
             c => c,
         })
         .collect::<String>()
@@ -235,18 +235,26 @@ async fn resolve_igdb_game(
     app_id: &str,
     game_name: &str,
 ) -> Result<(String, Option<u64>, serde_json::Value), String> {
-    // Remove trademark symbols but keep punctuation for exact match
-    let safe = game_name
+    // For IGDB search: remove symbols AND replace problematic punctuation with spaces
+    // "NieR:Automata™" → "NieR Automata", "STEINS;GATE" → "STEINS GATE"
+    let search_query = game_name
         .chars()
-        .filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}')
+        .map(|c| match c {
+            '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
+            ':' | ';' | '_' | '\'' | '\u{2019}' | '"' => ' ',
+            c => c,
+        })
         .collect::<String>()
-        .trim()
-        .to_string();
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
 
-    // Normalized version for fuzzy matching (ignores : - _ ' etc)
+    // Normalized version for comparison after search
     let name_norm = normalize_name(game_name);
 
-    // Try Steam ID lookup
+    eprintln!("[IGDB] Resolving: {:?} (app_id={}, search={:?}, norm={:?})", game_name, app_id, search_query, name_norm);
+
+    // Try Steam ID lookup first
     let ext = igdb_query(client, client_id, token,
         IGDB_API_EXTERNAL_GAMES,
         &format!("fields game.{IGDB_GAME_FIELDS}; where uid = \"{app_id}\" & category = 1; limit 1;"),
@@ -254,48 +262,55 @@ async fn resolve_igdb_game(
 
     if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
         let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(&g["game"]);
+        eprintln!("[IGDB] Steam ID hit: cover={:?}", cover_id);
         if let Some(id) = cover_id {
             return Ok((id, igdb_game_id, igdb_game));
         }
+    } else {
+        eprintln!("[IGDB] Steam ID miss for app_id={}", app_id);
     }
 
-    // Fallback 1: fuzzy search with normalized name matching
-    // This handles games with special chars: NieR:Automata vs NieR: Automata
+    // Fallback: fuzzy search with cleaned query
     let fuzzy = igdb_query(client, client_id, token,
         IGDB_API_GAMES,
-        &format!("fields {IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
+        &format!("fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null; limit 10;"),
     ).await?;
 
     if let Some(arr) = fuzzy.as_array() {
-        // First try: exact normalized match (ignores : - _ ' ™ etc)
+        eprintln!("[IGDB] Fuzzy results: {:?}", arr.iter().filter_map(|r| r["name"].as_str()).collect::<Vec<_>>());
+
+        // Normalized exact match first
         if let Some(game) = arr.iter()
-            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false)) {
+            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+        {
             let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+            eprintln!("[IGDB] Normalized match: {:?}", game["name"].as_str());
             if let Some(id) = cover_id {
                 return Ok((id, igdb_game_id, igdb_game));
             }
         }
-    }
 
-    // Fallback 2: similarity scoring (last resort)
-    if let Some(arr) = fuzzy.as_array() {
+        // Similarity scoring as last resort
         let best = arr.iter()
             .filter_map(|r| {
                 let n = r["name"].as_str()?;
                 let score = score_candidate(&name_norm, n);
+                eprintln!("[IGDB]   candidate {:?} score={:.2}", n, score);
                 if score > 0.5 { Some((score, r)) } else { None }
             })
             .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-        if let Some((_, game)) = best {
+        if let Some((score, game)) = best {
             let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+            eprintln!("[IGDB] Score match: {:?} score={:.2}", game["name"].as_str(), score);
             if let Some(id) = cover_id {
                 return Ok((id, igdb_game_id, igdb_game));
             }
         }
     }
 
-    Err("No cover found for game".to_string())
+    eprintln!("[IGDB] No match found for {:?}", game_name);
+    Err(format!("No match found for {:?}", game_name))
 }
 
 async fn download_game_metadata(
