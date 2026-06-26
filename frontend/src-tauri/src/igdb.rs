@@ -192,6 +192,19 @@ fn normalize_name(s: &str) -> String {
         .to_lowercase()
 }
 
+// Get release date timestamp, or i64::MIN if missing (sorts oldest first)
+fn get_release_timestamp(game: &serde_json::Value) -> i64 {
+    game["first_release_date"]
+        .as_i64()
+        .unwrap_or(i64::MIN)
+}
+
+// Choose the most recent game when multiple matches exist (handles remakes)
+fn choose_most_recent<'a>(games: Vec<&'a serde_json::Value>) -> Option<&'a serde_json::Value> {
+    games.into_iter()
+        .max_by_key(|g| get_release_timestamp(g))
+}
+
 fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
     let q = query_norm;
     let c = {
@@ -291,14 +304,18 @@ async fn resolve_igdb_game(
     if let Some(arr) = fuzzy.as_array() {
         eprintln!("[IGDB] Fuzzy results: {:?}", arr.iter().filter_map(|r| r["name"].as_str()).collect::<Vec<_>>());
 
-        // Normalized exact match first
-        if let Some(game) = arr.iter()
-            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
-        {
-            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
-            eprintln!("[IGDB] Normalized match: {:?}", game["name"].as_str());
-            if let Some(id) = cover_id {
-                return Ok((id, igdb_game_id, igdb_game));
+        // Normalized exact match: if multiple, choose most recent (handles remakes)
+        let norm_matches: Vec<_> = arr.iter()
+            .filter(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+            .collect();
+
+        if !norm_matches.is_empty() {
+            if let Some(game) = choose_most_recent(norm_matches) {
+                let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+                eprintln!("[IGDB] Normalized match: {:?} (date={})", game["name"].as_str(), get_release_timestamp(game));
+                if let Some(id) = cover_id {
+                    return Ok((id, igdb_game_id, igdb_game));
+                }
             }
         }
 
@@ -307,14 +324,22 @@ async fn resolve_igdb_game(
             .filter_map(|r| {
                 let n = r["name"].as_str()?;
                 let score = score_candidate(&name_norm, n);
-                eprintln!("[IGDB]   candidate {:?} score={:.2}", n, score);
+                eprintln!("[IGDB]   candidate {:?} score={:.2} date={}", n, score, get_release_timestamp(r));
                 if score > 0.5 { Some((score, r)) } else { None }
             })
-            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            .max_by(|a, b| {
+                // Sort by score first, then by date (newer = better) if score ties
+                match a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal) {
+                    std::cmp::Ordering::Equal => {
+                        get_release_timestamp(b.1).cmp(&get_release_timestamp(a.1))
+                    }
+                    other => other,
+                }
+            });
 
         if let Some((score, game)) = best {
             let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
-            eprintln!("[IGDB] Score match: {:?} score={:.2}", game["name"].as_str(), score);
+            eprintln!("[IGDB] Score match: {:?} score={:.2} date={}", game["name"].as_str(), score, get_release_timestamp(game));
             if let Some(id) = cover_id {
                 return Ok((id, igdb_game_id, igdb_game));
             }
