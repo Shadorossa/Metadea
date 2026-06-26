@@ -8,7 +8,7 @@ import type { MediaPageData } from './types';
 
 const ANILIST_TYPES  = ['anime', 'manga', 'novel'];
 const IGDB_TYPES     = ['game', 'vnovel'];
-const CACHE_PREFIX   = 'media_cache_v2:';
+const CACHE_PREFIX   = 'media_cache_v3:';
 const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 min
 
 // ── Cache (sessionStorage) ────────────────────────────────────────────────

@@ -148,12 +148,13 @@ interface AniListMedia {
 }
 
 interface AniListResponse {
-  data?: { Page?: { media?: AniListMedia[] } };
+  data?: { Page?: { pageInfo?: { hasNextPage: boolean }; media?: AniListMedia[] } };
 }
 
 const SEARCH_QUERY = `
   query Search($searchQuery: String!, $type: MediaType!, $page: Int) {
-    Page(page: $page, perPage: 20) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
       media(search: $searchQuery, type: $type, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore
@@ -164,7 +165,8 @@ const SEARCH_QUERY = `
 
 const SEARCH_QUERY_WITH_FORMAT = `
   query Search($searchQuery: String!, $type: MediaType!, $page: Int, $format: MediaFormat!) {
-    Page(page: $page, perPage: 20) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
       media(search: $searchQuery, type: $type, format: $format, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore
@@ -197,18 +199,31 @@ export async function searchAniList(
   signal: AbortSignal,
   format?: string,
 ): Promise<SearchResult[]> {
-  const response = await fetch('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(
-      format
-        ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page: 1, format } }
-        : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page: 1 } },
-    ),
-    signal,
-  });
+  const results: SearchResult[] = [];
+  let page = 1;
 
-  if (!response.ok) return [];
-  const json: AniListResponse = await response.json();
-  return (json.data?.Page?.media ?? []).map(media => mapAniListMediaToResult(media, mediaType));
+  while (true) {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        format
+          ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page, format } }
+          : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page } },
+      ),
+      signal,
+    });
+
+    if (!response.ok) break;
+    const json: AniListResponse = await response.json();
+    const pageData = json.data?.Page;
+    if (!pageData) break;
+
+    results.push(...(pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType)));
+
+    if (!pageData.pageInfo?.hasNextPage) break;
+    page++;
+  }
+
+  return results;
 }

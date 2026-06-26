@@ -14,6 +14,7 @@ interface OpenLibraryBook {
 }
 
 interface OpenLibrarySearchResponse {
+  numFound?: number;
   docs?: OpenLibraryBook[];
 }
 
@@ -58,29 +59,46 @@ export async function fetchOpenLibAuthor(authorKey: string): Promise<string | nu
   } catch { return null; }
 }
 
-export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const fields = 'key,title,cover_i,first_publish_year,ratings_average,author_name,author_key';
-  const url = `${OPENLIBRARY_BASE_URL}/search.json?q=${encodeURIComponent(searchQuery)}&limit=20&fields=${fields}`;
-
-  const response = await fetch(url, { signal });
-  if (!response.ok) return [];
-
-  const data: OpenLibrarySearchResponse = await response.json();
-
-  return (data.docs ?? []).map((book): SearchResult => ({
-    externalId:  `book:${book.key}`,
-    type:        'book',
-    format:      '',
-    source:      'openlibrary',
-    titleMain:   book.title,
-    titleRomaji: null,
-    titleNative: null,
-    coverUrl:    buildCoverUrl(book.cover_i),
-    releaseYear: book.first_publish_year ?? null,
+function mapBook(book: OpenLibraryBook): SearchResult {
+  return {
+    externalId:   `book:${book.key}`,
+    type:         'book',
+    format:       '',
+    source:       'openlibrary',
+    titleMain:    book.title,
+    titleRomaji:  null,
+    titleNative:  null,
+    coverUrl:     buildCoverUrl(book.cover_i),
+    releaseYear:  book.first_publish_year ?? null,
     releaseMonth: null,
     releaseDay:   null,
-    scoreGlobal: book.ratings_average ? Math.round(book.ratings_average * 10) / 10 : null,
-    authorNames: book.author_name ?? null,
-    authorKey:   book.author_key?.[0] ?? null,
-  }));
+    scoreGlobal:  book.ratings_average ? Math.round(book.ratings_average * 10) / 10 : null,
+    authorNames:  book.author_name ?? null,
+    authorKey:    book.author_key?.[0] ?? null,
+  };
+}
+
+export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
+  const fields = 'key,title,cover_i,first_publish_year,ratings_average,author_name,author_key';
+  const PAGE = 100;
+  const results: SearchResult[] = [];
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const url = `${OPENLIBRARY_BASE_URL}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE}&offset=${offset}&fields=${fields}`;
+    const response = await fetch(url, { signal });
+    if (!response.ok) break;
+
+    const data: OpenLibrarySearchResponse = await response.json();
+    if (total === Infinity) total = data.numFound ?? 0;
+
+    const docs = data.docs ?? [];
+    results.push(...docs.map(mapBook));
+
+    if (docs.length < PAGE) break;
+    offset += PAGE;
+  }
+
+  return results;
 }

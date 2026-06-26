@@ -22,6 +22,8 @@ commands.allow = [
   "get_user_image",
   "remove_user_image",
   "igdb_search",
+  "save_user_info",
+  "get_user_info",
   "igdb_get_game_detail",
   "igdb_get_cover_by_steam_id",
   "read_metadata_index",

@@ -278,8 +278,8 @@ export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
-export async function igdbSearch(query: string): Promise<IgdbGame[]> {
-  return invoke<IgdbGame[]>('igdb_search', { query });
+export async function igdbSearch(query: string, isVisualNovel: boolean = false): Promise<IgdbGame[]> {
+  return invoke<IgdbGame[]>('igdb_search', { query, isVisualNovel });
 }
 
 export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, unknown> | null> {
@@ -355,4 +355,16 @@ export async function openEnvFolder(): Promise<void> {
     return;
   }
   return invoke<void>('open_env_folder');
+}
+
+export async function saveUserInfo(info: Record<string, unknown>): Promise<void> {
+  if (!isTauri()) return;
+  return invoke<void>('save_user_info', { info });
+}
+
+export async function getUserInfo(): Promise<Record<string, unknown>> {
+  if (!isTauri()) return {};
+  try {
+    return await invoke<Record<string, unknown>>('get_user_info');
+  } catch { return {}; }
 }

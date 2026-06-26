@@ -9,6 +9,10 @@ const isTauri = () =>
   ('__TAURI__' in window || '__TAURI_IPC__' in window);
 
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const tauri = (window as any).__TAURI__;
+  if (tauri?.core?.invoke) {
+    return tauri.core.invoke(cmd, args);
+  }
   const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
   return invoke<T>(cmd, args);
 }
@@ -86,7 +90,7 @@ export async function saveImage(key: string, dataUrl: string): Promise<boolean> 
   const tauriKey = TAURI_KEYS[key];
   if (tauriKey && isTauri()) {
     try {
-      await tauriInvoke('save_user_image', { key: tauriKey, data_url: dataUrl });
+      await tauriInvoke('save_user_image', { key: tauriKey, dataUrl });
       return true;
     } catch (e) {
       console.error('Tauri save_user_image failed:', e);

@@ -27,7 +27,7 @@ async function searchGamesLocal(
 ): Promise<SearchResult[]> {
   let results;
   try {
-    results = await igdbSearch(searchQuery);
+    results = await igdbSearch(searchQuery, mediaType === 'vnovel');
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : 'IGDB error');
   }

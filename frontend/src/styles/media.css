@@ -659,6 +659,45 @@
   background: var(--accent-soft);
 }
 
+/* ── Store links ─────────────────────────────────────────────────────────── */
+.media-store-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.media-store-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  padding: 7px;
+  transition: border-color var(--anim-base) var(--anim-ease),
+              background var(--anim-base) var(--anim-ease);
+}
+
+.media-store-link:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.media-store-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: brightness(0) invert(1) opacity(0.75);
+}
+
+.media-store-link:hover img {
+  filter: brightness(0) invert(1) opacity(1);
+}
+
 /* Floating date badge on the banner */
 .media-banner-date-badge {
   position: absolute;

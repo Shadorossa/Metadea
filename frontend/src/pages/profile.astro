@@ -96,7 +96,32 @@ const lang = getLang(Astro.url);
       const avatarHtml = avatarSrc
         ? `<img class="profile-avatar" src="${avatarSrc}" alt="${username}" referrerpolicy="no-referrer">`
         : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
-      bannerContent.innerHTML = `${avatarHtml}<h1 class="profile-username-large">${username}</h1>`;
+
+      const { getUserInfo } = await import('../lib/tauri');
+      const userInfo = await getUserInfo();
+      const fontId = (userInfo.profile_font as string | undefined) ?? 'inter';
+      const fontFiles: Record<string, string> = {
+        inter: 'inter/Inter-VariableFont_opsz,wght.woff2',
+        roboto: 'roboto/Roboto-VariableFont_wdth,wght.woff2',
+        montserrat: 'montserrat/Montserrat-VariableFont_wght.woff2',
+        raleway: 'raleway/Raleway-VariableFont_wght.woff2',
+        syne: 'syne/Syne-VariableFont_wght.woff2',
+        sourcesanspro: 'sourcesanspro/SourceSans3-VariableFont_wght.woff2',
+        lora: 'lora/Lora-VariableFont_wght.woff2',
+        playfairdisplay: 'playfairdisplay/PlayfairDisplay-VariableFont_wght.woff2',
+        alegreya: 'alegreya/Alegreya-VariableFont_wght.woff2',
+        fraunces: 'fraunces/Fraunces-VariableFont_SOFT,WONK,opsz,wght.woff2',
+        librebaskerville: 'librebaskerville/LibreBaskerville-Bold.woff2',
+        inconsolata: 'inconsolata/Inconsolata-VariableFont_wdth,wght.woff2',
+      };
+      const fontSrc = fontFiles[fontId];
+      if (fontSrc) {
+        const s = document.createElement('style');
+        s.textContent = `@font-face { font-family: "profile-font"; src: url("/fonts/${fontSrc}") format("woff2"); font-display: swap; }`;
+        document.head.appendChild(s);
+      }
+
+      bannerContent.innerHTML = `${avatarHtml}<h1 class="profile-username-large" style="font-family: 'profile-font', sans-serif;">${username}</h1>`;
     }
 
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {

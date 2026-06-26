@@ -17,13 +17,10 @@ interface IgdbDetailGame {
     publisher?: boolean;
   }[];
   platforms?: { id: number; name: string }[];
+  store_links?: { platform: string; url: string }[];
 }
 
 export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageData {
-  const year = game.first_release_date
-    ? new Date(game.first_release_date * 1000).getFullYear()
-    : null;
-
   const genres     = game.genres?.map(g => g.name) ?? [];
   const developers = game.involved_companies?.filter(c => c.developer && c.company).map(c => c.company!.name) ?? [];
   const publishers = game.involved_companies?.filter(c => c.publisher && c.company).map(c => c.company!.name) ?? [];
@@ -62,5 +59,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     relations:      [],
     progressStatus: 'playing',
     progressLabel:  'Jugando',
+    storeLinks:     game.store_links?.filter(l => l.platform && l.url),
   };
 }

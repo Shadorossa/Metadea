@@ -711,18 +711,6 @@ async fn igdb_query(
     resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
 }
 
-fn sanitize_folder_name(name: &str) -> String {
-    name.chars()
-        .map(|c| match c {
-            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
-            c if c.is_control() => '_',
-            c => c,
-        })
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
 /// Extracts cover_image_id and igdb_game_id from a /games IGDB entry,
 /// returning the full game object for later metadata extraction.
 fn extract_cover_and_game(game: &serde_json::Value) -> (Option<String>, Option<u64>, serde_json::Value) {
@@ -857,11 +845,6 @@ async fn igdb_get_cover_by_steam_id(
     let safe      = game_name.replace('"', "");
     let name_low  = game_name.to_lowercase();
 
-    // Only cover + game id needed from /games; artworks/screenshots queried separately
-    // because IGDB v4 does not support inline expansion of array relations.
-    const GAME_FIELDS: &str = "id,cover.image_id";
-
-    // Fetch game with full metadata: id, cover, summary, release_date, genres, rating, involved_companies
     const FULL_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
 
     // 1. Steam external_games — uid is globally unique, no category filter needed
@@ -870,9 +853,7 @@ async fn igdb_get_cover_by_steam_id(
         &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\"; limit 1;"),
     ).await?;
     let (cover_id, igdb_game_id, igdb_game) = if !ext[0]["game"].is_null() {
-        let (c, gid, g) = extract_cover_and_game(&ext[0]["game"]);
-        eprintln!("[IGDB] '{}' via external_games → cover={:?} game_id={:?}", game_name, c, gid);
-        (c, gid, g)
+        extract_cover_and_game(&ext[0]["game"])
     } else {
         // 2. Exact name match — prevents "Max Payne" → "Max Payne 2"
         let exact = igdb_query(&client, &client_id, &token,
@@ -881,7 +862,6 @@ async fn igdb_get_cover_by_steam_id(
         ).await?;
         let (c, gid, g) = extract_cover_and_game(&exact[0]);
         if c.is_some() {
-            eprintln!("[IGDB] '{}' via exact → cover={:?} game_id={:?}", game_name, c, gid);
             (c, gid, g)
         } else {
             // 3. Fuzzy search — 5 candidates, pick best name match
@@ -897,9 +877,7 @@ async fn igdb_get_cover_by_steam_id(
                     }))
                     .or_else(|| arr.first())
             });
-            let (c, gid, g) = best.map(|r| extract_cover_and_game(r)).unwrap_or((None, None, serde_json::json!({})));
-            eprintln!("[IGDB] '{}' via search → cover={:?} game_id={:?}", game_name, c, gid);
-            (c, gid, g)
+            best.map(|r| extract_cover_and_game(r)).unwrap_or((None, None, serde_json::json!({})))
         }
     };
 
@@ -911,9 +889,7 @@ async fn igdb_get_cover_by_steam_id(
     // Fetch banner separately via /artworks then /screenshots (array relations
     // cannot be expanded inline in /games queries in IGDB v4)
     let banner_id = if let Some(gid) = igdb_game_id {
-        let bid = fetch_banner_id(&client, &client_id, &token, gid).await;
-        eprintln!("[IGDB] '{}' banner → {:?}", game_name, bid);
-        bid
+        fetch_banner_id(&client, &client_id, &token, gid).await
     } else {
         None
     };
@@ -980,13 +956,11 @@ async fn read_metadata_index(
     let meta_root  = app_handle.path().app_data_dir().map_err(|e| e.to_string())?.join("metadata");
     let index_path = meta_root.join("index.json");
     if !index_path.exists() {
-        eprintln!("[INDEX] index.json not found at {:?}", index_path);
         return Ok(std::collections::HashMap::new());
     }
     let data  = std::fs::read_to_string(&index_path).map_err(|e| e.to_string())?;
     let index: serde_json::Value = serde_json::from_str(&data).unwrap_or_else(|_| serde_json::json!({}));
     let mut out = std::collections::HashMap::new();
-    let mut total = 0;
 
     if let Some(obj) = index.as_object() {
         for (app_id, entry) in obj {
@@ -996,8 +970,6 @@ async fn read_metadata_index(
             if let Some(p) = entry["cover"].as_str() {
                 if std::path::Path::new(p).exists() {
                     result["cover_path"] = serde_json::Value::String(p.to_string());
-                } else {
-                    eprintln!("[INDEX] Cover file not found for {}: {}", app_id, p);
                 }
             }
 
@@ -1005,19 +977,15 @@ async fn read_metadata_index(
             if let Some(p) = entry["banner"].as_str() {
                 if std::path::Path::new(p).exists() {
                     result["banner_path"] = serde_json::Value::String(p.to_string());
-                } else {
-                    eprintln!("[INDEX] Banner file not found for {}: {}", app_id, p);
                 }
             }
 
             if result.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
                 out.insert(app_id.clone(), result);
-                total += 1;
             }
         }
     }
 
-    eprintln!("[INDEX] Index loaded: {} entries with files", total);
     Ok(out)
 }
 
@@ -1043,10 +1011,36 @@ async fn file_to_data_url(file_path: String) -> Result<String, String> {
     Ok(format!("data:image/jpeg;base64,{}", base64_encode(&bytes)))
 }
 
+// Visual Novel filter matching Metamedia's logic:
+// VN = genre 34 in top-3 genres, not RPG (12) or Fighting (4)
+// Inherited from parent if the game itself lacks genres
+fn detect_vn(game: &serde_json::Value) -> bool {
+    let genres = game["genres"].as_array().cloned().unwrap_or_default();
+    let top3: Vec<u64> = genres.iter().take(3).filter_map(|g| g["id"].as_u64()).collect();
+    let all_ids: Vec<u64> = genres.iter().filter_map(|g| g["id"].as_u64()).collect();
+
+    let has_vn  = top3.contains(&34) && !all_ids.contains(&12) && !all_ids.contains(&4);
+    if has_vn { return true; }
+
+    // Inherit from parent if no own genres
+    for parent_key in &["version_parent", "parent_game"] {
+        let parent = &game[parent_key];
+        if parent.is_null() { continue; }
+        let pg = parent["genres"].as_array().cloned().unwrap_or_default();
+        let pt3: Vec<u64> = pg.iter().take(3).filter_map(|g| g["id"].as_u64()).collect();
+        let pa: Vec<u64>  = pg.iter().filter_map(|g| g["id"].as_u64()).collect();
+        if pt3.contains(&34) && !pa.contains(&12) && !pa.contains(&4) {
+            return true;
+        }
+    }
+    false
+}
+
 #[tauri::command]
 async fn igdb_search(
     app_handle: tauri::AppHandle,
     query: String,
+    is_visual_novel: bool,
 ) -> Result<serde_json::Value, String> {
     if query.is_empty() {
         return Ok(serde_json::json!([]));
@@ -1066,15 +1060,46 @@ async fn igdb_search(
     let client = reqwest::Client::new();
     let safe_query = query.replace('"', "");
 
-    let results = igdb_query(
-        &client,
-        &client_id,
-        &token,
-        "https://api.igdb.com/v4/games",
-        &format!("fields id,name,cover.image_id,rating,first_release_date; search \"{}\"; where cover != null; limit 10;", safe_query),
-    ).await?;
+    const PAGE: usize = 100;
+    let mut all: Vec<serde_json::Value> = Vec::new();
+    let mut offset: usize = 0;
 
-    Ok(results)
+    loop {
+        let page = igdb_query(
+            &client,
+            &client_id,
+            &token,
+            "https://api.igdb.com/v4/games",
+            &format!(
+                "fields id,name,cover.image_id,rating,first_release_date,\
+                 genres.id,genres.name,\
+                 version_parent.id,version_parent.genres.id,\
+                 parent_game.id,parent_game.genres.id,\
+                 version_title; \
+                 search \"{}\"; where cover != null; limit {}; offset {};",
+                safe_query, PAGE, offset
+            ),
+        ).await?;
+
+        let items = page.as_array().map(|a| a.clone()).unwrap_or_default();
+        let count = items.len();
+
+        for item in items {
+            // Skip packaging editions (version_parent or version_title set)
+            if !item["version_parent"].is_null() || !item["version_title"].is_null() {
+                continue;
+            }
+            let vn = detect_vn(&item);
+            if is_visual_novel == vn {
+                all.push(item);
+            }
+        }
+
+        if count < PAGE { break; }
+        offset += PAGE;
+    }
+
+    Ok(serde_json::Value::Array(all))
 }
 
 #[tauri::command]
@@ -1116,6 +1141,31 @@ async fn igdb_get_game_detail(
     game["banner_image_id"] = banner_id
         .map(|id| serde_json::Value::String(id))
         .unwrap_or(serde_json::Value::Null);
+
+    // Fetch store links from external_games — detect platform from URL (more reliable than category enum)
+    if let Ok(ext) = igdb_query(
+        &client, &client_id, &token,
+        "https://api.igdb.com/v4/external_games",
+        &format!("fields category,url; where game = {}; limit 30;", igdb_id),
+    ).await {
+        if let Some(arr) = ext.as_array() {
+            let links: Vec<serde_json::Value> = arr.iter()
+                .filter_map(|e| {
+                    let url = e["url"].as_str().filter(|u| !u.is_empty())?;
+                    let platform = if url.contains("store.steampowered.com") { "steam" }
+                        else if url.contains("gog.com")           { "gog" }
+                        else if url.contains("epicgames.com")     { "epic" }
+                        else if url.contains("xbox.com") || url.contains("microsoft.com/store") { "xbox" }
+                        else if url.contains("playstation.com")   { "playstation" }
+                        else { return None; };
+                    Some(serde_json::json!({ "platform": platform, "url": url }))
+                })
+                .collect();
+            if !links.is_empty() {
+                game["store_links"] = serde_json::Value::Array(links);
+            }
+        }
+    }
 
     Ok(game)
 }
@@ -1209,6 +1259,35 @@ async fn remove_user_image(
     Ok(())
 }
 
+#[tauri::command]
+async fn save_user_info(
+    app_handle: tauri::AppHandle,
+    info: serde_json::Value,
+) -> Result<(), String> {
+    let path = user_metadata_dir(&app_handle)?.join("user_info.json");
+    // Merge with existing data so partial updates don't wipe other fields
+    let existing: serde_json::Value = if path.exists() {
+        let raw = std::fs::read_to_string(&path).unwrap_or_default();
+        serde_json::from_str(&raw).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
+    let mut merged = existing;
+    if let (Some(obj), Some(new_obj)) = (merged.as_object_mut(), info.as_object()) {
+        for (k, v) in new_obj { obj.insert(k.clone(), v.clone()); }
+    }
+    let out = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
+    std::fs::write(path, out).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_user_info(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let path = user_metadata_dir(&app_handle)?.join("user_info.json");
+    if !path.exists() { return Ok(serde_json::json!({})); }
+    let raw = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    serde_json::from_str(&raw).map_err(|e| e.to_string())
+}
+
 // Minimal base64 encode/decode (no external crate needed)
 fn base64_encode(input: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -1275,6 +1354,7 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             #[cfg(debug_assertions)]
             {
@@ -1309,6 +1389,8 @@ pub fn run() {
             save_user_image,
             get_user_image,
             remove_user_image,
+            save_user_info,
+            get_user_info,
             read_routes,
             write_routes,
         ])

@@ -424,17 +424,47 @@ export default function MediaPage({ lang }: { lang: string }) {
         </div>
 
         {/* Datos */}
-        {data.stats.length > 0 && (
+        {(data.stats.length > 0 || (data.storeLinks && data.storeLinks.length > 0)) && (
           <div className="media-col-stats">
-            <p className="section-label">{tm.section_data}</p>
-            <div className="media-stats-list">
-              {data.stats.map((s, i) => (
-                <div key={i} className="media-stat-item">
-                  <span className="media-stat-label">{s.label}</span>
-                  <span className="media-stat-value">{s.value}</span>
+            {data.storeLinks && data.storeLinks.length > 0 && (
+              <div className="media-store-links">
+                {data.storeLinks.map((link, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="media-store-link"
+                    title={link.platform}
+                    onClick={() => {
+                      const tauri = (window as any).__TAURI__;
+                      if (tauri?.opener?.openUrl) {
+                        tauri.opener.openUrl(link.url);
+                      } else {
+                        window.open(link.url, '_blank');
+                      }
+                    }}
+                  >
+                    <img
+                      src={`/platforms/${link.platform}_logo.png`}
+                      alt={link.platform}
+                      draggable={false}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+            {data.stats.length > 0 && (
+              <>
+                <p className="section-label">{tm.section_data}</p>
+                <div className="media-stats-list">
+                  {data.stats.map((s, i) => (
+                    <div key={i} className="media-stat-item">
+                      <span className="media-stat-label">{s.label}</span>
+                      <span className="media-stat-value">{s.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         )}
       </div>
