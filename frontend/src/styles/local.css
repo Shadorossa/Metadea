@@ -709,6 +709,28 @@
   height: 16px;
 }
 
+.local-game-detail-catalog-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.local-game-detail-catalog-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .local-game-detail-tabs {
   display: flex;
   gap: 0.5rem;

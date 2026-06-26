@@ -32,6 +32,7 @@ export interface MediaPageData {
   genreDots?: string;          // "Action · Comedy · Drama"
   metaLines: string[];         // líneas del panel derecho (estudio, formato, etc.)
   dateBadge?: string;          // overlay sobre el banner con fechas
+  developerBadge?: string;     // overlay sobre el banner con el desarrollador (juegos)
   description?: string;
   stats: MediaStat[];
   characters: MediaCharacter[];

@@ -23,6 +23,22 @@
   width: 100%;
 }
 
+.media-hero--game .media-banner {
+  height: 520px;
+}
+
+.media-hero--game .media-banner-date-badge {
+  top: calc(19rem + 200px);
+}
+
+.media-hero--game .media-hero-left {
+  padding-bottom: 2.8rem;
+}
+
+.media-hero--game .media-hero-right {
+  padding-top: 1.8rem;
+}
+
 .media-banner {
   position: relative;
   width: 100%;
@@ -661,6 +677,29 @@
   color: var(--text-main);
   border: 1px solid var(--border-color);
   backdrop-filter: blur(8px);
+}
+
+.media-banner-developer-badge {
+  position: absolute;
+  top: 19rem;
+  left: 15%;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+
+.media-hero--game .media-banner-developer-badge {
+  top: calc(19rem + 200px);
 }
 
 /* ── Library Widget (Horizontal Status + Stars Box) ─────────────────────── */

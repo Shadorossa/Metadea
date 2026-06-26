@@ -2,9 +2,12 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
+import { mapIgdbToMedia } from './igdb-mapper';
+import { igdbGetGameDetail } from '../tauri';
 import type { MediaPageData } from './types';
 
 const ANILIST_TYPES  = ['anime', 'manga', 'novel'];
+const IGDB_TYPES     = ['game', 'vnovel'];
 const CACHE_PREFIX   = 'media_cache_v2:';
 const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 min
 
@@ -45,6 +48,13 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     if (!numericId) return null;
     const raw = await fetchAniListDetail(numericId);
     return raw ? mapAniListToMedia(raw, type) : null;
+  }
+
+  if (IGDB_TYPES.includes(type)) {
+    const numericId = parseInt(idStr, 10);
+    if (!numericId) return null;
+    const game = await igdbGetGameDetail(numericId);
+    return game ? mapIgdbToMedia(game, rawId) : null;
   }
 
   if (type === 'book') {

@@ -278,8 +278,17 @@ export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
-export async function igdbSearch(name: string): Promise<IgdbGame[]> {
-  return invoke<IgdbGame[]>('igdb_search', { name });
+export async function igdbSearch(query: string): Promise<IgdbGame[]> {
+  return invoke<IgdbGame[]>('igdb_search', { query });
+}
+
+export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, unknown> | null> {
+  if (!isTauri()) return null;
+  try {
+    return await invoke<Record<string, unknown> | null>('igdb_get_game_detail', { igdbId });
+  } catch {
+    return null;
+  }
 }
 
 export async function igdbGetCoverBySteamId(

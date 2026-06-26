@@ -49,6 +49,15 @@ function StatusIcon({ status }: { status: string }) {
     case 'watching':
     case 'reading':
       return <svg {...SVG}><polygon points="5 3 19 12 5 21 5 3" /></svg>;
+    case 'playing':
+      return (
+        <svg {...SVG}>
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <path d="M6 12h4M8 10v4"/>
+          <circle cx="15" cy="12" r="1" fill="currentColor"/>
+          <circle cx="18" cy="10" r="1" fill="currentColor"/>
+        </svg>
+      );
     case 'completed':
       return <svg {...SVG}><polyline points="20 6 9 17 4 12" /></svg>;
     case 'paused':
@@ -278,7 +287,7 @@ export default function MediaPage({ lang }: { lang: string }) {
   return (
     <>
       {/* Hero */}
-      <div className="media-hero">
+      <div className={`media-hero${data.type === 'game' || data.type === 'vnovel' ? ' media-hero--game' : ''}`}>
         <div
           className={data.bannerImage ? 'media-banner' : 'media-banner media-banner--color'}
           style={bannerStyle}
@@ -290,6 +299,9 @@ export default function MediaPage({ lang }: { lang: string }) {
 
         {data.dateBadge && (
           <div className="media-banner-date-badge">{data.dateBadge}</div>
+        )}
+        {data.developerBadge && (
+          <div className="media-banner-developer-badge">{data.developerBadge}</div>
         )}
 
         <div className="media-hero-body">
@@ -346,6 +358,7 @@ export default function MediaPage({ lang }: { lang: string }) {
             {data.genreDots    && <p className="media-genres-dots">{data.genreDots}</p>}
             {data.metaLines[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
             {data.metaLines[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
+            {data.metaLines[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
           </div>
         </div>
       </div>

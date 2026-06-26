@@ -42,7 +42,7 @@ async function searchGamesLocal(
       : null;
 
     return {
-      externalId:   `igdb:${g.id}`,
+      externalId:   `${mediaType}:${g.id}`,
       type:         mediaType as MediaType,
       format:       mediaType === 'vnovel' ? 'VISUAL_NOVEL' : 'GAME',
       source:       'igdb' as const,

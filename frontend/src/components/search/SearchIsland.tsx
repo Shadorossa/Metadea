@@ -192,7 +192,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
-const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book'];
+const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book', 'game', 'vnovel'];
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = DETAIL_SUPPORTED.includes(result.type);

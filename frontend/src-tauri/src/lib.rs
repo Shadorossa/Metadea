@@ -739,13 +739,24 @@ async fn fetch_banner_id(
     token:     &str,
     game_id:   u64,
 ) -> Option<String> {
-    // alpha_channel = false excludes transparent logos/keyart with no background
-    let art = igdb_query(client, client_id, token,
+    // Fetch non-transparent artworks with dimensions to filter by aspect ratio
+    if let Ok(arts) = igdb_query(client, client_id, token,
         "https://api.igdb.com/v4/artworks",
-        &format!("fields image_id; where game = {} & alpha_channel = false; limit 1;", game_id),
-    ).await.ok()?;
-    if let Some(id) = art[0]["image_id"].as_str() {
-        return Some(id.to_string());
+        &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
+    ).await {
+        // Prefer 16:9-ish: width/height >= 1.5 (landscape by a significant margin)
+        if let Some(arr) = arts.as_array() {
+            for entry in arr {
+                let w = entry["width"].as_f64().unwrap_or(0.0);
+                let h = entry["height"].as_f64().unwrap_or(1.0);
+                if h > 0.0 && w / h >= 1.5 {
+                    if let Some(id) = entry["image_id"].as_str() {
+                        return Some(id.to_string());
+                    }
+                }
+            }
+            // No landscape artwork found — fall through to screenshots
+        }
     }
     let ss = igdb_query(client, client_id, token,
         "https://api.igdb.com/v4/screenshots",
@@ -1033,8 +1044,80 @@ async fn file_to_data_url(file_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn igdb_search(_query: String) -> Result<String, String> {
-    Ok("[]".to_string())
+async fn igdb_search(
+    app_handle: tauri::AppHandle,
+    query: String,
+) -> Result<serde_json::Value, String> {
+    if query.is_empty() {
+        return Ok(serde_json::json!([]));
+    }
+
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let cfg = {
+        let path = app_data_dir.join("env.json");
+        if !path.exists() { return Err("No env.json — configure IGDB keys first".into()); }
+        let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())?
+    };
+    let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token         = get_twitch_token(&client_id, &client_secret).await?;
+
+    let client = reqwest::Client::new();
+    let safe_query = query.replace('"', "");
+
+    let results = igdb_query(
+        &client,
+        &client_id,
+        &token,
+        "https://api.igdb.com/v4/games",
+        &format!("fields id,name,cover.image_id,rating,first_release_date; search \"{}\"; where cover != null; limit 10;", safe_query),
+    ).await?;
+
+    Ok(results)
+}
+
+#[tauri::command]
+async fn igdb_get_game_detail(
+    app_handle: tauri::AppHandle,
+    igdb_id: u64,
+) -> Result<serde_json::Value, String> {
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let cfg = {
+        let path = app_data_dir.join("env.json");
+        if !path.exists() { return Err("No env.json".into()); }
+        let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())?
+    };
+    let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token         = get_twitch_token(&client_id, &client_secret).await?;
+    let client        = reqwest::Client::new();
+
+    let games = igdb_query(
+        &client, &client_id, &token,
+        "https://api.igdb.com/v4/games",
+        &format!(
+            "fields id,name,cover.image_id,summary,first_release_date,rating,\
+             genres.name,involved_companies.company.name,\
+             involved_companies.developer,involved_companies.publisher,platforms.name; \
+             where id = {}; limit 1;",
+            igdb_id
+        ),
+    ).await?;
+
+    let mut game = games[0].clone();
+    if game.is_null() {
+        return Ok(serde_json::json!(null));
+    }
+
+    // Fetch banner: artworks first, then screenshots
+    let banner_id = fetch_banner_id(&client, &client_id, &token, igdb_id).await;
+    game["banner_image_id"] = banner_id
+        .map(|id| serde_json::Value::String(id))
+        .unwrap_or(serde_json::Value::Null);
+
+    Ok(game)
 }
 
 // -- Debug ---------------------------------------------------------------------
@@ -1216,6 +1299,7 @@ pub fn run() {
             read_env_config,
             write_env_config,
             igdb_search,
+            igdb_get_game_detail,
             igdb_get_cover_by_steam_id,
             read_metadata_index,
             read_game_info,
