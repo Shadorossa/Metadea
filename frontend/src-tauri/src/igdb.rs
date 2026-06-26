@@ -19,7 +19,15 @@ const EDITION_KEYWORDS: &[&str] = &[
     "anniversary", "collector", "limited", "special", "enhanced", "expanded",
 ];
 
-const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
+const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,category,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
+
+/// Returns true if the game is a DLC/addon/non-game entry that should be excluded.
+/// Only excludes when category is explicitly set to a non-game value.
+/// Games with no category set (null → 0 in JSON) are treated as main_game.
+fn is_non_game(game: &serde_json::Value) -> bool {
+    const EXCLUDED: &[u64] = &[1, 5, 6, 7, 13, 14]; // dlc_addon, mod, episode, season, pack, update
+    game["category"].as_u64().map(|c| EXCLUDED.contains(&c)).unwrap_or(false)
+}
 
 // -- Env config ----------------------------------------------------------------
 
@@ -320,11 +328,12 @@ async fn resolve_igdb_game(
             eprintln!("[IGDB] Steam ID hit: igdb_id={}", igdb_id);
             if let Ok(games) = igdb_query(client, client_id, token,
                 IGDB_API_GAMES,
-                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null & category = (0,2,3,4,8,9,10,11,12); limit 1;", igdb_id),
+                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
             ).await {
-                let (cover_id, game_id, igdb_game) = extract_cover_and_game(
-                    games.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null))
-                );
+                let entry = games.as_array()
+                    .and_then(|a| a.iter().find(|g| !is_non_game(g)))
+                    .unwrap_or(&serde_json::json!(null));
+                let (cover_id, game_id, igdb_game) = extract_cover_and_game(entry);
                 if let Some(id) = cover_id {
                     eprintln!("[IGDB] Steam ID resolved cover={}", id);
                     return Ok((id, game_id, igdb_game));
@@ -338,14 +347,15 @@ async fn resolve_igdb_game(
     // Fallback: fuzzy search with cleaned query
     let fuzzy = igdb_query(client, client_id, token,
         IGDB_API_GAMES,
-        &format!("fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null & category = (0,2,3,4,8,9,10,11,12); limit 10;"),
+        &format!("fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null; limit 10;"),
     ).await?;
 
     if let Some(arr) = fuzzy.as_array() {
         eprintln!("[IGDB] Fuzzy results: {:?}", arr.iter().filter_map(|r| r["name"].as_str()).collect::<Vec<_>>());
 
-        // Normalized exact match: collect all, then pick by Steam year if available
+        // Normalized exact match: collect all (excluding DLC/addons), then pick by Steam year
         let norm_matches: Vec<_> = arr.iter()
+            .filter(|r| !is_non_game(r))
             .filter(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
             .collect();
 
@@ -832,13 +842,16 @@ pub async fn igdb_search_candidates(
     let results = igdb_query(&client, &client_id, &token,
         IGDB_API_GAMES,
         &format!(
-            "fields id,name,cover.image_id,first_release_date; \
-             search \"{}\"; where cover != null & category = (0,2,3,4,8,9,10,11,12); limit 20;",
+            "fields id,name,cover.image_id,first_release_date,category; \
+             search \"{}\"; where cover != null; limit 20;",
             search_query
         ),
     ).await?;
 
-    let games = results.as_array().cloned().unwrap_or_default();
+    let games: Vec<serde_json::Value> = results.as_array().cloned().unwrap_or_default()
+        .into_iter()
+        .filter(|g| !is_non_game(g))
+        .collect();
 
     // Fetch developer info in a second query using the game IDs
     let ids: Vec<String> = games.iter()
@@ -851,7 +864,7 @@ pub async fn igdb_search_candidates(
             IGDB_API_GAMES,
             &format!(
                 "fields id,involved_companies.company.name,involved_companies.developer; \
-                 where id = ({}) & cover != null & category = (0,2,3,4,8,9,10,11,12); limit 20;",
+                 where id = ({}) & cover != null; limit 20;",
                 id_list
             ),
         ).await.unwrap_or(serde_json::json!([]));
