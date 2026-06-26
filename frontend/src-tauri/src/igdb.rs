@@ -106,19 +106,44 @@ async fn igdb_query(
     endpoint: &str,
     body: &str,
 ) -> Result<serde_json::Value, String> {
-    let resp = client
-        .post(endpoint)
-        .header("Client-ID", client_id)
-        .header("Authorization", format!("Bearer {}", token))
-        .header("Content-Type", "text/plain")
-        .body(body.to_string())
-        .send().await.map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        let s = resp.status();
-        let b = resp.text().await.unwrap_or_default();
-        return Err(format!("IGDB error (HTTP {}): {}", s, b));
+    const MAX_RETRIES: u32 = 4;
+    let mut delay_secs = 1u64;
+
+    for attempt in 0..=MAX_RETRIES {
+        let resp = client
+            .post(endpoint)
+            .header("Client-ID", client_id)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "text/plain")
+            .body(body.to_string())
+            .send().await.map_err(|e| e.to_string())?;
+
+        let status = resp.status();
+
+        if status.as_u16() == 429 {
+            if attempt == MAX_RETRIES {
+                return Err(format!("IGDB error (HTTP 429): rate limited after {} retries", MAX_RETRIES));
+            }
+            // Respect Retry-After header if present, otherwise exponential backoff
+            let wait = resp
+                .headers()
+                .get("Retry-After")
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(delay_secs);
+            tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
+            delay_secs = (delay_secs * 2).min(30);
+            continue;
+        }
+
+        if !status.is_success() {
+            let b = resp.text().await.unwrap_or_default();
+            return Err(format!("IGDB error (HTTP {}): {}", status, b));
+        }
+
+        return resp.json::<serde_json::Value>().await.map_err(|e| e.to_string());
     }
-    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    Err("IGDB: unreachable".into())
 }
 
 fn extract_cover_and_game(game: &serde_json::Value) -> (Option<String>, Option<u64>, serde_json::Value) {
@@ -265,7 +290,6 @@ pub async fn igdb_get_cover_by_steam_id(
     app_handle: tauri::AppHandle,
     app_id: String,
     game_name: String,
-    lang: Option<String>,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
     let meta_root    = app_data_dir.join("metadata");
@@ -277,8 +301,8 @@ pub async fn igdb_get_cover_by_steam_id(
         if let Ok(entries) = std::fs::read_dir(&game_dir) {
             for e in entries.flatten() {
                 let n = e.file_name().to_string_lossy().to_string();
-                if n.ends_with("_cover.jpg")  { has_cover  = true; }
-                if n.ends_with("_banner.jpg") { has_banner = true; }
+                if n.ends_with("_cover.webp")  { has_cover  = true; }
+                if n.ends_with("_banner.webp") { has_banner = true; }
             }
         }
         if has_cover && has_banner { return Ok(Some(game_dir.to_string_lossy().to_string())); }
@@ -288,38 +312,116 @@ pub async fn igdb_get_cover_by_steam_id(
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
-    let client        = reqwest::Client::new();
-    let safe          = game_name.replace('"', "");
-    let name_low      = game_name.to_lowercase();
+    // 15-second timeout per request — prevents a single stalled download from
+    // blocking the whole batch of 150+ games indefinitely.
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
+
+    /// Normalize a game name for fuzzy comparison:
+    /// - Strip trademark/copyright symbols (™ ® ©)
+    /// - Replace colons and other punctuation with spaces
+    /// - Collapse multiple spaces
+    fn normalize_name(s: &str) -> String {
+        s.chars()
+            .map(|c| match c {
+                '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
+                ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ', // punctuation
+                c => c,
+            })
+            .collect::<String>()
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    }
+
+    // safe: for IGDB query string — remove quotes and trademark symbols
+    let safe     = game_name.chars().filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}').collect::<String>().trim().to_string();
+    let name_norm = normalize_name(&game_name);
 
     const FULL_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
 
+    // category = 1 → Steam. Without this filter, a uid like "39140" could match
+    // the same numeric ID on another platform, returning the wrong game entirely.
     let ext = igdb_query(&client, &client_id, &token,
         "https://api.igdb.com/v4/external_games",
-        &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\"; limit 1;"),
+        &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\" & category = 1; limit 1;"),
     ).await?;
-    let (cover_id, igdb_game_id, igdb_game) = if !ext[0]["game"].is_null() {
-        extract_cover_and_game(&ext[0]["game"])
+    let (cover_id, igdb_game_id, igdb_game) = if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
+        extract_cover_and_game(&g["game"])
     } else {
+        // Fallback 1: exact name match
         let exact = igdb_query(&client, &client_id, &token,
             "https://api.igdb.com/v4/games",
             &format!("fields {FULL_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
         ).await?;
-        let (c, gid, g) = extract_cover_and_game(&exact[0]);
+        let (c, gid, g) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
         if c.is_some() {
             (c, gid, g)
         } else {
+            // Fallback 2: IGDB search with edition-aware similarity scoring
             let search = igdb_query(&client, &client_id, &token,
                 "https://api.igdb.com/v4/games",
-                &format!("fields name,{FULL_FIELDS}; search \"{safe}\"; where cover != null; limit 5;"),
+                &format!("fields name,{FULL_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
             ).await?;
+
+            // Edition/DLC keywords: if the candidate has these but the query doesn't,
+            // it's likely a special edition — penalize it heavily.
+            const EDITION_WORDS: &[&str] = &[
+                "deluxe", "digital", "edition", "skin", "pack", "bundle", "gold",
+                "premium", "ultimate", "complete", "goty", "remastered", "definitive",
+                "anniversary", "collector", "limited", "special", "enhanced", "expanded",
+            ];
+
+            fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
+                // Normalize both sides the same way
+                let q = query_norm; // already normalized by caller
+                let c = {
+                    let tmp = candidate_raw.chars().map(|ch| match ch {
+                        '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ',
+                        ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ',
+                        ch => ch,
+                    }).collect::<String>();
+                    tmp.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
+                };
+
+                let q_tokens: Vec<&str> = q.split_whitespace().collect();
+                if q_tokens.is_empty() { return 0.0; }
+
+                // Base similarity: fraction of query tokens present in candidate
+                let matched = q_tokens.iter().filter(|t| c.contains(**t)).count();
+                let mut score = matched as f64 / q_tokens.len() as f64;
+
+                // Penalize: candidate contains edition words that the query doesn't
+                let edition_penalty: f64 = EDITION_WORDS.iter()
+                    .filter(|&&w| c.contains(w) && !q.contains(w))
+                    .count() as f64 * 0.25;
+                score -= edition_penalty;
+
+                // Bonus: candidate length close to query length (base game usually shorter)
+                let len_ratio = q.len() as f64 / c.len().max(1) as f64;
+                score += (1.0 - (len_ratio - 1.0).abs().min(1.0)) * 0.1;
+
+                score
+            }
+
             let best = search.as_array().and_then(|arr| {
+                // 1. Exact match (after normalization) wins immediately
                 arr.iter()
-                    .find(|r| r["name"].as_str().map(|n| n.to_lowercase() == name_low).unwrap_or(false))
-                    .or_else(|| arr.iter().find(|r| {
-                        r["name"].as_str().map(|n| n.to_lowercase().starts_with(&name_low)).unwrap_or(false)
-                    }))
-                    .or_else(|| arr.first())
+                    .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+                    // 2. Best-scored result (requires score > 0.5 to avoid garbage)
+                    .or_else(|| {
+                        arr.iter()
+                            .filter_map(|r| {
+                                let n = r["name"].as_str()?;
+                                let score = score_candidate(&name_norm, n);
+                                if score > 0.5 { Some((score, r)) } else { None }
+                            })
+                            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+                            .map(|(_, r)| r)
+                    })
             });
             best.map(|r| extract_cover_and_game(r)).unwrap_or((None, None, serde_json::json!({})))
         }
@@ -338,32 +440,38 @@ pub async fn igdb_get_cover_by_steam_id(
 
     std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
 
-    let cover_path  = game_dir.join(format!("{}_cover.jpg",  cover_image_id));
-    let banner_path = banner_id.as_ref().map(|bid| game_dir.join(format!("{}_banner.jpg", bid)));
+    let cover_path  = game_dir.join(format!("{}_cover.webp",  cover_image_id));
+    let banner_path = banner_id.as_ref().map(|bid| game_dir.join(format!("{}_banner.webp", bid)));
+
+    /// Download a JPEG from IGDB and save it as high-quality WebP.
+    /// Uses image 0.25's save_with_format after decoding the JPEG bytes.
+    async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {
+        let Ok(resp)  = client.get(url).send().await else { return };
+        let Ok(bytes) = resp.bytes().await            else { return };
+        let Ok(img)   = image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg)
+            else { return };
+        // save() infers WebP from the .webp extension; quality defaults to encoder max
+        let _ = img.save_with_format(dest, image::ImageFormat::WebP);
+    }
 
     // Download cover and banner in parallel
     let cover_fut = async {
         if cover_path.exists() { return; }
-        if let Ok(resp) = client
-            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id))
-            .send().await
-        {
-            if let Ok(bytes) = resp.bytes().await {
-                let _ = std::fs::write(&cover_path, &bytes);
-            }
-        }
+        download_as_webp(
+            &client,
+            &format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id),
+            &cover_path,
+        ).await;
     };
     let banner_fut = async {
         if let (Some(bid), Some(bpath)) = (&banner_id, &banner_path) {
             if bpath.exists() { return; }
-            if let Ok(resp) = client
-                .get(format!("https://images.igdb.com/igdb/image/upload/t_screenshot_big/{}.jpg", bid))
-                .send().await
-            {
-                if let Ok(bytes) = resp.bytes().await {
-                    let _ = std::fs::write(bpath, &bytes);
-                }
-            }
+            // t_1080p for banner: best quality landscape image IGDB offers
+            download_as_webp(
+                &client,
+                &format!("https://images.igdb.com/igdb/image/upload/t_1080p/{}.jpg", bid),
+                bpath,
+            ).await;
         }
     };
     futures::join!(cover_fut, banner_fut);
@@ -387,10 +495,6 @@ pub async fn igdb_get_cover_by_steam_id(
         obj.insert(app_id.clone(), entry);
     }
     let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
-
-    // Download Steam achievements (best-effort)
-    let ach_lang = lang.as_deref().unwrap_or("spanish");
-    crate::steam::download_achievements(&app_handle, &app_id, &game_dir, ach_lang).await;
 
     Ok(Some(cover_path.to_string_lossy().to_string()))
 }

@@ -322,7 +322,7 @@ export async function igdbGetCoverBySteamId(
   gameName: string,
 ): Promise<string | null> {
   if (!isTauri()) return null;
-  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName, lang: steamLang() });
+  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
 }
 
 export interface MetaEntry {

@@ -655,12 +655,14 @@
   display: flex;
   flex: 1;
   min-width: 0;
+  align-items: flex-start; /* required for sticky children */
 }
 
 .local-game-detail-panel {
-  position: relative;
+  position: sticky;
+  top: 56px;               /* sticks just below the navbar */
   width: 1120px;
-  height: 100vh;
+  max-height: calc(100vh - 56px);
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;

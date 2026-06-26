@@ -675,7 +675,9 @@ export default function LocalLibrary() {
     let   done    = 0;
     setMetaProgress({ total, current: 0, currentName: 'Iniciando…', cancelled: false });
 
-    const CONCURRENCY = 3;
+    // Sequential (1 worker): each game makes 3-5 IGDB requests internally.
+    // Rust handles 429s with exponential backoff — no need for JS-side concurrency.
+    const CONCURRENCY = 1;
     const queue = [...pending];
 
     async function processOne(game: LocalGame) {
