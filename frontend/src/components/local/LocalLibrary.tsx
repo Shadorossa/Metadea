@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import {
   scanAllGames, pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
-  igdbGetCoverBySteamId, readMetadataIndex,
-  type LocalGame, type LocalFolderEntry, type MetaEntry,
+  igdbGetCoverBySteamId, readMetadataIndex, readGameInfo, pathToDataUrl,
+  type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo,
 } from '../../lib/tauri';
 
 // ── Platform config ───────────────────────────────────────────────────────────
@@ -110,13 +110,29 @@ function IconX() {
 
 interface GameCardProps {
   game: LocalGame;
-  coverCache: Record<string, MetaEntry>;
+  pathCache: Record<string, MetaEntry>;
+  coverCache: Record<string, { cover?: string; banner?: string }>;
   onClick: (game: LocalGame) => void;
 }
 
-function GameCard({ game, coverCache, onClick }: GameCardProps) {
-  const entry = game.app_id ? coverCache[game.app_id] : undefined;
-  const cover = entry?.cover ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
+function GameCard({ game, pathCache, coverCache, onClick }: GameCardProps) {
+  const [cover, setCover] = useState<string | null>(null);
+
+  const pathEntry = game.app_id ? pathCache[game.app_id] : undefined;
+  const cachedEntry = game.app_id ? coverCache[game.app_id] : undefined;
+
+  // Load from cache first, or load directly from path if available
+  useEffect(() => {
+    const loadCover = async () => {
+      if (cachedEntry?.cover) {
+        setCover(cachedEntry.cover);
+      } else if (pathEntry?.cover_path) {
+        const url = await pathToDataUrl(pathEntry.cover_path);
+        setCover(url);
+      }
+    };
+    loadCover();
+  }, [cachedEntry, pathEntry]);
 
   return (
     <div className="local-game-card" onClick={() => onClick(game)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick(game)}>
@@ -139,7 +155,21 @@ interface GameDetailPanelProps {
   onClose: () => void;
 }
 
+type TabId = 'library' | 'details' | 'playtime';
+
 function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('library');
+  const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!game.app_id) return;
+    setLoading(true);
+    readGameInfo(game.app_id)
+      .then(info => setGameInfo(info))
+      .finally(() => setLoading(false));
+  }, [game.app_id]);
+
   const entry  = game.app_id ? coverCache[game.app_id] : undefined;
   // Banner: IGDB artwork/screenshot; fallback to cover, then Steam CDN
   const banner = entry?.banner ?? entry?.cover ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
@@ -150,49 +180,194 @@ function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
     console.log('Jugar:', game.name, game.install_path);
   };
 
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return '—';
+    try {
+      return new Date(timestamp * 1000).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  const formatMinutes = (minutes?: number) => {
+    if (!minutes) return '—';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
   return (
     <div className="local-game-detail-panel">
-        <div className="local-game-detail-header">
-          {banner ? (
-            <img src={banner} alt={game.name} />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
-              <IconMonitor />
+      <div className="local-game-detail-header">
+        {banner ? (
+          <img src={banner} alt={game.name} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
+            <IconMonitor />
+          </div>
+        )}
+        <div className="local-game-detail-backdrop" />
+        <button className="local-game-detail-close" onClick={onClose}>
+          <IconX />
+        </button>
+      </div>
+
+      <div className="local-game-detail-content">
+        <p className="local-game-detail-title">{game.name}</p>
+
+        <div className="local-game-detail-meta">
+          <div className="local-game-detail-platform">
+            <span className="local-game-detail-platform-icon">
+              <img src={PLATFORM_LOGO[game.launcher as PlatformId]} alt={game.launcher} draggable={false} />
+            </span>
+            <span>{PLATFORM_LABEL[game.launcher as PlatformId]}</span>
+          </div>
+          {gameInfo?.rating && (
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-highlight)' }}>
+              ★ {gameInfo.rating.toFixed(1)} / 10
             </div>
           )}
-          <div className="local-game-detail-backdrop" />
-          <button className="local-game-detail-close" onClick={onClose}>
-            <IconX />
+        </div>
+
+        <div className="local-game-detail-actions">
+          <button className="local-game-detail-play" onClick={handlePlay}>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            Jugar
           </button>
         </div>
 
-        <div className="local-game-detail-content">
-          <p className="local-game-detail-title">{game.name}</p>
-
-          <div className="local-game-detail-meta">
-            <div className="local-game-detail-platform">
-              <span className="local-game-detail-platform-icon">
-                <img src={PLATFORM_LOGO[game.launcher as PlatformId]} alt={game.launcher} draggable={false} />
-              </span>
-              <span>{PLATFORM_LABEL[game.launcher as PlatformId]}</span>
-            </div>
-            {game.install_path && (
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', wordBreak: 'break-word' }}>
-                {game.install_path}
-              </div>
-            )}
-          </div>
-
-          <div className="local-game-detail-actions">
-            <button className="local-game-detail-play" onClick={handlePlay}>
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              Jugar
+        {/* Tabs */}
+        <div className="local-game-detail-tabs">
+          {(['library', 'details', 'playtime'] as TabId[]).map(tab => (
+            <button
+              key={tab}
+              className={`local-game-detail-tab ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {{
+                library: 'Librería',
+                details: 'Detalles',
+                playtime: 'Tiempo',
+              }[tab]}
             </button>
-          </div>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="local-game-detail-tab-content">
+          {activeTab === 'library' && (
+            <div>
+              {game.install_path && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Ruta</p>
+                  <p style={{ fontSize: '0.875rem', wordBreak: 'break-word', color: 'var(--text-secondary)' }}>
+                    {game.install_path}
+                  </p>
+                </div>
+              )}
+              {game.app_id && (
+                <div>
+                  <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>App ID</p>
+                  <p style={{ fontSize: '0.875rem', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                    {game.app_id}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'details' && (
+            <div>
+              {gameInfo ? (
+                <>
+                  {gameInfo.summary && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Sinopsis</p>
+                      <p style={{ fontSize: '0.875rem', lineHeight: '1.5', color: 'var(--text-secondary)' }}>
+                        {gameInfo.summary}
+                      </p>
+                    </div>
+                  )}
+                  {gameInfo.release_date && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Lanzamiento</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {formatDate(gameInfo.release_date)}
+                      </p>
+                    </div>
+                  )}
+                  {gameInfo.genres && gameInfo.genres.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Géneros</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {gameInfo.genres.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  {gameInfo.developers && gameInfo.developers.length > 0 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Desarrollador</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {gameInfo.developers.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  {gameInfo.publishers && gameInfo.publishers.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Editorial</p>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                        {gameInfo.publishers.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ color: 'var(--text-dim)' }}>
+                  {loading ? 'Cargando...' : 'Sin información disponible'}
+                </p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'playtime' && (
+            <div>
+              {gameInfo?.how_long_to_beat ? (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Historia principal</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {formatMinutes(gameInfo.how_long_to_beat.main_story_minutes)}
+                    </p>
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Historia + Extras</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {formatMinutes(gameInfo.how_long_to_beat.main_extra_minutes)}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>Completista</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                      {formatMinutes(gameInfo.how_long_to_beat.completionist_minutes)}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: 'var(--text-dim)' }}>
+                  Sin datos de How Long To Beat
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
+    </div>
   );
 }
 
@@ -321,17 +496,48 @@ export default function LocalLibrary() {
   const [selectedGame,   setSelectedGame]   = useState<LocalGame | null>(null);
   const [scanError,      setScanError]      = useState<string | null>(null);
   const [debugInfo,      setDebugInfo]      = useState<string | null>(null);
-  const [coverCache,     setCoverCache]     = useState<Record<string, MetaEntry>>({});
+  const [pathCache,      setPathCache]      = useState<Record<string, MetaEntry>>({});
+  const [coverCache,     setCoverCache]     = useState<Record<string, { cover?: string; banner?: string }>>({});
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
 
   const cancelRef = useRef(false);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Load saved routes and existing covers on mount
+  // Load saved routes and existing covers on mount (once)
   useEffect(() => {
     readRoutes().then(setRoutes).catch(() => {});
-    readMetadataIndex().then(setCoverCache).catch(() => {});
+    readMetadataIndex()
+      .then(index => {
+        console.log('[LocalLibrary] Loaded metadata index on mount:', Object.keys(index).length, 'entries');
+        setPathCache(index);
+      })
+      .catch((err) => {
+        console.error('[LocalLibrary] Failed to load metadata index:', err);
+      });
   }, []);
+
+  // Convert paths to data URLs
+  useEffect(() => {
+    const convertPaths = async () => {
+      const result: Record<string, { cover?: string; banner?: string }> = {};
+      for (const [appId, entry] of Object.entries(pathCache)) {
+        const urls: { cover?: string; banner?: string } = {};
+        if (entry.cover_path) {
+          const url = await pathToDataUrl(entry.cover_path);
+          if (url) urls.cover = url;
+        }
+        if (entry.banner_path) {
+          const url = await pathToDataUrl(entry.banner_path);
+          if (url) urls.banner = url;
+        }
+        if (Object.keys(urls).length > 0) {
+          result[appId] = urls;
+        }
+      }
+      setCoverCache(result);
+    };
+    convertPaths();
+  }, [pathCache]);
 
   // Scan folder when category changes and has a route
   useEffect(() => {
@@ -558,7 +764,7 @@ export default function LocalLibrary() {
                     )}
                   </h2>
                   <div className="local-games-grid">
-                    {list.map((g, i) => <GameCard key={i} game={g} coverCache={coverCache} onClick={setSelectedGame} />)}
+                    {list.map((g, i) => <GameCard key={i} game={g} pathCache={pathCache} coverCache={coverCache} onClick={setSelectedGame} />)}
                   </div>
                 </section>
               ))

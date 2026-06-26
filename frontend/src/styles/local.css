@@ -360,7 +360,8 @@
 
 .local-launcher-section {
   margin-bottom: 3rem;
-  scroll-margin-top: 115px;
+  margin-top: 2rem;
+  scroll-margin-top: 150px;
 }
 
 .local-launcher-title {
@@ -706,4 +707,39 @@
 .local-game-detail-play svg {
   width: 16px;
   height: 16px;
+}
+
+.local-game-detail-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin: 0 -1.5rem;
+  padding: 0 1.5rem;
+}
+
+.local-game-detail-tab {
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.local-game-detail-tab:hover {
+  color: var(--text-main);
+}
+
+.local-game-detail-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.local-game-detail-tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
 }

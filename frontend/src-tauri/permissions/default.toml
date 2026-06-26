@@ -24,6 +24,8 @@ commands.allow = [
   "igdb_search",
   "igdb_get_cover_by_steam_id",
   "read_metadata_index",
+  "read_game_info",
+  "file_to_data_url",
   "debug_scan_info",
   "open_env_folder",
 ]

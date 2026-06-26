@@ -7,6 +7,19 @@ const isTauri = (): boolean => {
   return false;
 };
 
+/** Convert a file path to a data URL (base64 encoded). */
+export async function pathToDataUrl(filePath: string): Promise<string | null> {
+  if (!isTauri()) return null;
+  try {
+    // Use invoke to call a custom Tauri command that reads and encodes the file
+    const dataUrl = await invoke<string>('file_to_data_url', { filePath });
+    return dataUrl;
+  } catch (err) {
+    console.warn('[Tauri] Failed to read file:', filePath, err);
+    return null;
+  }
+}
+
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) {
     console.warn(`[Tauri] "${cmd}" called outside Tauri`);
@@ -279,14 +292,43 @@ export async function igdbGetCoverBySteamId(
 }
 
 export interface MetaEntry {
-  cover?:  string; // data:image/jpeg;base64,...
-  banner?: string; // data:image/jpeg;base64,...
+  cover_path?:  string; // absolute path to cover file
+  banner_path?: string; // absolute path to banner file
 }
 
 /** Returns { app_id → { cover?, banner? } } for all downloaded assets. */
 export async function readMetadataIndex(): Promise<Record<string, MetaEntry>> {
   if (!isTauri()) return {};
   return invoke<Record<string, MetaEntry>>('read_metadata_index');
+}
+
+export interface GameInfo {
+  app_id:       string;
+  name:         string;
+  igdb_id?:     number;
+  summary?:     string;
+  release_date?: number;
+  rating?:      number;
+  genres?:      string[];
+  developers?:  string[];
+  publishers?:  string[];
+  how_long_to_beat?: {
+    main_story_minutes?:     number;
+    main_extra_minutes?:     number;
+    completionist_minutes?:  number;
+  };
+  last_fetched?: string;
+}
+
+/** Reads game metadata from `metadata/{app_id}/info.json`. */
+export async function readGameInfo(appId: string): Promise<GameInfo | null> {
+  if (!isTauri()) return null;
+  try {
+    const info = await invoke<GameInfo>('read_game_info', { appId });
+    return info && Object.keys(info).length > 0 ? info : null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Debug ────────────────────────────────────────────────────────────────────
