@@ -164,6 +164,177 @@ fn extract_cover_and_game(game: &serde_json::Value) -> (Option<String>, Option<u
     (cover, game_id, game.clone())
 }
 
+fn normalize_name(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
+            ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ', // punctuation
+            c => c,
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
+    const EDITION_WORDS: &[&str] = &[
+        "deluxe", "digital", "edition", "skin", "pack", "bundle", "gold",
+        "premium", "ultimate", "complete", "goty", "remastered", "definitive",
+        "anniversary", "collector", "limited", "special", "enhanced", "expanded",
+    ];
+
+    let q = query_norm;
+    let c = {
+        let tmp = candidate_raw.chars().map(|ch| match ch {
+            '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ',
+            ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ',
+            ch => ch,
+        }).collect::<String>();
+        tmp.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
+    };
+
+    let q_tokens: Vec<&str> = q.split_whitespace().collect();
+    if q_tokens.is_empty() { return 0.0; }
+
+    let matched = q_tokens.iter().filter(|t| c.contains(**t)).count();
+    let mut score = matched as f64 / q_tokens.len() as f64;
+
+    let edition_penalty: f64 = EDITION_WORDS.iter()
+        .filter(|&&w| c.contains(w) && !q.contains(w))
+        .count() as f64 * 0.25;
+    score -= edition_penalty;
+
+    let len_ratio = q.len() as f64 / c.len().max(1) as f64;
+    score += (1.0 - (len_ratio - 1.0).abs().min(1.0)) * 0.1;
+
+    score
+}
+
+async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {
+    let Ok(resp)  = client.get(url).send().await else { return };
+    let Ok(bytes) = resp.bytes().await            else { return };
+    let Ok(img)   = image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg)
+        else { return };
+    let _ = img.save_with_format(dest, image::ImageFormat::WebP);
+}
+
+async fn resolve_igdb_game(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    app_id: &str,
+    game_name: &str,
+) -> Result<(String, Option<u64>, serde_json::Value), String> {
+    const FULL_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
+
+    let safe = game_name.chars().filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}').collect::<String>().trim().to_string();
+    let name_norm = normalize_name(game_name);
+
+    // Try Steam ID lookup
+    let ext = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/external_games",
+        &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\" & category = 1; limit 1;"),
+    ).await?;
+
+    if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
+        let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(&g["game"]);
+        if let Some(id) = cover_id {
+            return Ok((id, igdb_game_id, igdb_game));
+        }
+    }
+
+    // Fallback 1: exact name match
+    let exact = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/games",
+        &format!("fields {FULL_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
+    ).await?;
+    let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
+    if let Some(id) = cover_id {
+        return Ok((id, igdb_game_id, igdb_game));
+    }
+
+    // Fallback 2: IGDB search with edition-aware similarity scoring
+    let search = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/games",
+        &format!("fields name,{FULL_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
+    ).await?;
+
+    let best = search.as_array().and_then(|arr| {
+        arr.iter()
+            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+            .or_else(|| {
+                arr.iter()
+                    .filter_map(|r| {
+                        let n = r["name"].as_str()?;
+                        let score = score_candidate(&name_norm, n);
+                        if score > 0.5 { Some((score, r)) } else { None }
+                    })
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+                    .map(|(_, r)| r)
+            })
+    });
+
+    let (cover_id, igdb_game_id, igdb_game) = best
+        .map(|r| extract_cover_and_game(r))
+        .unwrap_or((None, None, serde_json::json!({})));
+
+    if let Some(id) = cover_id {
+        Ok((id, igdb_game_id, igdb_game))
+    } else {
+        Err("No cover found for game".to_string())
+    }
+}
+
+async fn download_game_metadata(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    game_dir: &std::path::PathBuf,
+    igdb_game: &serde_json::Value,
+    cover_image_id: &str,
+    igdb_game_id: Option<u64>,
+    app_id: &str,
+) -> Result<(), String> {
+    let banner_id = if let Some(gid) = igdb_game_id {
+        fetch_landscape_image_id(client, client_id, token, gid).await
+    } else {
+        None
+    };
+
+    std::fs::create_dir_all(game_dir).map_err(|e| e.to_string())?;
+
+    let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
+    let banner_path = banner_id.as_ref().map(|bid| game_dir.join(format!("{}_banner.webp", bid)));
+
+    let cover_fut = async {
+        if cover_path.exists() { return; }
+        download_as_webp(
+            client,
+            &format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id),
+            &cover_path,
+        ).await;
+    };
+    let banner_fut = async {
+        if let (Some(bid), Some(bpath)) = (&banner_id, &banner_path) {
+            if bpath.exists() { return; }
+            download_as_webp(
+                client,
+                &format!("https://images.igdb.com/igdb/image/upload/t_1080p/{}.jpg", bid),
+                bpath,
+            ).await;
+        }
+    };
+    futures::join!(cover_fut, banner_fut);
+
+    if !igdb_game.is_null() {
+        let _ = save_game_info(game_dir, igdb_game, app_id);
+    }
+
+    Ok(())
+}
+
 async fn fetch_landscape_image_id(
     client:    &reqwest::Client,
     client_id: &str,
@@ -293,168 +464,13 @@ pub async fn igdb_get_cover_by_steam_id(
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
-    let client = get_http_client();
+    let client        = get_http_client();
 
-    /// Normalize a game name for fuzzy comparison:
-    /// - Strip trademark/copyright symbols (™ ® ©)
-    /// - Replace colons and other punctuation with spaces
-    /// - Collapse multiple spaces
-    fn normalize_name(s: &str) -> String {
-        s.chars()
-            .map(|c| match c {
-                '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ', // ™ ® ©
-                ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ', // punctuation
-                c => c,
-            })
-            .collect::<String>()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
-            .to_lowercase()
-    }
+    let (cover_image_id, igdb_game_id, igdb_game) = resolve_igdb_game(&client, &client_id, &token, &app_id, &game_name).await?;
 
-    // safe: for IGDB query string — remove quotes and trademark symbols
-    let safe     = game_name.chars().filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}').collect::<String>().trim().to_string();
-    let name_norm = normalize_name(&game_name);
+    download_game_metadata(&client, &client_id, &token, &game_dir, &igdb_game, &cover_image_id, igdb_game_id, &app_id).await?;
 
-    const FULL_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
-
-    // category = 1 → Steam. Without this filter, a uid like "39140" could match
-    // the same numeric ID on another platform, returning the wrong game entirely.
-    let ext = igdb_query(&client, &client_id, &token,
-        "https://api.igdb.com/v4/external_games",
-        &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\" & category = 1; limit 1;"),
-    ).await?;
-    let (cover_id, igdb_game_id, igdb_game) = if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
-        extract_cover_and_game(&g["game"])
-    } else {
-        // Fallback 1: exact name match
-        let exact = igdb_query(&client, &client_id, &token,
-            "https://api.igdb.com/v4/games",
-            &format!("fields {FULL_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
-        ).await?;
-        let (c, gid, g) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
-        if c.is_some() {
-            (c, gid, g)
-        } else {
-            // Fallback 2: IGDB search with edition-aware similarity scoring
-            let search = igdb_query(&client, &client_id, &token,
-                "https://api.igdb.com/v4/games",
-                &format!("fields name,{FULL_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
-            ).await?;
-
-            // Edition/DLC keywords: if the candidate has these but the query doesn't,
-            // it's likely a special edition — penalize it heavily.
-            const EDITION_WORDS: &[&str] = &[
-                "deluxe", "digital", "edition", "skin", "pack", "bundle", "gold",
-                "premium", "ultimate", "complete", "goty", "remastered", "definitive",
-                "anniversary", "collector", "limited", "special", "enhanced", "expanded",
-            ];
-
-            fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
-                // Normalize both sides the same way
-                let q = query_norm; // already normalized by caller
-                let c = {
-                    let tmp = candidate_raw.chars().map(|ch| match ch {
-                        '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ',
-                        ':' | '_' | '-' | '\'' | '\u{2019}'   => ' ',
-                        ch => ch,
-                    }).collect::<String>();
-                    tmp.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
-                };
-
-                let q_tokens: Vec<&str> = q.split_whitespace().collect();
-                if q_tokens.is_empty() { return 0.0; }
-
-                // Base similarity: fraction of query tokens present in candidate
-                let matched = q_tokens.iter().filter(|t| c.contains(**t)).count();
-                let mut score = matched as f64 / q_tokens.len() as f64;
-
-                // Penalize: candidate contains edition words that the query doesn't
-                let edition_penalty: f64 = EDITION_WORDS.iter()
-                    .filter(|&&w| c.contains(w) && !q.contains(w))
-                    .count() as f64 * 0.25;
-                score -= edition_penalty;
-
-                // Bonus: candidate length close to query length (base game usually shorter)
-                let len_ratio = q.len() as f64 / c.len().max(1) as f64;
-                score += (1.0 - (len_ratio - 1.0).abs().min(1.0)) * 0.1;
-
-                score
-            }
-
-            let best = search.as_array().and_then(|arr| {
-                // 1. Exact match (after normalization) wins immediately
-                arr.iter()
-                    .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
-                    // 2. Best-scored result (requires score > 0.5 to avoid garbage)
-                    .or_else(|| {
-                        arr.iter()
-                            .filter_map(|r| {
-                                let n = r["name"].as_str()?;
-                                let score = score_candidate(&name_norm, n);
-                                if score > 0.5 { Some((score, r)) } else { None }
-                            })
-                            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
-                            .map(|(_, r)| r)
-                    })
-            });
-            best.map(|r| extract_cover_and_game(r)).unwrap_or((None, None, serde_json::json!({})))
-        }
-    };
-
-    let cover_image_id = match cover_id {
-        Some(id) => id,
-        None     => return Ok(None),
-    };
-
-    let banner_id = if let Some(gid) = igdb_game_id {
-        fetch_landscape_image_id(&client, &client_id, &token, gid).await
-    } else {
-        None
-    };
-
-    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
-
-    let cover_path  = game_dir.join(format!("{}_cover.webp",  cover_image_id));
-    let banner_path = banner_id.as_ref().map(|bid| game_dir.join(format!("{}_banner.webp", bid)));
-
-    /// Download a JPEG from IGDB and save it as high-quality WebP.
-    /// Uses image 0.25's save_with_format after decoding the JPEG bytes.
-    async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {
-        let Ok(resp)  = client.get(url).send().await else { return };
-        let Ok(bytes) = resp.bytes().await            else { return };
-        let Ok(img)   = image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg)
-            else { return };
-        // save() infers WebP from the .webp extension; quality defaults to encoder max
-        let _ = img.save_with_format(dest, image::ImageFormat::WebP);
-    }
-
-    // Download cover and banner in parallel
-    let cover_fut = async {
-        if cover_path.exists() { return; }
-        download_as_webp(
-            &client,
-            &format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id),
-            &cover_path,
-        ).await;
-    };
-    let banner_fut = async {
-        if let (Some(bid), Some(bpath)) = (&banner_id, &banner_path) {
-            if bpath.exists() { return; }
-            // t_1080p for banner: best quality landscape image IGDB offers
-            download_as_webp(
-                &client,
-                &format!("https://images.igdb.com/igdb/image/upload/t_1080p/{}.jpg", bid),
-                bpath,
-            ).await;
-        }
-    };
-    futures::join!(cover_fut, banner_fut);
-
-    if !igdb_game.is_null() {
-        let _ = save_game_info(&game_dir, &igdb_game, &app_id);
-    }
+    let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
 
     let index_path = meta_root.join("index.json");
     let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
@@ -465,8 +481,11 @@ pub async fn igdb_get_cover_by_steam_id(
             "name": game_name,
             "cover": cover_path.to_string_lossy(),
         });
-        if let Some(bpath) = &banner_path {
-            entry["banner"] = serde_json::Value::String(bpath.to_string_lossy().to_string());
+        if let Some(banner_id) = igdb_game_id {
+            let banner_path = game_dir.join(format!("{}_banner.webp", banner_id));
+            if banner_path.exists() {
+                entry["banner"] = serde_json::Value::String(banner_path.to_string_lossy().to_string());
+            }
         }
         obj.insert(app_id.clone(), entry);
     }
