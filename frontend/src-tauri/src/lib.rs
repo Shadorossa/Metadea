@@ -710,9 +710,8 @@ async fn igdb_get_cover_by_steam_id(
     game_name: String,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    let meta_root    = app_data_dir.join("metadata");
-    let folder_name  = sanitize_folder_name(&game_name);
-    let game_dir     = meta_root.join(&folder_name);
+    let meta_root = app_data_dir.join("metadata");
+    let game_dir  = meta_root.join(&app_id);
 
     // Early exit: if we already have a _cover.jpg for this game, skip IGDB entirely.
     if game_dir.exists() {
@@ -802,7 +801,8 @@ async fn igdb_get_cover_by_steam_id(
         obj.insert(app_id.clone(), serde_json::json!({
             "name":     game_name,
             "image_id": image_id,
-            "file":     format!("{}/{}_cover.jpg", folder_name, image_id),
+            "file":     format!("{}/{}_cover.jpg", app_id, image_id),
+            "path":     cover_path.to_string_lossy(),
         }));
     }
     let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
@@ -826,11 +826,16 @@ async fn read_metadata_index(
     let mut out = std::collections::HashMap::new();
     if let Some(obj) = index.as_object() {
         for (app_id, entry) in obj {
-            if let Some(file) = entry["file"].as_str() {
-                let file_path = file.split('/').fold(meta_root.clone(), |p, s| p.join(s));
-                if let Ok(bytes) = std::fs::read(&file_path) {
-                    out.insert(app_id.clone(), format!("data:image/jpeg;base64,{}", base64_encode(&bytes)));
-                }
+            // Prefer the stored absolute path; fall back to reconstructing from "file"
+            let file_path = if let Some(p) = entry["path"].as_str() {
+                std::path::PathBuf::from(p)
+            } else if let Some(file) = entry["file"].as_str() {
+                file.split('/').fold(meta_root.clone(), |p, s| p.join(s))
+            } else {
+                continue;
+            };
+            if let Ok(bytes) = std::fs::read(&file_path) {
+                out.insert(app_id.clone(), format!("data:image/jpeg;base64,{}", base64_encode(&bytes)));
             }
         }
     }
