@@ -274,7 +274,14 @@ export async function igdbGetCoverBySteamId(
   gameName: string,
 ): Promise<string | null> {
   if (!isTauri()) return null;
-  return invoke<string | null>('igdb_get_cover_by_steam_id', { app_id: appId, game_name: gameName });
+  // Tauri v2: JS camelCase → Rust snake_case auto-conversion
+  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
+}
+
+/** Returns { app_id → "data:image/jpeg;base64,..." } for all downloaded covers. */
+export async function readMetadataIndex(): Promise<Record<string, string>> {
+  if (!isTauri()) return {};
+  return invoke<Record<string, string>>('read_metadata_index');
 }
 
 // ─── Debug ────────────────────────────────────────────────────────────────────

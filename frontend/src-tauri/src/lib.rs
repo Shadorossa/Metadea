@@ -651,7 +651,6 @@ struct TwitchToken {
 static TWITCH_TOKEN: Mutex<Option<TwitchToken>> = Mutex::new(None);
 
 async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String, String> {
-    // Return cached token if still valid (with 60s buffer)
     {
         let cache = TWITCH_TOKEN.lock().unwrap();
         if let Some(ref t) = *cache {
@@ -662,13 +661,10 @@ async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String
     }
 
     #[derive(Deserialize)]
-    struct TwitchResp {
-        access_token: String,
-        expires_in: u64,
-    }
+    struct TwitchResp { access_token: String, expires_in: u64 }
 
     let client = reqwest::Client::new();
-    let resp = client
+    let http = client
         .post("https://id.twitch.tv/oauth2/token")
         .query(&[
             ("client_id",     client_id),
@@ -677,15 +673,18 @@ async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String
         ])
         .send()
         .await
-        .map_err(|e| format!("Twitch request failed: {}", e))?
-        .json::<TwitchResp>()
-        .await
+        .map_err(|e| format!("Twitch request failed: {}", e))?;
+    if !http.status().is_success() {
+        let status = http.status();
+        let body   = http.text().await.unwrap_or_default();
+        return Err(format!("Twitch auth failed (HTTP {}): {}", status, body));
+    }
+    let resp = http.json::<TwitchResp>().await
         .map_err(|e| format!("Twitch parse failed: {}", e))?;
 
-    let token = resp.access_token.clone();
+    let token   = resp.access_token.clone();
     let expires = Instant::now() + Duration::from_secs(resp.expires_in);
     *TWITCH_TOKEN.lock().unwrap() = Some(TwitchToken { access_token: resp.access_token, expires });
-
     Ok(token)
 }
 
@@ -701,9 +700,9 @@ fn sanitize_folder_name(name: &str) -> String {
         .to_string()
 }
 
-/// Downloads the IGDB cover for a Steam game and saves it to
-/// `{app_data_dir}/{game_name}/{image_id}.jpg`.
-/// Returns the absolute file path, or None if no cover found.
+/// Downloads the IGDB cover for a Steam game.
+/// Saves to `{app_data}/metadata/{game_name}/{image_id}_cover.jpg`.
+/// Returns the absolute path, or None if no cover found in IGDB.
 #[tauri::command]
 async fn igdb_get_cover_by_steam_id(
     app_handle: tauri::AppHandle,
@@ -711,6 +710,21 @@ async fn igdb_get_cover_by_steam_id(
     game_name: String,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let meta_root    = app_data_dir.join("metadata");
+    let folder_name  = sanitize_folder_name(&game_name);
+    let game_dir     = meta_root.join(&folder_name);
+
+    // Early exit: if we already have a _cover.jpg for this game, skip IGDB entirely.
+    if game_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&game_dir) {
+            for entry in entries.flatten() {
+                let fname = entry.file_name().to_string_lossy().to_string();
+                if fname.ends_with("_cover.jpg") {
+                    return Ok(Some(entry.path().to_string_lossy().to_string()));
+                }
+            }
+        }
+    }
 
     let cfg = {
         let path = app_data_dir.join("env.json");
@@ -725,73 +739,102 @@ async fn igdb_get_cover_by_steam_id(
 
     let client = reqwest::Client::new();
 
-    // 1. Try to find by Steam external_games (most accurate)
-    let ext_body = format!(
-        "fields game.cover.image_id; where uid = \"{}\" & category = 1; limit 1;",
-        app_id
-    );
-    let ext_resp = client
+    // 1. Try Steam external_games lookup (exact match)
+    let ext_http = client
         .post("https://api.igdb.com/v4/external_games")
         .header("Client-ID", &client_id)
         .header("Authorization", format!("Bearer {}", token))
         .header("Content-Type", "text/plain")
-        .body(ext_body)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e| e.to_string())?;
+        .body(format!("fields game.cover.image_id; where uid = \"{}\" & category = 1; limit 1;", app_id))
+        .send().await.map_err(|e| e.to_string())?;
+    if !ext_http.status().is_success() {
+        let s = ext_http.status();
+        let b = ext_http.text().await.unwrap_or_default();
+        return Err(format!("IGDB error (HTTP {}): {}", s, b));
+    }
+    let ext_resp = ext_http.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
 
     let image_id = if let Some(id) = ext_resp[0]["game"]["cover"]["image_id"].as_str() {
         id.to_string()
     } else {
-        // 2. Fallback: search by name
-        let name_body = format!(
-            "fields cover.image_id; search \"{}\"; where cover != null; limit 1;",
-            game_name.replace('"', "")
-        );
-        let name_resp = client
+        // 2. Fallback: fuzzy name search
+        let name_http = client
             .post("https://api.igdb.com/v4/games")
             .header("Client-ID", &client_id)
             .header("Authorization", format!("Bearer {}", token))
             .header("Content-Type", "text/plain")
-            .body(name_body)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?
-            .json::<serde_json::Value>()
-            .await
-            .map_err(|e| e.to_string())?;
-
+            .body(format!(
+                "fields cover.image_id; search \"{}\"; where cover != null; limit 1;",
+                game_name.replace('"', "")
+            ))
+            .send().await.map_err(|e| e.to_string())?;
+        if !name_http.status().is_success() {
+            let s = name_http.status();
+            let b = name_http.text().await.unwrap_or_default();
+            return Err(format!("IGDB error (HTTP {}): {}", s, b));
+        }
+        let name_resp = name_http.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
         match name_resp[0]["cover"]["image_id"].as_str() {
             Some(id) => id.to_string(),
             None     => return Ok(None),
         }
     };
 
-    // Save to {app_data}/{sanitized_game_name}/{image_id}.jpg
-    let game_dir = app_data_dir.join(sanitize_folder_name(&game_name));
+    // Download cover image
     std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
-    let cover_path = game_dir.join(format!("{}.jpg", image_id));
+    let cover_path = game_dir.join(format!("{}_cover.jpg", image_id));
 
     if !cover_path.exists() {
-        let cover_url = format!(
-            "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg",
-            image_id
-        );
         let bytes = client
-            .get(&cover_url)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?
-            .bytes()
-            .await
-            .map_err(|e| e.to_string())?;
+            .get(format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", image_id))
+            .send().await.map_err(|e| e.to_string())?
+            .bytes().await.map_err(|e| e.to_string())?;
         std::fs::write(&cover_path, &bytes).map_err(|e| e.to_string())?;
     }
 
+    // Update metadata/index.json
+    let index_path = meta_root.join("index.json");
+    let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    if let Some(obj) = index.as_object_mut() {
+        obj.insert(app_id.clone(), serde_json::json!({
+            "name":     game_name,
+            "image_id": image_id,
+            "file":     format!("{}/{}_cover.jpg", folder_name, image_id),
+        }));
+    }
+    let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
+
     Ok(Some(cover_path.to_string_lossy().to_string()))
+}
+
+/// Reads metadata/index.json and returns { app_id → "data:image/jpeg;base64,..." }
+/// for all covers that exist on disk.
+#[tauri::command]
+async fn read_metadata_index(
+    app_handle: tauri::AppHandle,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let meta_root  = app_handle.path().app_data_dir().map_err(|e| e.to_string())?.join("metadata");
+    let index_path = meta_root.join("index.json");
+    if !index_path.exists() {
+        return Ok(std::collections::HashMap::new());
+    }
+    let data  = std::fs::read_to_string(&index_path).map_err(|e| e.to_string())?;
+    let index: serde_json::Value = serde_json::from_str(&data).unwrap_or_else(|_| serde_json::json!({}));
+    let mut out = std::collections::HashMap::new();
+    if let Some(obj) = index.as_object() {
+        for (app_id, entry) in obj {
+            if let Some(file) = entry["file"].as_str() {
+                let file_path = file.split('/').fold(meta_root.clone(), |p, s| p.join(s));
+                if let Ok(bytes) = std::fs::read(&file_path) {
+                    out.insert(app_id.clone(), format!("data:image/jpeg;base64,{}", base64_encode(&bytes)));
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
 #[tauri::command]
@@ -979,6 +1022,7 @@ pub fn run() {
             write_env_config,
             igdb_search,
             igdb_get_cover_by_steam_id,
+            read_metadata_index,
             debug_scan_info,
             open_env_folder,
             save_user_image,

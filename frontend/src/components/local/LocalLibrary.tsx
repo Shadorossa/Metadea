@@ -3,30 +3,9 @@ import { createPortal } from 'react-dom';
 import {
   scanAllGames, pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
-  igdbGetCoverBySteamId,
+  igdbGetCoverBySteamId, readMetadataIndex,
   type LocalGame, type LocalFolderEntry,
 } from '../../lib/tauri';
-
-// ── IGDB cover cache (localStorage) ──────────────────────────────────────────
-// Stores { app_id → absolute_file_path } for covers already on disk.
-
-const COVER_CACHE_KEY = 'igdb_covers';
-
-function loadCoverCache(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(COVER_CACHE_KEY) ?? '{}'); }
-  catch { return {}; }
-}
-
-function saveCoverCache(cache: Record<string, string>) {
-  localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(cache));
-}
-
-// Convert an absolute local path to a URL the Tauri webview can load.
-function localFileUrl(absPath: string): string {
-  const tauri = (window as any).__TAURI__;
-  if (tauri?.core?.convertFileSrc) return tauri.core.convertFileSrc(absPath);
-  return '';
-}
 
 // ── Platform config ───────────────────────────────────────────────────────────
 
@@ -136,10 +115,9 @@ interface GameCardProps {
 }
 
 function GameCard({ game, coverCache, onClick }: GameCardProps) {
-  const localPath = game.app_id ? coverCache[game.app_id] : undefined;
-  const cover = localPath
-    ? localFileUrl(localPath)
-    : (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
+  // coverCache values are data URLs ("data:image/jpeg;base64,...") from read_metadata_index
+  const dataUrl = game.app_id ? coverCache[game.app_id] : undefined;
+  const cover = dataUrl ?? (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
 
   return (
     <div className="local-game-card" onClick={() => onClick(game)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick(game)}>
@@ -342,15 +320,16 @@ export default function LocalLibrary() {
   const [selectedGame,   setSelectedGame]   = useState<LocalGame | null>(null);
   const [scanError,      setScanError]      = useState<string | null>(null);
   const [debugInfo,      setDebugInfo]      = useState<string | null>(null);
-  const [coverCache,     setCoverCache]     = useState<Record<string, string>>(loadCoverCache);
+  const [coverCache,     setCoverCache]     = useState<Record<string, string>>({});
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
 
   const cancelRef = useRef(false);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Load saved routes on mount
+  // Load saved routes and existing covers on mount
   useEffect(() => {
     readRoutes().then(setRoutes).catch(() => {});
+    readMetadataIndex().then(setCoverCache).catch(() => {});
   }, []);
 
   // Scan folder when category changes and has a route
@@ -433,27 +412,26 @@ export default function LocalLibrary() {
     if (steamGames.length === 0) return;
 
     cancelRef.current = false;
-    const newCache = { ...loadCoverCache() };
-
-    setMetaProgress({ total: steamGames.length, current: 0, currentName: '', cancelled: false });
+    setMetaProgress({ total: steamGames.length, current: 0, currentName: 'Iniciando…', cancelled: false });
 
     for (let i = 0; i < steamGames.length; i++) {
       if (cancelRef.current) break;
       const game = steamGames[i];
-      setMetaProgress({ total: steamGames.length, current: i, currentName: game.name, cancelled: false });
+      setMetaProgress({ total: steamGames.length, current: i + 1, currentName: game.name, cancelled: false });
 
-      if (game.app_id && !newCache[game.app_id]) {
-        try {
-          const imageId = await igdbGetCoverBySteamId(game.app_id, game.name);
-          if (imageId) newCache[game.app_id] = imageId;
-        } catch {
-          // skip this game silently
-        }
+      try {
+        // Rust handles the file-existence check; no JS-side skip needed
+        await igdbGetCoverBySteamId(game.app_id!, game.name);
+      } catch (err) {
+        console.error('[META]', game.name, err);
       }
+
+      // Small delay to stay within IGDB rate limits (4 req/s)
+      await new Promise(r => setTimeout(r, 300));
     }
 
-    saveCoverCache(newCache);
-    setCoverCache({ ...newCache });
+    // Reload all covers from disk as data URLs
+    readMetadataIndex().then(setCoverCache).catch(() => {});
     setMetaProgress(null);
   }, [games]);
 
