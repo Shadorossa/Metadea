@@ -303,18 +303,15 @@ async fn resolve_igdb_game(
     if let Some(arr) = fuzzy.as_array() {
         eprintln!("[IGDB] Fuzzy results: {:?}", arr.iter().filter_map(|r| r["name"].as_str()).collect::<Vec<_>>());
 
-        // Normalized exact match: if multiple, choose most recent (handles remakes)
-        let norm_matches: Vec<_> = arr.iter()
-            .filter(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
-            .collect();
-
-        if !norm_matches.is_empty() {
-            if let Some(game) = choose_most_recent(norm_matches) {
-                let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
-                eprintln!("[IGDB] Normalized match: {:?} (date={})", game["name"].as_str(), get_release_timestamp(game));
-                if let Some(id) = cover_id {
-                    return Ok((id, igdb_game_id, igdb_game));
-                }
+        // Normalized exact match: trust IGDB relevance ordering (first result)
+        // Steam ID lookup handles remakes/versioning correctly; fuzzy is last resort
+        if let Some(game) = arr.iter()
+            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+        {
+            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+            eprintln!("[IGDB] Normalized match: {:?}", game["name"].as_str());
+            if let Some(id) = cover_id {
+                return Ok((id, igdb_game_id, igdb_game));
             }
         }
 
