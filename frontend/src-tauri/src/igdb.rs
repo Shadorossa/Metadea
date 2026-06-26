@@ -267,27 +267,30 @@ async fn resolve_igdb_game(
 
     eprintln!("[IGDB] Resolving: {:?} (app_id={}, search={:?}, norm={:?})", game_name, app_id, search_query, name_norm);
 
-    // Try Steam ID lookup: get the game ID first (no nesting to avoid IGDB 3-level limit)
-    // then query the games endpoint separately for full data
+    // Try Steam ID lookup: search external_games by Steam app_id (no category filter)
+    // IGDB might use different categories, so we log what we find
     if let Ok(ext) = igdb_query(client, client_id, token,
         IGDB_API_EXTERNAL_GAMES,
-        &format!("fields game; where uid = \"{app_id}\" & category = 1; limit 1;"),
+        &format!("fields game,category; where uid = \"{app_id}\"; limit 5;"),
     ).await {
-        if let Some(igdb_id) = ext.as_array()
-            .and_then(|a| a.first())
-            .and_then(|r| r["game"].as_u64())
-        {
-            eprintln!("[IGDB] Steam ID found igdb_id={}", igdb_id);
-            if let Ok(games) = igdb_query(client, client_id, token,
-                IGDB_API_GAMES,
-                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
-            ).await {
-                let (cover_id, game_id, igdb_game) = extract_cover_and_game(
-                    games.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null))
-                );
-                eprintln!("[IGDB] Steam path cover={:?}", cover_id);
-                if let Some(id) = cover_id {
-                    return Ok((id, game_id, igdb_game));
+        if let Some(arr) = ext.as_array() {
+            for item in arr {
+                let cat = item["category"].as_i64().unwrap_or(-1);
+                eprintln!("[IGDB] Found external_game for uid={}: category={}", app_id, cat);
+
+                if let Some(igdb_id) = item["game"].as_u64() {
+                    if let Ok(games) = igdb_query(client, client_id, token,
+                        IGDB_API_GAMES,
+                        &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
+                    ).await {
+                        let (cover_id, game_id, igdb_game) = extract_cover_and_game(
+                            games.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null))
+                        );
+                        eprintln!("[IGDB] Steam path (category={}) cover={:?}", cat, cover_id);
+                        if let Some(id) = cover_id {
+                            return Ok((id, game_id, igdb_game));
+                        }
+                    }
                 }
             }
         } else {
