@@ -728,16 +728,27 @@ export default function LocalLibrary() {
 
   const tabBar = (
     <div className="local-tab-bar">
-      {CATEGORIES.map(cat => (
-        <button
-          key={cat.id}
-          type="button"
-          className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
-          onClick={() => setActiveCategory(cat.id)}
-        >
-          {cat.label}
-        </button>
-      ))}
+      <div className="local-tab-buttons">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat.id}
+            type="button"
+            className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
+            onClick={() => setActiveCategory(cat.id)}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+      {activeCategory === 'videojuegos' && (
+        <input
+          type="text"
+          className="local-tab-search"
+          placeholder="Buscar juego…"
+          value={filterName}
+          onChange={e => setFilterName(e.target.value)}
+        />
+      )}
     </div>
   );
 
@@ -780,21 +791,12 @@ export default function LocalLibrary() {
         {activeCategory === 'videojuegos' ? (
           <div className="local-content">
             <div className="local-content-header">
-              <input
-                type="text"
-                className="local-filter-input"
-                placeholder="Buscar juego…"
-                value={filterName}
-                onChange={e => setFilterName(e.target.value)}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className="local-content-count">
-                  {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
-                </span>
-                <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
-                  <IconRefresh />
-                </button>
-              </div>
+              <span className="local-content-count">
+                {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
+              </span>
+              <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
+                <IconRefresh />
+              </button>
             </div>
 
             {gamesState === 'idle' || gamesState === 'loading' ? (
