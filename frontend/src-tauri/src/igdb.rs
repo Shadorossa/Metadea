@@ -3,6 +3,23 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
+// -- Constants ----------------------------------------------------------------
+
+const IGDB_API_GAMES: &str = "https://api.igdb.com/v4/games";
+const IGDB_API_EXTERNAL_GAMES: &str = "https://api.igdb.com/v4/external_games";
+const IGDB_API_ARTWORKS: &str = "https://api.igdb.com/v4/artworks";
+const IGDB_API_SCREENSHOTS: &str = "https://api.igdb.com/v4/screenshots";
+const IGDB_IMAGE_COVER_BIG: &str = "https://images.igdb.com/igdb/image/upload/t_cover_big";
+const IGDB_IMAGE_1080P: &str = "https://images.igdb.com/igdb/image/upload/t_1080p";
+
+const EDITION_KEYWORDS: &[&str] = &[
+    "deluxe", "digital", "edition", "skin", "pack", "bundle", "gold",
+    "premium", "ultimate", "complete", "goty", "remastered", "definitive",
+    "anniversary", "collector", "limited", "special", "enhanced", "expanded",
+];
+
+const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
+
 // -- Env config ----------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,15 +55,12 @@ pub async fn write_env_config(
 }
 
 fn load_env_config(app_handle: &tauri::AppHandle) -> Result<EnvConfig, String> {
-    let path = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("env.json");
-    if !path.exists() {
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let env_path = app_data_dir.join("env.json");
+    if !env_path.exists() {
         return Err("No env.json — configure IGDB keys first".into());
     }
-    let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
     serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())
 }
 
@@ -179,12 +193,6 @@ fn normalize_name(s: &str) -> String {
 }
 
 fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
-    const EDITION_WORDS: &[&str] = &[
-        "deluxe", "digital", "edition", "skin", "pack", "bundle", "gold",
-        "premium", "ultimate", "complete", "goty", "remastered", "definitive",
-        "anniversary", "collector", "limited", "special", "enhanced", "expanded",
-    ];
-
     let q = query_norm;
     let c = {
         let tmp = candidate_raw.chars().map(|ch| match ch {
@@ -201,7 +209,7 @@ fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
     let matched = q_tokens.iter().filter(|t| c.contains(**t)).count();
     let mut score = matched as f64 / q_tokens.len() as f64;
 
-    let edition_penalty: f64 = EDITION_WORDS.iter()
+    let edition_penalty: f64 = EDITION_KEYWORDS.iter()
         .filter(|&&w| c.contains(w) && !q.contains(w))
         .count() as f64 * 0.25;
     score -= edition_penalty;
@@ -227,15 +235,13 @@ async fn resolve_igdb_game(
     app_id: &str,
     game_name: &str,
 ) -> Result<(String, Option<u64>, serde_json::Value), String> {
-    const FULL_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
-
     let safe = game_name.chars().filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}').collect::<String>().trim().to_string();
     let name_norm = normalize_name(game_name);
 
     // Try Steam ID lookup
     let ext = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/external_games",
-        &format!("fields game.id,game.cover.image_id,game.name,game.summary,game.first_release_date,game.genres.name,game.rating,game.involved_companies.company.name,game.involved_companies.developer,game.involved_companies.publisher; where uid = \"{app_id}\" & category = 1; limit 1;"),
+        IGDB_API_EXTERNAL_GAMES,
+        &format!("fields game.{IGDB_GAME_FIELDS}; where uid = \"{app_id}\" & category = 1; limit 1;"),
     ).await?;
 
     if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
@@ -247,8 +253,8 @@ async fn resolve_igdb_game(
 
     // Fallback 1: exact name match
     let exact = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/games",
-        &format!("fields {FULL_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
+        IGDB_API_GAMES,
+        &format!("fields {IGDB_GAME_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
     ).await?;
     let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
     if let Some(id) = cover_id {
@@ -257,8 +263,8 @@ async fn resolve_igdb_game(
 
     // Fallback 2: IGDB search with edition-aware similarity scoring
     let search = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/games",
-        &format!("fields name,{FULL_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
+        IGDB_API_GAMES,
+        &format!("fields name,{IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
     ).await?;
 
     let best = search.as_array().and_then(|arr| {
@@ -312,7 +318,7 @@ async fn download_game_metadata(
         if cover_path.exists() { return; }
         download_as_webp(
             client,
-            &format!("https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg", cover_image_id),
+            &format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, cover_image_id),
             &cover_path,
         ).await;
     };
@@ -321,7 +327,7 @@ async fn download_game_metadata(
             if bpath.exists() { return; }
             download_as_webp(
                 client,
-                &format!("https://images.igdb.com/igdb/image/upload/t_1080p/{}.jpg", bid),
+                &format!("{}/{}.jpg", IGDB_IMAGE_1080P, bid),
                 bpath,
             ).await;
         }
@@ -342,7 +348,7 @@ async fn fetch_landscape_image_id(
     game_id:   u64,
 ) -> Option<String> {
     if let Ok(arts) = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/artworks",
+        IGDB_API_ARTWORKS,
         &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
     ).await {
         if let Some(arr) = arts.as_array() {
@@ -358,7 +364,7 @@ async fn fetch_landscape_image_id(
         }
     }
     let ss = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/screenshots",
+        IGDB_API_SCREENSHOTS,
         &format!("fields image_id; where game = {}; limit 1;", game_id),
     ).await.ok()?;
     ss[0]["image_id"].as_str().map(String::from)
@@ -582,7 +588,7 @@ pub async fn igdb_search(
             &client,
             &client_id,
             &token,
-            "https://api.igdb.com/v4/games",
+            IGDB_API_GAMES,
             &format!(
                 "fields id,name,cover.image_id,rating,first_release_date,\
                  genres.id,genres.name,\
@@ -627,7 +633,7 @@ pub async fn igdb_get_game_detail(
 
     let games = igdb_query(
         &client, &client_id, &token,
-        "https://api.igdb.com/v4/games",
+        IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,summary,first_release_date,rating,\
              genres.name,involved_companies.company.name,\
@@ -649,7 +655,7 @@ pub async fn igdb_get_game_detail(
 
     if let Ok(ext) = igdb_query(
         &client, &client_id, &token,
-        "https://api.igdb.com/v4/external_games",
+        IGDB_API_EXTERNAL_GAMES,
         &format!("fields category,url; where game = {}; limit 30;", igdb_id),
     ).await {
         if let Some(arr) = ext.as_array() {
