@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::Manager;
 
@@ -50,6 +50,18 @@ fn load_env_config(app_handle: &tauri::AppHandle) -> Result<EnvConfig, String> {
     serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())
 }
 
+// -- HTTP client cache --------------------------------------------------------
+
+fn get_http_client() -> &'static reqwest::Client {
+    static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    HTTP_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .unwrap_or_default()
+    })
+}
+
 // -- Twitch token cache --------------------------------------------------------
 
 struct TwitchToken {
@@ -72,7 +84,7 @@ async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String
     #[derive(Deserialize)]
     struct TwitchResp { access_token: String, expires_in: u64 }
 
-    let client = reqwest::Client::new();
+    let client = get_http_client();
     let http = client
         .post("https://id.twitch.tv/oauth2/token")
         .query(&[
@@ -152,7 +164,7 @@ fn extract_cover_and_game(game: &serde_json::Value) -> (Option<String>, Option<u
     (cover, game_id, game.clone())
 }
 
-async fn fetch_banner_id(
+async fn fetch_landscape_image_id(
     client:    &reqwest::Client,
     client_id: &str,
     token:     &str,
@@ -174,37 +186,6 @@ async fn fetch_banner_id(
             }
         }
     }
-    let ss = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/screenshots",
-        &format!("fields image_id; where game = {}; limit 1;", game_id),
-    ).await.ok()?;
-    ss[0]["image_id"].as_str().map(String::from)
-}
-
-async fn fetch_key_art_or_screenshot_id(
-    client:    &reqwest::Client,
-    client_id: &str,
-    token:     &str,
-    game_id:   u64,
-) -> Option<String> {
-    // Key art: non-transparent artworks, prefer landscape (w/h >= 1.5)
-    if let Ok(arts) = igdb_query(client, client_id, token,
-        "https://api.igdb.com/v4/artworks",
-        &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
-    ).await {
-        if let Some(arr) = arts.as_array() {
-            for entry in arr {
-                let w = entry["width"].as_f64().unwrap_or(0.0);
-                let h = entry["height"].as_f64().unwrap_or(1.0);
-                if h > 0.0 && w / h >= 1.5 {
-                    if let Some(id) = entry["image_id"].as_str() {
-                        return Some(id.to_string());
-                    }
-                }
-            }
-        }
-    }
-    // Fallback: first screenshot
     let ss = igdb_query(client, client_id, token,
         "https://api.igdb.com/v4/screenshots",
         &format!("fields image_id; where game = {}; limit 1;", game_id),
@@ -312,12 +293,7 @@ pub async fn igdb_get_cover_by_steam_id(
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
-    // 15-second timeout per request — prevents a single stalled download from
-    // blocking the whole batch of 150+ games indefinitely.
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .unwrap_or_default();
+    let client = get_http_client();
 
     /// Normalize a game name for fuzzy comparison:
     /// - Strip trademark/copyright symbols (™ ® ©)
@@ -433,7 +409,7 @@ pub async fn igdb_get_cover_by_steam_id(
     };
 
     let banner_id = if let Some(gid) = igdb_game_id {
-        fetch_banner_id(&client, &client_id, &token, gid).await
+        fetch_landscape_image_id(&client, &client_id, &token, gid).await
     } else {
         None
     };
@@ -575,7 +551,7 @@ pub async fn igdb_search(
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
-    let client        = reqwest::Client::new();
+    let client        = get_http_client();
     let safe_query    = query.replace('"', "");
 
     const PAGE: usize = 100;
@@ -599,7 +575,7 @@ pub async fn igdb_search(
             ),
         ).await?;
 
-        let items = page.as_array().map(|a| a.clone()).unwrap_or_default();
+        let items = page.as_array().cloned().unwrap_or_default();
         let count = items.len();
 
         for item in items {
@@ -628,7 +604,7 @@ pub async fn igdb_get_game_detail(
     let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
     let token         = get_twitch_token(&client_id, &client_secret).await?;
-    let client        = reqwest::Client::new();
+    let client        = get_http_client();
 
     let games = igdb_query(
         &client, &client_id, &token,
@@ -647,7 +623,7 @@ pub async fn igdb_get_game_detail(
         return Ok(serde_json::json!(null));
     }
 
-    let banner_id = fetch_key_art_or_screenshot_id(&client, &client_id, &token, igdb_id).await;
+    let banner_id = fetch_landscape_image_id(&client, &client_id, &token, igdb_id).await;
     game["banner_image_id"] = banner_id
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
