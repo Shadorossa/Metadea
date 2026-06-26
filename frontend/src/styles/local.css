@@ -392,11 +392,42 @@
 /* ── Content area ────────────────────────────────────────────────────────────── */
 
 .local-content-header {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+}
+
+.local-filter-input {
+  flex: 1;
+  max-width: 400px;
+  padding: 0.5rem 0.875rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.local-filter-input::placeholder {
+  color: var(--text-dim);
+}
+
+.local-filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .local-content-count {
-  display: none;
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .local-folder-path {

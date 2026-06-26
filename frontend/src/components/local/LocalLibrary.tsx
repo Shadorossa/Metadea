@@ -540,6 +540,7 @@ export default function LocalLibrary() {
   const [coverCache,     setCoverCache]     = useState<Record<string, { cover?: string; banner?: string }>>({});
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
+  const [filterName,     setFilterName]     = useState('');
 
   const cancelRef = useRef(false);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -707,8 +708,12 @@ export default function LocalLibrary() {
 
   // Group games by launcher
   const safeGames: LocalGame[] = Array.isArray(games) ? games : [];
+  const filteredGames = filterName.trim() === ''
+    ? safeGames
+    : safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()));
+
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, LocalGame[]>>((acc, id) => {
-    const list = safeGames.filter(g => g.launcher === id);
+    const list = filteredGames.filter(g => g.launcher === id);
     if (list.length > 0) acc.set(id, list);
     return acc;
   }, new Map());
@@ -775,12 +780,21 @@ export default function LocalLibrary() {
         {activeCategory === 'videojuegos' ? (
           <div className="local-content">
             <div className="local-content-header">
-              <span className="local-content-count">
-                {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
-              </span>
-              <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
-                <IconRefresh />
-              </button>
+              <input
+                type="text"
+                className="local-filter-input"
+                placeholder="Buscar juego…"
+                value={filterName}
+                onChange={e => setFilterName(e.target.value)}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <span className="local-content-count">
+                  {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
+                </span>
+                <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
+                  <IconRefresh />
+                </button>
+              </div>
             </div>
 
             {gamesState === 'idle' || gamesState === 'loading' ? (
