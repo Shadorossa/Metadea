@@ -46,6 +46,8 @@ pub fn run() {
             igdb::igdb_search,
             igdb::igdb_get_game_detail,
             igdb::igdb_get_cover_by_steam_id,
+            igdb::igdb_search_candidates,
+            igdb::igdb_force_by_igdb_id,
             igdb::read_metadata_index,
             igdb::read_game_info,
             igdb::file_to_data_url,

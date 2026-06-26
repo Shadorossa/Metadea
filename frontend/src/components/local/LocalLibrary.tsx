@@ -4,8 +4,9 @@ import {
   pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
   igdbGetCoverBySteamId, readMetadataIndex, readGameInfo, pathToDataUrl,
+  igdbSearchCandidates, igdbForceByIgdbId,
   steamGetPlayerAchievements, steamAchievementIcon, steamAchievementsDownload,
-  type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo, type SteamAchievement,
+  type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo, type SteamAchievement, type IgdbCandidate,
 } from '../../lib/tauri';
 import { scanGamesWithSteam } from '../../lib/local/steam-merge';
 
@@ -149,12 +150,81 @@ function GameCard({ game, pathCache, coverCache, onClick }: GameCardProps) {
   );
 }
 
+// ── IGDB picker modal ─────────────────────────────────────────────────────────
+
+function IgdbPickerModal({ game, onClose, onPicked }: {
+  game: LocalGame;
+  onClose: () => void;
+  onPicked: () => void;
+}) {
+  const [candidates, setCandidates] = useState<IgdbCandidate[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [applying, setApplying]     = useState<number | null>(null);
+
+  useEffect(() => {
+    igdbSearchCandidates(game.name).then(r => {
+      setCandidates(r);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [game.name]);
+
+  const handlePick = async (candidate: IgdbCandidate) => {
+    if (!game.app_id) return;
+    setApplying(candidate.id);
+    try {
+      await igdbForceByIgdbId(game.app_id, game.name, candidate.id);
+      onPicked();
+      onClose();
+    } catch (e) {
+      console.error('igdb force error', e);
+      setApplying(null);
+    }
+  };
+
+  return createPortal(
+    <div className="igdb-picker-overlay" onClick={onClose}>
+      <div className="igdb-picker-modal" onClick={e => e.stopPropagation()}>
+        <div className="igdb-picker-header">
+          <span>Seleccionar juego en IGDB</span>
+          <button className="igdb-picker-close" onClick={onClose}>✕</button>
+        </div>
+        {loading ? (
+          <div className="igdb-picker-loading">Buscando...</div>
+        ) : candidates.length === 0 ? (
+          <div className="igdb-picker-loading">Sin resultados</div>
+        ) : (
+          <div className="igdb-picker-grid">
+            {candidates.map(c => (
+              <button
+                key={c.id}
+                className={`igdb-picker-card${applying === c.id ? ' loading' : ''}`}
+                onClick={() => handlePick(c)}
+                disabled={applying !== null}
+              >
+                <img src={c.cover_url} alt={c.name} className="igdb-picker-cover" />
+                <div className="igdb-picker-info">
+                  <span className="igdb-picker-name">{c.name}</span>
+                  <span className="igdb-picker-meta">
+                    {c.year > 0 ? c.year : '—'}{c.developer ? ` · ${c.developer}` : ''}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ── Game detail panel ─────────────────────────────────────────────────────────
 
 interface GameDetailPanelProps {
   game: LocalGame;
   coverCache: Record<string, MetaEntry>;
   onClose: () => void;
+  onMetaRefresh?: () => void;
 }
 
 function AchievementCell({ ach, appId }: { ach: SteamAchievement; appId: string }) {
@@ -212,9 +282,10 @@ function formatLastPlayed(ts?: number): string {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
+function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: GameDetailPanelProps) {
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
   const [achievements, setAchievements] = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (!game.app_id) return;
@@ -264,10 +335,25 @@ function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
           </div>
         )}
         <div className="local-game-detail-backdrop" />
+        {game.launcher === 'steam' && game.app_id && (
+          <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title="Cambiar juego en IGDB">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        )}
         <button className="local-game-detail-close" onClick={onClose}>
           <IconX />
         </button>
       </div>
+      {showPicker && (
+        <IgdbPickerModal
+          game={game}
+          onClose={() => setShowPicker(false)}
+          onPicked={() => { onMetaRefresh?.(); }}
+        />
+      )}
 
       <div className="local-game-detail-content">
         <div className="local-game-detail-title-block">
@@ -927,7 +1013,14 @@ export default function LocalLibrary() {
           )}
         </div>
 
-        {selectedGame && <GameDetailPanel game={selectedGame} coverCache={coverCache} onClose={() => setSelectedGame(null)} />}
+        {selectedGame && (
+          <GameDetailPanel
+            game={selectedGame}
+            coverCache={coverCache}
+            onClose={() => setSelectedGame(null)}
+            onMetaRefresh={() => readMetadataIndex().then(setCoverCache).catch(() => {})}
+          />
+        )}
       </div>
     </div>
     </>

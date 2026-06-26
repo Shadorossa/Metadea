@@ -790,3 +790,130 @@ pub async fn igdb_get_game_detail(
 
     Ok(game)
 }
+
+// Search IGDB candidates for manual override — returns lightweight list for picker UI
+#[tauri::command]
+pub async fn igdb_search_candidates(
+    app_handle: tauri::AppHandle,
+    game_name: String,
+) -> Result<Vec<serde_json::Value>, String> {
+    let cfg           = load_env_config(&app_handle)?;
+    let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token         = get_twitch_token(&client_id, &client_secret).await?;
+    let client        = get_http_client();
+
+    let search_query = game_name
+        .chars()
+        .map(|c| match c {
+            '\u{2122}' | '\u{00AE}' | '\u{00A9}' => ' ',
+            ':' | ';' | '_' | '\'' | '\u{2019}' | '"' | '+' | '.' => ' ',
+            c => c,
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let results = igdb_query(&client, &client_id, &token,
+        IGDB_API_GAMES,
+        &format!(
+            "fields id,name,cover.image_id,first_release_date,\
+             involved_companies.company.name,involved_companies.developer; \
+             search \"{}\"; where cover != null; limit 20;",
+            search_query
+        ),
+    ).await?;
+
+    let candidates = results.as_array().cloned().unwrap_or_default()
+        .into_iter()
+        .map(|game| {
+            let year = chrono::DateTime::from_timestamp(
+                game["first_release_date"].as_i64().unwrap_or(0), 0
+            ).map(|dt| dt.year()).unwrap_or(0);
+
+            let cover_url = game["cover"]["image_id"].as_str()
+                .map(|id| format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, id))
+                .unwrap_or_default();
+
+            let developers: Vec<&str> = game["involved_companies"].as_array()
+                .map(|arr| arr.iter()
+                    .filter(|c| c["developer"].as_bool().unwrap_or(false))
+                    .filter_map(|c| c["company"]["name"].as_str())
+                    .collect())
+                .unwrap_or_default();
+
+            serde_json::json!({
+                "id":        game["id"],
+                "name":      game["name"],
+                "year":      year,
+                "cover_url": cover_url,
+                "developer": developers.first().copied().unwrap_or(""),
+            })
+        })
+        .collect();
+
+    Ok(candidates)
+}
+
+// Force download metadata for a specific IGDB game ID, bypassing search/matching
+#[tauri::command]
+pub async fn igdb_force_by_igdb_id(
+    app_handle: tauri::AppHandle,
+    app_id: String,
+    game_name: String,
+    igdb_id: u64,
+) -> Result<String, String> {
+    let cfg           = load_env_config(&app_handle)?;
+    let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token         = get_twitch_token(&client_id, &client_secret).await?;
+    let client        = get_http_client();
+
+    let games = igdb_query(&client, &client_id, &token,
+        IGDB_API_GAMES,
+        &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
+    ).await?;
+
+    let game = games.as_array()
+        .and_then(|a| a.first())
+        .ok_or("Game not found in IGDB")?;
+
+    let (cover_image_id, game_id, igdb_game) = extract_cover_and_game(game);
+    let cover_image_id = cover_image_id.ok_or("Game has no cover")?;
+
+    let meta_root = app_handle.path().app_data_dir().map_err(|e| e.to_string())?.join("metadata");
+    let game_dir  = meta_root.join(&app_id);
+
+    // Remove existing metadata so it re-downloads cleanly
+    if game_dir.exists() {
+        let _ = std::fs::remove_dir_all(&game_dir);
+    }
+
+    download_game_metadata(&client, &client_id, &token, &game_dir, &igdb_game, &cover_image_id, game_id, &app_id).await?;
+
+    let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
+
+    let index_path = meta_root.join("index.json");
+    let mut index: serde_json::Value = std::fs::read_to_string(&index_path)
+        .ok().and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    if let Some(obj) = index.as_object_mut() {
+        let mut entry = serde_json::json!({
+            "name": game_name,
+            "cover": cover_path.to_string_lossy(),
+        });
+        if let Ok(entries) = std::fs::read_dir(&game_dir) {
+            if let Some(banner_path) = entries.flatten()
+                .find(|e| e.file_name().to_string_lossy().ends_with("_banner.webp"))
+                .map(|e| e.path())
+            {
+                entry["banner"] = serde_json::Value::String(banner_path.to_string_lossy().to_string());
+            }
+        }
+        obj.insert(app_id.clone(), entry);
+    }
+    let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
+
+    Ok(cover_path.to_string_lossy().to_string())
+}

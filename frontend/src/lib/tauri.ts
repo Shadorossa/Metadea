@@ -325,6 +325,28 @@ export async function igdbGetCoverBySteamId(
   return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
 }
 
+export interface IgdbCandidate {
+  id: number;
+  name: string;
+  year: number;
+  cover_url: string;
+  developer: string;
+}
+
+export async function igdbSearchCandidates(gameName: string): Promise<IgdbCandidate[]> {
+  if (!isTauri()) return [];
+  return invoke<IgdbCandidate[]>('igdb_search_candidates', { gameName });
+}
+
+export async function igdbForceByIgdbId(
+  appId: string,
+  gameName: string,
+  igdbId: number,
+): Promise<string> {
+  if (!isTauri()) return '';
+  return invoke<string>('igdb_force_by_igdb_id', { appId, gameName, igdbId });
+}
+
 export interface MetaEntry {
   cover_path?:  string; // absolute path to cover file
   banner_path?: string; // absolute path to banner file
