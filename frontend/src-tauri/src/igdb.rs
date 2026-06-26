@@ -254,20 +254,32 @@ async fn resolve_igdb_game(
 
     eprintln!("[IGDB] Resolving: {:?} (app_id={}, search={:?}, norm={:?})", game_name, app_id, search_query, name_norm);
 
-    // Try Steam ID lookup first
-    let ext = igdb_query(client, client_id, token,
+    // Try Steam ID lookup: get the game ID first (no nesting to avoid IGDB 3-level limit)
+    // then query the games endpoint separately for full data
+    if let Ok(ext) = igdb_query(client, client_id, token,
         IGDB_API_EXTERNAL_GAMES,
-        &format!("fields game.{IGDB_GAME_FIELDS}; where uid = \"{app_id}\" & category = 1; limit 1;"),
-    ).await?;
-
-    if let Some(g) = ext.as_array().and_then(|a| a.first()).filter(|r| !r["game"].is_null()) {
-        let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(&g["game"]);
-        eprintln!("[IGDB] Steam ID hit: cover={:?}", cover_id);
-        if let Some(id) = cover_id {
-            return Ok((id, igdb_game_id, igdb_game));
+        &format!("fields game; where uid = \"{app_id}\" & category = 1; limit 1;"),
+    ).await {
+        if let Some(igdb_id) = ext.as_array()
+            .and_then(|a| a.first())
+            .and_then(|r| r["game"].as_u64())
+        {
+            eprintln!("[IGDB] Steam ID found igdb_id={}", igdb_id);
+            if let Ok(games) = igdb_query(client, client_id, token,
+                IGDB_API_GAMES,
+                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
+            ).await {
+                let (cover_id, game_id, igdb_game) = extract_cover_and_game(
+                    games.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null))
+                );
+                eprintln!("[IGDB] Steam path cover={:?}", cover_id);
+                if let Some(id) = cover_id {
+                    return Ok((id, game_id, igdb_game));
+                }
+            }
+        } else {
+            eprintln!("[IGDB] Steam ID miss for app_id={}", app_id);
         }
-    } else {
-        eprintln!("[IGDB] Steam ID miss for app_id={}", app_id);
     }
 
     // Fallback: fuzzy search with cleaned query
