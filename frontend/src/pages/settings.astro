@@ -98,26 +98,48 @@ const lang = getLang(Astro.url);
               📁 Abrir carpeta
             </button>
 
-            <!-- IGDB -->
-            <div class="env-service-block">
-              <div class="env-service-header">
-                <span class="env-service-name">IGDB</span>
-                <span class="env-service-hint">Obtén tus claves en <strong>dev.twitch.tv</strong> con una cuenta de Twitch</span>
-              </div>
-              <div class="env-fields">
-                <div class="env-field">
-                  <label class="env-label" for="igdb-client-id">Client ID</label>
-                  <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+            <div class="env-services-grid">
+
+              <!-- IGDB -->
+              <div class="env-service-block">
+                <div class="env-service-header">
+                  <img class="env-service-logo" src="/API/IGDB_logo.png" alt="IGDB" />
+                  <span class="env-service-hint">Obtén tus claves en <strong>dev.twitch.tv</strong> con una cuenta de Twitch</span>
                 </div>
-                <div class="env-field">
-                  <label class="env-label" for="igdb-client-secret">Client Secret</label>
-                  <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
+                <div class="env-fields env-fields--row">
+                  <div class="env-field">
+                    <label class="env-label" for="igdb-client-id">Client ID</label>
+                    <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+                  </div>
+                  <div class="env-field">
+                    <label class="env-label" for="igdb-client-secret">Client Secret</label>
+                    <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
+                </div>
+                <div class="env-actions">
+                  <button class="btn btn--sm btn--primary" id="igdb-save-btn">Guardar</button>
+                  <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">Limpiar</button>
                 </div>
               </div>
-              <div class="env-actions">
-                <button class="btn btn--sm btn--primary" id="igdb-save-btn">Guardar</button>
-                <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">Limpiar</button>
+
+              <!-- Steam -->
+              <div class="env-service-block">
+                <div class="env-service-header">
+                  <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" />
+                  <span class="env-service-hint">Obtén tu clave en <strong>steamcommunity.com/dev/apikey</strong></span>
+                </div>
+                <div class="env-fields">
+                  <div class="env-field">
+                    <label class="env-label" for="steam-api-key">API Key</label>
+                    <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
+                </div>
+                <div class="env-actions">
+                  <button class="btn btn--sm btn--primary" id="steam-save-btn">Guardar</button>
+                  <button class="btn btn--sm btn--ghost" id="steam-clear-btn">Limpiar</button>
+                </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -143,23 +165,12 @@ const lang = getLang(Astro.url);
 <script>
   import { getAuthToken } from '../lib/tauri';
   import { decodeJwtPayload } from '../lib/profile/utils';
-  import { saveImage, getImage, removeImage } from '../lib/storage/images';
+  import { initAvatar } from '../lib/settings/avatar';
+  import { initBanner } from '../lib/settings/banner';
+  import { initThemePicker } from '../lib/settings/theme';
+  import { initEnvironment } from '../lib/settings/environment';
+  import { initFontPicker } from '../lib/settings/fonts';
 
-  // ── Auth guard ─────────────────────────────────────────────────────────────
-  (async () => {
-    const session = await getAuthToken().catch(() => null);
-    if (!session?.token) { window.location.replace('/login'); return; }
-
-    const payload = decodeJwtPayload(session.token);
-    const googleAvatar = payload.avatar as string | null;
-    const username = session.username;
-
-    initAvatar(googleAvatar, username);
-    initBanner();
-    initFontPicker(username);
-  })();
-
-  // ── Toast ──────────────────────────────────────────────────────────────────
   function showToast(msg = 'Guardado') {
     const el = document.getElementById('settings-toast')!;
     el.textContent = msg;
@@ -167,332 +178,22 @@ const lang = getLang(Astro.url);
     setTimeout(() => el.classList.remove('visible'), 2000);
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  function readFileAsDataURL(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
+  (async () => {
+    const session = await getAuthToken().catch(() => null);
+    if (!session?.token) { window.location.replace('/login'); return; }
 
-  function fileTooLarge(file: File, maxMB = 2) {
-    return file.size > maxMB * 1024 * 1024;
-  }
+    const payload      = decodeJwtPayload(session.token);
+    const googleAvatar = payload.avatar as string | null;
+    const username     = session.username;
 
-  function compressImage(dataUrl: string, maxWidth: number, quality = 0.82): Promise<string> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement('canvas');
-        canvas.width  = Math.round(img.width  * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/webp', quality));
-      };
-      img.src = dataUrl;
-    });
-  }
+    initAvatar(googleAvatar, username, showToast);
+    initBanner(showToast);
+    initFontPicker(username, showToast);
+  })();
 
-  // ── Avatar ─────────────────────────────────────────────────────────────────
-  function initAvatar(googleAvatar: string | null, username: string) {
-    const preview   = document.getElementById('avatar-preview')!;
-    const input     = document.getElementById('avatar-input') as HTMLInputElement;
-    const uploadBtn = document.getElementById('avatar-upload-btn')!;
-    const removeBtn = document.getElementById('avatar-remove-btn')!;
+  initThemePicker(showToast);
+  initEnvironment(showToast);
 
-    async function renderAvatarPreview() {
-      const custom = await getImage('profile_avatar_custom');
-      const src    = custom || googleAvatar;
-      if (src) {
-        preview.innerHTML = `<img src="${src}" alt="${username}" referrerpolicy="no-referrer">`;
-      } else {
-        preview.textContent = (username[0] ?? '?').toUpperCase();
-      }
-    }
-
-    renderAvatarPreview();
-
-    uploadBtn.addEventListener('click', () => input.click());
-
-    input.addEventListener('change', async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      if (fileTooLarge(file, 8)) { showToast('La imagen supera los 8 MB'); return; }
-      let dataUrl = await readFileAsDataURL(file);
-      dataUrl = await compressImage(dataUrl, 1000, 0.95);
-      if (!await saveImage('profile_avatar_custom', dataUrl)) {
-        showToast('Error: no se pudo guardar'); return;
-      }
-      renderAvatarPreview();
-      showToast('Avatar actualizado');
-      input.value = '';
-    });
-
-    removeBtn.addEventListener('click', async () => {
-      await removeImage('profile_avatar_custom');
-      renderAvatarPreview();
-      showToast('Avatar eliminado');
-    });
-  }
-
-  // ── Banner ─────────────────────────────────────────────────────────────────
-  function initBanner() {
-    const dropZone  = document.getElementById('banner-drop-zone')!;
-    const input     = document.getElementById('banner-input') as HTMLInputElement;
-    const uploadBtn = document.getElementById('banner-upload-btn')!;
-    const removeBtn = document.getElementById('banner-remove-btn')!;
-
-    async function renderBannerPreview() {
-      const src = await getImage('profile_banner_custom');
-      dropZone.querySelector('img')?.remove();
-      if (src) {
-        const img = document.createElement('img');
-        img.src = src;
-        img.alt = 'Banner';
-        dropZone.prepend(img);
-        dropZone.classList.add('has-image');
-      } else {
-        dropZone.classList.remove('has-image');
-      }
-    }
-
-    renderBannerPreview();
-
-    async function handleFile(file: File) {
-      if (!file.type.startsWith('image/')) { showToast('Solo se admiten imágenes'); return; }
-      if (fileTooLarge(file, 20)) { showToast('La imagen supera los 20 MB'); return; }
-      let dataUrl = await readFileAsDataURL(file);
-      dataUrl = await compressImage(dataUrl, 2560, 0.80);
-      if (!await saveImage('profile_banner_custom', dataUrl)) {
-        showToast('Error: no se pudo guardar'); return;
-      }
-      renderBannerPreview();
-      showToast('Banner actualizado');
-    }
-
-    uploadBtn.addEventListener('click', () => input.click());
-    dropZone.addEventListener('click',  () => input.click());
-
-    input.addEventListener('change', async () => {
-      if (input.files?.[0]) await handleFile(input.files[0]);
-      input.value = '';
-    });
-
-    removeBtn.addEventListener('click', async () => {
-      await removeImage('profile_banner_custom');
-      renderBannerPreview();
-      showToast('Banner eliminado');
-    });
-
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropZone.classList.add('drag-over');
-    });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-    dropZone.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('drag-over');
-      const file = e.dataTransfer?.files[0];
-      if (file) await handleFile(file);
-    });
-  }
-
-  // ── Theme picker ───────────────────────────────────────────────────────────
-  const THEMES = [
-    {
-      id: 'nebula',
-      name: 'Nebulosa',
-      bg: 'radial-gradient(ellipse 80% 70% at 50% -10%, rgba(120,70,210,0.75) 0%, transparent 72%), #07070e',
-    },
-    {
-      id: 'aurora',
-      name: 'Aurora',
-      bg: 'radial-gradient(ellipse 90% 70% at 15% -10%, rgba(0,200,130,0.8) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 85% 100%, rgba(10,160,100,0.5) 0%, transparent 65%), #040e0a',
-    },
-    {
-      id: 'cosmos',
-      name: 'Cosmos',
-      bg: 'radial-gradient(ellipse 70% 65% at 15% 20%, rgba(80,120,230,0.75) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 82% 72%, rgba(100,80,240,0.55) 0%, transparent 65%), #050711',
-    },
-    {
-      id: 'ember',
-      name: 'Ember',
-      bg: 'radial-gradient(ellipse 85% 75% at 50% 120%, rgba(240,120,20,0.85) 0%, transparent 68%), radial-gradient(ellipse 45% 40% at 8% 80%, rgba(245,158,11,0.4) 0%, transparent 60%), #0c0804',
-    },
-    {
-      id: 'ocean',
-      name: 'Océano',
-      bg: 'radial-gradient(ellipse 80% 70% at 0% 100%, rgba(6,182,212,0.75) 0%, transparent 68%), radial-gradient(ellipse 55% 50% at 100% 0%, rgba(2,132,199,0.55) 0%, transparent 65%), #040b0e',
-    },
-    {
-      id: 'sakura',
-      name: 'Sakura',
-      bg: 'radial-gradient(ellipse 80% 70% at 92% -10%, rgba(244,114,182,0.8) 0%, transparent 68%), radial-gradient(ellipse 45% 40% at 8% 90%, rgba(232,121,249,0.45) 0%, transparent 60%), #0d060b',
-    },
-    {
-      id: 'cyberpunk',
-      name: 'Cyberpunk',
-      bg: 'linear-gradient(135deg, #ff0055 0%, #00f0ff 100%)',
-    },
-    {
-      id: 'newspaper-dark',
-      name: 'Newspaper Dark',
-      bg: 'linear-gradient(135deg, #151413 0%, #252422 50%, #dca364 100%)',
-    },
-  ] as const;
-
-  function initThemePicker() {
-    const grid    = document.getElementById('theme-grid')!;
-    const current = document.documentElement.getAttribute('data-theme') || 'nebula';
-
-    const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-
-    grid.innerHTML = THEMES.map(t => `
-      <button class="theme-card${t.id === current ? ' active' : ''}" data-theme-id="${t.id}">
-        <div class="theme-card-preview" style="background:${t.bg}">
-          <span class="theme-card-check">${CHECK_SVG}</span>
-        </div>
-        <span class="theme-card-name">${t.name}</span>
-      </button>
-    `).join('');
-
-    grid.querySelectorAll<HTMLButtonElement>('.theme-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const id = card.dataset.themeId!;
-        localStorage.setItem('app_theme', id);
-        if (typeof (window as any).__updateTheme === 'function') {
-          (window as any).__updateTheme(id);
-        } else {
-          document.documentElement.setAttribute('data-theme', id);
-        }
-        grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        showToast('Tema aplicado');
-      });
-    });
-  }
-
-  initThemePicker();
-
-  // ── Environment / IGDB keys ────────────────────────────────────────────────
-  async function initEnvironment() {
-    const clientIdInput     = document.getElementById('igdb-client-id')     as HTMLInputElement;
-    const clientSecretInput = document.getElementById('igdb-client-secret') as HTMLInputElement;
-    const saveBtn           = document.getElementById('igdb-save-btn')!;
-    const clearBtn          = document.getElementById('igdb-clear-btn')!;
-    const openFolderBtn     = document.getElementById('open-env-folder-btn')!;
-
-    const { readEnvConfig, writeEnvConfig, openEnvFolder } = await import('../lib/tauri');
-
-    // Load saved values from env.json
-    try {
-      const cfg = await readEnvConfig();
-      clientIdInput.value     = cfg.igdb_client_id     ?? '';
-      clientSecretInput.value = cfg.igdb_client_secret ?? '';
-    } catch {
-      // Not in Tauri or file doesn't exist yet
-    }
-
-    saveBtn.addEventListener('click', async () => {
-      try {
-        await writeEnvConfig({
-          igdb_client_id:     clientIdInput.value.trim() || undefined,
-          igdb_client_secret: clientSecretInput.value.trim() || undefined,
-        });
-        showToast('Claves de IGDB guardadas');
-      } catch (err: any) {
-        showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
-        console.error('writeEnvConfig error:', err);
-      }
-    });
-
-    clearBtn.addEventListener('click', async () => {
-      try {
-        await writeEnvConfig({});
-        clientIdInput.value     = '';
-        clientSecretInput.value = '';
-        showToast('Claves eliminadas');
-      } catch {
-        showToast('Error al eliminar');
-      }
-    });
-
-    openFolderBtn.addEventListener('click', async () => {
-      try {
-        await openEnvFolder();
-        showToast('Carpeta abierta');
-      } catch (err: any) {
-        console.error('openEnvFolder error:', err);
-        showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
-      }
-    });
-  }
-
-  initEnvironment();
-
-  // ── Font picker ────────────────────────────────────────────────────────────
-  const PROFILE_FONTS = [
-    { id: 'inter',            name: 'Inter',             file: 'inter/Inter-VariableFont_opsz,wght.woff2' },
-    { id: 'roboto',           name: 'Roboto',            file: 'roboto/Roboto-VariableFont_wdth,wght.woff2' },
-    { id: 'montserrat',       name: 'Montserrat',        file: 'montserrat/Montserrat-VariableFont_wght.woff2' },
-    { id: 'raleway',          name: 'Raleway',           file: 'raleway/Raleway-VariableFont_wght.woff2' },
-    { id: 'syne',             name: 'Syne',              file: 'syne/Syne-VariableFont_wght.woff2' },
-    { id: 'sourcesanspro',    name: 'Source Sans',       file: 'sourcesanspro/SourceSans3-VariableFont_wght.woff2' },
-    { id: 'lora',             name: 'Lora',              file: 'lora/Lora-VariableFont_wght.woff2' },
-    { id: 'playfairdisplay',  name: 'Playfair Display',  file: 'playfairdisplay/PlayfairDisplay-VariableFont_wght.woff2' },
-    { id: 'alegreya',         name: 'Alegreya',          file: 'alegreya/Alegreya-VariableFont_wght.woff2' },
-    { id: 'fraunces',         name: 'Fraunces',          file: 'fraunces/Fraunces-VariableFont_SOFT,WONK,opsz,wght.woff2' },
-    { id: 'librebaskerville', name: 'Libre Baskerville', file: 'librebaskerville/LibreBaskerville-Bold.woff2' },
-    { id: 'inconsolata',      name: 'Inconsolata',       file: 'inconsolata/Inconsolata-VariableFont_wdth,wght.woff2' },
-  ];
-
-  async function initFontPicker(username: string) {
-    const preview   = document.getElementById('font-preview-name')!;
-    const label     = document.getElementById('font-name-label')!;
-    const btnPrev   = document.getElementById('font-prev')!;
-    const btnNext   = document.getElementById('font-next')!;
-
-    const { saveUserInfo, getUserInfo } = await import('../lib/tauri');
-    const info = await getUserInfo();
-    const savedId = (info.profile_font as string | undefined) ?? 'inter';
-    let idx = PROFILE_FONTS.findIndex(f => f.id === savedId);
-    if (idx < 0) idx = 0;
-
-    // Pre-load all fonts so switching is instant
-    const style = document.createElement('style');
-    style.textContent = PROFILE_FONTS.map(f =>
-      `@font-face { font-family: "pf-${f.id}"; src: url("/fonts/${f.file}") format("woff2"); font-display: swap; }`
-    ).join('\n');
-    document.head.appendChild(style);
-
-    function render() {
-      const f = PROFILE_FONTS[idx];
-      preview.textContent = username;
-      preview.style.fontFamily = `"pf-${f.id}", sans-serif`;
-      label.textContent = f.name;
-    }
-
-    btnPrev.addEventListener('click', async () => {
-      idx = (idx - 1 + PROFILE_FONTS.length) % PROFILE_FONTS.length;
-      render();
-      await saveUserInfo({ profile_font: PROFILE_FONTS[idx].id });
-      showToast('Fuente guardada');
-    });
-
-    btnNext.addEventListener('click', async () => {
-      idx = (idx + 1) % PROFILE_FONTS.length;
-      render();
-      await saveUserInfo({ profile_font: PROFILE_FONTS[idx].id });
-      showToast('Fuente guardada');
-    });
-
-    render();
-  }
-
-  // ── Tab switching ──────────────────────────────────────────────────────────
   document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));

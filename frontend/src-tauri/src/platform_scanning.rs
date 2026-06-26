@@ -7,6 +7,9 @@ pub struct LocalGame {
     pub launcher: String,
     pub app_id: Option<String>,
     pub install_path: Option<String>,
+    pub playtime_minutes: Option<u64>,
+    pub last_played: Option<u64>,
+    pub installed: Option<bool>,
 }
 
 #[cfg(windows)]
@@ -33,23 +36,23 @@ fn steam_root_from_registry() -> Option<PathBuf> {
 #[cfg(not(windows))]
 fn steam_root_from_registry() -> Option<PathBuf> { None }
 
+/// Returns the Steam root directory (registry first, then common paths).
+pub fn steam_root() -> Option<PathBuf> {
+    let from_reg = steam_root_from_registry();
+    if from_reg.is_some() { return from_reg; }
+    let candidates: Vec<PathBuf> = ["C", "D", "E", "F"].iter().flat_map(|drive| vec![
+        PathBuf::from(format!("{}:\\Program Files (x86)\\Steam", drive)),
+        PathBuf::from(format!("{}:\\Program Files\\Steam", drive)),
+        PathBuf::from(format!("{}:\\Steam", drive)),
+        PathBuf::from(format!("{}:\\Games\\Steam", drive)),
+    ]).collect();
+    candidates.into_iter().find(|p| p.join("steamapps").exists())
+}
+
 fn scan_steam_games() -> Vec<LocalGame> {
     let mut games = Vec::new();
 
-    let mut steam_root = steam_root_from_registry();
-
-    if steam_root.is_none() {
-        let mut candidates: Vec<PathBuf> = Vec::new();
-        for drive in &["C", "D", "E", "F"] {
-            candidates.push(PathBuf::from(format!("{}:\\Program Files (x86)\\Steam", drive)));
-            candidates.push(PathBuf::from(format!("{}:\\Program Files\\Steam", drive)));
-            candidates.push(PathBuf::from(format!("{}:\\Steam", drive)));
-            candidates.push(PathBuf::from(format!("{}:\\Games\\Steam", drive)));
-        }
-        steam_root = candidates.into_iter().find(|p| p.join("steamapps").exists());
-    }
-
-    let steam_root = match steam_root {
+    let steam_root = match steam_root() {
         Some(r) => r,
         None => return games,
     };
@@ -109,6 +112,9 @@ fn scan_steam_games() -> Vec<LocalGame> {
                                 launcher: "steam".to_string(),
                                 app_id: Some(app_id),
                                 install_path: Some(install_path),
+                                playtime_minutes: None,
+                                last_played: None,
+                                installed: Some(true),
                             });
                         }
                     }
@@ -145,6 +151,9 @@ fn scan_epic_games() -> Vec<LocalGame> {
                                         launcher: "epic".to_string(),
                                         app_id,
                                         install_path,
+                                        playtime_minutes: None,
+                                        last_played: None,
+                                        installed: Some(true),
                                     });
                                 }
                             }
@@ -183,6 +192,9 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                 launcher: "gog".to_string(),
                                 app_id: None,
                                 install_path: Some(game_dir.to_string_lossy().to_string()),
+                                playtime_minutes: None,
+                                last_played: None,
+                                installed: Some(true),
                             });
                         }
                     }
@@ -201,6 +213,9 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                             launcher: "gog".to_string(),
                                             app_id,
                                             install_path: Some(game_dir.to_string_lossy().to_string()),
+                                            playtime_minutes: None,
+                                            last_played: None,
+                                            installed: Some(true),
                                         });
                                     }
                                 }
@@ -324,6 +339,9 @@ fn scan_xbox_games() -> Vec<LocalGame> {
                     launcher: "xbox".to_string(),
                     app_id: None,
                     install_path: Some(path.to_string_lossy().to_string()),
+                    playtime_minutes: None,
+                    last_played: None,
+                    installed: Some(true),
                 });
             }
         }
@@ -354,6 +372,9 @@ fn scan_ea_games() -> Vec<LocalGame> {
                                     launcher: "ea".to_string(),
                                     app_id: None,
                                     install_path: Some(path.to_string_lossy().to_string()),
+                                    playtime_minutes: None,
+                                    last_played: None,
+                                    installed: Some(true),
                                 });
                             }
                         }
@@ -386,6 +407,9 @@ fn scan_ea_games() -> Vec<LocalGame> {
                                 launcher: "ea".to_string(),
                                 app_id: None,
                                 install_path: Some(path.to_string_lossy().to_string()),
+                                playtime_minutes: None,
+                                last_played: None,
+                                installed: Some(true),
                             });
                         }
                     }

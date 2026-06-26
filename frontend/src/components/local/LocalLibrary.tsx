@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  scanAllGames, pickFolder, scanFolderContents,
+  pickFolder, scanFolderContents,
   readRoutes, writeRoutes, debugScanInfo,
   igdbGetCoverBySteamId, readMetadataIndex, readGameInfo, pathToDataUrl,
-  type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo,
+  steamGetPlayerAchievements, steamAchievementIcon,
+  type LocalGame, type LocalFolderEntry, type MetaEntry, type GameInfo, type SteamAchievement,
 } from '../../lib/tauri';
+import { scanGamesWithSteam } from '../../lib/local/steam-merge';
 
 // ── Platform config ───────────────────────────────────────────────────────────
 
@@ -155,13 +157,76 @@ interface GameDetailPanelProps {
   onClose: () => void;
 }
 
+function AchievementCell({ ach, appId }: { ach: SteamAchievement; appId: string }) {
+  const localFile = ach.achieved ? ach.icon_unlocked : ach.icon_locked;
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (localFile) {
+      steamAchievementIcon(appId, localFile).then(url => {
+        if (url) setSrc(url);
+        else setSrc(ach.icon ?? null);
+      });
+    } else {
+      setSrc(ach.icon ?? null);
+    }
+  }, [appId, localFile, ach.icon]);
+
+  const unlockDate = ach.achieved && ach.unlocktime > 0
+    ? new Date(ach.unlocktime * 1000).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+
+  return (
+    <div className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}`}>
+      {src ? (
+        <img src={src} alt={ach.name || ach.apiname} className="local-game-detail-ach-img" />
+      ) : (
+        <div className="local-game-detail-ach-img local-game-detail-ach-placeholder">
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+        </div>
+      )}
+      <div className="local-game-detail-ach-tooltip">
+        <span className="local-game-detail-ach-tooltip-name">{ach.name || ach.apiname}</span>
+        {ach.description && <span className="local-game-detail-ach-tooltip-desc">{ach.description}</span>}
+        {unlockDate && <span className="local-game-detail-ach-tooltip-date">Desbloqueado: {unlockDate}</span>}
+      </div>
+    </div>
+  );
+}
+
+function formatPlaytime(minutes?: number): string {
+  if (!minutes || minutes === 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function formatLastPlayed(ts?: number): string {
+  if (!ts || ts === 0) return '—';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
+  const [achievements, setAchievements] = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
 
   useEffect(() => {
     if (!game.app_id) return;
     readGameInfo(game.app_id).then(info => setGameInfo(info));
   }, [game.app_id]);
+
+  useEffect(() => {
+    if (game.launcher !== 'steam' || !game.app_id) return;
+    steamGetPlayerAchievements(Number(game.app_id)).then(res => {
+      if (res) setAchievements(res);
+    });
+  }, [game.app_id, game.launcher]);
 
   const entry  = game.app_id ? coverCache[game.app_id] : undefined;
   const banner = entry?.banner ?? entry?.cover ?? null;
@@ -222,21 +287,21 @@ function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
-              <span>—</span>
+              <span>{formatPlaytime(game.playtime_minutes)}</span>
               <span className="local-game-detail-stat-label">Tiempo</span>
             </div>
             <div className="local-game-detail-stat">
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              <span>—</span>
+              <span>{formatLastPlayed(game.last_played)}</span>
               <span className="local-game-detail-stat-label">Última vez</span>
             </div>
             <div className="local-game-detail-stat">
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
               </svg>
-              <span>—</span>
+              <span>{achievements ? `${achievements.unlocked}/${achievements.total}` : '—'}</span>
               <span className="local-game-detail-stat-label">Logros</span>
             </div>
           </div>
@@ -258,6 +323,19 @@ function GameDetailPanel({ game, coverCache, onClose }: GameDetailPanelProps) {
 
         {gameInfo?.summary && (
           <p className="local-game-detail-summary">{gameInfo.summary}</p>
+        )}
+
+        {achievements?.list && achievements.list.length > 0 && (
+          <div className="local-game-detail-achievements">
+            <p className="local-game-detail-achievements-title">
+              Logros — {achievements.unlocked}/{achievements.total}
+            </p>
+            <div className="local-game-detail-achievement-grid">
+              {achievements.list.map((ach: SteamAchievement) => (
+                <AchievementCell key={ach.apiname} ach={ach} appId={game.app_id!} />
+              ))}
+            </div>
+          </div>
         )}
 
       </div>
@@ -450,7 +528,7 @@ export default function LocalLibrary() {
     setGamesState('loading');
     setScanError(null);
     setDebugInfo(null);
-    scanAllGames()
+    scanGamesWithSteam()
       .then(g => {
         const list: LocalGame[] = Array.isArray(g) ? g : [];
         setGames(list);

@@ -127,10 +127,21 @@ export async function getLibraryStats(): Promise<{ total: number; by_type: Recor
 // ─── Local Library ────────────────────────────────────────────────────────────
 
 export interface LocalGame {
-  name:        string;
-  launcher:    'steam' | 'epic' | 'xbox' | 'gog';
-  app_id?:     string;
-  install_path?: string;
+  name:             string;
+  launcher:         'steam' | 'epic' | 'xbox' | 'gog' | 'ea';
+  app_id?:          string;
+  install_path?:    string;
+  playtime_minutes?: number;
+  last_played?:     number;
+  installed?:       boolean;
+}
+
+export interface SteamOwnedGame {
+  appid:              number;
+  name:               string;
+  playtime_forever:   number;
+  rtime_last_played?: number;
+  img_icon_url?:      string;
 }
 
 export interface LocalFolderEntry {
@@ -215,6 +226,7 @@ export async function writeRoutes(routes: Record<string, string>): Promise<void>
 export interface EnvConfig {
   igdb_client_id?:     string;
   igdb_client_secret?: string;
+  steam_api_key?:      string;
 }
 
 export async function readEnvConfig(): Promise<EnvConfig> {
@@ -291,13 +303,26 @@ export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, 
   }
 }
 
+function steamLang(): string {
+  const l = navigator.language;
+  if (l.startsWith('es')) return 'spanish';
+  if (l.startsWith('fr')) return 'french';
+  if (l.startsWith('de')) return 'german';
+  if (l.startsWith('pt')) return 'portuguese';
+  if (l.startsWith('it')) return 'italian';
+  if (l.startsWith('ru')) return 'russian';
+  if (l.startsWith('zh')) return 'schinese';
+  if (l.startsWith('ja')) return 'japanese';
+  if (l.startsWith('ko')) return 'koreana';
+  return 'english';
+}
+
 export async function igdbGetCoverBySteamId(
   appId: string,
   gameName: string,
 ): Promise<string | null> {
   if (!isTauri()) return null;
-  // Tauri v2: JS camelCase → Rust snake_case auto-conversion
-  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
+  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName, lang: steamLang() });
 }
 
 export interface MetaEntry {
@@ -355,6 +380,44 @@ export async function openEnvFolder(): Promise<void> {
     return;
   }
   return invoke<void>('open_env_folder');
+}
+
+export interface SteamAchievement {
+  apiname:         string;
+  achieved:        number;
+  unlocktime:      number;
+  name?:           string;
+  description?:    string;
+  icon?:           string;      // CDN URL (live fetch)
+  icon_unlocked?:  string;      // local filename: {apiname}_unlocked.jpg
+  icon_locked?:    string;      // local filename: {apiname}_locked.jpg
+}
+
+export async function steamAchievementIcon(appId: string, filename: string): Promise<string | null> {
+  if (!isTauri()) return null;
+  try {
+    return await invoke<string>('steam_achievement_icon', { appId, filename });
+  } catch {
+    return null;
+  }
+}
+
+export async function steamGetPlayerAchievements(appId: number): Promise<{ unlocked: number; total: number; list: SteamAchievement[] } | null> {
+  if (!isTauri()) return null;
+  try {
+    return await invoke<{ unlocked: number; total: number; list: SteamAchievement[] }>('steam_get_player_achievements', { appId, lang: steamLang() });
+  } catch {
+    return null;
+  }
+}
+
+export async function steamGetOwnedGames(): Promise<{ game_count?: number; games?: SteamOwnedGame[] } | null> {
+  if (!isTauri()) return null;
+  try {
+    return await invoke<{ game_count?: number; games?: SteamOwnedGame[] }>('steam_get_owned_games');
+  } catch {
+    return null;
+  }
 }
 
 export async function saveUserInfo(info: Record<string, unknown>): Promise<void> {

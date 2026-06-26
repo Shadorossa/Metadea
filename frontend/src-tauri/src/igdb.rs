@@ -9,6 +9,7 @@ use tauri::Manager;
 pub struct EnvConfig {
     pub igdb_client_id: Option<String>,
     pub igdb_client_secret: Option<String>,
+    pub steam_api_key: Option<String>,
 }
 
 #[tauri::command]
@@ -16,7 +17,7 @@ pub async fn read_env_config(app_handle: tauri::AppHandle) -> Result<EnvConfig, 
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
     let env_path = app_data_dir.join("env.json");
     if !env_path.exists() {
-        return Ok(EnvConfig { igdb_client_id: None, igdb_client_secret: None });
+        return Ok(EnvConfig { igdb_client_id: None, igdb_client_secret: None, steam_api_key: None });
     }
     let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
     let config: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
@@ -155,6 +156,37 @@ async fn fetch_banner_id(
     ss[0]["image_id"].as_str().map(String::from)
 }
 
+async fn fetch_key_art_or_screenshot_id(
+    client:    &reqwest::Client,
+    client_id: &str,
+    token:     &str,
+    game_id:   u64,
+) -> Option<String> {
+    // Key art: non-transparent artworks, prefer landscape (w/h >= 1.5)
+    if let Ok(arts) = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/artworks",
+        &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
+    ).await {
+        if let Some(arr) = arts.as_array() {
+            for entry in arr {
+                let w = entry["width"].as_f64().unwrap_or(0.0);
+                let h = entry["height"].as_f64().unwrap_or(1.0);
+                if h > 0.0 && w / h >= 1.5 {
+                    if let Some(id) = entry["image_id"].as_str() {
+                        return Some(id.to_string());
+                    }
+                }
+            }
+        }
+    }
+    // Fallback: first screenshot
+    let ss = igdb_query(client, client_id, token,
+        "https://api.igdb.com/v4/screenshots",
+        &format!("fields image_id; where game = {}; limit 1;", game_id),
+    ).await.ok()?;
+    ss[0]["image_id"].as_str().map(String::from)
+}
+
 fn save_game_info(game_dir: &std::path::PathBuf, igdb_game: &serde_json::Value, app_id: &str) -> Result<(), String> {
     let mut info = serde_json::json!({
         "app_id": app_id,
@@ -233,6 +265,7 @@ pub async fn igdb_get_cover_by_steam_id(
     app_handle: tauri::AppHandle,
     app_id: String,
     game_name: String,
+    lang: Option<String>,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
     let meta_root    = app_data_dir.join("metadata");
@@ -348,6 +381,10 @@ pub async fn igdb_get_cover_by_steam_id(
         obj.insert(app_id.clone(), entry);
     }
     let _ = std::fs::write(&index_path, serde_json::to_string_pretty(&index).unwrap_or_default());
+
+    // Download Steam achievements (best-effort)
+    let ach_lang = lang.as_deref().unwrap_or("spanish");
+    crate::steam::download_achievements(&app_handle, &app_id, &game_dir, ach_lang).await;
 
     Ok(Some(cover_path.to_string_lossy().to_string()))
 }
@@ -493,7 +530,7 @@ pub async fn igdb_get_game_detail(
         return Ok(serde_json::json!(null));
     }
 
-    let banner_id = fetch_banner_id(&client, &client_id, &token, igdb_id).await;
+    let banner_id = fetch_key_art_or_screenshot_id(&client, &client_id, &token, igdb_id).await;
     game["banner_image_id"] = banner_id
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);

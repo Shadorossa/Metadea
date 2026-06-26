@@ -2,6 +2,7 @@ mod auth;
 mod folders;
 mod igdb;
 mod platform_scanning;
+mod steam;
 mod user_metadata;
 mod utils;
 
@@ -53,6 +54,9 @@ pub fn run() {
             user_metadata::remove_user_image,
             user_metadata::save_user_info,
             user_metadata::get_user_info,
+            steam::steam_achievement_icon,
+            steam::steam_get_owned_games,
+            steam::steam_get_player_achievements,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
