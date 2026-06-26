@@ -235,7 +235,15 @@ async fn resolve_igdb_game(
     app_id: &str,
     game_name: &str,
 ) -> Result<(String, Option<u64>, serde_json::Value), String> {
-    let safe = game_name.chars().filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}').collect::<String>().trim().to_string();
+    // Remove trademark symbols but keep punctuation for exact match
+    let safe = game_name
+        .chars()
+        .filter(|&c| c != '"' && c != '\u{2122}' && c != '\u{00AE}')
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    // Normalized version for fuzzy matching (ignores : - _ ' etc)
     let name_norm = normalize_name(game_name);
 
     // Try Steam ID lookup
@@ -251,24 +259,15 @@ async fn resolve_igdb_game(
         }
     }
 
-    // Fallback 1a: exact name match (strict)
-    let exact = igdb_query(client, client_id, token,
-        IGDB_API_GAMES,
-        &format!("fields {IGDB_GAME_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
-    ).await?;
-    let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
-    if let Some(id) = cover_id {
-        return Ok((id, igdb_game_id, igdb_game));
-    }
-
-    // Fallback 1b: fuzzy search (handles special chars like NieR:Automata vs NieR: Automata)
+    // Fallback 1: fuzzy search with normalized name matching
+    // This handles games with special chars: NieR:Automata vs NieR: Automata
     let fuzzy = igdb_query(client, client_id, token,
         IGDB_API_GAMES,
-        &format!("fields {IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 5;"),
+        &format!("fields {IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
     ).await?;
 
     if let Some(arr) = fuzzy.as_array() {
-        // Direct normalized match (ignores : and spaces)
+        // First try: exact normalized match (ignores : - _ ' ™ etc)
         if let Some(game) = arr.iter()
             .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false)) {
             let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
@@ -278,36 +277,25 @@ async fn resolve_igdb_game(
         }
     }
 
-    // Fallback 2: IGDB search with edition-aware similarity scoring
-    let search = igdb_query(client, client_id, token,
-        IGDB_API_GAMES,
-        &format!("fields name,{IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 10;"),
-    ).await?;
-
-    let best = search.as_array().and_then(|arr| {
-        arr.iter()
-            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
-            .or_else(|| {
-                arr.iter()
-                    .filter_map(|r| {
-                        let n = r["name"].as_str()?;
-                        let score = score_candidate(&name_norm, n);
-                        if score > 0.5 { Some((score, r)) } else { None }
-                    })
-                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
-                    .map(|(_, r)| r)
+    // Fallback 2: similarity scoring (last resort)
+    if let Some(arr) = fuzzy.as_array() {
+        let best = arr.iter()
+            .filter_map(|r| {
+                let n = r["name"].as_str()?;
+                let score = score_candidate(&name_norm, n);
+                if score > 0.5 { Some((score, r)) } else { None }
             })
-    });
+            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    let (cover_id, igdb_game_id, igdb_game) = best
-        .map(|r| extract_cover_and_game(r))
-        .unwrap_or((None, None, serde_json::json!({})));
-
-    if let Some(id) = cover_id {
-        Ok((id, igdb_game_id, igdb_game))
-    } else {
-        Err("No cover found for game".to_string())
+        if let Some((_, game)) = best {
+            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+            if let Some(id) = cover_id {
+                return Ok((id, igdb_game_id, igdb_game));
+            }
+        }
     }
+
+    Err("No cover found for game".to_string())
 }
 
 async fn download_game_metadata(
