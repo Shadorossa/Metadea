@@ -63,7 +63,7 @@ const t = useTranslations(lang);
       })();
     </script>
   </head>
-  <body>
+  <body data-page={activePage}>
     <div id="app-bg" aria-hidden="true"></div>
     <Navbar activePage={activePage} i18n={t.nav} />
     <slot />

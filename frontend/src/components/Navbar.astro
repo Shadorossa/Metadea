@@ -32,6 +32,9 @@ const { activePage, i18n } = Astro.props;
     </a>
   </div>
 
+  <!-- Centro: slot para contenido de página (ej. tabs de local) -->
+  <div id="nav-center-slot" class="nav-center-slot"></div>
+
   <!-- Derecha: notificaciones + usuario -->
   <div class="nav-group">
     <a href="/notifications" class={`nav-icon-btn${activePage === 'notifications' ? ' active' : ''}`} title={i18n.notifications}>

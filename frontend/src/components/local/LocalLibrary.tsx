@@ -1,9 +1,32 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   scanAllGames, pickFolder, scanFolderContents,
-  getLocalFolders, saveLocalFolders, debugScanInfo,
-  type LocalGame, type LocalFolderEntry, type SavedFolder,
+  readRoutes, writeRoutes, debugScanInfo,
+  igdbGetCoverBySteamId,
+  type LocalGame, type LocalFolderEntry,
 } from '../../lib/tauri';
+
+// ── IGDB cover cache (localStorage) ──────────────────────────────────────────
+// Stores { app_id → absolute_file_path } for covers already on disk.
+
+const COVER_CACHE_KEY = 'igdb_covers';
+
+function loadCoverCache(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(COVER_CACHE_KEY) ?? '{}'); }
+  catch { return {}; }
+}
+
+function saveCoverCache(cache: Record<string, string>) {
+  localStorage.setItem(COVER_CACHE_KEY, JSON.stringify(cache));
+}
+
+// Convert an absolute local path to a URL the Tauri webview can load.
+function localFileUrl(absPath: string): string {
+  const tauri = (window as any).__TAURI__;
+  if (tauri?.core?.convertFileSrc) return tauri.core.convertFileSrc(absPath);
+  return '';
+}
 
 // ── Platform config ───────────────────────────────────────────────────────────
 
@@ -108,13 +131,15 @@ function IconX() {
 
 interface GameCardProps {
   game: LocalGame;
+  coverCache: Record<string, string>;
   onClick: (game: LocalGame) => void;
 }
 
-function GameCard({ game, onClick }: GameCardProps) {
-  const cover = game.launcher === 'steam' && game.app_id
-    ? STEAM_COVER(game.app_id)
-    : null;
+function GameCard({ game, coverCache, onClick }: GameCardProps) {
+  const localPath = game.app_id ? coverCache[game.app_id] : undefined;
+  const cover = localPath
+    ? localFileUrl(localPath)
+    : (game.launcher === 'steam' && game.app_id ? STEAM_COVER(game.app_id) : null);
 
   return (
     <div className="local-game-card" onClick={() => onClick(game)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onClick(game)}>
@@ -123,9 +148,6 @@ function GameCard({ game, onClick }: GameCardProps) {
           ? <img src={cover} alt={game.name} loading="lazy" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconMonitor /></div>
         }
-        <span className={`local-game-badge local-game-badge--${game.launcher}`}>
-          {PLATFORM_LABEL[game.launcher as PlatformId] ?? game.launcher}
-        </span>
       </div>
       <p className="local-game-name">{game.name}</p>
     </div>
@@ -219,15 +241,49 @@ function FolderEntryCard({ entry }: { entry: LocalFolderEntry }) {
   );
 }
 
+// ── Metadata progress modal ───────────────────────────────────────────────────
+
+interface MetaProgress {
+  total:       number;
+  current:     number;
+  currentName: string;
+  cancelled:   boolean;
+}
+
+interface MetaModalProps {
+  progress: MetaProgress;
+  onCancel: () => void;
+}
+
+function MetadataModal({ progress, onCancel }: MetaModalProps) {
+  const pct = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  return (
+    <div className="meta-modal-overlay">
+      <div className="meta-modal">
+        <h3 className="meta-modal-title">Actualizando metadatos</h3>
+        <p className="meta-modal-subtitle">{progress.currentName || 'Iniciando…'}</p>
+        <div className="meta-modal-bar-track">
+          <div className="meta-modal-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="meta-modal-count">{progress.current} / {progress.total}</p>
+        <button type="button" className="meta-modal-cancel" onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Platform sidebar ──────────────────────────────────────────────────────────
 
 interface PlatformSidebarProps {
   activePlatform: PlatformId | null;
   availablePlatforms: Set<string>;
   onSelect: (id: PlatformId) => void;
+  onFetchMetadata: () => void;
 }
 
-function PlatformSidebar({ activePlatform, availablePlatforms, onSelect }: PlatformSidebarProps) {
+function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, onFetchMetadata }: PlatformSidebarProps) {
   return (
     <aside className="local-platform-sidebar">
       {LAUNCHER_ORDER.map(id => {
@@ -252,6 +308,23 @@ function PlatformSidebar({ activePlatform, availablePlatforms, onSelect }: Platf
           </button>
         );
       })}
+
+      <div className="local-platform-divider" />
+
+      <button
+        type="button"
+        className="local-platform-btn local-metadata-btn"
+        onClick={onFetchMetadata}
+        title="Obtener metadatos de IGDB"
+      >
+        <span className="local-platform-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v13M5 9l7 7 7-7"/>
+            <line x1="5" y1="21" x2="19" y2="21"/>
+          </svg>
+        </span>
+        <span className="local-platform-label">Metadatos</span>
+      </button>
     </aside>
   );
 }
@@ -259,43 +332,39 @@ function PlatformSidebar({ activePlatform, availablePlatforms, onSelect }: Platf
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function LocalLibrary() {
-  const [activeCategory,   setActiveCategory]   = useState<CategoryId>('videojuegos');
-  const [games,            setGames]            = useState<LocalGame[]>([]);
-  const [gamesState,       setGamesState]       = useState<'idle' | 'loading' | 'done' | 'empty'>('idle');
-  const [folders,          setFolders]          = useState<SavedFolder[]>([]);
-  const [folderFiles,      setFolderFiles]      = useState<LocalFolderEntry[]>([]);
-  const [folderLoading,    setFolderLoading]    = useState(false);
-  const [addingFolder,     setAddingFolder]     = useState(false);
-  const [newLabel,         setNewLabel]         = useState('');
-  const [activePlatform,   setActivePlatform]   = useState<PlatformId | null>(null);
-  const [selectedGame,     setSelectedGame]     = useState<LocalGame | null>(null);
-  const [scanError,        setScanError]        = useState<string | null>(null);
-  const [debugInfo,        setDebugInfo]        = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
+  const [games,          setGames]          = useState<LocalGame[]>([]);
+  const [gamesState,     setGamesState]     = useState<'idle' | 'loading' | 'done' | 'empty'>('idle');
+  const [routes,         setRoutes]         = useState<Record<string, string>>({});
+  const [folderFiles,    setFolderFiles]    = useState<LocalFolderEntry[]>([]);
+  const [folderLoading,  setFolderLoading]  = useState(false);
+  const [activePlatform, setActivePlatform] = useState<PlatformId | null>(null);
+  const [selectedGame,   setSelectedGame]   = useState<LocalGame | null>(null);
+  const [scanError,      setScanError]      = useState<string | null>(null);
+  const [debugInfo,      setDebugInfo]      = useState<string | null>(null);
+  const [coverCache,     setCoverCache]     = useState<Record<string, string>>(loadCoverCache);
+  const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
 
+  const cancelRef = useRef(false);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  // Load saved folders on mount
+  // Load saved routes on mount
   useEffect(() => {
-    getLocalFolders()
-      .then(f => setFolders(Array.isArray(f) ? f : []))
-      .catch(() => setFolders([]));
+    readRoutes().then(setRoutes).catch(() => {});
   }, []);
 
-  // Load folder contents when viewing a custom folder
+  // Scan folder when category changes and has a route
   useEffect(() => {
     if (activeCategory === 'videojuegos') return;
+    const path = routes[activeCategory];
+    if (!path) { setFolderFiles([]); return; }
     setFolderLoading(true);
     setFolderFiles([]);
-    const folder = (Array.isArray(folders) ? folders : []).find(f => f.path === activeCategory);
-    if (folder) {
-      scanFolderContents(folder.path)
-        .then(setFolderFiles)
-        .catch(() => setFolderFiles([]))
-        .finally(() => setFolderLoading(false));
-    } else {
-      setFolderLoading(false);
-    }
-  }, [activeCategory, folders]);
+    scanFolderContents(path)
+      .then(setFolderFiles)
+      .catch(() => setFolderFiles([]))
+      .finally(() => setFolderLoading(false));
+  }, [activeCategory, routes]);
 
   const loadGames = useCallback(() => {
     setGamesState('loading');
@@ -303,7 +372,6 @@ export default function LocalLibrary() {
     setDebugInfo(null);
     scanAllGames()
       .then(g => {
-        // Defensive: some Rust errors return a string/object instead of an array
         const list: LocalGame[] = Array.isArray(g) ? g : [];
         setGames(list);
         setGamesState(list.length === 0 ? 'empty' : 'done');
@@ -314,7 +382,6 @@ export default function LocalLibrary() {
       });
   }, []);
 
-  // Auto-load games on first render of videojuegos category
   useEffect(() => {
     if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames();
   }, [activeCategory, gamesState, loadGames]);
@@ -338,33 +405,60 @@ export default function LocalLibrary() {
   }, [activeCategory, gamesState, games]);
 
   const scrollToPlatform = useCallback((id: PlatformId) => {
-    const el = sectionRefs.current.get(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    sectionRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const handleAddFolder = useCallback(async () => {
+  const handleSetRoute = useCallback(async (category: CategoryId) => {
     const path = await pickFolder().catch(() => null);
-    if (!path || !newLabel.trim()) return;
-    const current = Array.isArray(folders) ? folders : [];
-    const updated = [...current, { path, label: newLabel.trim() }];
-    setFolders(updated);
-    await saveLocalFolders(updated).catch(() => {});
-    setAddingFolder(false);
-    setNewLabel('');
-  }, [folders, newLabel]);
+    if (!path) return;
+    const updated = { ...routes, [category]: path };
+    setRoutes(updated);
+    await writeRoutes(updated).catch(() => {});
+  }, [routes]);
 
-  const handleRemoveFolder = useCallback((path: string) => {
-    const updated = (Array.isArray(folders) ? folders : []).filter(f => f.path !== path);
-    setFolders(updated);
-    saveLocalFolders(updated).catch(() => {});
-    if (activeCategory === path) setActiveCategory('videojuegos');
-  }, [folders, activeCategory]);
+  const handleClearRoute = useCallback(async (category: CategoryId) => {
+    const updated = { ...routes };
+    delete updated[category];
+    setRoutes(updated);
+    setFolderFiles([]);
+    await writeRoutes(updated).catch(() => {});
+  }, [routes]);
+
+  // ── Fetch IGDB metadata ────────────────────────────────────────────────────
+
+  const handleFetchMetadata = useCallback(async () => {
+    const steamGames = (Array.isArray(games) ? games : []).filter(
+      g => g.launcher === 'steam' && g.app_id,
+    );
+    if (steamGames.length === 0) return;
+
+    cancelRef.current = false;
+    const newCache = { ...loadCoverCache() };
+
+    setMetaProgress({ total: steamGames.length, current: 0, currentName: '', cancelled: false });
+
+    for (let i = 0; i < steamGames.length; i++) {
+      if (cancelRef.current) break;
+      const game = steamGames[i];
+      setMetaProgress({ total: steamGames.length, current: i, currentName: game.name, cancelled: false });
+
+      if (game.app_id && !newCache[game.app_id]) {
+        try {
+          const imageId = await igdbGetCoverBySteamId(game.app_id, game.name);
+          if (imageId) newCache[game.app_id] = imageId;
+        } catch {
+          // skip this game silently
+        }
+      }
+    }
+
+    saveCoverCache(newCache);
+    setCoverCache({ ...newCache });
+    setMetaProgress(null);
+  }, [games]);
 
   // Group games by launcher
   const safeGames: LocalGame[] = Array.isArray(games) ? games : [];
-  const safeFolders: SavedFolder[] = Array.isArray(folders) ? folders : [];
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, LocalGame[]>>((acc, id) => {
     const list = safeGames.filter(g => g.launcher === id);
     if (list.length > 0) acc.set(id, list);
@@ -375,7 +469,36 @@ export default function LocalLibrary() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const navCenterSlot = typeof document !== 'undefined'
+    ? document.getElementById('nav-center-slot')
+    : null;
+
+  const tabBar = (
+    <div className="local-tab-bar">
+      {CATEGORIES.map(cat => (
+        <button
+          key={cat.id}
+          type="button"
+          className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
+          onClick={() => setActiveCategory(cat.id)}
+        >
+          {cat.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
+    <>
+      {navCenterSlot ? createPortal(tabBar, navCenterSlot) : tabBar}
+
+      {metaProgress && (
+        <MetadataModal
+          progress={metaProgress}
+          onCancel={() => { cancelRef.current = true; setMetaProgress(null); }}
+        />
+      )}
+
     <div className="local-library">
 
       {/* Platform sidebar */}
@@ -384,70 +507,13 @@ export default function LocalLibrary() {
           activePlatform={activePlatform}
           availablePlatforms={availablePlatforms}
           onSelect={scrollToPlatform}
+          onFetchMetadata={handleFetchMetadata}
         />
       )}
 
       {/* Main area */}
       <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>
         <div className="local-main-content">
-
-          {/* Category tabs */}
-        <div className="local-tab-bar">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
-              onClick={() => setActiveCategory(cat.id)}
-            >
-              {cat.label}
-            </button>
-          ))}
-
-          {/* Custom folders */}
-          {safeFolders.map(f => (
-            <button
-              key={f.path}
-              type="button"
-              className={`local-tab${activeCategory === f.path ? ' active' : ''}`}
-              onClick={() => setActiveCategory(f.path as CategoryId)}
-            >
-              {f.label}
-              <span
-                className="local-tab-remove"
-                role="button"
-                tabIndex={0}
-                onClick={e => { e.stopPropagation(); handleRemoveFolder(f.path); }}
-                onKeyDown={e => e.key === 'Enter' && handleRemoveFolder(f.path)}
-              >
-                <IconX />
-              </span>
-            </button>
-          ))}
-
-          {addingFolder ? (
-            <div className="local-add-folder-form">
-              <input
-                className="local-add-folder-input"
-                placeholder="Etiqueta (ej. Anime)"
-                value={newLabel}
-                onChange={e => setNewLabel(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAddFolder()}
-                autoFocus
-              />
-              <button type="button" className="local-add-folder-confirm" onClick={handleAddFolder}>
-                Elegir carpeta
-              </button>
-              <button type="button" className="local-add-folder-cancel" onClick={() => { setAddingFolder(false); setNewLabel(''); }}>
-                <IconX />
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="local-tab local-tab-add" onClick={() => setAddingFolder(true)}>
-              <IconPlus /> Añadir carpeta
-            </button>
-          )}
-        </div>
 
         {/* ── Content area ──────────────────────────────────────────────────── */}
 
@@ -513,7 +579,7 @@ export default function LocalLibrary() {
                     )}
                   </h2>
                   <div className="local-games-grid">
-                    {list.map((g, i) => <GameCard key={i} game={g} onClick={setSelectedGame} />)}
+                    {list.map((g, i) => <GameCard key={i} game={g} coverCache={coverCache} onClick={setSelectedGame} />)}
                   </div>
                 </section>
               ))
@@ -521,23 +587,62 @@ export default function LocalLibrary() {
           </div>
         ) : (
           <div className="local-content">
-            <div className="local-content-header">
-              <span className="local-content-count">
-                {!folderLoading && `${folderFiles.length} elemento${folderFiles.length !== 1 ? 's' : ''}`}
-              </span>
-              {folders.find(f => f.path === activeCategory) && (
-                <span className="local-folder-path">
-                  {folders.find(f => f.path === activeCategory)?.path}
-                </span>
-              )}
-            </div>
+            {routes[activeCategory] && (
+              <div className="local-content-header">
+                <span className="local-folder-path">{routes[activeCategory]}</span>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {!folderLoading && (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                      {folderFiles.length} elemento{folderFiles.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="local-refresh-btn"
+                    onClick={() => handleSetRoute(activeCategory)}
+                    title="Cambiar carpeta"
+                  >
+                    <IconFolder />
+                  </button>
+                  <button
+                    type="button"
+                    className="local-refresh-btn"
+                    onClick={() => handleClearRoute(activeCategory)}
+                    title="Quitar ruta"
+                    style={{ color: 'var(--color-error, #ff6b6b)' }}
+                  >
+                    <IconX />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {folderLoading ? (
               <div className="local-state-placeholder"><div className="spinner" /></div>
+            ) : !routes[activeCategory] ? (
+              <div className="local-state-placeholder">
+                <IconFolder />
+                <p>Sin carpeta asignada</p>
+                <span>Elige una carpeta para explorar tu colección de {CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()}</span>
+                <button
+                  type="button"
+                  className="local-add-route-btn"
+                  onClick={() => handleSetRoute(activeCategory)}
+                >
+                  <IconPlus /> Añadir ruta
+                </button>
+              </div>
             ) : folderFiles.length === 0 ? (
               <div className="local-state-placeholder">
                 <IconFolder />
                 <p>Carpeta vacía</p>
+                <button
+                  type="button"
+                  className="local-add-route-btn"
+                  onClick={() => handleSetRoute(activeCategory)}
+                >
+                  Cambiar carpeta
+                </button>
               </div>
             ) : (
               <div className="local-folder-grid">
@@ -551,5 +656,6 @@ export default function LocalLibrary() {
         {selectedGame && <GameDetailPanel game={selectedGame} onClose={() => setSelectedGame(null)} />}
       </div>
     </div>
+    </>
   );
 }

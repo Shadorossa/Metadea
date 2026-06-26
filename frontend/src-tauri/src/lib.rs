@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tauri::Manager;
 
 // -- Auth ---------------------------------------------------------------------
@@ -584,6 +586,28 @@ async fn save_local_folders(
     Ok("Folders saved".to_string())
 }
 
+// -- Category routes (routes.json) --------------------------------------------
+
+#[tauri::command]
+async fn read_routes(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let path = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("routes.json");
+    if !path.exists() {
+        return Ok("{}".to_string());
+    }
+    std::fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn write_routes(app_handle: tauri::AppHandle, routes_json: String) -> Result<(), String> {
+    let dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join("routes.json"), routes_json).map_err(|e| e.to_string())
+}
+
 // -- Env config ----------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -617,7 +641,158 @@ async fn write_env_config(
     Ok("Config saved".to_string())
 }
 
-// -- IGDB stub -----------------------------------------------------------------
+// -- IGDB -----------------------------------------------------------------------
+
+struct TwitchToken {
+    access_token: String,
+    expires: Instant,
+}
+
+static TWITCH_TOKEN: Mutex<Option<TwitchToken>> = Mutex::new(None);
+
+async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String, String> {
+    // Return cached token if still valid (with 60s buffer)
+    {
+        let cache = TWITCH_TOKEN.lock().unwrap();
+        if let Some(ref t) = *cache {
+            if t.expires > Instant::now() + Duration::from_secs(60) {
+                return Ok(t.access_token.clone());
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct TwitchResp {
+        access_token: String,
+        expires_in: u64,
+    }
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("https://id.twitch.tv/oauth2/token")
+        .query(&[
+            ("client_id",     client_id),
+            ("client_secret", client_secret),
+            ("grant_type",    "client_credentials"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Twitch request failed: {}", e))?
+        .json::<TwitchResp>()
+        .await
+        .map_err(|e| format!("Twitch parse failed: {}", e))?;
+
+    let token = resp.access_token.clone();
+    let expires = Instant::now() + Duration::from_secs(resp.expires_in);
+    *TWITCH_TOKEN.lock().unwrap() = Some(TwitchToken { access_token: resp.access_token, expires });
+
+    Ok(token)
+}
+
+fn sanitize_folder_name(name: &str) -> String {
+    name.chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+/// Downloads the IGDB cover for a Steam game and saves it to
+/// `{app_data_dir}/{game_name}/{image_id}.jpg`.
+/// Returns the absolute file path, or None if no cover found.
+#[tauri::command]
+async fn igdb_get_cover_by_steam_id(
+    app_handle: tauri::AppHandle,
+    app_id: String,
+    game_name: String,
+) -> Result<Option<String>, String> {
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+
+    let cfg = {
+        let path = app_data_dir.join("env.json");
+        if !path.exists() { return Err("No env.json — configure IGDB keys first".into()); }
+        let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())?
+    };
+
+    let client_id     = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token         = get_twitch_token(&client_id, &client_secret).await?;
+
+    let client = reqwest::Client::new();
+
+    // 1. Try to find by Steam external_games (most accurate)
+    let ext_body = format!(
+        "fields game.cover.image_id; where uid = \"{}\" & category = 1; limit 1;",
+        app_id
+    );
+    let ext_resp = client
+        .post("https://api.igdb.com/v4/external_games")
+        .header("Client-ID", &client_id)
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Content-Type", "text/plain")
+        .body(ext_body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let image_id = if let Some(id) = ext_resp[0]["game"]["cover"]["image_id"].as_str() {
+        id.to_string()
+    } else {
+        // 2. Fallback: search by name
+        let name_body = format!(
+            "fields cover.image_id; search \"{}\"; where cover != null; limit 1;",
+            game_name.replace('"', "")
+        );
+        let name_resp = client
+            .post("https://api.igdb.com/v4/games")
+            .header("Client-ID", &client_id)
+            .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "text/plain")
+            .body(name_body)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        match name_resp[0]["cover"]["image_id"].as_str() {
+            Some(id) => id.to_string(),
+            None     => return Ok(None),
+        }
+    };
+
+    // Save to {app_data}/{sanitized_game_name}/{image_id}.jpg
+    let game_dir = app_data_dir.join(sanitize_folder_name(&game_name));
+    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
+    let cover_path = game_dir.join(format!("{}.jpg", image_id));
+
+    if !cover_path.exists() {
+        let cover_url = format!(
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/{}.jpg",
+            image_id
+        );
+        let bytes = client
+            .get(&cover_url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .bytes()
+            .await
+            .map_err(|e| e.to_string())?;
+        std::fs::write(&cover_path, &bytes).map_err(|e| e.to_string())?;
+    }
+
+    Ok(Some(cover_path.to_string_lossy().to_string()))
+}
 
 #[tauri::command]
 async fn igdb_search(_query: String) -> Result<String, String> {
@@ -637,6 +812,120 @@ async fn debug_scan_info() -> Result<String, String> {
         "Steam: {} | Epic: {} | GOG: {} | Xbox: {} | EA: {}",
         steam.len(), epic.len(), gog.len(), xbox.len(), ea.len()
     ))
+}
+
+// -- User metadata (avatar / banner) ------------------------------------------
+
+fn user_metadata_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("user_metadata");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+#[tauri::command]
+async fn save_user_image(
+    app_handle: tauri::AppHandle,
+    key: String,
+    data_url: String,
+) -> Result<(), String> {
+    let allowed = ["avatar", "banner"];
+    if !allowed.contains(&key.as_str()) {
+        return Err(format!("Invalid key: {}", key));
+    }
+    let path = user_metadata_dir(&app_handle)?.join(&key);
+    // Strip the data URL prefix, write raw bytes
+    let base64_data = data_url
+        .splitn(2, ',')
+        .nth(1)
+        .ok_or("Invalid data URL")?;
+    let bytes = base64_decode(base64_data)?;
+    std::fs::write(path, bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_user_image(
+    app_handle: tauri::AppHandle,
+    key: String,
+) -> Result<Option<String>, String> {
+    let allowed = ["avatar", "banner"];
+    if !allowed.contains(&key.as_str()) {
+        return Err(format!("Invalid key: {}", key));
+    }
+    let path = user_metadata_dir(&app_handle)?.join(&key);
+    if !path.exists() {
+        return Ok(None);
+    }
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    // Detect mime type by magic bytes
+    let mime = if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+        "image/png"
+    } else if bytes.starts_with(&[0xFF, 0xD8]) {
+        "image/jpeg"
+    } else {
+        "image/webp"
+    };
+    let encoded = base64_encode(&bytes);
+    Ok(Some(format!("data:{};base64,{}", mime, encoded)))
+}
+
+#[tauri::command]
+async fn remove_user_image(
+    app_handle: tauri::AppHandle,
+    key: String,
+) -> Result<(), String> {
+    let allowed = ["avatar", "banner"];
+    if !allowed.contains(&key.as_str()) {
+        return Err(format!("Invalid key: {}", key));
+    }
+    let path = user_metadata_dir(&app_handle)?.join(&key);
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+// Minimal base64 encode/decode (no external crate needed)
+fn base64_encode(input: &[u8]) -> String {
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
+    for chunk in input.chunks(3) {
+        let b0 = chunk[0] as usize;
+        let b1 = if chunk.len() > 1 { chunk[1] as usize } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as usize } else { 0 };
+        out.push(CHARS[(b0 >> 2)] as char);
+        out.push(CHARS[((b0 & 3) << 4) | (b1 >> 4)] as char);
+        out.push(if chunk.len() > 1 { CHARS[((b1 & 15) << 2) | (b2 >> 6)] as char } else { '=' });
+        out.push(if chunk.len() > 2 { CHARS[b2 & 63] as char } else { '=' });
+    }
+    out
+}
+
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    let input: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+    let mut table = [0u8; 128];
+    for (i, &c) in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".iter().enumerate() {
+        table[c as usize] = i as u8;
+    }
+    let mut out = Vec::with_capacity(input.len() * 3 / 4);
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i + 3 < bytes.len() {
+        let (a, b, c, d) = (
+            table[bytes[i] as usize] as usize,
+            table[bytes[i + 1] as usize] as usize,
+            table[bytes[i + 2] as usize] as usize,
+            table[bytes[i + 3] as usize] as usize,
+        );
+        out.push(((a << 2) | (b >> 4)) as u8);
+        if bytes[i + 2] != b'=' { out.push(((b << 4) | (c >> 2)) as u8); }
+        if bytes[i + 3] != b'=' { out.push(((c << 6) | d) as u8); }
+        i += 4;
+    }
+    Ok(out)
 }
 
 // -- Env folder opener ---------------------------------------------------------
@@ -689,8 +978,14 @@ pub fn run() {
             read_env_config,
             write_env_config,
             igdb_search,
+            igdb_get_cover_by_steam_id,
             debug_scan_info,
             open_env_folder,
+            save_user_image,
+            get_user_image,
+            remove_user_image,
+            read_routes,
+            write_routes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

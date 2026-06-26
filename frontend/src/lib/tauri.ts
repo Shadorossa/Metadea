@@ -9,28 +9,15 @@ const isTauri = (): boolean => {
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) {
-    console.warn(`[Tauri] Command "${cmd}" called outside Tauri environment.`);
+    console.warn(`[Tauri] "${cmd}" called outside Tauri`);
     throw new Error('Tauri not available');
   }
-  // Use window.__TAURI__.core.invoke (available with withGlobalTauri: true)
-  // This works in both dev and production static builds
   const tauri = (window as any).__TAURI__;
   if (tauri?.core?.invoke) {
     return tauri.core.invoke(cmd, args);
   }
-  // Fallback for older Tauri versions
-  const ipc = (window as any).__TAURI_IPC__;
-  if (ipc) {
-    return new Promise((resolve, reject) => {
-      const id = Math.random().toString(36).slice(2);
-      (window as any)[`_tauri_cb_${id}`] = (r: any) => {
-        delete (window as any)[`_tauri_cb_${id}`];
-        if (r.error) reject(new Error(r.error)); else resolve(r.payload);
-      };
-      ipc({ cmd, args: args ?? {}, callback: `_tauri_cb_${id}`, error: `_tauri_cb_${id}` });
-    });
-  }
-  throw new Error('Tauri IPC not available');
+  const { invoke: tauriInvoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
+  return tauriInvoke<T>(cmd, args);
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -187,6 +174,29 @@ export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
   return invoke<void>('save_local_folders', { folders_json: JSON.stringify(folders) });
 }
 
+// ─── Category routes ──────────────────────────────────────────────────────────
+
+export async function readRoutes(): Promise<Record<string, string>> {
+  if (!isTauri()) {
+    const stored = localStorage.getItem('category_routes');
+    return stored ? JSON.parse(stored) : {};
+  }
+  try {
+    const json = await invoke<string>('read_routes');
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+export async function writeRoutes(routes: Record<string, string>): Promise<void> {
+  if (!isTauri()) {
+    localStorage.setItem('category_routes', JSON.stringify(routes));
+    return;
+  }
+  await invoke<void>('write_routes', { routes_json: JSON.stringify(routes) });
+}
+
 // ─── Env config ───────────────────────────────────────────────────────────────
 
 export interface EnvConfig {
@@ -257,6 +267,14 @@ export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
 
 export async function igdbSearch(name: string): Promise<IgdbGame[]> {
   return invoke<IgdbGame[]>('igdb_search', { name });
+}
+
+export async function igdbGetCoverBySteamId(
+  appId: string,
+  gameName: string,
+): Promise<string | null> {
+  if (!isTauri()) return null;
+  return invoke<string | null>('igdb_get_cover_by_steam_id', { app_id: appId, game_name: gameName });
 }
 
 // ─── Debug ────────────────────────────────────────────────────────────────────
