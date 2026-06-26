@@ -320,7 +320,7 @@ async fn resolve_igdb_game(
             eprintln!("[IGDB] Steam ID hit: igdb_id={}", igdb_id);
             if let Ok(games) = igdb_query(client, client_id, token,
                 IGDB_API_GAMES,
-                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null & category != (1,5,6,7,13,14); limit 1;", igdb_id),
+                &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null & category = (0,2,3,4,8,9,10,11,12); limit 1;", igdb_id),
             ).await {
                 let (cover_id, game_id, igdb_game) = extract_cover_and_game(
                     games.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null))
@@ -338,7 +338,7 @@ async fn resolve_igdb_game(
     // Fallback: fuzzy search with cleaned query
     let fuzzy = igdb_query(client, client_id, token,
         IGDB_API_GAMES,
-        &format!("fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null & category != (1,5,6,7,13,14); limit 10;"),
+        &format!("fields {IGDB_GAME_FIELDS}; search \"{search_query}\"; where cover != null & category = (0,2,3,4,8,9,10,11,12); limit 10;"),
     ).await?;
 
     if let Some(arr) = fuzzy.as_array() {
@@ -833,7 +833,7 @@ pub async fn igdb_search_candidates(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date; \
-             search \"{}\"; where cover != null & category != (1,5,6,7,13,14); limit 20;",
+             search \"{}\"; where cover != null & category = (0,2,3,4,8,9,10,11,12); limit 20;",
             search_query
         ),
     ).await?;
@@ -851,7 +851,7 @@ pub async fn igdb_search_candidates(
             IGDB_API_GAMES,
             &format!(
                 "fields id,involved_companies.company.name,involved_companies.developer; \
-                 where id = ({}) & cover != null & category != (1,5,6,7,13,14); limit 20;",
+                 where id = ({}) & cover != null & category = (0,2,3,4,8,9,10,11,12); limit 20;",
                 id_list
             ),
         ).await.unwrap_or(serde_json::json!([]));
