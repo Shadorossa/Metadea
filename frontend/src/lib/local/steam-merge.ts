@@ -40,9 +40,19 @@ export async function scanGamesWithSteam(): Promise<LocalGame[]> {
     };
   });
 
+  // Blocklist for tools/redistributables from the Steam Web API
+  const blockedAppIds = new Set([228980, 993090, 388080, 250820, 1113010, 1054830]);
+  const isBlockedName = (name: string) => {
+    const lower = name.toLowerCase();
+    return lower.includes('redistributable') ||
+           lower.includes('dedicated server') ||
+           lower.includes('steamworks') ||
+           lower.includes('steamvr');
+  };
+
   // Append uninstalled Steam games
   const uninstalled: LocalGame[] = steamGames
-    .filter(s => !installedIds.has(s.appid) && s.playtime_forever > 0)
+    .filter(s => !installedIds.has(s.appid) && !blockedAppIds.has(s.appid) && !isBlockedName(s.name))
     .map(s => ({
       name: s.name,
       launcher: 'steam' as const,

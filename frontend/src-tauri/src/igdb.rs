@@ -551,7 +551,14 @@ pub async fn read_game_info(
 #[tauri::command]
 pub async fn file_to_data_url(file_path: String) -> Result<String, String> {
     let bytes = std::fs::read(&file_path).map_err(|e| e.to_string())?;
-    Ok(format!("data:image/jpeg;base64,{}", crate::utils::base64_encode(&bytes)))
+    let mime = if file_path.ends_with(".webp") {
+        "image/webp"
+    } else if file_path.ends_with(".png") {
+        "image/png"
+    } else {
+        "image/jpeg"
+    };
+    Ok(format!("data:{};base64,{}", mime, crate::utils::base64_encode(&bytes)))
 }
 
 #[tauri::command]

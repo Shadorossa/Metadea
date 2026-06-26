@@ -102,20 +102,37 @@ fn scan_steam_games() -> Vec<LocalGame> {
                             }
                         }
                         if !name.is_empty() && !app_id.is_empty() {
-                            let install_path = lib_path
-                                .join("common")
-                                .join(&install_dir)
-                                .to_string_lossy()
-                                .to_string();
-                            games.push(LocalGame {
-                                name,
-                                launcher: "steam".to_string(),
-                                app_id: Some(app_id),
-                                install_path: Some(install_path),
-                                playtime_minutes: None,
-                                last_played: None,
-                                installed: Some(true),
-                            });
+                            let is_blocked_id = matches!(
+                                app_id.as_str(),
+                                "228980" | // Steamworks Common Redistributables
+                                "993090" | // Lossless Scaling
+                                "388080" | // Borderless Gaming
+                                "250820" | // SteamVR
+                                "1113010" | // SteamVR Extensions
+                                "1054830"   // SteamVR Beta
+                            );
+                            let lower_name = name.to_lowercase();
+                            let is_blocked_name = lower_name.contains("redistributable")
+                                || lower_name.contains("dedicated server")
+                                || lower_name.contains("steamworks")
+                                || lower_name.contains("steamvr");
+
+                            if !is_blocked_id && !is_blocked_name {
+                                let install_path = lib_path
+                                    .join("common")
+                                    .join(&install_dir)
+                                    .to_string_lossy()
+                                    .to_string();
+                                games.push(LocalGame {
+                                    name,
+                                    launcher: "steam".to_string(),
+                                    app_id: Some(app_id),
+                                    install_path: Some(install_path),
+                                    playtime_minutes: None,
+                                    last_played: None,
+                                    installed: Some(true),
+                                });
+                            }
                         }
                     }
                 }
