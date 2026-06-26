@@ -815,41 +815,67 @@ pub async fn igdb_search_candidates(
         .collect::<Vec<_>>()
         .join(" ");
 
+    // Search with only flat/2-level fields — involved_companies.company.name
+    // (3 levels) causes 400 when combined with `search`
     let results = igdb_query(&client, &client_id, &token,
         IGDB_API_GAMES,
         &format!(
-            "fields id,name,cover.image_id,first_release_date,\
-             involved_companies.company.name,involved_companies.developer; \
+            "fields id,name,cover.image_id,first_release_date; \
              search \"{}\"; where cover != null; limit 20;",
             search_query
         ),
     ).await?;
 
-    let candidates = results.as_array().cloned().unwrap_or_default()
-        .into_iter()
-        .map(|game| {
+    let games = results.as_array().cloned().unwrap_or_default();
+
+    // Fetch developer info in a second query using the game IDs
+    let ids: Vec<String> = games.iter()
+        .filter_map(|g| g["id"].as_u64().map(|id| id.to_string()))
+        .collect();
+
+    let dev_map: std::collections::HashMap<u64, String> = if !ids.is_empty() {
+        let id_list = ids.join(",");
+        let dev_results = igdb_query(&client, &client_id, &token,
+            IGDB_API_GAMES,
+            &format!(
+                "fields id,involved_companies.company.name,involved_companies.developer; \
+                 where id = ({}) & cover != null; limit 20;",
+                id_list
+            ),
+        ).await.unwrap_or(serde_json::json!([]));
+
+        dev_results.as_array().cloned().unwrap_or_default()
+            .into_iter()
+            .filter_map(|g| {
+                let id = g["id"].as_u64()?;
+                let dev = g["involved_companies"].as_array()?
+                    .iter()
+                    .find(|c| c["developer"].as_bool().unwrap_or(false))?
+                    ["company"]["name"].as_str()
+                    .map(String::from)?;
+                Some((id, dev))
+            })
+            .collect()
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    let candidates = games.into_iter()
+        .filter_map(|game| {
+            let id = game["id"].as_u64()?;
             let year = chrono::DateTime::from_timestamp(
                 game["first_release_date"].as_i64().unwrap_or(0), 0
             ).map(|dt| dt.year()).unwrap_or(0);
-
             let cover_url = game["cover"]["image_id"].as_str()
-                .map(|id| format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, id))
-                .unwrap_or_default();
-
-            let developers: Vec<&str> = game["involved_companies"].as_array()
-                .map(|arr| arr.iter()
-                    .filter(|c| c["developer"].as_bool().unwrap_or(false))
-                    .filter_map(|c| c["company"]["name"].as_str())
-                    .collect())
-                .unwrap_or_default();
-
-            serde_json::json!({
-                "id":        game["id"],
+                .map(|img_id| format!("{}/{}.jpg", IGDB_IMAGE_COVER_BIG, img_id))?;
+            let developer = dev_map.get(&id).cloned().unwrap_or_default();
+            Some(serde_json::json!({
+                "id":        id,
                 "name":      game["name"],
                 "year":      year,
                 "cover_url": cover_url,
-                "developer": developers.first().copied().unwrap_or(""),
-            })
+                "developer": developer,
+            }))
         })
         .collect();
 

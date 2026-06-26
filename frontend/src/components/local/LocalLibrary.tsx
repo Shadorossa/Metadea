@@ -159,13 +159,18 @@ function IgdbPickerModal({ game, onClose, onPicked }: {
 }) {
   const [candidates, setCandidates] = useState<IgdbCandidate[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
   const [applying, setApplying]     = useState<number | null>(null);
 
   useEffect(() => {
     igdbSearchCandidates(game.name).then(r => {
       setCandidates(r);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(e => {
+      console.error('[IGDB picker]', e);
+      setError(String(e));
+      setLoading(false);
+    });
   }, [game.name]);
 
   const handlePick = async (candidate: IgdbCandidate) => {
@@ -190,6 +195,8 @@ function IgdbPickerModal({ game, onClose, onPicked }: {
         </div>
         {loading ? (
           <div className="igdb-picker-loading">Buscando...</div>
+        ) : error ? (
+          <div className="igdb-picker-loading" style={{ color: 'var(--text-danger, #f87171)' }}>Error: {error}</div>
         ) : candidates.length === 0 ? (
           <div className="igdb-picker-loading">Sin resultados</div>
         ) : (
