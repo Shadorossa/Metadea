@@ -251,7 +251,7 @@ async fn resolve_igdb_game(
         }
     }
 
-    // Fallback 1: exact name match
+    // Fallback 1a: exact name match (strict)
     let exact = igdb_query(client, client_id, token,
         IGDB_API_GAMES,
         &format!("fields {IGDB_GAME_FIELDS}; where name = \"{safe}\" & cover != null; limit 1;"),
@@ -259,6 +259,23 @@ async fn resolve_igdb_game(
     let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(exact.as_array().and_then(|a| a.first()).unwrap_or(&serde_json::json!(null)));
     if let Some(id) = cover_id {
         return Ok((id, igdb_game_id, igdb_game));
+    }
+
+    // Fallback 1b: fuzzy search (handles special chars like NieR:Automata vs NieR: Automata)
+    let fuzzy = igdb_query(client, client_id, token,
+        IGDB_API_GAMES,
+        &format!("fields {IGDB_GAME_FIELDS}; search \"{safe}\"; where cover != null; limit 5;"),
+    ).await?;
+
+    if let Some(arr) = fuzzy.as_array() {
+        // Direct normalized match (ignores : and spaces)
+        if let Some(game) = arr.iter()
+            .find(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false)) {
+            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+            if let Some(id) = cover_id {
+                return Ok((id, igdb_game_id, igdb_game));
+            }
+        }
     }
 
     // Fallback 2: IGDB search with edition-aware similarity scoring
