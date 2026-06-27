@@ -423,45 +423,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       </div>
                     </div>
                   </div>
-
-                  {/* RIGHT: Calendar + Dates */}
-                  <div className="me-col">
-                    {/* Calendar with active dates range */}
-                    {(startedAt && finishedAt) && (
-                      <div className="me-calendar-box">
-                        <div className="me-calendar-grid">
-                          {(() => {
-                            const start = new Date(startedAt);
-                            const end = new Date(finishedAt);
-                            const days = [];
-
-                            if (start <= end) {
-                              const current = new Date(start);
-                              const endDate = new Date(end);
-                              while (current <= endDate) {
-                                if (days.length >= 366) break;
-                                const d = current.getDate();
-                                const ds = current.toDateString();
-                                const isStart = ds === start.toDateString();
-                                const isEnd   = ds === end.toDateString();
-                                const isMiddle = current > start && current < end;
-                                days.push(
-                                  <div
-                                    key={ds}
-                                    className={`me-cal-day${isStart ? ' start' : ''}${isEnd ? ' end' : ''}${isMiddle ? ' mid' : ''}`}
-                                  >
-                                    {d}
-                                  </div>
-                                );
-                                current.setDate(current.getDate() + 1);
-                              }
-                            }
-                            return days.length > 0 ? days : <div className="me-cal-empty">{te.no_dates}</div>;
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
 
