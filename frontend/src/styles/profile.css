@@ -244,7 +244,7 @@
 .library-card {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.6rem;
   padding: 0.5rem;
   height: 90px;
@@ -320,13 +320,14 @@
   color: var(--text-dim);
 }
 
-/* Info: título + rating + footer (fechas + icono) */
+/* Info: título arriba, fechas abajo */
 .library-card-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.2rem 0 0 0;
+  justify-content: space-between;
+  gap: 0;
+  padding: 0.1rem 0;
   min-width: 0;
   position: relative;
   z-index: 2;
@@ -356,7 +357,6 @@
   justify-content: flex-start;
   gap: 0.3rem;
   padding-bottom: 0.2rem;
-  margin-top: auto;
 }
 
 .library-card-date {
