@@ -98,9 +98,21 @@ function fmtDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+const STAR_FULL  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="1"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
+const STAR_HALF  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.5"><defs><clipPath id="h"><rect x="0" y="0" width="12" height="24"/></clipPath></defs><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" stroke="#fbbf24"/><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" fill="#fbbf24" clip-path="url(#h)"/></svg>`;
+const STAR_EMPTY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fbbf2466" stroke-width="1.5"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
+
 function buildRatingHtml(rating: number | null | undefined): string {
-  if (!rating) return '';
-  return `<span class="library-card-rating">★ ${rating}</span>`;
+  if (!rating) return '<span class="library-card-rating"></span>';
+  // rating is 0-10, display as 0-5 stars
+  const stars5 = rating / 2;
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    if (stars5 >= i)        html += STAR_FULL;
+    else if (stars5 >= i - 0.5) html += STAR_HALF;
+    else                    html += STAR_EMPTY;
+  }
+  return `<span class="library-card-rating">${html}</span>`;
 }
 
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
@@ -157,9 +169,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
               ${buildRatingHtml(item.rating)}
               <div class="library-card-footer">
                 ${buildDateHtml(item.started_at, item.finished_at)}
+                <span class="library-card-type">${typeIc}</span>
               </div>
             </div>
-            <div class="library-card-type">${typeIc}</div>
           </div>`;
       }).join('')}
     </div>`;
