@@ -28,7 +28,7 @@
 .local-library {
   display: flex;
   align-items: flex-start;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - 48px);
 }
 
 /* ── Platform sidebar ────────────────────────────────────────────────────────── */
@@ -693,9 +693,9 @@
 
 .local-game-detail-panel {
   position: sticky;
-  top: 56px;               /* sticks just below the navbar */
+  top: 48px;               /* sticks just below the navbar */
   width: 1120px;
-  max-height: calc(100vh - 56px);
+  max-height: calc(100vh - 48px);
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;
