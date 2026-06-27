@@ -1,117 +1,110 @@
 // Central genre/tag unifier for all media APIs.
-// Maps raw genre strings (from IGDB, AniList, TMDB, Open Library) to a
-// canonical unified name and classifies them as core genre or secondary tag.
+// Each entry defines a unified name, whether it's a secondary tag,
+// and all the raw strings from any API that should map to it.
 //
-// Convention:
 //   core  = main genre filter (shown prominently, used for library filters)
 //   tag   = secondary theme (more specific, less prominent)
 
-interface GenreEntry {
+interface GenreDef {
   name: string;
   isTag?: boolean;
+  aliases: string[];
 }
 
-const RAW_TO_UNIFIED: Record<string, GenreEntry> = {
+const GENRE_DEFS: GenreDef[] = [
   // ── Action / Combat ──────────────────────────────────────────────────────
-  'Action':                          { name: 'Action' },
-  'Fighting':                        { name: 'Fighting' },
-  "Hack and slash/Beat 'em up":      { name: 'Hack and Slash' },
-  'Hack and Slash':                  { name: 'Hack and Slash' },
-  'Shooter':                         { name: 'Shooter' },
+  { name: 'Action',            aliases: ['Action', 'Action & Adventure'] },
+  { name: 'Fighting',          aliases: ['Fighting'] },
+  { name: 'Hack and Slash',    aliases: ["Hack and slash/Beat 'em up", 'Hack and Slash', 'Beat \'em up'] },
+  { name: 'Shooter',           aliases: ['Shooter'] },
 
   // ── Adventure ────────────────────────────────────────────────────────────
-  'Adventure':                       { name: 'Adventure' },
-  'Point-and-click':                 { name: 'Point-and-click', isTag: true },
+  { name: 'Adventure',         aliases: ['Adventure'] },
+  { name: 'Point-and-click',   aliases: ['Point-and-click'],              isTag: true },
 
   // ── Strategy ─────────────────────────────────────────────────────────────
-  'Strategy':                        { name: 'Strategy' },
-  'Real Time Strategy (RTS)':        { name: 'Real Time Strategy' },
-  'Real Time Strategy':              { name: 'Real Time Strategy' },
-  'Turn-based strategy (TBS)':       { name: 'Turn-based Strategy' },
-  'Turn-based Strategy':             { name: 'Turn-based Strategy' },
-  'Tactical':                        { name: 'Tactical' },
-  '4X':                              { name: '4X', isTag: true },
+  { name: 'Strategy',          aliases: ['Strategy'] },
+  { name: 'Real Time Strategy', aliases: ['Real Time Strategy (RTS)', 'Real Time Strategy', 'RTS'] },
+  { name: 'Turn-based Strategy', aliases: ['Turn-based strategy (TBS)', 'Turn-based Strategy', 'TBS'] },
+  { name: 'Tactical',          aliases: ['Tactical'] },
+  { name: '4X',                aliases: ['4X'],                           isTag: true },
 
   // ── RPG ──────────────────────────────────────────────────────────────────
-  'Role-playing (RPG)':              { name: 'RPG' },
-  'RPG':                             { name: 'RPG' },
+  { name: 'RPG',               aliases: ['Role-playing (RPG)', 'RPG', 'Role-Playing'] },
 
   // ── Platformer / Puzzle / Arcade ─────────────────────────────────────────
-  'Platform':                        { name: 'Platformer' },
-  'Platformer':                      { name: 'Platformer' },
-  'Puzzle':                          { name: 'Puzzle' },
-  'Arcade':                          { name: 'Arcade' },
+  { name: 'Platformer',        aliases: ['Platform', 'Platformer'] },
+  { name: 'Puzzle',            aliases: ['Puzzle'] },
+  { name: 'Arcade',            aliases: ['Arcade'] },
 
   // ── Simulation / Sports ──────────────────────────────────────────────────
-  'Simulator':                       { name: 'Simulation' },
-  'Simulation':                      { name: 'Simulation' },
-  'Sport':                           { name: 'Sports' },
-  'Sports':                          { name: 'Sports' },
-  'Racing':                          { name: 'Racing' },
+  { name: 'Simulation',        aliases: ['Simulator', 'Simulation'] },
+  { name: 'Sports',            aliases: ['Sport', 'Sports'] },
+  { name: 'Racing',            aliases: ['Racing'] },
 
   // ── Multiplayer / Social ─────────────────────────────────────────────────
-  'MOBA':                            { name: 'MOBA' },
-  'Party':                           { name: 'Party', isTag: true },
+  { name: 'MOBA',              aliases: ['MOBA'] },
+  { name: 'Party',             aliases: ['Party'],                        isTag: true },
 
   // ── Narrative / Visual ───────────────────────────────────────────────────
-  'Visual Novel':                    { name: 'Visual Novel' },
-  'Card & Board Game':               { name: 'Card & Board Game' },
-  'Music':                           { name: 'Music' },
-  'Quiz / Trivia':                   { name: 'Quiz/Trivia', isTag: true },
-  'Quiz/Trivia':                     { name: 'Quiz/Trivia', isTag: true },
+  { name: 'Visual Novel',      aliases: ['Visual Novel'] },
+  { name: 'Card & Board Game', aliases: ['Card & Board Game'] },
+  { name: 'Music',             aliases: ['Music'] },
+  { name: 'Quiz/Trivia',       aliases: ['Quiz / Trivia', 'Quiz/Trivia'], isTag: true },
 
   // ── Open world / Survival ────────────────────────────────────────────────
-  'Sandbox':                         { name: 'Sandbox', isTag: true },
-  'Open world':                      { name: 'Open world', isTag: true },
-  'Survival':                        { name: 'Survival', isTag: true },
-  'Stealth':                         { name: 'Stealth', isTag: true },
+  { name: 'Sandbox',           aliases: ['Sandbox'],                      isTag: true },
+  { name: 'Open world',        aliases: ['Open world'],                   isTag: true },
+  { name: 'Survival',          aliases: ['Survival'],                     isTag: true },
+  { name: 'Stealth',           aliases: ['Stealth'],                      isTag: true },
 
   // ── Genres (cross-media) ─────────────────────────────────────────────────
-  'Fantasy':                         { name: 'Fantasy' },
-  'Science fiction':                 { name: 'Sci-Fi' },
-  'Science Fiction':                 { name: 'Sci-Fi' },
-  'Sci-Fi':                          { name: 'Sci-Fi' },
-  'Horror':                          { name: 'Horror' },
-  'Thriller':                        { name: 'Thriller' },
-  'Mystery':                         { name: 'Mystery' },
-  'Romance':                         { name: 'Romance' },
-  'Comedy':                          { name: 'Comedy' },
-  'Drama':                           { name: 'Drama' },
-  'Action & Adventure':              { name: 'Action' },   // TMDB TV
-  'Sci-Fi & Fantasy':                { name: 'Fantasy' },  // TMDB TV (split intentional: Fantasy takes priority)
-  'Historical':                      { name: 'History' },
-  'History':                         { name: 'History' },
-  'War':                             { name: 'War' },
-  'Warfare':                         { name: 'War' },
-  'Western':                         { name: 'Western' },
-  'Crime':                           { name: 'Crime' },
-  'Animation':                       { name: 'Animation' },
-  'Documentary':                     { name: 'Documentary' },
-  'Family':                          { name: 'Family' },
+  { name: 'Fantasy',           aliases: ['Fantasy', 'Sci-Fi & Fantasy'] },
+  { name: 'Sci-Fi',            aliases: ['Science fiction', 'Science Fiction', 'Sci-Fi'] },
+  { name: 'Horror',            aliases: ['Horror'] },
+  { name: 'Thriller',          aliases: ['Thriller'] },
+  { name: 'Mystery',           aliases: ['Mystery'] },
+  { name: 'Romance',           aliases: ['Romance'] },
+  { name: 'Comedy',            aliases: ['Comedy'] },
+  { name: 'Drama',             aliases: ['Drama'] },
+  { name: 'History',           aliases: ['Historical', 'History'] },
+  { name: 'War',               aliases: ['War', 'Warfare'] },
+  { name: 'Western',           aliases: ['Western'] },
+  { name: 'Crime',             aliases: ['Crime'] },
+  { name: 'Animation',         aliases: ['Animation'] },
+  { name: 'Documentary',       aliases: ['Documentary'] },
+  { name: 'Family',            aliases: ['Family'] },
 
   // ── Aesthetic subgenres ──────────────────────────────────────────────────
-  'Cyberpunk':                       { name: 'Cyberpunk' },
-  'Steampunk':                       { name: 'Steampunk' },
+  { name: 'Cyberpunk',         aliases: ['Cyberpunk'] },
+  { name: 'Steampunk',         aliases: ['Steampunk'] },
 
   // ── Anime-specific (AniList) ─────────────────────────────────────────────
-  'Slice of Life':                   { name: 'Slice of Life' },
-  'Supernatural':                    { name: 'Supernatural' },
-  'Psychological':                   { name: 'Psychological' },
-  'Mecha':                           { name: 'Mecha' },
-  'Mahou Shoujo':                    { name: 'Mahou Shoujo' },
-  'Ecchi':                           { name: 'Ecchi', isTag: true },
-  'Harem':                           { name: 'Harem', isTag: true },
-  'Isekai':                          { name: 'Isekai', isTag: true },
-  'Sports':                          { name: 'Sports' },
+  { name: 'Slice of Life',     aliases: ['Slice of Life'] },
+  { name: 'Supernatural',      aliases: ['Supernatural'] },
+  { name: 'Psychological',     aliases: ['Psychological'] },
+  { name: 'Mecha',             aliases: ['Mecha'] },
+  { name: 'Mahou Shoujo',      aliases: ['Mahou Shoujo'] },
+  { name: 'Ecchi',             aliases: ['Ecchi'],                        isTag: true },
+  { name: 'Harem',             aliases: ['Harem'],                        isTag: true },
+  { name: 'Isekai',            aliases: ['Isekai'],                       isTag: true },
 
   // ── Misc tags ────────────────────────────────────────────────────────────
-  'Indie':                           { name: 'Indie', isTag: true },
-  'Educational':                     { name: 'Educational', isTag: true },
-  'Kids':                            { name: 'Kids', isTag: true },
-  'Business':                        { name: 'Business', isTag: true },
-  'Non-fiction':                     { name: 'Non-fiction', isTag: true },
-  'Erotic':                          { name: 'Erotic', isTag: true },
-};
+  { name: 'Indie',             aliases: ['Indie'],                        isTag: true },
+  { name: 'Educational',       aliases: ['Educational'],                  isTag: true },
+  { name: 'Kids',              aliases: ['Kids'],                         isTag: true },
+  { name: 'Business',          aliases: ['Business'],                     isTag: true },
+  { name: 'Non-fiction',       aliases: ['Non-fiction'],                  isTag: true },
+  { name: 'Erotic',            aliases: ['Erotic'],                       isTag: true },
+];
+
+// Build flat lookup map at module load time
+const RAW_TO_UNIFIED: Record<string, { name: string; isTag: boolean }> =
+  Object.fromEntries(
+    GENRE_DEFS.flatMap(({ name, isTag, aliases }) =>
+      aliases.map(alias => [alias, { name, isTag: isTag ?? false }])
+    )
+  );
 
 export interface SplitGenres {
   core: string[];
