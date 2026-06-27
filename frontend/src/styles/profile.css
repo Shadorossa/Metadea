@@ -251,16 +251,15 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  border: 1.5px solid var(--accent);
+  border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--bg-base) 85%, #000);
   color: inherit;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .library-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  border-color: color-mix(in srgb, var(--accent) 85%, #fff);
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb, 139, 92, 246), 0.4);
 }
 
 /* Fondo difuminado: la portada ocupa toda la card con blur */
