@@ -190,7 +190,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
             {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
             <div className="me-header-col">
               <span className="me-header-title">{data.titleMain}</span>
-              {/* Status icons + Progress row */}
+              {/* Status icons + Progress + Rating + Dates row */}
               <div className="me-header-bottom-row">
                 <div className="me-header-status-row">
                   {statusButtons.map(({ value, Icon }) => (
@@ -205,17 +205,63 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     </button>
                   ))}
                 </div>
-                {/* Progress input on the right of status */}
+
+                {/* Progress input */}
                 {progLabel && (
-                  <div className="me-header-progress">
-                    <label className="me-header-progress-label">{progLabel}:</label>
-                    <input type="number" className="me-header-progress-input" min={0}
+                  <div className="me-header-field">
+                    <label className="me-header-field-label">{progLabel}</label>
+                    <input type="number" className="me-header-field-input" min={0}
                       step={progressStep(data.type)}
                       value={progress || ''}
                       onChange={e => setProgress(parseFloat(e.target.value) || 0)}
                       placeholder="0" />
                   </div>
                 )}
+
+                {/* Rating stars */}
+                <div className="me-header-field">
+                  <label className="me-header-field-label">{te.score}</label>
+                  <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
+                    {[1, 2, 3, 4, 5].map(v => {
+                      const isFull = displayRating >= v * 2;
+                      const isHalf = !isFull && displayRating >= v * 2 - 1;
+                      return (
+                        <div key={v} className="me-header-star-wrap">
+                          <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
+                            <path d={STAR_PATH} />
+                          </svg>
+                          <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
+                            <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
+                              <path d={STAR_PATH} />
+                            </svg>
+                          </div>
+                          <button type="button" className="me-header-star-zone me-header-star-zone--left"
+                            onMouseEnter={() => setHoverRating(v * 2 - 1)}
+                            onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
+                          <button type="button" className="me-header-star-zone me-header-star-zone--right"
+                            onMouseEnter={() => setHoverRating(v * 2)}
+                            onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Start date */}
+                <div className="me-header-field">
+                  <label className="me-header-field-label">{te.started}</label>
+                  <input type="date" className="me-header-field-input me-header-field-input--date"
+                    value={startedAt}
+                    onChange={e => setStartedAt(e.target.value)} />
+                </div>
+
+                {/* End date */}
+                <div className="me-header-field">
+                  <label className="me-header-field-label">{te.ended}</label>
+                  <input type="date" className="me-header-field-input me-header-field-input--date"
+                    value={finishedAt}
+                    onChange={e => setFinishedAt(e.target.value)} />
+                </div>
               </div>
             </div>
           </div>
@@ -257,41 +303,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
               <div className="me-main-box">
                 <div className="me-grid">
 
-                  {/* LEFT: Rating + Progress + Tags */}
+                  {/* LEFT: Tags */}
                   <div className="me-col">
-                    {/* Rating */}
-                    <div className="me-section">
-                      <span className="me-label">
-                        {te.score}
-                        {rating > 0 && <span className="me-label-value">{(rating / 2).toFixed(1)}</span>}
-                      </span>
-                      <div className="me-stars" onMouseLeave={() => setHoverRating(null)}>
-                        {[1, 2, 3, 4, 5].map(v => {
-                          const isFull = displayRating >= v * 2;
-                          const isHalf = !isFull && displayRating >= v * 2 - 1;
-                          return (
-                            <div key={v} className="me-star-wrap">
-                              <svg className="me-star me-star--bg" viewBox="0 0 24 24">
-                                <path d={STAR_PATH} />
-                              </svg>
-                              <div className="me-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
-                                <svg className="me-star me-star--fg" viewBox="0 0 24 24">
-                                  <path d={STAR_PATH} />
-                                </svg>
-                              </div>
-                              <button type="button" className="me-star-zone me-star-zone--left"
-                                onMouseEnter={() => setHoverRating(v * 2 - 1)}
-                                onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
-                              <button type="button" className="me-star-zone me-star-zone--right"
-                                onMouseEnter={() => setHoverRating(v * 2)}
-                                onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-
                     {/* Tags */}
                     <div className="me-section">
                       <span className="me-label">
@@ -352,20 +365,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                         </div>
                       </div>
                     )}
-
-                    {/* Dates inputs */}
-                    <div className="me-dates-row">
-                      <div className="me-section me-section--inline">
-                        <span className="me-label">{te.started}</span>
-                        <input type="date" className="me-input" value={startedAt}
-                          onChange={e => setStartedAt(e.target.value)} />
-                      </div>
-                      <div className="me-section me-section--inline">
-                        <span className="me-label">{te.ended}</span>
-                        <input type="date" className="me-input" value={finishedAt}
-                          onChange={e => setFinishedAt(e.target.value)} />
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

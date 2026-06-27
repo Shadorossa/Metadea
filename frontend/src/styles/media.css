@@ -1051,25 +1051,29 @@
   text-overflow: ellipsis;
 }
 
-/* Status icons + Progress row */
+/* Status icons + Progress + Rating + Dates row */
 .me-header-bottom-row {
   display: flex;
-  align-items: center;
-  gap: 0.8rem;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .me-header-status-row {
   display: flex;
   gap: 0.3rem;
-}
-
-.me-header-progress {
-  display: flex;
   align-items: center;
-  gap: 0.4rem;
 }
 
-.me-header-progress-label {
+/* Generic field container (for progress, rating, dates) */
+.me-header-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.me-header-field-label {
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1078,28 +1082,84 @@
   white-space: nowrap;
 }
 
-.me-header-progress-input {
+.me-header-field-input {
   width: 50px;
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   border-radius: 0px;
   color: var(--text-primary);
-  font-size: 0.8rem;
-  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.4rem;
   outline: none;
   transition: border-color 0.15s;
 }
-.me-header-progress-input:focus { border-color: var(--accent, #7c6af7); }
+.me-header-field-input:focus { border-color: var(--accent, #7c6af7); }
+.me-header-field-input--date {
+  width: 70px;
+}
 
 /* Remove number input spinner arrows */
-.me-header-progress-input::-webkit-outer-spin-button,
-.me-header-progress-input::-webkit-inner-spin-button {
+.me-header-field-input[type=number]::-webkit-outer-spin-button,
+.me-header-field-input[type=number]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-.me-header-progress-input[type=number] {
+.me-header-field-input[type=number] {
   -moz-appearance: textfield;
 }
+
+/* Stars in header (compact) */
+.me-header-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.me-header-star-wrap {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.me-header-star {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.me-header-star--bg {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  opacity: 0.25;
+}
+
+.me-header-star-fill {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.me-header-star--fg {
+  fill: var(--accent, #7c6af7);
+  stroke: none;
+  width: 16px;
+  height: 16px;
+}
+
+.me-header-star-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.me-header-star-zone--left  { left: 0; }
+.me-header-star-zone--right { right: 0; }
 
 .me-header-status-icon {
   width: 28px;
