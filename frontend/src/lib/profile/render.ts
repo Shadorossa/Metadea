@@ -157,9 +157,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
               ${buildRatingHtml(item.rating)}
               <div class="library-card-footer">
                 ${buildDateHtml(item.started_at, item.finished_at)}
-                <div class="library-card-type">${typeIc}</div>
               </div>
             </div>
+            <div class="library-card-type">${typeIc}</div>
           </div>`;
       }).join('')}
     </div>`;
