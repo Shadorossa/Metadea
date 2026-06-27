@@ -1,0 +1,184 @@
+.tier-page {
+  padding: 1.5rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Tier rows ───────────────────────────────────────────────────────────── */
+
+.tier-maker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tier-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.tier-row {
+  display: flex;
+  min-height: 80px;
+  background: var(--bg-elevated);
+}
+
+.tier-row:hover {
+  background: color-mix(in srgb, var(--bg-elevated) 85%, var(--accent) 15%);
+}
+
+/* Label cell */
+.tier-label {
+  width: 72px;
+  min-width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: default;
+  position: relative;
+}
+
+.tier-label-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #000;
+  width: 100%;
+  cursor: text;
+  line-height: 1;
+}
+
+.tier-color-input {
+  width: 20px;
+  height: 10px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  opacity: 0.6;
+}
+
+.tier-color-input:hover {
+  opacity: 1;
+}
+
+/* Items area */
+.tier-items {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  min-height: 80px;
+  border-left: 1px solid var(--border-color);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+
+.tier-card {
+  width: 56px;
+  height: 80px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: grab;
+  flex-shrink: 0;
+  position: relative;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+  user-select: none;
+}
+
+.tier-card:hover {
+  transform: scale(1.05);
+  z-index: 2;
+}
+
+.tier-card:active {
+  cursor: grabbing;
+}
+
+.tier-card--dragging {
+  opacity: 0.35;
+}
+
+.tier-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.tier-card-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tier-card-placeholder span {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+/* ── Pool ────────────────────────────────────────────────────────────────── */
+
+.tier-pool {
+  margin-top: 1.5rem;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  min-height: 120px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.tier-pool:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--bg-surface) 90%, var(--accent) 10%);
+}
+
+.tier-pool-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.75rem;
+}
+
+.tier-pool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.tier-loading {
+  padding: 4rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+/* ── Navbar S badge ──────────────────────────────────────────────────────── */
+
+.nav-tier-s {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: currentColor;
+  line-height: 1;
+}
