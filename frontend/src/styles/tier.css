@@ -2,6 +2,7 @@
 
 .tier-page {
   padding: 2rem 2.5rem;
+  padding-top: calc(48px + 2rem);
   min-height: 100vh;
 }
 
@@ -81,6 +82,7 @@
 
 .tier-new-page {
   height: calc(100vh - 48px);
+  margin-top: 48px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
