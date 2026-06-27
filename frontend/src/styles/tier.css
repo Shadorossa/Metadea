@@ -1,4 +1,4 @@
-/* ── Index page ──────────────────────────────────────────────────────────── */
+/* ── /tier (índice) ──────────────────────────────────────────────────────── */
 
 .tier-page {
   padding: 2rem 2.5rem;
@@ -31,6 +31,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
   transition: opacity 0.15s;
 }
 
@@ -76,66 +77,55 @@
   font-size: 0.85rem;
 }
 
-/* ── Overlay (full-screen editor) ────────────────────────────────────────── */
+/* ── /tier/new (editor) ──────────────────────────────────────────────────── */
 
-.tier-overlay {
-  position: fixed;
-  inset: 0;
-  top: 56px; /* below navbar */
-  background: var(--bg-base);
-  z-index: 200;
+.tier-new-page {
+  height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
-  animation: tier-slide-in 0.18s ease;
+  overflow: hidden;
 }
 
-@keyframes tier-slide-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+.tier-maker-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.tier-overlay-header {
+.tier-maker-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1.25rem;
+  padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
-.tier-overlay-title {
-  font-size: 0.95rem;
+.tier-maker-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.tier-maker-back:hover { color: var(--text-main); }
+
+.tier-maker-page-title {
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-main);
 }
 
-.tier-overlay-close {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-
-.tier-overlay-close:hover {
-  background: var(--bg-elevated);
-  color: var(--text-main);
-}
-
-.tier-overlay-body {
+.tier-maker-body {
   display: flex;
   flex: 1;
   overflow: hidden;
-  gap: 0;
 }
 
-/* ── Tier rows (left column) ─────────────────────────────────────────────── */
+/* ── Tier rows (columna izquierda) ───────────────────────────────────────── */
 
 .tier-rows-wrap {
   flex: 1;
@@ -256,7 +246,7 @@
   color: var(--text-dim);
 }
 
-/* ── Pool (right column) ─────────────────────────────────────────────────── */
+/* ── Pool (columna derecha) ──────────────────────────────────────────────── */
 
 .tier-pool {
   width: 260px;

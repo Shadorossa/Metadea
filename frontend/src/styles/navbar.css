@@ -10,6 +10,10 @@
   padding: 0.5rem 1rem;
   height: 56px;
   pointer-events: none;
+  background: color-mix(in srgb, var(--bg-base) 60%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
 }
 
 .nav-center-slot {

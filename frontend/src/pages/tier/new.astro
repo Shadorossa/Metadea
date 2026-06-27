@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getLang } from '../../i18n/index';
+import TierMaker from '../../components/tier/TierMaker';
+import '../../styles/tier.css';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Nueva Tier List — Metadea" lang={lang} activePage="tier">
+  <main class="tier-new-page">
+    <TierMaker client:load />
+  </main>
+</BaseLayout>
