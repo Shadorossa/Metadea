@@ -304,6 +304,67 @@ export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
   return invoke<LibraryEntry[]>('get_all_library_entries');
 }
 
+// ─── Media Catalog ────────────────────────────────────────────────────────────
+
+export interface MediaCatalogEntry {
+  id: string;
+  external_id: string;
+  parent_id?: string | null;
+  type: string;
+  format?: string | null;
+  source?: string | null;
+  title_main?: string | null;
+  title_romaji?: string | null;
+  title_native?: string | null;
+  synopsis?: string | null;
+  cover_url?: string | null;
+  banners_csv?: string | null;
+  release_year?: number | null;
+  release_month?: number | null;
+  release_day?: number | null;
+  time_length?: number | null;
+  status?: string | null;
+  score_global?: number | null;
+  favorites_count?: number | null;
+  ratings_count?: number | null;
+  total_count?: number | null;
+  total_count_2?: number | null;
+  genres_csv?: string | null;
+  genres_tag_csv?: string | null;
+  platforms_csv?: string | null;
+  companies_cache_csv?: string | null;
+  last_synced_at?: string | null;
+  sync_failed_count?: number | null;
+  last_sync_error?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function saveCatalogEntry(entry: MediaCatalogEntry): Promise<MediaCatalogEntry> {
+  if (!isTauri()) throw new Error('Tauri not available');
+  return invoke<MediaCatalogEntry>('save_catalog_entry', { entry });
+}
+
+export async function getCatalogEntry(externalId: string): Promise<MediaCatalogEntry | null> {
+  if (!isTauri()) return null;
+  return invoke<MediaCatalogEntry | null>('get_catalog_entry', { externalId });
+}
+
+export async function deleteCatalogEntry(externalId: string): Promise<void> {
+  if (!isTauri()) return;
+  return invoke<void>('delete_catalog_entry', { externalId });
+}
+
+export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
+  if (!isTauri()) return [];
+  return invoke<MediaCatalogEntry[]>('get_all_catalog_entries');
+}
+
+export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]> {
+  if (!isTauri()) return [];
+  return invoke<MediaCatalogEntry[]>('search_catalog', { query });
+}
+
 // ─── IGDB ─────────────────────────────────────────────────────────────────────
 
 export interface IgdbNamed    { id: number; name: string }

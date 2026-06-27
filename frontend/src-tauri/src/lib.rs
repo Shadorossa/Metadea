@@ -1,6 +1,7 @@
 mod auth;
 mod folders;
 mod igdb;
+mod media_catalog;
 mod platform_scanning;
 mod steam;
 mod user_library;
@@ -56,6 +57,11 @@ pub fn run() {
             user_library::get_library_entry,
             user_library::delete_library_entry,
             user_library::get_all_library_entries,
+            media_catalog::save_catalog_entry,
+            media_catalog::get_catalog_entry,
+            media_catalog::delete_catalog_entry,
+            media_catalog::get_all_catalog_entries,
+            media_catalog::search_catalog,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
             user_metadata::remove_user_image,
