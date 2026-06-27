@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MediaCatalogEntry {
