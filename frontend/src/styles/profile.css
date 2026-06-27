@@ -251,8 +251,8 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid rgba(255,255,255,0.07);
-  background: var(--bg-elevated);
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--bg-base) 85%, #000);
   color: inherit;
   transition: transform 0.15s, box-shadow 0.15s;
 }
@@ -260,6 +260,7 @@
 .library-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  border-color: color-mix(in srgb, var(--accent) 85%, #fff);
 }
 
 /* Fondo difuminado: la portada ocupa toda la card con blur */
