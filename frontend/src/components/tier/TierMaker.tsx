@@ -23,11 +23,6 @@ const DEFAULT_TIERS: Omit<Tier, 'items'>[] = [
   { id: 'f', label: 'F', color: '#bf7fff' },
 ];
 
-interface DragRef {
-  itemId: string;
-  fromTier: string | 'pool';
-}
-
 function CoverCard({ entry, dragging, small }: { entry: MediaCatalogEntry; dragging: boolean; small?: boolean }) {
   return (
     <div
@@ -54,7 +49,9 @@ export default function TierMaker() {
   const [loading, setLoading] = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const drag = useRef<DragRef | null>(null);
+
+  // Store drag source in ref — accessed synchronously in drop handler
+  const dragSrc = useRef<{ itemId: string; fromTier: string | 'pool' } | null>(null);
 
   useEffect(() => {
     getAllCatalogEntries().then(entries => {
@@ -63,22 +60,43 @@ export default function TierMaker() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const onDragStart = useCallback((itemId: string, fromTier: string | 'pool') => {
-    drag.current = { itemId, fromTier };
+  const handleDragStart = useCallback((
+    e: React.DragEvent,
+    itemId: string,
+    fromTier: string | 'pool',
+  ) => {
+    // Required for drop to fire in WebKit / Tauri WebView
+    e.dataTransfer.setData('text/plain', itemId);
+    e.dataTransfer.effectAllowed = 'move';
+    dragSrc.current = { itemId, fromTier };
     setDraggingId(itemId);
   }, []);
 
-  const onDragEnd = useCallback(() => {
-    drag.current = null;
+  const handleDragEnd = useCallback(() => {
+    dragSrc.current = null;
     setDraggingId(null);
     setDropTarget(null);
   }, []);
 
-  const drop = useCallback((toId: string | 'pool') => {
-    if (!drag.current) return;
-    const { itemId, fromTier } = drag.current;
+  const handleDragOver = useCallback((e: React.DragEvent, toId: string | 'pool') => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTarget(toId);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setDropTarget(null);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, toId: string | 'pool') => {
+    e.preventDefault();
     setDropTarget(null);
-    if (fromTier === toId) return;
+    const src = dragSrc.current;
+    if (!src || src.fromTier === toId) return;
+
+    const { itemId, fromTier } = src;
 
     setState(prev => {
       // Find the entry in its current location
@@ -90,7 +108,6 @@ export default function TierMaker() {
       }
       if (!entry) return prev;
 
-      // Update tiers atomically
       const newTiers = prev.tiers.map(t => {
         let items = [...t.items];
         if (t.id === fromTier) items = items.filter(e => e.id !== itemId);
@@ -98,7 +115,6 @@ export default function TierMaker() {
         return { ...t, items };
       });
 
-      // Update pool atomically
       let newPool = [...prev.pool];
       if (fromTier === 'pool') newPool = newPool.filter(e => e.id !== itemId);
       if (toId === 'pool')     newPool = [...newPool, entry];
@@ -138,11 +154,9 @@ export default function TierMaker() {
               <div
                 key={tier.id}
                 className={`tier-row${dropTarget === tier.id ? ' tier-row--over' : ''}`}
-                onDragOver={e => { e.preventDefault(); setDropTarget(tier.id); }}
-                onDragLeave={e => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
-                }}
-                onDrop={() => drop(tier.id)}
+                onDragOver={e => handleDragOver(e, tier.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={e => handleDrop(e, tier.id)}
               >
                 <div className="tier-label" style={{ background: tier.color }}>
                   <input
@@ -163,8 +177,8 @@ export default function TierMaker() {
                     <div
                       key={entry.id}
                       draggable
-                      onDragStart={() => onDragStart(entry.id, tier.id)}
-                      onDragEnd={onDragEnd}
+                      onDragStart={e => handleDragStart(e, entry.id, tier.id)}
+                      onDragEnd={handleDragEnd}
                     >
                       <CoverCard entry={entry} dragging={draggingId === entry.id} />
                     </div>
@@ -178,11 +192,9 @@ export default function TierMaker() {
         {/* Derecha: pool */}
         <div
           className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}
-          onDragOver={e => { e.preventDefault(); setDropTarget('pool'); }}
-          onDragLeave={e => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
-          }}
-          onDrop={() => drop('pool')}
+          onDragOver={e => handleDragOver(e, 'pool')}
+          onDragLeave={handleDragLeave}
+          onDrop={e => handleDrop(e, 'pool')}
         >
           <p className="tier-pool-label">
             {pool.length === 0 ? 'Todo clasificado' : `Sin clasificar (${pool.length})`}
@@ -192,8 +204,8 @@ export default function TierMaker() {
               <div
                 key={entry.id}
                 draggable
-                onDragStart={() => onDragStart(entry.id, 'pool')}
-                onDragEnd={onDragEnd}
+                onDragStart={e => handleDragStart(e, entry.id, 'pool')}
+                onDragEnd={handleDragEnd}
               >
                 <CoverCard entry={entry} dragging={draggingId === entry.id} small />
               </div>
