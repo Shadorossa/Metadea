@@ -471,7 +471,7 @@ async fn fetch_landscape_image_id(
             for entry in arr {
                 let w = entry["width"].as_f64().unwrap_or(0.0);
                 let h = entry["height"].as_f64().unwrap_or(1.0);
-                if h > 0.0 && w / h >= 1.5 {
+                if w >= 1280.0 && h >= 720.0 && w / h >= 1.5 {
                     if let Some(id) = entry["image_id"].as_str() {
                         return Some(id.to_string());
                     }
@@ -481,9 +481,20 @@ async fn fetch_landscape_image_id(
     }
     let ss = igdb_query(client, client_id, token,
         IGDB_API_SCREENSHOTS,
-        &format!("fields image_id; where game = {}; limit 1;", game_id),
+        &format!("fields image_id,width,height; where game = {}; limit 5;", game_id),
     ).await.ok()?;
-    ss[0]["image_id"].as_str().map(String::from)
+    if let Some(arr) = ss.as_array() {
+        for entry in arr {
+            let w = entry["width"].as_f64().unwrap_or(0.0);
+            let h = entry["height"].as_f64().unwrap_or(1.0);
+            if w >= 1280.0 && h >= 720.0 && w / h >= 1.5 {
+                if let Some(id) = entry["image_id"].as_str() {
+                    return Some(id.to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 fn save_game_info(game_dir: &std::path::PathBuf, igdb_game: &serde_json::Value, app_id: &str) -> Result<(), String> {
