@@ -133,6 +133,7 @@ export const es = {
       saving:    'Guardando…',
       delete:    'Eliminar',
       no_dates:  'Sin fechas',
+      months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
     },
     progress_hours:    'Horas',
     progress_episodes: 'Episodios',

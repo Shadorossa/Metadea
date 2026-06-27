@@ -94,10 +94,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const months = lang === 'en' ? MONTHS_EN : MONTHS_ES;
-
   useEffect(() => {
     getLibraryEntry(externalId, data.type)
       .then(entry => {
@@ -427,7 +423,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     </div>
                   </div>
                   <div className="me-month-grid">
-                    {months.map((mName, idx) => {
+                    {te.months.map((mName, idx) => {
                       const mNumber = idx + 1;
                       const key = `${selectedYear}-${String(mNumber).padStart(2, '0')}`;
                       const isActive = selectedMonthKey === key;
