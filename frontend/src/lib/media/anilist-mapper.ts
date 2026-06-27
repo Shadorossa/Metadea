@@ -1,6 +1,7 @@
 import type { AniListMediaDetail } from '../search/providers/anilist';
 import { getT, getLangCode } from '../../i18n/client';
 import type { MediaPageData, MediaRelation } from './types';
+import { unifyGenres } from './genre-unifier';
 
 const STATUS_CLASS: Record<string, string> = {
   RELEASING:        'media-badge--status-airing',
@@ -69,7 +70,9 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const studiosList = raw.studios.nodes.map(n => n.name).join(', ');
   const metaLines   = [studiosList, quickMeta].filter(Boolean);
 
-  const genreDots = raw.genres.join(' · ');
+  const { core: coreGenres, tags: genreTags } = unifyGenres(raw.genres);
+  const genreDots    = coreGenres.join(' · ') || undefined;
+  const genreTagDots = genreTags.join(' · ')  || undefined;
 
   const characters = raw.characters.edges.map(e => ({
     name:  e.node.name.full,
@@ -120,6 +123,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     statusLabel,
     statusClass,
     genreDots,
+    genreTagDots,
     metaLines,
     dateBadge,
     description:  formatDescription(raw.description),

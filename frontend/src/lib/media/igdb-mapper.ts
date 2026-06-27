@@ -1,5 +1,6 @@
 import { igdbImageUrl } from '../tauri';
 import type { MediaPageData } from './types';
+import { unifyGenres } from './genre-unifier';
 
 interface IgdbDetailGame {
   id: number;
@@ -23,56 +24,6 @@ interface IgdbDetailGame {
   store_links?: { platform: string; url: string }[];
 }
 
-// Mirrors Metamedia's IGDB_TO_UNIFIED mapping
-const IGDB_TO_UNIFIED: Record<string, { core?: string; tag?: string }> = {
-  'Adventure': { core: 'Adventure' },
-  'Fighting': { core: 'Fighting' },
-  'Shooter': { core: 'Shooter' },
-  'Music': { core: 'Music' },
-  'Platform': { core: 'Platform' },
-  'Puzzle': { core: 'Puzzle' },
-  'Racing': { core: 'Racing' },
-  'Real Time Strategy (RTS)':   { core: 'Real Time Strategy' },
-  'Role-playing (RPG)':          { core: 'RPG' },
-  'Turn-based strategy (TBS)':   { core: 'Turn-based Strategy' },
-  'Tactical':                    { core: 'Tactical' },
-  'Sport':                       { core: 'Sports' },
-  'Strategy':                    { core: 'Strategy' },
-  'Indie':                       { core: 'Indie' },
-  'Arcade':                      { core: 'Arcade' },
-  'Visual Novel':                { core: 'Visual Novel' },
-  'Card & Board Game':           { core: 'Card & Board Game' },
-  'MOBA':                        { core: 'MOBA' },
-  'Simulator':                   { core: 'Simulator' },
-  "Hack and slash/Beat 'em up":  { core: 'Hack and Slash' },
-  'Quiz / Trivia': { tag: 'Quiz/Trivia' },
-  'Action': { core: 'Action' },
-  'Fantasy': { core: 'Fantasy' },
-  'Science fiction': { core: 'Science Fiction' },
-  'Horror': { core: 'Horror' },
-  'Thriller': { core: 'Thriller' },
-  'Comedy': { core: 'Comedy' },
-  'Drama': { core: 'Drama' },
-  'Mystery': { core: 'Mystery' },
-  'Romance': { core: 'Romance' },
-  'Survival': { tag: 'Survival' },
-  'Historical': { core: 'History' },
-  'Stealth': { tag: 'Stealth' },
-  'Business': { tag: 'Business' },
-  'Non-fiction': { tag: 'Non-fiction' },
-  'Sandbox': { tag: 'Sandbox' },
-  'Educational': { tag: 'Educational' },
-  'Kids': { tag: 'Kids' },
-  'Open world': { tag: 'Open world' },
-  'Warfare': { core: 'War' },
-  'Party': { tag: 'Party' },
-  '4X': { tag: '4X' },
-  'Erotic': { tag: 'Erotic' },
-  'Point-and-click': { tag: 'Point-and-click' },
-  'Cyberpunk': { core: 'Cyberpunk' },
-  'Steampunk': { core: 'Steampunk' },
-};
-
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',
   2: 'EXPANSION',
@@ -87,17 +38,6 @@ const GAME_TYPE_FORMAT: Record<number, string> = {
   12: 'FORK',
   14: 'UPDATE',
 };
-
-function splitGenres(genres: string[]): { core: string[]; tags: string[] } {
-  const core: string[] = [];
-  const tags: string[] = [];
-  for (const genre of genres) {
-    const mapped = IGDB_TO_UNIFIED[genre];
-    if (mapped?.core && !core.includes(mapped.core)) core.push(mapped.core);
-    else if (mapped?.tag && !tags.includes(mapped.tag)) tags.push(mapped.tag);
-  }
-  return { core, tags };
-}
 
 function findAltName(
   altNames: { name: string; comment?: string }[],
@@ -142,7 +82,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const format = GAME_TYPE_FORMAT[gameType] ?? 'GAME';
 
   // Genre split: core genres → genreDots, tags → genreTagDots
-  const { core: coreGenres, tags: genreTags } = splitGenres(genres);
+  const { core: coreGenres, tags: genreTags } = unifyGenres(genres);
   const genreDots = coreGenres.join(' · ') || undefined;
   const genreTagDots = genreTags.join(' · ') || undefined;
 
