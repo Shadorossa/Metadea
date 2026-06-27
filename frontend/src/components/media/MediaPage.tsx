@@ -441,7 +441,6 @@ export default function MediaPage({ lang }: { lang: string }) {
                     key={i}
                     type="button"
                     className="media-store-link"
-                    title={link.platform}
                     onClick={() => {
                       const tauri = (window as any).__TAURI__;
                       if (tauri?.opener?.openUrl) {
@@ -451,11 +450,7 @@ export default function MediaPage({ lang }: { lang: string }) {
                       }
                     }}
                   >
-                    <img
-                      src={`/platforms/${link.platform}_logo.png`}
-                      alt={link.platform}
-                      draggable={false}
-                    />
+                    {link.platform}
                   </button>
                 ))}
               </div>
