@@ -186,37 +186,62 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
         {/* Header */}
         <div className="me-header">
-          <div className="me-header-info">
+          <div className="me-header-left">
             {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
-            <span className="me-header-title">{data.titleMain}</span>
+            <div className="me-header-col">
+              <span className="me-header-title">{data.titleMain}</span>
+              {/* Status icons row in header */}
+              <div className="me-header-status-row">
+                {statusButtons.map(({ value, Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`me-header-status-icon${status === value ? ' active' : ''}`}
+                    onClick={() => setStatus(status === value ? '' : value)}
+                    title={statusButtons.find(b => b.value === value)?.label}
+                  >
+                    <Icon />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <button type="button" className="me-close" onClick={onClose}>✕</button>
+          <div className="me-header-right">
+            <button
+              type="button"
+              className={`me-header-icon-btn${isFavorite ? ' active' : ''}`}
+              onClick={() => setIsFavorite(p => !p)}
+              title={te.favorite}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24"
+                fill={isFavorite ? 'currentColor' : 'none'}
+                stroke="currentColor" strokeWidth="1.8">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`me-header-icon-btn${isPlatinum ? ' active' : ''}`}
+              onClick={() => setIsPlatinum(p => !p)}
+              title={te.platinum}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24"
+                fill={isPlatinum ? 'currentColor' : 'none'}
+                stroke="currentColor" strokeWidth="1.8">
+                <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
+              </svg>
+            </button>
+            <button type="button" className="me-close" onClick={onClose}>✕</button>
+          </div>
         </div>
 
         {loading ? (
           <div className="me-loading"><div className="spinner" /></div>
         ) : (
           <div className="me-body">
-
-            {/* Status — icon + label below */}
-            <div className="me-status-row">
-              {statusButtons.map(({ value, label, Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`me-status-btn me-status-btn--${value}${status === value ? ' active' : ''}`}
-                  onClick={() => setStatus(status === value ? '' : value)}
-                >
-                  <span className="me-status-icon"><Icon /></span>
-                  <span className="me-status-label">{label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Two-column grid */}
             <div className="me-grid">
 
-              {/* LEFT: score + progress + dates */}
+              {/* LEFT: Rating + Rewatch */}
               <div className="me-col">
                 {/* Rating */}
                 <div className="me-section">
@@ -250,7 +275,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   </div>
                 </div>
 
-                {/* Progress */}
+                {/* Progress / Rewatch */}
                 {progLabel && (
                   <div className="me-section">
                     <span className="me-label">{progLabel}</span>
@@ -262,21 +287,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   </div>
                 )}
 
-                {/* Dates */}
-                <div className="me-section">
-                  <span className="me-label">{te.started}</span>
-                  <input type="date" className="me-input" value={startedAt}
-                    onChange={e => setStartedAt(e.target.value)} />
-                </div>
-                <div className="me-section">
-                  <span className="me-label">{te.ended}</span>
-                  <input type="date" className="me-input" value={finishedAt}
-                    onChange={e => setFinishedAt(e.target.value)} />
-                </div>
-              </div>
-
-              {/* RIGHT: tags + notes + toggles + actions */}
-              <div className="me-col">
                 {/* Tags */}
                 <div className="me-section">
                   <span className="me-label">
@@ -300,48 +310,77 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     )}
                   </div>
                 </div>
+              </div>
+
+              {/* RIGHT: Calendar + Dates + Notes */}
+              <div className="me-col">
+                {/* Calendar with active dates range */}
+                {(startedAt || finishedAt) && (
+                  <div className="me-calendar-box">
+                    <div className="me-calendar-grid">
+                      {(() => {
+                        const start = startedAt ? new Date(startedAt) : null;
+                        const end = finishedAt ? new Date(finishedAt) : null;
+                        const days = [];
+
+                        if (start && end && start <= end) {
+                          const current = new Date(start);
+                          const endDate = new Date(end);
+                          while (current <= endDate) {
+                            const d = current.getDate();
+                            const isStart = current.toDateString() === start.toDateString();
+                            const isEnd = current.toDateString() === end.toDateString();
+                            const isMiddle = current > start && current < end;
+                            days.push(
+                              <div
+                                key={current.toDateString()}
+                                className={`me-cal-day${isStart ? ' start' : ''}${isEnd ? ' end' : ''}${isMiddle ? ' mid' : ''}`}
+                              >
+                                {d}
+                              </div>
+                            );
+                            current.setDate(current.getDate() + 1);
+                          }
+                        }
+                        return days.length > 0 ? days : <div className="me-cal-empty">Sin fechas</div>;
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dates inputs */}
+                <div className="me-dates-row">
+                  <div className="me-section me-section--inline">
+                    <span className="me-label">{te.started}</span>
+                    <input type="date" className="me-input" value={startedAt}
+                      onChange={e => setStartedAt(e.target.value)} />
+                  </div>
+                  <div className="me-section me-section--inline">
+                    <span className="me-label">{te.ended}</span>
+                    <input type="date" className="me-input" value={finishedAt}
+                      onChange={e => setFinishedAt(e.target.value)} />
+                  </div>
+                </div>
 
                 {/* Notes */}
                 <div className="me-section me-section--grow">
                   <span className="me-label">{te.notes}</span>
-                  <textarea className="me-textarea" rows={4}
+                  <textarea className="me-textarea" rows={5}
                     placeholder={te.notes_ph}
                     value={notes}
                     onChange={e => setNotes(e.target.value)} />
                 </div>
 
-                {/* Toggles + actions */}
-                <div className="me-bottom-row">
-                  <div className="me-toggles-row">
-                    <button type="button" className={`me-toggle${isFavorite ? ' active' : ''}`}
-                      onClick={() => setIsFavorite(p => !p)}>
-                      <svg width="15" height="15" viewBox="0 0 24 24"
-                        fill={isFavorite ? 'currentColor' : 'none'}
-                        stroke="currentColor" strokeWidth="2">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                      </svg>
-                      {te.favorite}
-                    </button>
-                    <button type="button" className={`me-toggle${isPlatinum ? ' active' : ''}`}
-                      onClick={() => setIsPlatinum(p => !p)}>
-                      <svg width="15" height="15" viewBox="0 0 24 24"
-                        fill={isPlatinum ? 'currentColor' : 'none'}
-                        stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-                      </svg>
-                      {te.platinum}
-                    </button>
-                  </div>
-                  <div className="me-actions">
-                    {existing && (
-                      <button type="button" className="me-btn me-btn--delete"
-                        onClick={handleDelete} disabled={saving}>{te.delete}</button>
-                    )}
-                    <button type="button" className="me-btn me-btn--save"
-                      onClick={handleSave} disabled={saving}>
-                      {saving ? te.saving : te.save}
-                    </button>
-                  </div>
+                {/* Bottom actions */}
+                <div className="me-actions-bottom">
+                  {existing && (
+                    <button type="button" className="me-btn me-btn--delete"
+                      onClick={handleDelete} disabled={saving}>{te.delete}</button>
+                  )}
+                  <button type="button" className="me-btn me-btn--save"
+                    onClick={handleSave} disabled={saving}>
+                    {saving ? te.saving : te.save}
+                  </button>
                 </div>
               </div>
 
