@@ -23,7 +23,7 @@ const PLATFORM_LABEL: Record<PlatformId, string> = {
   ea:          'EA',
   nintendo:    'Nintendo',
   playstation: 'PlayStation',
-  local:       'Juegos locales',
+  local:       'Local',
 };
 
 const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
@@ -37,7 +37,7 @@ const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
   { id: 'movies', label: 'Películas' },
 ];
 
-const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation', 'local'];
+const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation'];
 
 const STEAM_COVER = (appId: string) =>
   `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
