@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, KeyboardEvent } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry } from '../../lib/tauri';
@@ -119,7 +119,7 @@ export function MediaEditorModal({ externalId, data, onClose, onSaved, onDeleted
     onClose();
   }, [existing, externalId, data.type, onDeleted, onClose]);
 
-  const handleTagKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const tag = tagInput.trim();
