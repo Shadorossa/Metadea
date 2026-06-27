@@ -49,4 +49,8 @@ export interface MediaPageData {
   releaseDay?: number;
   platforms?: string[];
   scoreGlobal?: number;
+  timeLength?: number;
+  status?: string;
+  totalCount?: number;
+  totalCount_2?: number;
 }
