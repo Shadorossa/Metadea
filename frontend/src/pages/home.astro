@@ -40,11 +40,13 @@ const t    = useTranslations(lang);
       }
     }
 
-    document.getElementById('home-google-btn')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = `${API_URL}/api/auth/google`;
-    });
+    document.addEventListener('astro:page-load', () => {
+      document.getElementById('home-google-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.href = `${API_URL}/api/auth/google`;
+      });
 
-    checkSession();
+      checkSession();
+    });
   </script>
 </BaseLayout>
