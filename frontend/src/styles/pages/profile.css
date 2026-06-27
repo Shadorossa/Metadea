@@ -158,7 +158,7 @@
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 .profile-tab-content {
   flex: 1;
-  padding: 1.25rem 15%;
+  padding: 1.25rem 4%;
   width: 100%;
   display: flex;
   flex-direction: column;
