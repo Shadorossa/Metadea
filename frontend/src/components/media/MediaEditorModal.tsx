@@ -190,19 +190,32 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
             {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
             <div className="me-header-col">
               <span className="me-header-title">{data.titleMain}</span>
-              {/* Status icons row in header */}
-              <div className="me-header-status-row">
-                {statusButtons.map(({ value, Icon }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`me-header-status-icon${status === value ? ' active' : ''}`}
-                    onClick={() => setStatus(status === value ? '' : value)}
-                    title={statusButtons.find(b => b.value === value)?.label}
-                  >
-                    <Icon />
-                  </button>
-                ))}
+              {/* Status icons + Progress row */}
+              <div className="me-header-bottom-row">
+                <div className="me-header-status-row">
+                  {statusButtons.map(({ value, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`me-header-status-icon${status === value ? ' active' : ''}`}
+                      onClick={() => setStatus(status === value ? '' : value)}
+                      title={statusButtons.find(b => b.value === value)?.label}
+                    >
+                      <Icon />
+                    </button>
+                  ))}
+                </div>
+                {/* Progress input on the right of status */}
+                {progLabel && (
+                  <div className="me-header-progress">
+                    <label className="me-header-progress-label">{progLabel}:</label>
+                    <input type="number" className="me-header-progress-input" min={0}
+                      step={progressStep(data.type)}
+                      value={progress || ''}
+                      onChange={e => setProgress(parseFloat(e.target.value) || 0)}
+                      placeholder="0" />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -278,17 +291,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       </div>
                     </div>
 
-                    {/* Progress */}
-                    {progLabel && (
-                      <div className="me-section">
-                        <span className="me-label">{progLabel}</span>
-                        <input type="number" className="me-input" min={0}
-                          step={progressStep(data.type)}
-                          value={progress || ''}
-                          onChange={e => setProgress(parseFloat(e.target.value) || 0)}
-                          placeholder="0" />
-                      </div>
-                    )}
 
                     {/* Tags */}
                     <div className="me-section">

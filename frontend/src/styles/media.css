@@ -1028,8 +1028,9 @@
 .me-header-col {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
   min-width: 0;
+  flex: 1;
 }
 
 .me-header-cover {
@@ -1050,11 +1051,46 @@
   text-overflow: ellipsis;
 }
 
-/* Status icons in header */
+/* Status icons + Progress row */
+.me-header-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .me-header-status-row {
   display: flex;
   gap: 0.3rem;
 }
+
+.me-header-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.me-header-progress-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.me-header-progress-input {
+  width: 60px;
+  background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
+  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
+  border-radius: 0px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.me-header-progress-input:focus { border-color: var(--accent, #7c6af7); }
 
 .me-header-status-icon {
   width: 28px;
