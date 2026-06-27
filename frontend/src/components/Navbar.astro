@@ -72,34 +72,38 @@ const { activePage, i18n } = Astro.props;
 </header>
 
 <script>
-  // Dropdown del usuario
-  const dropdown = document.getElementById('nav-user-dropdown');
-  const userWrap = document.getElementById('nav-user-wrap');
-  const authBtn = document.getElementById('open-auth-modal');
-  const signoutBtn = document.getElementById('nav-signout-btn');
+  function initNavbar() {
+    const dropdown  = document.getElementById('nav-user-dropdown');
+    const authBtn   = document.getElementById('open-auth-modal');
+    const signoutBtn = document.getElementById('nav-signout-btn');
 
-  // Toggle dropdown
-  authBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown?.classList.toggle('is-open');
-  });
+    authBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown?.classList.toggle('is-open');
+    });
 
-  // Cerrar dropdown al hacer clic fuera
-  document.addEventListener('click', () => {
-    dropdown?.classList.remove('is-open');
-  });
+    // Use AbortController so the document listener is removed before the next swap
+    const ac = new AbortController();
+    document.addEventListener('click', () => {
+      dropdown?.classList.remove('is-open');
+    }, { signal: ac.signal });
+    document.addEventListener('astro:before-swap', () => ac.abort(), { once: true });
 
-  // Logout
-  signoutBtn?.addEventListener('click', async () => {
-    try {
-      const { clearAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
-      await clearAuthToken();
-    } catch {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_username');
-    }
-    window.location.href = '/';
-  });
+    signoutBtn?.addEventListener('click', async () => {
+      try {
+        const { clearAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
+        await clearAuthToken();
+      } catch {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_username');
+      }
+      window.location.href = '/';
+    });
+  }
+
+  // Run on initial load and after every View Transitions navigation
+  initNavbar();
+  document.addEventListener('astro:page-load', initNavbar);
 </script>
 
 <style>
