@@ -98,6 +98,14 @@ function fmtDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
+  if (!started && !finished) return '';
+  const parts: string[] = [];
+  if (started)  parts.push(fmtDate(started));
+  if (finished) parts.push(fmtDate(finished));
+  return `<span class="library-card-date">${CALENDAR_ICON}${parts.join(' → ')}</span>`;
+}
+
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
   const [items, catalogEntries] = await Promise.all([
@@ -122,29 +130,29 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   el.innerHTML = `
     <div class="library-list">
       ${items.map(item => {
-        const meta   = catalogMap.get(item.external_id);
-        const title  = meta?.title_main ?? item.external_id;
-        const cover  = meta?.cover_url ?? '';
-        const date   = fmtDate(item.added_at);
-        const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-        const url    = `/media?id=${encodeURIComponent(item.external_id)}`;
-        const bgStyle = cover ? `style="--card-bg: url('${cover}')"` : '';
+        const meta    = catalogMap.get(item.external_id);
+        const title   = meta?.title_main ?? item.external_id;
+        const cover   = meta?.cover_url ?? '';
+        const typeIc  = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+        const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+        const editUrl  = `/media?id=${encodeURIComponent(item.external_id)}&edit=1`;
+        const bgStyle  = cover ? `style="--card-bg: url('${cover}')"` : '';
 
         return `
-          <a class="library-card" href="${url}" ${bgStyle}>
+          <div class="library-card" data-href="${editUrl}" ${bgStyle}>
             ${cover ? `<div class="library-card-bg"></div>` : ''}
-            <div class="library-card-cover">
+            <a class="library-card-cover" href="${mediaUrl}" onclick="event.stopPropagation()">
               ${cover
                 ? `<img src="${cover}" alt="${title}" loading="lazy" />`
                 : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
               }
-            </div>
+            </a>
             <div class="library-card-info">
               <span class="library-card-title">${title}</span>
-              ${date ? `<span class="library-card-date">${CALENDAR_ICON}${date}</span>` : ''}
+              ${buildDateHtml(item.started_at, item.finished_at)}
             </div>
             <div class="library-card-type-icon">${typeIc}</div>
-          </a>`;
+          </div>`;
       }).join('')}
     </div>`;
 }

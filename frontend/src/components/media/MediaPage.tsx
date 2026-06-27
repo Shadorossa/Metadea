@@ -227,6 +227,13 @@ export default function MediaPage({ lang }: { lang: string }) {
       .catch(() => setPageState('error'));
   }, []);
 
+  // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
+  useEffect(() => {
+    if (!data) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('edit') === '1') setShowEditor(true);
+  }, [data]);
+
   // Load library entry + upsert catalog once we know the type
   useEffect(() => {
     if (!data?.type) return;

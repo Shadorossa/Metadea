@@ -130,6 +130,13 @@ const lang = getLang(Astro.url);
 
     cachedItems = await getAllLibraryEntries().catch(() => []);
     await switchTab(activeTab);
+
+    // Delegate clicks: card body → editor page, cover <a> handles its own navigation
+    document.getElementById('profile-tab-content')?.addEventListener('click', (e) => {
+      const card = (e.target as HTMLElement).closest<HTMLElement>('.library-card[data-href]');
+      if (!card) return;
+      window.location.href = card.dataset.href!;
+    });
   }
 
   document.addEventListener('astro:page-load', init);

@@ -249,16 +249,22 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background: var(--bg-elevated);
-  text-decoration: none;
   color: inherit;
   overflow: hidden;
   transition: border-color 0.15s, transform 0.15s;
   min-height: 72px;
+  cursor: pointer;
 }
 
 .library-card:hover {
   border-color: color-mix(in srgb, var(--border-color) 50%, var(--accent));
   transform: translateX(2px);
+}
+
+/* Cover is a real <a> — needs display:block + no underline */
+.library-card-cover {
+  display: block;
+  text-decoration: none;
 }
 
 /* Fondo borroso con la portada */
@@ -285,7 +291,10 @@
   flex-shrink: 0;
   position: relative;
   z-index: 1;
+  transition: opacity 0.15s;
 }
+
+.library-card-cover:hover { opacity: 0.85; }
 
 .library-card-cover img {
   width: 100%;
