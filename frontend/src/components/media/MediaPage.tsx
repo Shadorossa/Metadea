@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaData, getCachedMediaData } from '../../lib/media/mediaService';
-import { getLibraryEntry } from '../../lib/tauri';
+import { getLibraryEntry, saveCatalogEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -227,9 +227,10 @@ export default function MediaPage({ lang }: { lang: string }) {
       .catch(() => setPageState('error'));
   }, []);
 
-  // Load library entry once we know the type
+  // Load library entry + upsert catalog once we know the type
   useEffect(() => {
     if (!data?.type) return;
+
     getLibraryEntry(rawId.current, data.type)
       .then(entry => {
         if (entry) {
@@ -238,6 +239,22 @@ export default function MediaPage({ lang }: { lang: string }) {
         }
       })
       .catch(() => {});
+
+    // Upsert catalog entry with the latest metadata from the API
+    saveCatalogEntry({
+      id: '',
+      external_id: rawId.current,
+      type: data.type,
+      title_main:   data.titleMain  ?? undefined,
+      title_native: data.titleNative ?? undefined,
+      title_romaji: data.titleEnglish ?? undefined,
+      synopsis:     data.description ?? undefined,
+      cover_url:    data.cover ?? undefined,
+      banners_csv:  data.bannerImage ?? undefined,
+      genres_csv:   data.genreDots ? data.genreDots.split(' · ').join(',') : undefined,
+      created_at:   new Date().toISOString(),
+      updated_at:   new Date().toISOString(),
+    }).catch(() => {});
   }, [data?.type]);
 
   const handleCoverClick = useCallback(() => {

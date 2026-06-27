@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, saveCatalogEntry } from '../../lib/tauri';
+import type { LibraryEntry } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
@@ -142,22 +142,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         finished_at:      finishedAt || null,
       });
 
-      // Save to media catalog for backup/deduplication
-      const catalogEntry: MediaCatalogEntry = {
-        id: '',
-        external_id: externalId,
-        type: data.type,
-        title_main: data.titleMain || '',
-        title_native: data.titleNative,
-        title_romaji: data.titleEnglish,
-        synopsis: data.description,
-        cover_url: data.cover,
-        genres_csv: data.genreDots ? data.genreDots.split(' · ').join(',') : '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      await saveCatalogEntry(catalogEntry);
-
       onSaved(entry);
       handleClose();
     } catch (e) {
@@ -165,7 +149,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } finally {
       setSaving(false);
     }
-  }, [existing, externalId, data, status, rating, progress, notes,
+  }, [existing, externalId, data.type, status, rating, progress, notes,
       startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
