@@ -1,11 +1,11 @@
-import { getLibraryItems } from '../tauri';
+import { getAllLibraryEntries } from '../tauri';
 import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml } from './activity';
 
-type Items = Awaited<ReturnType<typeof getLibraryItems>>;
+type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
   const t = getT();
@@ -22,10 +22,10 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     else if (s === 'planning') planning++;
     else if (s === 'dropped') dropped++;
 
-    byType[item.item_type] = (byType[item.item_type] ?? 0) + 1;
+    byType[item.type] = (byType[item.type] ?? 0) + 1;
 
-    if (item.rating)           { totalRating += item.rating; ratedCount++; }
-    if (item.progress_minutes)   totalMinutes += item.progress_minutes;
+    if (item.rating)         { totalRating += item.rating; ratedCount++; }
+    if (item.minutes_spent)    totalMinutes += item.minutes_spent;
   }
 
   const avgRating  = ratedCount > 0 ? (totalRating / ratedCount).toFixed(1) : '0.0';
@@ -81,7 +81,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
-  const items = await getLibraryItems().catch(() => []);
+  const items = await getAllLibraryEntries().catch(() => []);
 
   if (items.length === 0) {
     el.innerHTML = `
@@ -98,7 +98,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       ${items.map(item => `
         <div class="library-row">
           <span class="library-row-id">${item.external_id}</span>
-          <span class="library-row-type">${typeLabel(item.item_type)}</span>
+          <span class="library-row-type">${typeLabel(item.type)}</span>
           <span class="library-row-status">${statusLabel(item.status ?? 'planning')}</span>
         </div>`).join('')}
     </div>`;

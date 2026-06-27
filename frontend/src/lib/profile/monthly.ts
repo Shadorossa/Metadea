@@ -1,18 +1,19 @@
 import { HOF_GRADIENTS } from './hof';
 import { formatMonthLabel } from './utils';
-import type { getLibraryItems } from '../tauri';
+import type { getAllLibraryEntries } from '../tauri';
 
-type Items = Awaited<ReturnType<typeof getLibraryItems>>;
+type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 export function buildMonthlyHistoryHtml(items: Items): string {
   const sorted = [...items].sort((a, b) => {
-    if (a.created_at && b.created_at) return b.created_at.localeCompare(a.created_at);
-    return (b.id ?? 0) - (a.id ?? 0);
+    const ta = a.added_at ?? '';
+    const tb = b.added_at ?? '';
+    return tb.localeCompare(ta);
   });
 
   const map = new Map<string, typeof sorted>();
   for (const item of sorted) {
-    const d   = item.created_at ? new Date(item.created_at) : null;
+    const d   = item.added_at ? new Date(item.added_at) : null;
     const key = d
       ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       : '__';
@@ -32,7 +33,7 @@ export function buildMonthlyHistoryHtml(items: Items): string {
     const row2 = its.filter((_, i) => i % 2 === 1);
 
     const card = (item: typeof its[0]) => {
-      const bg = HOF_GRADIENTS[item.item_type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
+      const bg = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
       return `<div class="mh-card" style="background:${bg}" title="${item.external_id}">
         <span class="mh-card-label">${item.external_id}</span>
       </div>`;

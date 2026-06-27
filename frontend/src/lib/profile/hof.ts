@@ -1,8 +1,8 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
-import type { getLibraryItems } from '../tauri';
+import type { getAllLibraryEntries } from '../tauri';
 
-type Items = Awaited<ReturnType<typeof getLibraryItems>>;
+type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P     = ReturnType<typeof getT>['profile'];
 
 export const HOF_GRADIENTS: Record<string, string> = {
@@ -34,8 +34,8 @@ export function buildHofHtml(items: Items, p: P): string {
 
   const workCards = top10.map((item, i) => {
     if (!item) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;
-    const bg    = HOF_GRADIENTS[item.item_type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
-    const label = typeLabel(item.item_type);
+    const bg    = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
+    const label = typeLabel(item.type);
     return `<div class="hof-card" style="background:${bg}">
       <div class="hof-card-overlay"></div>
       <span class="hof-card-rank">#${i + 1}</span>

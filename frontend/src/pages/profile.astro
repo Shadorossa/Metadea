@@ -35,7 +35,7 @@ const lang = getLang(Astro.url);
 </BaseLayout>
 
 <script>
-  import { getAuthToken, getLibraryItems } from '../lib/tauri';
+  import { getAuthToken, getAllLibraryEntries } from '../lib/tauri';
   import { decodeJwtPayload } from '../lib/profile/utils';
   import { renderOverview, renderLibrary, renderStats } from '../lib/profile/render';
   import { getImage } from '../lib/storage/images';
@@ -50,7 +50,7 @@ const lang = getLang(Astro.url);
     return TABS.includes(h) ? h : 'overview';
   }
 
-  let cachedItems: Awaited<ReturnType<typeof getLibraryItems>> = [];
+  let cachedItems: Awaited<ReturnType<typeof getAllLibraryEntries>> = [];
   let activeTab: Tab = getTabFromHash();
 
   async function switchTab(tab: Tab) {
@@ -128,7 +128,7 @@ const lang = getLang(Astro.url);
       btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));
     });
 
-    cachedItems = await getLibraryItems().catch(() => []);
+    cachedItems = await getAllLibraryEntries().catch(() => []);
     await switchTab(activeTab);
   }
 
