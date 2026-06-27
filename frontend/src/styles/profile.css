@@ -233,34 +233,58 @@
 .type-chip-count { font-weight: 700; color: var(--text-main); }
 .type-chip-label { color: var(--text-muted); }
 
-/* ── Library grid ─────────────────────────────────────────────────────────── */
-.library-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.85rem;
+/* ── Library list ─────────────────────────────────────────────────────────── */
+.library-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .library-card {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
   text-decoration: none;
   color: inherit;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+  min-height: 72px;
+}
+
+.library-card:hover {
+  border-color: color-mix(in srgb, var(--border-color) 50%, var(--accent));
+  transform: translateX(2px);
+}
+
+/* Fondo borroso con la portada */
+.library-card-bg {
+  position: absolute;
+  inset: 0;
+  background-image: var(--card-bg);
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px) saturate(0.6);
+  opacity: 0.12;
+  transform: scale(1.1);
+  pointer-events: none;
 }
 
 .library-card-cover {
-  position: relative;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm);
+  width: 46px;
+  min-width: 46px;
+  height: 66px;
+  border-radius: 4px;
   overflow: hidden;
-  background: var(--bg-elevated);
+  background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.library-card:hover .library-card-cover {
-  transform: translateY(-3px);
-  border-color: var(--accent);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .library-card-cover img {
@@ -279,44 +303,49 @@
 }
 
 .library-card-no-cover span {
-  font-size: 1.4rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text-dim);
 }
 
-.library-card-status {
-  position: absolute;
-  bottom: 0.35rem;
-  left: 0.35rem;
-  font-size: 0.6rem;
-  padding: 0.15rem 0.4rem;
-  border-radius: 99px;
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  backdrop-filter: blur(4px);
-  white-space: nowrap;
-}
-
-.library-card-rating {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  font-size: 0.6rem;
-  padding: 0.15rem 0.35rem;
-  border-radius: 99px;
-  background: rgba(0,0,0,0.7);
-  color: #fbbf24;
-  backdrop-filter: blur(4px);
+.library-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .library-card-title {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
+}
+
+.library-card-date {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.library-card-date svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.library-card-type-icon {
+  color: var(--text-dim);
+  opacity: 0.4;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Empty / placeholder ──────────────────────────────────────────────────── */

@@ -80,6 +80,24 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
   initHofListeners(el);
 }
 
+const TYPE_ICON: Record<string, string> = {
+  game:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/></svg>`,
+  anime:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  manga:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  novel:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  book:   `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+  movie:  `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/></svg>`,
+  series: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2l-5 5-5-5"/></svg>`,
+};
+
+const CALENDAR_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
   const [items, catalogEntries] = await Promise.all([
@@ -102,24 +120,30 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   );
 
   el.innerHTML = `
-    <div class="library-grid">
+    <div class="library-list">
       ${items.map(item => {
         const meta   = catalogMap.get(item.external_id);
         const title  = meta?.title_main ?? item.external_id;
         const cover  = meta?.cover_url ?? '';
-        const status = statusLabel(item.status ?? 'planning');
+        const date   = fmtDate(item.added_at);
+        const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
         const url    = `/media?id=${encodeURIComponent(item.external_id)}`;
+        const bgStyle = cover ? `style="--card-bg: url('${cover}')"` : '';
+
         return `
-          <a class="library-card" href="${url}" title="${title}">
+          <a class="library-card" href="${url}" ${bgStyle}>
+            ${cover ? `<div class="library-card-bg"></div>` : ''}
             <div class="library-card-cover">
               ${cover
                 ? `<img src="${cover}" alt="${title}" loading="lazy" />`
                 : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
               }
-              <span class="library-card-status">${status}</span>
-              ${item.rating ? `<span class="library-card-rating">★ ${item.rating}</span>` : ''}
             </div>
-            <p class="library-card-title">${title}</p>
+            <div class="library-card-info">
+              <span class="library-card-title">${title}</span>
+              ${date ? `<span class="library-card-date">${CALENDAR_ICON}${date}</span>` : ''}
+            </div>
+            <div class="library-card-type-icon">${typeIc}</div>
           </a>`;
       }).join('')}
     </div>`;
