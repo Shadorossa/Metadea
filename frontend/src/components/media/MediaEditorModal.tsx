@@ -362,6 +362,37 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         ) : (
           <div className="me-body">
             <div className="me-content-wrapper">
+              {/* LEFT: Notes box (separate) */}
+              <div className="me-notes-box-side">
+                <span className="me-label">{te.notes}</span>
+                <textarea className="me-textarea" rows={12}
+                  placeholder={te.notes_ph}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)} />
+
+                <div className="me-month-selector-section">
+                  <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
+                  <div className="me-month-grid">
+                    {months.map((mName, idx) => {
+                      const mNumber = idx + 1;
+                      const year = new Date().getFullYear();
+                      const key = `${year}-${String(mNumber).padStart(2, '0')}`;
+                      const isActive = selectedMonthKey === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`me-month-btn${isActive ? ' active' : ''}`}
+                          onClick={() => handleMonthClick(mNumber)}
+                        >
+                          {mName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
               {/* MAIN CONTENT */}
               <div className="me-main-box">
                 <div className="me-grid">
@@ -430,37 +461,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* LEFT: Notes box (separate) */}
-              <div className="me-notes-box-side">
-                <span className="me-label">{te.notes}</span>
-                <textarea className="me-textarea" rows={12}
-                  placeholder={te.notes_ph}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)} />
-
-                <div className="me-month-selector-section">
-                  <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
-                  <div className="me-month-grid">
-                    {months.map((mName, idx) => {
-                      const mNumber = idx + 1;
-                      const year = new Date().getFullYear();
-                      const key = `${year}-${String(mNumber).padStart(2, '0')}`;
-                      const isActive = selectedMonthKey === key;
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`me-month-btn${isActive ? ' active' : ''}`}
-                          onClick={() => handleMonthClick(mNumber)}
-                        >
-                          {mName}
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               </div>
