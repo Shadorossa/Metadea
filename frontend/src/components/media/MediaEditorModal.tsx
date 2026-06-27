@@ -359,7 +359,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                                 current.setDate(current.getDate() + 1);
                               }
                             }
-                            return days.length > 0 ? days : <div className="me-cal-empty">Sin fechas</div>;
+                            return days.length > 0 ? days : <div className="me-cal-empty">{te.no_dates}</div>;
                           })()}
                         </div>
                       </div>

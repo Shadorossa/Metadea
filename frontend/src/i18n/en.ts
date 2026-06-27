@@ -132,6 +132,7 @@ export const en = {
       save:      'Save',
       saving:    'Saving…',
       delete:    'Remove',
+      no_dates:  'No dates',
     },
     progress_hours:    'Hours',
     progress_episodes: 'Episodes',

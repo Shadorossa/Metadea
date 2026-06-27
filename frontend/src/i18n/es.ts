@@ -132,6 +132,7 @@ export const es = {
       save:      'Guardar',
       saving:    'Guardando…',
       delete:    'Eliminar',
+      no_dates:  'Sin fechas',
     },
     progress_hours:    'Horas',
     progress_episodes: 'Episodios',
