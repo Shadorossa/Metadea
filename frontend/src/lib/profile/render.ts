@@ -1,4 +1,5 @@
-import { getAllLibraryEntries } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
+import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners } from './hof';
@@ -81,7 +82,10 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
-  const items = await getAllLibraryEntries().catch(() => []);
+  const [items, catalogEntries] = await Promise.all([
+    getAllLibraryEntries().catch(() => []),
+    getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+  ]);
 
   if (items.length === 0) {
     el.innerHTML = `
@@ -93,14 +97,31 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     return;
   }
 
+  const catalogMap = new Map<string, MediaCatalogEntry>(
+    catalogEntries.map(e => [e.external_id, e])
+  );
+
   el.innerHTML = `
-    <div class="library-list">
-      ${items.map(item => `
-        <div class="library-row">
-          <span class="library-row-id">${item.external_id}</span>
-          <span class="library-row-type">${typeLabel(item.type)}</span>
-          <span class="library-row-status">${statusLabel(item.status ?? 'planning')}</span>
-        </div>`).join('')}
+    <div class="library-grid">
+      ${items.map(item => {
+        const meta   = catalogMap.get(item.external_id);
+        const title  = meta?.title_main ?? item.external_id;
+        const cover  = meta?.cover_url ?? '';
+        const status = statusLabel(item.status ?? 'planning');
+        const url    = `/media?id=${encodeURIComponent(item.external_id)}`;
+        return `
+          <a class="library-card" href="${url}" title="${title}">
+            <div class="library-card-cover">
+              ${cover
+                ? `<img src="${cover}" alt="${title}" loading="lazy" />`
+                : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+              }
+              <span class="library-card-status">${status}</span>
+              ${item.rating ? `<span class="library-card-rating">★ ${item.rating}</span>` : ''}
+            </div>
+            <p class="library-card-title">${title}</p>
+          </a>`;
+      }).join('')}
     </div>`;
 }
 
