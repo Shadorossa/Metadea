@@ -113,8 +113,13 @@ const GENRE_DEFS: GenreDef[] = [
   { name: 'Non-fiction', aliases: ['Non-fiction'], isTag: true },
   { name: 'Erotic', aliases: ['Erotic'], isTag: true },
 
-  // ── Additional tags (TMDB, Open Library, etc) ──────────────────────────────
-  { name: 'Action & Adventure', aliases: ['Action & Adventure'] },
+  // ── Additional genres (TMDB, Open Library, etc) ────────────────────────────
+  { name: 'Space Opera', aliases: ['Space opera'] },
+  { name: 'Literary Fiction', aliases: ['Literary', 'Literary fiction'] },
+  { name: 'Magical Realism', aliases: ['Magical realism', 'Magical Realism'] },
+
+  // ── Additional tags ────────────────────────────────────────────────────────
+  { name: 'Action & Adventure', aliases: ['Action & Adventure'], isTag: true },
   { name: 'Young Adult', aliases: ['Young Adult', 'YA fiction', 'Young adult fiction'], isTag: true },
   { name: 'Urban', aliases: ['Urban', 'Urban fiction'], isTag: true },
   { name: 'Paranormal', aliases: ['Paranormal', 'Paranormal romance'], isTag: true },
@@ -122,11 +127,8 @@ const GENRE_DEFS: GenreDef[] = [
   { name: 'Noir', aliases: ['Noir'], isTag: true },
   { name: 'Dystopian', aliases: ['Dystopian', 'Dystopia'], isTag: true },
   { name: 'Post-Apocalyptic', aliases: ['Post-apocalyptic', 'Post Apocalyptic'], isTag: true },
-  { name: 'Space Opera', aliases: ['Space opera'], isTag: true },
   { name: 'Heist', aliases: ['Heist'], isTag: true },
   { name: 'Spy Thriller', aliases: ['Spy', 'Spies', 'Spy thriller'], isTag: true },
-  { name: 'Literary Fiction', aliases: ['Literary', 'Literary fiction'] },
-  { name: 'Magical Realism', aliases: ['Magical realism', 'Magical Realism'] },
   { name: 'Mythology', aliases: ['Mythology', 'Mythological'], isTag: true },
   { name: 'Folk Tale', aliases: ['Folk tale', 'Folklore'], isTag: true },
 ];
