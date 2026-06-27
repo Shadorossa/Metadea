@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalGame {
@@ -439,14 +440,49 @@ fn scan_ea_games() -> Vec<LocalGame> {
     games
 }
 
+fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
+    let path = std::path::Path::new(folder);
+    if !path.is_dir() { return vec![]; }
+    std::fs::read_dir(path)
+        .map(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().is_dir())
+                .map(|e| LocalGame {
+                    name:             e.file_name().to_string_lossy().to_string(),
+                    launcher:         "local".to_string(),
+                    app_id:           None,
+                    install_path:     Some(e.path().to_string_lossy().to_string()),
+                    playtime_minutes: None,
+                    last_played:      None,
+                    installed:        Some(true),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 #[tauri::command]
-pub async fn scan_all_games() -> Result<Vec<LocalGame>, String> {
+pub async fn scan_all_games(app_handle: tauri::AppHandle) -> Result<Vec<LocalGame>, String> {
     let mut all: Vec<LocalGame> = Vec::new();
     all.extend(scan_steam_games());
     all.extend(scan_epic_games());
     all.extend(scan_gog_games());
     all.extend(scan_xbox_games());
     all.extend(scan_ea_games());
+
+    // Read custom local games folder from routes.json
+    if let Ok(data_dir) = app_handle.path().app_data_dir() {
+        let routes_path = data_dir.join("routes.json");
+        if let Ok(json) = std::fs::read_to_string(&routes_path) {
+            if let Ok(routes) = serde_json::from_str::<serde_json::Value>(&json) {
+                if let Some(folder) = routes["videojuegos"].as_str() {
+                    all.extend(scan_local_folder(folder));
+                }
+            }
+        }
+    }
+
     Ok(all)
 }
 

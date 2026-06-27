@@ -12,7 +12,7 @@ import { scanGamesWithSteam } from '../../lib/local/steam-merge';
 
 // ── Platform config ───────────────────────────────────────────────────────────
 
-type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation';
+type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation' | 'local';
 type CategoryId = 'videojuegos' | 'visual-novel' | 'anime' | 'manga' | 'light-novel' | 'books' | 'series' | 'movies';
 
 const PLATFORM_LABEL: Record<PlatformId, string> = {
@@ -23,6 +23,7 @@ const PLATFORM_LABEL: Record<PlatformId, string> = {
   ea:          'EA',
   nintendo:    'Nintendo',
   playstation: 'PlayStation',
+  local:       'Juegos locales',
 };
 
 const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
@@ -36,7 +37,7 @@ const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
   { id: 'movies', label: 'Películas' },
 ];
 
-const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation'];
+const LAUNCHER_ORDER: PlatformId[] = ['steam', 'epic', 'gog', 'xbox', 'ea', 'nintendo', 'playstation', 'local'];
 
 const STEAM_COVER = (appId: string) =>
   `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
@@ -51,6 +52,7 @@ const PLATFORM_LOGO: Record<PlatformId, string> = {
   ea:          '/platforms/EA_logo.png',
   nintendo:    '/platforms/nintendo_logo.png',
   playstation: '/platforms/playstation_logo.png',
+  local:       '',
 };
 
 // ── Utility icons ─────────────────────────────────────────────────────────────
@@ -923,9 +925,22 @@ export default function LocalLibrary() {
               <span className="local-content-count">
                 {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
               </span>
-              <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
-                <IconRefresh />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {routes['videojuegos'] && (
+                  <>
+                    <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{routes['videojuegos']}</span>
+                    <button type="button" className="local-refresh-btn" onClick={() => handleClearRoute('videojuegos')} title="Quitar carpeta local" style={{ color: 'var(--color-error, #ff6b6b)' }}>
+                      <IconX />
+                    </button>
+                  </>
+                )}
+                <button type="button" className="local-refresh-btn" onClick={() => handleSetRoute('videojuegos')} title={routes['videojuegos'] ? 'Cambiar carpeta de juegos locales' : 'Añadir carpeta de juegos locales'}>
+                  <IconFolder />
+                </button>
+                <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
+                  <IconRefresh />
+                </button>
+              </div>
             </div>
 
             {gamesState === 'idle' || gamesState === 'loading' ? (
@@ -967,7 +982,9 @@ export default function LocalLibrary() {
                   <h2 className="local-launcher-title">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                       <span className="local-launcher-icon">
-                        <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
+                        {PLATFORM_LOGO[launcher]
+                          ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
+                          : <IconFolder />}
                       </span>
                       {PLATFORM_LABEL[launcher]}
                       <span className="local-launcher-count">{list.length} juego{list.length !== 1 ? 's' : ''}</span>

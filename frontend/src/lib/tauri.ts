@@ -128,7 +128,7 @@ export async function getLibraryStats(): Promise<{ total: number; by_type: Recor
 
 export interface LocalGame {
   name:             string;
-  launcher:         'steam' | 'epic' | 'xbox' | 'gog' | 'ea';
+  launcher:         'steam' | 'epic' | 'xbox' | 'gog' | 'ea' | 'local';
   app_id?:          string;
   install_path?:    string;
   playtime_minutes?: number;
