@@ -41,6 +41,8 @@ commands.allow = [
   "get_library_entry",
   "delete_library_entry",
   "get_all_library_entries",
+  "read_monthly_history",
+  "write_monthly_history",
   "save_catalog_entry",
   "get_catalog_entry",
   "delete_catalog_entry",
