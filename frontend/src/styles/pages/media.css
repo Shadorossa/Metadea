@@ -1562,3 +1562,46 @@
   color: var(--accent);
 }
 
+.me-month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.me-year-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.me-year-arrow {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  transition: all var(--anim-fast);
+  padding: 0;
+  line-height: 1;
+}
+
+.me-year-arrow:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.me-year-val {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 32px;
+  text-align: center;
+}
+

@@ -92,6 +92,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
   const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -128,13 +129,18 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           }
         }
         setSelectedMonthKey(foundKey);
+        if (foundKey) {
+          const parts = foundKey.split('-');
+          if (parts.length === 2) {
+            setSelectedYear(Number(parts[0]));
+          }
+        }
       })
       .catch(() => {});
   }, [externalId, data.type]);
 
   const handleMonthClick = useCallback((monthIndex: number) => {
-    const year = new Date().getFullYear();
-    const targetKey = `${year}-${String(monthIndex).padStart(2, '0')}`;
+    const targetKey = `${selectedYear}-${String(monthIndex).padStart(2, '0')}`;
 
     setSelectedMonthKey(prev => {
       const newKey = prev === targetKey ? null : targetKey;
@@ -164,7 +170,15 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
       return newKey;
     });
-  }, [externalId]);
+  }, [externalId, selectedYear]);
+
+  const handlePrevYear = useCallback(() => {
+    setSelectedYear(y => y - 1);
+  }, []);
+
+  const handleNextYear = useCallback(() => {
+    setSelectedYear(y => y + 1);
+  }, []);
 
   const handleClose = useCallback(() => {
     setIsClosing(true);
@@ -404,12 +418,18 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   onChange={e => setNotes(e.target.value)} />
 
                 <div className="me-month-selector-section">
-                  <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
+                  <div className="me-month-header">
+                    <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
+                    <div className="me-year-selector">
+                      <button type="button" className="me-year-arrow" onClick={handlePrevYear}>&lt;</button>
+                      <span className="me-year-val">{selectedYear}</span>
+                      <button type="button" className="me-year-arrow" onClick={handleNextYear}>&gt;</button>
+                    </div>
+                  </div>
                   <div className="me-month-grid">
                     {months.map((mName, idx) => {
                       const mNumber = idx + 1;
-                      const year = new Date().getFullYear();
-                      const key = `${year}-${String(mNumber).padStart(2, '0')}`;
+                      const key = `${selectedYear}-${String(mNumber).padStart(2, '0')}`;
                       const isActive = selectedMonthKey === key;
                       return (
                         <button
