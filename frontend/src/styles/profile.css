@@ -356,6 +356,7 @@
   justify-content: flex-start;
   gap: 0.3rem;
   padding-bottom: 0.2rem;
+  margin-top: auto;
 }
 
 .library-card-date {
