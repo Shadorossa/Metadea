@@ -269,7 +269,7 @@
   background-image: var(--cover);
   background-size: cover;
   background-position: center;
-  filter: blur(8px) saturate(0.8);
+  filter: blur(2px) saturate(0.8);
   opacity: 0.55;
   pointer-events: none;
 }
