@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/profile.css';
 import { getLang } from '../i18n/index';
+import { ProfileLibraryEditor } from '../components/profile/ProfileLibraryEditor';
 
 const lang = getLang(Astro.url);
 ---
@@ -30,6 +31,8 @@ const lang = getLang(Astro.url);
     </nav>
 
     <div id="profile-tab-content" class="profile-tab-content"></div>
+
+    <ProfileLibraryEditor lang={lang} client:load />
 
   </main>
 </BaseLayout>
@@ -131,11 +134,27 @@ const lang = getLang(Astro.url);
     cachedItems = await getAllLibraryEntries().catch(() => []);
     await switchTab(activeTab);
 
-    // Delegate clicks: card body → editor page, cover <a> handles its own navigation
+    // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
     document.getElementById('profile-tab-content')?.addEventListener('click', (e) => {
-      const card = (e.target as HTMLElement).closest<HTMLElement>('.library-card[data-href]');
+      if ((e.target as HTMLElement).closest('.library-card-thumb')) return;
+
+      const card = (e.target as HTMLElement).closest<HTMLElement>('.library-card[data-id]');
       if (!card) return;
-      window.location.href = card.dataset.href!;
+
+      const extId = card.dataset.id;
+      if (extId) {
+        window.dispatchEvent(new CustomEvent('open-profile-editor', {
+          detail: { externalId: extId }
+        }));
+      }
+    });
+
+    window.addEventListener('refresh-profile-library', async () => {
+      cachedItems = await getAllLibraryEntries().catch(() => []);
+      const content = document.getElementById('profile-tab-content');
+      if (content && activeTab === 'library') {
+        await renderLibrary(content);
+      }
     });
   }
 

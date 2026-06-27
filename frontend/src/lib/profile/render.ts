@@ -166,11 +166,10 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         const cover    = meta?.cover_url ?? '';
         const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
         const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-        const editUrl  = `/media?id=${encodeURIComponent(item.external_id)}&edit=1`;
         const style    = cover ? `style="--cover: url('${cover}')"` : '';
 
         return `
-          <div class="library-card" data-href="${editUrl}" ${style}>
+          <div class="library-card" data-id="${item.external_id}" ${style}>
             ${cover ? `<div class="library-card-bg"></div>` : ''}
             <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
               ${cover
