@@ -249,7 +249,7 @@
   padding: 0.5rem;
   height: 90px;
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--bg-base) 85%, #000);
