@@ -269,8 +269,8 @@
   background-image: var(--cover);
   background-size: cover;
   background-position: center;
-  filter: blur(16px) saturate(0.7);
-  opacity: 0.45;
+  filter: blur(8px) saturate(0.8);
+  opacity: 0.55;
   pointer-events: none;
 }
 
