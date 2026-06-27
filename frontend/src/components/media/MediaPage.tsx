@@ -287,6 +287,7 @@ export default function MediaPage({ lang }: { lang: string }) {
         <MediaEditorModal
           externalId={rawId.current}
           data={data}
+          lang={lang}
           onClose={() => setShowEditor(false)}
           onSaved={handleEditorSaved}
           onDeleted={handleEditorDeleted}
