@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaData, getCachedMediaData } from '../../lib/media/mediaService';
-import { getLibraryItems, saveLibraryItem } from '../../lib/tauri';
+import { getLibraryEntry } from '../../lib/tauri';
+import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
+import { MediaEditorModal } from './MediaEditorModal';
 
 // ── SVG shared props ───────────────────────────────────────────────────────
 
@@ -208,26 +210,14 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [data,               setData]               = useState<MediaPageData | null>(prefetched);
   const [libStatus,          setLibStatus]          = useState('');
   const [libRating,          setLibRating]          = useState(0);
+  const [showEditor,         setShowEditor]         = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
 
+  // Fetch page data on mount
   useEffect(() => {
-    // Siempre carga el estado de biblioteca (puede haber cambiado)
-    getLibraryItems()
-      .then(items => {
-        const item = items.find(i => i.external_id === rawId.current);
-        if (item) {
-          setLibStatus(item.status ?? '');
-          setLibRating(item.rating ?? 0);
-        }
-      })
-      .catch(() => {});
-
-    // Solo fetcha si no teníamos datos en caché
     if (prefetched) return;
-
     if (!rawId.current) { setPageState('error'); return; }
-
     fetchMediaData(rawId.current)
       .then(result => {
         if (!result) { setPageState('error'); return; }
@@ -237,36 +227,43 @@ export default function MediaPage({ lang }: { lang: string }) {
       .catch(() => setPageState('error'));
   }, []);
 
-  const persist = useCallback(async (status: string, rating: number) => {
-    try {
-      await saveLibraryItem(rawId.current, data?.type ?? '', {
-        status: status  || undefined,
-        rating: rating  || undefined,
-      });
-    } catch (err) {
-      console.error('Error saving library item:', err);
-    }
+  // Load library entry once we know the type
+  useEffect(() => {
+    if (!data?.type) return;
+    getLibraryEntry(rawId.current, data.type)
+      .then(entry => {
+        if (entry) {
+          setLibStatus(entry.status ?? '');
+          setLibRating(entry.rating ?? 0);
+        }
+      })
+      .catch(() => {});
   }, [data?.type]);
 
   const handleCoverClick = useCallback(() => {
-    const next = libStatus ? '' : 'planning';
-    setLibStatus(next);
-    persist(next, libRating);
-  }, [libStatus, libRating, persist]);
+    setShowEditor(true);
+  }, []);
+
+  const handleEditorSaved = useCallback((entry: LibraryEntry) => {
+    setLibStatus(entry.status ?? '');
+    setLibRating(entry.rating ?? 0);
+  }, []);
+
+  const handleEditorDeleted = useCallback(() => {
+    setLibStatus('');
+    setLibRating(0);
+  }, []);
 
   const handleStatusChange = useCallback((next: string) => {
     setLibStatus(next);
-    persist(next, libRating);
-  }, [libRating, persist]);
+    setShowEditor(true);
+  }, []);
 
   const handleRate = useCallback((stars: number) => {
-    const dbRating  = stars * 2;
-    const nextRating = libRating === dbRating ? 0 : dbRating;
-    const nextStatus = libStatus || 'planning';
-    setLibRating(nextRating);
-    setLibStatus(nextStatus);
-    persist(nextStatus, nextRating);
-  }, [libRating, libStatus, persist]);
+    const dbRating = stars * 2;
+    setLibRating(libRating === dbRating ? 0 : dbRating);
+    setShowEditor(true);
+  }, [libRating]);
 
   // ── States: loading / error ──────────────────────────────────────────────
 
@@ -286,6 +283,16 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   return (
     <>
+      {showEditor && (
+        <MediaEditorModal
+          externalId={rawId.current}
+          data={data}
+          onClose={() => setShowEditor(false)}
+          onSaved={handleEditorSaved}
+          onDeleted={handleEditorDeleted}
+        />
+      )}
+
       {/* Hero */}
       <div className={`media-hero${data.type === 'game' || data.type === 'vnovel' ? ' media-hero--game' : ''}`}>
         <div

@@ -3,6 +3,7 @@ mod folders;
 mod igdb;
 mod platform_scanning;
 mod steam;
+mod user_library;
 mod user_metadata;
 mod utils;
 
@@ -51,6 +52,10 @@ pub fn run() {
             igdb::read_metadata_index,
             igdb::read_game_info,
             igdb::file_to_data_url,
+            user_library::save_library_entry,
+            user_library::get_library_entry,
+            user_library::delete_library_entry,
+            user_library::get_all_library_entries,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
             user_metadata::remove_user_image,

@@ -261,6 +261,49 @@ export async function writeEnvConfig(config: EnvConfig): Promise<void> {
   }
 }
 
+// ─── User Library (JSON files) ───────────────────────────────────────────────
+
+export interface LibraryEntry {
+  id:               string;
+  user_id:          string;
+  external_id:      string;
+  type:             string;
+  status:           string | null;
+  rating:           number | null;
+  progress:         number;
+  minutes_spent:    number;
+  is_favorite:      number;
+  is_platinum:      number;
+  tags:             string[] | null;
+  notes:            string | null;
+  added_at:         string | null;
+  updated_at:       string | null;
+  selected_platform: string | null;
+  selected_version:  string | null;
+  started_at:       string | null;
+  finished_at:      string | null;
+}
+
+export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {
+  if (!isTauri()) throw new Error('Tauri not available');
+  return invoke<LibraryEntry>('save_library_entry', { entry });
+}
+
+export async function getLibraryEntry(externalId: string, entryType: string): Promise<LibraryEntry | null> {
+  if (!isTauri()) return null;
+  return invoke<LibraryEntry | null>('get_library_entry', { externalId, entryType });
+}
+
+export async function deleteLibraryEntry(externalId: string, entryType: string): Promise<void> {
+  if (!isTauri()) return;
+  return invoke<void>('delete_library_entry', { externalId, entryType });
+}
+
+export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
+  if (!isTauri()) return [];
+  return invoke<LibraryEntry[]>('get_all_library_entries');
+}
+
 // ─── IGDB ─────────────────────────────────────────────────────────────────────
 
 export interface IgdbNamed    { id: number; name: string }
