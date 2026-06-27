@@ -101,8 +101,7 @@ const { activePage, i18n } = Astro.props;
     });
   }
 
-  // Run on initial load and after every View Transitions navigation
-  initNavbar();
+  // astro:page-load fires on initial load AND after every View Transitions navigation
   document.addEventListener('astro:page-load', initNavbar);
 </script>
 
