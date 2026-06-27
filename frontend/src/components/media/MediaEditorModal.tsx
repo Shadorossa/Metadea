@@ -312,7 +312,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
               </div>
 
-              {/* RIGHT: Calendar + Dates + Notes */}
+              {/* RIGHT: Calendar + Dates */}
               <div className="me-col">
                 {/* Calendar with active dates range */}
                 {(startedAt || finishedAt) && (
@@ -361,29 +361,29 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       onChange={e => setFinishedAt(e.target.value)} />
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Notes */}
-                <div className="me-section me-section--grow">
-                  <span className="me-label">{te.notes}</span>
-                  <textarea className="me-textarea" rows={5}
-                    placeholder={te.notes_ph}
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)} />
-                </div>
-
-                {/* Bottom actions */}
-                <div className="me-actions-bottom">
-                  {existing && (
-                    <button type="button" className="me-btn me-btn--delete"
-                      onClick={handleDelete} disabled={saving}>{te.delete}</button>
-                  )}
-                  <button type="button" className="me-btn me-btn--save"
-                    onClick={handleSave} disabled={saving}>
-                    {saving ? te.saving : te.save}
-                  </button>
-                </div>
+            {/* Bottom row: Notes (left) + Buttons (right) */}
+            <div className="me-bottom-row">
+              {/* Notes textarea — full left side */}
+              <div className="me-notes-box">
+                <span className="me-label">{te.notes}</span>
+                <textarea className="me-textarea" rows={6}
+                  placeholder={te.notes_ph}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)} />
               </div>
 
+              {/* Right buttons: Save (top), Close (bottom) */}
+              <div className="me-button-stack">
+                <button type="button" className="me-btn me-btn--save"
+                  onClick={handleSave} disabled={saving}>
+                  {saving ? te.saving : te.save}
+                </button>
+                <button type="button" className="me-btn me-btn--close"
+                  onClick={onClose}>✕</button>
+              </div>
             </div>
           </div>
         )}
