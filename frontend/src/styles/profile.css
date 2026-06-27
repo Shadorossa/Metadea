@@ -325,11 +325,12 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.2rem;
   padding: 0;
   min-width: 0;
   position: relative;
   z-index: 2;
+  justify-content: space-between;
 }
 
 .library-card-title {
@@ -341,6 +342,7 @@
   text-overflow: ellipsis;
   margin: 0;
   line-height: 1.1;
+  padding-top: 0.15rem;
 }
 
 .library-card-rating {
@@ -353,8 +355,9 @@
 .library-card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.3rem;
+  padding-bottom: 0.2rem;
 }
 
 .library-card-date {
@@ -371,13 +374,14 @@
   opacity: 0.8;
 }
 
-/* Icono de tipo a la derecha, alineado con fechas */
+/* Icono de tipo posicionado abajo-izquierda */
 .library-card-type {
-  flex-shrink: 0;
+  position: absolute;
+  bottom: 0.4rem;
+  left: 0.55rem;
   color: var(--text-dim);
   opacity: 0.5;
-  position: relative;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
 }
