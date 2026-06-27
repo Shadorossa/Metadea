@@ -159,35 +159,117 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   );
 
   el.innerHTML = `
-    <div class="library-grid">
-      ${items.map(item => {
-        const meta     = catalogMap.get(item.external_id);
-        const title    = meta?.title_main ?? item.external_id;
-        const cover    = meta?.cover_url ?? '';
-        const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-        const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-        const style    = cover ? `style="--cover: url('${cover}')"` : '';
+    <div class="library-layout">
+      <aside class="library-filters">
+        <p class="library-filters-title">Filtros</p>
 
-        return `
-          <div class="library-card" data-id="${item.external_id}" ${style}>
-            ${cover ? `<div class="library-card-bg"></div>` : ''}
-            <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
-              ${cover
-                ? `<img src="${cover}" alt="${title}" loading="lazy" />`
-                : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
-              }
-            </a>
-            <div class="library-card-info">
-              <span class="library-card-title">${title}</span>
-              ${buildRatingHtml(item.rating)}
-              <div class="library-card-footer">
-                ${buildDateHtml(item.started_at, item.finished_at)}
-                <span class="library-card-type">${typeIc}</span>
-              </div>
+        <div class="library-filter-group">
+          <label class="library-filter-label" for="filter-name">Nombre</label>
+          <input type="text" id="filter-name" class="library-filter-input" placeholder="Buscar por título..." />
+        </div>
+
+        <div class="library-filter-group">
+          <label class="library-filter-label" for="filter-type">Tipo de Medio</label>
+          <select id="filter-type" class="library-filter-select">
+            <option value="">Todos</option>
+            <option value="anime">Anime</option>
+            <option value="manga">Manga</option>
+            <option value="novel">Novela Ligera</option>
+            <option value="game">Videojuego</option>
+            <option value="vnovel">Novela Visual</option>
+            <option value="series">Serie</option>
+            <option value="movie">Película</option>
+            <option value="book">Libro</option>
+          </select>
+        </div>
+
+        <div class="library-filter-group">
+          <label class="library-filter-label" for="filter-status">Estado</label>
+          <select id="filter-status" class="library-filter-select">
+            <option value="">Todos</option>
+            <option value="planning">${p.status_planning}</option>
+            <option value="in_progress">En progreso</option>
+            <option value="completed">${p.status_completed}</option>
+            <option value="paused">${p.status_paused}</option>
+            <option value="dropped">${p.status_dropped}</option>
+          </select>
+        </div>
+      </aside>
+
+      <div class="library-content">
+        <div class="library-grid"></div>
+      </div>
+    </div>
+  `;
+
+  const filterName   = el.querySelector('#filter-name') as HTMLInputElement | null;
+  const filterType   = el.querySelector('#filter-type') as HTMLSelectElement | null;
+  const filterStatus = el.querySelector('#filter-status') as HTMLSelectElement | null;
+  const gridEl       = el.querySelector('.library-grid') as HTMLElement | null;
+
+  const applyFilters = () => {
+    if (!gridEl) return;
+    const nameVal   = filterName?.value.toLowerCase().trim() || '';
+    const typeVal   = filterType?.value || '';
+    const statusVal = filterStatus?.value || '';
+
+    const filtered = items.filter(item => {
+      const meta = catalogMap.get(item.external_id);
+      const title = (meta?.title_main ?? item.external_id).toLowerCase();
+
+      if (nameVal && !title.includes(nameVal)) return false;
+      if (typeVal && item.type !== typeVal) return false;
+      if (statusVal) {
+        if (statusVal === 'in_progress') {
+          if (item.status !== 'watching' && item.status !== 'reading' && item.status !== 'playing') {
+            return false;
+          }
+        } else {
+          if (item.status !== statusVal) return false;
+        }
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      gridEl.innerHTML = `<div class="library-empty-filtered">Sin resultados para los filtros aplicados</div>`;
+      return;
+    }
+
+    gridEl.innerHTML = filtered.map(item => {
+      const meta     = catalogMap.get(item.external_id);
+      const title    = meta?.title_main ?? item.external_id;
+      const cover    = meta?.cover_url ?? '';
+      const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+      const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+      const style    = cover ? `style="--cover: url('${cover}')"` : '';
+
+      return `
+        <div class="library-card" data-id="${item.external_id}" ${style}>
+          ${cover ? `<div class="library-card-bg"></div>` : ''}
+          <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
+            ${cover
+              ? `<img src="${cover}" alt="${title}" loading="lazy" />`
+              : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+            }
+          </a>
+          <div class="library-card-info">
+            <span class="library-card-title">${title}</span>
+            ${buildRatingHtml(item.rating)}
+            <div class="library-card-footer">
+              ${buildDateHtml(item.started_at, item.finished_at)}
+              <span class="library-card-type">${typeIc}</span>
             </div>
-          </div>`;
-      }).join('')}
-    </div>`;
+          </div>
+        </div>`;
+    }).join('');
+  };
+
+  filterName?.addEventListener('input', applyFilters);
+  filterType?.addEventListener('change', applyFilters);
+  filterStatus?.addEventListener('change', applyFilters);
+
+  applyFilters();
 }
 
 export function renderStats(el: HTMLElement): void {
