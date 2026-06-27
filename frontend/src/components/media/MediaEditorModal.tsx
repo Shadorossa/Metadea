@@ -75,6 +75,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
+  const [isClosing,   setIsClosing]   = useState(false);
   const [existing,    setExisting]    = useState<LibraryEntry | null>(null);
   const [status,      setStatus]      = useState('planning');
   const [rating,      setRating]      = useState(0);
@@ -110,6 +111,11 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       .catch(() => setLoading(false));
   }, [externalId, data.type]);
 
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 180);
+  }, [onClose]);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
@@ -136,14 +142,14 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         finished_at:      finishedAt || null,
       });
       onSaved(entry);
-      onClose();
+      handleClose();
     } catch (e) {
       console.error('save_library_entry error', e);
     } finally {
       setSaving(false);
     }
   }, [existing, externalId, data.type, status, rating, progress, notes,
-      startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, onSaved, onClose]);
+      startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     if (!existing) { onClose(); return; }
@@ -181,7 +187,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const progLabel     = progressLabel(data.type, t.media);
 
   const modal = (
-    <div className="me-overlay" onClick={onClose}>
+    <div className={`me-overlay${isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
       <div className="me-modal" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -386,7 +392,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   {saving ? te.saving : te.save}
                 </button>
                 <button type="button" className="me-btn me-btn--close"
-                  onClick={onClose}>✕</button>
+                  onClick={handleClose}>✕</button>
               </div>
             </div>
           </div>

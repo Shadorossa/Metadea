@@ -5,6 +5,7 @@ import '../styles/navbar.css';
 import Navbar from '../components/Navbar.astro';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
+import { ViewTransitions } from 'astro:transitions';
 
 import nebulaUrl from '../styles/themes/nebula.css?url';
 import auroraUrl from '../styles/themes/aurora.css?url';
@@ -42,31 +43,31 @@ const t = useTranslations(lang);
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
-    <link id="theme-stylesheet" rel="stylesheet" href="" />
+    <ViewTransitions />
+    <link id="theme-stylesheet" rel="stylesheet" href="" transition:persist />
     <!-- Apply theme before CSS loads to prevent flash -->
     <script is:inline define:vars={{ themeUrls }}>
-      (function() {
+      function applyTheme() {
         var t = localStorage.getItem('app_theme') || 'nebula';
         document.documentElement.setAttribute('data-theme', t);
-        var url = themeUrls[t] || themeUrls['nebula'];
         var link = document.getElementById('theme-stylesheet');
-        if (link) {
-          link.setAttribute('href', url);
-        }
-        window.__updateTheme = function(newTheme) {
-          document.documentElement.setAttribute('data-theme', newTheme);
-          var l = document.getElementById('theme-stylesheet');
-          if (l) {
-            l.setAttribute('href', themeUrls[newTheme] || themeUrls['nebula']);
-          }
-        };
-      })();
+        if (link) link.setAttribute('href', themeUrls[t] || themeUrls['nebula']);
+      }
+      applyTheme();
+      // Re-apply theme after each View Transitions navigation
+      document.addEventListener('astro:after-swap', applyTheme);
+      window.__updateTheme = function(newTheme) {
+        localStorage.setItem('app_theme', newTheme);
+        applyTheme();
+      };
     </script>
   </head>
   <body data-page={activePage}>
-    <div id="app-bg" aria-hidden="true"></div>
+    <div id="app-bg" aria-hidden="true" transition:persist></div>
     <Navbar activePage={activePage} i18n={t.nav} />
-    <slot />
+    <div id="page-content" transition:name="page-content">
+      <slot />
+    </div>
 
     <!-- Auth modal -->
     <dialog id="auth-modal" class="auth-modal">
@@ -99,28 +100,33 @@ const t = useTranslations(lang);
     </dialog>
 
     <script>
-      // Modal de auth
-      const modal    = document.getElementById('auth-modal') as HTMLDialogElement;
-      const closeBtn = document.getElementById('close-auth-modal');
-      const modalForm = document.getElementById('modal-login-form');
-      const modalInput = document.getElementById('modal-username-input') as HTMLInputElement;
+      // Auth modal — runs on first load and after each View Transitions swap
+      function initAuthModal() {
+        const modal     = document.getElementById('auth-modal') as HTMLDialogElement | null;
+        const closeBtn  = document.getElementById('close-auth-modal');
+        const modalForm = document.getElementById('modal-login-form');
+        const modalInput = document.getElementById('modal-username-input') as HTMLInputElement | null;
 
-      closeBtn?.addEventListener('click', () => modal?.close());
-      modal?.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+        closeBtn?.addEventListener('click', () => modal?.close());
+        modal?.addEventListener('click', (e) => { if (e.target === modal) modal?.close(); });
 
-      modalForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = modalInput.value.trim();
-        if (username) {
-          try {
-            const { storeAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
-            await storeAuthToken('offline_token', username);
-            window.location.reload();
-          } catch {
-            console.error('Error storing token');
+        modalForm?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const username = modalInput?.value.trim();
+          if (username) {
+            try {
+              const { storeAuthToken } = await import(/* @vite-ignore */ '../lib/tauri');
+              await storeAuthToken('offline_token', username);
+              window.location.reload();
+            } catch {
+              console.error('Error storing token');
+            }
           }
-        }
-      });
+        });
+      }
+
+      initAuthModal();
+      document.addEventListener('astro:page-load', initAuthModal);
     </script>
   </body>
 </html>

@@ -979,6 +979,21 @@
 
 /* ── Media Editor Modal ──────────────────────────────────────────────────── */
 
+@keyframes me-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes me-modal-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes me-overlay-out {
+  to { opacity: 0; }
+}
+@keyframes me-modal-out {
+  to { opacity: 0; transform: translateY(14px) scale(0.97); }
+}
+
 .me-overlay {
   position: fixed;
   inset: 0;
@@ -989,6 +1004,14 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  animation: me-overlay-in 200ms var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
+}
+.me-overlay--out {
+  animation: me-overlay-out 180ms ease both;
+  pointer-events: none;
+}
+.me-overlay--out .me-modal {
+  animation: me-modal-out 160ms ease both;
 }
 
 .me-modal {
@@ -1002,6 +1025,7 @@
   flex-direction: column;
   overflow: visible;
   box-shadow: none;
+  animation: me-modal-in 260ms var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
 }
 
 .me-header {
