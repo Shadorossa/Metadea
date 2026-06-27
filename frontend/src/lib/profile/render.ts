@@ -167,7 +167,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     { key: 'dropped', label: p.status_dropped }
   ];
   let currentStatusIndex = 0;
-  let selectedType = '';
+  let selectedTypes: string[] = [];
 
   const TYPE_LABELS: Record<string, string> = {
     anime: "Anime",
@@ -193,9 +193,6 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         <div class="library-filter-group">
           <label class="library-filter-label">Tipo de Medio</label>
           <div class="library-type-filters">
-            <button type="button" class="library-type-btn active" data-value="" title="Todos">
-              <span>ALL</span>
-            </button>
             ${Object.entries(TYPE_ICON).map(([type, svg]) => `
               <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
                 ${svg}
@@ -237,7 +234,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
 
       if (nameVal && !title.includes(nameVal)) return false;
-      if (selectedType && item.type !== selectedType) return false;
+      if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) return false;
       if (statusKey) {
         if (statusKey === 'in_progress') {
           if (item.status !== 'watching' && item.status !== 'reading' && item.status !== 'playing') {
@@ -286,9 +283,14 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
 
   typeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      typeBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      selectedType = (btn as HTMLElement).dataset.value || '';
+      const type = (btn as HTMLElement).dataset.value || '';
+      if (selectedTypes.includes(type)) {
+        selectedTypes = selectedTypes.filter(t => t !== type);
+        btn.classList.remove('active');
+      } else {
+        selectedTypes.push(type);
+        btn.classList.add('active');
+      }
       applyFilters();
     });
   });

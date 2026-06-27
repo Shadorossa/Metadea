@@ -854,7 +854,7 @@
 /* ── Library Layout & Filters ──────────────────────────────────────────────── */
 .library-layout {
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 260px 1fr;
   gap: 1.5rem;
   align-items: start;
   width: 100%;
@@ -883,6 +883,7 @@
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
   margin: 0;
+  text-align: center;
 }
 
 .library-filter-group {
@@ -897,6 +898,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+  text-align: center;
 }
 
 .library-filter-input {
@@ -908,6 +910,7 @@
   border-radius: var(--radius-sm);
   outline: none;
   transition: all var(--anim-fast);
+  text-align: center;
 }
 
 .library-filter-input:focus {
@@ -918,15 +921,15 @@
 /* Icon type filters grid */
 .library-type-filters {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.4rem;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.25rem;
 }
 
 .library-type-btn {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  height: 38px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
