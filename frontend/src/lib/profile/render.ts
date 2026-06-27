@@ -98,6 +98,11 @@ function fmtDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function buildRatingHtml(rating: number | null | undefined): string {
+  if (!rating) return '';
+  return `<span class="library-card-rating">★ ${rating}</span>`;
+}
+
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
   if (!started && !finished) return '';
   const parts: string[] = [];
@@ -149,9 +154,12 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
             </a>
             <div class="library-card-info">
               <span class="library-card-title">${title}</span>
-              ${buildDateHtml(item.started_at, item.finished_at)}
+              ${buildRatingHtml(item.rating)}
+              <div class="library-card-footer">
+                ${buildDateHtml(item.started_at, item.finished_at)}
+                <div class="library-card-type">${typeIc}</div>
+              </div>
             </div>
-            <div class="library-card-type">${typeIc}</div>
           </div>`;
       }).join('')}
     </div>`;
