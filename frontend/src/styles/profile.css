@@ -275,6 +275,16 @@
   pointer-events: none;
 }
 
+/* Overlay oscuro con gradiente de izquierda a derecha */
+.library-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.7) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* Thumbnail de portada con padding (no toca los bordes) */
 .library-card-thumb {
   flex-shrink: 0;
@@ -283,7 +293,7 @@
   display: block;
   text-decoration: none;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.5);
@@ -320,7 +330,7 @@
   padding: 0;
   min-width: 0;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .library-card-title {
@@ -352,7 +362,7 @@
   color: var(--text-dim);
   opacity: 0.4;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: center;
 }
