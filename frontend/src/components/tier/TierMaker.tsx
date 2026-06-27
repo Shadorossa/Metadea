@@ -9,6 +9,11 @@ interface Tier {
   items: MediaCatalogEntry[];
 }
 
+interface State {
+  tiers: Tier[];
+  pool: MediaCatalogEntry[];
+}
+
 const DEFAULT_TIERS: Omit<Tier, 'items'>[] = [
   { id: 's', label: 'S', color: '#ff7f7f' },
   { id: 'a', label: 'A', color: '#ffbf7f' },
@@ -21,11 +26,6 @@ const DEFAULT_TIERS: Omit<Tier, 'items'>[] = [
 interface DragRef {
   itemId: string;
   fromTier: string | 'pool';
-}
-
-function getEntry(tiers: Tier[], pool: MediaCatalogEntry[], itemId: string, from: string | 'pool') {
-  if (from === 'pool') return pool.find(e => e.id === itemId) ?? null;
-  return tiers.find(t => t.id === from)?.items.find(e => e.id === itemId) ?? null;
 }
 
 function CoverCard({ entry, dragging, small }: { entry: MediaCatalogEntry; dragging: boolean; small?: boolean }) {
@@ -47,8 +47,10 @@ function CoverCard({ entry, dragging, small }: { entry: MediaCatalogEntry; dragg
 }
 
 export default function TierMaker() {
-  const [tiers, setTiers] = useState<Tier[]>(DEFAULT_TIERS.map(t => ({ ...t, items: [] })));
-  const [pool, setPool] = useState<MediaCatalogEntry[]>([]);
+  const [state, setState] = useState<State>({
+    tiers: DEFAULT_TIERS.map(t => ({ ...t, items: [] })),
+    pool: [],
+  });
   const [loading, setLoading] = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -56,13 +58,13 @@ export default function TierMaker() {
 
   useEffect(() => {
     getAllCatalogEntries().then(entries => {
-      setPool(entries);
+      setState(prev => ({ ...prev, pool: entries }));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
 
-  const onDragStart = useCallback((itemId: string, from: string | 'pool') => {
-    drag.current = { itemId, fromTier: from };
+  const onDragStart = useCallback((itemId: string, fromTier: string | 'pool') => {
+    drag.current = { itemId, fromTier };
     setDraggingId(itemId);
   }, []);
 
@@ -75,44 +77,48 @@ export default function TierMaker() {
   const drop = useCallback((toId: string | 'pool') => {
     if (!drag.current) return;
     const { itemId, fromTier } = drag.current;
-    if (fromTier === toId) { setDropTarget(null); return; }
-
-    let captured: MediaCatalogEntry | null = null;
-
-    setTiers(prevTiers => {
-      setPool(prevPool => {
-        captured = getEntry(prevTiers, prevPool, itemId, fromTier);
-        if (!captured) return prevPool;
-
-        const newTiers = prevTiers.map(t => {
-          let items = [...t.items];
-          if (t.id === fromTier) items = items.filter(e => e.id !== itemId);
-          if (t.id === toId)     items = [...items, captured!];
-          return { ...t, items };
-        });
-        setTimeout(() => setTiers(newTiers), 0);
-
-        let newPool = fromTier === 'pool' ? prevPool.filter(e => e.id !== itemId) : [...prevPool];
-        if (toId === 'pool') newPool = [...newPool, captured];
-        return newPool;
-      });
-      return prevTiers;
-    });
-
     setDropTarget(null);
+    if (fromTier === toId) return;
+
+    setState(prev => {
+      // Find the entry in its current location
+      let entry: MediaCatalogEntry | null = null;
+      if (fromTier === 'pool') {
+        entry = prev.pool.find(e => e.id === itemId) ?? null;
+      } else {
+        entry = prev.tiers.find(t => t.id === fromTier)?.items.find(e => e.id === itemId) ?? null;
+      }
+      if (!entry) return prev;
+
+      // Update tiers atomically
+      const newTiers = prev.tiers.map(t => {
+        let items = [...t.items];
+        if (t.id === fromTier) items = items.filter(e => e.id !== itemId);
+        if (t.id === toId)     items = [...items, entry!];
+        return { ...t, items };
+      });
+
+      // Update pool atomically
+      let newPool = [...prev.pool];
+      if (fromTier === 'pool') newPool = newPool.filter(e => e.id !== itemId);
+      if (toId === 'pool')     newPool = [...newPool, entry];
+
+      return { tiers: newTiers, pool: newPool };
+    });
   }, []);
 
   const onLabelChange = (tierId: string, v: string) =>
-    setTiers(prev => prev.map(t => t.id === tierId ? { ...t, label: v } : t));
+    setState(prev => ({ ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, label: v } : t) }));
 
   const onColorChange = (tierId: string, v: string) =>
-    setTiers(prev => prev.map(t => t.id === tierId ? { ...t, color: v } : t));
+    setState(prev => ({ ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, color: v } : t) }));
 
   if (loading) return <div className="tier-loading">Cargando catálogo…</div>;
 
+  const { tiers, pool } = state;
+
   return (
     <div className="tier-maker-layout">
-      {/* Header de la página */}
       <div className="tier-maker-header">
         <a href="/tier" className="tier-maker-back">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -133,7 +139,9 @@ export default function TierMaker() {
                 key={tier.id}
                 className={`tier-row${dropTarget === tier.id ? ' tier-row--over' : ''}`}
                 onDragOver={e => { e.preventDefault(); setDropTarget(tier.id); }}
-                onDragLeave={() => setDropTarget(null)}
+                onDragLeave={e => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
+                }}
                 onDrop={() => drop(tier.id)}
               >
                 <div className="tier-label" style={{ background: tier.color }}>
@@ -171,7 +179,9 @@ export default function TierMaker() {
         <div
           className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}
           onDragOver={e => { e.preventDefault(); setDropTarget('pool'); }}
-          onDragLeave={() => setDropTarget(null)}
+          onDragLeave={e => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
+          }}
           onDrop={() => drop('pool')}
         >
           <p className="tier-pool-label">
