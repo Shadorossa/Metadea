@@ -233,70 +233,50 @@
 .type-chip-count { font-weight: 700; color: var(--text-main); }
 .type-chip-label { color: var(--text-muted); }
 
-/* ── Library list ─────────────────────────────────────────────────────────── */
-.library-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+/* ── Library grid ─────────────────────────────────────────────────────────── */
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
 }
 
 .library-card {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.6rem 0.75rem;
+  aspect-ratio: 2 / 3;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-elevated);
-  color: inherit;
   overflow: hidden;
-  transition: border-color 0.15s, transform 0.15s;
-  min-height: 72px;
   cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: var(--bg-elevated);
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .library-card:hover {
-  border-color: color-mix(in srgb, var(--border-color) 50%, var(--accent));
-  transform: translateX(2px);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
 }
 
-/* Cover is a real <a> — needs display:block + no underline */
-.library-card-cover {
+/* Blurred cover fills the whole card background */
+.library-card-bg {
+  position: absolute;
+  inset: -8px;
+  background-image: var(--cover);
+  background-size: cover;
+  background-position: center;
+  filter: blur(14px) saturate(0.75);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* The <a> wrapping the cover image fills the full card */
+.library-card-img-link {
+  position: absolute;
+  inset: 0;
   display: block;
   text-decoration: none;
 }
 
-/* Fondo borroso con la portada */
-.library-card-bg {
-  position: absolute;
-  inset: 0;
-  background-image: var(--card-bg);
-  background-size: cover;
-  background-position: center;
-  filter: blur(18px) saturate(0.6);
-  opacity: 0.12;
-  transform: scale(1.1);
-  pointer-events: none;
-}
-
-.library-card-cover {
-  width: 46px;
-  min-width: 46px;
-  height: 66px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
-  transition: opacity 0.15s;
-}
-
-.library-card-cover:hover { opacity: 0.85; }
-
-.library-card-cover img {
+.library-card-img-link img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -309,28 +289,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-surface);
 }
 
 .library-card-no-cover span {
-  font-size: 1rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--text-dim);
 }
 
-.library-card-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 0;
-  position: relative;
-  z-index: 1;
+/* Footer: title + dates over gradient */
+.library-card-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2.5rem 0.65rem 0.65rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%);
+  pointer-events: none;
 }
 
 .library-card-title {
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: var(--text-main);
+  color: #fff;
+  margin: 0 0 0.2rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -339,22 +322,14 @@
 .library-card-date {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.72rem;
-  color: var(--text-dim);
+  gap: 0.3rem;
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.55);
 }
 
 .library-card-date svg {
   flex-shrink: 0;
-  opacity: 0.6;
-}
-
-.library-card-type-icon {
-  color: var(--text-dim);
-  opacity: 0.4;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 1;
+  opacity: 0.7;
 }
 
 /* ── Empty / placeholder ──────────────────────────────────────────────────── */

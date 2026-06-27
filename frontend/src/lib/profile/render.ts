@@ -128,30 +128,28 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   );
 
   el.innerHTML = `
-    <div class="library-list">
+    <div class="library-grid">
       ${items.map(item => {
-        const meta    = catalogMap.get(item.external_id);
-        const title   = meta?.title_main ?? item.external_id;
-        const cover   = meta?.cover_url ?? '';
-        const typeIc  = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+        const meta     = catalogMap.get(item.external_id);
+        const title    = meta?.title_main ?? item.external_id;
+        const cover    = meta?.cover_url ?? '';
         const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
         const editUrl  = `/media?id=${encodeURIComponent(item.external_id)}&edit=1`;
-        const bgStyle  = cover ? `style="--card-bg: url('${cover}')"` : '';
+        const style    = cover ? `style="--cover: url('${cover}')"` : '';
 
         return `
-          <div class="library-card" data-href="${editUrl}" ${bgStyle}>
+          <div class="library-card" data-href="${editUrl}" ${style}>
             ${cover ? `<div class="library-card-bg"></div>` : ''}
-            <a class="library-card-cover" href="${mediaUrl}" onclick="event.stopPropagation()">
+            <a class="library-card-img-link" href="${mediaUrl}" onclick="event.stopPropagation()" tabindex="-1">
               ${cover
                 ? `<img src="${cover}" alt="${title}" loading="lazy" />`
                 : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
               }
             </a>
-            <div class="library-card-info">
-              <span class="library-card-title">${title}</span>
+            <div class="library-card-footer">
+              <p class="library-card-title">${title}</p>
               ${buildDateHtml(item.started_at, item.finished_at)}
             </div>
-            <div class="library-card-type-icon">${typeIc}</div>
           </div>`;
       }).join('')}
     </div>`;
