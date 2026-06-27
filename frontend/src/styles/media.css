@@ -1055,7 +1055,7 @@
 .me-header-bottom-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
 }
 
 .me-header-status-row {
@@ -1066,12 +1066,11 @@
 .me-header-progress {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
+  gap: 0.4rem;
 }
 
 .me-header-progress-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1080,17 +1079,27 @@
 }
 
 .me-header-progress-input {
-  width: 60px;
+  width: 50px;
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   border-radius: 0px;
   color: var(--text-primary);
   font-size: 0.8rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.3rem 0.5rem;
   outline: none;
   transition: border-color 0.15s;
 }
 .me-header-progress-input:focus { border-color: var(--accent, #7c6af7); }
+
+/* Remove number input spinner arrows */
+.me-header-progress-input::-webkit-outer-spin-button,
+.me-header-progress-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.me-header-progress-input[type=number] {
+  -moz-appearance: textfield;
+}
 
 .me-header-status-icon {
   width: 28px;
