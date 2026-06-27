@@ -304,6 +304,32 @@ export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
   return invoke<LibraryEntry[]>('get_all_library_entries');
 }
 
+export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
+  if (!isTauri()) {
+    try {
+      const saved = localStorage.getItem('monthly_history');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  }
+  try {
+    const raw = await invoke<string>('read_monthly_history');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export async function writeMonthlyHistory(history: Record<string, string[]>): Promise<void> {
+  const content = JSON.stringify(history, null, 2);
+  if (!isTauri()) {
+    localStorage.setItem('monthly_history', content);
+    return;
+  }
+  return invoke<void>('write_monthly_history', { content });
+}
+
 // ─── Media Catalog ────────────────────────────────────────────────────────────
 
 export interface MediaCatalogEntry {

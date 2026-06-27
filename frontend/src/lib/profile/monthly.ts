@@ -4,38 +4,43 @@ import type { getAllLibraryEntries } from '../tauri';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
-export function buildMonthlyHistoryHtml(items: Items): string {
-  const sorted = [...items].sort((a, b) => {
-    const ta = a.added_at ?? '';
-    const tb = b.added_at ?? '';
-    return tb.localeCompare(ta);
-  });
+export function buildMonthlyHistoryHtml(
+  history: Record<string, string[]>,
+  libraryEntries: Items,
+  catalogMap: Map<string, any>
+): string {
+  const sortedKeys = Object.keys(history).sort((a, b) => b.localeCompare(a));
 
-  const map = new Map<string, typeof sorted>();
-  for (const item of sorted) {
-    const d   = item.added_at ? new Date(item.added_at) : null;
-    const key = d
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      : '__';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+  if (sortedKeys.length === 0) {
+    return `<div class="act-empty"><span>No hay historial mensual disponible</span></div>`;
   }
 
-  const content = [...map.entries()].map(([key, its]) => {
+  const libMap = new Map(libraryEntries.map(item => [item.external_id, item]));
+
+  const content = sortedKeys.map(key => {
     let monthLabel = '?', yearLabel = '';
-    if (key !== '__') {
-      const [y, m] = key.split('-');
+    const parts = key.split('-');
+    if (parts.length === 2) {
+      const [y, m] = parts;
       yearLabel  = y;
       monthLabel = formatMonthLabel(Number(y), Number(m));
     }
 
-    const row1 = its.filter((_, i) => i % 2 === 0);
-    const row2 = its.filter((_, i) => i % 2 === 1);
+    const itemIds = history[key] || [];
 
-    const card = (item: typeof its[0]) => {
-      const bg = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
-      return `<div class="mh-card" style="background:${bg}" title="${item.external_id}">
-        <span class="mh-card-label">${item.external_id}</span>
+    const row1 = itemIds.filter((_, i) => i % 2 === 0);
+    const row2 = itemIds.filter((_, i) => i % 2 === 1);
+
+    const card = (extId: string) => {
+      const item  = libMap.get(extId);
+      const meta  = catalogMap.get(extId);
+      const type  = item?.type ?? 'game';
+      const title = meta?.title_main ?? extId;
+      const cover = meta?.cover_url ?? '';
+      const bg    = HOF_GRADIENTS[type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
+      return `<div class="mh-card" style="background:${bg}" title="${title}">
+        ${cover ? `<img src="${cover}" alt="${title}" loading="lazy" />` : ''}
+        <span class="mh-card-label">${title}</span>
       </div>`;
     };
 

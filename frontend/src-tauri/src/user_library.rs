@@ -137,6 +137,9 @@ pub async fn get_all_library_entries(
     let mut entries = Vec::new();
     for item in std::fs::read_dir(&lib_dir).map_err(|e| e.to_string())? {
         let path = item.map_err(|e| e.to_string())?.path();
+        if path.file_name().and_then(|n| n.to_str()) == Some("monthly_history.json") {
+            continue;
+        }
         if path.extension().and_then(|e| e.to_str()) == Some("json") {
             if let Ok(json) = std::fs::read_to_string(&path) {
                 if let Ok(e) = serde_json::from_str::<LibraryEntry>(&json) {
@@ -146,4 +149,22 @@ pub async fn get_all_library_entries(
         }
     }
     Ok(entries)
+}
+
+#[tauri::command]
+pub async fn read_monthly_history(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_library").join("monthly_history.json");
+    if !path.exists() {
+        return Ok("{}".to_string());
+    }
+    std::fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_library").join("monthly_history.json");
+    std::fs::write(path, content).map_err(|e| e.to_string())
 }

@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
@@ -12,18 +12,26 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
   const t = getT();
   const p = t.profile;
 
+  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+  const catalogMap = new Map<string, MediaCatalogEntry>(
+    catalogEntries.map(e => [e.external_id, e])
+  );
+
+  const monthlyHistory = await readMonthlyHistory().catch(() => ({}));
+
   let completed = 0, inProgress = 0, planning = 0, dropped = 0;
   let totalRating = 0, ratedCount = 0, totalMinutes = 0;
-  const byType: Record<string, number> = {};
+  const completedByType: Record<string, number> = {};
 
   for (const item of items) {
     const s = item.status ?? 'planning';
-    if (s === 'completed') completed++;
+    if (s === 'completed') {
+      completed++;
+      completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
+    }
     else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
     else if (s === 'planning') planning++;
     else if (s === 'dropped') dropped++;
-
-    byType[item.type] = (byType[item.type] ?? 0) + 1;
 
     if (item.rating)         { totalRating += item.rating; ratedCount++; }
     if (item.minutes_spent)    totalMinutes += item.minutes_spent;
@@ -31,6 +39,23 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
   const avgRating  = ratedCount > 0 ? (totalRating / ratedCount).toFixed(1) : '0.0';
   const totalHours = Math.round(totalMinutes / 60);
+
+  const completedTooltipHtml = `
+    <span class="stat-help-wrap">
+      <span class="stat-help-icon">?</span>
+      <span class="stat-tooltip">
+        ${Object.entries(completedByType).length > 0 
+          ? Object.entries(completedByType).map(([type, count]) => `
+              <span class="stat-tooltip-row">
+                <span class="stat-tooltip-label">${typeLabel(type)}</span>
+                <span class="stat-tooltip-value">${count}</span>
+              </span>
+            `).join('')
+          : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
+        }
+      </span>
+    </span>
+  `;
 
   const statsHtml = `
     <div class="profile-stats-bar">
@@ -45,38 +70,27 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       ] as [string, string][]).map(([label, value]) =>
         `<div class="profile-stat">
            <span class="profile-stat-value">${value}</span>
-           <span class="profile-stat-label">${label}</span>
+           <span class="profile-stat-label">
+             ${label}
+             ${label === p.stat_completed ? completedTooltipHtml : ''}
+           </span>
          </div>`
       ).join('')}
     </div>`;
-
-  const typesHtml = Object.keys(byType).length > 0
-    ? `<div>
-         <p class="profile-section-label">${p.by_type}</p>
-         <div class="type-chips">
-           ${Object.entries(byType).map(([type, count]) =>
-             `<span class="type-chip">
-                <span class="type-chip-count">${count}</span>
-                <span class="type-chip-label">${typeLabel(type)}</span>
-              </span>`
-           ).join('')}
-         </div>
-       </div>`
-    : '';
 
   const bottomHtml = `
     <div class="profile-bottom-grid">
       <div class="profile-bottom-col">
         <p class="profile-section-label">${p.monthly_history}</p>
-        ${buildMonthlyHistoryHtml(items)}
+        ${buildMonthlyHistoryHtml(monthlyHistory, items, catalogMap)}
       </div>
       <div class="profile-bottom-col">
         <p class="profile-section-label">${p.recent_activity}</p>
-        ${buildActivityHtml(items, p)}
+        ${buildActivityHtml(items, catalogMap, p)}
       </div>
     </div>`;
 
-  el.innerHTML = buildHofHtml(items, p) + statsHtml + typesHtml + bottomHtml;
+  el.innerHTML = buildHofHtml(items, catalogMap, p) + statsHtml + bottomHtml;
   initHofListeners(el);
 }
 

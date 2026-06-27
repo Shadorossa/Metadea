@@ -42,7 +42,7 @@
   align-items: center;
   justify-content: center;
   gap: 1.25rem;
-  z-index: 5;
+  z-index: 1;
   padding: calc(8.5rem - 46px) 1rem 0;
 }
 
@@ -104,6 +104,8 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
+  position: relative;
+  z-index: 10;
 }
 
 .profile-tab {
@@ -485,7 +487,7 @@
   transition: flex 0.4s ease-in-out;
 }
 
-.hof-card:hover { flex: 3; }
+.hof-card:hover { flex: 1.8; }
 
 .hof-card--empty {
   background: rgba(255, 255, 255, 0.03);
@@ -770,4 +772,81 @@
   color: var(--text-dim);
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-md);
+}
+
+/* ── Stat Help Tooltip ────────────────────────────────────────────────────── */
+.stat-help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  cursor: help;
+}
+
+.stat-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all var(--anim-fast);
+}
+
+.stat-help-wrap:hover .stat-help-icon {
+  background: var(--accent);
+  color: #fff;
+}
+
+.stat-tooltip {
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: rgba(19, 19, 31, 0.96);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(12px);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 100;
+  transition: opacity var(--anim-fast) var(--anim-ease), transform var(--anim-fast) var(--anim-ease);
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-help-wrap:hover .stat-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.stat-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--text-main);
+  gap: 1rem;
+}
+
+.stat-tooltip-label {
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--text-muted);
+}
+
+.stat-tooltip-value {
+  font-weight: 800;
+  color: var(--accent);
 }

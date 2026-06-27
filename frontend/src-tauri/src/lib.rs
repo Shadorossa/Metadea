@@ -57,6 +57,8 @@ pub fn run() {
             user_library::get_library_entry,
             user_library::delete_library_entry,
             user_library::get_all_library_entries,
+            user_library::read_monthly_history,
+            user_library::write_monthly_history,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::delete_catalog_entry,

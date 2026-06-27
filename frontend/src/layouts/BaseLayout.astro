@@ -1,20 +1,20 @@
 ---
-import '../styles/global.css';
-import '../styles/components.css';
-import '../styles/navbar.css';
+import '../styles/core/global.css';
+import '../styles/components/components.css';
+import '../styles/components/navbar.css';
 import Navbar from '../components/Navbar.astro';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import ClientRouter from 'astro/components/ClientRouter.astro';
 
-import nebulaUrl from '../styles/themes/nebula.css?url';
-import auroraUrl from '../styles/themes/aurora.css?url';
-import cosmosUrl from '../styles/themes/cosmos.css?url';
-import emberUrl from '../styles/themes/ember.css?url';
-import oceanUrl from '../styles/themes/ocean.css?url';
-import sakuraUrl from '../styles/themes/sakura.css?url';
-import cyberpunkUrl from '../styles/themes/cyberpunk.css?url';
-import newspaperDarkUrl from '../styles/themes/newspaper-dark.css?url';
+import nebulaUrl from '../styles/core/themes/nebula.css?url';
+import auroraUrl from '../styles/core/themes/aurora.css?url';
+import cosmosUrl from '../styles/core/themes/cosmos.css?url';
+import emberUrl from '../styles/core/themes/ember.css?url';
+import oceanUrl from '../styles/core/themes/ocean.css?url';
+import sakuraUrl from '../styles/core/themes/sakura.css?url';
+import cyberpunkUrl from '../styles/core/themes/cyberpunk.css?url';
+import newspaperDarkUrl from '../styles/core/themes/newspaper-dark.css?url';
 
 const themeUrls = {
   nebula: nebulaUrl,

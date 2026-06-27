@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
@@ -90,6 +90,13 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [tagInput,    setTagInput]    = useState('');
   const [platform,    setPlatform]    = useState('');
 
+  const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+
+  const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = lang === 'en' ? MONTHS_EN : MONTHS_ES;
+
   useEffect(() => {
     getLibraryEntry(externalId, data.type)
       .then(entry => {
@@ -109,7 +116,55 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    readMonthlyHistory()
+      .then(history => {
+        setMonthlyHistory(history);
+        let foundKey: string | null = null;
+        for (const [key, ids] of Object.entries(history)) {
+          if (ids.includes(externalId)) {
+            foundKey = key;
+            break;
+          }
+        }
+        setSelectedMonthKey(foundKey);
+      })
+      .catch(() => {});
   }, [externalId, data.type]);
+
+  const handleMonthClick = useCallback((monthIndex: number) => {
+    const year = new Date().getFullYear();
+    const targetKey = `${year}-${String(monthIndex).padStart(2, '0')}`;
+
+    setSelectedMonthKey(prev => {
+      const newKey = prev === targetKey ? null : targetKey;
+
+      setMonthlyHistory(currentHistory => {
+        const nextHistory = { ...currentHistory };
+
+        for (const key of Object.keys(nextHistory)) {
+          nextHistory[key] = nextHistory[key].filter(id => id !== externalId);
+        }
+
+        if (newKey) {
+          if (!nextHistory[newKey]) nextHistory[newKey] = [];
+          if (!nextHistory[newKey].includes(externalId)) {
+            nextHistory[newKey].push(externalId);
+          }
+        }
+
+        for (const key of Object.keys(nextHistory)) {
+          if (nextHistory[key].length === 0) {
+            delete nextHistory[key];
+          }
+        }
+
+        return nextHistory;
+      });
+
+      return newKey;
+    });
+  }, [externalId]);
 
   const handleClose = useCallback(() => {
     setIsClosing(true);
@@ -142,6 +197,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         finished_at:      finishedAt || null,
       });
 
+      await writeMonthlyHistory(monthlyHistory);
+
       onSaved(entry);
       handleClose();
     } catch (e) {
@@ -150,7 +207,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       setSaving(false);
     }
   }, [existing, externalId, data.type, status, rating, progress, notes,
-      startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, onSaved, handleClose]);
+      startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, monthlyHistory, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     if (!existing) { onClose(); return; }
@@ -384,6 +441,28 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   placeholder={te.notes_ph}
                   value={notes}
                   onChange={e => setNotes(e.target.value)} />
+
+                <div className="me-month-selector-section">
+                  <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
+                  <div className="me-month-grid">
+                    {months.map((mName, idx) => {
+                      const mNumber = idx + 1;
+                      const year = new Date().getFullYear();
+                      const key = `${year}-${String(mNumber).padStart(2, '0')}`;
+                      const isActive = selectedMonthKey === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`me-month-btn${isActive ? ' active' : ''}`}
+                          onClick={() => handleMonthClick(mNumber)}
+                        >
+                          {mName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* RIGHT: Buttons stack (separate) */}

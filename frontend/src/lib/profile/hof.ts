@@ -24,7 +24,7 @@ const ICON_PERSON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
   <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
 </svg>`;
 
-export function buildHofHtml(items: Items, p: P): string {
+export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): string {
   const top10 = [...items]
     .filter(item => item.rating != null)
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
@@ -34,15 +34,23 @@ export function buildHofHtml(items: Items, p: P): string {
 
   const workCards = top10.map((item, i) => {
     if (!item) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;
-    const bg    = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
+    const meta  = catalogMap.get(item.external_id);
+    const title = meta?.title_main ?? item.external_id;
+    const cover = meta?.cover_url ?? '';
     const label = typeLabel(item.type);
-    return `<div class="hof-card" style="background:${bg}">
+
+    const bg    = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
+    const style = cover 
+      ? `background-image: url('${cover}'); background-size: cover; background-position: center;`
+      : `background: ${bg};`;
+
+    return `<div class="hof-card" style="${style}">
       <div class="hof-card-overlay"></div>
       <span class="hof-card-rank">#${i + 1}</span>
-      <div class="hof-card-label">${item.external_id}</div>
+      <div class="hof-card-label">${title}</div>
       <div class="hof-card-content">
         <span class="hof-card-type">${label}</span>
-        <span class="hof-card-id">${item.external_id}</span>
+        <span class="hof-card-id">${title}</span>
         ${item.rating != null ? `<span class="hof-card-rating">★ ${item.rating}</span>` : ''}
       </div>
     </div>`;
