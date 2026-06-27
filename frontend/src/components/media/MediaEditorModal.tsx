@@ -239,144 +239,146 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           <div className="me-loading"><div className="spinner" /></div>
         ) : (
           <div className="me-body">
-            <div className="me-grid">
+            <div className="me-content-wrapper">
+              {/* MAIN CONTENT */}
+              <div className="me-main-box">
+                <div className="me-grid">
 
-              {/* LEFT: Rating + Rewatch */}
-              <div className="me-col">
-                {/* Rating */}
-                <div className="me-section">
-                  <span className="me-label">
-                    {te.score}
-                    {rating > 0 && <span className="me-label-value">{(rating / 2).toFixed(1)}</span>}
-                  </span>
-                  <div className="me-stars" onMouseLeave={() => setHoverRating(null)}>
-                    {[1, 2, 3, 4, 5].map(v => {
-                      const isFull = displayRating >= v * 2;
-                      const isHalf = !isFull && displayRating >= v * 2 - 1;
-                      return (
-                        <div key={v} className="me-star-wrap">
-                          <svg className="me-star me-star--bg" viewBox="0 0 24 24">
-                            <path d={STAR_PATH} />
-                          </svg>
-                          <div className="me-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
-                            <svg className="me-star me-star--fg" viewBox="0 0 24 24">
-                              <path d={STAR_PATH} />
-                            </svg>
-                          </div>
-                          <button type="button" className="me-star-zone me-star-zone--left"
-                            onMouseEnter={() => setHoverRating(v * 2 - 1)}
-                            onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
-                          <button type="button" className="me-star-zone me-star-zone--right"
-                            onMouseEnter={() => setHoverRating(v * 2)}
-                            onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Progress / Rewatch */}
-                {progLabel && (
-                  <div className="me-section">
-                    <span className="me-label">{progLabel}</span>
-                    <input type="number" className="me-input" min={0}
-                      step={progressStep(data.type)}
-                      value={progress || ''}
-                      onChange={e => setProgress(parseFloat(e.target.value) || 0)}
-                      placeholder="0" />
-                  </div>
-                )}
-
-                {/* Tags */}
-                <div className="me-section">
-                  <span className="me-label">
-                    {te.tags}
-                    <span className="me-label-hint">{tags.length}/5</span>
-                  </span>
-                  <div className="me-tags-box">
-                    {tags.map(tag => (
-                      <span key={tag} className="me-tag">
-                        {tag}
-                        <button type="button" className="me-tag-remove"
-                          onClick={() => setTags(prev => prev.filter(t => t !== tag))}>×</button>
+                  {/* LEFT: Rating + Progress + Tags */}
+                  <div className="me-col">
+                    {/* Rating */}
+                    <div className="me-section">
+                      <span className="me-label">
+                        {te.score}
+                        {rating > 0 && <span className="me-label-value">{(rating / 2).toFixed(1)}</span>}
                       </span>
-                    ))}
-                    {tags.length < 5 && (
-                      <input type="text" className="me-tag-input"
-                        placeholder={te.add_tag}
-                        value={tagInput}
-                        onChange={e => setTagInput(e.target.value)}
-                        onKeyDown={handleTagKeyDown} />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT: Calendar + Dates */}
-              <div className="me-col">
-                {/* Calendar with active dates range */}
-                {(startedAt || finishedAt) && (
-                  <div className="me-calendar-box">
-                    <div className="me-calendar-grid">
-                      {(() => {
-                        const start = startedAt ? new Date(startedAt) : null;
-                        const end = finishedAt ? new Date(finishedAt) : null;
-                        const days = [];
-
-                        if (start && end && start <= end) {
-                          const current = new Date(start);
-                          const endDate = new Date(end);
-                          while (current <= endDate) {
-                            const d = current.getDate();
-                            const isStart = current.toDateString() === start.toDateString();
-                            const isEnd = current.toDateString() === end.toDateString();
-                            const isMiddle = current > start && current < end;
-                            days.push(
-                              <div
-                                key={current.toDateString()}
-                                className={`me-cal-day${isStart ? ' start' : ''}${isEnd ? ' end' : ''}${isMiddle ? ' mid' : ''}`}
-                              >
-                                {d}
+                      <div className="me-stars" onMouseLeave={() => setHoverRating(null)}>
+                        {[1, 2, 3, 4, 5].map(v => {
+                          const isFull = displayRating >= v * 2;
+                          const isHalf = !isFull && displayRating >= v * 2 - 1;
+                          return (
+                            <div key={v} className="me-star-wrap">
+                              <svg className="me-star me-star--bg" viewBox="0 0 24 24">
+                                <path d={STAR_PATH} />
+                              </svg>
+                              <div className="me-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
+                                <svg className="me-star me-star--fg" viewBox="0 0 24 24">
+                                  <path d={STAR_PATH} />
+                                </svg>
                               </div>
-                            );
-                            current.setDate(current.getDate() + 1);
-                          }
-                        }
-                        return days.length > 0 ? days : <div className="me-cal-empty">Sin fechas</div>;
-                      })()}
+                              <button type="button" className="me-star-zone me-star-zone--left"
+                                onMouseEnter={() => setHoverRating(v * 2 - 1)}
+                                onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
+                              <button type="button" className="me-star-zone me-star-zone--right"
+                                onMouseEnter={() => setHoverRating(v * 2)}
+                                onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Progress */}
+                    {progLabel && (
+                      <div className="me-section">
+                        <span className="me-label">{progLabel}</span>
+                        <input type="number" className="me-input" min={0}
+                          step={progressStep(data.type)}
+                          value={progress || ''}
+                          onChange={e => setProgress(parseFloat(e.target.value) || 0)}
+                          placeholder="0" />
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    <div className="me-section">
+                      <span className="me-label">
+                        {te.tags}
+                        <span className="me-label-hint">{tags.length}/5</span>
+                      </span>
+                      <div className="me-tags-box">
+                        {tags.map(tag => (
+                          <span key={tag} className="me-tag">
+                            {tag}
+                            <button type="button" className="me-tag-remove"
+                              onClick={() => setTags(prev => prev.filter(t => t !== tag))}>×</button>
+                          </span>
+                        ))}
+                        {tags.length < 5 && (
+                          <input type="text" className="me-tag-input"
+                            placeholder={te.add_tag}
+                            value={tagInput}
+                            onChange={e => setTagInput(e.target.value)}
+                            onKeyDown={handleTagKeyDown} />
+                        )}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {/* Dates inputs */}
-                <div className="me-dates-row">
-                  <div className="me-section me-section--inline">
-                    <span className="me-label">{te.started}</span>
-                    <input type="date" className="me-input" value={startedAt}
-                      onChange={e => setStartedAt(e.target.value)} />
-                  </div>
-                  <div className="me-section me-section--inline">
-                    <span className="me-label">{te.ended}</span>
-                    <input type="date" className="me-input" value={finishedAt}
-                      onChange={e => setFinishedAt(e.target.value)} />
+                  {/* RIGHT: Calendar + Dates */}
+                  <div className="me-col">
+                    {/* Calendar with active dates range */}
+                    {(startedAt || finishedAt) && (
+                      <div className="me-calendar-box">
+                        <div className="me-calendar-grid">
+                          {(() => {
+                            const start = startedAt ? new Date(startedAt) : null;
+                            const end = finishedAt ? new Date(finishedAt) : null;
+                            const days = [];
+
+                            if (start && end && start <= end) {
+                              const current = new Date(start);
+                              const endDate = new Date(end);
+                              while (current <= endDate) {
+                                const d = current.getDate();
+                                const isStart = current.toDateString() === start.toDateString();
+                                const isEnd = current.toDateString() === end.toDateString();
+                                const isMiddle = current > start && current < end;
+                                days.push(
+                                  <div
+                                    key={current.toDateString()}
+                                    className={`me-cal-day${isStart ? ' start' : ''}${isEnd ? ' end' : ''}${isMiddle ? ' mid' : ''}`}
+                                  >
+                                    {d}
+                                  </div>
+                                );
+                                current.setDate(current.getDate() + 1);
+                              }
+                            }
+                            return days.length > 0 ? days : <div className="me-cal-empty">Sin fechas</div>;
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dates inputs */}
+                    <div className="me-dates-row">
+                      <div className="me-section me-section--inline">
+                        <span className="me-label">{te.started}</span>
+                        <input type="date" className="me-input" value={startedAt}
+                          onChange={e => setStartedAt(e.target.value)} />
+                      </div>
+                      <div className="me-section me-section--inline">
+                        <span className="me-label">{te.ended}</span>
+                        <input type="date" className="me-input" value={finishedAt}
+                          onChange={e => setFinishedAt(e.target.value)} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bottom row: Notes (left) + Buttons (right) */}
-            <div className="me-bottom-row">
-              {/* Notes textarea — full left side */}
-              <div className="me-notes-box">
+              {/* LEFT: Notes box (separate) */}
+              <div className="me-notes-box-side">
                 <span className="me-label">{te.notes}</span>
-                <textarea className="me-textarea" rows={6}
+                <textarea className="me-textarea" rows={12}
                   placeholder={te.notes_ph}
                   value={notes}
                   onChange={e => setNotes(e.target.value)} />
               </div>
 
-              {/* Right buttons: Save (top), Close (bottom) */}
-              <div className="me-button-stack">
+              {/* RIGHT: Buttons stack (separate) */}
+              <div className="me-button-stack-side">
                 <button type="button" className="me-btn me-btn--save"
                   onClick={handleSave} disabled={saving}>
                   {saving ? te.saving : te.save}
