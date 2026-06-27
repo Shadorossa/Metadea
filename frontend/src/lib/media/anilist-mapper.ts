@@ -128,5 +128,13 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     relations,
     progressStatus,
     progressLabel,
+    // Catalog metadata
+    source:       'anilist',
+    format:       raw.format ?? undefined,
+    releaseYear:  raw.startDate?.year  ?? undefined,
+    releaseMonth: raw.startDate?.month ?? undefined,
+    releaseDay:   raw.startDate?.day   ?? undefined,
+    scoreGlobal:  raw.averageScore ? raw.averageScore / 10 : undefined,
+    platforms:    undefined,
   };
 }

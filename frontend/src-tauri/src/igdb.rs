@@ -767,9 +767,10 @@ pub async fn igdb_get_game_detail(
         &client, &client_id, &token,
         IGDB_API_GAMES,
         &format!(
-            "fields id,name,cover.image_id,summary,first_release_date,rating,\
+            "fields id,name,cover.image_id,summary,first_release_date,rating,total_rating,\
              genres.name,involved_companies.company.name,\
-             involved_companies.developer,involved_companies.publisher,platforms.name; \
+             involved_companies.developer,involved_companies.publisher,platforms.name,\
+             alternative_names.name,alternative_names.comment,game_type; \
              where id = {}; limit 1;",
             igdb_id
         ),

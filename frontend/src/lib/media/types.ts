@@ -29,7 +29,8 @@ export interface MediaPageData {
   bannerColor: string;         // CSS gradient para el placeholder del banner
   statusLabel?: string;
   statusClass?: string;        // clase CSS del badge de estado
-  genreDots?: string;          // "Action · Comedy · Drama"
+  genreDots?: string;          // "Action · Comedy · Drama" (core genres)
+  genreTagDots?: string;       // secondary tags (themes, non-core)
   metaLines: string[];         // líneas del panel derecho (estudio, formato, etc.)
   dateBadge?: string;          // overlay sobre el banner con fechas
   developerBadge?: string;     // overlay sobre el banner con el desarrollador (juegos)
@@ -40,4 +41,12 @@ export interface MediaPageData {
   relations: MediaRelation[];
   progressStatus: 'watching' | 'reading' | 'playing';
   progressLabel: string;       // label i18n del botón de progreso en el tray
+  // Catalog metadata
+  format?: string;             // GAME, REMAKE, REMASTER, EXPANSION...
+  source?: string;             // igdb, anilist, openlibrary, tmdb
+  releaseYear?: number;
+  releaseMonth?: number;
+  releaseDay?: number;
+  platforms?: string[];
+  scoreGlobal?: number;
 }

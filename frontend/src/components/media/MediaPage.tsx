@@ -242,18 +242,26 @@ export default function MediaPage({ lang }: { lang: string }) {
 
     // Upsert catalog entry with the latest metadata from the API
     saveCatalogEntry({
-      id: '',
-      external_id: rawId.current,
-      type: data.type,
-      title_main:   data.titleMain  ?? undefined,
-      title_native: data.titleNative ?? undefined,
-      title_romaji: data.titleEnglish ?? undefined,
-      synopsis:     data.description ?? undefined,
-      cover_url:    data.cover ?? undefined,
-      banners_csv:  data.bannerImage ?? undefined,
-      genres_csv:   data.genreDots ? data.genreDots.split(' · ').join(',') : undefined,
-      created_at:   new Date().toISOString(),
-      updated_at:   new Date().toISOString(),
+      id:                    '',
+      external_id:           rawId.current,
+      type:                  data.type,
+      format:                data.format,
+      source:                data.source,
+      title_main:            data.titleMain   || undefined,
+      title_native:          data.titleNative || undefined,
+      title_romaji:          data.titleEnglish || undefined,
+      synopsis:              data.description || undefined,
+      cover_url:             data.cover       || undefined,
+      banners_csv:           data.bannerImage || undefined,
+      release_year:          data.releaseYear,
+      release_month:         data.releaseMonth,
+      release_day:           data.releaseDay,
+      score_global:          data.scoreGlobal,
+      genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
+      genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
+      platforms_csv:         data.platforms?.join(',') || undefined,
+      created_at:            new Date().toISOString(),
+      updated_at:            new Date().toISOString(),
     }).catch(() => {});
   }, [data?.type]);
 
