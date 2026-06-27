@@ -223,7 +223,7 @@
 
 .tier-card:hover { transform: scale(1.07); z-index: 2; }
 .tier-card:active { cursor: grabbing; }
-.tier-card--dragging { opacity: 0.3; }
+.tier-card--faded { opacity: 0.3; }
 
 .tier-card img {
   width: 100%;
@@ -284,17 +284,22 @@
 
 .tier-ghost {
   position: fixed;
-  pointer-events: none;
   z-index: 9999;
-  opacity: 0.9;
-  transform: scale(1.08) rotate(2deg);
-  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));
-  transition: none;
+  opacity: 0.92;
+  transform: scale(1.06) rotate(2deg);
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.55));
+  cursor: grabbing;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
-.tier-maker--dragging * {
-  cursor: grabbing !important;
-  user-select: none;
+.tier-card--faded {
+  opacity: 0.3;
+}
+
+.tier-card-wrap {
+  cursor: grab;
+  display: contents;
 }
 
 /* ── Loading ─────────────────────────────────────────────────────────────── */
