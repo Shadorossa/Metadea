@@ -233,50 +233,58 @@
 .type-chip-count { font-weight: 700; color: var(--text-main); }
 .type-chip-label { color: var(--text-muted); }
 
-/* ── Library grid ─────────────────────────────────────────────────────────── */
+/* ── Library grid (2 columnas de cards horizontales) ─────────────────────── */
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
 }
 
+/* Card horizontal: cover thumb a la izquierda, info a la derecha */
 .library-card {
   position: relative;
-  aspect-ratio: 2 / 3;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 100px;
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
   border: 1px solid rgba(255,255,255,0.07);
   background: var(--bg-elevated);
+  color: inherit;
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .library-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
-/* Blurred cover fills the whole card background */
+/* Fondo difuminado: la portada ocupa toda la card con blur */
 .library-card-bg {
   position: absolute;
-  inset: -8px;
+  inset: -6px;
   background-image: var(--cover);
   background-size: cover;
   background-position: center;
-  filter: blur(14px) saturate(0.75);
-  opacity: 0.55;
+  filter: blur(16px) saturate(0.7);
+  opacity: 0.45;
   pointer-events: none;
 }
 
-/* The <a> wrapping the cover image fills the full card */
-.library-card-img-link {
-  position: absolute;
-  inset: 0;
+/* Thumbnail de portada a la izquierda */
+.library-card-thumb {
+  flex-shrink: 0;
+  width: 68px;
+  height: 100%;
   display: block;
   text-decoration: none;
+  position: relative;
+  z-index: 1;
 }
 
-.library-card-img-link img {
+.library-card-thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -293,43 +301,54 @@
 }
 
 .library-card-no-cover span {
-  font-size: 1.8rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--text-dim);
 }
 
-/* Footer: title + dates over gradient */
-.library-card-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 2.5rem 0.65rem 0.65rem;
-  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%);
-  pointer-events: none;
+/* Info: título + fecha */
+.library-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .library-card-title {
-  font-size: 0.78rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #fff;
-  margin: 0 0 0.2rem;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin: 0;
 }
 
 .library-card-date {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.62rem;
-  color: rgba(255,255,255,0.55);
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
 }
 
 .library-card-date svg {
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.6;
+}
+
+/* Icono de tipo a la derecha */
+.library-card-type {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  opacity: 0.45;
+  padding-right: 0.85rem;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Empty / placeholder ──────────────────────────────────────────────────── */
