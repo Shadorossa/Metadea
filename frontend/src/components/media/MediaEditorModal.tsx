@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry } from '../../lib/tauri';
@@ -156,7 +156,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     onClose();
   }, [existing, externalId, data.type, onDeleted, onClose]);
 
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const tag = tagInput.trim();
@@ -167,15 +167,15 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
       setTags(prev => prev.slice(0, -1));
     }
-  };
+  }, [tagInput, tags]);
 
-  const statusButtons = [
+  const statusButtons = useMemo(() => [
     { value: 'planning',          label: te.status_planning,    Icon: IconPlanning    },
     { value: data.progressStatus, label: te.status_in_progress, Icon: IconInProgress  },
     { value: 'completed',         label: te.status_completed,   Icon: IconCompleted   },
     { value: 'paused',            label: te.status_paused,      Icon: IconPaused      },
     { value: 'dropped',           label: te.status_dropped,     Icon: IconDropped     },
-  ];
+  ], [te, data.progressStatus]);
 
   const displayRating = hoverRating ?? rating;
   const progLabel     = progressLabel(data.type, t.media);
@@ -193,13 +193,13 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
               {/* Status icons + Progress + Rating + Dates row */}
               <div className="me-header-bottom-row">
                 <div className="me-header-status-row">
-                  {statusButtons.map(({ value, Icon }) => (
+                  {statusButtons.map(({ value, label, Icon }) => (
                     <button
                       key={value}
                       type="button"
                       className={`me-header-status-icon${status === value ? ' active' : ''}`}
                       onClick={() => setStatus(status === value ? '' : value)}
-                      title={statusButtons.find(b => b.value === value)?.label}
+                      title={label}
                     >
                       <Icon />
                     </button>
@@ -332,25 +332,27 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   {/* RIGHT: Calendar + Dates */}
                   <div className="me-col">
                     {/* Calendar with active dates range */}
-                    {(startedAt || finishedAt) && (
+                    {(startedAt && finishedAt) && (
                       <div className="me-calendar-box">
                         <div className="me-calendar-grid">
                           {(() => {
-                            const start = startedAt ? new Date(startedAt) : null;
-                            const end = finishedAt ? new Date(finishedAt) : null;
+                            const start = new Date(startedAt);
+                            const end = new Date(finishedAt);
                             const days = [];
 
-                            if (start && end && start <= end) {
+                            if (start <= end) {
                               const current = new Date(start);
                               const endDate = new Date(end);
                               while (current <= endDate) {
+                                if (days.length >= 366) break;
                                 const d = current.getDate();
-                                const isStart = current.toDateString() === start.toDateString();
-                                const isEnd = current.toDateString() === end.toDateString();
+                                const ds = current.toDateString();
+                                const isStart = ds === start.toDateString();
+                                const isEnd   = ds === end.toDateString();
                                 const isMiddle = current > start && current < end;
                                 days.push(
                                   <div
-                                    key={current.toDateString()}
+                                    key={ds}
                                     className={`me-cal-day${isStart ? ' start' : ''}${isEnd ? ' end' : ''}${isMiddle ? ' mid' : ''}`}
                                   >
                                     {d}
