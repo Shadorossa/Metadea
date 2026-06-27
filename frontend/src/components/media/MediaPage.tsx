@@ -388,7 +388,12 @@ export default function MediaPage({ lang }: { lang: string }) {
 
           {/* Derecha: géneros + meta */}
           <div className="media-hero-right">
-            {data.genreDots    && <p className="media-genres-dots">{data.genreDots}</p>}
+            {(data.genreDots || data.genreTagDots) && (
+              <div className="media-genres-row">
+                {data.genreDots    && <span className="media-genres-dots">{data.genreDots}</span>}
+                {data.genreTagDots && <span className="media-genres-tags">{data.genreTagDots}</span>}
+              </div>
+            )}
             {data.metaLines[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
             {data.metaLines[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
             {data.metaLines[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
