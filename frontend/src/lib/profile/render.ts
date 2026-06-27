@@ -158,6 +158,28 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     catalogEntries.map(e => [e.external_id, e])
   );
 
+  const STATUS_LIST = [
+    { key: '', label: 'Todos' },
+    { key: 'planning', label: p.status_planning },
+    { key: 'in_progress', label: 'En progreso' },
+    { key: 'completed', label: p.status_completed },
+    { key: 'paused', label: p.status_paused },
+    { key: 'dropped', label: p.status_dropped }
+  ];
+  let currentStatusIndex = 0;
+  let selectedType = '';
+
+  const TYPE_LABELS: Record<string, string> = {
+    anime: "Anime",
+    manga: "Manga",
+    novel: "Novela Ligera",
+    game: "Videojuego",
+    vnovel: "Novela Visual",
+    series: "Serie",
+    movie: "Película",
+    book: "Libro"
+  };
+
   el.innerHTML = `
     <div class="library-layout">
       <aside class="library-filters">
@@ -169,30 +191,26 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         </div>
 
         <div class="library-filter-group">
-          <label class="library-filter-label" for="filter-type">Tipo de Medio</label>
-          <select id="filter-type" class="library-filter-select">
-            <option value="">Todos</option>
-            <option value="anime">Anime</option>
-            <option value="manga">Manga</option>
-            <option value="novel">Novela Ligera</option>
-            <option value="game">Videojuego</option>
-            <option value="vnovel">Novela Visual</option>
-            <option value="series">Serie</option>
-            <option value="movie">Película</option>
-            <option value="book">Libro</option>
-          </select>
+          <label class="library-filter-label">Tipo de Medio</label>
+          <div class="library-type-filters">
+            <button type="button" class="library-type-btn active" data-value="" title="Todos">
+              <span>ALL</span>
+            </button>
+            ${Object.entries(TYPE_ICON).map(([type, svg]) => `
+              <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
+                ${svg}
+              </button>
+            `).join('')}
+          </div>
         </div>
 
         <div class="library-filter-group">
-          <label class="library-filter-label" for="filter-status">Estado</label>
-          <select id="filter-status" class="library-filter-select">
-            <option value="">Todos</option>
-            <option value="planning">${p.status_planning}</option>
-            <option value="in_progress">En progreso</option>
-            <option value="completed">${p.status_completed}</option>
-            <option value="paused">${p.status_paused}</option>
-            <option value="dropped">${p.status_dropped}</option>
-          </select>
+          <label class="library-filter-label">Estado</label>
+          <div class="library-status-cycler">
+            <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
+            <span class="library-status-val" id="status-val">Todos</span>
+            <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
+          </div>
         </div>
       </aside>
 
@@ -203,29 +221,30 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   `;
 
   const filterName   = el.querySelector('#filter-name') as HTMLInputElement | null;
-  const filterType   = el.querySelector('#filter-type') as HTMLSelectElement | null;
-  const filterStatus = el.querySelector('#filter-status') as HTMLSelectElement | null;
+  const statusValEl  = el.querySelector('#status-val') as HTMLElement | null;
+  const btnPrev      = el.querySelector('#status-prev') as HTMLButtonElement | null;
+  const btnNext      = el.querySelector('#status-next') as HTMLButtonElement | null;
   const gridEl       = el.querySelector('.library-grid') as HTMLElement | null;
+  const typeBtns     = el.querySelectorAll('.library-type-btn');
 
   const applyFilters = () => {
     if (!gridEl) return;
     const nameVal   = filterName?.value.toLowerCase().trim() || '';
-    const typeVal   = filterType?.value || '';
-    const statusVal = filterStatus?.value || '';
+    const statusKey = STATUS_LIST[currentStatusIndex].key;
 
     const filtered = items.filter(item => {
       const meta = catalogMap.get(item.external_id);
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
 
       if (nameVal && !title.includes(nameVal)) return false;
-      if (typeVal && item.type !== typeVal) return false;
-      if (statusVal) {
-        if (statusVal === 'in_progress') {
+      if (selectedType && item.type !== selectedType) return false;
+      if (statusKey) {
+        if (statusKey === 'in_progress') {
           if (item.status !== 'watching' && item.status !== 'reading' && item.status !== 'playing') {
             return false;
           }
         } else {
-          if (item.status !== statusVal) return false;
+          if (item.status !== statusKey) return false;
         }
       }
       return true;
@@ -265,9 +284,28 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     }).join('');
   };
 
+  typeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      typeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedType = (btn as HTMLElement).dataset.value || '';
+      applyFilters();
+    });
+  });
+
+  btnPrev?.addEventListener('click', () => {
+    currentStatusIndex = (currentStatusIndex - 1 + STATUS_LIST.length) % STATUS_LIST.length;
+    if (statusValEl) statusValEl.textContent = STATUS_LIST[currentStatusIndex].label;
+    applyFilters();
+  });
+
+  btnNext?.addEventListener('click', () => {
+    currentStatusIndex = (currentStatusIndex + 1) % STATUS_LIST.length;
+    if (statusValEl) statusValEl.textContent = STATUS_LIST[currentStatusIndex].label;
+    applyFilters();
+  });
+
   filterName?.addEventListener('input', applyFilters);
-  filterType?.addEventListener('change', applyFilters);
-  filterStatus?.addEventListener('change', applyFilters);
 
   applyFilters();
 }
