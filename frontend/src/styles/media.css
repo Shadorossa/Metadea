@@ -1080,6 +1080,7 @@
   letter-spacing: 0.06em;
   color: var(--text-muted);
   white-space: nowrap;
+  order: 2;
 }
 
 .me-header-field-input {
@@ -1092,10 +1093,11 @@
   padding: 0.3rem 0.4rem;
   outline: none;
   transition: border-color 0.15s;
+  order: 1;
 }
 .me-header-field-input:focus { border-color: var(--accent, #7c6af7); }
 .me-header-field-input--date {
-  width: 70px;
+  width: 100px;
 }
 
 /* Remove number input spinner arrows */
