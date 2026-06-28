@@ -85,6 +85,19 @@ const t = useTranslations(lang);
               </div>
             </div>
 
+            <!-- Sistema de Calificación -->
+            <div class="settings-section settings-section--rating">
+              <h3 class="settings-section-title">Sistema de Calificación</h3>
+              <div class="rating-picker" style="margin-top: 0.5rem;">
+                <select id="rating-system-select" class="env-input" style="width: 100%; max-width: 250px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); outline: none;">
+                  <option value="5-star">5 estrellas</option>
+                  <option value="10-dec">Nota sobre 10 (2 decimales)</option>
+                  <option value="10">Nota sobre 10 (Entero)</option>
+                  <option value="3-emoji">3 caritas (9, 6 y 3)</option>
+                </select>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -194,6 +207,15 @@ const t = useTranslations(lang);
     initFontPicker(username, showToast);
     initThemePicker(showToast);
     initEnvironment(showToast);
+
+    const selectEl = document.getElementById('rating-system-select') as HTMLSelectElement | null;
+    if (selectEl) {
+      selectEl.value = localStorage.getItem('metadea_rating_system') || '5-star';
+      selectEl.addEventListener('change', () => {
+        localStorage.setItem('metadea_rating_system', selectEl.value);
+        showToast("Sistema de calificación guardado");
+      });
+    }
 
     document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {
       btn.addEventListener('click', () => {
