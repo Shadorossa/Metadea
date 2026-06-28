@@ -334,9 +334,9 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                             setProgress(val);
                           }}
                           placeholder="0"
-                          style={{ width: '60px' }} />
+                          style={{ width: '60px', order: 1 }} />
                         {maxVal !== undefined && (
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {maxVal}</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
                         )}
                       </div>
                     </div>
