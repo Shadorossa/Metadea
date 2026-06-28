@@ -80,15 +80,16 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [status,      setStatus]      = useState('planning');
   const [rating,      setRating]      = useState(0);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [progress,    setProgress]    = useState(0);
-  const [notes,       setNotes]       = useState('');
-  const [startedAt,   setStartedAt]   = useState('');
-  const [finishedAt,  setFinishedAt]  = useState('');
-  const [isFavorite,  setIsFavorite]  = useState(false);
-  const [isPlatinum,  setIsPlatinum]  = useState(false);
-  const [tags,        setTags]        = useState<string[]>([]);
-  const [tagInput,    setTagInput]    = useState('');
-  const [platform,    setPlatform]    = useState('');
+  const [progress,      setProgress]      = useState(0);
+  const [progressCount2, setProgressCount2] = useState(0);
+  const [notes,         setNotes]         = useState('');
+  const [startedAt,     setStartedAt]     = useState('');
+  const [finishedAt,    setFinishedAt]    = useState('');
+  const [isFavorite,    setIsFavorite]    = useState(false);
+  const [isPlatinum,    setIsPlatinum]    = useState(false);
+  const [tags,          setTags]          = useState<string[]>([]);
+  const [tagInput,      setTagInput]      = useState('');
+  const [platform,      setPlatform]      = useState('');
 
   const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
@@ -102,6 +103,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           setStatus(entry.status ?? 'planning');
           setRating(entry.rating ?? 0);
           setProgress(entry.progress ?? 0);
+          setProgressCount2(entry.progress_count_2 ?? 0);
           setNotes(entry.notes ?? '');
           setStartedAt(entry.started_at ?? '');
           setFinishedAt(entry.finished_at ?? '');
@@ -192,6 +194,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         status:           status || null,
         rating:           rating > 0 ? rating : null,
         progress,
+        progress_count_2: progressCount2,
         minutes_spent:    data.type === 'game' || data.type === 'vnovel'
                             ? progress * 60
                             : (existing?.minutes_spent ?? 0),
@@ -237,7 +240,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } finally {
       setSaving(false);
     }
-  }, [existing, externalId, data.type, status, rating, progress, notes,
+  }, [existing, externalId, data.type, status, rating, progress, progressCount2, notes,
       startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, monthlyHistory, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
@@ -326,25 +329,51 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 {/* Progress input */}
                 {progLabel && (() => {
                   const maxVal = data.totalCount && data.totalCount > 0 ? data.totalCount : undefined;
+                  const max2Val = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
+                  const label2 = data.type === 'anime' || data.type === 'series' ? 'Seasons' :
+                                 data.type === 'manga' ? 'Volumes' :
+                                 data.type === 'light-novel' ? 'Volumes' :
+                                 data.type === 'books' ? 'Books' : 'Count 2';
                   return (
-                    <div className="me-header-field">
-                      <label className="me-header-field-label">{progLabel}</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <input type="number" className="me-header-field-input" min={0}
-                          max={maxVal}
-                          step={progressStep(data.type)}
-                          value={progress || ''}
-                          onChange={e => {
-                            let val = parseFloat(e.target.value) || 0;
-                            if (maxVal !== undefined && val > maxVal) val = maxVal;
-                            setProgress(val);
-                          }}
-                          placeholder="0"
-                          style={{ width: '60px', order: 1 }} />
-                        {maxVal !== undefined && (
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
-                        )}
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
+                      <div className="me-header-field">
+                        <label className="me-header-field-label">{progLabel}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <input type="number" className="me-header-field-input" min={0}
+                            max={maxVal}
+                            step={progressStep(data.type)}
+                            value={progress || ''}
+                            onChange={e => {
+                              let val = parseFloat(e.target.value) || 0;
+                              if (maxVal !== undefined && val > maxVal) val = maxVal;
+                              setProgress(val);
+                            }}
+                            placeholder="0"
+                            style={{ width: '60px', order: 1 }} />
+                          {maxVal !== undefined && (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
+                          )}
+                        </div>
                       </div>
+                      {max2Val !== undefined && (
+                        <div className="me-header-field">
+                          <label className="me-header-field-label">{label2}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input type="number" className="me-header-field-input" min={0}
+                              max={max2Val}
+                              step={1}
+                              value={progressCount2 || ''}
+                              onChange={e => {
+                                let val = parseInt(e.target.value) || 0;
+                                if (max2Val !== undefined && val > max2Val) val = max2Val;
+                                setProgressCount2(val);
+                              }}
+                              placeholder="0"
+                              style={{ width: '60px' }} />
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
