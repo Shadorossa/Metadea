@@ -1043,9 +1043,10 @@
 
 /* Pill Navigation Tabs Row */
 .fav-tabs-row {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 1rem;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 1rem;
@@ -1055,23 +1056,24 @@
 .fav-tabs {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .fav-tab-btn {
-  background: transparent;
-  border: 1px solid transparent;
+  background: transparent !important;
+  border: none !important;
   color: var(--text-muted);
-  padding: 0.6rem 1.2rem;
+  padding: 0.6rem 0.8rem;
   font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
-  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all var(--anim-fast);
+  transition: color var(--anim-fast);
+  box-shadow: none !important;
 }
 
 .fav-tab-btn svg {
@@ -1080,13 +1082,16 @@
 
 .fav-tab-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .fav-tab-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent) !important;
+}
+
+.fav-reorder-btn {
+  position: absolute;
+  right: 0;
+  padding: 0.6rem;
 }
 
 .fav-tab-count {

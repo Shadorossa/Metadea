@@ -398,17 +398,7 @@ h2, h3, .settings-panel-title, .section-label {
 
 /* ── Favorites Page Overrides for Newspaper Dark ────────────────────────── */
 
-.fav-tab-btn {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
 
-.fav-tab-btn.active {
-  border-color: var(--accent) !important;
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-}
 
 .fav-card {
   border-radius: 0px !important;
