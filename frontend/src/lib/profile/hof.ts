@@ -25,10 +25,7 @@ const ICON_PERSON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
 </svg>`;
 
 export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): string {
-  const top10 = [...items]
-    .filter(item => item.rating != null)
-    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    .slice(0, 10);
+  const top10 = [...items].slice(0, 10);
 
   while (top10.length < 10) top10.push(null as any);
 

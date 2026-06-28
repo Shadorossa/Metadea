@@ -90,7 +90,11 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       </div>
     </div>`;
 
-  el.innerHTML = buildHofHtml(items, catalogMap, p) + statsHtml + bottomHtml;
+  const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+  const multimediaIds = favData.multimedia || [];
+  const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+
+  el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
   initHofListeners(el);
 }
 
