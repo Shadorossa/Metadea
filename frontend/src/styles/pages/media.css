@@ -698,9 +698,10 @@
 }
 
 .media-store-icon {
-  height: 24px;
+  max-height: 24px;
   width: auto;
-  object-fit: contain;
+  height: auto;
+  aspect-ratio: auto;
   filter: brightness(0) invert(1);
 }
 
