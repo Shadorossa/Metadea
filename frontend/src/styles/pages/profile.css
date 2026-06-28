@@ -366,8 +366,8 @@
   align-items: center;
   gap: 2px;
   line-height: 1;
-  margin-top: 0.3rem;
-  margin-bottom: 0.15rem;
+  margin-top: auto;
+  margin-bottom: 0.1rem;
   color: #fbbf24;
 }
 
