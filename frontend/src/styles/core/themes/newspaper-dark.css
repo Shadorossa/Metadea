@@ -145,7 +145,14 @@ h2, h3, .settings-panel-title, .section-label {
 }
 
 .library-card-rating svg {
-  stroke: rgba(245, 242, 235, 0.3) !important;
+  fill: #f5f2eb !important;
+  stroke: #f5f2eb !important;
+}
+
+/* Library card dates - better visibility */
+.library-card-date {
+  color: #f5f2eb !important;
+  opacity: 1 !important;
 }
 
 /* Status colors override to match Metamedia Newspaper Dark muted palette */
