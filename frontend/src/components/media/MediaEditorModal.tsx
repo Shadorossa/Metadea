@@ -384,21 +384,23 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                      }
                      
                      if (system === '3-emoji') {
-                       const rounded = Math.round(rating);
+                       let activeEmoji = '😐';
+                       if (rating <= 3.5) activeEmoji = '😞';
+                       else if (rating > 7) activeEmoji = '😊';
                        return (
                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                           <button type="button" 
+                           <button type="button"
                              onClick={() => setRating(rating === 3 ? 0 : 3)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 3 ? 1 : 0.4, padding: '2px' }}
-                             title="Triste (3/10)">😞</button>
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😞' ? 1 : 0.4, padding: '2px' }}
+                             title="Triste (0-3.5)">😞</button>
                            <button type="button"
-                             onClick={() => setRating(rating === 6 ? 0 : 6)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 6 ? 1 : 0.4, padding: '2px' }}
-                             title="Neutral (6/10)">😐</button>
+                             onClick={() => setRating(rating === 5.5 ? 0 : 5.5)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😐' ? 1 : 0.4, padding: '2px' }}
+                             title="Neutral (3.6-7)">😐</button>
                            <button type="button"
-                             onClick={() => setRating(rating === 9 ? 0 : 9)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 9 ? 1 : 0.4, padding: '2px' }}
-                             title="Feliz (9/10)">😊</button>
+                             onClick={() => setRating(rating === 8.5 ? 0 : 8.5)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😊' ? 1 : 0.4, padding: '2px' }}
+                             title="Feliz (7.1-10)">😊</button>
                          </div>
                        );
                      }

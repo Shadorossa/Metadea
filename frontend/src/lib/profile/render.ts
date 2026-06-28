@@ -61,10 +61,9 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     } else if (system === '10') {
       avgRatingStr = Math.round(avgVal).toString();
     } else if (system === '3-emoji') {
-      const rounded = Math.round(avgVal);
       let emoji = '😐';
-      if (rounded === 9) emoji = '😊';
-      else if (rounded === 3) emoji = '😞';
+      if (avgVal <= 3.5) emoji = '😞';
+      else if (avgVal > 7) emoji = '😊';
       avgRatingStr = `${emoji} (${avgVal.toFixed(1)})`;
     } else {
       avgRatingStr = (avgVal / 2).toFixed(1);
@@ -166,15 +165,14 @@ function buildRatingHtml(rating: number | null | undefined): string {
     return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Math.round(rating)} / 10</span>`;
   }
   if (system === '3-emoji') {
-    const rounded = Math.round(rating);
     let emoji = '😐';
     let color = '#f59e0b';
-    if (rounded === 9) {
-      emoji = '😊';
-      color = '#10b981';
-    } else if (rounded === 3) {
+    if (rating <= 3.5) {
       emoji = '😞';
       color = '#ef4444';
+    } else if (rating > 7) {
+      emoji = '😊';
+      color = '#10b981';
     }
     return `<span class="library-card-rating emoji-rating" style="font-size: 1.1rem; line-height: 1; color: ${color};">${emoji}</span>`;
   }
@@ -508,10 +506,9 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     } else if (system === '10') {
       avgScoreStr = `${Math.round(avgScore)} / 10`;
     } else if (system === '3-emoji') {
-      const rounded = Math.round(avgScore);
       let emoji = '😐';
-      if (rounded === 9) emoji = '😊';
-      else if (rounded === 3) emoji = '😞';
+      if (avgScore <= 3.5) emoji = '😞';
+      else if (avgScore > 7) emoji = '😊';
       avgScoreStr = `${emoji} (${avgScore.toFixed(1)})`;
     } else {
       avgScoreStr = `${(avgScore / 2).toFixed(1)} / 5`;
