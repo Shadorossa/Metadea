@@ -156,7 +156,7 @@ pub async fn get_all_library_entries(
 #[tauri::command]
 pub async fn read_monthly_history(app_handle: tauri::AppHandle) -> Result<String, String> {
     let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    let path = data_dir.join("user_library").join("monthly_history.json");
+    let path = data_dir.join("user_metadata").join("monthly_history.json");
     if !path.exists() {
         return Ok("{}".to_string());
     }
@@ -166,8 +166,8 @@ pub async fn read_monthly_history(app_handle: tauri::AppHandle) -> Result<String
 #[tauri::command]
 pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
     let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
-    let path = data_dir.join("user_library").join("monthly_history.json");
+    std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_metadata").join("monthly_history.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
 }
 
@@ -176,7 +176,7 @@ pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String
 #[tauri::command]
 pub async fn read_user_favorites(app_handle: tauri::AppHandle) -> Result<String, String> {
     let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    let path = data_dir.join("user_library").join("user_favorite.json");
+    let path = data_dir.join("user_metadata").join("user_favorite.json");
     if !path.exists() {
         return Ok("{}".to_string());
     }
@@ -186,7 +186,7 @@ pub async fn read_user_favorites(app_handle: tauri::AppHandle) -> Result<String,
 #[tauri::command]
 pub async fn write_user_favorites(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
     let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
-    let path = data_dir.join("user_library").join("user_favorite.json");
+    std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_metadata").join("user_favorite.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
 }
