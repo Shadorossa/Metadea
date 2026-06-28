@@ -183,8 +183,25 @@
   flex-wrap: nowrap;
   gap: clamp(1.5rem, 4vw, 5rem);
   padding: 2rem 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.profile-stats-bar::before,
+.profile-stats-bar::after {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 1px;
+  background: var(--border-color);
+  left: 15%;
+}
+
+.profile-stats-bar::before {
+  top: 0;
+}
+
+.profile-stats-bar::after {
+  bottom: 0;
 }
 
 .profile-stat {
