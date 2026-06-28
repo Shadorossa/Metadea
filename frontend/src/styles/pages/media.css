@@ -688,7 +688,7 @@
   align-items: center;
   justify-content: center;
   height: 30px;
-  padding: 0 0.75rem;
+  padding: 0 0.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background: var(--bg-card);
@@ -701,6 +701,12 @@
   transition: border-color var(--anim-base) var(--anim-ease),
               background var(--anim-base) var(--anim-ease),
               color var(--anim-base) var(--anim-ease);
+}
+
+.media-store-icon {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
 }
 
 .media-store-link:hover {

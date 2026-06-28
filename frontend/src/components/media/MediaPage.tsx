@@ -477,22 +477,39 @@ export default function MediaPage({ lang }: { lang: string }) {
           <div className="media-col-stats">
             {data.storeLinks && data.storeLinks.length > 0 && (
               <div className="media-store-links">
-                {data.storeLinks.map((link, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className="media-store-link"
-                    onClick={() => {
-                      const tauri = (window as any).__TAURI__;
-                      if (tauri?.opener?.openUrl) {
-                        tauri.opener.openUrl(link.url);
-                      } else {
-                        window.open(link.url, '_blank');
-                      }
-                    }}
-                  >
-                    {link.platform}
-                  </button>
+                {data.storeLinks.map((link, i) => {
+                  const platformLower = link.platform.toLowerCase();
+                  const logoMap: Record<string, string> = {
+                    'steam': 'steam_logo.png',
+                    'epic': 'epic_logo.png',
+                    'gog': 'gog_logo.png',
+                    'playstation': 'playstation_logo.png',
+                    'xbox': 'xbox_logo.png',
+                    'nintendo': 'nintendo_logo.png',
+                    'ea': 'EA_logo.png'
+                  };
+                  const logoFile = logoMap[platformLower] || 'steam_logo.png';
+                  const logoUrl = `/platforms/${logoFile}`;
+
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className="media-store-link"
+                      title={link.platform}
+                      onClick={() => {
+                        const tauri = (window as any).__TAURI__;
+                        if (tauri?.opener?.openUrl) {
+                          tauri.opener.openUrl(link.url);
+                        } else {
+                          window.open(link.url, '_blank');
+                        }
+                      }}
+                    >
+                      <img src={logoUrl} alt={link.platform} className="media-store-icon" />
+                    </button>
+                  );
+                })}
                 ))}
               </div>
             )}
