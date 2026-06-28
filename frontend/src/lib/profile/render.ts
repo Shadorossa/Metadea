@@ -37,7 +37,25 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     if (item.minutes_spent)    totalMinutes += item.minutes_spent;
   }
 
-  const avgRating  = ratedCount > 0 ? (totalRating / ratedCount).toFixed(1) : '0.0';
+  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  let avgRatingStr = '0.0';
+  if (ratedCount > 0) {
+    const avgVal = totalRating / ratedCount;
+    if (system === '10-dec') {
+      avgRatingStr = avgVal.toFixed(2);
+    } else if (system === '10') {
+      avgRatingStr = Math.round(avgVal).toString();
+    } else if (system === '3-emoji') {
+      const rounded = Math.round(avgVal);
+      let emoji = '😐';
+      if (rounded === 9) emoji = '😊';
+      else if (rounded === 3) emoji = '😞';
+      avgRatingStr = `${emoji} (${avgVal.toFixed(1)})`;
+    } else {
+      avgRatingStr = (avgVal / 2).toFixed(2);
+    }
+  }
+
   const totalHours = Math.round(totalMinutes / 60);
 
   const completedTooltipHtml = `
@@ -65,7 +83,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
         [p.stat_completed, pad(completed)],
         [p.stat_pending,   pad(planning)],
         [p.stat_dropped,   pad(dropped)],
-        [p.stat_avg,       avgRating],
+        [p.stat_avg,       avgRatingStr],
         [p.stat_hours,     totalHours + 'h'],
       ] as [string, string][]).map(([label, value]) =>
         `<div class="profile-stat">
