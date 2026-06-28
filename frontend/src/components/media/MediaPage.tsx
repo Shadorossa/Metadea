@@ -510,7 +510,6 @@ export default function MediaPage({ lang }: { lang: string }) {
                     </button>
                   );
                 })}
-                ))}
               </div>
             )}
             {data.stats.length > 0 && (
