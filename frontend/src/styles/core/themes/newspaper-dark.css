@@ -144,29 +144,17 @@ h2, h3, .settings-panel-title, .section-label {
   color: #f5f2eb !important;
 }
 
-/* Override all star colors to white */
-.library-card-rating svg {
+/* Make full and half stars white */
+.library-card-rating svg[fill="#fbbf24"],
+.library-card-rating svg[stroke="#fbbf24"] {
   fill: #f5f2eb !important;
   stroke: #f5f2eb !important;
 }
 
-.library-card-rating svg path {
-  fill: #f5f2eb !important;
-  stroke: #f5f2eb !important;
-}
-
-.library-card-rating svg [fill="#fbbf24"],
-.library-card-rating svg [stroke="#fbbf24"],
-.library-card-rating svg [fill="#fbbf2466"],
-.library-card-rating svg [stroke="#fbbf2466"] {
-  fill: #f5f2eb !important;
-  stroke: #f5f2eb !important;
-}
-
-/* Empty stars - semi-transparent white */
-.library-card-rating svg [stroke="#fbbf2466"] {
-  stroke: rgba(245, 242, 235, 0.35) !important;
+/* Empty stars - semi-transparent white outline only */
+.library-card-rating svg[stroke="#fbbf2466"] {
   fill: none !important;
+  stroke: rgba(245, 242, 235, 0.4) !important;
 }
 
 /* Library card dates - better visibility */
