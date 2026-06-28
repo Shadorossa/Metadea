@@ -831,62 +831,45 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
             if (e.dataTransfer) {
               e.dataTransfer.effectAllowed = 'move';
               e.dataTransfer.setData('text/plain', card.getAttribute('data-id') || '');
+              const img = card.querySelector('.fav-cover') as HTMLImageElement | null;
+              if (img && e.dataTransfer.setDragImage) {
+                // Set the cover image as the drag visual under the cursor
+                e.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
+              }
             }
           });
 
           card.addEventListener('dragend', () => {
             card.classList.remove('drag-source');
-            container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
             activeDragSource = null;
           });
         });
 
         container.addEventListener('dragover', (e: DragEvent) => {
           e.preventDefault();
+          if (!activeDragSource) return;
+
           const { closestCard, insertBefore } = getInsertionPoint(e.clientX, e.clientY);
-          container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
-
-          if (closestCard && activeDragSource && closestCard !== activeDragSource) {
+          if (closestCard && closestCard !== activeDragSource) {
             if (insertBefore) {
-              closestCard.classList.add('drag-over-left');
+              container.insertBefore(activeDragSource, closestCard);
             } else {
-              closestCard.classList.add('drag-over-right');
+              container.insertBefore(activeDragSource, closestCard.nextSibling);
             }
-          }
-        });
-
-        container.addEventListener('dragleave', (e: DragEvent) => {
-          const rect = container.getBoundingClientRect();
-          if (
-            e.clientX < rect.left || e.clientX > rect.right ||
-            e.clientY < rect.top || e.clientY > rect.bottom
-          ) {
-            container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
           }
         });
 
         container.addEventListener('drop', async (e: DragEvent) => {
           e.preventDefault();
-          container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
-
           if (activeDragSource) {
-            const { closestCard, insertBefore } = getInsertionPoint(e.clientX, e.clientY);
-            if (closestCard && closestCard !== activeDragSource) {
-              if (insertBefore) {
-                container.insertBefore(activeDragSource, closestCard);
-              } else {
-                container.insertBefore(activeDragSource, closestCard.nextSibling);
-              }
+            // Update favData based on new DOM order
+            const newOrder = Array.from(container.querySelectorAll('.fav-card'))
+              .map(c => (c as HTMLElement).dataset.id)
+              .filter(Boolean) as string[];
 
-              // Update favData based on new DOM order
-              const newOrder = Array.from(container.querySelectorAll('.fav-card'))
-                .map(c => (c as HTMLElement).dataset.id)
-                .filter(Boolean) as string[];
-
-              favData[activeCatKey] = newOrder;
-              await writeUserFavorites(favData);
-              renderContent();
-            }
+            favData[activeCatKey] = newOrder;
+            await writeUserFavorites(favData);
+            renderContent();
           }
         });
       }
