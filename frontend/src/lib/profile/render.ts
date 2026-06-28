@@ -156,9 +156,9 @@ const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 
 function buildRatingHtml(rating: number | null | undefined): string {
   if (!rating) return '<span class="library-card-rating"></span>';
-  
+
   const system = getActiveRatingSystem();
-  
+
   if (system === '10-dec') {
     return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Number(rating).toFixed(2)} / 10</span>`;
   }
@@ -179,8 +179,8 @@ function buildRatingHtml(rating: number | null | undefined): string {
     return `<span class="library-card-rating emoji-rating" style="font-size: 1.1rem; line-height: 1; color: ${color};">${emoji}</span>`;
   }
 
-  // rating is 0-10, display as 0-5 stars
-  const stars5 = rating / 2;
+  // Default: rating is 0-10, display as 0-5 stars
+  const stars5 = Math.max(0, Math.min(5, rating / 2));
   let html = '';
   for (let i = 1; i <= 5; i++) {
     if (stars5 >= i)        html += STAR_FULL;
