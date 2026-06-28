@@ -158,7 +158,7 @@
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 .profile-tab-content {
   flex: 1;
-  padding: 1.25rem 2rem;
+  padding: 1.25rem 4rem;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -332,7 +332,7 @@
 }
 
 .library-card-title {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
@@ -345,7 +345,7 @@
 .library-card-rating {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   line-height: 1;
 }
 
@@ -359,13 +359,17 @@
 .library-card-date {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.62rem;
+  gap: 0.3rem;
+  font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
 
-.library-card-date svg { opacity: 0.8; }
+.library-card-date svg {
+  opacity: 0.8;
+  width: 14px;
+  height: 14px;
+}
 
 .library-card-type {
   flex-shrink: 0;
@@ -373,6 +377,11 @@
   opacity: 0.6;
   display: flex;
   align-items: center;
+}
+
+.library-card-type svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* ── Empty / placeholder ──────────────────────────────────────────────────── */
