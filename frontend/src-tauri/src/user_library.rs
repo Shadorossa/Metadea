@@ -137,7 +137,9 @@ pub async fn get_all_library_entries(
     let mut entries = Vec::new();
     for item in std::fs::read_dir(&lib_dir).map_err(|e| e.to_string())? {
         let path = item.map_err(|e| e.to_string())?.path();
-        if path.file_name().and_then(|n| n.to_str()) == Some("monthly_history.json") {
+        if path.file_name().and_then(|n| n.to_str()) == Some("monthly_history.json")
+            || path.file_name().and_then(|n| n.to_str()) == Some("user_favorite.json")
+        {
             continue;
         }
         if path.extension().and_then(|e| e.to_str()) == Some("json") {
@@ -166,5 +168,25 @@ pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String
     let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
     let path = data_dir.join("user_library").join("monthly_history.json");
+    std::fs::write(path, content).map_err(|e| e.to_string())
+}
+
+// ─── User Favorites (JSON file) ──────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn read_user_favorites(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_library").join("user_favorite.json");
+    if !path.exists() {
+        return Ok("{}".to_string());
+    }
+    std::fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn write_user_favorites(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_library").join("user_favorite.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
 }

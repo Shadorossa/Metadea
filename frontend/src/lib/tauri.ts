@@ -330,6 +330,34 @@ export async function writeMonthlyHistory(history: Record<string, string[]>): Pr
   return invoke<void>('write_monthly_history', { content });
 }
 
+// ─── User Favorites ──────────────────────────────────────────────────────────
+
+export async function readUserFavorites(): Promise<Record<string, string[]>> {
+  if (!isTauri()) {
+    try {
+      const saved = localStorage.getItem('user_favorite');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  }
+  try {
+    const raw = await invoke<string>('read_user_favorites');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+export async function writeUserFavorites(favorites: Record<string, string[]>): Promise<void> {
+  const content = JSON.stringify(favorites, null, 2);
+  if (!isTauri()) {
+    localStorage.setItem('user_favorite', content);
+    return;
+  }
+  return invoke<void>('write_user_favorites', { content });
+}
+
 // ─── Media Catalog ────────────────────────────────────────────────────────────
 
 export interface MediaCatalogEntry {

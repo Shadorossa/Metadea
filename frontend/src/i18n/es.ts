@@ -44,6 +44,8 @@ export const es = {
     section_dropped: 'Abandonadas',
     favorites: 'Favoritos',
     empty_favorites: 'Aún no tienes favoritos en esta categoría.',
+    favorites_multimedia: 'Multimedia',
+    reorder: 'Reordenar',
   },
   notifications: {
     title:       'Notificaciones',

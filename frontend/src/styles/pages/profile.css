@@ -1041,15 +1041,22 @@
   width: 100%;
 }
 
-/* Pill Navigation Tabs */
+/* Pill Navigation Tabs Row */
+.fav-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
+  width: 100%;
+}
+
 .fav-tabs {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 1rem;
 }
 
 .fav-tab-btn {
@@ -1115,6 +1122,61 @@
   transform: translateY(-4px);
   border-color: var(--accent);
   box-shadow: 0 8px 24px rgba(var(--accent-rgb), 0.2);
+}
+
+.fav-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/* Crown button styles */
+.fav-crown-btn {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+  z-index: 10;
+}
+
+.fav-crown-btn:hover {
+  color: #fbbf24;
+  border-color: #fbbf24;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fav-crown-btn.active {
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+
+/* Reorder movement arrow styles */
+.fav-arrow-btn {
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.fav-arrow-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .fav-cover {

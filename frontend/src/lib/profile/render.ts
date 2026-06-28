@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory, readUserFavorites, writeUserFavorites } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
@@ -353,46 +353,94 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
     catalogEntries.map(e => [e.external_id, e])
   );
 
-  const favorites = items.filter(item => item.is_favorite === 1);
+  /* ── Load & Synchronize user_favorite.json ─────────────────────────────── */
+  let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+  let modified = false;
 
-  if (favorites.length === 0) {
-    el.innerHTML = `
-      <div class="fav-empty-state">
-        <svg class="fav-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        <h3 class="fav-empty-title">${p.favorites}</h3>
-        <p class="fav-empty-text">${p.empty_favorites}</p>
-      </div>
-    `;
-    return;
+  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'novel', 'series', 'movie', 'book'];
+  for (const k of favKeys) {
+    if (!favData[k]) {
+      favData[k] = [];
+      modified = true;
+    }
   }
 
-  // Categories map
-  const categories = [
-    { key: 'all', label: s.all, items: favorites, icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
-    { key: 'anime', label: s.anime, items: favorites.filter(i => i.type === 'anime'), icon: TYPE_ICON['anime'] },
-    { key: 'manga', label: s.manga, items: favorites.filter(i => i.type === 'manga'), icon: TYPE_ICON['manga'] },
-    { key: 'game', label: s.game, items: favorites.filter(i => i.type === 'game'), icon: TYPE_ICON['game'] },
-    { key: 'vnovel', label: s.vnovel, items: favorites.filter(i => i.type === 'vnovel'), icon: TYPE_ICON['vnovel'] },
-    { key: 'novel', label: s.novel, items: favorites.filter(i => i.type === 'novel'), icon: TYPE_ICON['novel'] },
-    { key: 'series', label: s.series, items: favorites.filter(i => i.type === 'series'), icon: TYPE_ICON['series'] },
-    { key: 'movie', label: s.movie, items: favorites.filter(i => i.type === 'movie'), icon: TYPE_ICON['movie'] },
-    { key: 'book', label: s.book, items: favorites.filter(i => i.type === 'book'), icon: TYPE_ICON['book'] },
-  ];
+  for (const item of items) {
+    const type = item.type || 'book';
+    if (item.is_favorite === 1) {
+      if (!favData[type].includes(item.external_id)) {
+        favData[type].push(item.external_id);
+        modified = true;
+      }
+    } else {
+      if (favData[type].includes(item.external_id)) {
+        favData[type] = favData[type].filter(id => id !== item.external_id);
+        modified = true;
+      }
+      if (favData.multimedia.includes(item.external_id)) {
+        favData.multimedia = favData.multimedia.filter(id => id !== item.external_id);
+        modified = true;
+      }
+    }
+  }
 
-  let activeCatKey = 'all';
+  if (modified) {
+    await writeUserFavorites(favData).catch(() => {});
+  }
+
+  const getOrderedItems = (catKey: string) => {
+    const ids = favData[catKey] || [];
+    return ids.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+  };
+
+  let activeCatKey = 'multimedia';
+  let reorderModeActive = false;
 
   const renderContent = () => {
+    // Categories definition
+    const categories = [
+      { key: 'multimedia', label: p.favorites_multimedia || 'Multimedia', getItems: () => getOrderedItems('multimedia'), icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
+      { key: 'anime', label: s.anime, getItems: () => getOrderedItems('anime'), icon: TYPE_ICON['anime'] },
+      { key: 'manga', label: s.manga, getItems: () => getOrderedItems('manga'), icon: TYPE_ICON['manga'] },
+      { key: 'game', label: s.game, getItems: () => getOrderedItems('game'), icon: TYPE_ICON['game'] },
+      { key: 'vnovel', label: s.vnovel, getItems: () => getOrderedItems('vnovel'), icon: TYPE_ICON['vnovel'] },
+      { key: 'novel', label: s.novel, getItems: () => getOrderedItems('novel'), icon: TYPE_ICON['novel'] },
+      { key: 'series', label: s.series, getItems: () => getOrderedItems('series'), icon: TYPE_ICON['series'] },
+      { key: 'movie', label: s.movie, getItems: () => getOrderedItems('movie'), icon: TYPE_ICON['movie'] },
+      { key: 'book', label: s.book, getItems: () => getOrderedItems('book'), icon: TYPE_ICON['book'] },
+    ];
+
     const cat = categories.find(c => c.key === activeCatKey) || categories[0];
-    const gridHtml = cat.items.map((item, idx) => {
+    const catItems = cat.getItems();
+
+    const gridHtml = catItems.map((item, idx) => {
       const meta = catalogMap.get(item.external_id);
       const title = meta?.title_main ?? item.external_id;
       const cover = meta?.cover_url ?? '';
       const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
       const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+      const isCrowned = favData.multimedia?.includes(item.external_id);
 
       return `
-        <a class="fav-card" href="${mediaUrl}">
+        <div class="fav-card">
+          <a class="fav-card-link" href="${mediaUrl}"></a>
           <div class="fav-badge">#${idx + 1}</div>
+
+          <!-- Crown button overlay -->
+          ${activeCatKey !== 'multimedia' ? `
+            <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
+            </button>
+          ` : ''}
+
+          <!-- Reorder movement controls overlay -->
+          ${reorderModeActive ? `
+            <div class="fav-reorder-arrows" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 15; background: rgba(0,0,0,0.3); pointer-events: none;">
+              <button class="fav-arrow-btn fav-arrow-left" data-id="${item.external_id}" data-dir="left" title="Mover izquierda" style="pointer-events: auto;">&lt;</button>
+              <button class="fav-arrow-btn fav-arrow-right" data-id="${item.external_id}" data-dir="right" title="Mover derecha" style="pointer-events: auto;">&gt;</button>
+            </div>
+          ` : ''}
+
           ${cover
             ? `<img class="fav-cover" src="${cover}" alt="${title}" loading="lazy" />`
             : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
@@ -404,7 +452,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
               <span class="fav-meta-type">${typeIc}</span>
             </div>
           </div>
-        </a>
+        </div>
       `;
     }).join('');
 
@@ -416,29 +464,84 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       </div>
     `;
 
-    const tabsHtml = categories.map(c => `
-      <button class="fav-tab-btn ${c.key === activeCatKey ? 'active' : ''}" data-cat="${c.key}">
-        ${c.icon}
-        <span>${c.label}</span>
-        ${c.items.length > 0 ? `<span class="fav-tab-count">${c.items.length}</span>` : ''}
-      </button>
-    `).join('');
+    const tabsHtml = categories.map(c => {
+      const cItems = c.getItems();
+      return `
+        <button class="fav-tab-btn ${c.key === activeCatKey ? 'active' : ''}" data-cat="${c.key}">
+          ${c.icon}
+          <span>${c.label}</span>
+          ${cItems.length > 0 ? `<span class="fav-tab-count">${cItems.length}</span>` : ''}
+        </button>
+      `;
+    }).join('');
 
     el.innerHTML = `
       <div class="fav-layout">
-        <div class="fav-tabs">
-          ${tabsHtml}
+        <div class="fav-tabs-row">
+          <div class="fav-tabs">
+            ${tabsHtml}
+          </div>
+          <button class="fav-tab-btn fav-reorder-btn ${reorderModeActive ? 'active' : ''}" id="fav-reorder-toggle" title="${p.reorder}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M21 3L14 10"/><path d="M18 14l3 3M14 21h7v-7"/><path d="M21 21L14 14"/><path d="M3 3l18 18"/></svg>
+            <span>${p.reorder}</span>
+          </button>
         </div>
         <div class="fav-grid-container">
-          ${cat.items.length > 0 ? `<div class="fav-grid">${gridHtml}</div>` : emptyHtml}
+          ${catItems.length > 0 ? `<div class="fav-grid">${gridHtml}</div>` : emptyHtml}
         </div>
       </div>
     `;
 
     // Hook tab button click listeners
-    el.querySelectorAll('.fav-tab-btn').forEach(btn => {
+    el.querySelectorAll('.fav-tab-btn[data-cat]').forEach(btn => {
       btn.addEventListener('click', () => {
-        activeCatKey = (btn as HTMLElement).dataset.cat || 'all';
+        activeCatKey = (btn as HTMLElement).dataset.cat || 'multimedia';
+        renderContent();
+      });
+    });
+
+    // Hook reorder mode toggle listener
+    el.querySelector('#fav-reorder-toggle')?.addEventListener('click', () => {
+      reorderModeActive = !reorderModeActive;
+      renderContent();
+    });
+
+    // Hook crown overlay buttons click listeners
+    el.querySelectorAll('.fav-crown-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = (btn as HTMLElement).dataset.id || '';
+        if (!id) return;
+        if (!favData.multimedia) favData.multimedia = [];
+        
+        if (favData.multimedia.includes(id)) {
+          favData.multimedia = favData.multimedia.filter(x => x !== id);
+        } else {
+          favData.multimedia.push(id);
+        }
+        await writeUserFavorites(favData);
+        renderContent();
+      });
+    });
+
+    // Hook reorder arrow click listeners
+    el.querySelectorAll('.fav-arrow-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = (btn as HTMLElement).dataset.id || '';
+        const dir = (btn as HTMLElement).dataset.dir || '';
+        if (!id || !dir) return;
+
+        const list = favData[activeCatKey] || [];
+        const index = list.indexOf(id);
+        if (index === -1) return;
+
+        if (dir === 'left' && index > 0) {
+          [list[index], list[index - 1]] = [list[index - 1], list[index]];
+        } else if (dir === 'right' && index < list.length - 1) {
+          [list[index], list[index + 1]] = [list[index + 1], list[index]];
+        }
+        await writeUserFavorites(favData);
         renderContent();
       });
     });

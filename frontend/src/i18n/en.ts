@@ -44,6 +44,8 @@ export const en = {
     section_dropped: 'Dropped',
     favorites: 'Favorites',
     empty_favorites: 'You don\'t have any favorites in this category yet.',
+    favorites_multimedia: 'Multimedia',
+    reorder: 'Reorder',
   },
   notifications: {
     title:       'Notifications',

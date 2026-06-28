@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, readUserFavorites, writeUserFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
@@ -209,6 +209,27 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
       await writeMonthlyHistory(monthlyHistory);
 
+      /* ── Sync with user_favorite.json ───────────────────────────────────────── */
+      try {
+        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+        const type = data.type || 'book';
+        if (!favs[type]) favs[type] = [];
+        
+        if (isFavorite) {
+          if (!favs[type].includes(externalId)) {
+            favs[type].push(externalId);
+          }
+        } else {
+          favs[type] = favs[type].filter(id => id !== externalId);
+          if (favs.multimedia) {
+            favs.multimedia = favs.multimedia.filter(id => id !== externalId);
+          }
+        }
+        await writeUserFavorites(favs);
+      } catch (e) {
+        console.error('Failed to sync favorites JSON', e);
+      }
+
       onSaved(entry);
       handleClose();
     } catch (e) {
@@ -223,6 +244,22 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     if (!existing) { onClose(); return; }
     try {
       await deleteLibraryEntry(externalId, data.type);
+
+      /* ── Sync with user_favorite.json upon delete ──────────────────────────── */
+      try {
+        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+        const type = data.type || 'book';
+        if (favs[type]) {
+          favs[type] = favs[type].filter(id => id !== externalId);
+        }
+        if (favs.multimedia) {
+          favs.multimedia = favs.multimedia.filter(id => id !== externalId);
+        }
+        await writeUserFavorites(favs);
+      } catch (e) {
+        console.error('Failed to delete from favorites JSON', e);
+      }
+
       onDeleted();
     } catch (e) {
       console.error('delete_library_entry error', e);
