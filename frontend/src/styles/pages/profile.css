@@ -95,7 +95,7 @@
 }
 
 .profile-divider-line {
-  width: 100%;
+  width: 85%;
   height: 1px;
   background: var(--border-color);
 }
