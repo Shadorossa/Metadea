@@ -141,7 +141,6 @@
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(192, 132, 252, 0.35);
 }
 
 /* Tooltip */
