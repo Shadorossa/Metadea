@@ -318,16 +318,30 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
 
                 {/* Progress input */}
-                {progLabel && (
-                  <div className="me-header-field">
-                    <label className="me-header-field-label">{progLabel}</label>
-                    <input type="number" className="me-header-field-input" min={0}
-                      step={progressStep(data.type)}
-                      value={progress || ''}
-                      onChange={e => setProgress(parseFloat(e.target.value) || 0)}
-                      placeholder="0" />
-                  </div>
-                )}
+                {progLabel && (() => {
+                  const maxVal = data.totalCount && data.totalCount > 0 ? data.totalCount : undefined;
+                  return (
+                    <div className="me-header-field">
+                      <label className="me-header-field-label">{progLabel}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <input type="number" className="me-header-field-input" min={0}
+                          max={maxVal}
+                          step={progressStep(data.type)}
+                          value={progress || ''}
+                          onChange={e => {
+                            let val = parseFloat(e.target.value) || 0;
+                            if (maxVal !== undefined && val > maxVal) val = maxVal;
+                            setProgress(val);
+                          }}
+                          placeholder="0"
+                          style={{ width: '60px' }} />
+                        {maxVal !== undefined && (
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {maxVal}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Rating stars */}
                 <div className="me-header-field">
