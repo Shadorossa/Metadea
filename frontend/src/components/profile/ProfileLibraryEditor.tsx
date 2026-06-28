@@ -29,6 +29,7 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
 
       // Si tenemos catalogEntry local, usarla para construcción básica
       if (catalogEntry) {
+        console.log('[ProfileLibraryEditor] Using catalogEntry for quick load');
         // Construir MediaPageData mínima desde catalogEntry
         const basicData: MediaPageData = {
           externalId: id,
@@ -45,23 +46,22 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
           progressLabel: 'En progreso'
         };
         setMediaData(basicData);
-        setLoading(true);
+        setLoading(false);
 
         // Luego en background, enriquecer con más datos
         fetchMediaData(id)
           .then(data => {
             if (data) {
+              console.log('[ProfileLibraryEditor] Background fetch completed');
               setMediaData(data);
             }
           })
           .catch(err => {
             console.error('Error fetching additional media data:', err);
             // Mantener basicData aunque falle el fetch
-          })
-          .finally(() => {
-            setLoading(false);
           });
       } else {
+        console.log('[ProfileLibraryEditor] No catalogEntry, doing full fetch');
         // Fallback: hacer fetchMediaData completo si no hay catalogEntry
         setLoading(true);
         fetchMediaData(id)
