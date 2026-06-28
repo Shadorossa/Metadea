@@ -212,9 +212,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         </div>
       </aside>
 
-      <div class="library-content">
-        <div class="library-grid"></div>
-      </div>
+      <div class="library-content"></div>
     </div>
   `;
 
@@ -222,11 +220,11 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   const statusValEl  = el.querySelector('#status-val') as HTMLElement | null;
   const btnPrev      = el.querySelector('#status-prev') as HTMLButtonElement | null;
   const btnNext      = el.querySelector('#status-next') as HTMLButtonElement | null;
-  const gridEl       = el.querySelector('.library-grid') as HTMLElement | null;
+  const contentEl    = el.querySelector('.library-content') as HTMLElement | null;
   const typeBtns     = el.querySelectorAll('.library-type-btn');
 
   const applyFilters = () => {
-    if (!gridEl) return;
+    if (!contentEl) return;
     const nameVal   = filterName?.value.toLowerCase().trim() || '';
     const statusKey = STATUS_LIST[currentStatusIndex].key;
 
@@ -249,37 +247,60 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     });
 
     if (filtered.length === 0) {
-      gridEl.innerHTML = `<div class="library-empty-filtered">Sin resultados para los filtros aplicados</div>`;
+      contentEl.innerHTML = `<div class="library-empty-filtered">Sin resultados para los filtros aplicados</div>`;
       return;
     }
 
-    gridEl.innerHTML = filtered.map(item => {
-      const meta     = catalogMap.get(item.external_id);
-      const title    = meta?.title_main ?? item.external_id;
-      const cover    = meta?.cover_url ?? '';
-      const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-      const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-      const style    = cover ? `style="--cover: url('${cover}')"` : '';
+    const inProgress = filtered.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing');
+    const completed  = filtered.filter(item => item.status === 'completed');
+    const planning   = filtered.filter(item => item.status === 'planning');
+    const paused     = filtered.filter(item => item.status === 'paused');
+    const dropped    = filtered.filter(item => item.status === 'dropped');
 
-      return `
-        <div class="library-card" data-id="${item.external_id}" ${style}>
-          ${cover ? `<div class="library-card-bg"></div>` : ''}
-          <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
-            ${cover
-              ? `<img src="${cover}" alt="${title}" loading="lazy" />`
-              : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
-            }
-          </a>
-          <div class="library-card-info">
-            <span class="library-card-title">${title}</span>
-            ${buildRatingHtml(item.rating)}
-            <div class="library-card-footer">
-              ${buildDateHtml(item.started_at, item.finished_at)}
-              <span class="library-card-type">${typeIc}</span>
-            </div>
+    const sectionsData = [
+      { title: p.section_in_progress, items: inProgress },
+      { title: p.section_completed, items: completed },
+      { title: p.section_planning, items: planning },
+      { title: p.section_paused, items: paused },
+      { title: p.section_dropped, items: dropped },
+    ];
+
+    contentEl.innerHTML = sectionsData
+      .filter(sec => sec.items.length > 0)
+      .map(sec => `
+        <div class="library-section">
+          <h3 class="library-section-title">${sec.title}</h3>
+          <div class="library-grid">
+            ${sec.items.map(item => {
+              const meta     = catalogMap.get(item.external_id);
+              const title    = meta?.title_main ?? item.external_id;
+              const cover    = meta?.cover_url ?? '';
+              const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+              const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+              const style    = cover ? `style="--cover: url('${cover}')"` : '';
+
+              return `
+                <div class="library-card" data-id="${item.external_id}" ${style}>
+                  ${cover ? `<div class="library-card-bg"></div>` : ''}
+                  <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
+                    ${cover
+                      ? `<img src="${cover}" alt="${title}" loading="lazy" />`
+                      : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+                    }
+                  </a>
+                  <div class="library-card-info">
+                    <span class="library-card-title">${title}</span>
+                    ${buildRatingHtml(item.rating)}
+                    <div class="library-card-footer">
+                      ${buildDateHtml(item.started_at, item.finished_at)}
+                      <span class="library-card-type">${typeIc}</span>
+                    </div>
+                  </div>
+                </div>`;
+            }).join('')}
           </div>
-        </div>`;
-    }).join('');
+        </div>
+      `).join('');
   };
 
   typeBtns.forEach(btn => {

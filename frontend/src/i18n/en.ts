@@ -37,6 +37,11 @@ export const en = {
     status_completed: 'Completed',
     status_paused:    'Paused',
     status_dropped:   'Dropped',
+    section_planning: 'Planned',
+    section_in_progress: 'In Progress',
+    section_completed: 'Completed',
+    section_paused: 'Paused',
+    section_dropped: 'Dropped',
   },
   notifications: {
     title:       'Notifications',

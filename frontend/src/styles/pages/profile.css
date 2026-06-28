@@ -1013,3 +1013,22 @@
   color: var(--text-muted);
   font-size: 0.9rem;
 }
+
+/* Library sections grouping */
+.library-section {
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.library-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
