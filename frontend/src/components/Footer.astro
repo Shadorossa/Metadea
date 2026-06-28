@@ -1,9 +1,13 @@
 ---
+import { useTranslations } from '../i18n/index';
+import type { Locale } from '../i18n/index';
+
 interface Props {
-  lang: 'es' | 'en';
+  lang: Locale;
 }
 
 const { lang } = Astro.props;
+const t = useTranslations(lang);
 
 const apis = [
   { name: 'IGDB', logo: '/API/IGDB_logo.png', url: 'https://www.igdb.com' },
@@ -13,13 +17,11 @@ const apis = [
   { name: 'AnimeTheme', logo: '/API/Animetheme_logo.png', url: 'https://animetheme.me' },
   { name: 'Wikidata', logo: '/API/Wikidata_logo.png', url: 'https://www.wikidata.org' },
 ];
-
-const poweredByText = lang === 'es' ? 'Impulsado por' : 'Powered by';
 ---
 
 <footer class="app-footer">
   <div class="footer-content">
-    <div class="footer-text">{poweredByText}</div>
+    <div class="footer-text">{t.footer.powered_by}</div>
     <div class="footer-logos">
       {apis.map(api => (
         <a

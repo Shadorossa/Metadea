@@ -182,4 +182,7 @@ export const en = {
     appearance_bg_title: 'Dynamic background',
     appearance_bg_hint: 'The animated background applies to the entire app and is saved between sessions.',
   },
+  footer: {
+    powered_by: 'Powered by',
+  },
 } as const;

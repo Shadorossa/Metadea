@@ -182,4 +182,7 @@ export const es = {
     appearance_bg_title: 'Fondo dinámico',
     appearance_bg_hint: 'El fondo animado se aplica a toda la aplicación y se conserva entre sesiones.',
   },
+  footer: {
+    powered_by: 'Impulsado por',
+  },
 } as const;
