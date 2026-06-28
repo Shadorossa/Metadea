@@ -2,8 +2,7 @@
 
 .app-footer {
   width: 100%;
-  border-top: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  background: #000;
   padding: 2rem 1.5rem;
   margin-top: auto;
 }
