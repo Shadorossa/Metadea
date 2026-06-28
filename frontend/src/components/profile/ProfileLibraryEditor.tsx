@@ -6,6 +6,8 @@ import type { MediaPageData } from '../../lib/media/types';
 interface OpenEditorEvent extends Event {
   detail?: {
     externalId: string;
+    libraryEntry?: any;
+    catalogEntry?: any;
   };
 }
 
@@ -15,27 +17,66 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const handleOpen = (e: Event) => {
+    const handleOpen = async (e: Event) => {
       const customEvent = e as OpenEditorEvent;
       const id = customEvent.detail?.externalId;
+      const catalogEntry = customEvent.detail?.catalogEntry;
+
       if (!id) return;
 
       setExternalId(id);
-      setLoading(true);
       setMediaData(null);
 
-      fetchMediaData(id)
-        .then(data => {
-          if (data) {
-            setMediaData(data);
-          }
-        })
-        .catch(err => {
-          console.error('Error fetching media data for profile editor:', err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      // Si tenemos catalogEntry local, usarla para construcción básica
+      if (catalogEntry) {
+        // Construir MediaPageData mínima desde catalogEntry
+        const basicData: MediaPageData = {
+          externalId: id,
+          type: catalogEntry.media_type || 'book',
+          titleMain: catalogEntry.title_main || 'Unknown',
+          titleNative: catalogEntry.title_native,
+          titleEnglish: catalogEntry.title_english,
+          cover: catalogEntry.cover_url,
+          bannerColor: 'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
+          stats: [],
+          characters: [],
+          relations: [],
+          progressStatus: 'watching',
+          progressLabel: 'En progreso'
+        };
+        setMediaData(basicData);
+        setLoading(true);
+
+        // Luego en background, enriquecer con más datos
+        fetchMediaData(id)
+          .then(data => {
+            if (data) {
+              setMediaData(data);
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching additional media data:', err);
+            // Mantener basicData aunque falle el fetch
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } else {
+        // Fallback: hacer fetchMediaData completo si no hay catalogEntry
+        setLoading(true);
+        fetchMediaData(id)
+          .then(data => {
+            if (data) {
+              setMediaData(data);
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching media data:', err);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
     };
 
     window.addEventListener('open-profile-editor', handleOpen);
