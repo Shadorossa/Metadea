@@ -482,3 +482,47 @@
   gap: 0.5rem;
 }
 
+
+/* ── Rating System Picker ──────────────────────────────────────────────── */
+.rating-system-picker {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rating-system-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+}
+
+.rating-system-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rating-system-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Color Picker ──────────────────────────────────────────────────────── */
+.color-input {
+  cursor: pointer;
+}
+
+.color-picker-container {
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
