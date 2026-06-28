@@ -167,6 +167,8 @@ export const es = {
     banner_drag: 'Arrastra una imagen o haz clic para subir',
     banner_upload: 'Subir imagen',
     banner_remove: 'Eliminar banner',
+    bio_title: 'Biografía',
+    bio_placeholder: 'Cuéntanos sobre ti...',
     font_title: 'Fuente del nombre',
     font_prev: 'Anterior',
     font_next: 'Siguiente',

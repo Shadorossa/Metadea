@@ -87,6 +87,22 @@ const t = useTranslations(lang);
 
           </div>
 
+          <!-- Biografía -->
+          <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <h3 class="settings-section-title">{t.settings.bio_title}</h3>
+            <textarea
+              id="bio-textarea"
+              class="settings-textarea"
+              placeholder={t.settings.bio_placeholder}
+              maxlength="500"
+              rows="5"
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.85rem; resize: vertical;">
+            </textarea>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;">
+              <span id="bio-char-count">0</span>/500
+            </div>
+          </div>
+
           <!-- Sistema de Calificación -->
           <div class="settings-section" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
             <h3 class="settings-section-title">{t.settings.rating_system_title}</h3>
@@ -280,6 +296,21 @@ const t = useTranslations(lang);
       document.documentElement.style.setProperty('--accent-soft', `${color}19`);
       document.documentElement.style.setProperty('--accent-border', `${color}40`);
       document.documentElement.style.setProperty('--accent-glow', `${color}4d`);
+    }
+
+    // Bio
+    const bioTextarea = document.getElementById('bio-textarea') as HTMLTextAreaElement | null;
+    const bioCharCount = document.getElementById('bio-char-count');
+
+    if (bioTextarea && bioCharCount) {
+      const savedBio = localStorage.getItem('metadea_user_bio') || '';
+      bioTextarea.value = savedBio;
+      bioCharCount.textContent = savedBio.length.toString();
+
+      bioTextarea.addEventListener('input', () => {
+        bioCharCount.textContent = bioTextarea.value.length.toString();
+        localStorage.setItem('metadea_user_bio', bioTextarea.value);
+      });
     }
 
     document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {

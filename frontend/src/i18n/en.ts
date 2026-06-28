@@ -167,6 +167,8 @@ export const en = {
     banner_drag: 'Drag an image or click to upload',
     banner_upload: 'Upload image',
     banner_remove: 'Remove banner',
+    bio_title: 'Bio',
+    bio_placeholder: 'Tell us about yourself...',
     font_title: 'Username font',
     font_prev: 'Previous',
     font_next: 'Next',
