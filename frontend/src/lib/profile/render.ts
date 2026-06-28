@@ -490,6 +490,24 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     { label: 'Abandonadas', value: dropped,   color: 'dropped', icon: ICON_STATUS_DROPPED },
   ].filter(s => s.value > 0);
 
+  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  let avgScoreStr = '—';
+  if (avgScore > 0) {
+    if (system === '10-dec') {
+      avgScoreStr = `${avgScore.toFixed(2)} / 10`;
+    } else if (system === '10') {
+      avgScoreStr = `${Math.round(avgScore)} / 10`;
+    } else if (system === '3-emoji') {
+      const rounded = Math.round(avgScore);
+      let emoji = '😐';
+      if (rounded === 9) emoji = '😊';
+      else if (rounded === 3) emoji = '😞';
+      avgScoreStr = `${emoji} (${avgScore.toFixed(1)})`;
+    } else {
+      avgScoreStr = `${(avgScore / 2).toFixed(2)} / 5`;
+    }
+  }
+
   el.innerHTML = `
     <div class="stats-layout">
       <!-- Cards grid -->
@@ -507,7 +525,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
         <div class="stats-card">
           <div class="stats-card-icon">${ICON_STAR}</div>
           <span class="stats-card-label">Nota Media</span>
-          <span class="stats-card-value">${avgScore > 0 ? (avgScore / 2).toFixed(2) + ' / 5' : '—'}</span>
+          <span class="stats-card-value">${avgScoreStr}</span>
         </div>
         <div class="stats-card">
           <div class="stats-card-icon">${ICON_CHART}</div>
