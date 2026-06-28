@@ -19,7 +19,9 @@
 }
 
 /* Custom banner image */
-.profile-banner.has-custom-bg::after { display: none; }
+.profile-banner.has-custom-bg::after {
+  display: none;
+}
 
 /* Subtle grid texture on banner */
 .profile-banner::after {
@@ -27,8 +29,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
 }
@@ -78,11 +80,11 @@
   margin: 0;
   text-align: center;
   text-shadow:
-    -2px -2px 0 rgba(0,0,0,0.6),
-     2px -2px 0 rgba(0,0,0,0.6),
-    -2px  2px 0 rgba(0,0,0,0.6),
-     2px  2px 0 rgba(0,0,0,0.6),
-     0 0 40px rgba(192, 132, 252, 0.3);
+    -2px -2px 0 rgba(0, 0, 0, 0.6),
+    2px -2px 0 rgba(0, 0, 0, 0.6),
+    -2px 2px 0 rgba(0, 0, 0, 0.6),
+    2px 2px 0 rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(192, 132, 252, 0.3);
 }
 
 /* ── Tabs divider (centrado como las stats) ────────────────────────────────── */
@@ -122,12 +124,19 @@
   transition: background var(--anim-fast), color var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast);
   position: relative;
 }
-.profile-tab svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+.profile-tab svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 .profile-tab:hover {
   color: var(--text-main);
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
+
 .profile-tab.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -153,7 +162,10 @@
   pointer-events: none;
   transition: opacity var(--anim-fast);
 }
-.profile-tab:hover[title]::after { opacity: 1; }
+
+.profile-tab:hover[title]::after {
+  opacity: 1;
+}
 
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 .profile-tab-content {
@@ -232,8 +244,15 @@
   border-radius: 99px;
   font-size: 0.72rem;
 }
-.type-chip-count { font-weight: 700; color: var(--text-main); }
-.type-chip-label { color: var(--text-muted); }
+
+.type-chip-count {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.type-chip-label {
+  color: var(--text-muted);
+}
 
 /* ── Library grid (4 columnas de cards horizontales grandes) ─────────────────────── */
 .library-grid {
@@ -278,7 +297,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.75) 100%);
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0.75) 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -294,7 +313,7 @@
   z-index: 2;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .library-card-thumb img {
@@ -398,15 +417,28 @@
   color: var(--text-dim);
   text-align: center;
 }
-.profile-empty-icon { font-size: 2rem; opacity: 0.3; }
-.profile-empty p { font-size: 0.82rem; max-width: 26ch; line-height: 1.55; }
+
+.profile-empty-icon {
+  font-size: 2rem;
+  opacity: 0.3;
+}
+
+.profile-empty p {
+  font-size: 0.82rem;
+  max-width: 26ch;
+  line-height: 1.55;
+}
+
 .profile-empty a {
   font-size: 0.8rem;
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
-.profile-empty a:hover { text-decoration: underline; }
+
+.profile-empty a:hover {
+  text-decoration: underline;
+}
 
 .profile-coming-soon {
   display: flex;
@@ -496,7 +528,9 @@
   transition: flex 0.4s ease-in-out;
 }
 
-.hof-card:hover { flex: 1.8; }
+.hof-card:hover {
+  flex: 1.8;
+}
 
 .hof-card--empty {
   background: rgba(255, 255, 255, 0.03);
@@ -529,7 +563,9 @@
   transition: opacity 0.15s ease;
 }
 
-.hof-card:hover .hof-card-rank { opacity: 0; }
+.hof-card:hover .hof-card-rank {
+  opacity: 0;
+}
 
 .hof-card-label {
   position: absolute;
@@ -554,7 +590,9 @@
   transition: opacity 0.15s ease;
 }
 
-.hof-card:hover .hof-card-label { opacity: 0; }
+.hof-card:hover .hof-card-label {
+  opacity: 0;
+}
 
 .hof-card-content {
   position: absolute;
@@ -630,7 +668,10 @@
   -webkit-mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
 }
-.mh-track::-webkit-scrollbar { display: none; }
+
+.mh-track::-webkit-scrollbar {
+  display: none;
+}
 
 .mh-group {
   display: flex;
@@ -693,7 +734,9 @@
   transition: transform 0.2s ease;
 }
 
-.mh-card:hover { transform: translateY(-2px); }
+.mh-card:hover {
+  transform: translateY(-2px);
+}
 
 .mh-card img {
   position: absolute;
@@ -736,7 +779,9 @@
   transition: border-color var(--anim-fast);
 }
 
-.act-card:hover { border-color: rgba(255, 255, 255, 0.1); }
+.act-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
 
 .act-cover {
   width: 32px;
@@ -1039,6 +1084,20 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
+  padding: 0 6rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .fav-layout {
+    padding: 0 43rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .fav-layout {
+    padding: 0 1rem;
+  }
 }
 
 /* Pill Navigation Tabs Row */
@@ -1213,7 +1272,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.06) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.06) 100%);
   color: var(--text-dim);
   font-weight: 800;
   font-size: 1.5rem;
@@ -1306,9 +1365,17 @@
 
 /* ── Drag & Drop Reordering ──────────────────────────────────────────────── */
 @keyframes fav-wiggle {
-  0% { transform: rotate(-0.5deg); }
-  50% { transform: rotate(0.5deg); }
-  100% { transform: rotate(-0.5deg); }
+  0% {
+    transform: rotate(-0.5deg);
+  }
+
+  50% {
+    transform: rotate(0.5deg);
+  }
+
+  100% {
+    transform: rotate(-0.5deg);
+  }
 }
 
 .fav-card.reordering {
