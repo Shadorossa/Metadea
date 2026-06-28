@@ -422,7 +422,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const isCrowned = favData.multimedia?.includes(item.external_id);
 
       return `
-        <div class="fav-card">
+        <div class="fav-card ${reorderModeActive ? 'reordering' : ''}" data-id="${item.external_id}" ${reorderModeActive ? 'draggable="true"' : ''}>
           <a class="fav-card-link" href="${mediaUrl}"></a>
           <div class="fav-badge">#${idx + 1}</div>
 
@@ -431,14 +431,6 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
             <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
             </button>
-          ` : ''}
-
-          <!-- Reorder movement controls overlay -->
-          ${reorderModeActive ? `
-            <div class="fav-reorder-arrows" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; z-index: 15; background: rgba(0,0,0,0.3); pointer-events: none;">
-              <button class="fav-arrow-btn fav-arrow-left" data-id="${item.external_id}" data-dir="left" title="Mover izquierda" style="pointer-events: auto;">&lt;</button>
-              <button class="fav-arrow-btn fav-arrow-right" data-id="${item.external_id}" data-dir="right" title="Mover derecha" style="pointer-events: auto;">&gt;</button>
-            </div>
           ` : ''}
 
           ${cover
@@ -524,27 +516,111 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       });
     });
 
-    // Hook reorder arrow click listeners
-    el.querySelectorAll('.fav-arrow-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = (btn as HTMLElement).dataset.id || '';
-        const dir = (btn as HTMLElement).dataset.dir || '';
-        if (!id || !dir) return;
+    /* ── Hook Drag & Drop Listeners ───────────────────────────────────────── */
+    if (reorderModeActive) {
+      const container = el.querySelector('.fav-grid') as HTMLElement | null;
+      if (container) {
+        let activeDragSource: HTMLElement | null = null;
 
-        const list = favData[activeCatKey] || [];
-        const index = list.indexOf(id);
-        if (index === -1) return;
+        const getInsertionPoint = (clientX: number, clientY: number) => {
+          const cards = Array.from(container.querySelectorAll('.fav-card:not(.drag-source)')) as HTMLElement[];
+          let closestCard: HTMLElement | null = null;
+          let closestDistance = Infinity;
+          let insertBefore = true;
 
-        if (dir === 'left' && index > 0) {
-          [list[index], list[index - 1]] = [list[index - 1], list[index]];
-        } else if (dir === 'right' && index < list.length - 1) {
-          [list[index], list[index + 1]] = [list[index + 1], list[index]];
-        }
-        await writeUserFavorites(favData);
-        renderContent();
-      });
-    });
+          for (const card of cards) {
+            const rect = card.getBoundingClientRect();
+            if (
+              clientX >= rect.left && clientX <= rect.right &&
+              clientY >= rect.top && clientY <= rect.bottom
+            ) {
+              closestCard = card;
+              insertBefore = (clientX - rect.left) < rect.width / 2;
+              break;
+            }
+
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const distance = Math.hypot(clientX - centerX, clientY - centerY);
+
+            if (distance < closestDistance) {
+              closestDistance = distance;
+              closestCard = card;
+              insertBefore = clientX < centerX;
+            }
+          }
+          return { closestCard, insertBefore };
+        };
+
+        const cards = container.querySelectorAll('.fav-card') as NodeListOf<HTMLElement>;
+        cards.forEach(card => {
+          card.addEventListener('dragstart', (e: DragEvent) => {
+            window.getSelection()?.removeAllRanges();
+            activeDragSource = card;
+            card.classList.add('drag-source');
+            if (e.dataTransfer) {
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', card.getAttribute('data-id') || '');
+            }
+          });
+
+          card.addEventListener('dragend', () => {
+            card.classList.remove('drag-source');
+            container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+            activeDragSource = null;
+          });
+        });
+
+        container.addEventListener('dragover', (e: DragEvent) => {
+          e.preventDefault();
+          const { closestCard, insertBefore } = getInsertionPoint(e.clientX, e.clientY);
+          container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+
+          if (closestCard && activeDragSource && closestCard !== activeDragSource) {
+            if (insertBefore) {
+              closestCard.classList.add('drag-over-left');
+            } else {
+              closestCard.classList.add('drag-over-right');
+            }
+          }
+        });
+
+        container.addEventListener('dragleave', (e: DragEvent) => {
+          const rect = container.getBoundingClientRect();
+          if (
+            e.clientX < rect.left || e.clientX > rect.right ||
+            e.clientY < rect.top || e.clientY > rect.bottom
+          ) {
+            container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+          }
+        });
+
+        container.addEventListener('drop', async (e: DragEvent) => {
+          e.preventDefault();
+          container.querySelectorAll('.fav-card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+
+          if (activeDragSource) {
+            const { closestCard, insertBefore } = getInsertionPoint(e.clientX, e.clientY);
+            if (closestCard && closestCard !== activeDragSource) {
+              if (insertBefore) {
+                container.insertBefore(activeDragSource, closestCard);
+              } else {
+                container.insertBefore(activeDragSource, closestCard.nextSibling);
+              }
+
+              // Update favData based on new DOM order
+              const newOrder = Array.from(container.querySelectorAll('.fav-card'))
+                .map(c => (c as HTMLElement).dataset.id)
+                .filter(Boolean) as string[];
+
+              favData[activeCatKey] = newOrder;
+              await writeUserFavorites(favData);
+              renderContent();
+            }
+          }
+        });
+      }
+    }
   };
 
   renderContent();

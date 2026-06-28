@@ -1286,3 +1286,33 @@
   max-width: 320px;
   margin: 0;
 }
+
+/* ── Drag & Drop Reordering ──────────────────────────────────────────────── */
+@keyframes fav-wiggle {
+  0% { transform: rotate(-0.5deg); }
+  50% { transform: rotate(0.5deg); }
+  100% { transform: rotate(-0.5deg); }
+}
+
+.fav-card.reordering {
+  animation: fav-wiggle 0.25s ease-in-out infinite;
+  cursor: grab;
+}
+
+.fav-card.reordering:active {
+  cursor: grabbing;
+}
+
+.fav-card.drag-source {
+  opacity: 0.4;
+  border: 1px dashed var(--accent) !important;
+  box-shadow: none !important;
+}
+
+.fav-card.drag-over-left {
+  border-left: 4px solid var(--accent) !important;
+}
+
+.fav-card.drag-over-right {
+  border-right: 4px solid var(--accent) !important;
+}
