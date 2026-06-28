@@ -49,7 +49,7 @@ export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): 
       <div class="hof-card-content">
         <span class="hof-card-type">${label}</span>
         <span class="hof-card-id">${title}</span>
-        ${item.rating != null ? buildRatingHtml(item.rating, '#fff', item.type) : ''}
+        ${item.rating != null ? buildRatingHtml(item.rating) : ''}
       </div>
     </div>`;
   }).join('');
