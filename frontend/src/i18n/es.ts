@@ -148,6 +148,9 @@ export const es = {
     progress_episodes: 'Episodios',
     progress_chapters: 'Capítulos',
     progress_percent:  '% completado',
+    progress_seasons:  'Temporadas',
+    progress_volumes:  'Volúmenes',
+    progress_books:    'Libros',
   },
   settings: {
     title:           'Configuración',

@@ -330,10 +330,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 {progLabel && (() => {
                   const maxVal = data.totalCount && data.totalCount > 0 ? data.totalCount : undefined;
                   const max2Val = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
-                  const label2 = data.type === 'anime' || data.type === 'series' ? 'Seasons' :
-                                 data.type === 'manga' ? 'Volumes' :
-                                 data.type === 'light-novel' ? 'Volumes' :
-                                 data.type === 'books' ? 'Books' : 'Count 2';
+                  const label2 = data.type === 'anime' || data.type === 'series' ? t.media.progress_seasons :
+                                 data.type === 'manga' ? t.media.progress_volumes :
+                                 data.type === 'light-novel' ? t.media.progress_volumes :
+                                 data.type === 'books' ? t.media.progress_books : 'Count 2';
                   return (
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="me-header-field">
