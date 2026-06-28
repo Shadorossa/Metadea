@@ -459,3 +459,10 @@ h2, h3, .settings-panel-title, .section-label {
 .stats-block-title, .stats-card-label, .stats-day-label, .stats-type-label {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
+
+.rating-config-select {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: 2px 2px 0px var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}

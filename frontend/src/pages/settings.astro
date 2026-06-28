@@ -13,19 +13,19 @@ const t = useTranslations(lang);
 
       <!-- Sidebar vertical -->
       <aside class="settings-sidebar">
-        <span class="section-label settings-sidebar-label">${t.settings.section_account}</span>
+        <span class="section-label settings-sidebar-label">{t.settings.section_account}</span>
         <button class="settings-tab active" data-tab="profile">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          ${t.settings.tab_profile}
+          {t.settings.tab_profile}
         </button>
         <button class="settings-tab" data-tab="environment">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
-          ${t.settings.tab_environment}
+          {t.settings.tab_environment}
         </button>
-        <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">${t.settings.section_appearance}</span>
+        <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">{t.settings.section_appearance}</span>
         <button class="settings-tab" data-tab="appearance">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-          ${t.settings.tab_appearance}
+          {t.settings.tab_appearance}
         </button>
       </aside>
 
@@ -34,43 +34,43 @@ const t = useTranslations(lang);
 
         <!-- Tab: Perfil -->
         <div class="settings-panel" id="panel-profile">
-          <h2 class="settings-panel-title">${t.settings.tab_profile}</h2>
+          <h2 class="settings-panel-title">{t.settings.tab_profile}</h2>
 
           <!-- Avatar + Banner en la misma fila -->
           <div class="profile-media-row">
 
             <!-- Avatar -->
             <div class="settings-section settings-section--avatar">
-              <h3 class="settings-section-title">${t.settings.avatar_title}</h3>
+              <h3 class="settings-section-title">{t.settings.avatar_title}</h3>
               <div class="avatar-preview-wrap" id="avatar-preview">
                 <!-- populated by script -->
               </div>
               <div class="avatar-upload-btns">
-                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">${t.settings.avatar_upload}</button>
-                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">${t.settings.avatar_remove}</button>
+                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">{t.settings.avatar_upload}</button>
+                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">{t.settings.avatar_remove}</button>
               </div>
               <input type="file" id="avatar-input" accept="image/*" hidden>
             </div>
 
             <!-- Banner -->
             <div class="settings-section settings-section--banner">
-              <h3 class="settings-section-title">${t.settings.banner_title}</h3>
+              <h3 class="settings-section-title">{t.settings.banner_title}</h3>
               <div class="banner-drop-zone" id="banner-drop-zone">
                 <div class="banner-drop-hint">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  <span>${t.settings.banner_drag}</span>
+                  <span>{t.settings.banner_drag}</span>
                 </div>
               </div>
               <div class="banner-actions">
-                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">${t.settings.banner_upload}</button>
-                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">${t.settings.banner_remove}</button>
+                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">{t.settings.banner_upload}</button>
+                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">{t.settings.banner_remove}</button>
               </div>
               <input type="file" id="banner-input" accept="image/*" hidden>
             </div>
 
             <!-- Fuente del nombre -->
             <div class="settings-section settings-section--font">
-              <h3 class="settings-section-title">${t.settings.font_title}</h3>
+              <h3 class="settings-section-title">{t.settings.font_title}</h3>
               <div class="font-picker">
                 <div class="font-preview" id="font-preview-name"></div>
                 <div class="font-picker-controls">
@@ -90,13 +90,13 @@ const t = useTranslations(lang);
 
         <!-- Tab: Entorno -->
         <div class="settings-panel hidden" id="panel-environment">
-          <h2 class="settings-panel-title">${t.settings.tab_environment}</h2>
+          <h2 class="settings-panel-title">{t.settings.tab_environment}</h2>
 
           <div class="settings-section">
-            <h3 class="settings-section-title">${t.settings.env_title}</h3>
-            <p class="settings-hint">${t.settings.env_hint}</p>
+            <h3 class="settings-section-title">{t.settings.env_title}</h3>
+            <p class="settings-hint">{t.settings.env_hint}</p>
             <button class="btn btn--sm btn--ghost" id="open-env-folder-btn" style="margin-bottom: 1rem;">
-              📁 ${t.settings.env_open_folder}
+              📁 {t.settings.env_open_folder}
             </button>
 
             <div class="env-services-grid">
@@ -109,17 +109,17 @@ const t = useTranslations(lang);
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-id">${t.settings.env_igdb_client_id}</label>
+                    <label class="env-label" for="igdb-client-id">{t.settings.env_igdb_client_id}</label>
                     <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
                   </div>
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-secret">${t.settings.env_igdb_client_secret}</label>
+                    <label class="env-label" for="igdb-client-secret">{t.settings.env_igdb_client_secret}</label>
                     <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
                 <div class="env-actions">
-                  <button class="btn btn--sm btn--primary" id="igdb-save-btn">${t.settings.env_save}</button>
-                  <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">${t.settings.env_clear}</button>
+                  <button class="btn btn--sm btn--primary" id="igdb-save-btn">{t.settings.env_save}</button>
+                  <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">{t.settings.env_clear}</button>
                 </div>
               </div>
 
@@ -131,13 +131,13 @@ const t = useTranslations(lang);
                 </div>
                 <div class="env-fields">
                   <div class="env-field">
-                    <label class="env-label" for="steam-api-key">${t.settings.env_steam_api_key}</label>
+                    <label class="env-label" for="steam-api-key">{t.settings.env_steam_api_key}</label>
                     <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
                 <div class="env-actions">
-                  <button class="btn btn--sm btn--primary" id="steam-save-btn">${t.settings.env_save}</button>
-                  <button class="btn btn--sm btn--ghost" id="steam-clear-btn">${t.settings.env_clear}</button>
+                  <button class="btn btn--sm btn--primary" id="steam-save-btn">{t.settings.env_save}</button>
+                  <button class="btn btn--sm btn--ghost" id="steam-clear-btn">{t.settings.env_clear}</button>
                 </div>
               </div>
 
@@ -147,10 +147,10 @@ const t = useTranslations(lang);
 
         <!-- Tab: Apariencia -->
         <div class="settings-panel hidden" id="panel-appearance">
-          <h2 class="settings-panel-title">${t.settings.section_appearance}</h2>
+          <h2 class="settings-panel-title">{t.settings.section_appearance}</h2>
           <div class="settings-section">
-            <h3 class="settings-section-title">${t.settings.appearance_bg_title}</h3>
-            <p class="settings-hint">${t.settings.appearance_bg_hint}</p>
+            <h3 class="settings-section-title">{t.settings.appearance_bg_title}</h3>
+            <p class="settings-hint">{t.settings.appearance_bg_hint}</p>
             <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
@@ -160,7 +160,7 @@ const t = useTranslations(lang);
   </div>
 
   <!-- Toast -->
-  <div class="settings-toast" id="settings-toast">${t.settings.env_saved}</div>
+  <div class="settings-toast" id="settings-toast">{t.settings.env_saved}</div>
 </BaseLayout>
 
 <script>

@@ -36,6 +36,20 @@ const lang = getLang(Astro.url);
 
     <div id="profile-tab-content" class="profile-tab-content"></div>
 
+    <!-- Rating System Configurator -->
+    <div class="rating-config-container">
+      <div class="rating-config-divider"></div>
+      <div class="rating-config-row">
+        <label for="rating-system-select" class="rating-config-label">Sistema de Calificación</label>
+        <select id="rating-system-select" class="rating-config-select">
+          <option value="5-star">5 estrellas</option>
+          <option value="10-dec">Nota sobre 10 (2 decimales)</option>
+          <option value="10">Nota sobre 10 (Entero)</option>
+          <option value="3-emoji">3 caritas (9, 6 y 3)</option>
+        </select>
+      </div>
+    </div>
+
     <ProfileLibraryEditor lang={lang} client:load />
 
   </main>
@@ -140,6 +154,15 @@ const lang = getLang(Astro.url);
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));
     });
+
+    const selectEl = document.getElementById('rating-system-select') as HTMLSelectElement | null;
+    if (selectEl) {
+      selectEl.value = localStorage.getItem('metadea_rating_system') || '5-star';
+      selectEl.addEventListener('change', () => {
+        localStorage.setItem('metadea_rating_system', selectEl.value);
+        switchTab(activeTab);
+      });
+    }
 
     cachedItems = await getAllLibraryEntries().catch(() => []);
     await switchTab(activeTab);

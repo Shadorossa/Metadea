@@ -349,34 +349,89 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   );
                 })()}
 
-                {/* Rating stars */}
-                <div className="me-header-field">
-                  <label className="me-header-field-label">{te.score}</label>
-                  <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
-                    {[1, 2, 3, 4, 5].map(v => {
-                      const isFull = displayRating >= v * 2;
-                      const isHalf = !isFull && displayRating >= v * 2 - 1;
-                      return (
-                        <div key={v} className="me-header-star-wrap">
-                          <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
-                            <path d={STAR_PATH} />
-                          </svg>
-                          <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
-                            <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
-                              <path d={STAR_PATH} />
-                            </svg>
-                          </div>
-                          <button type="button" className="me-header-star-zone me-header-star-zone--left"
-                            onMouseEnter={() => setHoverRating(v * 2 - 1)}
-                            onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
-                          <button type="button" className="me-header-star-zone me-header-star-zone--right"
-                            onMouseEnter={() => setHoverRating(v * 2)}
-                            onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                 {/* Rating stars */}
+                 <div className="me-header-field">
+                   <label className="me-header-field-label">{te.score}</label>
+                   {(() => {
+                     const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+                     
+                     if (system === '10-dec') {
+                       return (
+                         <input type="number" className="me-header-field-input" min={0} max={10} step={0.01}
+                           value={rating || ''}
+                           onChange={e => {
+                             let val = parseFloat(e.target.value) || 0;
+                             if (val > 10) val = 10;
+                             setRating(val);
+                           }}
+                           placeholder="0.00"
+                           style={{ width: '65px' }} />
+                       );
+                     }
+                     
+                     if (system === '10') {
+                       return (
+                         <input type="number" className="me-header-field-input" min={0} max={10} step={1}
+                           value={rating ? Math.round(rating) : ''}
+                           onChange={e => {
+                             let val = parseInt(e.target.value, 10) || 0;
+                             if (val > 10) val = 10;
+                             setRating(val);
+                           }}
+                           placeholder="0"
+                           style={{ width: '50px' }} />
+                       );
+                     }
+                     
+                     if (system === '3-emoji') {
+                       const rounded = Math.round(rating);
+                       return (
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                           <button type="button" 
+                             onClick={() => setRating(rating === 3 ? 0 : 3)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 3 ? 1 : 0.4, padding: '2px' }}
+                             title="Triste (3/10)">😞</button>
+                           <button type="button"
+                             onClick={() => setRating(rating === 6 ? 0 : 6)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 6 ? 1 : 0.4, padding: '2px' }}
+                             title="Neutral (6/10)">😐</button>
+                           <button type="button"
+                             onClick={() => setRating(rating === 9 ? 0 : 9)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: rounded === 9 ? 1 : 0.4, padding: '2px' }}
+                             title="Feliz (9/10)">😊</button>
+                         </div>
+                       );
+                     }
+                     
+                     // Default: 5-star
+                     return (
+                       <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
+                         {[1, 2, 3, 4, 5].map(v => {
+                           const isFull = displayRating >= v * 2;
+                           const isHalf = !isFull && displayRating >= v * 2 - 1;
+                           return (
+                             <div key={v} className="me-header-star-wrap">
+                               <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
+                                 <path d={STAR_PATH} />
+                               </svg>
+                               <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
+                                 <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
+                                   <path d={STAR_PATH} />
+                                 </svg>
+                               </div>
+                               <button type="button" className="me-header-star-zone me-header-star-zone--left"
+                                 onMouseEnter={() => setHoverRating(v * 2 - 1)}
+                                 onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
+                               <button type="button" className="me-header-star-zone me-header-star-zone--right"
+                                 onMouseEnter={() => setHoverRating(v * 2)}
+                                 onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
+                             </div>
+                           );
+                         })}
+                       </div>
+                     );
+                   })()}
+                 </div>
 
                 {/* Start date */}
                 <div className="me-header-field">

@@ -123,6 +123,29 @@ const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 
 function buildRatingHtml(rating: number | null | undefined): string {
   if (!rating) return '<span class="library-card-rating"></span>';
+  
+  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  
+  if (system === '10-dec') {
+    return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Number(rating).toFixed(2)} / 10</span>`;
+  }
+  if (system === '10') {
+    return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Math.round(rating)} / 10</span>`;
+  }
+  if (system === '3-emoji') {
+    const rounded = Math.round(rating);
+    let emoji = '😐';
+    let color = '#f59e0b';
+    if (rounded === 9) {
+      emoji = '😊';
+      color = '#10b981';
+    } else if (rounded === 3) {
+      emoji = '😞';
+      color = '#ef4444';
+    }
+    return `<span class="library-card-rating emoji-rating" style="font-size: 1.1rem; line-height: 1; color: ${color};">${emoji}</span>`;
+  }
+
   // rating is 0-10, display as 0-5 stars
   const stars5 = rating / 2;
   let html = '';
