@@ -309,7 +309,13 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       key={value}
                       type="button"
                       className={`me-header-status-icon${status === value ? ' active' : ''}`}
-                      onClick={() => setStatus(status === value ? '' : value)}
+                      onClick={() => {
+                        const nextStatus = status === value ? '' : value;
+                        setStatus(nextStatus);
+                        if (value === 'completed' && nextStatus === 'completed' && data.totalCount && data.totalCount > 0) {
+                          setProgress(data.totalCount);
+                        }
+                      }}
                       title={label}
                     >
                       <Icon />
