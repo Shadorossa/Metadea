@@ -193,30 +193,37 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
 
   el.innerHTML = `
     <div class="library-layout">
-      <div class="library-top-bar">
-        <div class="library-filters-row">
-          <div class="library-filter-group select-name">
-            <input type="text" id="filter-name" class="library-filter-input" placeholder="Buscar por título..." />
-          </div>
+      <aside class="library-filters">
+        <p class="library-filters-title">Filtros</p>
 
-          <div class="library-filter-group select-type">
-            <div class="library-type-filters">
-              ${Object.entries(TYPE_ICON).map(([type, svg]) => `
-                <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
-                  ${svg}
-                </button>
-              `).join('')}
-            </div>
-          </div>
+        <div class="library-filter-group">
+          <label class="library-filter-label" for="filter-name">Nombre</label>
+          <input type="text" id="filter-name" class="library-filter-input" placeholder="Buscar por título..." />
+        </div>
 
-          <div class="library-filter-group select-status">
-            <div class="library-status-cycler">
-              <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
-              <span class="library-status-val" id="status-val">Todos</span>
-              <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
-            </div>
+        <div class="library-filter-group">
+          <label class="library-filter-label">Tipo de Medio</label>
+          <div class="library-type-filters">
+            ${Object.entries(TYPE_ICON).map(([type, svg]) => `
+              <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
+                ${svg}
+              </button>
+            `).join('')}
           </div>
+        </div>
 
+        <div class="library-filter-group">
+          <label class="library-filter-label">Estado</label>
+          <div class="library-status-cycler">
+            <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
+            <span class="library-status-val" id="status-val">Todos</span>
+            <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="library-content">
+        <div class="library-content-header">
           <div class="library-filter-group select-sort">
             <span class="library-sort-label">Ordenar por</span>
             <div class="library-sort-options">
@@ -226,9 +233,8 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
             </div>
           </div>
         </div>
+        <div class="library-sections-list"></div>
       </div>
-
-      <div class="library-content"></div>
     </div>
   `;
 
@@ -242,6 +248,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
 
   const applyFilters = () => {
     if (!contentEl) return;
+    const sectionsListEl = contentEl.querySelector('.library-sections-list') as HTMLElement | null;
+    if (!sectionsListEl) return;
+
     const nameVal   = filterName?.value.toLowerCase().trim() || '';
     const statusKey = STATUS_LIST[currentStatusIndex].key;
 
@@ -264,7 +273,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     });
 
     if (filtered.length === 0) {
-      contentEl.innerHTML = `<div class="library-empty-filtered">Sin resultados para los filtros aplicados</div>`;
+      sectionsListEl.innerHTML = `<div class="library-empty-filtered">Sin resultados para los filtros aplicados</div>`;
       return;
     }
 
@@ -296,7 +305,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       { title: p.section_dropped, items: dropped },
     ];
 
-    contentEl.innerHTML = sectionsData
+    sectionsListEl.innerHTML = sectionsData
       .filter(sec => sec.items.length > 0)
       .map(sec => `
         <div class="library-section">
