@@ -139,22 +139,9 @@ h2, h3, .settings-panel-title, .section-label {
   opacity: 1 !important;
 }
 
-/* Library card stars in newspaper theme should be white */
+/* Library card stars in newspaper theme - white with currentColor */
 .library-card-rating {
   color: #f5f2eb !important;
-}
-
-/* Make full and half stars white - override inline styles */
-.library-card-rating svg path[fill="#fbbf24"],
-.library-card-rating svg path[stroke="#fbbf24"] {
-  fill: #f5f2eb !important;
-  stroke: #f5f2eb !important;
-}
-
-/* Empty stars - semi-transparent white outline only */
-.library-card-rating svg path[stroke="#fbbf2466"] {
-  fill: none !important;
-  stroke: rgba(245, 242, 235, 0.4) !important;
 }
 
 /* Library card dates - better visibility */

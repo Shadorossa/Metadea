@@ -371,6 +371,11 @@
   color: #fbbf24;
 }
 
+/* Empty stars should be semi-transparent */
+.library-card-rating svg:last-child {
+  opacity: 0.35;
+}
+
 .library-card-footer {
   display: flex;
   align-items: center;
