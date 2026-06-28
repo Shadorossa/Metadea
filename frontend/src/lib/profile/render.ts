@@ -185,36 +185,48 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     book: "Libro"
   };
 
+  const SORT_ICON_SCORE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></polygon></svg>`;
+  const SORT_ICON_DATE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  const SORT_ICON_DURATION = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+  let sortBy = 'date'; // 'rating' | 'date' | 'duration'
+
   el.innerHTML = `
     <div class="library-layout">
-      <aside class="library-filters">
-        <p class="library-filters-title">Filtros</p>
+      <div class="library-top-bar">
+        <div class="library-filters-row">
+          <div class="library-filter-group select-name">
+            <input type="text" id="filter-name" class="library-filter-input" placeholder="Buscar por título..." />
+          </div>
 
-        <div class="library-filter-group">
-          <label class="library-filter-label" for="filter-name">Nombre</label>
-          <input type="text" id="filter-name" class="library-filter-input" placeholder="Buscar por título..." />
-        </div>
+          <div class="library-filter-group select-type">
+            <div class="library-type-filters">
+              ${Object.entries(TYPE_ICON).map(([type, svg]) => `
+                <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
+                  ${svg}
+                </button>
+              `).join('')}
+            </div>
+          </div>
 
-        <div class="library-filter-group">
-          <label class="library-filter-label">Tipo de Medio</label>
-          <div class="library-type-filters">
-            ${Object.entries(TYPE_ICON).map(([type, svg]) => `
-              <button type="button" class="library-type-btn" data-value="${type}" title="${TYPE_LABELS[type] || type}">
-                ${svg}
-              </button>
-            `).join('')}
+          <div class="library-filter-group select-status">
+            <div class="library-status-cycler">
+              <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
+              <span class="library-status-val" id="status-val">Todos</span>
+              <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
+            </div>
+          </div>
+
+          <div class="library-filter-group select-sort">
+            <span class="library-sort-label">Ordenar por</span>
+            <div class="library-sort-options">
+              <button type="button" class="library-sort-btn" data-sort="rating" title="Calificación">${SORT_ICON_SCORE}</button>
+              <button type="button" class="library-sort-btn active" data-sort="date" title="Fecha">${SORT_ICON_DATE}</button>
+              <button type="button" class="library-sort-btn" data-sort="duration" title="Duración">${SORT_ICON_DURATION}</button>
+            </div>
           </div>
         </div>
-
-        <div class="library-filter-group">
-          <label class="library-filter-label">Estado</label>
-          <div class="library-status-cycler">
-            <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
-            <span class="library-status-val" id="status-val">Todos</span>
-            <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
-          </div>
-        </div>
-      </aside>
+      </div>
 
       <div class="library-content"></div>
     </div>
@@ -226,6 +238,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   const btnNext      = el.querySelector('#status-next') as HTMLButtonElement | null;
   const contentEl    = el.querySelector('.library-content') as HTMLElement | null;
   const typeBtns     = el.querySelectorAll('.library-type-btn');
+  const sortBtns     = el.querySelectorAll('.library-sort-btn');
 
   const applyFilters = () => {
     if (!contentEl) return;
@@ -255,11 +268,25 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       return;
     }
 
-    const inProgress = filtered.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing');
-    const completed  = filtered.filter(item => item.status === 'completed');
-    const planning   = filtered.filter(item => item.status === 'planning');
-    const paused     = filtered.filter(item => item.status === 'paused');
-    const dropped    = filtered.filter(item => item.status === 'dropped');
+    const sortItems = (itemList: Items) => {
+      return [...itemList].sort((a, b) => {
+        if (sortBy === 'rating') {
+          return (b.rating ?? 0) - (a.rating ?? 0);
+        } else if (sortBy === 'duration') {
+          return (b.minutes_spent ?? 0) - (a.minutes_spent ?? 0);
+        } else {
+          const dateA = a.added_at ? new Date(a.added_at).getTime() : 0;
+          const dateB = b.added_at ? new Date(b.added_at).getTime() : 0;
+          return dateB - dateA; // newest to oldest
+        }
+      });
+    };
+
+    const inProgress = sortItems(filtered.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing'));
+    const completed  = sortItems(filtered.filter(item => item.status === 'completed'));
+    const planning   = sortItems(filtered.filter(item => item.status === 'planning'));
+    const paused     = sortItems(filtered.filter(item => item.status === 'paused'));
+    const dropped    = sortItems(filtered.filter(item => item.status === 'dropped'));
 
     const sectionsData = [
       { title: p.section_in_progress, items: inProgress },
@@ -334,6 +361,15 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   });
 
   filterName?.addEventListener('input', applyFilters);
+
+  sortBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      sortBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sortBy = (btn as HTMLElement).dataset.sort || 'date';
+      applyFilters();
+    });
+  });
 
   applyFilters();
 }
