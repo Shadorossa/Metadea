@@ -284,9 +284,11 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         } else if (sortBy === 'duration') {
           return (b.minutes_spent ?? 0) - (a.minutes_spent ?? 0);
         } else {
-          const dateA = a.added_at ? new Date(a.added_at).getTime() : 0;
-          const dateB = b.added_at ? new Date(b.added_at).getTime() : 0;
-          return dateB - dateA; // newest to oldest
+          const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
+          const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+          if (dateA === 0 && dateB !== 0) return 1;
+          if (dateB === 0 && dateA !== 0) return -1;
+          return dateB - dateA; // newest finished to oldest finished
         }
       });
     };
