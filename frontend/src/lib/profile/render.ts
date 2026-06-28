@@ -67,7 +67,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       else if (rounded === 3) emoji = '😞';
       avgRatingStr = `${emoji} (${avgVal.toFixed(1)})`;
     } else {
-      avgRatingStr = (avgVal / 2).toFixed(2);
+      avgRatingStr = (avgVal / 2).toFixed(1);
     }
   }
 
@@ -500,7 +500,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     { label: 'Abandonadas', value: dropped,   color: 'dropped', icon: ICON_STATUS_DROPPED },
   ].filter(s => s.value > 0);
 
-  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  const system = getActiveRatingSystem();
   let avgScoreStr = '—';
   if (avgScore > 0) {
     if (system === '10-dec') {
@@ -514,7 +514,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
       else if (rounded === 3) emoji = '😞';
       avgScoreStr = `${emoji} (${avgScore.toFixed(1)})`;
     } else {
-      avgScoreStr = `${(avgScore / 2).toFixed(2)} / 5`;
+      avgScoreStr = `${(avgScore / 2).toFixed(1)} / 5`;
     }
   }
 
