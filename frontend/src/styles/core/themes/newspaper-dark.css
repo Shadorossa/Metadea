@@ -139,6 +139,15 @@ h2, h3, .settings-panel-title, .section-label {
   opacity: 1 !important;
 }
 
+/* Library card stars in newspaper theme should be white */
+.library-card-rating {
+  color: #f5f2eb !important;
+}
+
+.library-card-rating svg {
+  stroke: rgba(245, 242, 235, 0.3) !important;
+}
+
 /* Status colors override to match Metamedia Newspaper Dark muted palette */
 .tray-status-btn.active[data-status="planning"],
 .status-dropdown-trigger.text-planning {
