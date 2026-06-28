@@ -1,4 +1,5 @@
 import { typeLabel } from './utils';
+import { buildRatingHtml } from './render';
 import { getT } from '../../i18n/client';
 import type { getAllLibraryEntries } from '../tauri';
 
@@ -48,7 +49,7 @@ export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): 
       <div class="hof-card-content">
         <span class="hof-card-type">${label}</span>
         <span class="hof-card-id">${title}</span>
-        ${item.rating != null ? `<span class="hof-card-rating">★ ${item.rating}</span>` : ''}
+        ${item.rating != null ? buildRatingHtml(item.rating, '#fff', item.type) : ''}
       </div>
     </div>`;
   }).join('');
