@@ -85,19 +85,25 @@ const t = useTranslations(lang);
               </div>
             </div>
 
-            <!-- Sistema de Calificación -->
-            <div class="settings-section settings-section--rating">
-              <h3 class="settings-section-title">Sistema de Calificación</h3>
-              <div class="rating-picker" style="margin-top: 0.5rem;">
-                <select id="rating-system-select" class="env-input" style="width: 100%; max-width: 250px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem; border-radius: var(--radius-sm); outline: none;">
-                  <option value="5-star">5 estrellas</option>
-                  <option value="10-dec">Nota sobre 10 (2 decimales)</option>
-                  <option value="10">Nota sobre 10 (Entero)</option>
-                  <option value="3-emoji">3 caritas (9, 6 y 3)</option>
-                </select>
-              </div>
-            </div>
+          </div>
 
+          <!-- Sistema de Calificación -->
+          <div class="settings-section settings-section--rating" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <h3 class="settings-section-title">Sistema de Calificación</h3>
+            <div class="rating-system-picker">
+              <button type="button" class="rating-system-btn" data-value="5-star" title="5 estrellas">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </button>
+              <button type="button" class="rating-system-btn" data-value="10-dec" title="Nota sobre 10 (2 decimales)">
+                <span style="font-size: 0.75rem; font-weight: 800;">10.00</span>
+              </button>
+              <button type="button" class="rating-system-btn" data-value="10" title="Nota sobre 10 (Entero)">
+                <span style="font-size: 0.75rem; font-weight: 800;">10</span>
+              </button>
+              <button type="button" class="rating-system-btn" data-value="3-emoji" title="3 caritas (9, 6 y 3)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -208,14 +214,19 @@ const t = useTranslations(lang);
     initThemePicker(showToast);
     initEnvironment(showToast);
 
-    const selectEl = document.getElementById('rating-system-select') as HTMLSelectElement | null;
-    if (selectEl) {
-      selectEl.value = localStorage.getItem('metadea_rating_system') || '5-star';
-      selectEl.addEventListener('change', () => {
-        localStorage.setItem('metadea_rating_system', selectEl.value);
+    const activeSystem = localStorage.getItem('metadea_rating_system') || '5-star';
+    const ratingBtns = document.querySelectorAll<HTMLButtonElement>('.rating-system-btn');
+    ratingBtns.forEach(btn => {
+      if (btn.dataset.value === activeSystem) {
+        btn.classList.add('active');
+      }
+      btn.addEventListener('click', () => {
+        ratingBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        localStorage.setItem('metadea_rating_system', btn.dataset.value || '5-star');
         showToast("Sistema de calificación guardado");
       });
-    }
+    });
 
     document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {
       btn.addEventListener('click', () => {

@@ -1718,51 +1718,36 @@
 }
 
 /* ── Rating Configurator ────────────────────────────────────────────────── */
-.rating-config-container {
+.rating-system-picker {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 4rem;
-  margin-bottom: 2rem;
-  width: 100%;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
-.rating-config-divider {
-  width: 100px;
-  height: 1px;
-  background: var(--border-color);
-  margin-bottom: 1.5rem;
-  opacity: 0.6;
-}
-
-.rating-config-row {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.rating-config-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
-.rating-config-select {
-  background: var(--bg-card);
+.rating-system-btn {
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
-  color: var(--text-main);
+  color: var(--text-muted);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.8rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  outline: none;
   cursor: pointer;
-  transition: border-color var(--anim-fast);
+  transition: all var(--anim-fast);
+  padding: 0;
+  box-shadow: none !important;
 }
 
-.rating-config-select:focus,
-.rating-config-select:hover {
+.rating-system-btn:hover {
   border-color: var(--accent);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.rating-system-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
