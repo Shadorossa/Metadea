@@ -8,6 +8,21 @@ import { buildActivityHtml } from './activity';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
+const TYPE_LABELS: Record<string, string> = {
+  anime: "Anime",
+  manga: "Manga",
+  novel: "Novela Ligera",
+  game: "Videojuego",
+  vnovel: "Novela Visual",
+  series: "Serie",
+  movie: "Película",
+  book: "Libro"
+};
+
+function getActiveRatingSystem(): string {
+  return typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+}
+
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
   const t = getT();
   const p = t.profile;
@@ -37,7 +52,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     if (item.minutes_spent)    totalMinutes += item.minutes_spent;
   }
 
-  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  const system = getActiveRatingSystem();
   let avgRatingStr = '0.0';
   if (ratedCount > 0) {
     const avgVal = totalRating / ratedCount;
@@ -142,7 +157,7 @@ const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 function buildRatingHtml(rating: number | null | undefined): string {
   if (!rating) return '<span class="library-card-rating"></span>';
   
-  const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+  const system = getActiveRatingSystem();
   
   if (system === '10-dec') {
     return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Number(rating).toFixed(2)} / 10</span>`;
@@ -214,17 +229,6 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   ];
   let currentStatusIndex = 0;
   let selectedTypes: string[] = [];
-
-  const TYPE_LABELS: Record<string, string> = {
-    anime: "Anime",
-    manga: "Manga",
-    novel: "Novela Ligera",
-    game: "Videojuego",
-    vnovel: "Novela Visual",
-    series: "Serie",
-    movie: "Película",
-    book: "Libro"
-  };
 
   const SORT_ICON_SCORE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></polygon></svg>`;
   const SORT_ICON_DATE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
@@ -443,18 +447,6 @@ export async function renderStats(el: HTMLElement): Promise<void> {
       </div>`;
     return;
   }
-
-  const TYPE_LABELS: Record<string, string> = {
-    anime: "Anime",
-    manga: "Manga",
-    novel: "Novela Ligera",
-    game: "Videojuego",
-    vnovel: "Novela Visual",
-    series: "Serie",
-    movie: "Película",
-    book: "Libro"
-  };
-
   // Overview stats calculation
   const totalWorks = items.length;
   const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
