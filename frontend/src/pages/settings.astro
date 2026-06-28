@@ -1,30 +1,31 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/settings.css';
-import { getLang } from '../i18n/index';
+import { getLang, useTranslations } from '../i18n/index';
 
 const lang = getLang(Astro.url);
+const t = useTranslations(lang);
 ---
 
-<BaseLayout title="Configuración — Metadea" lang={lang}>
+<BaseLayout title={`${t.settings.title} — Metadea`} lang={lang}>
   <div class="settings-page">
     <div class="settings-container">
 
       <!-- Sidebar vertical -->
       <aside class="settings-sidebar">
-        <span class="section-label settings-sidebar-label">Cuenta</span>
+        <span class="section-label settings-sidebar-label">${t.settings.section_account}</span>
         <button class="settings-tab active" data-tab="profile">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          Perfil
+          ${t.settings.tab_profile}
         </button>
         <button class="settings-tab" data-tab="environment">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
-          Entorno
+          ${t.settings.tab_environment}
         </button>
-        <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">Apariencia</span>
+        <span class="section-label settings-sidebar-label" style="margin-top:0.5rem">${t.settings.section_appearance}</span>
         <button class="settings-tab" data-tab="appearance">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-          Tema
+          ${t.settings.tab_appearance}
         </button>
       </aside>
 
@@ -33,51 +34,51 @@ const lang = getLang(Astro.url);
 
         <!-- Tab: Perfil -->
         <div class="settings-panel" id="panel-profile">
-          <h2 class="settings-panel-title">Perfil</h2>
+          <h2 class="settings-panel-title">${t.settings.tab_profile}</h2>
 
           <!-- Avatar + Banner en la misma fila -->
           <div class="profile-media-row">
 
             <!-- Avatar -->
             <div class="settings-section settings-section--avatar">
-              <h3 class="settings-section-title">Foto de perfil</h3>
+              <h3 class="settings-section-title">${t.settings.avatar_title}</h3>
               <div class="avatar-preview-wrap" id="avatar-preview">
                 <!-- populated by script -->
               </div>
               <div class="avatar-upload-btns">
-                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">Cambiar foto</button>
-                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">Eliminar</button>
+                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">${t.settings.avatar_upload}</button>
+                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">${t.settings.avatar_remove}</button>
               </div>
               <input type="file" id="avatar-input" accept="image/*" hidden>
             </div>
 
             <!-- Banner -->
             <div class="settings-section settings-section--banner">
-              <h3 class="settings-section-title">Banner</h3>
+              <h3 class="settings-section-title">${t.settings.banner_title}</h3>
               <div class="banner-drop-zone" id="banner-drop-zone">
                 <div class="banner-drop-hint">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  <span>Arrastra una imagen o haz clic para subir</span>
+                  <span>${t.settings.banner_drag}</span>
                 </div>
               </div>
               <div class="banner-actions">
-                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">Subir imagen</button>
-                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">Eliminar banner</button>
+                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">${t.settings.banner_upload}</button>
+                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">${t.settings.banner_remove}</button>
               </div>
               <input type="file" id="banner-input" accept="image/*" hidden>
             </div>
 
             <!-- Fuente del nombre -->
             <div class="settings-section settings-section--font">
-              <h3 class="settings-section-title">Fuente del nombre</h3>
+              <h3 class="settings-section-title">${t.settings.font_title}</h3>
               <div class="font-picker">
                 <div class="font-preview" id="font-preview-name"></div>
                 <div class="font-picker-controls">
-                  <button class="font-arrow" id="font-prev" aria-label="Anterior">
+                  <button class="font-arrow" id="font-prev" aria-label={t.settings.font_prev}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                   </button>
                   <span class="font-name-label" id="font-name-label"></span>
-                  <button class="font-arrow" id="font-next" aria-label="Siguiente">
+                  <button class="font-arrow" id="font-next" aria-label={t.settings.font_next}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
                 </div>
@@ -89,13 +90,13 @@ const lang = getLang(Astro.url);
 
         <!-- Tab: Entorno -->
         <div class="settings-panel hidden" id="panel-environment">
-          <h2 class="settings-panel-title">Entorno</h2>
+          <h2 class="settings-panel-title">${t.settings.tab_environment}</h2>
 
           <div class="settings-section">
-            <h3 class="settings-section-title">Claves de API</h3>
-            <p class="settings-hint">Estas claves se guardan solo en tu dispositivo y nunca se envían a ningún servidor.</p>
+            <h3 class="settings-section-title">${t.settings.env_title}</h3>
+            <p class="settings-hint">${t.settings.env_hint}</p>
             <button class="btn btn--sm btn--ghost" id="open-env-folder-btn" style="margin-bottom: 1rem;">
-              📁 Abrir carpeta
+              📁 ${t.settings.env_open_folder}
             </button>
 
             <div class="env-services-grid">
@@ -104,21 +105,21 @@ const lang = getLang(Astro.url);
               <div class="env-service-block">
                 <div class="env-service-header">
                   <img class="env-service-logo" src="/API/IGDB_logo.png" alt="IGDB" />
-                  <span class="env-service-hint">Obtén tus claves en <strong>dev.twitch.tv</strong> con una cuenta de Twitch</span>
+                  <span class="env-service-hint">{t.settings.env_igdb_hint}</span>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-id">Client ID</label>
+                    <label class="env-label" for="igdb-client-id">${t.settings.env_igdb_client_id}</label>
                     <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
                   </div>
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-secret">Client Secret</label>
+                    <label class="env-label" for="igdb-client-secret">${t.settings.env_igdb_client_secret}</label>
                     <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
                 <div class="env-actions">
-                  <button class="btn btn--sm btn--primary" id="igdb-save-btn">Guardar</button>
-                  <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">Limpiar</button>
+                  <button class="btn btn--sm btn--primary" id="igdb-save-btn">${t.settings.env_save}</button>
+                  <button class="btn btn--sm btn--ghost" id="igdb-clear-btn">${t.settings.env_clear}</button>
                 </div>
               </div>
 
@@ -126,17 +127,17 @@ const lang = getLang(Astro.url);
               <div class="env-service-block">
                 <div class="env-service-header">
                   <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" />
-                  <span class="env-service-hint">Obtén tu clave en <strong>steamcommunity.com/dev/apikey</strong></span>
+                  <span class="env-service-hint">{t.settings.env_steam_hint}</span>
                 </div>
                 <div class="env-fields">
                   <div class="env-field">
-                    <label class="env-label" for="steam-api-key">API Key</label>
+                    <label class="env-label" for="steam-api-key">${t.settings.env_steam_api_key}</label>
                     <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
                 <div class="env-actions">
-                  <button class="btn btn--sm btn--primary" id="steam-save-btn">Guardar</button>
-                  <button class="btn btn--sm btn--ghost" id="steam-clear-btn">Limpiar</button>
+                  <button class="btn btn--sm btn--primary" id="steam-save-btn">${t.settings.env_save}</button>
+                  <button class="btn btn--sm btn--ghost" id="steam-clear-btn">${t.settings.env_clear}</button>
                 </div>
               </div>
 
@@ -146,10 +147,10 @@ const lang = getLang(Astro.url);
 
         <!-- Tab: Apariencia -->
         <div class="settings-panel hidden" id="panel-appearance">
-          <h2 class="settings-panel-title">Apariencia</h2>
+          <h2 class="settings-panel-title">${t.settings.section_appearance}</h2>
           <div class="settings-section">
-            <h3 class="settings-section-title">Fondo dinámico</h3>
-            <p class="settings-hint">El fondo animado se aplica a toda la aplicación y se guarda entre sesiones.</p>
+            <h3 class="settings-section-title">${t.settings.appearance_bg_title}</h3>
+            <p class="settings-hint">${t.settings.appearance_bg_hint}</p>
             <div class="theme-grid" id="theme-grid"></div>
           </div>
         </div>
@@ -159,7 +160,7 @@ const lang = getLang(Astro.url);
   </div>
 
   <!-- Toast -->
-  <div class="settings-toast" id="settings-toast">Guardado</div>
+  <div class="settings-toast" id="settings-toast">${t.settings.env_saved}</div>
 </BaseLayout>
 
 <script>
@@ -170,10 +171,12 @@ const lang = getLang(Astro.url);
   import { initThemePicker } from '../lib/settings/theme';
   import { initEnvironment } from '../lib/settings/environment';
   import { initFontPicker } from '../lib/settings/fonts';
+  import { getT } from '../i18n/client';
 
-  function showToast(msg = 'Guardado') {
+  function showToast(msg?: string) {
+    const clientT = getT();
     const el = document.getElementById('settings-toast')!;
-    el.textContent = msg;
+    el.textContent = msg || clientT.settings.env_saved;
     el.classList.add('visible');
     setTimeout(() => el.classList.remove('visible'), 2000);
   }

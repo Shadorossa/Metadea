@@ -338,3 +338,111 @@ export function renderStats(el: HTMLElement): void {
   const p = getT().profile;
   el.innerHTML = `<div class="profile-coming-soon"><p>📊 ${p.coming_soon}</p></div>`;
 }
+
+/* ── Favorites Tab Render ────────────────────────────────────────────────── */
+export async function renderFavorites(el: HTMLElement): Promise<void> {
+  const t = getT();
+  const p = t.profile;
+  const s = t.search.types;
+
+  el.innerHTML = `<div class="profile-empty"><p>Cargando favoritos...</p></div>`;
+
+  const items = await getAllLibraryEntries().catch(() => [] as Items);
+  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+  const catalogMap = new Map<string, MediaCatalogEntry>(
+    catalogEntries.map(e => [e.external_id, e])
+  );
+
+  const favorites = items.filter(item => item.is_favorite === 1);
+
+  if (favorites.length === 0) {
+    el.innerHTML = `
+      <div class="fav-empty-state">
+        <svg class="fav-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <h3 class="fav-empty-title">${p.favorites}</h3>
+        <p class="fav-empty-text">${p.empty_favorites}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Categories map
+  const categories = [
+    { key: 'all', label: s.all, items: favorites, icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>` },
+    { key: 'anime', label: s.anime, items: favorites.filter(i => i.type === 'anime'), icon: TYPE_ICON['anime'] },
+    { key: 'manga', label: s.manga, items: favorites.filter(i => i.type === 'manga'), icon: TYPE_ICON['manga'] },
+    { key: 'game', label: s.game, items: favorites.filter(i => i.type === 'game'), icon: TYPE_ICON['game'] },
+    { key: 'vnovel', label: s.vnovel, items: favorites.filter(i => i.type === 'vnovel'), icon: TYPE_ICON['vnovel'] },
+    { key: 'novel', label: s.novel, items: favorites.filter(i => i.type === 'novel'), icon: TYPE_ICON['novel'] },
+    { key: 'series', label: s.series, items: favorites.filter(i => i.type === 'series'), icon: TYPE_ICON['series'] },
+    { key: 'movie', label: s.movie, items: favorites.filter(i => i.type === 'movie'), icon: TYPE_ICON['movie'] },
+    { key: 'book', label: s.book, items: favorites.filter(i => i.type === 'book'), icon: TYPE_ICON['book'] },
+  ];
+
+  let activeCatKey = 'all';
+
+  const renderContent = () => {
+    const cat = categories.find(c => c.key === activeCatKey) || categories[0];
+    const gridHtml = cat.items.map((item, idx) => {
+      const meta = catalogMap.get(item.external_id);
+      const title = meta?.title_main ?? item.external_id;
+      const cover = meta?.cover_url ?? '';
+      const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+      const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+
+      return `
+        <a class="fav-card" href="${mediaUrl}">
+          <div class="fav-badge">#${idx + 1}</div>
+          ${cover
+            ? `<img class="fav-cover" src="${cover}" alt="${title}" loading="lazy" />`
+            : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+          }
+          <div class="fav-overlay">
+            <span class="fav-title">${title}</span>
+            <div class="fav-meta">
+              <span>★ ${(item.rating ? (item.rating / 2).toFixed(1) : '0.0')}</span>
+              <span class="fav-meta-type">${typeIc}</span>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    const emptyHtml = `
+      <div class="fav-empty-state">
+        <svg class="fav-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <h3 class="fav-empty-title">${cat.label}</h3>
+        <p class="fav-empty-text">${p.empty_favorites}</p>
+      </div>
+    `;
+
+    const tabsHtml = categories.map(c => `
+      <button class="fav-tab-btn ${c.key === activeCatKey ? 'active' : ''}" data-cat="${c.key}">
+        ${c.icon}
+        <span>${c.label}</span>
+        ${c.items.length > 0 ? `<span class="fav-tab-count">${c.items.length}</span>` : ''}
+      </button>
+    `).join('');
+
+    el.innerHTML = `
+      <div class="fav-layout">
+        <div class="fav-tabs">
+          ${tabsHtml}
+        </div>
+        <div class="fav-grid-container">
+          ${cat.items.length > 0 ? `<div class="fav-grid">${gridHtml}</div>` : emptyHtml}
+        </div>
+      </div>
+    `;
+
+    // Hook tab button click listeners
+    el.querySelectorAll('.fav-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCatKey = (btn as HTMLElement).dataset.cat || 'all';
+        renderContent();
+      });
+    });
+  };
+
+  renderContent();
+}
