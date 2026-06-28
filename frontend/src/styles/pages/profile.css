@@ -1760,3 +1760,37 @@
   opacity: 0.15 !important;
   border: 1px dashed var(--accent) !important;
 }
+
+/* ── Favorites Crown Button ──────────────────────────────────────────────── */
+.fav-crown-btn {
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  color: var(--text-dim) !important;
+  transition: opacity var(--anim-fast) ease, color var(--anim-fast) ease, background var(--anim-fast) ease !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.fav-crown-btn:hover {
+  color: #fbbf24 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  border-color: #fbbf24 !important;
+}
+
+.fav-crown-btn.active {
+  color: #fbbf24 !important;
+}
+
+.fav-card:hover .fav-crown-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
