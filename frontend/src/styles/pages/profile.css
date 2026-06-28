@@ -1084,13 +1084,13 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  padding: 0 6rem;
+  padding: 0 24rem;
   box-sizing: border-box;
 }
 
 @media (max-width: 1024px) {
   .fav-layout {
-    padding: 0 43rem;
+    padding: 0 3rem;
   }
 }
 
@@ -1399,4 +1399,16 @@
 
 .fav-card.drag-over-right {
   border-right: 4px solid var(--accent) !important;
+}
+
+/* ── Tab Content Transition ────────────────────────────────────────────────── */
+.profile-tab-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+
+.profile-tab-content.switching {
+  opacity: 0;
+  transform: translateY(4px);
 }

@@ -345,7 +345,9 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   const p = t.profile;
   const s = t.search.types;
 
-  el.innerHTML = `<div class="profile-empty"><p>Cargando favoritos...</p></div>`;
+  if (!el.innerHTML || el.innerHTML.includes('Cargando')) {
+    el.innerHTML = `<div class="profile-empty"><p>Cargando favoritos...</p></div>`;
+  }
 
   const items = await getAllLibraryEntries().catch(() => [] as Items);
   const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
