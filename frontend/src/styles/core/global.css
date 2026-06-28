@@ -30,6 +30,23 @@
 
   --color-error:   #f87171;
   --color-on-light: #1a1a1a;
+
+  /* Status colors for library and media */
+  --color-completed: #34d399;
+  --color-watching:  #c94a4a;
+  --color-reading:   #c94a4a;
+  --color-planning:  #fbbf24;
+  --color-paused:    #60a5fa;
+  --color-dropped:   #9c8f80;
+
+  /* Border opacity variants */
+  --border-subtle:   rgba(255, 255, 255, 0.05);
+  --border-light:    rgba(255, 255, 255, 0.08);
+  --border-medium:   rgba(255, 255, 255, 0.12);
+
+  /* Opacity utilities */
+  --opacity-40: 0.4;
+  --opacity-60: 0.6;
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -85,6 +102,19 @@ body {
   animation: page-in 280ms var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
 }
 
+
+/* ── Utility classes ────────────────────────────────────────────────────── */
+.transition-smooth {
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.transition-fast {
+  transition: all var(--anim-fast) var(--anim-ease);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* Film grain */
 body::before {

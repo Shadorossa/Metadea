@@ -121,7 +121,6 @@
 .search-action-btn.loading svg {
   animation: spin 0.7s linear infinite;
 }
-@keyframes spin { to { rotate: 360deg; } }
 
 /* ── Results zone ────────────────────────────────────────────────────────── */
 .results-zone {

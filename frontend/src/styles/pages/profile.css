@@ -368,7 +368,7 @@
   line-height: 1;
   margin-top: auto;
   margin-bottom: 0.1rem;
-  color: #fbbf24;
+  color: var(--color-planning);
 }
 
 /* Empty stars should be semi-transparent */
@@ -641,7 +641,7 @@
 .hof-card-rating {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--color-planning);
   margin-top: 0.3rem;
 }
 
@@ -1284,14 +1284,14 @@
 }
 
 .fav-crown-btn:hover {
-  color: #fbbf24;
-  border-color: #fbbf24;
+  color: var(--color-planning);
+  border-color: var(--color-planning);
   background: rgba(0, 0, 0, 0.9);
 }
 
 .fav-crown-btn.active {
-  color: #fbbf24;
-  border-color: #fbbf24;
+  color: var(--color-planning);
+  border-color: var(--color-planning);
 }
 
 /* Reorder movement arrow styles */
@@ -1789,13 +1789,13 @@
 }
 
 .fav-crown-btn:hover {
-  color: #fbbf24 !important;
+  color: var(--color-planning) !important;
   background: rgba(0, 0, 0, 0.85) !important;
-  border-color: #fbbf24 !important;
+  border-color: var(--color-planning) !important;
 }
 
 .fav-crown-btn.active {
-  color: #fbbf24 !important;
+  color: var(--color-planning) !important;
 }
 
 .fav-card:hover .fav-crown-btn {
