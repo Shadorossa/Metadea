@@ -385,9 +385,176 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   applyFilters();
 }
 
-export function renderStats(el: HTMLElement): void {
-  const p = getT().profile;
-  el.innerHTML = `<div class="profile-coming-soon"><p>📊 ${p.coming_soon}</p></div>`;
+export async function renderStats(el: HTMLElement): Promise<void> {
+  const t = getT();
+  const p = t.profile;
+
+  el.innerHTML = `<div class="profile-empty"><p>Cargando estadísticas...</p></div>`;
+
+  const items = await getAllLibraryEntries().catch(() => [] as Items);
+
+  if (items.length === 0) {
+    el.innerHTML = `
+      <div class="profile-empty">
+        <span class="profile-empty-icon">📊</span>
+        <p>Aún no tienes suficientes datos en tu biblioteca para generar estadísticas.</p>
+        <a href="/search">${p.empty_cta}</a>
+      </div>`;
+    return;
+  }
+
+  const TYPE_LABELS: Record<string, string> = {
+    anime: "Anime",
+    manga: "Manga",
+    novel: "Novela Ligera",
+    game: "Videojuego",
+    vnovel: "Novela Visual",
+    series: "Serie",
+    movie: "Película",
+    book: "Libro"
+  };
+
+  // Overview stats calculation
+  const totalWorks = items.length;
+  const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
+  const totalHours = totalMinutes / 60;
+  
+  const ratedItems = items.filter(item => item.rating != null && item.rating > 0);
+  const totalRating = ratedItems.reduce((acc, item) => acc + (item.rating || 0), 0);
+  const avgScore = ratedItems.length > 0 ? (totalRating / ratedItems.length) : 0;
+
+  // Status counts
+  const completed = items.filter(item => item.status === 'completed').length;
+  const currently = items.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing').length;
+  const paused = items.filter(item => item.status === 'paused').length;
+  const dropped = items.filter(item => item.status === 'dropped').length;
+  const planning = items.filter(item => item.status === 'planning').length;
+
+  // Time metrics
+  const totalDays = (totalHours / 24).toFixed(1);
+  const avgPerWork = (totalHours / totalWorks).toFixed(1);
+
+  // Breakdown by media type
+  const byTypeMap = new Map<string, { count: number; minutes: number }>();
+  for (const item of items) {
+    const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
+    val.count++;
+    val.minutes += (item.minutes_spent || 0);
+    byTypeMap.set(item.type, val);
+  }
+  const byType = Array.from(byTypeMap.entries()).map(([type, val]) => ({
+    type,
+    count: val.count,
+    hours: Number((val.minutes / 60).toFixed(1)),
+  })).sort((a, b) => b.count - a.count);
+
+  const ICON_STACK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
+  const ICON_CLOCK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const ICON_STAR = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></polygon></svg>`;
+  const ICON_CHART = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`;
+
+  const ICON_STATUS_COMPLETED = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+  const ICON_STATUS_PROGRESS = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  const ICON_STATUS_PENDING = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h14M5 22h14M19 2v4a7 7 0 0 1-14 0V2M5 22v-4a7 7 0 0 1 14 0v4"/></svg>`;
+  const ICON_STATUS_PAUSED = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+  const ICON_STATUS_DROPPED = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+  const statusList = [
+    { label: 'Completadas', value: completed, color: 'completed', icon: ICON_STATUS_COMPLETED },
+    { label: 'En progreso', value: currently, color: 'in_progress', icon: ICON_STATUS_PROGRESS },
+    { label: 'Pendientes',  value: planning,  color: 'planning', icon: ICON_STATUS_PENDING },
+    { label: 'En pausa',    value: paused,    color: 'paused', icon: ICON_STATUS_PAUSED },
+    { label: 'Abandonadas', value: dropped,   color: 'dropped', icon: ICON_STATUS_DROPPED },
+  ].filter(s => s.value > 0);
+
+  el.innerHTML = `
+    <div class="stats-layout">
+      <!-- Cards grid -->
+      <div class="stats-grid-4">
+        <div class="stats-card">
+          <div class="stats-card-icon">${ICON_STACK}</div>
+          <span class="stats-card-label">Obras Totales</span>
+          <span class="stats-card-value">${totalWorks.toLocaleString()}</span>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon">${ICON_CLOCK}</div>
+          <span class="stats-card-label">Horas Invertidas</span>
+          <span class="stats-card-value">${totalHours.toFixed(0)}</span>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon">${ICON_STAR}</div>
+          <span class="stats-card-label">Nota Media</span>
+          <span class="stats-card-value">${avgScore > 0 ? (avgScore / 2).toFixed(2) + ' / 5' : '—'}</span>
+        </div>
+        <div class="stats-card">
+          <div class="stats-card-icon">${ICON_CHART}</div>
+          <span class="stats-card-label">Obras Valoradas</span>
+          <span class="stats-card-value">${ratedItems.length.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <!-- Extra time stats -->
+      ${totalHours > 0 ? `
+        <div class="stats-days-row">
+          <div class="stats-day-item">
+            <span class="stats-day-label">Días equivalentes</span>
+            <span class="stats-day-value">${totalDays} d</span>
+          </div>
+          <div class="stats-day-item">
+            <span class="stats-day-label">Media horas por obra</span>
+            <span class="stats-day-value">${avgPerWork} h</span>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Status breakdown -->
+      ${statusList.length > 0 ? `
+        <div class="stats-block">
+          <h3 class="stats-block-title">Por estado</h3>
+          <div class="stats-status-list">
+            ${statusList.map(s => {
+              const pct = ((s.value / totalWorks) * 100).toFixed(0);
+              const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
+              return `
+                <div class="stats-status-row">
+                  <div class="stats-status-icon">${s.icon}</div>
+                  <span class="stats-status-label">${s.label}</span>
+                  <div class="stats-bar-outer">
+                    <div class="stats-bar-inner ${s.color}" style="width: ${pctPrecise}%"></div>
+                  </div>
+                  <span class="stats-status-count">${s.value}</span>
+                  <span class="stats-status-percent">${pct}%</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Per-type breakdown -->
+      ${byType.length > 0 ? `
+        <div class="stats-block">
+          <h3 class="stats-block-title">Por tipo de medio</h3>
+          <div class="stats-grid-3">
+            ${byType.map(t => {
+              const typeIcon = TYPE_ICON[t.type] || TYPE_ICON['book'];
+              const typeLabel = TYPE_LABELS[t.type] || t.type;
+              return `
+                <div class="stats-type-card">
+                  <div class="stats-type-icon">${typeIcon}</div>
+                  <div class="stats-type-info">
+                    <p class="stats-type-label">${typeLabel}</p>
+                    <p class="stats-type-count">${t.count} obras</p>
+                    ${t.hours > 0 ? `<p class="stats-type-hours">${t.hours} h</p>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 /* ── Favorites Tab Render ────────────────────────────────────────────────── */

@@ -441,3 +441,21 @@ h2, h3, .settings-panel-title, .section-label {
 .fav-meta-type svg {
   color: var(--text-dim) !important;
 }
+
+/* ── Statistics overrides ────────────────────────────────────────────────── */
+.stats-card, .stats-days-row, .stats-block, .stats-type-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  background-color: var(--bg-card) !important;
+}
+
+.stats-card-value, .stats-day-value, .stats-type-count {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 900 !important;
+}
+
+.stats-block-title, .stats-card-label, .stats-day-label, .stats-type-label {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
