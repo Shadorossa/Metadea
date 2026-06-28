@@ -334,3 +334,64 @@ h2, h3, .settings-panel-title, .section-label {
   transform: translate(-2px, -2px) !important;
   box-shadow: 5px 5px 0px var(--border-color) !important;
 }
+
+/* ── Library Page Overrides for Newspaper Dark ──────────────────────────── */
+
+.library-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  transition: all 0.2s ease !important;
+}
+
+.library-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px var(--border-color) !important;
+  border: 3px double var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+.library-card-thumb {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+.library-card-thumb img {
+  filter: grayscale(0.35) sepia(0.15) !important;
+}
+
+.library-card-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+}
+
+.library-card-date {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-muted) !important;
+}
+
+.library-card-type svg {
+  color: var(--text-dim) !important;
+}
+
+.library-filter-input,
+.library-status-cycler,
+.library-type-btn {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.library-type-btn.active {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+}
+
+.library-status-arrow {
+  color: var(--accent) !important;
+}
