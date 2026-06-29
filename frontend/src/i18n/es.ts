@@ -63,7 +63,7 @@ export const es = {
       movie:  'Películas',
       series: 'Series',
       book:   'Libros',
-      user:   'Usuarios',
+      character:   'Personajes',
     },
     placeholder: 'Busca {type}...',
     idle_label:  'Busca {type}',

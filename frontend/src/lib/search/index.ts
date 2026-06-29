@@ -1,11 +1,11 @@
-import { searchAniList }               from './providers/anilist';
+import { searchAniList, searchAniListCharacters } from './providers/anilist';
 import { searchGames }                 from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'novel' | 'game'
-  | 'vnovel'  | 'movie' | 'series' | 'book' | 'user';
+  | 'vnovel'  | 'movie' | 'series' | 'book' | 'character';
 
 /**
  * Subset of media_catalog columns available from search APIs.
@@ -48,15 +48,16 @@ export async function search(
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
   switch (mediaType) {
-    case 'anime':  return searchAniList(searchQuery, 'ANIME', 'anime', signal);
-    case 'manga':  return searchAniList(searchQuery, 'MANGA', 'manga', signal);
-    case 'novel':  return searchAniList(searchQuery, 'MANGA', 'novel', signal, 'NOVEL');
-    case 'game':   return searchGames(searchQuery, 'game', signal);
-    case 'vnovel': return searchGames(searchQuery, 'vnovel', signal);
-    case 'movie':  return searchMovies(searchQuery, signal);
-    case 'series': return searchSeries(searchQuery, signal);
-    case 'book':   return searchBooks(searchQuery, signal);
-    // 'all', 'user': pendientes de integrar
-    default:       return [];
+    case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal);
+    case 'manga':     return searchAniList(searchQuery, 'MANGA', 'manga', signal);
+    case 'novel':     return searchAniList(searchQuery, 'MANGA', 'novel', signal, 'NOVEL');
+    case 'game':      return searchGames(searchQuery, 'game', signal);
+    case 'vnovel':    return searchGames(searchQuery, 'vnovel', signal);
+    case 'movie':     return searchMovies(searchQuery, signal);
+    case 'series':    return searchSeries(searchQuery, signal);
+    case 'book':      return searchBooks(searchQuery, signal);
+    case 'character': return searchAniListCharacters(searchQuery, signal);
+    // 'all': pendiente de integrar
+    default:          return [];
   }
 }

@@ -227,3 +227,72 @@ export async function searchAniList(
 
   return results;
 }
+
+interface AniListCharacterSearch {
+  id: number;
+  name: { full: string; native: string | null; alternative: string[] | null };
+  image: { large: string | null } | null;
+}
+
+interface AniListCharResponse {
+  data?: { Page?: { pageInfo?: { hasNextPage: boolean }; characters?: AniListCharacterSearch[] } };
+}
+
+const SEARCH_CHARACTERS_QUERY = `
+  query SearchCharacters($searchQuery: String!, $page: Int) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      characters(search: $searchQuery, sort: SEARCH_MATCH) {
+        id
+        name { full native alternative }
+        image { large }
+      }
+    }
+  }
+`;
+
+export async function searchAniListCharacters(
+  searchQuery: string,
+  signal: AbortSignal,
+): Promise<SearchResult[]> {
+  const results: SearchResult[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: SEARCH_CHARACTERS_QUERY,
+        variables: { searchQuery, page },
+      }),
+      signal,
+    });
+
+    if (!response.ok) break;
+    const json: AniListCharResponse = await response.json();
+    const pageData = json.data?.Page;
+    if (!pageData) break;
+
+    const chars = pageData.characters ?? [];
+    results.push(...chars.map(char => ({
+      externalId: `character:${char.id}`,
+      type: 'character' as MediaType,
+      format: '',
+      source: 'anilist' as const,
+      titleMain: char.name.full,
+      titleRomaji: char.name.alternative?.join(', ') ?? null,
+      titleNative: char.name.native,
+      coverUrl: char.image?.large ?? null,
+      releaseYear: null,
+      releaseMonth: null,
+      releaseDay: null,
+      scoreGlobal: null,
+    })));
+
+    if (!pageData.pageInfo?.hasNextPage) break;
+    page++;
+  }
+
+  return results;
+}

@@ -63,7 +63,7 @@ export const en = {
       movie:  'Movies',
       series: 'Series',
       book:   'Books',
-      user:   'Users',
+      character:   'Characters',
     },
     placeholder: 'Search {type}...',
     idle_label:  'Search {type}',
