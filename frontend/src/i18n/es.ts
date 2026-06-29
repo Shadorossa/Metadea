@@ -46,6 +46,17 @@ export const es = {
     empty_favorites: 'Aún no tienes favoritos en esta categoría.',
     favorites_multimedia: 'Multimedia',
     reorder: 'Reordenar',
+    journey: {
+      started: 'Ha empezado {media}',
+      completed: 'Ha completado {media}',
+      watched_episodes: 'Ha visto los episodios {start}-{end} de {media}',
+      watched_episode: 'Ha visto el episodio {end} de {media}',
+      read_chapters: 'Ha leído los capítulos {start}-{end} de {media}',
+      read_chapter: 'Ha leído el capítulo {end} de {media}',
+      played_hours: 'Ha jugado {start}-{end} horas a {media}',
+      played_hour: 'Ha jugado {end} horas a {media}',
+      updated: 'Ha actualizado {media}',
+    },
   },
   notifications: {
     title:       'Notificaciones',

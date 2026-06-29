@@ -46,6 +46,17 @@ export const en = {
     empty_favorites: 'You don\'t have any favorites in this category yet.',
     favorites_multimedia: 'Multimedia',
     reorder: 'Reorder',
+    journey: {
+      started: 'Started {media}',
+      completed: 'Completed {media}',
+      watched_episodes: 'Watched episodes {start}-{end} of {media}',
+      watched_episode: 'Watched episode {end} of {media}',
+      read_chapters: 'Read chapters {start}-{end} of {media}',
+      read_chapter: 'Read chapter {end} of {media}',
+      played_hours: 'Played {start}-{end} hours of {media}',
+      played_hour: 'Played {end} hours of {media}',
+      updated: 'Updated {media}',
+    },
   },
   notifications: {
     title:       'Notifications',

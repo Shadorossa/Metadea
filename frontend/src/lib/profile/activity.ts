@@ -1,47 +1,80 @@
-import { HOF_GRADIENTS } from './hof';
-import { typeLabel, statusLabel, formatShortDate } from './utils';
-import { getT } from '../../i18n/client';
-import type { getAllLibraryEntries } from '../tauri';
+import { readUserJourney } from '../tauri';
 
-type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
-type P     = ReturnType<typeof getT>['profile'];
+type P = any;
 
-export function buildActivityHtml(items: Items, catalogMap: Map<string, any>, p: P): string {
-  const recent = [...items]
-    .sort((a, b) => {
-      const ta = a.updated_at ?? a.added_at ?? '';
-      const tb = b.updated_at ?? b.added_at ?? '';
-      return tb.localeCompare(ta);
-    })
-    .slice(0, 10);
+import { readUserJourney } from '../tauri';
 
-  if (recent.length === 0) {
+type P = any;
+
+function formatDay(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-');
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce((acc, [key, val]) => acc.replace(`{${key}}`, String(val)), template);
+}
+
+export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Promise<string> {
+  const journey = await readUserJourney();
+  const j = p.journey || {};
+
+  // Filter out days that have no events
+  const daysWithEvents = journey.filter(day => day.events && day.events.length > 0).slice(0, 7);
+
+  if (daysWithEvents.length === 0) {
     return `<div class="act-empty"><span>${p.no_activity}</span></div>`;
   }
 
-  const rows = recent.map(item => {
-    const meta   = catalogMap.get(item.external_id);
-    const title  = meta?.title_main ?? item.external_id;
-    const cover  = meta?.cover_url ?? '';
-    const bg     = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
-    const type   = typeLabel(item.type);
-    const status = statusLabel(item.status ?? 'planning');
-    const raw    = item.updated_at ?? item.added_at;
-    const date   = raw ? formatShortDate(raw) : '';
+  const sections = daysWithEvents.map(day => {
+    const formattedDate = formatDay(day.date);
+    
+    const eventRows = day.events.map(event => {
+      const meta = catalogMap.get(event.externalId);
+      const title = meta?.title_main ?? event.externalId;
+      const link = `<a href="/media?id=${encodeURIComponent(event.externalId)}" style="color: var(--accent); font-weight: 700; text-decoration: underline;" class="act-link">${title}</a>`;
+      
+      let text = '';
+      if (event.type === 'start') {
+        text = interpolate(j.started || 'Started {media}', { media: link });
+      } else if (event.type === 'complete') {
+        text = interpolate(j.completed || 'Completed {media}', { media: link });
+      } else if (event.type === 'progress') {
+        const start = event.progressStart ?? 0;
+        const end = event.progressEnd ?? 0;
+        const isSingle = start === end;
+        
+        if (event.mediaType === 'anime' || event.mediaType === 'series') {
+          const tmpl = isSingle ? (j.watched_episode || 'Watched episode {end} of {media}') : (j.watched_episodes || 'Watched episodes {start}-{end} of {media}');
+          text = interpolate(tmpl, { media: link, start, end });
+        } else if (event.mediaType === 'manga' || event.mediaType === 'novel' || event.mediaType === 'book') {
+          const tmpl = isSingle ? (j.read_chapter || 'Read chapter {end} of {media}') : (j.read_chapters || 'Read chapters {start}-{end} of {media}');
+          text = interpolate(tmpl, { media: link, start, end });
+        } else if (event.mediaType === 'game' || event.mediaType === 'vnovel') {
+          const tmpl = isSingle ? (j.played_hour || 'Played {end} hours of {media}') : (j.played_hours || 'Played {start}-{end} hours of {media}');
+          text = interpolate(tmpl, { media: link, start, end });
+        } else {
+          text = interpolate(j.updated || 'Updated {media}', { media: link });
+        }
+      }
+      
+      return `<div class="act-event-row" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+        • ${text}
+      </div>`;
+    }).join('');
 
-    const style  = cover
-      ? `background-image: url('${cover}'); background-size: cover; background-position: center;`
-      : `background: ${bg};`;
-
-    return `<div class="act-card">
-      <div class="act-cover" style="${style}"></div>
-      <div class="act-info">
-        <span class="act-title">${title}</span>
-        <span class="act-meta">${type} · ${status}</span>
+    return `
+      <div class="act-day-section" style="margin-bottom: 1.25rem;">
+        <span class="act-day-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem; display: block; text-transform: uppercase; letter-spacing: 0.05em;">
+          ${formattedDate}
+        </span>
+        <div class="act-day-events" style="display: flex; flex-direction: column; padding-left: 0.5rem; border-left: 2px solid var(--border-color);">
+          ${eventRows}
+        </div>
       </div>
-      ${date ? `<span class="act-date">${date}</span>` : ''}
-    </div>`;
+    `;
   }).join('');
 
-  return `<div class="activity-feed">${rows}</div>`;
+  return `<div class="activity-feed">${sections}</div>`;
 }

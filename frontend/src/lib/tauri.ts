@@ -360,6 +360,48 @@ export async function writeUserFavorites(favorites: Record<string, string[]>): P
   return invoke<void>('write_user_favorites', { content });
 }
 
+// ─── User Journey ───────────────────────────────────────────────────────────
+
+export interface UserJourneyEvent {
+  externalId: string;
+  type: 'start' | 'complete' | 'progress';
+  progressStart?: number;
+  progressEnd?: number;
+  mediaType: string;
+  timestamp: string; // ISO String
+}
+
+export interface DayJourney {
+  date: string; // YYYY-MM-DD
+  events: UserJourneyEvent[];
+}
+
+export async function readUserJourney(): Promise<DayJourney[]> {
+  if (!isTauri()) {
+    try {
+      const saved = localStorage.getItem('user_journey');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  }
+  try {
+    const raw = await invoke<string>('read_user_journey');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+export async function writeUserJourney(journey: DayJourney[]): Promise<void> {
+  const content = JSON.stringify(journey, null, 2);
+  if (!isTauri()) {
+    localStorage.setItem('user_journey', content);
+    return;
+  }
+  return invoke<void>('write_user_journey', { content });
+}
+
 // ─── Media Catalog ────────────────────────────────────────────────────────────
 
 export interface MediaCatalogEntry {

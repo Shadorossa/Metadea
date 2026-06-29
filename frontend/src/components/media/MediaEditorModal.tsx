@@ -233,6 +233,14 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         console.error('Failed to sync favorites JSON', e);
       }
 
+      // Log to user_journey.json
+      try {
+        const { logJourneyEvent } = await import('../../lib/profile/journey');
+        await logJourneyEvent(existing, entry, data.type);
+      } catch (e) {
+        console.error('Failed to log journey event', e);
+      }
+
       onSaved(entry);
       handleClose();
     } catch (e) {

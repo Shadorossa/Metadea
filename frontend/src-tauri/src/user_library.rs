@@ -190,3 +190,21 @@ pub async fn write_user_favorites(app_handle: tauri::AppHandle, content: String)
     let path = data_dir.join("user_metadata").join("user_favorite.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn read_user_journey(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_metadata").join("user_journey.json");
+    if !path.exists() {
+        return Ok("[]".to_string());
+    }
+    std::fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn write_user_journey(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
+    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
+    let path = data_dir.join("user_metadata").join("user_journey.json");
+    std::fs::write(path, content).map_err(|e| e.to_string())
+}

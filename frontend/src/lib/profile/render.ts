@@ -118,7 +118,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       </div>
       <div class="profile-bottom-col">
         <p class="profile-section-label">${p.recent_activity}</p>
-        ${buildActivityHtml(items, catalogMap, p)}
+        ${await buildActivityHtml(catalogMap, p)}
       </div>
     </div>`;
 
