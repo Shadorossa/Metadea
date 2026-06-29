@@ -1,4 +1,4 @@
-import { TMDB_READ_TOKEN } from '../../config';
+import { readEnvConfig } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
@@ -58,13 +58,31 @@ async function fetchFromTmdb(
   mediaType: MediaType,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
-  if (!TMDB_READ_TOKEN) return [];
+  let accessToken = '';
+  let apiKey = '';
 
-  const url = `${TMDB_BASE_URL}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` },
-    signal,
-  });
+  try {
+    const cfg = await readEnvConfig();
+    accessToken = cfg.tmdb_access_token ?? '';
+    apiKey = cfg.tmdb_api_key ?? '';
+  } catch {
+    // Not in Tauri or config doesn't exist
+  }
+
+  if (!accessToken && !apiKey) return [];
+
+  let url = `${TMDB_BASE_URL}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
+  const headers: Record<string, string> = {};
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  if (apiKey) {
+    url += `&api_key=${encodeURIComponent(apiKey)}`;
+  }
+
+  const response = await fetch(url, { signal, headers });
 
   if (!response.ok) return [];
   const data: TmdbPageResponse = await response.json();

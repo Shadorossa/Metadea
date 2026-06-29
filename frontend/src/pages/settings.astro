@@ -155,9 +155,10 @@ const t = useTranslations(lang);
 
               <!-- IGDB -->
               <div class="env-service-block">
-                <div class="env-service-header">
-                  <img class="env-service-logo" src="/API/IGDB_logo.png" alt="IGDB" />
-                  <span class="env-service-hint">{t.settings.env_igdb_hint}</span>
+                <div class="env-service-header" style="justify-content: center;">
+                  <a href="https://dev.twitch.tv/" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <img class="env-service-logo" src="/API/IGDB_logo.png" alt="IGDB" style="width: 48px; height: 48px;" />
+                  </a>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
@@ -177,9 +178,10 @@ const t = useTranslations(lang);
 
               <!-- Steam -->
               <div class="env-service-block">
-                <div class="env-service-header">
-                  <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" />
-                  <span class="env-service-hint">{t.settings.env_steam_hint}</span>
+                <div class="env-service-header" style="justify-content: center;">
+                  <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" style="width: 48px; height: 48px;" />
+                  </a>
                 </div>
                 <div class="env-fields">
                   <div class="env-field">
@@ -195,16 +197,22 @@ const t = useTranslations(lang);
 
               <!-- TMDB -->
               <div class="env-service-block">
-                <div class="env-service-header">
-                  <img class="env-service-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
-                  <span class="env-service-hint">{t.settings.env_tmdb_hint}</span>
+                <div class="env-service-header" style="justify-content: center;">
+                  <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <img class="env-service-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" style="width: 48px; height: 48px;" />
+                  </a>
                 </div>
-                <div class="env-fields">
+                <div class="env-fields env-fields--row">
+                  <div class="env-field">
+                    <label class="env-label" for="tmdb-access-token">{t.settings.env_tmdb_access_token}</label>
+                    <input class="env-input" type="password" id="tmdb-access-token" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
                   <div class="env-field">
                     <label class="env-label" for="tmdb-api-key">{t.settings.env_tmdb_api_key}</label>
                     <input class="env-input" type="password" id="tmdb-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
+                <p class="settings-hint" style="margin-top: 0.75rem;">{t.settings.env_tmdb_both_hint}</p>
                 <div class="env-actions">
                   <button class="btn btn--sm btn--primary" id="tmdb-save-btn">{t.settings.env_save}</button>
                   <button class="btn btn--sm btn--ghost" id="tmdb-clear-btn">{t.settings.env_clear}</button>
