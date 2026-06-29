@@ -199,12 +199,17 @@ const t = useTranslations(lang);
                   <img class="env-service-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
                   <span class="env-service-hint">{t.settings.env_tmdb_hint}</span>
                 </div>
-                <div class="env-fields">
+                <div class="env-fields env-fields--row">
+                  <div class="env-field">
+                    <label class="env-label" for="tmdb-access-token">{t.settings.env_tmdb_access_token}</label>
+                    <input class="env-input" type="password" id="tmdb-access-token" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
                   <div class="env-field">
                     <label class="env-label" for="tmdb-api-key">{t.settings.env_tmdb_api_key}</label>
                     <input class="env-input" type="password" id="tmdb-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
                   </div>
                 </div>
+                <p class="settings-hint" style="margin-top: 0.75rem;">{t.settings.env_tmdb_both_hint}</p>
                 <div class="env-actions">
                   <button class="btn btn--sm btn--primary" id="tmdb-save-btn">{t.settings.env_save}</button>
                   <button class="btn btn--sm btn--ghost" id="tmdb-clear-btn">{t.settings.env_clear}</button>

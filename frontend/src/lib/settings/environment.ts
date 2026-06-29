@@ -1,24 +1,26 @@
 import { readEnvConfig, writeEnvConfig, openEnvFolder } from '../tauri';
 
 export async function initEnvironment(showToast: (msg?: string) => void) {
-  const clientIdInput     = document.getElementById('igdb-client-id')     as HTMLInputElement;
-  const clientSecretInput = document.getElementById('igdb-client-secret') as HTMLInputElement;
-  const steamKeyInput     = document.getElementById('steam-api-key')      as HTMLInputElement;
-  const tmdbKeyInput      = document.getElementById('tmdb-api-key')       as HTMLInputElement;
-  const igdbSaveBtn       = document.getElementById('igdb-save-btn')!;
-  const igdbClearBtn      = document.getElementById('igdb-clear-btn')!;
-  const steamSaveBtn      = document.getElementById('steam-save-btn')!;
-  const steamClearBtn     = document.getElementById('steam-clear-btn')!;
-  const tmdbSaveBtn       = document.getElementById('tmdb-save-btn')!;
-  const tmdbClearBtn      = document.getElementById('tmdb-clear-btn')!;
-  const openFolderBtn     = document.getElementById('open-env-folder-btn')!;
+  const clientIdInput       = document.getElementById('igdb-client-id')         as HTMLInputElement;
+  const clientSecretInput   = document.getElementById('igdb-client-secret')     as HTMLInputElement;
+  const steamKeyInput       = document.getElementById('steam-api-key')          as HTMLInputElement;
+  const tmdbAccessTokenInput = document.getElementById('tmdb-access-token')     as HTMLInputElement;
+  const tmdbKeyInput        = document.getElementById('tmdb-api-key')           as HTMLInputElement;
+  const igdbSaveBtn         = document.getElementById('igdb-save-btn')!;
+  const igdbClearBtn        = document.getElementById('igdb-clear-btn')!;
+  const steamSaveBtn        = document.getElementById('steam-save-btn')!;
+  const steamClearBtn       = document.getElementById('steam-clear-btn')!;
+  const tmdbSaveBtn         = document.getElementById('tmdb-save-btn')!;
+  const tmdbClearBtn        = document.getElementById('tmdb-clear-btn')!;
+  const openFolderBtn       = document.getElementById('open-env-folder-btn')!;
 
   try {
     const cfg = await readEnvConfig();
-    clientIdInput.value     = cfg.igdb_client_id     ?? '';
-    clientSecretInput.value = cfg.igdb_client_secret ?? '';
-    steamKeyInput.value     = cfg.steam_api_key      ?? '';
-    tmdbKeyInput.value      = cfg.tmdb_api_key       ?? '';
+    clientIdInput.value       = cfg.igdb_client_id     ?? '';
+    clientSecretInput.value   = cfg.igdb_client_secret ?? '';
+    steamKeyInput.value       = cfg.steam_api_key      ?? '';
+    tmdbAccessTokenInput.value = cfg.tmdb_access_token ?? '';
+    tmdbKeyInput.value        = cfg.tmdb_api_key       ?? '';
   } catch {
     // Not in Tauri or file doesn't exist yet
   }
@@ -73,8 +75,12 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
   tmdbSaveBtn.addEventListener('click', async () => {
     try {
       const cfg = await readEnvConfig().catch(() => ({}));
-      await writeEnvConfig({ ...cfg, tmdb_api_key: tmdbKeyInput.value.trim() || undefined });
-      showToast('Clave de TMDB guardada');
+      await writeEnvConfig({
+        ...cfg,
+        tmdb_access_token: tmdbAccessTokenInput.value.trim() || undefined,
+        tmdb_api_key: tmdbKeyInput.value.trim() || undefined
+      });
+      showToast('Credenciales de TMDB guardadas');
     } catch (err: any) {
       showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
     }
@@ -83,9 +89,10 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
   tmdbClearBtn.addEventListener('click', async () => {
     try {
       const cfg = await readEnvConfig().catch(() => ({}));
-      await writeEnvConfig({ ...cfg, tmdb_api_key: undefined });
+      await writeEnvConfig({ ...cfg, tmdb_access_token: undefined, tmdb_api_key: undefined });
+      tmdbAccessTokenInput.value = '';
       tmdbKeyInput.value = '';
-      showToast('Clave de TMDB eliminada');
+      showToast('Credenciales de TMDB eliminadas');
     } catch {
       showToast('Error al eliminar');
     }
