@@ -1,0 +1,399 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages/character.css';
+import { getLang } from '../i18n/index';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Detalle de Personaje — Metadea" lang={lang} activePage="search">
+  <div class="character-page-container">
+    
+    <!-- Botón Volver -->
+    <div class="back-btn-wrap">
+      <a href="/search?type=character" class="btn btn--sm btn--secondary back-btn-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver a la búsqueda
+      </a>
+    </div>
+
+    <!-- Estado de Carga -->
+    <div id="character-loading" class="character-empty-box">
+      <p>Cargando información del personaje...</p>
+    </div>
+
+    <!-- Estado de Error -->
+    <div id="character-error" class="character-error-box" style="display: none;">
+      <p style="font-weight: 700; margin-bottom: 0.5rem;">Error al cargar personaje</p>
+      <p id="character-error-text" style="font-size: 0.85rem; opacity: 0.8;"></p>
+    </div>
+
+    <!-- Contenido del Personaje (Grid de 2 Columnas) -->
+    <div id="character-content" class="character-detail-layout" style="display: none;">
+      
+      <!-- Columna Izquierda: Sidebar -->
+      <div class="character-sidebar-col">
+        <!-- Avatar del Personaje -->
+        <div class="character-avatar-wrap" id="char-avatar-container">
+          <!-- Rellenado dinámicamente por JS -->
+        </div>
+
+        <!-- Lista de Detalles Técnicos -->
+        <div class="character-stats-card" id="char-stats-card" style="display: none;">
+          <div class="character-sidebar-stats-list" id="char-stats-list">
+            <!-- Rellenado dinámicamente por JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna Derecha: Contenido Principal -->
+      <div class="character-main-col">
+        
+        <!-- Nombres y Cabecera -->
+        <div class="character-names-header">
+          <h1 class="character-name-title" id="char-name-full"></h1>
+          <p class="character-name-native" id="char-name-native" style="display: none;"></p>
+          <div class="character-alt-names" id="char-alt-names" style="display: none;">
+            <!-- Rellenado dinámicamente por JS -->
+          </div>
+        </div>
+
+        <!-- Descripción / Biografía -->
+        <div class="character-section-box" id="char-bio-section" style="display: none;">
+          <h2 class="character-section-title">Biografía</h2>
+          <div class="character-description-text" id="char-description"></div>
+        </div>
+
+        <!-- Apariciones en Obras -->
+        <div class="character-section-box" id="char-appearances-section" style="display: none;">
+          <h2 class="character-section-title">Apariciones en Obras</h2>
+          <div class="character-appearances-grid" id="char-appearances-grid"></div>
+          
+          <!-- Paginación de Apariciones -->
+          <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">Anterior</button>
+            <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Página 1 de 1</span>
+            <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">Siguiente</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
+
+  async function loadCharacterData() {
+    const loadingEl = document.getElementById('character-loading')!;
+    const errorEl = document.getElementById('character-error')!;
+    const errorTextEl = document.getElementById('character-error-text')!;
+    const contentEl = document.getElementById('character-content')!;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const idParam = urlParams.get('id') ?? '';
+    const cleanIdParam = idParam.replace(/\D/g, '');
+    const characterId = parseInt(cleanIdParam, 10);
+
+    if (isNaN(characterId)) {
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = 'ID de personaje no válido o no especificado';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const character = await fetchAniListCharacterDetail(characterId);
+      if (!character) {
+        loadingEl.style.display = 'none';
+        errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      // Nombre principal y nativo
+      document.getElementById('char-name-full')!.textContent = character.name.full;
+      const nativeEl = document.getElementById('char-name-native')!;
+      if (character.name.native) {
+        nativeEl.textContent = character.name.native;
+        nativeEl.style.display = 'block';
+      } else {
+        nativeEl.style.display = 'none';
+      }
+
+      // Imagen / Avatar
+      const avatarContainer = document.getElementById('char-avatar-container')!;
+      if (character.image?.large) {
+        avatarContainer.innerHTML = `<img src="${character.image.large}" alt="${character.name.full}" class="character-avatar-img" />`;
+      } else {
+        avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
+      }
+
+      // Nombres alternativos
+      const altNamesContainer = document.getElementById('char-alt-names')!;
+      if (character.name.alternative && character.name.alternative.length > 0) {
+        altNamesContainer.innerHTML = character.name.alternative
+          .map((alt: string) => `<span class="character-alt-name-tag">${alt}</span>`)
+          .join('');
+        altNamesContainer.style.display = 'flex';
+      } else {
+        altNamesContainer.style.display = 'none';
+      }
+
+      // ── PARSEO DE DATOS TÉCNICOS POR DOM (MÁS ROBUSTO) ───────────────────
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = character.description || '';
+
+      const boldElements = tempDiv.querySelectorAll('b, strong');
+      const parsedStats: Array<{ label: string; value: string }> = [];
+      const elementsToRemove: Node[] = [];
+
+      for (const el of boldElements) {
+        const label = el.textContent.trim().replace(/:$/, '').trim();
+        if (label.length > 30 || label.length < 2) continue;
+
+        // Buscar el valor en los nodos hermanos siguientes
+        let nextNode = el.nextSibling;
+        let valueParts: string[] = [];
+
+        while (nextNode) {
+          if (nextNode.nodeType === Node.TEXT_NODE) {
+            const txt = nextNode.textContent?.trim();
+            if (txt) {
+              valueParts.push(txt);
+              break; // Encontrado el bloque de texto
+            }
+          } else if (nextNode.nodeName === 'BR') {
+            // Seguir buscando tras saltos de línea
+          } else {
+            // Si nos topamos con otra etiqueta (ej. <b> u otro bloque), paramos
+            break;
+          }
+          nextNode = nextNode.nextSibling;
+        }
+
+        const value = valueParts.join(' ').trim().replace(/^:\s*/, '').trim();
+        if (value) {
+          parsedStats.push({ label, value });
+          elementsToRemove.push(el);
+
+          // También marcamos los nodos intermedios (como saltos de línea) para eliminar
+          let toRemove = el.nextSibling;
+          while (toRemove && toRemove !== nextNode) {
+            elementsToRemove.push(toRemove);
+            toRemove = toRemove.nextSibling;
+          }
+          if (nextNode) {
+            elementsToRemove.push(nextNode);
+          }
+        }
+      }
+
+      // Eliminar nodos parseados de la descripción
+      for (const node of elementsToRemove) {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      }
+
+      let cleanDescription = tempDiv.innerHTML
+        .replace(/(?:\s*<br\s*\/?>\s*){2,}/gi, '<br />')
+        .replace(/^(?:\s*<br\s*\/?>|\s*<p>\s*<\/p>|\s*&nbsp;)+/gi, '')
+        .trim();
+
+      // Formatear spoilers: Convertir !~ y ~! a span.spoiler
+      cleanDescription = cleanDescription.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
+
+      // ── RENDEREAR ESPECIFICACIONES / ATRIBUTOS ─────────────────────────
+      const statsCard = document.getElementById('char-stats-card')!;
+      const statsList = document.getElementById('char-stats-list')!;
+      let statsHtml = '';
+      const addedLabels = new Set<string>();
+
+      if (character.gender) {
+        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Género</span><span class="character-stat-value">${character.gender}</span></div>`;
+        addedLabels.add('gender');
+        addedLabels.add('género');
+      }
+      if (character.age) {
+        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Edad</span><span class="character-stat-value">${character.age}</span></div>`;
+        addedLabels.add('age');
+        addedLabels.add('edad');
+      }
+      if (character.bloodType) {
+        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Grupo Sanguíneo</span><span class="character-stat-value">${character.bloodType}</span></div>`;
+        addedLabels.add('bloodtype');
+        addedLabels.add('grupo sanguíneo');
+      }
+      if (character.dateOfBirth && (character.dateOfBirth.day || character.dateOfBirth.month)) {
+        const day = character.dateOfBirth.day ?? '?';
+        const month = character.dateOfBirth.month ?? '?';
+        const year = character.dateOfBirth.year ? `/${character.dateOfBirth.year}` : '';
+        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Cumpleaños</span><span class="character-stat-value">${day}/${month}${year}</span></div>`;
+        addedLabels.add('birthday');
+        addedLabels.add('cumpleaños');
+      }
+
+      // Añadir atributos extraídos del DOM de forma localizada
+      for (const stat of parsedStats) {
+        const lowerLabel = stat.label.toLowerCase();
+        if (addedLabels.has(lowerLabel)) continue;
+
+        let displayLabel = stat.label;
+        if (lowerLabel === 'height') displayLabel = 'Estatura';
+        else if (lowerLabel === 'weight') displayLabel = 'Peso';
+        else if (lowerLabel === 'hair color') displayLabel = 'Pelo';
+        else if (lowerLabel === 'eye color') displayLabel = 'Ojos';
+        else if (lowerLabel === 'affiliations') displayLabel = 'Afiliación';
+        else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
+
+        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">${displayLabel}</span><span class="character-stat-value">${stat.value}</span></div>`;
+        addedLabels.add(lowerLabel);
+      }
+
+      if (statsHtml) {
+        statsList.innerHTML = statsHtml;
+        statsCard.style.display = 'block';
+      } else {
+        statsCard.style.display = 'none';
+      }
+
+      // Biografía
+      const bioSection = document.getElementById('char-bio-section')!;
+      if (cleanDescription) {
+        document.getElementById('char-description')!.innerHTML = cleanDescription;
+        bioSection.style.display = 'block';
+      } else {
+        bioSection.style.display = 'none';
+      }
+
+      // ── APARICIONES EN OBRAS (ORDENADO + PAGINACIÓN DINÁMICA DE 2 FILAS) ──
+      const appearancesSection = document.getElementById('char-appearances-section')!;
+      const appearancesGrid = document.getElementById('char-appearances-grid')!;
+      const paginationEl = document.getElementById('appearances-pagination')!;
+      const btnPrev = document.getElementById('btn-prev-appearances') as HTMLButtonElement;
+      const btnNext = document.getElementById('btn-next-appearances') as HTMLButtonElement;
+      const txtPage = document.getElementById('txt-appearances-page')!;
+
+      const rawEdges = character.media?.edges || [];
+
+      // ORDENACIÓN: Primero obras MAIN, luego el resto (ambas ordenadas cronológicamente)
+      const mainMedia = rawEdges.filter((edge: any) => edge.relationType === 'MAIN');
+      const otherMedia = rawEdges.filter((edge: any) => edge.relationType !== 'MAIN');
+      const sortedEdges = [...mainMedia, ...otherMedia];
+
+      let currentPage = 1;
+
+      // Calcular dinámicamente itemsPerPage para rellenar exactamente 2 filas
+      function getItemsPerPage() {
+        const computedStyle = window.getComputedStyle(appearancesGrid);
+        // Contar cuántas columnas caben
+        const gridCols = computedStyle.getPropertyValue('grid-template-columns').split(' ').length;
+        // Retornar exactamente el doble (2 filas)
+        return Math.max(gridCols * 2, 6); // Mínimo 6 por página como salvaguarda
+      }
+
+      function renderMediaPage() {
+        const itemsPerPage = getItemsPerPage();
+        const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
+
+        // Limitar página actual
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+
+        const start = (currentPage - 1) * itemsPerPage;
+        const slice = sortedEdges.slice(start, start + itemsPerPage);
+
+        appearancesGrid.innerHTML = slice
+          .map((edge: any) => {
+            const coverHtml = edge.node.coverImage?.large 
+              ? `<img src="${edge.node.coverImage.large}" alt="${edge.node.title.userPreferred}" class="character-appearance-cover-img" loading="lazy" />`
+              : `<div class="character-appearance-cover-placeholder">Sin portada</div>`;
+            
+            const roleBadgeHtml = edge.relationType 
+              ? `<div class="character-appearance-role-badge">${edge.relationType === 'MAIN' ? 'Principal' : 'Secundario'}</div>`
+              : '';
+
+            return `
+              <a href="/media?id=${edge.node.type.toLowerCase()}:${edge.node.id}" class="character-appearance-card group">
+                <div class="character-appearance-cover-wrap">
+                  ${coverHtml}
+                  ${roleBadgeHtml}
+                </div>
+                <span class="character-appearance-title card-title">${edge.node.title.userPreferred}</span>
+              </a>
+            `;
+          })
+          .join('');
+
+        txtPage.textContent = `Página ${currentPage} de ${totalPages}`;
+        btnPrev.disabled = currentPage === 1;
+        btnNext.disabled = currentPage >= totalPages;
+
+        if (totalPages > 1) {
+          paginationEl.style.display = 'flex';
+        } else {
+          paginationEl.style.display = 'none';
+        }
+      }
+
+      if (sortedEdges.length > 0) {
+        // Renderizado inicial
+        setTimeout(() => {
+          renderMediaPage();
+          appearancesSection.style.display = 'block';
+        }, 50);
+
+        // Controladores de eventos de paginación
+        const newBtnPrev = btnPrev.cloneNode(true) as HTMLButtonElement;
+        const newBtnNext = btnNext.cloneNode(true) as HTMLButtonElement;
+        btnPrev.parentNode!.replaceChild(newBtnPrev, btnPrev);
+        btnNext.parentNode!.replaceChild(newBtnNext, btnNext);
+
+        newBtnPrev.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            renderMediaPage();
+            appearancesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+
+        newBtnNext.addEventListener('click', () => {
+          const itemsPerPage = getItemsPerPage();
+          const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
+          if (currentPage < totalPages) {
+            currentPage++;
+            renderMediaPage();
+            appearancesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+
+        // Recalcular paginación al redimensionar pantalla
+        let resizeTimeout: any;
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            renderMediaPage();
+          }, 150);
+        });
+
+      } else {
+        appearancesSection.style.display = 'none';
+      }
+
+      // Mostrar el contenido final
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'grid';
+
+    } catch (err: any) {
+      console.error(err);
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = 'Error de conexión o fallo al consultar la API de AniList.';
+      errorEl.style.display = 'block';
+    }
+  }
+
+  // Carga al entrar (Astro SPA router)
+  document.addEventListener('astro:page-load', loadCharacterData);
+</script>

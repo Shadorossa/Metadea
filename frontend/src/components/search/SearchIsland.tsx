@@ -190,17 +190,22 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
-const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book', 'game', 'vnovel'];
+const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book', 'game', 'vnovel', 'character'];
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = DETAIL_SUPPORTED.includes(result.type);
 
   function handleMouseEnter() {
-    if (hasDetail) prefetchMediaData(result.externalId);
+    if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
   }
 
   function handleClick() {
     if (hasDetail) {
+      if (result.type === 'character') {
+        const rawId = result.externalId.replace('character:', '');
+        window.location.href = `/character?id=${rawId}`;
+        return;
+      }
       if (result.authorNames?.length) {
         sessionStorage.setItem(`book_authors:${result.externalId}`, JSON.stringify(result.authorNames));
       }

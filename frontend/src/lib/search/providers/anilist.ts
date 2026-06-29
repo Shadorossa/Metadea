@@ -199,33 +199,23 @@ export async function searchAniList(
   signal: AbortSignal,
   format?: string,
 ): Promise<SearchResult[]> {
-  const results: SearchResult[] = [];
-  let page = 1;
+  const response = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(
+      format
+        ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page: 1, format } }
+        : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page: 1 } },
+    ),
+    signal,
+  });
 
-  while (true) {
-    const response = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(
-        format
-          ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page, format } }
-          : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page } },
-      ),
-      signal,
-    });
+  if (!response.ok) return [];
+  const json: AniListResponse = await response.json();
+  const pageData = json.data?.Page;
+  if (!pageData) return [];
 
-    if (!response.ok) break;
-    const json: AniListResponse = await response.json();
-    const pageData = json.data?.Page;
-    if (!pageData) break;
-
-    results.push(...(pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType)));
-
-    if (!pageData.pageInfo?.hasNextPage) break;
-    page++;
-  }
-
-  return results;
+  return (pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType));
 }
 
 interface AniListCharacterSearch {
@@ -255,44 +245,145 @@ export async function searchAniListCharacters(
   searchQuery: string,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
-  const results: SearchResult[] = [];
+  const response = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: SEARCH_CHARACTERS_QUERY,
+      variables: { searchQuery, page: 1 },
+    }),
+    signal,
+  });
+
+  if (!response.ok) return [];
+  const json: AniListCharResponse = await response.json();
+  const pageData = json.data?.Page;
+  if (!pageData) return [];
+
+  const chars = pageData.characters ?? [];
+  return chars.map(char => ({
+    externalId: `character:${char.id}`,
+    type: 'character' as MediaType,
+    format: '',
+    source: 'anilist' as const,
+    titleMain: char.name.full,
+    titleRomaji: char.name.alternative?.join(', ') ?? null,
+    titleNative: char.name.native,
+    coverUrl: char.image?.large ?? null,
+    releaseYear: null,
+    releaseMonth: null,
+    releaseDay: null,
+    scoreGlobal: null,
+  }));
+}
+
+export interface AniListCharacterDetail {
+  id: number;
+  name: {
+    full: string;
+    native: string | null;
+    alternative: string[];
+    alternativeSpoiler: string[];
+  };
+  image: {
+    large: string | null;
+  } | null;
+  description: string | null;
+  gender: string | null;
+  dateOfBirth: {
+    year: number | null;
+    month: number | null;
+    day: number | null;
+  } | null;
+  age: string | null;
+  bloodType: string | null;
+  media: {
+    edges: Array<{
+      relationType: string;
+      node: {
+        id: number;
+        title: {
+          userPreferred: string;
+        };
+        coverImage: {
+          large: string;
+        };
+        type: string;
+      };
+    }>;
+  };
+}
+
+const DETAIL_CHARACTER_QUERY = `
+  query GetCharacterDetail($id: Int, $mediaPage: Int) {
+    Character(id: $id) {
+      id
+      name {
+        full
+        native
+        alternative
+        alternativeSpoiler
+      }
+      image {
+        large
+      }
+      description(asHtml: true)
+      gender
+      dateOfBirth {
+        year
+        month
+        day
+      }
+      age
+      bloodType
+      media(page: $mediaPage, perPage: 50, sort: START_DATE) {
+        pageInfo {
+          hasNextPage
+        }
+        edges {
+          relationType
+          node {
+            id
+            title {
+              userPreferred
+            }
+            coverImage {
+              large
+            }
+            type
+          }
+        }
+      }
+    }
+  }
+`;
+
+export async function fetchAniListCharacterDetail(id: number): Promise<AniListCharacterDetail | null> {
   let page = 1;
+  let character: AniListCharacterDetail | null = null;
+  const allEdges: any[] = [];
 
   while (true) {
-    const response = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: SEARCH_CHARACTERS_QUERY,
-        variables: { searchQuery, page },
-      }),
-      signal,
-    });
+    const data = await anilistPost<{ Character: any }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page });
+    const char = data?.Character;
+    if (!char) break;
 
-    if (!response.ok) break;
-    const json: AniListCharResponse = await response.json();
-    const pageData = json.data?.Page;
-    if (!pageData) break;
+    if (!character) {
+      character = char;
+    }
 
-    const chars = pageData.characters ?? [];
-    results.push(...chars.map(char => ({
-      externalId: `character:${char.id}`,
-      type: 'character' as MediaType,
-      format: '',
-      source: 'anilist' as const,
-      titleMain: char.name.full,
-      titleRomaji: char.name.alternative?.join(', ') ?? null,
-      titleNative: char.name.native,
-      coverUrl: char.image?.large ?? null,
-      releaseYear: null,
-      releaseMonth: null,
-      releaseDay: null,
-      scoreGlobal: null,
-    })));
+    const edges = char.media?.edges ?? [];
+    allEdges.push(...edges);
 
-    if (!pageData.pageInfo?.hasNextPage) break;
+    if (!char.media?.pageInfo?.hasNextPage) break;
     page++;
   }
 
-  return results;
+  if (character) {
+    character.media.edges = allEdges;
+  }
+
+  return character;
 }
+
+
