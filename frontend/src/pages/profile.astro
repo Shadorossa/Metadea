@@ -78,7 +78,7 @@ const lang = getLang(Astro.url);
     if (tab === 'overview')     await renderOverview(content, cachedItems);
     else if (tab === 'library') await renderLibrary(content);
     else if (tab === 'favorites') await renderFavorites(content);
-    else                        renderStats(content);
+    else                        await renderStats(content);
 
     content.classList.remove('switching');
   }
