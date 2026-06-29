@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -51,13 +51,16 @@ fn generate_id() -> String {
     format!("{:016x}{:016x}", a, b)
 }
 
-fn entry_path(
-    data_dir: &std::path::Path,
-    external_id: &str,
-) -> std::path::PathBuf {
+fn entry_path(data_dir: &std::path::Path, external_id: &str) -> std::path::PathBuf {
     let safe_id: String = external_id
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     data_dir
         .join("media_catalog")
@@ -69,7 +72,10 @@ pub async fn save_catalog_entry(
     app_handle: tauri::AppHandle,
     mut entry: MediaCatalogEntry,
 ) -> Result<MediaCatalogEntry, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("media_catalog")).map_err(|e| e.to_string())?;
 
     let path = entry_path(&data_dir, &entry.external_id);
@@ -102,7 +108,10 @@ pub async fn get_catalog_entry(
     app_handle: tauri::AppHandle,
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = entry_path(&data_dir, &external_id);
     if !path.exists() {
         return Ok(None);
@@ -117,7 +126,10 @@ pub async fn delete_catalog_entry(
     app_handle: tauri::AppHandle,
     external_id: String,
 ) -> Result<(), String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = entry_path(&data_dir, &external_id);
     if path.exists() {
         std::fs::remove_file(&path).map_err(|e| e.to_string())?;
@@ -129,7 +141,10 @@ pub async fn delete_catalog_entry(
 pub async fn get_all_catalog_entries(
     app_handle: tauri::AppHandle,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let cat_dir = data_dir.join("media_catalog");
     if !cat_dir.exists() {
         return Ok(vec![]);
@@ -158,9 +173,18 @@ pub async fn search_catalog(
     let results: Vec<_> = entries
         .into_iter()
         .filter(|e| {
-            e.title_main.as_deref().map(|t| t.to_lowercase().contains(&q)).unwrap_or(false)
-                || e.title_romaji.as_deref().map(|t| t.to_lowercase().contains(&q)).unwrap_or(false)
-                || e.title_native.as_deref().map(|t| t.to_lowercase().contains(&q)).unwrap_or(false)
+            e.title_main
+                .as_deref()
+                .map(|t| t.to_lowercase().contains(&q))
+                .unwrap_or(false)
+                || e.title_romaji
+                    .as_deref()
+                    .map(|t| t.to_lowercase().contains(&q))
+                    .unwrap_or(false)
+                || e.title_native
+                    .as_deref()
+                    .map(|t| t.to_lowercase().contains(&q))
+                    .unwrap_or(false)
         })
         .collect();
     Ok(results)

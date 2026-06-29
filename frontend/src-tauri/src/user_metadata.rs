@@ -22,10 +22,7 @@ pub async fn save_user_image(
         return Err(format!("Invalid key: {}", key));
     }
     let path = user_metadata_dir(&app_handle)?.join(&key);
-    let base64_data = data_url
-        .splitn(2, ',')
-        .nth(1)
-        .ok_or("Invalid data URL")?;
+    let base64_data = data_url.splitn(2, ',').nth(1).ok_or("Invalid data URL")?;
     let bytes = crate::utils::base64_decode(base64_data)?;
     std::fs::write(path, bytes).map_err(|e| e.to_string())
 }
@@ -56,10 +53,7 @@ pub async fn get_user_image(
 }
 
 #[tauri::command]
-pub async fn remove_user_image(
-    app_handle: tauri::AppHandle,
-    key: String,
-) -> Result<(), String> {
+pub async fn remove_user_image(app_handle: tauri::AppHandle, key: String) -> Result<(), String> {
     let allowed = ["avatar", "banner"];
     if !allowed.contains(&key.as_str()) {
         return Err(format!("Invalid key: {}", key));
@@ -85,7 +79,9 @@ pub async fn save_user_info(
     };
     let mut merged = existing;
     if let (Some(obj), Some(new_obj)) = (merged.as_object_mut(), info.as_object()) {
-        for (k, v) in new_obj { obj.insert(k.clone(), v.clone()); }
+        for (k, v) in new_obj {
+            obj.insert(k.clone(), v.clone());
+        }
     }
     let out = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
     std::fs::write(path, out).map_err(|e| e.to_string())
@@ -94,7 +90,9 @@ pub async fn save_user_info(
 #[tauri::command]
 pub async fn get_user_info(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let path = user_metadata_dir(&app_handle)?.join("user_info.json");
-    if !path.exists() { return Ok(serde_json::json!({})); }
+    if !path.exists() {
+        return Ok(serde_json::json!({}));
+    }
     let raw = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     serde_json::from_str(&raw).map_err(|e| e.to_string())
 }

@@ -20,34 +20,49 @@ fn steam_root_from_registry() -> Option<PathBuf> {
     if let Ok(key) = RegKey::predef(HKEY_CURRENT_USER).open_subkey("Software\\Valve\\Steam") {
         if let Ok(path) = key.get_value::<String, _>("SteamPath") {
             let p = PathBuf::from(path);
-            if p.exists() { return Some(p); }
+            if p.exists() {
+                return Some(p);
+            }
         }
     }
-    if let Ok(key) = RegKey::predef(HKEY_LOCAL_MACHINE)
-        .open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam")
+    if let Ok(key) =
+        RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey("SOFTWARE\\WOW6432Node\\Valve\\Steam")
     {
         if let Ok(path) = key.get_value::<String, _>("InstallPath") {
             let p = PathBuf::from(path);
-            if p.exists() { return Some(p); }
+            if p.exists() {
+                return Some(p);
+            }
         }
     }
     None
 }
 
 #[cfg(not(windows))]
-fn steam_root_from_registry() -> Option<PathBuf> { None }
+fn steam_root_from_registry() -> Option<PathBuf> {
+    None
+}
 
 /// Returns the Steam root directory (registry first, then common paths).
 pub fn steam_root() -> Option<PathBuf> {
     let from_reg = steam_root_from_registry();
-    if from_reg.is_some() { return from_reg; }
-    let candidates: Vec<PathBuf> = ["C", "D", "E", "F"].iter().flat_map(|drive| vec![
-        PathBuf::from(format!("{}:\\Program Files (x86)\\Steam", drive)),
-        PathBuf::from(format!("{}:\\Program Files\\Steam", drive)),
-        PathBuf::from(format!("{}:\\Steam", drive)),
-        PathBuf::from(format!("{}:\\Games\\Steam", drive)),
-    ]).collect();
-    candidates.into_iter().find(|p| p.join("steamapps").exists())
+    if from_reg.is_some() {
+        return from_reg;
+    }
+    let candidates: Vec<PathBuf> = ["C", "D", "E", "F"]
+        .iter()
+        .flat_map(|drive| {
+            vec![
+                PathBuf::from(format!("{}:\\Program Files (x86)\\Steam", drive)),
+                PathBuf::from(format!("{}:\\Program Files\\Steam", drive)),
+                PathBuf::from(format!("{}:\\Steam", drive)),
+                PathBuf::from(format!("{}:\\Games\\Steam", drive)),
+            ]
+        })
+        .collect();
+    candidates
+        .into_iter()
+        .find(|p| p.join("steamapps").exists())
 }
 
 fn scan_steam_games() -> Vec<LocalGame> {
@@ -68,9 +83,11 @@ fn scan_steam_games() -> Vec<LocalGame> {
                 let parts: Vec<&str> = line.splitn(5, '"').collect();
                 if parts.len() >= 4 {
                     let raw = parts[3];
-                    let path_str = if raw.contains("\\\\")
-                        { raw.replace("\\\\", "\\") }
-                        else { raw.to_string() };
+                    let path_str = if raw.contains("\\\\") {
+                        raw.replace("\\\\", "\\")
+                    } else {
+                        raw.to_string()
+                    };
                     let lib_path = PathBuf::from(&path_str).join("steamapps");
                     if lib_path.exists() && !library_paths.contains(&lib_path) {
                         library_paths.push(lib_path);
@@ -95,8 +112,8 @@ fn scan_steam_games() -> Vec<LocalGame> {
                             let parts: Vec<&str> = line.splitn(5, '"').collect();
                             if parts.len() >= 4 {
                                 match parts[1] {
-                                    "name"       => name        = parts[3].to_string(),
-                                    "appid"      => app_id      = parts[3].to_string(),
+                                    "name" => name = parts[3].to_string(),
+                                    "appid" => app_id = parts[3].to_string(),
                                     "installdir" => install_dir = parts[3].to_string(),
                                     _ => {}
                                 }
@@ -110,7 +127,7 @@ fn scan_steam_games() -> Vec<LocalGame> {
                                 "388080" | // Borderless Gaming
                                 "250820" | // SteamVR
                                 "1113010" | // SteamVR Extensions
-                                "1054830"   // SteamVR Beta
+                                "1054830" // SteamVR Beta
                             );
                             let lower_name = name.to_lowercase();
                             let is_blocked_name = lower_name.contains("redistributable")
@@ -160,7 +177,8 @@ fn scan_epic_games() -> Vec<LocalGame> {
                         if let Ok(content) = std::fs::read_to_string(entry.path()) {
                             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
                                 let name = json["DisplayName"].as_str().unwrap_or("").to_string();
-                                let install_path = json["InstallLocation"].as_str().map(|s| s.to_string());
+                                let install_path =
+                                    json["InstallLocation"].as_str().map(|s| s.to_string());
                                 let app_id = json["CatalogItemId"].as_str().map(|s| s.to_string());
                                 let is_game = json["bIsApplication"].as_bool().unwrap_or(true);
                                 if !name.is_empty() && is_game {
@@ -188,22 +206,38 @@ fn scan_epic_games() -> Vec<LocalGame> {
 fn scan_gog_games() -> Vec<LocalGame> {
     let mut games = Vec::new();
 
-    let gog_dirs: Vec<PathBuf> = ["C", "D", "E"].iter().flat_map(|drive| vec![
-        PathBuf::from(format!("{}:\\GOG Games", drive)),
-        PathBuf::from(format!("{}:\\Program Files (x86)\\GOG Galaxy\\Games", drive)),
-        PathBuf::from(format!("{}:\\Games\\GOG", drive)),
-    ]).collect();
+    let gog_dirs: Vec<PathBuf> = ["C", "D", "E"]
+        .iter()
+        .flat_map(|drive| {
+            vec![
+                PathBuf::from(format!("{}:\\GOG Games", drive)),
+                PathBuf::from(format!(
+                    "{}:\\Program Files (x86)\\GOG Galaxy\\Games",
+                    drive
+                )),
+                PathBuf::from(format!("{}:\\Games\\GOG", drive)),
+            ]
+        })
+        .collect();
 
     for base_dir in &gog_dirs {
-        if !base_dir.exists() { continue; }
+        if !base_dir.exists() {
+            continue;
+        }
         if let Ok(entries) = std::fs::read_dir(base_dir) {
             for entry in entries.flatten() {
-                if !entry.path().is_dir() { continue; }
+                if !entry.path().is_dir() {
+                    continue;
+                }
                 let game_dir = entry.path();
                 let gameinfo = game_dir.join("gameinfo");
                 if gameinfo.exists() {
                     if let Ok(content) = std::fs::read_to_string(&gameinfo) {
-                        let name = content.lines().next().map(|s| s.trim().to_string()).unwrap_or_default();
+                        let name = content
+                            .lines()
+                            .next()
+                            .map(|s| s.trim().to_string())
+                            .unwrap_or_default();
                         if !name.is_empty() {
                             games.push(LocalGame {
                                 name,
@@ -222,7 +256,9 @@ fn scan_gog_games() -> Vec<LocalGame> {
                         let sfname = sfname.to_string_lossy();
                         if sfname.starts_with("goggame-") && sfname.ends_with(".info") {
                             if let Ok(content) = std::fs::read_to_string(sub_entry.path()) {
-                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Ok(json) =
+                                    serde_json::from_str::<serde_json::Value>(&content)
+                                {
                                     let name = json["gameTitle"].as_str().unwrap_or("").to_string();
                                     let app_id = json["gameId"].as_str().map(|s| s.to_string());
                                     if !name.is_empty() {
@@ -230,7 +266,9 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                             name,
                                             launcher: "gog".to_string(),
                                             app_id,
-                                            install_path: Some(game_dir.to_string_lossy().to_string()),
+                                            install_path: Some(
+                                                game_dir.to_string_lossy().to_string(),
+                                            ),
                                             playtime_minutes: None,
                                             last_played: None,
                                             installed: Some(true),
@@ -256,14 +294,18 @@ fn extract_xml_attr(content: &str, attr: &str) -> Option<String> {
         let rest = &content[pos + needle.len()..];
         if let Some(end) = rest.find('"') {
             let val = rest[..end].trim().to_string();
-            if !val.is_empty() { return Some(val); }
+            if !val.is_empty() {
+                return Some(val);
+            }
         }
     }
     None
 }
 
 trait Pipe: Sized {
-    fn pipe<F: FnOnce(Self) -> Self>(self, f: F) -> Self { f(self) }
+    fn pipe<F: FnOnce(Self) -> Self>(self, f: F) -> Self {
+        f(self)
+    }
 }
 impl Pipe for PathBuf {}
 
@@ -313,36 +355,60 @@ fn scan_xbox_games() -> Vec<LocalGame> {
     candidates.dedup();
 
     for base_dir in &candidates {
-        if !base_dir.exists() { continue; }
+        if !base_dir.exists() {
+            continue;
+        }
         let entries = match std::fs::read_dir(base_dir) {
             Ok(e) => e,
             Err(_) => continue,
         };
         for entry in entries.flatten() {
             let path = entry.path();
-            if !path.is_dir() { continue; }
+            if !path.is_dir() {
+                continue;
+            }
 
-            let config = path.join("Content").join("MicrosoftGame.config")
-                .pipe(|p| if p.exists() { p } else { path.join("MicrosoftGame.config") });
-            let msix = path.join("Content").join("AppxManifest.xml")
-                .pipe(|p| if p.exists() { p } else { path.join("AppxManifest.xml") });
+            let config = path.join("Content").join("MicrosoftGame.config").pipe(|p| {
+                if p.exists() {
+                    p
+                } else {
+                    path.join("MicrosoftGame.config")
+                }
+            });
+            let msix = path.join("Content").join("AppxManifest.xml").pipe(|p| {
+                if p.exists() {
+                    p
+                } else {
+                    path.join("AppxManifest.xml")
+                }
+            });
 
             let name: Option<String> = if config.exists() {
                 if let Ok(c) = std::fs::read_to_string(&config) {
                     extract_xml_attr(&c, "DefaultDisplayName")
                         .or_else(|| extract_xml_attr(&c, "Name"))
                         .or_else(|| extract_xml_attr(&c, "TitleId"))
-                } else { None }
+                } else {
+                    None
+                }
             } else if msix.exists() {
                 if let Ok(c) = std::fs::read_to_string(&msix) {
                     extract_xml_attr(&c, "DisplayName")
-                } else { None }
+                } else {
+                    None
+                }
             } else {
                 path.file_name().map(|n| {
                     let s = n.to_string_lossy().to_string();
                     if let Some(idx) = s.rfind('.') {
-                        let after = &s[idx+1..];
-                        if !after.is_empty() && after.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+                        let after = &s[idx + 1..];
+                        if !after.is_empty()
+                            && after
+                                .chars()
+                                .next()
+                                .map(|c| c.is_uppercase())
+                                .unwrap_or(false)
+                        {
                             return after.to_string();
                         }
                     }
@@ -351,7 +417,9 @@ fn scan_xbox_games() -> Vec<LocalGame> {
             };
 
             if let Some(name) = name {
-                if name.starts_with("ms-resource:") || name.is_empty() { continue; }
+                if name.starts_with("ms-resource:") || name.is_empty() {
+                    continue;
+                }
                 games.push(LocalGame {
                     name,
                     launcher: "xbox".to_string(),
@@ -373,12 +441,16 @@ fn scan_ea_games() -> Vec<LocalGame> {
     let mut games = Vec::new();
 
     if let Ok(prog_data) = std::env::var("PROGRAMDATA") {
-        let install_data = PathBuf::from(&prog_data).join("EA Desktop").join("InstallData");
+        let install_data = PathBuf::from(&prog_data)
+            .join("EA Desktop")
+            .join("InstallData");
         if install_data.exists() {
             if let Ok(entries) = std::fs::read_dir(&install_data) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if !path.is_dir() { continue; }
+                    if !path.is_dir() {
+                        continue;
+                    }
                     let manifest = path.join("__Installer").join("installerdata.xml");
                     if manifest.exists() {
                         if let Ok(content) = std::fs::read_to_string(&manifest) {
@@ -408,18 +480,29 @@ fn scan_ea_games() -> Vec<LocalGame> {
             format!("{}:\\EA Games", drive),
         ] {
             let base_dir = PathBuf::from(base);
-            if !base_dir.exists() { continue; }
+            if !base_dir.exists() {
+                continue;
+            }
             if let Ok(entries) = std::fs::read_dir(&base_dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if !path.is_dir() { continue; }
-                    let has_exe = std::fs::read_dir(&path).ok().map(|mut d| {
-                        d.any(|e| e.ok().map_or(false, |f| {
-                            f.path().extension().map_or(false, |ext| ext == "exe")
-                        }))
-                    }).unwrap_or(false);
+                    if !path.is_dir() {
+                        continue;
+                    }
+                    let has_exe = std::fs::read_dir(&path)
+                        .ok()
+                        .map(|mut d| {
+                            d.any(|e| {
+                                e.ok().map_or(false, |f| {
+                                    f.path().extension().map_or(false, |ext| ext == "exe")
+                                })
+                            })
+                        })
+                        .unwrap_or(false);
                     if has_exe {
-                        if let Some(name) = path.file_name().map(|n| n.to_string_lossy().to_string()) {
+                        if let Some(name) =
+                            path.file_name().map(|n| n.to_string_lossy().to_string())
+                        {
                             games.push(LocalGame {
                                 name,
                                 launcher: "ea".to_string(),
@@ -442,20 +525,22 @@ fn scan_ea_games() -> Vec<LocalGame> {
 
 fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
     let path = std::path::Path::new(folder);
-    if !path.is_dir() { return vec![]; }
+    if !path.is_dir() {
+        return vec![];
+    }
     std::fs::read_dir(path)
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
                 .filter(|e| e.path().is_dir())
                 .map(|e| LocalGame {
-                    name:             e.file_name().to_string_lossy().to_string(),
-                    launcher:         "local".to_string(),
-                    app_id:           None,
-                    install_path:     Some(e.path().to_string_lossy().to_string()),
+                    name: e.file_name().to_string_lossy().to_string(),
+                    launcher: "local".to_string(),
+                    app_id: None,
+                    install_path: Some(e.path().to_string_lossy().to_string()),
                     playtime_minutes: None,
-                    last_played:      None,
-                    installed:        Some(true),
+                    last_played: None,
+                    installed: Some(true),
                 })
                 .collect()
         })
@@ -489,12 +574,16 @@ pub async fn scan_all_games(app_handle: tauri::AppHandle) -> Result<Vec<LocalGam
 #[tauri::command]
 pub async fn debug_scan_info() -> Result<String, String> {
     let steam = scan_steam_games();
-    let epic  = scan_epic_games();
-    let gog   = scan_gog_games();
-    let xbox  = scan_xbox_games();
-    let ea    = scan_ea_games();
+    let epic = scan_epic_games();
+    let gog = scan_gog_games();
+    let xbox = scan_xbox_games();
+    let ea = scan_ea_games();
     Ok(format!(
         "Steam: {} | Epic: {} | GOG: {} | Xbox: {} | EA: {}",
-        steam.len(), epic.len(), gog.len(), xbox.len(), ea.len()
+        steam.len(),
+        epic.len(),
+        gog.len(),
+        xbox.len(),
+        ea.len()
     ))
 }

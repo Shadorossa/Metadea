@@ -55,7 +55,13 @@ fn entry_path(
 ) -> std::path::PathBuf {
     let safe_id: String = external_id
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     data_dir
         .join("user_library")
@@ -67,7 +73,10 @@ pub async fn save_library_entry(
     app_handle: tauri::AppHandle,
     mut entry: LibraryEntry,
 ) -> Result<LibraryEntry, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("user_library")).map_err(|e| e.to_string())?;
 
     let path = entry_path(&data_dir, &entry.external_id, &entry.entry_type);
@@ -84,9 +93,15 @@ pub async fn save_library_entry(
         }
     }
 
-    if entry.id.is_empty()      { entry.id      = generate_id(); }
-    if entry.user_id.is_empty() { entry.user_id = "local".to_string(); }
-    if entry.added_at.is_none() { entry.added_at = Some(chrono::Utc::now().to_rfc3339()); }
+    if entry.id.is_empty() {
+        entry.id = generate_id();
+    }
+    if entry.user_id.is_empty() {
+        entry.user_id = "local".to_string();
+    }
+    if entry.added_at.is_none() {
+        entry.added_at = Some(chrono::Utc::now().to_rfc3339());
+    }
     entry.updated_at = Some(chrono::Utc::now().to_rfc3339());
 
     let json = serde_json::to_string_pretty(&entry).map_err(|e| e.to_string())?;
@@ -101,7 +116,10 @@ pub async fn get_library_entry(
     external_id: String,
     entry_type: String,
 ) -> Result<Option<LibraryEntry>, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = entry_path(&data_dir, &external_id, &entry_type);
     if !path.exists() {
         return Ok(None);
@@ -117,7 +135,10 @@ pub async fn delete_library_entry(
     external_id: String,
     entry_type: String,
 ) -> Result<(), String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = entry_path(&data_dir, &external_id, &entry_type);
     if path.exists() {
         std::fs::remove_file(&path).map_err(|e| e.to_string())?;
@@ -129,7 +150,10 @@ pub async fn delete_library_entry(
 pub async fn get_all_library_entries(
     app_handle: tauri::AppHandle,
 ) -> Result<Vec<LibraryEntry>, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let lib_dir = data_dir.join("user_library");
     if !lib_dir.exists() {
         return Ok(vec![]);
@@ -155,7 +179,10 @@ pub async fn get_all_library_entries(
 
 #[tauri::command]
 pub async fn read_monthly_history(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("monthly_history.json");
     if !path.exists() {
         return Ok("{}".to_string());
@@ -164,8 +191,14 @@ pub async fn read_monthly_history(app_handle: tauri::AppHandle) -> Result<String
 }
 
 #[tauri::command]
-pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+pub async fn write_monthly_history(
+    app_handle: tauri::AppHandle,
+    content: String,
+) -> Result<(), String> {
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("monthly_history.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
@@ -175,7 +208,10 @@ pub async fn write_monthly_history(app_handle: tauri::AppHandle, content: String
 
 #[tauri::command]
 pub async fn read_user_favorites(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("user_favorite.json");
     if !path.exists() {
         return Ok("{}".to_string());
@@ -184,8 +220,14 @@ pub async fn read_user_favorites(app_handle: tauri::AppHandle) -> Result<String,
 }
 
 #[tauri::command]
-pub async fn write_user_favorites(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+pub async fn write_user_favorites(
+    app_handle: tauri::AppHandle,
+    content: String,
+) -> Result<(), String> {
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("user_favorite.json");
     std::fs::write(path, content).map_err(|e| e.to_string())
@@ -193,7 +235,10 @@ pub async fn write_user_favorites(app_handle: tauri::AppHandle, content: String)
 
 #[tauri::command]
 pub async fn read_user_journey(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("user_journey.json");
     if !path.exists() {
         return Ok("[]".to_string());
@@ -202,8 +247,14 @@ pub async fn read_user_journey(app_handle: tauri::AppHandle) -> Result<String, S
 }
 
 #[tauri::command]
-pub async fn write_user_journey(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
-    let data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+pub async fn write_user_journey(
+    app_handle: tauri::AppHandle,
+    content: String,
+) -> Result<(), String> {
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(data_dir.join("user_metadata")).map_err(|e| e.to_string())?;
     let path = data_dir.join("user_metadata").join("user_journey.json");
     std::fs::write(path, content).map_err(|e| e.to_string())

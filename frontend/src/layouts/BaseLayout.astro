@@ -133,8 +133,38 @@ const t = useTranslations(lang);
           }
         });
       }
+      
+      let updaterChecked = false;
 
-      document.addEventListener('astro:page-load', initAuthModal);
+      async function checkAppUpdates() {
+        if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
+        if (!navigator.onLine) return;
+        try {
+          const { check } = await import('@tauri-apps/plugin-updater');
+          const { relaunch } = await import('@tauri-apps/plugin-process');
+
+          const update = await check();
+          if (update && update.available) {
+            const confirmUpdate = confirm(
+              `¡Nueva versión ${update.version} disponible!\n\n¿Quieres descargarla e instalarla automáticamente ahora?`
+            );
+            if (confirmUpdate) {
+              await update.downloadAndInstall();
+              await relaunch();
+            }
+          }
+        } catch (error) {
+          console.warn("[Updater] No se pudo comprobar actualizaciones:", error);
+        }
+      }
+
+      document.addEventListener('astro:page-load', () => {
+        initAuthModal();
+        if (!updaterChecked) {
+          updaterChecked = true;
+          setTimeout(checkAppUpdates, 2000);
+        }
+      });
     </script>
   </body>
 </html>

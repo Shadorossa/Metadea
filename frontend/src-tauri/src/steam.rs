@@ -44,27 +44,43 @@ pub async fn download_achievements(
         api_key, steam_id, app_id, lang
     );
     let progress_list: Vec<serde_json::Value> = match client.get(&progress_url).send().await {
-        Ok(r) if r.status().is_success() => {
-            r.json::<serde_json::Value>().await.ok()
-                .and_then(|j| j["playerstats"]["achievements"].as_array().cloned())
-                .unwrap_or_default()
-        }
+        Ok(r) if r.status().is_success() => r
+            .json::<serde_json::Value>()
+            .await
+            .ok()
+            .and_then(|j| j["playerstats"]["achievements"].as_array().cloned())
+            .unwrap_or_default(),
         _ => return,
     };
-    if progress_list.is_empty() { return; }
+    if progress_list.is_empty() {
+        return;
+    }
 
     // Check if existing achievements.json already matches current unlock state (skip heavy work)
     let out_path = game_dir.join("achievements.json");
-    let existing_unlocked: Option<u64> = std::fs::read_to_string(&out_path).ok()
+    let existing_unlocked: Option<u64> = std::fs::read_to_string(&out_path)
+        .ok()
         .and_then(|s| serde_json::from_str::<Vec<serde_json::Value>>(&s).ok())
-        .map(|arr| arr.iter().filter(|a| a["achieved"].as_u64() == Some(1)).count() as u64);
-    let current_unlocked = progress_list.iter().filter(|a| a["achieved"].as_u64() == Some(1)).count() as u64;
+        .map(|arr| {
+            arr.iter()
+                .filter(|a| a["achieved"].as_u64() == Some(1))
+                .count() as u64
+        });
+    let current_unlocked = progress_list
+        .iter()
+        .filter(|a| a["achieved"].as_u64() == Some(1))
+        .count() as u64;
 
     let icons_dir = game_dir.join("achievements");
-    let icons_exist = icons_dir.exists() && std::fs::read_dir(&icons_dir).map(|mut d| d.next().is_some()).unwrap_or(false);
+    let icons_exist = icons_dir.exists()
+        && std::fs::read_dir(&icons_dir)
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false);
 
     // Only skip if nothing changed AND icons are already on disk
-    if existing_unlocked == Some(current_unlocked) && icons_exist { return; }
+    if existing_unlocked == Some(current_unlocked) && icons_exist {
+        return;
+    }
 
     // Fetch schema for display names + both icon URLs
     let schema_url = format!(
@@ -74,22 +90,33 @@ pub async fn download_achievements(
     );
     let schema_map: std::collections::HashMap<String, serde_json::Value> =
         match client.get(&schema_url).send().await {
-            Ok(r) if r.status().is_success() => {
-                r.json::<serde_json::Value>().await.ok()
-                    .and_then(|j| j["game"]["availableGameStats"]["achievements"].as_array().cloned())
-                    .map(|arr| arr.into_iter().filter_map(|a| {
-                        let name = a["name"].as_str()?.to_string();
-                        Some((name, a))
-                    }).collect())
-                    .unwrap_or_default()
-            }
+            Ok(r) if r.status().is_success() => r
+                .json::<serde_json::Value>()
+                .await
+                .ok()
+                .and_then(|j| {
+                    j["game"]["availableGameStats"]["achievements"]
+                        .as_array()
+                        .cloned()
+                })
+                .map(|arr| {
+                    arr.into_iter()
+                        .filter_map(|a| {
+                            let name = a["name"].as_str()?.to_string();
+                            Some((name, a))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
             _ => std::collections::HashMap::new(),
         };
 
     let _ = std::fs::create_dir_all(&icons_dir);
 
     async fn fetch_icon(client: &reqwest::Client, url: &str, path: &PathBuf) {
-        if path.exists() || url.is_empty() { return; }
+        if path.exists() || url.is_empty() {
+            return;
+        }
         if let Ok(resp) = client.get(url).send().await {
             if let Ok(bytes) = resp.bytes().await {
                 let _ = std::fs::write(path, &bytes);
@@ -100,23 +127,25 @@ pub async fn download_achievements(
     let mut merged: Vec<serde_json::Value> = Vec::new();
     for p in &progress_list {
         let apiname = p["apiname"].as_str().unwrap_or("");
-        let schema  = schema_map.get(apiname);
+        let schema = schema_map.get(apiname);
         let achieved = p["achieved"].as_u64().unwrap_or(0);
 
-        let icon_url      = schema.and_then(|s| s["icon"].as_str()).unwrap_or("");
+        let icon_url = schema.and_then(|s| s["icon"].as_str()).unwrap_or("");
         let icon_gray_url = schema.and_then(|s| s["icongray"].as_str()).unwrap_or("");
 
         // Download both locked and unlocked icons
-        let icon_file      = format!("{}_unlocked.jpg", apiname);
-        let icon_gray_file = format!("{}_locked.jpg",   apiname);
-        fetch_icon(&client, icon_url,      &icons_dir.join(&icon_file)).await;
+        let icon_file = format!("{}_unlocked.jpg", apiname);
+        let icon_gray_file = format!("{}_locked.jpg", apiname);
+        fetch_icon(&client, icon_url, &icons_dir.join(&icon_file)).await;
         fetch_icon(&client, icon_gray_url, &icons_dir.join(&icon_gray_file)).await;
 
         let display_name = schema
-            .and_then(|s| s["displayName"].as_str()).filter(|s| !s.is_empty())
+            .and_then(|s| s["displayName"].as_str())
+            .filter(|s| !s.is_empty())
             .unwrap_or_else(|| p["name"].as_str().unwrap_or(apiname));
         let description = schema
-            .and_then(|s| s["description"].as_str()).filter(|s| !s.is_empty())
+            .and_then(|s| s["description"].as_str())
+            .filter(|s| !s.is_empty())
             .or_else(|| p["description"].as_str().filter(|s| !s.is_empty()))
             .unwrap_or("");
 
@@ -131,7 +160,10 @@ pub async fn download_achievements(
         }));
     }
 
-    let _ = std::fs::write(&out_path, serde_json::to_string_pretty(&merged).unwrap_or_default());
+    let _ = std::fs::write(
+        &out_path,
+        serde_json::to_string_pretty(&merged).unwrap_or_default(),
+    );
 }
 
 /// Reads the most-recently-used Steam ID from loginusers.vdf.
@@ -169,7 +201,10 @@ pub async fn steam_achievements_download(
     app_id: String,
     lang: Option<String>,
 ) -> Result<(), String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let game_dir = app_data_dir.join("metadata").join(&app_id);
     std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
     let l = lang.unwrap_or_else(|| "spanish".to_string());
@@ -183,22 +218,32 @@ pub async fn steam_achievement_icon(
     app_id: String,
     filename: String,
 ) -> Result<String, String> {
-    let icons_dir = app_handle.path().app_data_dir()
+    let icons_dir = app_handle
+        .path()
+        .app_data_dir()
         .map_err(|e| e.to_string())?
         .join("metadata")
         .join(&app_id)
         .join("achievements");
     let path = icons_dir.join(&filename);
-    if !path.exists() { return Err("not found".into()); }
+    if !path.exists() {
+        return Err("not found".into());
+    }
     let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-    Ok(format!("data:image/jpeg;base64,{}", crate::utils::base64_encode(&bytes)))
+    Ok(format!(
+        "data:image/jpeg;base64,{}",
+        crate::utils::base64_encode(&bytes)
+    ))
 }
 
 #[tauri::command]
 pub async fn steam_get_owned_games(
     app_handle: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let env_path = app_data_dir.join("env.json");
     if !env_path.exists() {
         return Err("No env.json — configure Steam API key first".into());
@@ -207,8 +252,8 @@ pub async fn steam_get_owned_games(
     let cfg: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
     let api_key = cfg.steam_api_key.ok_or("No Steam API key configured")?;
 
-    let steam_id = detect_steam_user_id()
-        .ok_or("Could not detect Steam user ID from loginusers.vdf")?;
+    let steam_id =
+        detect_steam_user_id().ok_or("Could not detect Steam user ID from loginusers.vdf")?;
 
     let url = format!(
         "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/\
@@ -231,7 +276,10 @@ pub async fn steam_get_player_achievements(
     app_id: u32,
     lang: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let env_path = app_data_dir.join("env.json");
     let data = std::fs::read_to_string(env_path).map_err(|_| "No env.json".to_string())?;
     let cfg: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
@@ -247,7 +295,11 @@ pub async fn steam_get_player_achievements(
          ?key={}&steamid={}&appid={}&l={}",
         api_key, steam_id, app_id, language
     );
-    let progress_resp = client.get(&progress_url).send().await.map_err(|e| e.to_string())?;
+    let progress_resp = client
+        .get(&progress_url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
     if !progress_resp.status().is_success() {
         return Err(format!("Steam API error (HTTP {})", progress_resp.status()));
     }
@@ -263,7 +315,11 @@ pub async fn steam_get_player_achievements(
          ?key={}&appid={}&l={}",
         api_key, app_id, language
     );
-    let schema_resp = client.get(&schema_url).send().await.map_err(|e| e.to_string())?;
+    let schema_resp = client
+        .get(&schema_url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
     let schema_map: std::collections::HashMap<String, serde_json::Value> =
         if schema_resp.status().is_success() {
             let schema_json: serde_json::Value = schema_resp.json().await.unwrap_or_default();
@@ -298,10 +354,12 @@ pub async fn steam_get_player_achievements(
                 .or_else(|| p["description"].as_str().filter(|s| !s.is_empty()))
                 .unwrap_or("");
             let icon = schema
-                .and_then(|s| if p["achieved"].as_u64() == Some(1) {
-                    s["icon"].as_str()
-                } else {
-                    s["icongray"].as_str().or_else(|| s["icon"].as_str())
+                .and_then(|s| {
+                    if p["achieved"].as_u64() == Some(1) {
+                        s["icon"].as_str()
+                    } else {
+                        s["icongray"].as_str().or_else(|| s["icon"].as_str())
+                    }
                 })
                 .unwrap_or("");
             serde_json::json!({
@@ -316,11 +374,20 @@ pub async fn steam_get_player_achievements(
         .collect();
 
     let total = merged.len() as u64;
-    let unlocked = merged.iter().filter(|a| a["achieved"].as_u64() == Some(1)).count() as u64;
+    let unlocked = merged
+        .iter()
+        .filter(|a| a["achieved"].as_u64() == Some(1))
+        .count() as u64;
 
     // Sort: unlocked first, then locked
     let mut sorted = merged;
-    sorted.sort_by_key(|a| if a["achieved"].as_u64() == Some(1) { 0u8 } else { 1u8 });
+    sorted.sort_by_key(|a| {
+        if a["achieved"].as_u64() == Some(1) {
+            0u8
+        } else {
+            1u8
+        }
+    });
 
     Ok(serde_json::json!({
         "unlocked": unlocked,

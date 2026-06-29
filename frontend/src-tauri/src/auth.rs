@@ -18,7 +18,10 @@ pub async fn store_auth_token(
     token: String,
     username: String,
 ) -> Result<String, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
     let session_path = app_data_dir.join("session.json");
     let session = AuthSession { token, username };
@@ -28,10 +31,11 @@ pub async fn store_auth_token(
 }
 
 #[tauri::command]
-pub async fn get_auth_token(
-    app_handle: tauri::AppHandle,
-) -> Result<Option<AuthSession>, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+pub async fn get_auth_token(app_handle: tauri::AppHandle) -> Result<Option<AuthSession>, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let session_path = app_data_dir.join("session.json");
     if !session_path.exists() {
         return Ok(None);
@@ -43,7 +47,10 @@ pub async fn get_auth_token(
 
 #[tauri::command]
 pub async fn clear_auth_token(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let session_path = app_data_dir.join("session.json");
     if session_path.exists() {
         std::fs::remove_file(session_path).map_err(|e| e.to_string())?;

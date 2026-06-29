@@ -18,10 +18,7 @@ pub struct SavedFolder {
 #[tauri::command]
 pub async fn pick_folder(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let folder = app_handle
-        .dialog()
-        .file()
-        .blocking_pick_folder();
+    let folder = app_handle.dialog().file().blocking_pick_folder();
     Ok(folder.map(|p| p.to_string()))
 }
 
@@ -50,7 +47,10 @@ pub async fn scan_folder_contents(path: String) -> Result<Vec<FolderEntry>, Stri
 
 #[tauri::command]
 pub async fn get_local_folders(app_handle: tauri::AppHandle) -> Result<Vec<SavedFolder>, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     let folders_path = app_data_dir.join("local_folders.json");
     if !folders_path.exists() {
         return Ok(vec![]);
@@ -65,7 +65,10 @@ pub async fn save_local_folders(
     app_handle: tauri::AppHandle,
     folders_json: String,
 ) -> Result<String, String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
     let folders_path = app_data_dir.join("local_folders.json");
     std::fs::write(folders_path, &folders_json).map_err(|e| e.to_string())?;
@@ -87,21 +90,45 @@ pub async fn read_routes(app_handle: tauri::AppHandle) -> Result<String, String>
 
 #[tauri::command]
 pub async fn write_routes(app_handle: tauri::AppHandle, routes_json: String) -> Result<(), String> {
-    let dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     std::fs::write(dir.join("routes.json"), routes_json).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
-    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
     let path_str = app_data_dir.to_string_lossy().to_string();
     #[cfg(target_os = "windows")]
-    { use std::process::Command; Command::new("explorer").arg(&path_str).spawn().map_err(|e| e.to_string())?; }
+    {
+        use std::process::Command;
+        Command::new("explorer")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
     #[cfg(target_os = "macos")]
-    { use std::process::Command; Command::new("open").arg(&path_str).spawn().map_err(|e| e.to_string())?; }
+    {
+        use std::process::Command;
+        Command::new("open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
     #[cfg(target_os = "linux")]
-    { use std::process::Command; Command::new("xdg-open").arg(&path_str).spawn().map_err(|e| e.to_string())?; }
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
