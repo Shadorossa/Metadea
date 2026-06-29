@@ -1,6 +1,7 @@
 mod auth;
 mod folders;
 mod github;
+mod anilist;
 mod igdb;
 mod media_catalog;
 mod platform_scanning;
@@ -83,6 +84,13 @@ pub fn run() {
             github::request_github_device_code,
             github::request_github_device_token,
             github::get_github_user_profile,
+            github::save_github_token,
+            github::get_github_token,
+            github::delete_github_token,
+            anilist::save_anilist_token,
+            anilist::get_anilist_token,
+            anilist::delete_anilist_token,
+            anilist::get_anilist_user_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

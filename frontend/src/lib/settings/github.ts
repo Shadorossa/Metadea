@@ -27,37 +27,40 @@ export function initGitHubAuth() {
     }
   }
 
-  // Check cached token on load
-  const cachedToken = localStorage.getItem('metadea_github_token');
-  if (cachedToken) {
-    if (githubLoginBtn) {
-      githubLoginBtn.disabled = true;
-      githubLoginBtn.textContent = 'Verificando...';
-    }
-    fetchGitHubUser(cachedToken).then(user => {
-      if (githubUserStatus) githubUserStatus.textContent = `@${user.login}`;
+  // Check cached token on load via Rust filesystem session.json
+  invoke<string | null>('get_github_token').then(cachedToken => {
+    if (cachedToken) {
       if (githubLoginBtn) {
-        githubLoginBtn.textContent = 'Desconectar';
-        githubLoginBtn.className = 'btn btn--sm btn--ghost';
-        githubLoginBtn.disabled = false;
+        githubLoginBtn.disabled = true;
+        githubLoginBtn.textContent = 'Verificando...';
       }
-      if (githubAvatarContainer && user.avatar_url) {
-        githubAvatarContainer.innerHTML = `<img src="${user.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
-      }
-    }).catch(() => {
-      localStorage.removeItem('metadea_github_token');
+      fetchGitHubUser(cachedToken).then(user => {
+        if (githubUserStatus) githubUserStatus.textContent = `@${user.login}`;
+        if (githubLoginBtn) {
+          githubLoginBtn.textContent = 'Desconectar';
+          githubLoginBtn.className = 'btn btn--sm btn--ghost';
+          githubLoginBtn.disabled = false;
+        }
+        if (githubAvatarContainer && user.avatar_url) {
+          githubAvatarContainer.innerHTML = `<img src="${user.avatar_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
+        }
+      }).catch(async () => {
+        await invoke('delete_github_token').catch(console.error);
+        showDisconnected();
+      });
+    } else {
       showDisconnected();
-    });
-  } else {
+    }
+  }).catch(() => {
     showDisconnected();
-  }
+  });
 
   if (githubLoginBtn) {
     githubLoginBtn.addEventListener('click', async () => {
-      const token = localStorage.getItem('metadea_github_token');
+      const token = await invoke<string | null>('get_github_token').catch(() => null);
       if (token) {
         // Log out
-        localStorage.removeItem('metadea_github_token');
+        await invoke('delete_github_token').catch(console.error);
         showDisconnected();
         return;
       }
@@ -86,7 +89,7 @@ export function initGitHubAuth() {
 
             if (tokenData.access_token) {
               if (githubDeviceModal) githubDeviceModal.style.display = 'none';
-              localStorage.setItem('metadea_github_token', tokenData.access_token);
+              await invoke('save_github_token', { token: tokenData.access_token }).catch(console.error);
               
               // Load user details
               const user = await fetchGitHubUser(tokenData.access_token);

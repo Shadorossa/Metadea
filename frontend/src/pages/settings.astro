@@ -20,15 +20,19 @@ const version = pkg.version;
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
           {t.settings.section_appearance}
         </button>
+        <button class="settings-tab" data-tab="application">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          {t.settings.tab_application}
+        </button>
 
         <span class="section-label settings-sidebar-label" style="margin-top: 1rem; display: block;">{t.settings.section_application}</span>
         <button class="settings-tab" data-tab="environment">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
           {t.settings.tab_environment}
         </button>
-        <button class="settings-tab" data-tab="application">
+        <button class="settings-tab" data-tab="novedades">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          {t.settings.tab_application}
+          {t.settings.tab_novedades}
         </button>
       </aside>
 
@@ -230,14 +234,14 @@ const version = pkg.version;
           </div>
         </div>
 
-        <!-- Tab: Aplicación (Updater) -->
+        <!-- Tab: Conexiones -->
         <div class="settings-panel hidden" id="panel-application">
-          <h2 class="settings-panel-title">{t.settings.section_application}</h2>
+          <h2 class="settings-panel-title">{t.settings.tab_application}</h2>
           
           <div class="settings-section" style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
             
-            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; width: 100%;">
-              <!-- GitHub Auth Block (To the left of version or stacked on mobile) -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; width: 100%;">
+              <!-- GitHub Auth Block -->
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                   <div id="github-avatar-container" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
@@ -251,17 +255,22 @@ const version = pkg.version;
                 <button class="btn btn--sm btn--primary" id="github-login-btn">Conectar</button>
               </div>
 
-              <!-- Version Block -->
+              <!-- AniList Auth Block -->
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-                <div>
-                  <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">{t.settings.app_version_label}</span>
-                  <span class="app-curr-ver" data-version={version} style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"></span>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div id="anilist-avatar-container" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                    <img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />
+                  </div>
+                  <div>
+                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">AniList</span>
+                    <span id="anilist-user-status" style="font-size: 0.75rem; color: var(--text-dim); display: block;">No conectado</span>
+                  </div>
                 </div>
-                <button class="btn btn--sm btn--secondary" id="app-check-update-btn">{t.settings.app_check_update}</button>
+                <button class="btn btn--sm btn--primary" id="anilist-login-btn">Conectar</button>
               </div>
             </div>
 
-            <!-- Device Flow modal -->
+            <!-- GitHub Device Flow modal -->
             <div id="github-device-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Iniciar Sesión en GitHub</span>
               <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Entra en la web a continuación e introduce este código:</p>
@@ -270,6 +279,35 @@ const version = pkg.version;
               <button class="btn btn--sm btn--ghost" id="github-cancel-device-btn" style="width: 100%;">Cancelar</button>
             </div>
 
+            <!-- AniList token prompt modal -->
+            <div id="anilist-token-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
+              <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Iniciar Sesión en AniList</span>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">1. Haz clic en el botón de abajo para autorizar a Metadea en tu navegador.</p>
+              <a href="https://anilist.co/api/v2/oauth/authorize?client_id=18343&response_type=token" target="_blank" rel="noopener noreferrer" class="btn btn--sm btn--secondary" style="text-decoration: none; text-align: center; width: 100%;">Abrir página de autorización</a>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; margin-top: 0.5rem;">2. Copia el token/código largo que te da la web y pégalo aquí:</p>
+              <input type="text" id="anilist-token-input" placeholder="Pega el token aquí..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; text-align: center;" />
+              <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;">
+                <button class="btn btn--sm btn--primary" id="anilist-save-token-btn" style="flex: 1;">Validar y guardar</button>
+                <button class="btn btn--sm btn--ghost" id="anilist-cancel-token-btn" style="flex: 1;">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Novedades -->
+        <div class="settings-panel hidden" id="panel-novedades">
+          <h2 class="settings-panel-title">{t.settings.tab_novedades}</h2>
+          
+          <div class="settings-section" style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <p class="settings-hint" style="margin-bottom: 0.5rem;">Mantente al día con las últimas versiones y mejoras de la aplicación.</p>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+              <div>
+                <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">{t.settings.app_version_label}</span>
+                <span class="app-curr-ver" data-version={version} style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"></span>
+              </div>
+              <button class="btn btn--sm btn--secondary" id="app-check-update-btn">{t.settings.app_check_update}</button>
+            </div>
             <div id="updater-status-text" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"></div>
           </div>
         </div>
@@ -291,6 +329,7 @@ const version = pkg.version;
   import { initEnvironment } from '../lib/settings/environment';
   import { initFontPicker } from '../lib/settings/fonts';
   import { initGitHubAuth } from '../lib/settings/github';
+  import { initAniListAuth } from '../lib/settings/anilist';
   import { getT } from '../i18n/client';
 
   function showToast(msg?: string) {
@@ -315,6 +354,7 @@ const version = pkg.version;
     initThemePicker(showToast);
     initEnvironment(showToast);
     initGitHubAuth();
+    initAniListAuth();
 
     // Rating System
     const activeSystem = localStorage.getItem('metadea_rating_system') || '5-star';

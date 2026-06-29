@@ -52,5 +52,12 @@ commands.allow = [
   "search_catalog",
   "request_github_device_code",
   "request_github_device_token",
-  "get_github_user_profile"
+  "get_github_user_profile",
+  "save_github_token",
+  "get_github_token",
+  "delete_github_token",
+  "save_anilist_token",
+  "get_anilist_token",
+  "delete_anilist_token",
+  "get_anilist_user_profile"
 ]
