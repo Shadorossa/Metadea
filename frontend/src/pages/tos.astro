@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getLang } from '../i18n/index';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Términos y Condiciones — Metadea" lang={lang}>
+  <div style="max-width: 800px; margin: 3rem auto; padding: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); box-sizing: border-box;">
+    <h1 style="font-size: 1.75rem; color: var(--text-main); font-weight: 800; margin-bottom: 0.5rem; text-align: center;">Términos y Condiciones de Uso</h1>
+    <p style="font-size: 0.8rem; color: var(--text-dim); text-align: center; margin-bottom: 2rem;">Última actualización: 29 de junio de 2026</p>
+
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">1. Aceptación de los Términos</h2>
+        <p>Al utilizar la aplicación Metadea, aceptas quedar vinculado por los siguientes términos y condiciones de servicio. Si no estás de acuerdo con alguno de estos términos, debes cesar el uso de la aplicación de inmediato.</p>
+      </section>
+
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">2. Naturaleza del Servicio</h2>
+        <p>Metadea es un gestor personal y organizador local de biblioteca multimedia (videojuegos, anime, manga, libros, películas y series). La aplicación funciona de manera offline-first, almacenando tu biblioteca personal localmente en tu dispositivo.</p>
+      </section>
+
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">3. Datos y Privacidad</h2>
+        <p>Toda tu información personal, biblioteca de obras y diario de actividad se almacena localmente en archivos JSON en tu propio almacenamiento privado. Metadea no recopila ni envía tus datos personales a servidores externos para su análisis ni uso comercial.</p>
+      </section>
+
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">4. Contribución Colaborativa (GitHub)</h2>
+        <p>Si utilizas la funcionalidad de inicio de sesión con GitHub para proponer personajes o modificar fichas del catálogo, aceptas que tus contribuciones (como textos de personajes e imágenes asociadas) se publiquen bajo licencia de código abierto de manera pública en el repositorio de Metadea para beneficio de toda la comunidad.</p>
+      </section>
+
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">5. APIs de Terceros</h2>
+        <p>La aplicación utiliza integraciones y servicios de terceros (como IGDB, AniList, TMDB y Open Library) para recopilar metadatos de las obras. El uso de estas integraciones está sujeto a los términos de servicio correspondientes de cada una de estas APIs externas.</p>
+      </section>
+
+      <section>
+        <h2 style="font-size: 1.15rem; color: var(--text-main); font-weight: 700; margin-bottom: 0.5rem; border-left: 3px solid var(--accent); padding-left: 0.5rem;">6. Limitación de Responsabilidad</h2>
+        <p>Metadea se proporciona "tal cual" (*as is*), sin garantía de ningún tipo, expresa o implícita. En ningún caso los creadores de la aplicación serán responsables por pérdidas de datos, fallos del sistema o cualquier otro daño directo o indirecto resultante del uso del software.</p>
+      </section>
+    </div>
+
+    <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center;">
+      <button onclick="window.close()" class="btn btn--sm btn--primary" style="min-width: 120px;">Cerrar Ventana</button>
+    </div>
+  </div>
+</BaseLayout>

@@ -9,6 +9,7 @@
     "core:default",
     "core:path:default",
     "core:app:default",
+    "core:webview:default",
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
@@ -22,6 +23,7 @@
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
     "dialog:allow-open",
+    "dialog:default",
     "allow-all-commands",
     "opener:default",
     "opener:allow-open-url"

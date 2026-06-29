@@ -38,8 +38,46 @@ const apis = [
         </a>
       ))}
     </div>
-    <div class="footer-version" style="font-size: 0.65rem; color: var(--text-dim); margin-top: 0.5rem; text-align: center; font-family: monospace; letter-spacing: 0.05em; opacity: 0.85;">
-      v{version}
+    <div class="footer-bottom-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.65rem; color: var(--text-dim); font-family: monospace; letter-spacing: 0.05em; opacity: 0.85;">
+      <div class="footer-version">v{version}</div>
+      <a href="#" id="footer-tos-link" style="color: var(--text-dim); text-decoration: none; transition: color 0.15s; font-family: system-ui, -apple-system, sans-serif;">Términos y condiciones</a>
     </div>
   </div>
 </footer>
+
+<script>
+  function initTosLink() {
+    const link = document.getElementById('footer-tos-link');
+    if (!link) return;
+
+    link.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      if (typeof window !== 'undefined' && ('__TAURI_IPC__' in window)) {
+        try {
+          const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+          const webview = new WebviewWindow('tos', {
+            url: '/tos',
+            title: 'Términos y Condiciones — Metadea',
+            width: 650,
+            height: 750,
+            resizable: true,
+            focus: true
+          });
+        } catch (error) {
+          console.error('Failed to open Tauri window, falling back to browser:', error);
+          window.open('/tos', '_blank');
+        }
+      } else {
+        window.open('/tos', '_blank');
+      }
+    });
+
+    // Simple hover effects
+    link.addEventListener('mouseover', () => { link.style.color = 'var(--accent)'; });
+    link.addEventListener('mouseout', () => { link.style.color = 'var(--text-dim)'; });
+  }
+
+  initTosLink();
+  document.addEventListener('astro:page-load', initTosLink);
+</script>

@@ -50,4 +50,7 @@ commands.allow = [
   "delete_catalog_entry",
   "get_all_catalog_entries",
   "search_catalog",
+  "request_github_device_code",
+  "request_github_device_token",
+  "get_github_user_profile"
 ]
