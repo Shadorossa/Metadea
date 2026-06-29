@@ -193,6 +193,24 @@ const t = useTranslations(lang);
                 </div>
               </div>
 
+              <!-- TMDB -->
+              <div class="env-service-block">
+                <div class="env-service-header">
+                  <img class="env-service-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
+                  <span class="env-service-hint">{t.settings.env_tmdb_hint}</span>
+                </div>
+                <div class="env-fields">
+                  <div class="env-field">
+                    <label class="env-label" for="tmdb-api-key">{t.settings.env_tmdb_api_key}</label>
+                    <input class="env-input" type="password" id="tmdb-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
+                </div>
+                <div class="env-actions">
+                  <button class="btn btn--sm btn--primary" id="tmdb-save-btn">{t.settings.env_save}</button>
+                  <button class="btn btn--sm btn--ghost" id="tmdb-clear-btn">{t.settings.env_clear}</button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
