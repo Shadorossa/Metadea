@@ -42,7 +42,6 @@ body {
 .hof-card,
 .search-input,
 .search-action-btn,
-.search-tab,
 .media-banner-date-badge,
 .media-library-widget-box,
 .status-dropdown-trigger,
@@ -68,9 +67,13 @@ body {
 
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
-.hof-btn--active,
-.search-tab.active {
+.hof-btn--active {
   border: 3px double var(--accent) !important;
+  background: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+}
+
+.search-tab.active {
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
 }
