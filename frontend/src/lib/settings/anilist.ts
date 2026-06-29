@@ -1,10 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
+import { readEnvConfig } from '../tauri';
 
 export function initAniListAuth() {
   const anilistLoginBtn = document.getElementById('anilist-login-btn') as HTMLButtonElement | null;
   const anilistUserStatus = document.getElementById('anilist-user-status');
   const anilistAvatarContainer = document.getElementById('anilist-avatar-container');
   const anilistTokenModal = document.getElementById('anilist-token-modal');
+  const anilistAuthLink = document.getElementById('anilist-auth-link') as HTMLAnchorElement | null;
   const anilistTokenInput = document.getElementById('anilist-token-input') as HTMLInputElement | null;
   const anilistSaveTokenBtn = document.getElementById('anilist-save-token-btn');
   const anilistCancelTokenBtn = document.getElementById('anilist-cancel-token-btn');
@@ -62,19 +64,41 @@ export function initAniListAuth() {
 
   if (anilistLoginBtn) {
     anilistLoginBtn.addEventListener('click', async () => {
-      const token = await invoke<string | null>('get_anilist_token').catch(() => null);
-      if (token) {
+      const token = await invoke<string | null>('get_get_github_token').catch(() => null); // Check session
+      const cachedToken = await invoke<string | null>('get_anilist_token').catch(() => null);
+      if (cachedToken) {
         // Logout
         await invoke('delete_anilist_token').catch(console.error);
         showDisconnected();
         return;
       }
 
-      // Show token input modal
-      if (anilistTokenModal) {
-        anilistTokenModal.style.display = 'flex';
-        // Auto open authorization link
-        window.open('https://anilist.co/api/v2/oauth/authorize?client_id=18343&response_type=token', '_blank');
+      // Read Client ID from Environment Config
+      try {
+        const envConfig = await readEnvConfig();
+        const clientId = envConfig.anilist_client_id?.trim();
+
+        if (!clientId) {
+          alert('Por favor, configura tu AniList Client ID en la pestaña Entorno (Ajustes de Aplicación) antes de conectar.');
+          return;
+        }
+
+        const authUrl = `https://anilist.co/api/v2/oauth/authorize?client_id=${clientId}&response_type=token`;
+
+        if (anilistAuthLink) {
+          anilistAuthLink.href = authUrl;
+        }
+
+        // Show token input modal
+        if (anilistTokenModal) {
+          anilistTokenModal.style.display = 'flex';
+          // Auto open authorization link
+          window.open(authUrl, '_blank');
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert('Error al leer la configuración de entorno.');
       }
     });
   }
@@ -110,13 +134,13 @@ export function initAniListAuth() {
         } else {
           alert('Token no válido o expirado.');
           anilistSaveTokenBtn.disabled = false;
-          anilistSaveTokenBtn.textContent = 'Validando y guardar';
+          anilistSaveTokenBtn.textContent = 'Validar y guardar';
         }
       } catch (err) {
         console.error(err);
         alert('Error al validar el token de AniList.');
         anilistSaveTokenBtn.disabled = false;
-        anilistSaveTokenBtn.textContent = 'Validando y guardar';
+        anilistSaveTokenBtn.textContent = 'Validar y guardar';
       }
     });
   }

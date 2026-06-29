@@ -225,6 +225,24 @@ const version = pkg.version;
                 </div>
               </div>
 
+              <!-- AniList -->
+              <div class="env-service-block">
+                <div class="env-service-header" style="justify-content: center;">
+                  <a href="https://anilist.co/settings/developer" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <img class="env-service-logo" src="/API/Anilist_logo.png" alt="AniList" style="width: 48px; height: 48px;" />
+                  </a>
+                </div>
+                <div class="env-service-hint" style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem;">
+                  Usa Redirect URI: <code>https://anilist.co/api/v2/oauth/pin</code>
+                </div>
+                <div class="env-fields" style="margin-top: 0.5rem;">
+                  <div class="env-field">
+                    <label class="env-label" for="anilist-client-id">Client ID</label>
+                    <input class="env-input" type="text" id="anilist-client-id" placeholder="Ej. 18343" autocomplete="off" />
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem;">
@@ -283,7 +301,7 @@ const version = pkg.version;
             <div id="anilist-token-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
               <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Iniciar Sesión en AniList</span>
               <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">1. Haz clic en el botón de abajo para autorizar a Metadea en tu navegador.</p>
-              <a href="https://anilist.co/api/v2/oauth/authorize?client_id=18343&response_type=token" target="_blank" rel="noopener noreferrer" class="btn btn--sm btn--secondary" style="text-decoration: none; text-align: center; width: 100%;">Abrir página de autorización</a>
+              <a href="#" id="anilist-auth-link" target="_blank" rel="noopener noreferrer" class="btn btn--sm btn--secondary" style="text-decoration: none; text-align: center; width: 100%;">Abrir página de autorización</a>
               <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; margin-top: 0.5rem;">2. Copia el token/código largo que te da la web y pégalo aquí:</p>
               <input type="text" id="anilist-token-input" placeholder="Pega el token aquí..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; text-align: center;" />
               <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;">

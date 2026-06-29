@@ -6,6 +6,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
   const steamKeyInput        = document.getElementById('steam-api-key')          as HTMLInputElement;
   const tmdbAccessTokenInput = document.getElementById('tmdb-access-token')      as HTMLInputElement;
   const tmdbKeyInput         = document.getElementById('tmdb-api-key')           as HTMLInputElement;
+  const anilistClientIdInput = document.getElementById('anilist-client-id')       as HTMLInputElement;
   const envSaveBtn           = document.getElementById('env-save-btn')!;
   const envClearBtn          = document.getElementById('env-clear-btn')!;
   const openFolderBtn        = document.getElementById('open-env-folder-btn')!;
@@ -17,6 +18,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
     steamKeyInput.value        = cfg.steam_api_key      ?? '';
     tmdbAccessTokenInput.value = cfg.tmdb_access_token  ?? '';
     tmdbKeyInput.value         = cfg.tmdb_api_key       ?? '';
+    anilistClientIdInput.value = cfg.anilist_client_id  ?? '';
   } catch {
     // Not in Tauri or file doesn't exist yet
   }
@@ -31,6 +33,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         steam_api_key:      steamKeyInput.value.trim() || undefined,
         tmdb_access_token:  tmdbAccessTokenInput.value.trim() || undefined,
         tmdb_api_key:       tmdbKeyInput.value.trim() || undefined,
+        anilist_client_id:  anilistClientIdInput.value.trim() || undefined,
       });
       showToast('Credenciales guardadas');
     } catch (err: any) {
@@ -48,12 +51,14 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         steam_api_key: undefined,
         tmdb_access_token: undefined,
         tmdb_api_key: undefined,
+        anilist_client_id: undefined,
       });
       clientIdInput.value = '';
       clientSecretInput.value = '';
       steamKeyInput.value = '';
       tmdbAccessTokenInput.value = '';
       tmdbKeyInput.value = '';
+      anilistClientIdInput.value = '';
       showToast('Credenciales eliminadas');
     } catch {
       showToast('Error al eliminar');

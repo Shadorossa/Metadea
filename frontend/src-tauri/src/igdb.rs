@@ -57,6 +57,7 @@ pub struct EnvConfig {
     pub steam_api_key: Option<String>,
     pub tmdb_access_token: Option<String>,
     pub tmdb_api_key: Option<String>,
+    pub anilist_client_id: Option<String>,
 }
 
 #[tauri::command]
@@ -73,6 +74,7 @@ pub async fn read_env_config(app_handle: tauri::AppHandle) -> Result<EnvConfig, 
             steam_api_key: None,
             tmdb_access_token: None,
             tmdb_api_key: None,
+            anilist_client_id: None,
         });
     }
     let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
