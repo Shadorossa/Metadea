@@ -1,20 +1,21 @@
 :root {
-  --bg-primary:  #05020a;
-  --bg-elevated: #110022;
-  --bg-card:     #0a0016;
-  --bg-card-rgb: 10 0 22;
+  --bg-primary:  #060609; /* Deep matte carbon black */
+  --bg-elevated: #0f1015; /* Tech panel dark gray */
+  --bg-card:     #141620; /* Container background */
+  --bg-card-rgb: 20 22 32;
 
-  --text-main: #00ff66; /* Neon green */
-  --text-muted: #ff0055; /* Neon magenta */
-  --text-dim: #00f0ff; /* Neon cyan */
+  --text-main: #fcee0a; /* Cyberpunk 2077 Signature Yellow */
+  --text-muted: #00ffff; /* Cyber Cyan */
+  --text-dim: #8b92a5; /* Tactical gray */
 
-  --border-color: #ff0055;
+  --border-color: #fcee0a; /* Yellow borders */
 
-  --accent: #00f0ff;
-  --accent-rgb: 0 240 255;
-  --accent-soft: rgba(0, 240, 255, 0.12);
-  --accent-border: #00ff66;
-  --accent-glow: rgba(0, 240, 255, 0.35);
+  --accent: #fcee0a;
+  --accent-rgb: 252 238 10;
+  --accent-soft: rgba(252, 238, 10, 0.08);
+  --accent-border: #00ffff; /* Cyber Cyan accent */
+  --accent-glow: rgba(252, 238, 10, 0.35);
+  --accent-cyan-glow: rgba(0, 255, 255, 0.4);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -25,36 +26,109 @@
 body {
   font-family: 'Courier New', Courier, monospace !important;
   letter-spacing: 0.02em;
+  background-color: var(--bg-primary);
 }
 
-/* ── Cyberpunk specific shape overrides ───────────────────────────────────── */
+/* ── Cyber HUD Overlay & Background ───────────────────────────────────────── */
 
-/* Apply clip-path to buttons, tabs, input fields, cards and previews */
+/* Scrolling horizontal laser scanner line */
+@keyframes cyber-scanner {
+  0% { transform: translateY(-100vh); opacity: 0; }
+  10% { opacity: 0.3; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2;
+  background-color: #040407;
+  background-image: 
+    /* Tactical grid pattern */
+    linear-gradient(rgba(252, 238, 10, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(252, 238, 10, 0.02) 1px, transparent 1px),
+    /* Cyberpunk red and cyan ambient spots */
+    radial-gradient(circle at 10% 25%, rgba(255, 0, 85, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 90% 75%, rgba(0, 255, 255, 0.12) 0%, transparent 50%),
+    /* Top neon yellow ambient bar */
+    radial-gradient(ellipse 60% 30% at 50% -5%, rgba(252, 238, 10, 0.08) 0%, transparent 60%);
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%, 100% 100%;
+}
+
+/* Cyber CRT scanlines layer + Animated laser */
+#app-bg::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Moving scanline laser */
+#app-bg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.4), rgba(252, 238, 10, 0.8), rgba(0, 255, 255, 0.4), transparent);
+  box-shadow: 0 0 10px rgba(252, 238, 10, 0.5);
+  pointer-events: none;
+  z-index: 2;
+  animation: cyber-scanner 12s linear infinite;
+}
+
+/* HUD layout borders around the viewport */
+body::before {
+  content: "HUD V2.077 // LINK_ACTIVE // SYSTEM_OK";
+  color: rgba(252, 238, 10, 0.35);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 8px;
+  font-weight: bold;
+  position: fixed;
+  top: 15px;
+  left: 20px;
+  z-index: 999;
+  letter-spacing: 0.15em;
+  pointer-events: none;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 10px;
+  border: 1px solid rgba(0, 255, 255, 0.12);
+  pointer-events: none;
+  z-index: 998;
+  clip-path: polygon(
+    0 15px, 15px 0,
+    calc(100% - 15px) 0, 100% 15px,
+    100% calc(100% - 15px), calc(100% - 15px) 100%,
+    15px 100%, 0 calc(100% - 15px)
+  );
+  box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.03);
+}
+
+/* ── UI Elements & Component Fixes ───────────────────────────────────────── */
+
+/* Clean up clipping issues: Only clip-path buttons/inputs/cards where borders render well */
 .btn,
-.settings-tab, 
-.google-btn, 
-.input-dark,
-.theme-card-preview,
-.avatar-preview-wrap,
-.banner-drop-zone,
-.card-media-base,
-.nav-icon-btn,
-.nav-dropdown-item,
-.nav-user-dropdown::before,
-.hof-btn,
-.hof-container,
-.hof-card,
+.settings-tab,
+.google-btn,
 .search-input,
 .search-action-btn,
 .search-tab,
-.media-relation-card,
-.media-relation-thumb,
-.media-char-card,
-.media-char-thumb,
-.media-banner-date-badge,
-.media-library-widget-box,
+.hof-btn,
 .status-dropdown-trigger,
-.status-dropdown-tray {
+.media-banner-date-badge {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
@@ -64,68 +138,138 @@ body {
   transition: all 0.15s ease-in-out !important;
 }
 
-/* Active and focus states with neon glow */
+/* Card wrappers: keep tech styling but avoid clip-path clipping layout details */
+.card-media-base,
+.media-relation-card,
+.media-char-card,
+.hof-card,
+.media-library-widget-box,
+.status-dropdown-tray {
+  border-radius: 0px !important;
+  border: 1px dashed var(--accent-border) !important;
+  background-color: var(--bg-card) !important;
+  box-shadow: 3px 3px 0px rgba(0, 255, 255, 0.15) !important;
+  transition: all 0.20s ease-in-out !important;
+}
+
+.card-media-base:hover,
+.media-relation-card:hover,
+.media-char-card:hover {
+  border: 1px solid var(--text-main) !important;
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0px var(--text-main) !important;
+}
+
+/* Interactive elements: Active/Focus cyan glow */
 .settings-tab.active,
 .theme-card.active .theme-card-preview,
-.nav-icon-btn.active,
 .hof-btn--active,
 .search-tab.active,
 .search-input:focus,
-.input-dark:focus,
-.media-relation-card:hover,
-.media-char-card:hover {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 10px var(--accent-glow) !important;
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
+.input-dark:focus {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 10px var(--accent-cyan-glow) !important;
+  background: rgba(0, 255, 255, 0.08) !important;
+  color: var(--accent-border) !important;
+}
+
+/* Buttons style (Cyberpunk 2077 yellow block button) */
+.btn {
+  background: var(--text-main) !important;
+  color: #000 !important;
+  border-color: var(--text-main) !important;
+}
+.btn:hover {
+  background: var(--text-muted) !important;
+  color: #000 !important;
+  border-color: var(--text-muted) !important;
+  box-shadow: 0 0 10px var(--accent-cyan-glow) !important;
 }
 
 .search-tab {
-  border-bottom: 1px solid var(--border-color) !important; /* overrides standard border-bottom none in global */
+  border-bottom: 1px solid var(--border-color) !important;
   margin-right: 4px;
 }
-
-.nav-dropdown-item:hover,
 .search-tab:hover {
   background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-  border-color: var(--accent) !important;
+  color: var(--text-main) !important;
+  border-color: var(--text-main) !important;
 }
 
-/* Custom styled scanlines background */
-#app-bg {
-  background: 
-    linear-gradient(rgba(17, 0, 34, 0.45) 50%, rgba(5, 2, 10, 0.7) 50%),
-    radial-gradient(ellipse 70% 60% at 50% -10%, rgba(255, 0, 85, 0.22) 0%, transparent 80%);
-  background-size: 100% 4px, 100% 100%;
+/* Custom Scrollbar for Cyberpunk Theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border: 1px solid var(--bg-primary);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-border);
 }
 
-/* Styling badges to be sharp and blocky */
+/* ── Typography & Headers ────────────────────────────────────────────────── */
+
+/* Cyberpunk 2077 Header underlines with tech accents */
+h2, h3, .settings-panel-title, .section-label {
+  border-bottom: 1px solid var(--accent-border) !important;
+  position: relative;
+  padding-bottom: 6px;
+  color: var(--text-main) !important;
+  text-transform: uppercase;
+}
+
+h2::after, h3::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: 0;
+  width: 25px;
+  height: 4px;
+  background: var(--text-main);
+}
+
+/* Title text colors */
+.media-title-main {
+  font-family: 'Courier New', Courier, monospace !important;
+  font-weight: 900 !important;
+  color: var(--text-main) !important;
+}
+
+.media-title-native, .media-title-english {
+  color: var(--text-muted) !important;
+}
+
+/* Badges styling */
 .card-rating-badge,
 .theme-card-check {
   border-radius: 0px !important;
-  border: 1px solid var(--accent) !important;
+  border: 1px solid var(--text-main) !important;
   background: #000 !important;
+  color: var(--text-main) !important;
+  font-weight: bold !important;
 }
 
 /* Auth modal customization */
 .auth-modal-box {
   border-radius: 0px !important;
   border: 2px solid var(--border-color) !important;
+  background: var(--bg-elevated) !important;
   clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px)) !important;
-}
-
-.tray-status-btn {
-  border-radius: 0px !important;
+  box-shadow: 0 0 25px rgba(252, 238, 10, 0.15) !important;
 }
 
 /* Role and relation type badges */
 .media-char-role,
 .media-relation-type {
   border-radius: 0px !important;
-  border: 1px solid var(--accent) !important;
-  background: rgba(0, 240, 255, 0.05) !important;
-  color: var(--accent) !important;
+  border: 1px solid var(--accent-border) !important;
+  background: rgba(0, 255, 255, 0.05) !important;
+  color: var(--accent-border) !important;
   font-family: 'Courier New', Courier, monospace !important;
   text-transform: uppercase !important;
   clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px)) !important;

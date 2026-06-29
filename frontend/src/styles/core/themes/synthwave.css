@@ -1,0 +1,179 @@
+html[data-theme="synthwave"], [data-theme="synthwave"] {
+  --bg-primary:  #0d0415; /* Night purple */
+  --bg-elevated: #160a26; /* Deep violet */
+  --bg-card:     #1e0e33; /* Neon cabinet */
+  --bg-card-rgb: 30 14 51;
+
+  --text-main: #ff007f; /* Hot Magenta Pink */
+  --text-muted: #00f0ff; /* Neon Cyan */
+  --text-dim: #9d5fe3; /* Pastel purple */
+
+  --border-color: #ff007f;
+
+  --accent: #ff007f;
+  --accent-rgb: 255 0 127;
+  --accent-soft: rgba(255, 0, 127, 0.08);
+  --accent-border: #00f0ff; /* Cyan active/hover highlight */
+  --accent-glow: rgba(255, 0, 127, 0.35);
+  --accent-cyan-glow: rgba(0, 240, 255, 0.4);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, sans-serif !important;
+  letter-spacing: 0.03em;
+  background-color: var(--bg-primary);
+}
+
+/* ── Synthwave Retro Sunset & Neon Grid ──────────────────────────────────── */
+
+@keyframes synth-grid-move {
+  0% { background-position: 0 0, 0 0, 0 0; }
+  100% { background-position: 0 40px, 0 0, 0 0; }
+}
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #0b0212;
+  background-image: 
+    /* Neon horizontal and vertical grid */
+    linear-gradient(rgba(255, 0, 127, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 127, 0.04) 1px, transparent 1px),
+    /* Giant retro sunset sun glowing at center-bottom */
+    radial-gradient(circle at 50% 90%, rgba(255, 110, 0, 0.28) 0%, rgba(255, 0, 127, 0.08) 50%, transparent 85%),
+    /* Ambient neon blue upper highlight */
+    radial-gradient(circle at 10% 10%, rgba(0, 240, 255, 0.12) 0%, transparent 60%);
+  background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+  animation: synth-grid-move 10s linear infinite;
+}
+
+/* Screen overlay tint and scanline noise */
+#app-bg::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(rgba(18, 10, 30, 0) 50%, rgba(0, 0, 0, 0.3) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.015), rgba(0, 255, 0, 0.005), rgba(0, 0, 255, 0.015));
+  background-size: 100% 4px, 6px 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Neon UI Overrides ───────────────────────────────────────────────────── */
+
+/* Synthwave neon border elements */
+.btn,
+.settings-tab,
+.google-btn,
+.search-input,
+.search-action-btn,
+.search-tab,
+.media-banner-date-badge,
+.status-dropdown-trigger {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 5px rgba(255, 0, 127, 0.15) !important;
+  transition: all 0.25s ease-in-out !important;
+}
+
+.btn:hover,
+.settings-tab:hover,
+.search-tab:hover,
+.search-action-btn:hover {
+  background-color: var(--accent-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--text-main) !important;
+  box-shadow: 0 0 12px var(--accent-glow) !important;
+}
+
+/* Active buttons/tabs: Neon Cyan Glow */
+.settings-tab.active,
+.theme-card.active .theme-card-preview,
+.hof-btn--active,
+.search-tab.active,
+.search-input:focus,
+.input-dark:focus {
+  border-color: var(--accent-border) !important;
+  background-color: rgba(0, 240, 255, 0.08) !important;
+  color: var(--accent-border) !important;
+  box-shadow: 0 0 15px var(--accent-cyan-glow) !important;
+}
+
+/* Cards style: flat with bright neon pink margins */
+.card-media-base,
+.media-relation-card,
+.media-char-card,
+.media-library-widget-box,
+.status-dropdown-tray,
+.hof-card {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid rgba(255, 0, 127, 0.3) !important;
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.card-media-base:hover,
+.media-relation-card:hover,
+.media-char-card:hover {
+  border-color: var(--accent-border) !important;
+  transform: scale(1.03) translateY(-3px) !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important;
+}
+
+/* Images have a retro-chrome/neon tone */
+.card-media-img,
+.media-cover-img,
+.library-card-thumb img,
+.fav-cover {
+  filter: contrast(1.1) saturate(1.25) hue-rotate(-10deg) !important;
+}
+
+/* Typography with Neon Sunset Glow */
+h2, h3, .settings-panel-title, .section-label {
+  border-bottom: 2px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  text-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
+  text-transform: uppercase;
+  font-style: italic;
+}
+
+/* Ratings & Badges */
+.card-rating-badge,
+.theme-card-check,
+.media-char-role,
+.media-relation-type {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--text-muted) !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-muted) !important;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-border);
+}

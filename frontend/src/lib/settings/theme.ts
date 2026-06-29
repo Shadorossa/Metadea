@@ -39,6 +39,21 @@ const THEMES = [
     name: 'Newspaper Dark',
     bg: 'linear-gradient(135deg, #151413 0%, #252422 50%, #dca364 100%)',
   },
+  {
+    id: 'pipboy',
+    name: 'Pip-Boy',
+    bg: 'radial-gradient(circle at 50% 50%, rgba(29, 255, 115, 0.45) 0%, transparent 80%), #080c09',
+  },
+  {
+    id: 'glassmorphism',
+    name: 'Glassmorphism',
+    bg: 'radial-gradient(circle at 10% 20%, rgba(147, 51, 234, 0.4) 0%, transparent 50%), radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.3) 0%, transparent 50%), #090714',
+  },
+  {
+    id: 'synthwave',
+    name: 'Synthwave',
+    bg: 'radial-gradient(circle at 50% 90%, rgba(255, 110, 0, 0.7) 0%, rgba(255, 0, 127, 0.3) 50%, transparent 85%), #0d0415',
+  },
 ] as const;
 
 const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;

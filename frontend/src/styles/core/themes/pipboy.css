@@ -1,0 +1,194 @@
+html[data-theme="pipboy"], [data-theme="pipboy"] {
+  --bg-primary:  #080c09; /* Dark terminal green-black */
+  --bg-elevated: #0f1712; /* Terminal casing */
+  --bg-card:     #131e18; /* Dark grid cell */
+  --bg-card-rgb: 19 30 24;
+
+  --text-main: #1dff73; /* High-brightness phosphor green */
+  --text-muted: #11ab4d; /* Muted phosphor green */
+  --text-dim: #0b7032; /* Low-brightness green */
+
+  --border-color: #11ab4d;
+
+  --accent: #1dff73;
+  --accent-rgb: 29 255 115;
+  --accent-soft: rgba(29, 255, 115, 0.08);
+  --accent-border: #1dff73;
+  --accent-glow: rgba(29, 255, 115, 0.35);
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+body {
+  font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+  letter-spacing: 0.04em;
+  background-color: var(--bg-primary);
+}
+
+/* ── CRT screen distortion & scanline effects ────────────────────────────── */
+
+@keyframes pip-scanline {
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
+}
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #060907;
+  background-image: 
+    /* Phosphor glow radial */
+    radial-gradient(circle at 50% 50%, rgba(29, 255, 115, 0.06) 0%, transparent 80%),
+    /* Micro grid matrix */
+    linear-gradient(rgba(29, 255, 115, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 255, 115, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 16px 16px, 16px 16px;
+}
+
+/* Scanlines and flicker overlay */
+#app-bg::before {
+  content: " ";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 24, 20, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+  background-size: 100% 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fast scrolling horizontal scanline beam */
+#app-bg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background: linear-gradient(to bottom, transparent, rgba(29, 255, 115, 0.05), transparent);
+  pointer-events: none;
+  z-index: 2;
+  animation: pip-scanline 8s linear infinite;
+}
+
+/* CRT screen border mask and tint */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(29, 255, 115, 0.15);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── UI Element Overrides ────────────────────────────────────────────────── */
+
+/* Pip-boy terminal style buttons and inputs */
+.btn,
+.settings-tab,
+.google-btn,
+.search-input,
+.search-action-btn,
+.search-tab,
+.media-banner-date-badge,
+.status-dropdown-trigger {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: transparent !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase !important;
+  font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+  font-weight: 700 !important;
+}
+
+.btn:hover,
+.settings-tab:hover,
+.search-tab:hover,
+.search-action-btn:hover {
+  background-color: var(--accent-soft) !important;
+  color: var(--text-main) !important;
+  border-color: var(--text-main) !important;
+  box-shadow: 0 0 8px var(--accent-glow) !important;
+}
+
+/* Selected/Active Terminal Tab */
+.settings-tab.active,
+.theme-card.active .theme-card-preview,
+.hof-btn--active,
+.search-tab.active,
+.search-input:focus,
+.input-dark:focus {
+  border: 2px solid var(--accent) !important;
+  background-color: rgba(29, 255, 115, 0.12) !important;
+  color: var(--text-main) !important;
+  box-shadow: 0 0 10px var(--accent-glow) !important;
+}
+
+/* Media Cards: look like retro wireframes / terminal readout blocks */
+.card-media-base,
+.media-relation-card,
+.media-char-card,
+.media-library-widget-box,
+.status-dropdown-tray,
+.hof-card {
+  border-radius: 0px !important;
+  border: 1px dashed var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+.card-media-base:hover,
+.media-relation-card:hover,
+.media-char-card:hover {
+  border: 1px solid var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+  box-shadow: 0 0 10px rgba(29, 255, 115, 0.2) !important;
+}
+
+/* Images have a green monochrome tint */
+.card-media-img,
+.media-cover-img,
+.library-card-thumb img,
+.fav-cover {
+  filter: brightness(0.85) contrast(1.1) sepia(1) hue-rotate(85deg) saturate(1.8) !important;
+}
+
+/* Typography Terminal dividers */
+h2, h3, .settings-panel-title, .section-label {
+  border-bottom: 2px dashed var(--border-color) !important;
+  font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+  color: var(--text-main) !important;
+  text-transform: uppercase;
+}
+
+/* Badges phosphor style */
+.card-rating-badge,
+.theme-card-check,
+.media-char-role,
+.media-relation-type {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-primary) !important;
+  color: var(--text-main) !important;
+  font-family: 'Consolas', 'Courier New', Courier, monospace !important;
+}
+
+/* Custom terminal scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border: 2px solid var(--bg-primary);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}

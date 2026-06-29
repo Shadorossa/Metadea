@@ -1,0 +1,170 @@
+html[data-theme="glassmorphism"], [data-theme="glassmorphism"] {
+  --bg-primary:  #090714; /* Deep dark cosmic background */
+  --bg-elevated: rgba(20, 15, 38, 0.45); /* Translucent panel */
+  --bg-card:     rgba(30, 22, 58, 0.25); /* Translucent card */
+  --bg-card-rgb: 30 22 58;
+
+  --text-main: #ffffff;
+  --text-muted: #d0cdeb;
+  --text-dim: #9894bd;
+
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  --accent: #d946ef; /* Bright magenta/violet */
+  --accent-rgb: 217 70 239;
+  --accent-soft: rgba(217, 70, 239, 0.12);
+  --accent-border: rgba(255, 255, 255, 0.25);
+  --accent-glow: rgba(217, 70, 239, 0.4);
+
+  --radius-sm: 8px !important;
+  --radius-md: 12px !important;
+  --radius-lg: 16px !important;
+  --radius-xl: 24px !important;
+}
+
+body {
+  font-family: 'Outfit', 'Segoe UI', -apple-system, sans-serif !important;
+  background-color: var(--bg-primary);
+}
+
+/* ── Moving colorful gradients in background ─────────────────────────────── */
+
+@keyframes glass-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(8%, -6%) scale(1.15); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes glass-drift-alt {
+  0%   { transform: translate(0, 0) scale(1.1); }
+  50%  { transform: translate(-6%, 8%) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1.1); }
+}
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #080612;
+  overflow: hidden;
+}
+
+/* Cosmic blurred orbs */
+#app-bg::before,
+#app-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+#app-bg::before {
+  top: -10%;
+  left: 10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.35) 0%, rgba(217, 70, 239, 0.15) 70%, transparent 100%);
+  animation: glass-drift 20s ease-in-out infinite;
+}
+
+#app-bg::after {
+  bottom: -15%;
+  right: 10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.28) 0%, rgba(147, 51, 234, 0.12) 70%, transparent 100%);
+  animation: glass-drift-alt 25s ease-in-out infinite;
+}
+
+/* ── Glassmorphism UI Panels & Elements ──────────────────────────────────── */
+
+.btn,
+.settings-tab,
+.google-btn,
+.input-dark,
+.search-input,
+.search-action-btn,
+.search-tab,
+.card-media-base,
+.media-relation-card,
+.media-char-card,
+.media-banner-date-badge,
+.media-library-widget-box,
+.status-dropdown-trigger,
+.status-dropdown-tray,
+.hof-container,
+.hof-card,
+.auth-modal-box {
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+/* Hover glow states */
+.btn:hover,
+.settings-tab:hover,
+.search-tab:hover,
+.card-media-base:hover,
+.media-relation-card:hover,
+.media-char-card:hover {
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 12px 40px 0 rgba(147, 51, 234, 0.15), inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* Active Glassmorphism elements */
+.settings-tab.active,
+.theme-card.active .theme-card-preview,
+.hof-btn--active,
+.search-tab.active,
+.search-input:focus,
+.input-dark:focus {
+  background-color: rgba(217, 70, 239, 0.12) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 8px 32px 0 rgba(217, 70, 239, 0.2) !important;
+}
+
+/* Radius fixes for sub-elements */
+.card-media-base, .library-card-thumb, .fav-cover {
+  border-radius: var(--radius-md) !important;
+}
+
+/* Divider underlines with glow */
+h2, h3, .settings-panel-title, .section-label {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-main) !important;
+  padding-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+
+/* Soft badges */
+.card-rating-badge,
+.theme-card-check,
+.media-char-role,
+.media-relation-type {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-main) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Smooth glass scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
