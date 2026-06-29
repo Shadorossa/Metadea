@@ -1,6 +1,7 @@
 ---
 import { useTranslations } from '../i18n/index';
 import type { Locale } from '../i18n/index';
+import pkg from '../../package.json';
 
 interface Props {
   lang: Locale;
@@ -8,6 +9,7 @@ interface Props {
 
 const { lang } = Astro.props;
 const t = useTranslations(lang);
+const version = pkg.version;
 
 const apis = [
   { name: 'IGDB', logo: '/API/IGDB_logo.png', url: 'https://www.igdb.com' },
@@ -35,6 +37,9 @@ const apis = [
           <img src={api.logo} alt={api.name} class="footer-logo" />
         </a>
       ))}
+    </div>
+    <div class="footer-version" style="font-size: 0.65rem; color: var(--text-dim); margin-top: 0.5rem; text-align: center; font-family: monospace; letter-spacing: 0.05em; opacity: 0.85;">
+      v{version}
     </div>
   </div>
 </footer>
