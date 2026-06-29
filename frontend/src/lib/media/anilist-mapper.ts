@@ -140,5 +140,9 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     releaseDay:   raw.startDate?.day   ?? undefined,
     scoreGlobal:  raw.averageScore ? raw.averageScore / 10 : undefined,
     platforms:    undefined,
+    timeLength:   mediaType === 'anime' ? (raw.duration ?? undefined) : undefined,
+    status:       raw.status ?? undefined,
+    totalCount:   mediaType === 'anime' ? (raw.episodes ?? undefined) : (raw.chapters ?? undefined),
+    totalCount_2: mediaType === 'manga' ? (raw.volumes ?? undefined) : undefined,
   };
 }

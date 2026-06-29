@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, readUserFavorites, writeUserFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
@@ -80,15 +80,16 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [status,      setStatus]      = useState('planning');
   const [rating,      setRating]      = useState(0);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [progress,    setProgress]    = useState(0);
-  const [notes,       setNotes]       = useState('');
-  const [startedAt,   setStartedAt]   = useState('');
-  const [finishedAt,  setFinishedAt]  = useState('');
-  const [isFavorite,  setIsFavorite]  = useState(false);
-  const [isPlatinum,  setIsPlatinum]  = useState(false);
-  const [tags,        setTags]        = useState<string[]>([]);
-  const [tagInput,    setTagInput]    = useState('');
-  const [platform,    setPlatform]    = useState('');
+  const [progress,      setProgress]      = useState(0);
+  const [progressCount2, setProgressCount2] = useState(0);
+  const [notes,         setNotes]         = useState('');
+  const [startedAt,     setStartedAt]     = useState('');
+  const [finishedAt,    setFinishedAt]    = useState('');
+  const [isFavorite,    setIsFavorite]    = useState(false);
+  const [isPlatinum,    setIsPlatinum]    = useState(false);
+  const [tags,          setTags]          = useState<string[]>([]);
+  const [tagInput,      setTagInput]      = useState('');
+  const [platform,      setPlatform]      = useState('');
 
   const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
@@ -102,6 +103,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           setStatus(entry.status ?? 'planning');
           setRating(entry.rating ?? 0);
           setProgress(entry.progress ?? 0);
+          setProgressCount2(entry.progress_count_2 ?? 0);
           setNotes(entry.notes ?? '');
           setStartedAt(entry.started_at ?? '');
           setFinishedAt(entry.finished_at ?? '');
@@ -192,6 +194,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         status:           status || null,
         rating:           rating > 0 ? rating : null,
         progress,
+        progress_count_2: progressCount2,
         minutes_spent:    data.type === 'game' || data.type === 'vnovel'
                             ? progress * 60
                             : (existing?.minutes_spent ?? 0),
@@ -209,6 +212,27 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
       await writeMonthlyHistory(monthlyHistory);
 
+      /* ── Sync with user_favorite.json ───────────────────────────────────────── */
+      try {
+        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+        const type = data.type || 'book';
+        if (!favs[type]) favs[type] = [];
+        
+        if (isFavorite) {
+          if (!favs[type].includes(externalId)) {
+            favs[type].push(externalId);
+          }
+        } else {
+          favs[type] = favs[type].filter(id => id !== externalId);
+          if (favs.multimedia) {
+            favs.multimedia = favs.multimedia.filter(id => id !== externalId);
+          }
+        }
+        await writeUserFavorites(favs);
+      } catch (e) {
+        console.error('Failed to sync favorites JSON', e);
+      }
+
       onSaved(entry);
       handleClose();
     } catch (e) {
@@ -216,13 +240,29 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } finally {
       setSaving(false);
     }
-  }, [existing, externalId, data.type, status, rating, progress, notes,
+  }, [existing, externalId, data.type, status, rating, progress, progressCount2, notes,
       startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, monthlyHistory, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     if (!existing) { onClose(); return; }
     try {
       await deleteLibraryEntry(externalId, data.type);
+
+      /* ── Sync with user_favorite.json upon delete ──────────────────────────── */
+      try {
+        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+        const type = data.type || 'book';
+        if (favs[type]) {
+          favs[type] = favs[type].filter(id => id !== externalId);
+        }
+        if (favs.multimedia) {
+          favs.multimedia = favs.multimedia.filter(id => id !== externalId);
+        }
+        await writeUserFavorites(favs);
+      } catch (e) {
+        console.error('Failed to delete from favorites JSON', e);
+      }
+
       onDeleted();
     } catch (e) {
       console.error('delete_library_entry error', e);
@@ -272,7 +312,13 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       key={value}
                       type="button"
                       className={`me-header-status-icon${status === value ? ' active' : ''}`}
-                      onClick={() => setStatus(status === value ? '' : value)}
+                      onClick={() => {
+                        const nextStatus = status === value ? '' : value;
+                        setStatus(nextStatus);
+                        if (value === 'completed' && nextStatus === 'completed' && data.totalCount && data.totalCount > 0) {
+                          setProgress(data.totalCount);
+                        }
+                      }}
                       title={label}
                     >
                       <Icon />
@@ -281,45 +327,142 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
 
                 {/* Progress input */}
-                {progLabel && (
-                  <div className="me-header-field">
-                    <label className="me-header-field-label">{progLabel}</label>
-                    <input type="number" className="me-header-field-input" min={0}
-                      step={progressStep(data.type)}
-                      value={progress || ''}
-                      onChange={e => setProgress(parseFloat(e.target.value) || 0)}
-                      placeholder="0" />
-                  </div>
-                )}
-
-                {/* Rating stars */}
-                <div className="me-header-field">
-                  <label className="me-header-field-label">{te.score}</label>
-                  <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
-                    {[1, 2, 3, 4, 5].map(v => {
-                      const isFull = displayRating >= v * 2;
-                      const isHalf = !isFull && displayRating >= v * 2 - 1;
-                      return (
-                        <div key={v} className="me-header-star-wrap">
-                          <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
-                            <path d={STAR_PATH} />
-                          </svg>
-                          <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
-                            <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
-                              <path d={STAR_PATH} />
-                            </svg>
-                          </div>
-                          <button type="button" className="me-header-star-zone me-header-star-zone--left"
-                            onMouseEnter={() => setHoverRating(v * 2 - 1)}
-                            onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
-                          <button type="button" className="me-header-star-zone me-header-star-zone--right"
-                            onMouseEnter={() => setHoverRating(v * 2)}
-                            onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
+                {progLabel && (() => {
+                  const maxVal = data.totalCount && data.totalCount > 0 ? data.totalCount : undefined;
+                  const max2Val = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
+                  const label2 = data.type === 'anime' || data.type === 'series' ? t.media.progress_seasons :
+                                 data.type === 'manga' ? t.media.progress_volumes :
+                                 data.type === 'light-novel' ? t.media.progress_volumes :
+                                 data.type === 'books' ? t.media.progress_books : 'Count 2';
+                  return (
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
+                      <div className="me-header-field">
+                        <label className="me-header-field-label">{progLabel}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <input type="number" className="me-header-field-input" min={0}
+                            max={maxVal}
+                            step={progressStep(data.type)}
+                            value={progress || ''}
+                            onChange={e => {
+                              let val = parseFloat(e.target.value) || 0;
+                              if (maxVal !== undefined && val > maxVal) val = maxVal;
+                              setProgress(val);
+                            }}
+                            placeholder="0"
+                            style={{ width: '60px', order: 1 }} />
+                          {maxVal !== undefined && (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
+                      {max2Val !== undefined && (
+                        <div className="me-header-field">
+                          <label className="me-header-field-label">{label2}</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <input type="number" className="me-header-field-input" min={0}
+                              max={max2Val}
+                              step={1}
+                              value={progressCount2 || ''}
+                              onChange={e => {
+                                let val = parseInt(e.target.value) || 0;
+                                if (max2Val !== undefined && val > max2Val) val = max2Val;
+                                setProgressCount2(val);
+                              }}
+                              placeholder="0"
+                              style={{ width: '60px' }} />
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                 {/* Rating stars */}
+                 <div className="me-header-field">
+                   <label className="me-header-field-label">{te.score}</label>
+                   {(() => {
+                     const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
+                     
+                     if (system === '10-dec') {
+                       return (
+                         <input type="number" className="me-header-field-input" min={0} max={10} step={0.01}
+                           value={rating || ''}
+                           onChange={e => {
+                             let val = parseFloat(e.target.value) || 0;
+                             if (val > 10) val = 10;
+                             setRating(val);
+                           }}
+                           placeholder="0.00"
+                           style={{ width: '65px' }} />
+                       );
+                     }
+                     
+                     if (system === '10') {
+                       return (
+                         <input type="number" className="me-header-field-input" min={0} max={10} step={1}
+                           value={rating ? Math.round(rating) : ''}
+                           onChange={e => {
+                             let val = parseInt(e.target.value, 10) || 0;
+                             if (val > 10) val = 10;
+                             setRating(val);
+                           }}
+                           placeholder="0"
+                           style={{ width: '50px' }} />
+                       );
+                     }
+                     
+                     if (system === '3-emoji') {
+                       let activeEmoji = '😐';
+                       if (rating <= 3.5) activeEmoji = '😞';
+                       else if (rating > 7) activeEmoji = '😊';
+                       return (
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                           <button type="button"
+                             onClick={() => setRating(rating === 3 ? 0 : 3)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😞' ? 1 : 0.4, padding: '2px' }}
+                             title="Triste (0-3.5)">😞</button>
+                           <button type="button"
+                             onClick={() => setRating(rating === 5.5 ? 0 : 5.5)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😐' ? 1 : 0.4, padding: '2px' }}
+                             title="Neutral (3.6-7)">😐</button>
+                           <button type="button"
+                             onClick={() => setRating(rating === 8.5 ? 0 : 8.5)}
+                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😊' ? 1 : 0.4, padding: '2px' }}
+                             title="Feliz (7.1-10)">😊</button>
+                         </div>
+                       );
+                     }
+                     
+                     // Default: 5-star
+                     return (
+                       <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
+                         {[1, 2, 3, 4, 5].map(v => {
+                           const isFull = displayRating >= v * 2;
+                           const isHalf = !isFull && displayRating >= v * 2 - 1;
+                           return (
+                             <div key={v} className="me-header-star-wrap">
+                               <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
+                                 <path d={STAR_PATH} />
+                               </svg>
+                               <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
+                                 <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
+                                   <path d={STAR_PATH} />
+                                 </svg>
+                               </div>
+                               <button type="button" className="me-header-star-zone me-header-star-zone--left"
+                                 onMouseEnter={() => setHoverRating(v * 2 - 1)}
+                                 onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
+                               <button type="button" className="me-header-star-zone me-header-star-zone--right"
+                                 onMouseEnter={() => setHoverRating(v * 2)}
+                                 onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
+                             </div>
+                           );
+                         })}
+                       </div>
+                     );
+                   })()}
+                 </div>
 
                 {/* Start date */}
                 <div className="me-header-field">

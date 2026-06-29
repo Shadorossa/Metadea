@@ -213,7 +213,7 @@
 }
 
 .media-cover-wrap.in-library .media-cover-overlay-inner {
-  color: #34d399;
+  color: var(--color-completed);
 }
 
 /* ── Hero titles (izquierda) ─────────────────────────────────────────────── */
@@ -262,7 +262,7 @@
 }
 
 .media-badge--status-airing {
-  color: #34d399;
+  color: var(--color-completed);
   border-color: rgba(52, 211, 153, 0.3);
   background: rgba(52, 211, 153, 0.08);
 }
@@ -272,7 +272,7 @@
 }
 
 .media-badge--status-upcoming {
-  color: #60a5fa;
+  color: var(--color-paused);
   border-color: rgba(96, 165, 250, 0.3);
   background: rgba(96, 165, 250, 0.08);
 }
@@ -687,26 +687,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px;
-  padding: 0 0.75rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: capitalize;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  color: transparent;
   cursor: pointer;
-  transition: border-color var(--anim-base) var(--anim-ease),
-              background var(--anim-base) var(--anim-ease),
-              color var(--anim-base) var(--anim-ease);
+  transition: opacity var(--anim-fast) var(--anim-ease), transform var(--anim-fast) var(--anim-ease);
+  opacity: 0.8;
+}
+
+.media-store-icon {
+  max-height: 24px;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  filter: brightness(0) invert(1);
 }
 
 .media-store-link:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 /* Floating date badge on the banner */
@@ -868,7 +869,7 @@
 /* Active Status Colors */
 .tray-status-btn.active[data-status="planning"],
 .status-dropdown-trigger.text-planning {
-  color: #fbbf24;
+  color: var(--color-planning);
 }
 .tray-status-btn.active[data-status="watching"],
 .tray-status-btn.active[data-status="reading"],
@@ -878,11 +879,11 @@
 }
 .tray-status-btn.active[data-status="completed"],
 .status-dropdown-trigger.text-completed {
-  color: #34d399;
+  color: var(--color-completed);
 }
 .tray-status-btn.active[data-status="paused"],
 .status-dropdown-trigger.text-paused {
-  color: #60a5fa;
+  color: var(--color-paused);
 }
 .tray-status-btn.active[data-status="dropped"],
 .status-dropdown-trigger.text-dropped {

@@ -2,7 +2,9 @@
 import '../styles/core/global.css';
 import '../styles/components/components.css';
 import '../styles/components/navbar.css';
+import '../styles/components/footer.css';
 import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import ClientRouter from 'astro/components/ClientRouter.astro';
@@ -68,6 +70,7 @@ const t = useTranslations(lang);
     <div id="page-content" transition:name="page-content">
       <slot />
     </div>
+    <Footer lang={lang} />
 
     <!-- Auth modal -->
     <dialog id="auth-modal" class="auth-modal">

@@ -87,15 +87,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   const handleMediaTypeChange = (selectedType: MediaType) => {
     setMediaType(selectedType);
+    setQuery('');
+    setResults([]);
+    setStatus('idle');
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
-    if (query) {
-      currentUrl.searchParams.set('q', query);
-    } else {
-      currentUrl.searchParams.delete('q');
-    }
+    currentUrl.searchParams.delete('q');
     history.replaceState(null, '', currentUrl.toString());
-    if (query.length >= 2) executeSearch(query, selectedType);
   };
 
   const handleSearchSubmit = () => {

@@ -139,6 +139,20 @@ h2, h3, .settings-panel-title, .section-label {
   opacity: 1 !important;
 }
 
+<<<<<<< HEAD
+=======
+/* Library card stars in newspaper theme - white with currentColor */
+.library-card-rating {
+  color: #f5f2eb !important;
+}
+
+/* Library card dates - better visibility */
+.library-card-date {
+  color: #f5f2eb !important;
+  opacity: 1 !important;
+}
+
+>>>>>>> e5a55bd37d713503373b0253109b3cfe3f463594
 /* Status colors override to match Metamedia Newspaper Dark muted palette */
 .tray-status-btn.active[data-status="planning"],
 .status-dropdown-trigger.text-planning {
@@ -333,4 +347,153 @@ h2, h3, .settings-panel-title, .section-label {
   border-color: var(--text-main) !important;
   transform: translate(-2px, -2px) !important;
   box-shadow: 5px 5px 0px var(--border-color) !important;
+}
+
+/* ── Library Page Overrides for Newspaper Dark ──────────────────────────── */
+
+.library-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  transition: all 0.2s ease !important;
+}
+
+.library-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px var(--border-color) !important;
+  border: 3px double var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+.library-card-thumb {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+.library-card-thumb img {
+  filter: grayscale(0.35) sepia(0.15) !important;
+}
+
+.library-card-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+}
+
+.library-card-date {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-muted) !important;
+}
+
+.library-card-type svg {
+  color: var(--text-dim) !important;
+}
+
+.library-filter-input,
+.library-status-cycler,
+.library-type-btn {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.library-type-btn.active {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+}
+
+.library-status-arrow {
+  color: var(--accent) !important;
+}
+
+/* ── Favorites Page Overrides for Newspaper Dark ────────────────────────── */
+
+
+
+.fav-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  transition: all 0.2s ease !important;
+}
+
+.fav-card:hover {
+  transform: translate(-3px, -3px) !important;
+  box-shadow: 6px 6px 0px var(--border-color) !important;
+  border: 3px double var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+.fav-cover {
+  filter: grayscale(0.35) sepia(0.15) !important;
+}
+
+.fav-badge {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-primary) !important;
+  color: var(--text-main) !important;
+}
+
+.fav-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+}
+
+.fav-meta {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-muted) !important;
+}
+
+.fav-meta-type svg {
+  color: var(--text-dim) !important;
+}
+
+.rating-system-btn {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: 2px 2px 0px var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+}
+
+.rating-system-btn:hover {
+  border-color: var(--accent) !important;
+}
+
+.rating-system-btn.active {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+/* ── Statistics overrides ────────────────────────────────────────────────── */
+.stats-card, .stats-days-row, .stats-block, .stats-type-card {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  background-color: var(--bg-card) !important;
+}
+
+.stats-card-value, .stats-day-value, .stats-type-count {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 900 !important;
+}
+
+.stats-block-title, .stats-card-label, .stats-day-label, .stats-type-label {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.rating-config-select {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: 2px 2px 0px var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
 }
