@@ -2,10 +2,6 @@ import { readUserJourney } from '../tauri';
 
 type P = any;
 
-import { readUserJourney } from '../tauri';
-
-type P = any;
-
 function formatDay(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
   const date = new Date(Number(year), Number(month) - 1, Number(day));
