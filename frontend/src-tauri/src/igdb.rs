@@ -36,6 +36,8 @@ pub struct EnvConfig {
     pub igdb_client_id: Option<String>,
     pub igdb_client_secret: Option<String>,
     pub steam_api_key: Option<String>,
+    pub tmdb_access_token: Option<String>,
+    pub tmdb_api_key: Option<String>,
 }
 
 #[tauri::command]
@@ -43,7 +45,13 @@ pub async fn read_env_config(app_handle: tauri::AppHandle) -> Result<EnvConfig, 
     let app_data_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
     let env_path = app_data_dir.join("env.json");
     if !env_path.exists() {
-        return Ok(EnvConfig { igdb_client_id: None, igdb_client_secret: None, steam_api_key: None });
+        return Ok(EnvConfig {
+            igdb_client_id: None,
+            igdb_client_secret: None,
+            steam_api_key: None,
+            tmdb_access_token: None,
+            tmdb_api_key: None,
+        });
     }
     let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
     let config: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;

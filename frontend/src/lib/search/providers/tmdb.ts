@@ -58,19 +58,31 @@ async function fetchFromTmdb(
   mediaType: MediaType,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
+  let accessToken = '';
   let apiKey = '';
 
   try {
     const cfg = await readEnvConfig();
+    accessToken = cfg.tmdb_access_token ?? '';
     apiKey = cfg.tmdb_api_key ?? '';
   } catch {
     // Not in Tauri or config doesn't exist
   }
 
-  if (!apiKey) return [];
+  if (!accessToken && !apiKey) return [];
 
-  const url = `${TMDB_BASE_URL}/${endpoint}?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
-  const response = await fetch(url, { signal });
+  let url = `${TMDB_BASE_URL}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
+  const headers: Record<string, string> = {};
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  if (apiKey) {
+    url += `&api_key=${encodeURIComponent(apiKey)}`;
+  }
+
+  const response = await fetch(url, { signal, headers });
 
   if (!response.ok) return [];
   const data: TmdbPageResponse = await response.json();
