@@ -205,6 +205,13 @@ export const es = {
     custom_color_hint: 'Elige un color que se aplicará dinámicamente en toda la aplicación.',
     appearance_bg_title: 'Fondo dinámico',
     appearance_bg_hint: 'El fondo animado se aplica a toda la aplicación y se conserva entre sesiones.',
+    tab_application: 'Aplicación',
+    section_application: 'Aplicación',
+    app_version_label: 'Versión actual',
+    app_check_update: 'Buscar actualizaciones',
+    app_checking_update: 'Buscando...',
+    app_up_to_date: '¡Estás en la última versión!',
+    app_update_found: 'Nueva versión {version} disponible. ¿Quieres instalarla?',
   },
   footer: {
     powered_by: 'Impulsado por',
