@@ -1,8 +1,8 @@
-import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory, readUserFavorites, writeUserFavorites } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory, readUserFavorites, writeUserFavorites, readUserJourney } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
-import { buildHofHtml, initHofListeners } from './hof';
+import { buildHofHtml, initHofListeners, HOF_GRADIENTS } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml } from './activity';
 
@@ -445,6 +445,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
       </div>`;
     return;
   }
+
   // Overview stats calculation
   const totalWorks = items.length;
   const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
@@ -477,7 +478,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     type,
     count: val.count,
     hours: Number((val.minutes / 60).toFixed(1)),
-  })).sort((a, b) => b.count - a.count);
+  })).sort((a, b) => b.hours - a.hours); // Sorted by hours spent
 
   const ICON_STACK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
   const ICON_CLOCK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
@@ -515,8 +516,155 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     }
   }
 
+  // Scan catalog releases for planning items that haven't released yet
+  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+  const catalogMap = new Map<string, MediaCatalogEntry>(
+    catalogEntries.map(e => [e.external_id, e])
+  );
+
+  const now = new Date();
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // midnight today
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed
+  const currentMonthName = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+  // Get all upcoming releases for items in planning
+  const upcomingPlanningReleases = items
+    .filter(item => item.status === 'planning')
+    .map(item => {
+      const entry = catalogMap.get(item.external_id);
+      if (!entry) return null;
+      
+      const year = entry.release_year;
+      const month = entry.release_month;
+      const day = entry.release_day || 1;
+      
+      if (year && month) {
+        const releaseDate = new Date(year, month - 1, day);
+        if (releaseDate >= todayDate) {
+          return {
+            day,
+            month,
+            year,
+            releaseDate,
+            title: entry.title_main || entry.external_id,
+            type: entry.type,
+            cover: entry.cover_url || ''
+          };
+        }
+      }
+      return null;
+    })
+    .filter(Boolean) as { day: number; month: number; year: number; releaseDate: Date; title: string; type: string; cover: string }[];
+
+  // Sort upcoming planning releases chronologically
+  upcomingPlanningReleases.sort((a, b) => a.releaseDate.getTime() - b.releaseDate.getTime());
+
+  // Filter those that fall into the current calendar month
+  const releasesByDay: Record<number, typeof upcomingPlanningReleases> = {};
+  for (const r of upcomingPlanningReleases) {
+    if (r.year === currentYear && r.month === (currentMonth + 1)) {
+      if (!releasesByDay[r.day]) releasesByDay[r.day] = [];
+      releasesByDay[r.day].push(r);
+    }
+  }
+
+  // Get total days in month
+  const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sunday, 1 = Monday
+  const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+  // Generate calendar cells
+  const calendarCells: string[] = [];
+  const dayHeaders = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const calendarHeaderHtml = dayHeaders.map(h => `<div class="calendar-day-header">${h}</div>`).join('');
+
+  // Padding cells before first day of month
+  for (let i = 0; i < startOffset; i++) {
+    calendarCells.push(`<div class="calendar-day other-month"></div>`);
+  }
+
+  // Real month cells
+  for (let day = 1; day <= totalDaysInMonth; day++) {
+    const isToday = day === now.getDate();
+    const dayReleases = releasesByDay[day] || [];
+    const hasReleases = dayReleases.length > 0;
+    let cellStyle = '';
+    let hasCoverClass = '';
+    let dotHtml = '';
+    let dayTooltip = '';
+    if (hasReleases) {
+      const firstRelease = dayReleases[0];
+      if (firstRelease.cover) {
+        cellStyle = `background-image: url('${firstRelease.cover}');`;
+        hasCoverClass = 'has-cover';
+      } else {
+        dotHtml = `<div class="calendar-day-event-dot"></div>`;
+      }
+      dayTooltip = dayReleases.map(r => `• ${r.title}`).join('\n');
+    }
+
+    calendarCells.push(`
+      <div class="calendar-day ${isToday ? 'today' : ''} ${hasCoverClass}" data-day="${day}" title="${dayTooltip}" style="${cellStyle}">
+        <span class="calendar-day-num">${day}</span>
+        ${dotHtml}
+      </div>
+    `);
+  }
+
+  // Build the list of releases below (list all future releases in planning)
+  const releasesListHtml = upcomingPlanningReleases.length > 0
+    ? upcomingPlanningReleases.map(r => {
+        const typeLabelText = TYPE_LABELS[r.type] || r.type;
+        const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
+        const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
+        const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+        return `
+          <div class="calendar-release-item">
+            <div class="calendar-release-img" style="${style}"></div>
+            <div class="calendar-release-info">
+              <p class="calendar-release-title">${r.title}</p>
+              <p class="calendar-release-meta">${formattedReleaseDate} · ${typeLabelText}</p>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : `<p style="font-size: 0.8rem; color: var(--text-dim); text-align: center; padding: 1.5rem 0;">No tienes lanzamientos pendientes para tus obras en "Planning".</p>`;
+
+  /* ── 3. Calculate Activity Heatmap ─────────────────────────────────────── */
+  const journey = await readUserJourney().catch(() => []);
+  const activityMap: Record<string, number> = {};
+  for (const day of journey) {
+    activityMap[day.date] = (day.events || []).length;
+  }
+
+  const heatmapCells: string[] = [];
+  const startDay = new Date();
+  startDay.setDate(startDay.getDate() - 195); // 196 days ago
+
+  for (let i = 0; i < 196; i++) {
+    const curDate = new Date(startDay);
+    curDate.setDate(curDate.getDate() + i);
+    const dateKey = curDate.toISOString().split('T')[0];
+    const count = activityMap[dateKey] || 0;
+    
+    let level = 0;
+    if (count > 0 && count <= 2) level = 1;
+    else if (count > 2 && count <= 4) level = 2;
+    else if (count > 4 && count <= 6) level = 3;
+    else if (count > 6) level = 4;
+
+    const formattedDate = curDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const tooltipText = `${formattedDate}: ${count} ${count === 1 ? 'actividad' : 'actividades'}`;
+    heatmapCells.push(`<div class="heatmap-cell level-${level}" data-date="${dateKey}" data-tooltip="${tooltipText}"></div>`);
+  }
+
+  /* ── 4. Render Dashboard ───────────────────────────────────────────────── */
+  const maxHours = byType.length > 0 ? Math.max(...byType.map(t => t.hours)) : 1;
+
   el.innerHTML = `
-    <div class="stats-layout">
+    <div class="stats-layout" style="display: flex; flex-direction: column; gap: 1.5rem;">
+      
       <!-- Cards grid -->
       <div class="stats-grid-4">
         <div class="stats-card">
@@ -555,52 +703,106 @@ export async function renderStats(el: HTMLElement): Promise<void> {
         </div>
       ` : ''}
 
-      <!-- Status breakdown -->
-      ${statusList.length > 0 ? `
-        <div class="stats-block">
-          <h3 class="stats-block-title">Por estado</h3>
-          <div class="stats-status-list">
-            ${statusList.map(s => {
-              const pct = ((s.value / totalWorks) * 100).toFixed(0);
-              const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
-              return `
-                <div class="stats-status-row">
-                  <div class="stats-status-icon">${s.icon}</div>
-                  <span class="stats-status-label">${s.label}</span>
-                  <div class="stats-bar-outer">
-                    <div class="stats-bar-inner ${s.color}" style="width: ${pctPrecise}%"></div>
+      <!-- Grid for Heatmap and Charts -->
+      <div class="stats-extra-container">
+        
+        <!-- Left Column: Time & Statuses -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- Time Consumed Chart -->
+          <div class="stats-block-custom">
+            <h3 class="stats-block-title" style="margin-top: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); font-weight: 700;">Tiempo Consumido por Categoría</h3>
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+              ${byType.map(t => {
+                const label = TYPE_LABELS[t.type] || t.type;
+                const percent = maxHours > 0 ? (t.hours / maxHours) * 100 : 0;
+                return `
+                  <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.35rem;">
+                      <span style="color: var(--text-muted); font-weight: 600;">${label}</span>
+                      <span style="color: var(--text-main); font-weight: 800;">${t.hours.toFixed(0)} h <span style="font-size: 0.7rem; color: var(--text-dim); font-weight: 500;">(${t.count} ${t.count === 1 ? 'obra' : 'obras'})</span></span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 99px; overflow: hidden; box-sizing: border-box;">
+                      <div style="width: ${percent}%; height: 100%; background: var(--accent); border-radius: 99px; box-shadow: 0 0 8px var(--accent);"></div>
+                    </div>
                   </div>
-                  <span class="stats-status-count">${s.value}</span>
-                  <span class="stats-status-percent">${pct}%</span>
-                </div>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
-        </div>
-      ` : ''}
 
-      <!-- Per-type breakdown -->
-      ${byType.length > 0 ? `
-        <div class="stats-block">
-          <h3 class="stats-block-title">Por tipo de medio</h3>
-          <div class="stats-grid-3">
-            ${byType.map(t => {
-              const typeIcon = TYPE_ICON[t.type] || TYPE_ICON['book'];
-              const typeLabel = TYPE_LABELS[t.type] || t.type;
-              return `
-                <div class="stats-type-card">
-                  <div class="stats-type-icon">${typeIcon}</div>
-                  <div class="stats-type-info">
-                    <p class="stats-type-label">${typeLabel}</p>
-                    <p class="stats-type-count">${t.count} obras</p>
-                    ${t.hours > 0 ? `<p class="stats-type-hours">${t.hours} h</p>` : ''}
+          <!-- Status breakdown -->
+          ${statusList.length > 0 ? `
+            <div class="stats-block" style="margin: 0;">
+              <h3 class="stats-block-title" style="margin-top: 0;">Por estado</h3>
+              <div class="stats-status-list">
+                ${statusList.map(s => {
+                  const pct = ((s.value / totalWorks) * 100).toFixed(0);
+                  const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
+                  return `
+                    <div class="stats-status-row">
+                      <div class="stats-status-icon">${s.icon}</div>
+                      <span class="stats-status-label">${s.label}</span>
+                      <div class="stats-bar-outer">
+                        <div class="stats-bar-inner ${s.color}" style="width: ${pctPrecise}%"></div>
+                      </div>
+                      <span class="stats-status-count">${s.value}</span>
+                      <span class="stats-status-percent">${pct}%</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Per-type count breakdown (compact style) -->
+          <div class="stats-block" style="margin: 0;">
+            <h3 class="stats-block-title" style="margin-top: 0;">Distribución de obras</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
+              ${byType.map(t => {
+                const label = TYPE_LABELS[t.type] || t.type;
+                return `
+                  <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 0.5rem; border-radius: var(--radius-sm); text-align: center;">
+                    <span style="font-size: 0.65rem; color: var(--text-muted); display: block; text-transform: uppercase;">${label}</span>
+                    <span style="font-size: 0.9rem; color: var(--text-main); font-weight: 800;">${t.count}</span>
                   </div>
-                </div>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Release Calendar -->
+        <div class="stats-block-custom">
+          <h3 class="stats-block-title" style="margin-top: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); font-weight: 700; display: flex; justify-content: space-between; align-items: center;">
+            <span>Lanzamientos en Espera</span>
+            <span style="font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize;">${currentMonthName}</span>
+          </h3>
+          <div class="calendar-grid">
+            ${calendarHeaderHtml}
+            ${calendarCells.join('')}
           </div>
         </div>
-      ` : ''}
+
+        <!-- Bottom Row: Activity Heatmap (Full Width) -->
+        <div class="stats-block-custom stats-card-full">
+          <h3 class="stats-block-title" style="margin-top: 0; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); font-weight: 700;">Mapa de calor de actividad (Últimos 6 meses)</h3>
+          <div class="stats-heatmap-grid">
+            ${heatmapCells.join('')}
+          </div>
+          <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.35rem; margin-top: 0.75rem; font-size: 0.65rem; color: var(--text-dim);">
+            <span>Menos</span>
+            <div style="width: 8px; height: 8px; background: rgba(255,255,255,0.02); border-radius: 1px;"></div>
+            <div style="width: 8px; height: 8px; background: color-mix(in srgb, var(--accent) 25%, rgba(255,255,255,0.02)); border-radius: 1px;"></div>
+            <div style="width: 8px; height: 8px; background: color-mix(in srgb, var(--accent) 50%, rgba(255,255,255,0.02)); border-radius: 1px;"></div>
+            <div style="width: 8px; height: 8px; background: color-mix(in srgb, var(--accent) 75%, rgba(255,255,255,0.02)); border-radius: 1px;"></div>
+            <div style="width: 8px; height: 8px; background: var(--accent); border-radius: 1px; box-shadow: 0 0 4px var(--accent);"></div>
+            <span>Más</span>
+          </div>
+        </div>
+
+      </div>
     </div>
   `;
 }

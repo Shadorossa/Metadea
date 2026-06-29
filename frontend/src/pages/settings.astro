@@ -2,9 +2,11 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/settings.css';
 import { getLang, useTranslations } from '../i18n/index';
+import pkg from '../../package.json';
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
+const version = pkg.version;
 ---
 
 <BaseLayout title={`${t.settings.title} — Metadea`} lang={lang}>
@@ -235,7 +237,7 @@ const t = useTranslations(lang);
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
                 <div>
                   <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">{t.settings.app_version_label}</span>
-                  <span class="app-curr-ver" style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"></span>
+                  <span class="app-curr-ver" data-version={version} style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"></span>
                 </div>
                 <button class="btn btn--sm btn--secondary" id="app-check-update-btn">{t.settings.app_check_update}</button>
               </div>
@@ -358,17 +360,18 @@ const t = useTranslations(lang);
     // Application/Updater Section
     const checkBtn = document.getElementById('app-check-update-btn') as HTMLButtonElement | null;
     const statusText = document.getElementById('updater-status-text');
-    const versionSpan = document.querySelector('.app-curr-ver');
+    const versionSpan = document.querySelector('.app-curr-ver') as HTMLElement | null;
+    const defaultVersion = versionSpan?.dataset.version || '0.1.9';
 
     if (typeof window !== 'undefined' && ('__TAURI_IPC__' in window)) {
       import('@tauri-apps/api/app').then(async ({ getVersion }) => {
         const currentVersion = await getVersion();
         if (versionSpan) versionSpan.textContent = `v${currentVersion}`;
       }).catch(() => {
-        if (versionSpan) versionSpan.textContent = 'v0.1.6';
+        if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
       });
     } else {
-      if (versionSpan) versionSpan.textContent = 'v0.1.6 (Web)';
+      if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
     }
 
     if (checkBtn) {
