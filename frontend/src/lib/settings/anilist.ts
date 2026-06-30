@@ -28,9 +28,18 @@ export function initAniListAuth() {
     if (anilistTokenInput) anilistTokenInput.value = '';
   }
 
-  // Load existing token
-  invoke<string | null>('get_anilist_token').then(cachedToken => {
+  // Load existing token from both sources
+  const lsToken = typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
+  const tokenPromise = lsToken
+    ? Promise.resolve(lsToken)
+    : invoke<string | null>('get_anilist_token').catch(() => null);
+
+  tokenPromise.then(cachedToken => {
     if (cachedToken) {
+      // Sync to localStorage if loaded from Tauri
+      if (typeof localStorage !== 'undefined' && !lsToken) {
+        localStorage.setItem('metadea_anilist_token', cachedToken);
+      }
       if (anilistLoginBtn) {
         anilistLoginBtn.disabled = true;
         anilistLoginBtn.textContent = 'Verificando...';
@@ -49,10 +58,16 @@ export function initAniListAuth() {
           }
         } else {
           invoke('delete_anilist_token').catch(console.error);
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('metadea_anilist_token');
+          }
           showDisconnected();
         }
       }).catch(() => {
         invoke('delete_anilist_token').catch(console.error);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('metadea_anilist_token');
+        }
         showDisconnected();
       });
     } else {
@@ -65,10 +80,14 @@ export function initAniListAuth() {
   if (anilistLoginBtn) {
     anilistLoginBtn.addEventListener('click', async () => {
       const token = await invoke<string | null>('get_get_github_token').catch(() => null); // Check session
-      const cachedToken = await invoke<string | null>('get_anilist_token').catch(() => null);
+      const lsToken = typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
+      const cachedToken = lsToken || (await invoke<string | null>('get_anilist_token').catch(() => null));
       if (cachedToken) {
         // Logout
         await invoke('delete_anilist_token').catch(console.error);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('metadea_anilist_token');
+        }
         showDisconnected();
         return;
       }
@@ -120,6 +139,9 @@ export function initAniListAuth() {
 
         if (user) {
           await invoke('save_anilist_token', { token: rawToken });
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('metadea_anilist_token', rawToken);
+          }
           if (anilistTokenModal) anilistTokenModal.style.display = 'none';
 
           if (anilistUserStatus) anilistUserStatus.textContent = `@${user.name}`;

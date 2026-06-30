@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData } from '../../lib/media/mediaService';
 import type { LibraryEntry } from '../../lib/tauri';

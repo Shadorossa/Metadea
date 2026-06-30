@@ -1,11 +1,11 @@
-import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, invoke } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
 const IMPORT_QUERY = `
 query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
-  Page(page: $page, perPage: 50) {
+  Page(page: $page, perPage: 25) {
     pageInfo { hasNextPage currentPage }
     mediaList(userId: $userId, type: $type) {
       mediaId
@@ -32,7 +32,7 @@ query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
 
 const CURRENT_USER_QUERY = `
 query {
-  Viewer { id username }
+  Viewer { id name }
 }`;
 
 export interface ImportProgress {
@@ -49,7 +49,7 @@ export async function importFromAniList(
   onProgress: (progress: ImportProgress) => void
 ): Promise<{ ok: boolean; error?: string; imported?: number }> {
   try {
-    const token = await invoke<string | null>('get_anilist_token').catch(() => null);
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
     if (!token) return { ok: false, error: 'No AniList token found' };
 
     onProgress({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });
@@ -64,16 +64,34 @@ export async function importFromAniList(
       body: JSON.stringify({ query: CURRENT_USER_QUERY }),
     });
 
-    if (!userRes.ok) return { ok: false, error: 'Failed to get user info' };
+    const userData = await userRes.json() as any;
+    console.log('AniList user response:', userRes.status, userData);
 
-    const userData = await userRes.json() as { data?: { Viewer?: { id: number; username: string } } };
-    const userId = userData.data?.Viewer?.id;
-    if (!userId) return { ok: false, error: 'Could not get user ID' };
+    if (!userRes.ok) {
+      const errorMsg = userData?.errors?.[0]?.message || `HTTP ${userRes.status}`;
+      console.error('Failed to get user info:', errorMsg);
+      return { ok: false, error: errorMsg };
+    }
+
+    if (userData?.errors) {
+      const errorMsg = userData.errors[0]?.message || 'Unknown GraphQL error';
+      console.error('GraphQL error:', errorMsg);
+      return { ok: false, error: errorMsg };
+    }
+
+    const userId = userData?.data?.Viewer?.id;
+    if (!userId) {
+      console.error('No user ID found in response:', userData);
+      return { ok: false, error: 'Could not get user ID' };
+    }
 
     const anilistMediaType: MediaType = mediaType === 'anime' ? 'ANIME' : 'MANGA';
     const allMediaList: any[] = [];
     let page = 1;
     let hasNextPage = true;
+
+    // Delay function to respect rate limits
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     // Fetch all pages
     while (hasNextPage) {
@@ -91,15 +109,28 @@ export async function importFromAniList(
         }),
       });
 
-      if (!pageRes.ok) return { ok: false, error: `HTTP ${pageRes.status} on page ${page}` };
+      const pageData = await pageRes.json() as any;
+      if (!pageRes.ok) {
+        const errorMsg = pageData?.errors?.[0]?.message || `HTTP ${pageRes.status} on page ${page}`;
+        return { ok: false, error: errorMsg };
+      }
 
-      const pageData = await pageRes.json() as { data?: { Page?: { pageInfo?: { hasNextPage: boolean }; mediaList?: any[] } } };
-      const pageInfo = pageData.data?.Page?.pageInfo;
-      const mediaList = pageData.data?.Page?.mediaList ?? [];
+      if (pageData?.errors) {
+        const errorMsg = pageData.errors[0]?.message || 'Unknown GraphQL error';
+        return { ok: false, error: errorMsg };
+      }
+
+      const pageInfo = pageData?.data?.Page?.pageInfo;
+      const mediaList = pageData?.data?.Page?.mediaList ?? [];
 
       allMediaList.push(...mediaList);
       hasNextPage = pageInfo?.hasNextPage ?? false;
       page++;
+
+      // Rate limiting: wait 2 seconds before next request
+      if (hasNextPage) {
+        await delay(2000);
+      }
     }
 
     onProgress({ current: 1, total: 1, status: 'importing', message: `Importando ${allMediaList.length} items...` });
@@ -138,7 +169,41 @@ export async function importFromAniList(
         minutes_spent: existing?.minutes_spent ?? 0,
       };
 
-      await saveLibraryEntry(externalId, entry).catch(console.error);
+      // Save to library
+      await saveLibraryEntry(entry).catch(console.error);
+
+      // Save to catalog if not already there
+      const catalogEntry = catalogMap.get(externalId);
+      if (!catalogEntry) {
+        const now = new Date().toISOString();
+        const newCatalogEntry = {
+          id: externalId,
+          external_id: externalId,
+          type: mediaItem.media?.type?.toLowerCase() ?? mediaType,
+          format: mediaItem.media?.format ?? null,
+          source: mediaItem.media?.source ?? null,
+          title_main: mediaItem.media?.title?.romaji ?? mediaItem.media?.title?.english ?? mediaItem.media?.title?.native ?? null,
+          title_romaji: mediaItem.media?.title?.romaji ?? null,
+          title_native: mediaItem.media?.title?.native ?? null,
+          synopsis: null,
+          cover_url: mediaItem.media?.coverImage?.large ?? null,
+          banners_csv: null,
+          release_year: null,
+          release_month: null,
+          release_day: null,
+          status: mediaItem.media?.status ?? null,
+          genres_csv: mediaItem.media?.genres?.join(',') ?? null,
+          score_avg: null,
+          score_count: null,
+          total_episodes: mediaItem.media?.type === 'ANIME' ? null : null,
+          total_chapters: mediaItem.media?.type === 'MANGA' ? null : null,
+          total_volumes: null,
+          created_at: now,
+          updated_at: now,
+        };
+        await saveCatalogEntry(newCatalogEntry).catch(console.error);
+      }
+
       imported++;
 
       onProgress({
