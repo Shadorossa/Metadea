@@ -262,7 +262,7 @@ const version = pkg.version;
           
           <div class="settings-section" style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; width: 100%;">
+            <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
               <!-- GitHub Auth Block -->
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -288,7 +288,29 @@ const version = pkg.version;
                     <span id="anilist-user-status" style="font-size: 0.75rem; color: var(--text-dim); display: block;">No conectado</span>
                   </div>
                 </div>
-                <button class="btn btn--sm btn--primary" id="anilist-login-btn">Conectar</button>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn--sm btn--secondary" id="anilist-import-btn" disabled>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Importar
+                  </button>
+                  <button class="btn btn--sm btn--primary" id="anilist-login-btn">Desconectar</button>
+                </div>
+              </div>
+
+              <!-- Import Modal -->
+              <div id="anilist-import-choose-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
+                <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">¿Qué descargar de AniList?</span>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                  <button class="btn btn--sm btn--primary" id="anilist-import-anime-btn" style="width: 100%;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 5v14M5 12h14"/></svg>
+                    Descargar Anime
+                  </button>
+                  <button class="btn btn--sm btn--primary" id="anilist-import-manga-btn" style="width: 100%;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 5v14M5 12h14"/></svg>
+                    Descargar Manga
+                  </button>
+                  <button class="btn btn--sm btn--ghost" id="anilist-import-cancel-btn" style="width: 100%; margin-top: 0.5rem;">Cancelar</button>
+                </div>
               </div>
             </div>
 
@@ -352,6 +374,7 @@ const version = pkg.version;
   import { initFontPicker } from '../lib/settings/fonts';
   import { initGitHubAuth } from '../lib/settings/github';
   import { initAniListAuth } from '../lib/settings/anilist';
+  import { importFromAniList } from '../lib/anilist/import';
   import { getT } from '../i18n/client';
 
   function showToast(msg?: string) {
@@ -377,6 +400,105 @@ const version = pkg.version;
     initEnvironment(showToast);
     initGitHubAuth();
     initAniListAuth();
+
+    // AniList Import
+    const importBtn = document.getElementById('anilist-import-btn') as HTMLButtonElement | null;
+    const importChooseModal = document.getElementById('anilist-import-choose-modal') as HTMLElement | null;
+    const importAnimeBtn = document.getElementById('anilist-import-anime-btn') as HTMLButtonElement | null;
+    const importMangaBtn = document.getElementById('anilist-import-manga-btn') as HTMLButtonElement | null;
+    const importCancelBtn = document.getElementById('anilist-import-cancel-btn') as HTMLButtonElement | null;
+
+    function updateImportButtons() {
+      const hasToken = localStorage.getItem('metadea_anilist_token');
+      if (importBtn) importBtn.disabled = !hasToken;
+    }
+
+    function hideChooseModal() {
+      if (importChooseModal) importChooseModal.style.display = 'none';
+    }
+
+    function showChooseModal() {
+      if (importChooseModal) importChooseModal.style.display = 'flex';
+    }
+
+    function createProgressModal(title: string) {
+      const modal = document.createElement('div');
+      modal.id = 'anilist-import-progress-modal';
+      modal.style.cssText = `
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: var(--bg-card); border: 1px solid var(--border-color);
+        border-radius: var(--radius-md); padding: 2rem; min-width: 300px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000;
+      `;
+      modal.innerHTML = `
+        <h3 style="margin: 0 0 1rem; font-size: 0.95rem; color: var(--text-main);">${title}</h3>
+        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="import-status">Iniciando...</div>
+          <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+            <div id="import-progress" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.3s;"></div>
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.5rem; text-align: right;" id="import-count">0/0</div>
+        </div>
+      `;
+
+      const backdrop = document.createElement('div');
+      backdrop.id = 'anilist-import-progress-backdrop';
+      backdrop.style.cssText = `position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;`;
+
+      document.body.appendChild(backdrop);
+      document.body.appendChild(modal);
+      return { modal, backdrop };
+    }
+
+    async function doImport(mediaType: 'anime' | 'manga') {
+      hideChooseModal();
+      const { modal, backdrop } = createProgressModal(`Descargando ${mediaType}...`);
+
+      try {
+        const result = await importFromAniList(mediaType, (progress) => {
+          const statusEl = document.getElementById('import-status');
+          const progressEl = document.getElementById('import-progress');
+          const countEl = document.getElementById('import-count');
+
+          if (statusEl) statusEl.textContent = progress.message || progress.status;
+          if (progressEl && progress.total > 0) {
+            const percent = (progress.current / progress.total) * 100;
+            progressEl.style.width = `${percent}%`;
+          }
+          if (countEl) countEl.textContent = `${progress.current}/${progress.total}`;
+        });
+
+        modal.remove();
+        backdrop.remove();
+
+        if (result.ok) {
+          showToast(`✓ Importados ${result.imported ?? 0} items`);
+        } else {
+          showToast(`Error: ${result.error}`);
+        }
+      } catch (e) {
+        modal.remove();
+        backdrop.remove();
+        showToast(`Error: ${e?.message ?? 'Import failed'}`);
+      } finally {
+        updateImportButtons();
+      }
+    }
+
+    if (importBtn) {
+      importBtn.addEventListener('click', showChooseModal);
+    }
+    if (importAnimeBtn) {
+      importAnimeBtn.addEventListener('click', () => doImport('anime'));
+    }
+    if (importMangaBtn) {
+      importMangaBtn.addEventListener('click', () => doImport('manga'));
+    }
+    if (importCancelBtn) {
+      importCancelBtn.addEventListener('click', hideChooseModal);
+    }
+
+    updateImportButtons();
 
     // Rating System
     const activeSystem = localStorage.getItem('metadea_rating_system') || '5-star';
