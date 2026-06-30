@@ -477,7 +477,6 @@ const version = pkg.version;
         try {
           const { check } = await import('@tauri-apps/plugin-updater');
           const { relaunch } = await import('@tauri-apps/plugin-process');
-
           const update = await check();
           if (update && update.available) {
             if (statusText) {
@@ -499,7 +498,7 @@ const version = pkg.version;
         } catch (error) {
           console.error(error);
           if (statusText) {
-            statusText.textContent = "Error al buscar actualizaciones.";
+            statusText.textContent = `Error al buscar actualizaciones: ${error?.message || error || 'Conexión fallida'}`;
             statusText.style.display = 'block';
           }
         } finally {

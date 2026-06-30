@@ -17,7 +17,13 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      exclude: ['@tauri-apps/api', '@tauri-apps/api/core', '@tauri-apps/api/path'],
+      exclude: [
+        '@tauri-apps/api',
+        '@tauri-apps/api/core',
+        '@tauri-apps/api/path',
+        '@tauri-apps/plugin-updater',
+        '@tauri-apps/plugin-process'
+      ],
     },
     server: {
       watch: {
