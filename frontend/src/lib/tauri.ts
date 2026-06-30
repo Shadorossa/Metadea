@@ -5,7 +5,7 @@ const isTauri = (): boolean => {
   return false;
 };
 
-async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) {
     console.warn(`[Tauri] "${cmd}" called outside Tauri`);
     throw new Error('Tauri not available');

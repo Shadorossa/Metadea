@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, invoke } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 
 const ANILIST_API = 'https://graphql.anilist.co';
@@ -49,7 +49,7 @@ export async function importFromAniList(
   onProgress: (progress: ImportProgress) => void
 ): Promise<{ ok: boolean; error?: string; imported?: number }> {
   try {
-    const token = localStorage.getItem('metadea_anilist_token');
+    const token = await invoke<string | null>('get_anilist_token').catch(() => null);
     if (!token) return { ok: false, error: 'No AniList token found' };
 
     onProgress({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });

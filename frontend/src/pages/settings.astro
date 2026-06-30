@@ -921,8 +921,9 @@ const version = pkg.version;
       "anilist-import-cancel-btn",
     ) as HTMLButtonElement | null;
 
-    function updateImportButtons() {
-      const hasToken = localStorage.getItem("metadea_anilist_token");
+    async function updateImportButtons() {
+      const { invoke } = await import("../lib/tauri");
+      const hasToken = await invoke("get_anilist_token").catch(() => null);
       if (importBtn) importBtn.disabled = !hasToken;
     }
 
@@ -1009,7 +1010,7 @@ const version = pkg.version;
         backdrop.remove();
         showToast(`Error: ${e?.message ?? "Import failed"}`);
       } finally {
-        updateImportButtons();
+        await updateImportButtons();
       }
     }
 
