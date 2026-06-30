@@ -67,6 +67,8 @@ pub fn run() {
             user_library::write_user_favorites,
             user_library::read_user_journey,
             user_library::write_user_journey,
+            user_library::read_user_lists,
+            user_library::write_user_lists,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::delete_catalog_entry,

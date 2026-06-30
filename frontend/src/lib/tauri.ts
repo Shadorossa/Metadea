@@ -327,6 +327,24 @@ export async function readUserJourney(): Promise<DayJourney[]> {
   return readStoredJson<DayJourney[]>('read_user_journey', 'user_journey', []);
 }
 
+// ─── User Lists ──────────────────────────────────────────────────────────────
+
+export interface UserList {
+  id:          string;
+  name:        string;
+  description: string;
+  created_at:  string;
+  item_ids:    string[];
+}
+
+export async function readUserLists(): Promise<UserList[]> {
+  return readStoredJson<UserList[]>('read_user_lists', 'user_lists', []);
+}
+
+export async function writeUserLists(lists: UserList[]): Promise<void> {
+  return writeStoredJson('write_user_lists', 'user_lists', lists);
+}
+
 export async function writeUserJourney(journey: DayJourney[]): Promise<void> {
   return writeStoredJson('write_user_journey', 'user_journey', journey);
 }
