@@ -827,7 +827,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
   let modified = false;
 
-  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'novel', 'series', 'movie', 'book'];
+  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'novel', 'series', 'movie', 'book', 'character'];
   for (const k of favKeys) {
     if (!favData[k]) {
       favData[k] = [];
@@ -860,6 +860,9 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
 
   const getOrderedItems = (catKey: string) => {
     const ids = favData[catKey] || [];
+    if (catKey === 'character') {
+      return ids.map(id => ({ external_id: id, type: 'character' }));
+    }
     return ids.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
   };
 
@@ -878,6 +881,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       { key: 'series', label: s.series, getItems: () => getOrderedItems('series'), icon: TYPE_ICON['series'] },
       { key: 'movie', label: s.movie, getItems: () => getOrderedItems('movie'), icon: TYPE_ICON['movie'] },
       { key: 'book', label: s.book, getItems: () => getOrderedItems('book'), icon: TYPE_ICON['book'] },
+      { key: 'character', label: 'Personajes', getItems: () => getOrderedItems('character'), icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` },
     ];
 
     const cat = categories.find(c => c.key === activeCatKey) || categories[0];
@@ -887,8 +891,12 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const meta = catalogMap.get(item.external_id);
       const title = meta?.title_main ?? item.external_id;
       const cover = meta?.cover_url ?? '';
-      const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-      const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+      const mediaUrl = item.type === 'character'
+        ? `/character?id=${item.external_id.replace('character:', '')}`
+        : `/media?id=${encodeURIComponent(item.external_id)}`;
+      const typeIc = item.type === 'character'
+        ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+        : (TYPE_ICON[item.type] ?? TYPE_ICON['book']);
       const isCrowned = favData.multimedia?.includes(item.external_id);
 
       return `
@@ -897,7 +905,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           <div class="fav-badge">#${idx + 1}</div>
 
           <!-- Crown button overlay -->
-          ${activeCatKey !== 'multimedia' ? `
+          ${activeCatKey !== 'multimedia' && item.type !== 'character' ? `
             <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
             </button>
@@ -910,7 +918,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           <div class="fav-overlay">
             <span class="fav-title">${title}</span>
             <div class="fav-meta">
-              <span>★ ${(item.rating ? (item.rating / 2).toFixed(1) : '0.0')}</span>
+              ${item.type !== 'character' ? `<span>★ ${(item.rating ? (item.rating / 2).toFixed(1) : '0.0')}</span>` : ''}
               <span class="fav-meta-type">${typeIc}</span>
             </div>
           </div>

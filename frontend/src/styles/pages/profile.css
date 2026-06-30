@@ -680,7 +680,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 0;
+  margin: -2rem 0 0 0;
   padding: 0;
 }
 
@@ -696,6 +696,7 @@
 
 .mh-row-bottom {
   transform: translateX(4rem);
+  margin-top: -3rem;
 }
 
 .mh-card {
@@ -713,7 +714,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  clip-path: inset(38% 0 38% 0);
+  clip-path: inset(20% 0 20% 0);
 }
 
 .mh-card:hover {

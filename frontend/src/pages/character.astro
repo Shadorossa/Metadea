@@ -51,8 +51,18 @@ const lang = getLang(Astro.url);
         
         <!-- Nombres y Cabecera -->
         <div class="character-names-header">
-          <h1 class="character-name-title" id="char-name-full"></h1>
-          <p class="character-name-native" id="char-name-native" style="display: none;"></p>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+            <div>
+              <h1 class="character-name-title" id="char-name-full"></h1>
+              <p class="character-name-native" id="char-name-native" style="display: none; margin: 0;"></p>
+            </div>
+            <button class="btn btn--sm btn--secondary" id="char-fav-btn" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg id="char-fav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); transition: fill 0.2s, stroke 0.2s;">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              <span id="char-fav-text">Favorito</span>
+            </button>
+          </div>
           <div class="character-alt-names" id="char-alt-names" style="display: none;">
             <!-- Rellenado dinámicamente por JS -->
           </div>
@@ -85,6 +95,8 @@ const lang = getLang(Astro.url);
 
 <script>
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
+  import { invoke } from '@tauri-apps/api/core';
+  import { readUserFavorites, writeUserFavorites } from '../lib/tauri';
 
   async function loadCharacterData() {
     const loadingEl = document.getElementById('character-loading')!;
@@ -381,6 +393,60 @@ const lang = getLang(Astro.url);
       } else {
         appearancesSection.style.display = 'none';
       }
+
+      // ── CACHE CHARACTER IN CATALOG ─────────────────────────────────────
+      const charKey = `character:${characterId}`;
+      await invoke('save_catalog_entry', {
+        entry: {
+          external_id: charKey,
+          type: 'character',
+          title_main: character.name.full,
+          cover_url: character.image?.large || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          id: ''
+        }
+      }).catch(console.error);
+
+      // ── FAVORITE BUTTON LOGIC ──────────────────────────────────────────
+      const favBtn = document.getElementById('char-fav-btn')!;
+      const favIcon = document.getElementById('char-fav-icon')!;
+      const favText = document.getElementById('char-fav-text')!;
+      
+      let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+      if (!favData.character) favData.character = [];
+
+      function updateFavUI() {
+        const isFav = favData.character.includes(charKey);
+        if (isFav) {
+          favIcon.setAttribute('fill', 'var(--accent)');
+          favIcon.setAttribute('stroke', 'var(--accent)');
+          favText.textContent = 'Favorito';
+          favBtn.classList.remove('btn--secondary');
+          favBtn.classList.add('btn--primary');
+        } else {
+          favIcon.setAttribute('fill', 'none');
+          favIcon.setAttribute('stroke', 'currentColor');
+          favText.textContent = 'Añadir a Favoritos';
+          favBtn.classList.remove('btn--primary');
+          favBtn.classList.add('btn--secondary');
+        }
+      }
+
+      updateFavUI();
+
+      const newFavBtn = favBtn.cloneNode(true) as HTMLButtonElement;
+      favBtn.parentNode!.replaceChild(newFavBtn, favBtn);
+
+      newFavBtn.addEventListener('click', async () => {
+        if (favData.character.includes(charKey)) {
+          favData.character = favData.character.filter((id: string) => id !== charKey);
+        } else {
+          favData.character.push(charKey);
+        }
+        await writeUserFavorites(favData).catch(console.error);
+        updateFavUI();
+      });
 
       // Mostrar el contenido final
       loadingEl.style.display = 'none';
