@@ -1,24 +1,9 @@
 const isTauri = (): boolean => {
   if (typeof window === 'undefined') return false;
-  // __TAURI_IPC__ is always injected by the Tauri webview (most reliable)
   if ('__TAURI_IPC__' in window) return true;
-  // __TAURI__ is available when withGlobalTauri: true
   if ('__TAURI__' in window) return true;
   return false;
 };
-
-/** Convert a file path to a data URL (base64 encoded). */
-export async function pathToDataUrl(filePath: string): Promise<string | null> {
-  if (!isTauri()) return null;
-  try {
-    // Use invoke to call a custom Tauri command that reads and encodes the file
-    const dataUrl = await invoke<string>('file_to_data_url', { filePath });
-    return dataUrl;
-  } catch (err) {
-    console.warn('[Tauri] Failed to read file:', filePath, err);
-    return null;
-  }
-}
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) {
@@ -26,11 +11,49 @@ async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T
     throw new Error('Tauri not available');
   }
   const tauri = (window as any).__TAURI__;
-  if (tauri?.core?.invoke) {
-    return tauri.core.invoke(cmd, args);
-  }
+  if (tauri?.core?.invoke) return tauri.core.invoke(cmd, args);
   const { invoke: tauriInvoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
   return tauriInvoke<T>(cmd, args);
+}
+
+// No-op when not in Tauri
+async function tauriRun(cmd: string, args?: Record<string, unknown>): Promise<void> {
+  if (!isTauri()) return;
+  return invoke<void>(cmd, args);
+}
+
+// Returns fallback when not in Tauri
+async function tauriCmd<T>(cmd: string, fallback: T, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri()) return fallback;
+  return invoke<T>(cmd, args);
+}
+
+// Returns fallback when not in Tauri or on error
+async function tauriTry<T>(cmd: string, fallback: T, args?: Record<string, unknown>): Promise<T> {
+  if (!isTauri()) return fallback;
+  try { return await invoke<T>(cmd, args); } catch { return fallback; }
+}
+
+// Read a JSON-string file from Tauri, or localStorage in browser
+async function readStoredJson<T>(cmd: string, localKey: string, fallback: T): Promise<T> {
+  if (!isTauri()) {
+    try {
+      const s = localStorage.getItem(localKey);
+      return s ? JSON.parse(s) : fallback;
+    } catch { return fallback; }
+  }
+  try { return JSON.parse(await invoke<string>(cmd)); } catch { return fallback; }
+}
+
+// Write a value as a JSON-string file to Tauri, or localStorage in browser
+async function writeStoredJson<T>(cmd: string, localKey: string, value: T, argKey = 'content'): Promise<void> {
+  const content = JSON.stringify(value, null, 2);
+  if (!isTauri()) { localStorage.setItem(localKey, content); return; }
+  return invoke<void>(cmd, { [argKey]: content });
+}
+
+export async function pathToDataUrl(filePath: string): Promise<string | null> {
+  return tauriTry<string | null>('file_to_data_url', null, { filePath });
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -41,22 +64,15 @@ export interface AuthSession {
 }
 
 export async function storeAuthToken(token: string, username: string): Promise<void> {
-  // Siempre escribir en localStorage para acceso rápido sin depender del DB
   localStorage.setItem('auth_token',    token);
   localStorage.setItem('auth_username', username);
-  // Persistir también en SQLite de Tauri si está disponible
-  if (isTauri()) {
-    await invoke('store_auth_token', { token, username });
-  }
+  if (isTauri()) await invoke('store_auth_token', { token, username });
 }
 
 export async function getAuthToken(): Promise<AuthSession | null> {
-  // Ruta rápida: localStorage (funciona en browser y en Tauri sin init de DB)
   const token    = localStorage.getItem('auth_token');
   const username = localStorage.getItem('auth_username') ?? '';
   if (token) return { token, username };
-
-  // Ruta lenta: SQLite de Tauri (fallback si localStorage fue borrado)
   if (isTauri()) {
     try {
       const session = await invoke<AuthSession | null>('get_auth_token');
@@ -65,9 +81,7 @@ export async function getAuthToken(): Promise<AuthSession | null> {
         localStorage.setItem('auth_username', session.username);
       }
       return session;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }
   return null;
 }
@@ -75,9 +89,7 @@ export async function getAuthToken(): Promise<AuthSession | null> {
 export async function clearAuthToken(): Promise<void> {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_username');
-  if (isTauri()) {
-    await invoke('clear_auth_token');
-  }
+  if (isTauri()) await invoke('clear_auth_token');
 }
 
 // ─── Database ────────────────────────────────────────────────────────────────
@@ -95,11 +107,8 @@ interface LibraryItem {
 
 export async function initTauriDatabase(): Promise<string> {
   if (!isTauri()) return 'not-tauri';
-  // Use path API from window.__TAURI__ global
-  const tauri = (window as any).__TAURI__;
-  const dataDir = tauri?.path?.appDataDir
-    ? await tauri.path.appDataDir()
-    : 'unknown';
+  const tauri   = (window as any).__TAURI__;
+  const dataDir = tauri?.path?.appDataDir ? await tauri.path.appDataDir() : 'unknown';
   return invoke<string>('init_database', { app_data_dir: dataDir });
 }
 
@@ -109,10 +118,7 @@ export async function saveLibraryItem(
   options?:    { rating?: number; status?: string },
 ): Promise<string> {
   return invoke<string>('save_library_item', {
-    external_id,
-    item_type,
-    rating: options?.rating,
-    status: options?.status,
+    external_id, item_type, rating: options?.rating, status: options?.status,
   });
 }
 
@@ -127,13 +133,13 @@ export async function getLibraryStats(): Promise<{ total: number; by_type: Recor
 // ─── Local Library ────────────────────────────────────────────────────────────
 
 export interface LocalGame {
-  name:             string;
-  launcher:         'steam' | 'epic' | 'xbox' | 'gog' | 'ea' | 'local';
-  app_id?:          string;
-  install_path?:    string;
+  name:              string;
+  launcher:          'steam' | 'epic' | 'xbox' | 'gog' | 'ea' | 'local';
+  app_id?:           string;
+  install_path?:     string;
   playtime_minutes?: number;
-  last_played?:     number;
-  installed?:       boolean;
+  last_played?:      number;
+  installed?:        boolean;
 }
 
 export interface SteamOwnedGame {
@@ -145,9 +151,9 @@ export interface SteamOwnedGame {
 }
 
 export interface LocalFolderEntry {
-  name:        string;
-  is_dir:      boolean;
-  size:        number;
+  name:         string;
+  is_dir:       boolean;
+  size:         number;
   child_count?: number;
 }
 
@@ -157,32 +163,19 @@ export interface SavedFolder {
 }
 
 export async function pickFolder(): Promise<string | null> {
-  if (!isTauri()) {
-    // Fallback: no picker disponible en browser
-    return null;
-  }
-  return invoke<string | null>('pick_folder');
+  return tauriCmd<string | null>('pick_folder', null);
 }
 
 export async function scanFolderContents(path: string): Promise<LocalFolderEntry[]> {
-  if (!isTauri()) {
-    // Fallback: no access al filesystem en browser
-    return [];
-  }
-  return invoke<LocalFolderEntry[]>('scan_folder_contents', { path });
+  return tauriCmd<LocalFolderEntry[]>('scan_folder_contents', [], { path });
 }
 
 export async function scanAllGames(): Promise<LocalGame[]> {
-  if (!isTauri()) {
-    // Fallback: retorna array vacío
-    return [];
-  }
-  return invoke<LocalGame[]>('scan_all_games');
+  return tauriCmd<LocalGame[]>('scan_all_games', []);
 }
 
 export async function getLocalFolders(): Promise<SavedFolder[]> {
   if (!isTauri()) {
-    // Fallback a localStorage
     const stored = localStorage.getItem('local_folders');
     return stored ? JSON.parse(stored) : [];
   }
@@ -190,35 +183,18 @@ export async function getLocalFolders(): Promise<SavedFolder[]> {
 }
 
 export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
-  if (!isTauri()) {
-    // Fallback a localStorage
-    localStorage.setItem('local_folders', JSON.stringify(folders));
-    return;
-  }
+  if (!isTauri()) { localStorage.setItem('local_folders', JSON.stringify(folders)); return; }
   return invoke<void>('save_local_folders', { folders_json: JSON.stringify(folders) });
 }
 
 // ─── Category routes ──────────────────────────────────────────────────────────
 
 export async function readRoutes(): Promise<Record<string, string>> {
-  if (!isTauri()) {
-    const stored = localStorage.getItem('category_routes');
-    return stored ? JSON.parse(stored) : {};
-  }
-  try {
-    const json = await invoke<string>('read_routes');
-    return JSON.parse(json);
-  } catch {
-    return {};
-  }
+  return readStoredJson<Record<string, string>>('read_routes', 'category_routes', {});
 }
 
 export async function writeRoutes(routes: Record<string, string>): Promise<void> {
-  if (!isTauri()) {
-    localStorage.setItem('category_routes', JSON.stringify(routes));
-    return;
-  }
-  await invoke<void>('write_routes', { routes_json: JSON.stringify(routes) });
+  return writeStoredJson('write_routes', 'category_routes', routes, 'routes_json');
 }
 
 // ─── Env config ───────────────────────────────────────────────────────────────
@@ -232,28 +208,20 @@ export interface EnvConfig {
 }
 
 export async function readEnvConfig(): Promise<EnvConfig> {
-  // In Tauri: always read from disk (env.json) — it's the source of truth
   if (isTauri()) {
     try {
       const cfg = await invoke<EnvConfig>('read_env_config');
-      // Keep localStorage in sync for quick access
       localStorage.setItem('env_config', JSON.stringify(cfg));
       return cfg;
-    } catch {
-      // fall through to localStorage
-    }
+    } catch { /* fall through */ }
   }
-  // Browser fallback: localStorage
   const stored = localStorage.getItem('env_config');
   if (stored) return JSON.parse(stored);
   return { igdb_client_id: undefined, igdb_client_secret: undefined };
 }
 
 export async function writeEnvConfig(config: EnvConfig): Promise<void> {
-  // Always sync localStorage
   localStorage.setItem('env_config', JSON.stringify(config));
-
-  // In Tauri: write to disk (env.json) — this is what persists across sessions
   if (isTauri()) {
     try {
       await invoke<void>('write_env_config', { config });
@@ -266,24 +234,24 @@ export async function writeEnvConfig(config: EnvConfig): Promise<void> {
 // ─── User Library (JSON files) ───────────────────────────────────────────────
 
 export interface LibraryEntry {
-  id:               string;
-  user_id:          string;
-  external_id:      string;
-  type:             string;
-  status:           string | null;
-  rating:           number | null;
-  progress:         number;
-  minutes_spent:    number;
-  is_favorite:      number;
-  is_platinum:      number;
-  tags:             string[] | null;
-  notes:            string | null;
-  added_at:         string | null;
-  updated_at:       string | null;
+  id:                string;
+  user_id:           string;
+  external_id:       string;
+  type:              string;
+  status:            string | null;
+  rating:            number | null;
+  progress:          number;
+  minutes_spent:     number;
+  is_favorite:       number;
+  is_platinum:       number;
+  tags:              string[] | null;
+  notes:             string | null;
+  added_at:          string | null;
+  updated_at:        string | null;
   selected_platform: string | null;
   selected_version:  string | null;
-  started_at:       string | null;
-  finished_at:      string | null;
+  started_at:        string | null;
+  finished_at:       string | null;
 }
 
 export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {
@@ -292,150 +260,93 @@ export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntr
 }
 
 export async function getLibraryEntry(externalId: string, entryType: string): Promise<LibraryEntry | null> {
-  if (!isTauri()) return null;
-  return invoke<LibraryEntry | null>('get_library_entry', { externalId, entryType });
+  return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId, entryType });
 }
 
 export async function deleteLibraryEntry(externalId: string, entryType: string): Promise<void> {
-  if (!isTauri()) return;
-  return invoke<void>('delete_library_entry', { externalId, entryType });
+  return tauriRun('delete_library_entry', { externalId, entryType });
 }
 
 export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
-  if (!isTauri()) return [];
-  return invoke<LibraryEntry[]>('get_all_library_entries');
+  return tauriCmd<LibraryEntry[]>('get_all_library_entries', []);
 }
 
 export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
-  if (!isTauri()) {
-    try {
-      const saved = localStorage.getItem('monthly_history');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  }
-  try {
-    const raw = await invoke<string>('read_monthly_history');
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  return readStoredJson<Record<string, string[]>>('read_monthly_history', 'monthly_history', {});
 }
 
 export async function writeMonthlyHistory(history: Record<string, string[]>): Promise<void> {
-  const content = JSON.stringify(history, null, 2);
-  if (!isTauri()) {
-    localStorage.setItem('monthly_history', content);
-    return;
-  }
-  return invoke<void>('write_monthly_history', { content });
+  return writeStoredJson('write_monthly_history', 'monthly_history', history);
 }
 
 // ─── User Favorites ──────────────────────────────────────────────────────────
 
 export async function readUserFavorites(): Promise<Record<string, string[]>> {
-  if (!isTauri()) {
-    try {
-      const saved = localStorage.getItem('user_favorite');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  }
-  try {
-    const raw = await invoke<string>('read_user_favorites');
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  return readStoredJson<Record<string, string[]>>('read_user_favorites', 'user_favorite', {});
 }
 
 export async function writeUserFavorites(favorites: Record<string, string[]>): Promise<void> {
-  const content = JSON.stringify(favorites, null, 2);
-  if (!isTauri()) {
-    localStorage.setItem('user_favorite', content);
-    return;
-  }
-  return invoke<void>('write_user_favorites', { content });
+  return writeStoredJson('write_user_favorites', 'user_favorite', favorites);
 }
 
 // ─── User Journey ───────────────────────────────────────────────────────────
 
 export interface UserJourneyEvent {
-  externalId: string;
-  type: 'start' | 'complete' | 'progress';
+  externalId:     string;
+  type:           'start' | 'complete' | 'progress';
   progressStart?: number;
-  progressEnd?: number;
-  mediaType: string;
-  timestamp: string; // ISO String
+  progressEnd?:   number;
+  mediaType:      string;
+  timestamp:      string; // ISO String
 }
 
 export interface DayJourney {
-  date: string; // YYYY-MM-DD
+  date:   string; // YYYY-MM-DD
   events: UserJourneyEvent[];
 }
 
 export async function readUserJourney(): Promise<DayJourney[]> {
-  if (!isTauri()) {
-    try {
-      const saved = localStorage.getItem('user_journey');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  }
-  try {
-    const raw = await invoke<string>('read_user_journey');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return readStoredJson<DayJourney[]>('read_user_journey', 'user_journey', []);
 }
 
 export async function writeUserJourney(journey: DayJourney[]): Promise<void> {
-  const content = JSON.stringify(journey, null, 2);
-  if (!isTauri()) {
-    localStorage.setItem('user_journey', content);
-    return;
-  }
-  return invoke<void>('write_user_journey', { content });
+  return writeStoredJson('write_user_journey', 'user_journey', journey);
 }
 
 // ─── Media Catalog ────────────────────────────────────────────────────────────
 
 export interface MediaCatalogEntry {
-  id: string;
-  external_id: string;
-  parent_id?: string | null;
-  type: string;
-  format?: string | null;
-  source?: string | null;
-  title_main?: string | null;
-  title_romaji?: string | null;
-  title_native?: string | null;
-  synopsis?: string | null;
-  cover_url?: string | null;
-  banners_csv?: string | null;
-  release_year?: number | null;
-  release_month?: number | null;
-  release_day?: number | null;
-  time_length?: number | null;
-  status?: string | null;
-  score_global?: number | null;
-  favorites_count?: number | null;
-  ratings_count?: number | null;
-  total_count?: number | null;
-  total_count_2?: number | null;
-  genres_csv?: string | null;
-  genres_tag_csv?: string | null;
-  platforms_csv?: string | null;
+  id:                   string;
+  external_id:          string;
+  parent_id?:           string | null;
+  type:                 string;
+  format?:              string | null;
+  source?:              string | null;
+  title_main?:          string | null;
+  title_romaji?:        string | null;
+  title_native?:        string | null;
+  synopsis?:            string | null;
+  cover_url?:           string | null;
+  banners_csv?:         string | null;
+  release_year?:        number | null;
+  release_month?:       number | null;
+  release_day?:         number | null;
+  time_length?:         number | null;
+  status?:              string | null;
+  score_global?:        number | null;
+  favorites_count?:     number | null;
+  ratings_count?:       number | null;
+  total_count?:         number | null;
+  total_count_2?:       number | null;
+  genres_csv?:          string | null;
+  genres_tag_csv?:      string | null;
+  platforms_csv?:       string | null;
   companies_cache_csv?: string | null;
-  last_synced_at?: string | null;
-  sync_failed_count?: number | null;
-  last_sync_error?: string | null;
-  created_at: string;
-  updated_at: string;
+  last_synced_at?:      string | null;
+  sync_failed_count?:   number | null;
+  last_sync_error?:     string | null;
+  created_at:           string;
+  updated_at:           string;
 }
 
 export async function saveCatalogEntry(entry: MediaCatalogEntry): Promise<MediaCatalogEntry> {
@@ -444,65 +355,56 @@ export async function saveCatalogEntry(entry: MediaCatalogEntry): Promise<MediaC
 }
 
 export async function getCatalogEntry(externalId: string): Promise<MediaCatalogEntry | null> {
-  if (!isTauri()) return null;
-  return invoke<MediaCatalogEntry | null>('get_catalog_entry', { externalId });
+  return tauriCmd<MediaCatalogEntry | null>('get_catalog_entry', null, { externalId });
 }
 
 export async function deleteCatalogEntry(externalId: string): Promise<void> {
-  if (!isTauri()) return;
-  return invoke<void>('delete_catalog_entry', { externalId });
+  return tauriRun('delete_catalog_entry', { externalId });
 }
 
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
-  if (!isTauri()) return [];
-  return invoke<MediaCatalogEntry[]>('get_all_catalog_entries');
+  return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
 }
 
 export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]> {
-  if (!isTauri()) return [];
-  return invoke<MediaCatalogEntry[]>('search_catalog', { query });
+  return tauriCmd<MediaCatalogEntry[]>('search_catalog', [], { query });
 }
 
 // ─── IGDB ─────────────────────────────────────────────────────────────────────
 
-export interface IgdbNamed    { id: number; name: string }
-export interface IgdbImage    { id: number; image_id: string }
-export interface IgdbCover    { id: number; image_id: string }
+export interface IgdbNamed { id: number; name: string }
+export interface IgdbImage { id: number; image_id: string }
+export interface IgdbCover { id: number; image_id: string }
 export interface IgdbInvolvedCompany {
-  id: number;
+  id:         number;
   company?:   IgdbNamed;
   developer?: boolean;
   publisher?: boolean;
 }
 export interface IgdbGame {
-  id:               number;
-  name:             string;
-  summary?:         string;
-  cover?:           IgdbCover;
-  screenshots?:     IgdbImage[];
-  artworks?:        IgdbImage[];
-  genres?:          IgdbNamed[];
-  involved_companies?: IgdbInvolvedCompany[];
-  first_release_date?: number; // unix timestamp
-  rating?:          number;
-  rating_count?:    number;
+  id:                   number;
+  name:                 string;
+  summary?:             string;
+  cover?:               IgdbCover;
+  screenshots?:         IgdbImage[];
+  artworks?:            IgdbImage[];
+  genres?:              IgdbNamed[];
+  involved_companies?:  IgdbInvolvedCompany[];
+  first_release_date?:  number; // unix timestamp
+  rating?:              number;
+  rating_count?:        number;
 }
 
 export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
-export async function igdbSearch(query: string, isVisualNovel: boolean = false): Promise<IgdbGame[]> {
+export async function igdbSearch(query: string, isVisualNovel = false): Promise<IgdbGame[]> {
   return invoke<IgdbGame[]>('igdb_search', { query, isVisualNovel });
 }
 
 export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, unknown> | null> {
-  if (!isTauri()) return null;
-  try {
-    return await invoke<Record<string, unknown> | null>('igdb_get_game_detail', { igdbId });
-  } catch {
-    return null;
-  }
+  return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
 }
 
 function steamLang(): string {
@@ -519,45 +421,33 @@ function steamLang(): string {
   return 'english';
 }
 
-export async function igdbGetCoverBySteamId(
-  appId: string,
-  gameName: string,
-): Promise<string | null> {
-  if (!isTauri()) return null;
-  return invoke<string | null>('igdb_get_cover_by_steam_id', { appId, gameName });
+export async function igdbGetCoverBySteamId(appId: string, gameName: string): Promise<string | null> {
+  return tauriCmd<string | null>('igdb_get_cover_by_steam_id', null, { appId, gameName });
 }
 
 export interface IgdbCandidate {
-  id: number;
-  name: string;
-  year: number;
+  id:        number;
+  name:      string;
+  year:      number;
   cover_url: string;
   developer: string;
 }
 
 export async function igdbSearchCandidates(gameName: string): Promise<IgdbCandidate[]> {
-  if (!isTauri()) return [];
-  return invoke<IgdbCandidate[]>('igdb_search_candidates', { gameName });
+  return tauriCmd<IgdbCandidate[]>('igdb_search_candidates', [], { gameName });
 }
 
-export async function igdbForceByIgdbId(
-  appId: string,
-  gameName: string,
-  igdbId: number,
-): Promise<string> {
-  if (!isTauri()) return '';
-  return invoke<string>('igdb_force_by_igdb_id', { appId, gameName, igdbId });
+export async function igdbForceByIgdbId(appId: string, gameName: string, igdbId: number): Promise<string> {
+  return tauriCmd<string>('igdb_force_by_igdb_id', '', { appId, gameName, igdbId });
 }
 
 export interface MetaEntry {
-  cover_path?:  string; // absolute path to cover file
-  banner_path?: string; // absolute path to banner file
+  cover_path?:  string;
+  banner_path?: string;
 }
 
-/** Returns { app_id → { cover?, banner? } } for all downloaded assets. */
 export async function readMetadataIndex(): Promise<Record<string, MetaEntry>> {
-  if (!isTauri()) return {};
-  return invoke<Record<string, MetaEntry>>('read_metadata_index');
+  return tauriCmd<Record<string, MetaEntry>>('read_metadata_index', {});
 }
 
 export interface GameInfo {
@@ -571,92 +461,68 @@ export interface GameInfo {
   developers?:  string[];
   publishers?:  string[];
   how_long_to_beat?: {
-    main_story_minutes?:     number;
-    main_extra_minutes?:     number;
-    completionist_minutes?:  number;
+    main_story_minutes?:    number;
+    main_extra_minutes?:    number;
+    completionist_minutes?: number;
   };
   last_fetched?: string;
 }
 
-/** Reads game metadata from `metadata/{app_id}/info.json`. */
 export async function readGameInfo(appId: string): Promise<GameInfo | null> {
   if (!isTauri()) return null;
   try {
     const info = await invoke<GameInfo>('read_game_info', { appId });
     return info && Object.keys(info).length > 0 ? info : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 // ─── Debug ────────────────────────────────────────────────────────────────────
 
 export async function debugScanInfo(): Promise<string> {
-  if (!isTauri()) {
-    return 'Tauri not available - using fallback';
-  }
-  return invoke<string>('debug_scan_info');
+  return tauriCmd<string>('debug_scan_info', 'Tauri not available - using fallback');
 }
 
 export async function openEnvFolder(): Promise<void> {
-  if (!isTauri()) {
-    console.warn('Cannot open folder outside Tauri');
-    return;
-  }
-  return invoke<void>('open_env_folder');
+  return tauriRun('open_env_folder');
 }
 
+// ─── Steam ───────────────────────────────────────────────────────────────────
+
 export interface SteamAchievement {
-  apiname:         string;
-  achieved:        number;
-  unlocktime:      number;
-  name?:           string;
-  description?:    string;
-  icon?:           string;      // CDN URL (live fetch)
-  icon_unlocked?:  string;      // local filename: {apiname}_unlocked.jpg
-  icon_locked?:    string;      // local filename: {apiname}_locked.jpg
+  apiname:        string;
+  achieved:       number;
+  unlocktime:     number;
+  name?:          string;
+  description?:   string;
+  icon?:          string;
+  icon_unlocked?: string;
+  icon_locked?:   string;
 }
 
 export async function steamAchievementsDownload(appId: string): Promise<void> {
-  if (!isTauri()) return;
-  await invoke<void>('steam_achievements_download', { appId, lang: steamLang() });
+  return tauriRun('steam_achievements_download', { appId, lang: steamLang() });
 }
 
 export async function steamAchievementIcon(appId: string, filename: string): Promise<string | null> {
-  if (!isTauri()) return null;
-  try {
-    return await invoke<string>('steam_achievement_icon', { appId, filename });
-  } catch {
-    return null;
-  }
+  return tauriTry<string | null>('steam_achievement_icon', null, { appId, filename });
 }
 
-export async function steamGetPlayerAchievements(appId: number): Promise<{ unlocked: number; total: number; list: SteamAchievement[] } | null> {
-  if (!isTauri()) return null;
-  try {
-    return await invoke<{ unlocked: number; total: number; list: SteamAchievement[] }>('steam_get_player_achievements', { appId, lang: steamLang() });
-  } catch {
-    return null;
-  }
+export async function steamGetPlayerAchievements(
+  appId: number,
+): Promise<{ unlocked: number; total: number; list: SteamAchievement[] } | null> {
+  return tauriTry<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(
+    'steam_get_player_achievements', null, { appId, lang: steamLang() },
+  );
 }
 
 export async function steamGetOwnedGames(): Promise<{ game_count?: number; games?: SteamOwnedGame[] } | null> {
-  if (!isTauri()) return null;
-  try {
-    return await invoke<{ game_count?: number; games?: SteamOwnedGame[] }>('steam_get_owned_games');
-  } catch {
-    return null;
-  }
+  return tauriTry<{ game_count?: number; games?: SteamOwnedGame[] } | null>('steam_get_owned_games', null);
 }
 
 export async function saveUserInfo(info: Record<string, unknown>): Promise<void> {
-  if (!isTauri()) return;
-  return invoke<void>('save_user_info', { info });
+  return tauriRun('save_user_info', { info });
 }
 
 export async function getUserInfo(): Promise<Record<string, unknown>> {
-  if (!isTauri()) return {};
-  try {
-    return await invoke<Record<string, unknown>>('get_user_info');
-  } catch { return {}; }
+  return tauriTry<Record<string, unknown>>('get_user_info', {});
 }
