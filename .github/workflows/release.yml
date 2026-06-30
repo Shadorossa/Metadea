@@ -44,3 +44,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: './frontend'
+          includeUpdaterJson: true
