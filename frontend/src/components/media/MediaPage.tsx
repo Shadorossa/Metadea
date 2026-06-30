@@ -7,6 +7,7 @@ import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
+import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 
 // ── SVG shared props ───────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ function StarRating({
   onRate: (stars: number) => void;  // 0.5-5 display scale
 }) {
   const [hover, setHover] = useState<number | null>(null);
-  const display = hover ?? rating / 2;
+  const display = hover ?? dbRatingToStars5(rating);
 
   return (
     <div className="media-library-rating" onMouseLeave={() => setHover(null)}>

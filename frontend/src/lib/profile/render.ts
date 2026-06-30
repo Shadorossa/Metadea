@@ -5,6 +5,7 @@ import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners, HOF_GRADIENTS } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
+import { getActiveRatingSystem, formatRatingHtml, dbRatingToStars5 } from '../media/rating-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -18,10 +19,6 @@ const TYPE_LABELS: Record<string, string> = {
   movie: "Película",
   book: "Libro"
 };
-
-function getActiveRatingSystem(): string {
-  return typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
-}
 
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
   try {
@@ -158,43 +155,9 @@ function fmtDate(iso: string | null | undefined): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-const STAR_FULL  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
-const STAR_HALF  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><defs><clipPath id="h"><rect x="0" y="0" width="12" height="24"/></clipPath></defs><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" stroke="currentColor"/><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" fill="currentColor" clip-path="url(#h)"/></svg>`;
-const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
 
 function buildRatingHtml(rating: number | null | undefined): string {
-  if (!rating) return '<span class="library-card-rating"></span>';
-
-  const system = getActiveRatingSystem();
-
-  if (system === '10-dec') {
-    return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Number(rating).toFixed(2)} / 10</span>`;
-  }
-  if (system === '10') {
-    return `<span class="library-card-rating text-rating" style="font-size: 0.72rem; font-weight: 700; color: var(--accent);">${Math.round(rating)} / 10</span>`;
-  }
-  if (system === '3-emoji') {
-    let emoji = '😐';
-    let color = '#f59e0b';
-    if (rating <= 3.5) {
-      emoji = '😞';
-      color = '#ef4444';
-    } else if (rating > 7) {
-      emoji = '😊';
-      color = '#10b981';
-    }
-    return `<span class="library-card-rating emoji-rating" style="font-size: 1.1rem; line-height: 1; color: ${color};">${emoji}</span>`;
-  }
-
-  // Default: rating is 0-10, display as 0-5 stars
-  const stars5 = Math.max(0, Math.min(5, rating / 2));
-  let html = '';
-  for (let i = 1; i <= 5; i++) {
-    if (stars5 >= i)        html += STAR_FULL;
-    else if (stars5 >= i - 0.5) html += STAR_HALF;
-    else                    html += STAR_EMPTY;
-  }
-  return `<span class="library-card-rating">${html}</span>`;
+  return formatRatingHtml(rating, getActiveRatingSystem(), 'library-card-rating');
 }
 
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
@@ -927,7 +890,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           <div class="fav-overlay">
             <span class="fav-title">${title}</span>
             <div class="fav-meta">
-              ${item.type !== 'character' ? `<span>★ ${(item.rating ? (item.rating / 2).toFixed(1) : '0.0')}</span>` : ''}
+              ${item.type !== 'character' ? `<span>★ ${item.rating ? dbRatingToStars5(item.rating).toFixed(1) : '0.0'}</span>` : ''}
               <span class="fav-meta-type">${typeIc}</span>
             </div>
           </div>

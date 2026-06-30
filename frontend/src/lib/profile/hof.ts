@@ -1,6 +1,7 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import type { getAllLibraryEntries } from '../tauri';
+import { buildStarHtml } from '../media/rating-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P     = ReturnType<typeof getT>['profile'];
@@ -24,20 +25,8 @@ const ICON_PERSON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
   <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
 </svg>`;
 
-const STAR_FULL = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
-const STAR_HALF = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" clip-path="polygon(0 0, 50% 0, 50% 100%, 0 100%)"/><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z" fill="none"/></svg>`;
-const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z"/></svg>`;
-
 function getRatingHtml(rating: number | null | undefined): string {
-  if (!rating) return '';
-  const stars5 = Math.max(0, Math.min(5, rating / 2));
-  let html = '';
-  for (let i = 1; i <= 5; i++) {
-    if (stars5 >= i)        html += STAR_FULL;
-    else if (stars5 >= i - 0.5) html += STAR_HALF;
-    else                    html += STAR_EMPTY;
-  }
-  return `<span class="hof-card-rating" style="display: flex; gap: 2px; align-items: center; color: currentColor;">${html}</span>`;
+  return buildStarHtml(rating ?? 0, 'hof-card-rating', 'display:flex;gap:2px;align-items:center;color:currentColor;');
 }
 
 export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): string {

@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
 import { STAR_PATH } from '../../lib/media/constants';
+import { getActiveRatingSystem, ratingToEmoji, type RatingSystem } from '../../lib/media/rating-utils';
 
 interface Props {
   rating: number;
   onChange: (value: number) => void;
-  system?: string;
-}
-
-function getSystem(): string {
-  if (typeof window === 'undefined') return '5-star';
-  return localStorage.getItem('metadea_rating_system') || '5-star';
+  system?: RatingSystem;
 }
 
 function EmojiRating({ rating, onChange }: { rating: number; onChange: (v: number) => void }) {
-  let activeEmoji = '😐';
-  if (rating <= 3.5) activeEmoji = '😞';
-  else if (rating > 7) activeEmoji = '😊';
+  const { emoji: activeEmoji } = ratingToEmoji(rating);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       <button type="button" onClick={() => onChange(rating === 3 ? 0 : 3)}
@@ -63,7 +57,7 @@ function StarRating({ rating, onChange }: { rating: number; onChange: (v: number
 }
 
 export function RatingInput({ rating, onChange, system: systemProp }: Props) {
-  const system = systemProp ?? getSystem();
+  const system = systemProp ?? getActiveRatingSystem();
 
   if (system === '10-dec') {
     return (
