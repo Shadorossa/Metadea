@@ -687,7 +687,7 @@
 .mh-row-top,
 .mh-row-bottom {
   display: flex;
-  gap: 0;
+  gap: 0.8rem;
   justify-content: flex-start;
   align-items: flex-start;
   margin: 0;
@@ -700,7 +700,7 @@
 
 .mh-card {
   width: 140px;
-  height: 190px;
+  height: 76px;
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
