@@ -526,3 +526,14 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
 }
+
+/* Service logos hover effect */
+.env-service-logo {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease, opacity 0.2s ease !important;
+}
+
+.env-service-logo:hover {
+  transform: scale(1.1) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}

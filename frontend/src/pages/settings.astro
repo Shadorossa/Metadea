@@ -191,21 +191,6 @@ const version = pkg.version;
                 </div>
               </div>
 
-              <!-- Steam -->
-              <div class="env-service-block">
-                <div class="env-service-header" style="justify-content: center;">
-                  <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" style="width: 48px; height: 48px;" />
-                  </a>
-                </div>
-                <div class="env-fields">
-                  <div class="env-field">
-                    <label class="env-label" for="steam-api-key">{t.settings.env_steam_api_key}</label>
-                    <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
-                  </div>
-                </div>
-              </div>
-
               <!-- TMDB -->
               <div class="env-service-block">
                 <div class="env-service-header" style="justify-content: center;">
@@ -225,18 +210,24 @@ const version = pkg.version;
                 </div>
               </div>
 
-              <!-- AniList -->
+              <!-- Steam & AniList (Combined) -->
               <div class="env-service-block">
-                <div class="env-service-header" style="justify-content: center;">
-                  <a href="https://anilist.co/settings/developer" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <img class="env-service-logo" src="/API/Anilist_logo.png" alt="AniList" style="width: 48px; height: 48px;" />
-                  </a>
-                </div>
-                <div class="env-service-hint" style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem;">
-                  Usa Redirect URI: <code>https://anilist.co/api/v2/oauth/pin</code>
-                </div>
-                <div class="env-fields" style="margin-top: 0.5rem;">
+                <div class="env-fields env-fields--row">
                   <div class="env-field">
+                    <div class="env-service-header" style="justify-content: center; margin-bottom: 0.5rem;">
+                      <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" style="width: 48px; height: 48px;" />
+                      </a>
+                    </div>
+                    <label class="env-label" for="steam-api-key">{t.settings.env_steam_api_key}</label>
+                    <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                  </div>
+                  <div class="env-field">
+                    <div class="env-service-header" style="justify-content: center; margin-bottom: 0.5rem;">
+                      <a href="https://anilist.co/settings/developer" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <img class="env-service-logo" src="/API/Anilist_logo.png" alt="AniList" style="width: 48px; height: 48px;" />
+                      </a>
+                    </div>
                     <label class="env-label" for="anilist-client-id">Client ID</label>
                     <input class="env-input" type="text" id="anilist-client-id" placeholder="Ej. 18343" autocomplete="off" />
                   </div>
