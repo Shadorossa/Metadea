@@ -69,18 +69,21 @@ function StatusDropdown({
   progressStatus,
   progressLabel,
   onChange,
+  t,
 }: {
   status: string;
   progressStatus: string;
   progressLabel: string;
   onChange: (next: string) => void;
+  t: typeof es.media;
 }) {
+  const te = t.editor;
   const trayButtons = [
-    { s: 'planning',     label: 'Pendiente' },
+    { s: 'planning',     label: te.status_planning },
     { s: progressStatus, label: progressLabel },
-    { s: 'completed',    label: 'Terminado' },
-    { s: 'paused',       label: 'Pausa' },
-    { s: 'dropped',      label: 'Abandonado' },
+    { s: 'completed',    label: te.status_completed },
+    { s: 'paused',       label: te.status_paused },
+    { s: 'dropped',      label: te.status_dropped },
   ];
 
   return (
@@ -305,6 +308,7 @@ export default function MediaPage({ lang }: { lang: string }) {
                   progressStatus={data.progressStatus}
                   progressLabel={data.progressLabel}
                   onChange={handleStatusChange}
+                  t={tm}
                 />
                 <StarRating rating={libRating} onRate={handleRate} />
               </div>
@@ -472,7 +476,7 @@ export default function MediaPage({ lang }: { lang: string }) {
               className="media-load-more-btn"
               onClick={() => setDisplayedCharacters(prev => prev + 12)}
             >
-              Cargar más
+              {tm.load_more}
             </button>
           )}
         </div>

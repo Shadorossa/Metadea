@@ -500,7 +500,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
                 <div className="me-month-selector-section">
                   <div className="me-month-header">
-                    <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
+                    <span className="me-label">{te.history_month}</span>
                     <div className="me-year-selector">
                       <button type="button" className="me-year-arrow"
                         onClick={() => dispatchEntry({ type: 'SET_YEAR', delta: -1 })}>&lt;</button>

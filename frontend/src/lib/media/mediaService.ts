@@ -92,7 +92,7 @@ function inferProgressStatus(type: string): 'watching' | 'reading' | 'playing' {
   return 'reading';
 }
 
-export function mapCatalogEntryToPartialData(c: MediaCatalogEntry): MediaPageData {
+export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
   return {
     externalId:    c.external_id,
     type:          c.type,
@@ -121,7 +121,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry): MediaPageDat
     characters:    [],
     relations:     [],
     progressStatus: inferProgressStatus(c.type),
-    progressLabel:  'En progreso',
+    progressLabel,
   };
 }
 

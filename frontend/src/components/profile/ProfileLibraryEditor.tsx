@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData } from '../../lib/media/mediaService';
 import type { LibraryEntry } from '../../lib/tauri';
+import { es } from '../../i18n/es';
+import { en } from '../../i18n/en';
 
 interface OpenEditorEvent extends Event {
   detail?: {
@@ -19,6 +21,7 @@ interface EditorState {
 
 export function ProfileLibraryEditor({ lang }: { lang: string }) {
   const [state, setState] = useState<EditorState | null>(null);
+  const t = lang === 'en' ? en : es;
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -30,7 +33,7 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
       if (!id || !catalogEntry) return;
 
       // catalogEntry already has all the key fields (totalCount, totalCount_2, genres, etc.)
-      const basicData = mapCatalogEntryToPartialData(catalogEntry);
+      const basicData = mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress);
 
       setState({ externalId: id, mediaData: basicData, libraryEntry });
 

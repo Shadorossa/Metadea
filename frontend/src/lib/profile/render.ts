@@ -180,9 +180,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   );
 
   const STATUS_LIST = [
-    { key: '', label: 'Todos' },
+    { key: '', label: (p as any).section_all ?? 'Todos' },
     { key: 'planning', label: p.status_planning },
-    { key: 'in_progress', label: 'En progreso' },
+    { key: 'in_progress', label: (p as any).section_in_progress ?? 'En progreso' },
     { key: 'completed', label: p.status_completed },
     { key: 'paused', label: p.status_paused },
     { key: 'dropped', label: p.status_dropped }
@@ -195,7 +195,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   el.innerHTML = `
     <div class="library-layout">
       <aside class="library-filters">
-        <p class="library-filters-title">Filtros</p>
+        <p class="library-filters-title">${(p as any).library_filters ?? 'Filtros'}</p>
 
         <div class="library-filter-group">
           <label class="library-filter-label" for="filter-name">Nombre</label>
@@ -217,7 +217,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           <label class="library-filter-label">Estado</label>
           <div class="library-status-cycler">
             <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
-            <span class="library-status-val" id="status-val">Todos</span>
+            <span class="library-status-val" id="status-val">${(p as any).section_all ?? 'Todos'}</span>
             <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
           </div>
         </div>
