@@ -145,10 +145,14 @@ export async function importFromAniList(
     // Import each media
     for (const mediaItem of allMediaList) {
       const anilistId = mediaItem.mediaId;
-      const externalId = formatMediaId(mediaItem.media?.type ?? mediaType, anilistId);
+      const externalId = formatMediaId(mediaItem.media?.type ?? mediaType, mediaItem.media?.format, anilistId);
 
-      // Check if already in library
+      // Check if already in library — skip if exists
       const existing = existingLibrary.find(i => i.external_id === externalId);
+      if (existing) {
+        imported++;
+        continue;
+      }
 
       // Build library entry with proper type format
       const entryType = mapMediaType(mediaItem.media?.type ?? mediaType, mediaItem.media?.format);
@@ -162,12 +166,12 @@ export async function importFromAniList(
         started_at: formatFuzzyDate(mediaItem.startedAt),
         finished_at: formatFuzzyDate(mediaItem.completedAt),
         notes: mediaItem.notes ?? '',
-        added_at: existing?.added_at ?? new Date().toISOString(),
+        added_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        isFavorite: existing?.isFavorite ?? false,
-        isPlatinum: existing?.isPlatinum ?? false,
-        tags: existing?.tags ?? [],
-        minutes_spent: existing?.minutes_spent ?? 0,
+        isFavorite: false,
+        isPlatinum: false,
+        tags: [],
+        minutes_spent: 0,
       };
 
       // Save to library
@@ -247,12 +251,15 @@ function mapMediaType(mediaType: string, format?: string): string {
   return `${baseType}_${formatNormalized}`;
 }
 
-function formatMediaId(mediaType: string, anilistId: number): string {
-  // Format: anime_166240, manga_12345, Lnovel_5678, etc.
-  const typePrefix = mediaType.toLowerCase() === 'anime' ? 'anime'
+function formatMediaId(mediaType: string, format: string | undefined, anilistId: number): string {
+  // Format: anime_tv_166240, manga_ongoing_12345, Lnovel_5678, etc.
+  const baseType = mediaType.toLowerCase() === 'anime' ? 'anime'
     : mediaType.toLowerCase() === 'manga' ? 'manga'
-    : 'Lnovel'; // Default to Lnovel for light novels
-  return `${typePrefix}_${anilistId}`;
+    : 'Lnovel';
+
+  if (!format) return `${baseType}_${anilistId}`;
+  const formatNorm = format.toLowerCase().replace(/\s+/g, '');
+  return `${baseType}_${formatNorm}_${anilistId}`;
 }
 
 function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: number } | null): string {
