@@ -54,6 +54,11 @@ const THEMES = [
     name: 'Synthwave',
     bg: 'radial-gradient(circle at 50% 90%, rgba(255, 110, 0, 0.7) 0%, rgba(255, 0, 127, 0.3) 50%, transparent 85%), #0d0415',
   },
+  {
+    id: 'forest',
+    name: 'Bosque',
+    bg: 'radial-gradient(ellipse 80% 70% at 50% -10%, rgba(16,185,129,0.75) 0%, transparent 72%), #020804',
+  },
 ] as const;
 
 const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
