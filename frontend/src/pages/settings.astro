@@ -442,7 +442,13 @@ const version = pkg.version;
     const versionSpan = document.querySelector('.app-curr-ver') as HTMLElement | null;
     const defaultVersion = versionSpan?.dataset.version || '0.1.9';
 
-    if (typeof window !== 'undefined' && ('__TAURI_IPC__' in window)) {
+    const isTauri = typeof window !== 'undefined' && (
+      '__TAURI_IPC__' in window ||
+      '__TAURI_INTERNALS__' in window ||
+      '__TAURI__' in window
+    );
+
+    if (isTauri) {
       import('@tauri-apps/api/app').then(async ({ getVersion }) => {
         const currentVersion = await getVersion();
         if (versionSpan) versionSpan.textContent = `v${currentVersion}`;
@@ -455,7 +461,7 @@ const version = pkg.version;
 
     if (checkBtn) {
       checkBtn.addEventListener('click', async () => {
-        if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) {
+        if (!isTauri) {
           if (statusText) {
             statusText.textContent = "Las actualizaciones solo están disponibles en la aplicación instalada.";
             statusText.style.display = 'block';
