@@ -703,8 +703,8 @@
   cursor: default;
   transition: transform var(--anim-fast), box-shadow var(--anim-fast);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background-size: cover;
-  background-position: center;
+  background-size: 100% 600%;
+  background-position: center 50%;
   display: flex;
   align-items: center;
   justify-content: center;
