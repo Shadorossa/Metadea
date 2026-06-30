@@ -107,7 +107,7 @@ function StatusDropdown({
               onChange(status === btn.s ? '' : btn.s);
             }}
           >
-            <StatusIcon status={btn.s} />
+            <IconTrayStatus status={btn.s} />
           </button>
         ))}
       </div>

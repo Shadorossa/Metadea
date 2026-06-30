@@ -289,8 +289,14 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           notes:           entry.notes,
         }).then(result => {
           if (result.ok) {
-            dispatchUi({ type: 'SET_ANILIST', status: 'ok' });
-            setTimeout(() => dispatchUi({ type: 'SET_ANILIST', status: 'idle' }), 3000);
+            if (!result.skipped) {
+              // Only show "ok" indicator if we actually synced
+              dispatchUi({ type: 'SET_ANILIST', status: 'ok' });
+              setTimeout(() => dispatchUi({ type: 'SET_ANILIST', status: 'idle' }), 3000);
+            } else {
+              // Silently skip if no changes detected
+              dispatchUi({ type: 'SET_ANILIST', status: 'idle' });
+            }
           } else {
             dispatchUi({ type: 'SET_ANILIST', status: 'error', error: result.error });
           }

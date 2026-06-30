@@ -51,43 +51,83 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
     return `<div class="act-empty"><span>${p.no_activity}</span></div>`;
   }
 
-  // Flatten days and their events so we can render them in a clean grid
+  // Flatten and filter events: no 'start' events, no hours (game/vnovel progress)
   const allEvents = daysWithEvents.flatMap(day => {
     const formattedDate = formatDay(day.date);
-    return (day.events || []).filter(Boolean).map(event => ({
-      ...event,
-      date: day.date,
-      formattedDate
-    }));
+    return (day.events || [])
+      .filter(Boolean)
+      .filter(event => event.type !== 'start') // Remove start events
+      .filter(event => {
+        // Remove hours-based progress (game/vnovel)
+        if (event.type === 'progress' && (event.mediaType === 'game' || event.mediaType === 'vnovel')) {
+          return false;
+        }
+        return true;
+      })
+      .map(event => ({
+        ...event,
+        date: day.date,
+        formattedDate
+      }));
   });
 
-  const eventCards = allEvents.map(event => {
+  // Optionally show progress events by date and media (batch them)
+  const batchEpisodes = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('metadea_activity_batch_episodes') === 'true'
+    : true; // Default: true (batched)
+
+  let finalEvents: typeof allEvents;
+
+  if (batchEpisodes) {
+    // Group progress events by date and media
+    const groupedEvents: typeof allEvents = [];
+    const progressByDateAndMedia = new Map<string, any>();
+
+    for (const event of allEvents) {
+      if (event.type === 'progress') {
+        const key = `${event.date}_${event.externalId}`;
+        if (progressByDateAndMedia.has(key)) {
+          // Merge with existing progress for this date+media
+          const existing = progressByDateAndMedia.get(key);
+          existing.progressEnd = event.progressEnd;
+          existing.timestamp = event.timestamp;
+        } else {
+          progressByDateAndMedia.set(key, event);
+          groupedEvents.push(event);
+        }
+      } else {
+        // Non-progress events (complete) are not grouped
+        groupedEvents.push(event);
+      }
+    }
+    finalEvents = groupedEvents;
+  } else {
+    // Show only 'complete' events, filter out all progress events
+    finalEvents = allEvents.filter(event => event.type !== 'progress');
+  }
+
+  const eventCards = finalEvents.map(event => {
     if (!event || !event.externalId) return '';
     const meta = catalogMap.get(event.externalId);
     const title = meta?.title_main ?? event.externalId;
     const cover = meta?.cover_url ?? '';
-    
+
     const mediaNameBold = `<strong class="act-card-bold-title">${title}</strong>`;
     const mType = event.mediaType || 'book';
-    
+
     let text = '';
-    if (event.type === 'start') {
-      text = interpolate(j.started || 'Started {media}', { media: mediaNameBold });
-    } else if (event.type === 'complete') {
+    if (event.type === 'complete') {
       text = interpolate(j.completed || 'Completed {media}', { media: mediaNameBold });
     } else if (event.type === 'progress') {
       const start = event.progressStart ?? 0;
       const end = event.progressEnd ?? 0;
       const isSingle = start === end;
-      
+
       if (mType === 'anime' || mType === 'series') {
         const tmpl = isSingle ? (j.watched_episode || 'Watched episode {end} of {media}') : (j.watched_episodes || 'Watched episodes {start}-{end} of {media}');
         text = interpolate(tmpl, { media: mediaNameBold, start, end });
       } else if (mType === 'manga' || mType === 'novel' || mType === 'book') {
         const tmpl = isSingle ? (j.read_chapter || 'Read chapter {end} of {media}') : (j.read_chapters || 'Read chapters {start}-{end} of {media}');
-        text = interpolate(tmpl, { media: mediaNameBold, start, end });
-      } else if (mType === 'game' || mType === 'vnovel') {
-        const tmpl = isSingle ? (j.played_hour || 'Played {end} hours of {media}') : (j.played_hours || 'Played {start}-{end} hours of {media}');
         text = interpolate(tmpl, { media: mediaNameBold, start, end });
       } else {
         text = interpolate(j.updated || 'Updated {media}', { media: mediaNameBold });
@@ -97,11 +137,11 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
     const typeIc = TYPE_ICON[mType] ?? '';
     const typeLabelText = TYPE_LABELS[mType] || mType;
     const fallbackBg = FALLBACK_GRADIENTS[mType] || 'linear-gradient(135deg, #374151 0%, #1f2937 100%)';
-    
+
     return `
       <div class="act-card" data-date="${event.date}" data-id="${event.externalId}" data-type="${event.type}" data-timestamp="${event.timestamp}">
         <a class="act-card-link" href="/media?id=${encodeURIComponent(event.externalId)}"></a>
-        ${cover 
+        ${cover
           ? `<img class="act-card-cover" src="${cover}" alt="${title}" loading="lazy" />`
           : `<div class="act-card-cover-fallback" style="background:${fallbackBg}"><span>${title.slice(0, 1).toUpperCase()}</span></div>`
         }

@@ -45,6 +45,20 @@ async function getToken(): Promise<string | null> {
   }
 }
 
+const GET_ENTRY_QUERY = `
+query GetMediaListEntry($mediaId: Int!) {
+  MediaList(mediaId: $mediaId) {
+    id
+    status
+    score
+    progress
+    progressVolumes
+    startedAt { year month day }
+    completedAt { year month day }
+    notes
+  }
+}`;
+
 const SAVE_MUTATION = `
 mutation SaveMediaListEntry(
   $mediaId: Int!
@@ -88,8 +102,48 @@ export interface AniListSyncParams {
 }
 
 export interface AniListSyncResult {
-  ok:     boolean;
-  error?: string;
+  ok:      boolean;
+  error?:  string;
+  skipped?: boolean; // true if no changes found, sync was not needed
+}
+
+function fuzzyDateToString(fd: { year: number; month: number; day: number } | null): string {
+  if (!fd) return '';
+  return `${fd.year}-${String(fd.month).padStart(2, '0')}-${String(fd.day).padStart(2, '0')}`;
+}
+
+async function getAniListEntry(mediaId: number, token: string): Promise<Record<string, any> | null> {
+  try {
+    const res = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query: GET_ENTRY_QUERY, variables: { mediaId } }),
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json() as { data?: { MediaList: any } };
+    return json.data?.MediaList ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function hasChanges(current: Record<string, any> | null, incoming: Record<string, unknown>): boolean {
+  if (!current) return true; // New entry
+
+  // Compare each field
+  if (current.status !== (incoming.status ?? null)) return true;
+  if (current.score !== (incoming.score ?? 0)) return true;
+  if (current.progress !== (incoming.progress ?? 0)) return true;
+  if (current.progressVolumes !== (incoming.progressVolumes ?? 0)) return true;
+  if (fuzzyDateToString(current.startedAt) !== (incoming.startedAt ? fuzzyDateToString(incoming.startedAt as any) : '')) return true;
+  if (fuzzyDateToString(current.completedAt) !== (incoming.completedAt ? fuzzyDateToString(incoming.completedAt as any) : '')) return true;
+  if ((current.notes ?? '').trim() !== (incoming.notes ?? '')) return true;
+
+  return false; // No changes
 }
 
 export async function syncToAniList(params: AniListSyncParams): Promise<AniListSyncResult> {
@@ -113,6 +167,14 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
     completedAt:     parseFuzzyDate(params.finishedAt),
     notes:           params.notes.trim() || null,
   };
+
+  // Check current state in AniList
+  const currentEntry = await getAniListEntry(mediaId, token);
+
+  // If no changes, skip sync (but return ok to avoid error feedback)
+  if (!hasChanges(currentEntry, rawVars)) {
+    return { ok: true, skipped: true };
+  }
 
   // Strip nulls — AniList rejects null for enum/Int fields declared as optional
   const variables = Object.fromEntries(

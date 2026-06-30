@@ -157,6 +157,19 @@ const version = pkg.version;
             </div>
 
           </div>
+
+          <!-- Sección de Actividad -->
+          <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <h3 class="settings-section-title">{t.settings.activity_section}</h3>
+            <div class="settings-checkbox-group">
+              <label class="settings-checkbox-label">
+                <input type="checkbox" id="activity-batch-episodes" class="settings-checkbox" />
+                <span class="checkbox-custom"></span>
+                <span class="checkbox-label-text">{t.settings.activity_batch_episodes}</span>
+              </label>
+              <p class="settings-hint">{t.settings.activity_batch_episodes_hint}</p>
+            </div>
+          </div>
         </div>
 
         <!-- Tab: Entorno -->
@@ -419,6 +432,17 @@ const version = pkg.version;
       document.documentElement.style.setProperty('--accent-soft', `${color}19`);
       document.documentElement.style.setProperty('--accent-border', `${color}40`);
       document.documentElement.style.setProperty('--accent-glow', `${color}4d`);
+    }
+
+    // Activity Settings: Batch Episodes
+    const batchEpisodesCheckbox = document.getElementById('activity-batch-episodes') as HTMLInputElement | null;
+    if (batchEpisodesCheckbox) {
+      const savedBatchEpisodes = localStorage.getItem('metadea_activity_batch_episodes') === 'true';
+      batchEpisodesCheckbox.checked = savedBatchEpisodes;
+      batchEpisodesCheckbox.addEventListener('change', () => {
+        localStorage.setItem('metadea_activity_batch_episodes', batchEpisodesCheckbox.checked.toString());
+        showToast("Preferencias de actividad guardadas");
+      });
     }
 
     // Bio
