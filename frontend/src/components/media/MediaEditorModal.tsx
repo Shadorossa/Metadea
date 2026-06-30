@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useReducer, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
@@ -7,8 +7,13 @@ import { RatingInput } from './RatingInput';
 import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
+import {
+  IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
+  IconStatusPaused, IconStatusDropped,
+  IconHeart, IconPlatinum, IconCheck, IconAlertCircle,
+} from '../local/ui/icons';
 
-type AniListStatus = 'idle' | 'syncing' | 'ok' | 'error';
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   externalId: string;
@@ -17,40 +22,144 @@ interface Props {
   onClose: () => void;
   onSaved: (entry: LibraryEntry) => void;
   onDeleted: () => void;
+  initialEntry?: LibraryEntry;
 }
 
-// ── Status icons ──────────────────────────────────────────────────────────────
-const IconPlanning = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-  </svg>
-);
-const IconInProgress = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <polygon fill="currentColor" stroke="none" points="10,8 16,12 10,16" />
-  </svg>
-);
-const IconCompleted = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-    <polyline points="22 4 12 14.01 9 11.01" />
-  </svg>
-);
-const IconPaused = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="10" y1="15" x2="10" y2="9" />
-    <line x1="14" y1="15" x2="14" y2="9" />
-  </svg>
-);
-const IconDropped = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-  </svg>
-);
+type AniListStatus = 'idle' | 'syncing' | 'ok' | 'error';
+
+// Entry state: mirrors the fields saved to the library
+interface EntryState {
+  existing:        LibraryEntry | null;
+  status:          string;
+  rating:          number;
+  progress:        number;
+  progressCount2:  number;
+  notes:           string;
+  startedAt:       string;
+  finishedAt:      string;
+  isFavorite:      boolean;
+  isPlatinum:      boolean;
+  tags:            string[];
+  platform:        string;
+  monthlyHistory:  Record<string, string[]>;
+  selectedMonthKey: string | null;
+  selectedYear:    number;
+}
+
+type EntryAction =
+  | { type: 'LOAD_ENTRY'; entry: LibraryEntry }
+  | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
+  | { type: 'SET_STATUS';   value: string }
+  | { type: 'SET_RATING';   value: number }
+  | { type: 'SET_PROGRESS'; value: number }
+  | { type: 'SET_PROGRESS2'; value: number }
+  | { type: 'SET_NOTES';    value: string }
+  | { type: 'SET_STARTED';  value: string }
+  | { type: 'SET_FINISHED'; value: string }
+  | { type: 'TOGGLE_FAVORITE' }
+  | { type: 'TOGGLE_PLATINUM' }
+  | { type: 'ADD_TAG';      tag: string }
+  | { type: 'REMOVE_TAG';   tag: string }
+  | { type: 'SET_PLATFORM'; value: string }
+  | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
+  | { type: 'SET_YEAR';     delta: 1 | -1 };
+
+// UI state: loading flags, tag input, anilist feedback
+interface UiState {
+  loading:       boolean;
+  saving:        boolean;
+  isClosing:     boolean;
+  tagInput:      string;
+  anilistStatus: AniListStatus;
+  anilistError:  string | null;
+}
+
+type UiAction =
+  | { type: 'SET_LOADING';   value: boolean }
+  | { type: 'SET_SAVING';    value: boolean }
+  | { type: 'SET_CLOSING' }
+  | { type: 'SET_TAG_INPUT'; value: string }
+  | { type: 'SET_ANILIST';   status: AniListStatus; error?: string };
+
+// ── Reducers ──────────────────────────────────────────────────────────────────
+
+const entryInit: EntryState = {
+  existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+  notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+  tags: [], platform: '', monthlyHistory: {}, selectedMonthKey: null,
+  selectedYear: new Date().getFullYear(),
+};
+
+function entryReducer(state: EntryState, action: EntryAction): EntryState {
+  switch (action.type) {
+    case 'LOAD_ENTRY': {
+      const e = action.entry;
+      return {
+        ...state,
+        existing: e,
+        status:        e.status        ?? 'planning',
+        rating:        e.rating        ?? 0,
+        progress:      e.progress      ?? 0,
+        progressCount2: e.progress_count_2 ?? 0,
+        notes:         e.notes         ?? '',
+        startedAt:     e.started_at    ?? '',
+        finishedAt:    e.finished_at   ?? '',
+        isFavorite:    e.is_favorite   === 1,
+        isPlatinum:    e.is_platinum   === 1,
+        tags:          e.tags          ?? [],
+        platform:      e.selected_platform ?? '',
+      };
+    }
+    case 'LOAD_HISTORY': {
+      const year = action.foundKey ? Number(action.foundKey.split('-')[0]) : state.selectedYear;
+      return { ...state, monthlyHistory: action.history, selectedMonthKey: action.foundKey, selectedYear: year };
+    }
+    case 'SET_STATUS':    return { ...state, status: action.value };
+    case 'SET_RATING':    return { ...state, rating: action.value };
+    case 'SET_PROGRESS':  return { ...state, progress: action.value };
+    case 'SET_PROGRESS2': return { ...state, progressCount2: action.value };
+    case 'SET_NOTES':     return { ...state, notes: action.value };
+    case 'SET_STARTED':   return { ...state, startedAt: action.value };
+    case 'SET_FINISHED':  return { ...state, finishedAt: action.value };
+    case 'TOGGLE_FAVORITE': return { ...state, isFavorite: !state.isFavorite };
+    case 'TOGGLE_PLATINUM': return { ...state, isPlatinum: !state.isPlatinum };
+    case 'ADD_TAG':
+      if (state.tags.length >= 5 || state.tags.includes(action.tag)) return state;
+      return { ...state, tags: [...state.tags, action.tag] };
+    case 'REMOVE_TAG':
+      return { ...state, tags: state.tags.filter(t => t !== action.tag) };
+    case 'SET_PLATFORM':  return { ...state, platform: action.value };
+    case 'SET_YEAR':
+      return { ...state, selectedYear: state.selectedYear + action.delta };
+    case 'SET_MONTH': {
+      const { externalId, key: newKey, year } = action;
+      const next = { ...state.monthlyHistory };
+      for (const k of Object.keys(next)) {
+        next[k] = next[k].filter(id => id !== externalId);
+        if (next[k].length === 0) delete next[k];
+      }
+      if (newKey) {
+        if (!next[newKey]) next[newKey] = [];
+        if (!next[newKey].includes(externalId)) next[newKey].push(externalId);
+      }
+      return { ...state, monthlyHistory: next, selectedMonthKey: newKey, selectedYear: year };
+    }
+    default: return state;
+  }
+}
+
+function uiReducer(state: UiState, action: UiAction): UiState {
+  switch (action.type) {
+    case 'SET_LOADING':   return { ...state, loading: action.value };
+    case 'SET_SAVING':    return { ...state, saving: action.value };
+    case 'SET_CLOSING':   return { ...state, isClosing: true };
+    case 'SET_TAG_INPUT': return { ...state, tagInput: action.value };
+    case 'SET_ANILIST':   return { ...state, anilistStatus: action.status, anilistError: action.error ?? null };
+    default: return state;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function progressLabel(type: string, te: typeof es.media): string | null {
   switch (type) {
@@ -70,182 +179,120 @@ function progressStep(type: string): number {
   return type === 'game' || type === 'vnovel' ? 0.5 : 1;
 }
 
-export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onDeleted }: Props) {
+function progressLabel2(type: string, tm: typeof es.media): string {
+  if (type === 'anime' || type === 'series')          return tm.progress_seasons;
+  if (type === 'manga' || type === 'light-novel')     return tm.progress_volumes;
+  if (type === 'books')                               return tm.progress_books;
+  return 'Count 2';
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onDeleted, initialEntry }: Props) {
   const t  = lang === 'en' ? en : es;
   const te = t.media.editor;
 
-  const [loading,     setLoading]     = useState(true);
-  const [saving,      setSaving]      = useState(false);
-  const [isClosing,   setIsClosing]   = useState(false);
-  const [existing,    setExisting]    = useState<LibraryEntry | null>(null);
-  const [status,      setStatus]      = useState('planning');
-  const [rating,      setRating]      = useState(0);
-  const [progress,      setProgress]      = useState(0);
-  const [progressCount2, setProgressCount2] = useState(0);
-  const [notes,         setNotes]         = useState('');
-  const [startedAt,     setStartedAt]     = useState('');
-  const [finishedAt,    setFinishedAt]    = useState('');
-  const [isFavorite,    setIsFavorite]    = useState(false);
-  const [isPlatinum,    setIsPlatinum]    = useState(false);
-  const [tags,          setTags]          = useState<string[]>([]);
-  const [tagInput,      setTagInput]      = useState('');
-  const [platform,      setPlatform]      = useState('');
+  const [entry, dispatchEntry] = useReducer(entryReducer, entryInit);
+  const [ui,    dispatchUi]    = useReducer(uiReducer, {
+    // If we already have the entry from the caller, skip loading state entirely
+    loading: !initialEntry, saving: false, isClosing: false,
+    tagInput: '', anilistStatus: 'idle', anilistError: null,
+  });
 
-  const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
-  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [anilistStatus, setAnilistStatus] = useState<AniListStatus>('idle');
-  const [anilistError, setAnilistError] = useState<string | null>(null);
-
+  // Load entry + monthly history on open
   useEffect(() => {
-    getLibraryEntry(externalId, data.type)
-      .then(entry => {
-        if (entry) {
-          setExisting(entry);
-          setStatus(entry.status ?? 'planning');
-          setRating(entry.rating ?? 0);
-          setProgress(entry.progress ?? 0);
-          setProgressCount2(entry.progress_count_2 ?? 0);
-          setNotes(entry.notes ?? '');
-          setStartedAt(entry.started_at ?? '');
-          setFinishedAt(entry.finished_at ?? '');
-          setIsFavorite(entry.is_favorite === 1);
-          setIsPlatinum(entry.is_platinum === 1);
-          setTags(entry.tags ?? []);
-          setPlatform(entry.selected_platform ?? '');
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    if (initialEntry) {
+      // Fast path: entry already provided by caller (e.g. profile page with cached data)
+      dispatchEntry({ type: 'LOAD_ENTRY', entry: initialEntry });
+    } else {
+      // Slow path: fetch from SQLite
+      getLibraryEntry(externalId, data.type)
+        .then(e => {
+          if (e) dispatchEntry({ type: 'LOAD_ENTRY', entry: e });
+          dispatchUi({ type: 'SET_LOADING', value: false });
+        })
+        .catch(() => dispatchUi({ type: 'SET_LOADING', value: false }));
+    }
 
     readMonthlyHistory()
       .then(history => {
-        setMonthlyHistory(history);
         let foundKey: string | null = null;
         for (const [key, ids] of Object.entries(history)) {
-          if (ids.includes(externalId)) {
-            foundKey = key;
-            break;
-          }
+          if (ids.includes(externalId)) { foundKey = key; break; }
         }
-        setSelectedMonthKey(foundKey);
-        if (foundKey) {
-          const parts = foundKey.split('-');
-          if (parts.length === 2) {
-            setSelectedYear(Number(parts[0]));
-          }
-        }
+        dispatchEntry({ type: 'LOAD_HISTORY', history, foundKey });
       })
       .catch(() => {});
-  }, [externalId, data.type]);
-
-  const handleMonthClick = useCallback((monthIndex: number) => {
-    const targetKey = `${selectedYear}-${String(monthIndex).padStart(2, '0')}`;
-
-    setSelectedMonthKey(prev => {
-      const newKey = prev === targetKey ? null : targetKey;
-
-      setMonthlyHistory(currentHistory => {
-        const nextHistory = { ...currentHistory };
-
-        for (const key of Object.keys(nextHistory)) {
-          nextHistory[key] = nextHistory[key].filter(id => id !== externalId);
-        }
-
-        if (newKey) {
-          if (!nextHistory[newKey]) nextHistory[newKey] = [];
-          if (!nextHistory[newKey].includes(externalId)) {
-            nextHistory[newKey].push(externalId);
-          }
-        }
-
-        for (const key of Object.keys(nextHistory)) {
-          if (nextHistory[key].length === 0) {
-            delete nextHistory[key];
-          }
-        }
-
-        return nextHistory;
-      });
-
-      return newKey;
-    });
-  }, [externalId, selectedYear]);
-
-  const handlePrevYear = useCallback(() => {
-    setSelectedYear(y => y - 1);
-  }, []);
-
-  const handleNextYear = useCallback(() => {
-    setSelectedYear(y => y + 1);
-  }, []);
+  }, [externalId, data.type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClose = useCallback(() => {
-    setIsClosing(true);
+    dispatchUi({ type: 'SET_CLOSING' });
     setTimeout(onClose, 180);
   }, [onClose]);
 
+  const handleMonthClick = useCallback((monthIndex: number) => {
+    const targetKey = `${entry.selectedYear}-${String(monthIndex).padStart(2, '0')}`;
+    const newKey = entry.selectedMonthKey === targetKey ? null : targetKey;
+    dispatchEntry({ type: 'SET_MONTH', externalId, key: newKey, year: entry.selectedYear });
+  }, [externalId, entry.selectedYear, entry.selectedMonthKey]);
+
   const handleSave = useCallback(async () => {
-    setSaving(true);
+    dispatchUi({ type: 'SET_SAVING', value: true });
     try {
-      const entry = await saveLibraryEntry({
-        id:               existing?.id ?? '',
+      const saved = await saveLibraryEntry({
+        id:               entry.existing?.id ?? '',
         user_id:          'local',
         external_id:      externalId,
         type:             data.type,
-        status:           status || null,
-        rating:           rating > 0 ? rating : null,
-        progress,
-        progress_count_2: progressCount2,
+        status:           entry.status || null,
+        rating:           entry.rating > 0 ? entry.rating : null,
+        progress:         entry.progress,
+        progress_count_2: entry.progressCount2,
         minutes_spent:    data.type === 'game' || data.type === 'vnovel'
-                            ? progress * 60
-                            : (existing?.minutes_spent ?? 0),
-        is_favorite:      isFavorite ? 1 : 0,
-        is_platinum:      isPlatinum ? 1 : 0,
-        tags:             tags.length > 0 ? tags : null,
-        notes:            notes.trim() || null,
-        added_at:         existing?.added_at ?? null,
+                            ? entry.progress * 60
+                            : (entry.existing?.minutes_spent ?? 0),
+        is_favorite:      entry.isFavorite ? 1 : 0,
+        is_platinum:      entry.isPlatinum ? 1 : 0,
+        tags:             entry.tags.length > 0 ? entry.tags : null,
+        notes:            entry.notes.trim() || null,
+        added_at:         entry.existing?.added_at ?? null,
         updated_at:       null,
-        selected_platform: platform || null,
-        selected_version:  existing?.selected_version ?? null,
-        started_at:       startedAt || null,
-        finished_at:      finishedAt || null,
+        selected_platform: entry.platform || null,
+        selected_version:  entry.existing?.selected_version ?? null,
+        started_at:       entry.startedAt || null,
+        finished_at:      entry.finishedAt || null,
       });
 
-      await writeMonthlyHistory(monthlyHistory);
-      await syncFavorites(data.type, externalId, isFavorite).catch(e => console.error('Failed to sync favorites', e));
+      await writeMonthlyHistory(entry.monthlyHistory);
+      await syncFavorites(data.type, externalId, entry.isFavorite)
+        .catch(e => console.error('Failed to sync favorites', e));
 
-      // Log to user_journey.json
       try {
         const { logJourneyEvent } = await import('../../lib/profile/journey');
-        await logJourneyEvent(existing, entry, data.type);
+        await logJourneyEvent(entry.existing, saved, data.type);
       } catch (e) {
         console.error('Failed to log journey event', e);
       }
 
-      onSaved(entry);
+      onSaved(saved);
 
-      // Sync to AniList (fire-and-forget, non-blocking)
       if (isAniListType(data.type)) {
-        setAnilistStatus('syncing');
-        setAnilistError(null);
+        dispatchUi({ type: 'SET_ANILIST', status: 'syncing' });
         syncToAniList({
-          externalId,
-          type:            data.type,
-          status,
-          rating,
-          progress,
-          progressVolumes: progressCount2,
-          startedAt,
-          finishedAt,
-          notes,
+          externalId, type: data.type,
+          status:          entry.status,
+          rating:          entry.rating,
+          progress:        entry.progress,
+          progressVolumes: entry.progressCount2,
+          startedAt:       entry.startedAt,
+          finishedAt:      entry.finishedAt,
+          notes:           entry.notes,
         }).then(result => {
           if (result.ok) {
-            setAnilistStatus('ok');
-            setTimeout(() => setAnilistStatus('idle'), 3000);
+            dispatchUi({ type: 'SET_ANILIST', status: 'ok' });
+            setTimeout(() => dispatchUi({ type: 'SET_ANILIST', status: 'idle' }), 3000);
           } else {
-            setAnilistStatus('error');
-            setAnilistError(result.error ?? 'Error desconocido');
+            dispatchUi({ type: 'SET_ANILIST', status: 'error', error: result.error });
           }
         });
       }
@@ -254,49 +301,48 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } catch (e) {
       console.error('save_library_entry error', e);
     } finally {
-      setSaving(false);
+      dispatchUi({ type: 'SET_SAVING', value: false });
     }
-  }, [existing, externalId, data.type, status, rating, progress, progressCount2, notes,
-      startedAt, finishedAt, isFavorite, isPlatinum, tags, platform, monthlyHistory, onSaved, handleClose]);
+  }, [entry, externalId, data.type, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
-    if (!existing) { onClose(); return; }
+    if (!entry.existing) { onClose(); return; }
     try {
       await deleteLibraryEntry(externalId, data.type);
-
-      await syncFavorites(data.type, externalId, false).catch(e => console.error('Failed to sync favorites', e));
+      await syncFavorites(data.type, externalId, false)
+        .catch(e => console.error('Failed to sync favorites', e));
       onDeleted();
     } catch (e) {
       console.error('delete_library_entry error', e);
     }
     onClose();
-  }, [existing, externalId, data.type, onDeleted, onClose]);
+  }, [entry.existing, externalId, data.type, onDeleted, onClose]);
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
-      const tag = tagInput.trim();
-      if (tag && tags.length < 5 && !tags.includes(tag)) {
-        setTags(prev => [...prev, tag]);
-        setTagInput('');
+      const tag = ui.tagInput.trim();
+      if (tag) {
+        dispatchEntry({ type: 'ADD_TAG', tag });
+        dispatchUi({ type: 'SET_TAG_INPUT', value: '' });
       }
-    } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
-      setTags(prev => prev.slice(0, -1));
+    } else if (e.key === 'Backspace' && !ui.tagInput && entry.tags.length > 0) {
+      dispatchEntry({ type: 'REMOVE_TAG', tag: entry.tags[entry.tags.length - 1] });
     }
-  }, [tagInput, tags]);
+  }, [ui.tagInput, entry.tags]);
 
   const statusButtons = useMemo(() => [
-    { value: 'planning',          label: te.status_planning,    Icon: IconPlanning    },
-    { value: data.progressStatus, label: te.status_in_progress, Icon: IconInProgress  },
-    { value: 'completed',         label: te.status_completed,   Icon: IconCompleted   },
-    { value: 'paused',            label: te.status_paused,      Icon: IconPaused      },
-    { value: 'dropped',           label: te.status_dropped,     Icon: IconDropped     },
+    { value: 'planning',          label: te.status_planning,    Icon: IconStatusPlanning    },
+    { value: data.progressStatus, label: te.status_in_progress, Icon: IconStatusInProgress  },
+    { value: 'completed',         label: te.status_completed,   Icon: IconStatusCompleted   },
+    { value: 'paused',            label: te.status_paused,      Icon: IconStatusPaused      },
+    { value: 'dropped',           label: te.status_dropped,     Icon: IconStatusDropped     },
   ], [te, data.progressStatus]);
 
   const progLabel = progressLabel(data.type, t.media);
 
   const modal = (
-    <div className={`me-overlay${isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
+    <div className={`me-overlay${ui.isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
       <div className="me-modal" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -305,19 +351,19 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
             {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
             <div className="me-header-col">
               <span className="me-header-title">{data.titleMain}</span>
-              {/* Status icons + Progress + Rating + Dates row */}
               <div className="me-header-bottom-row">
                 <div className="me-header-status-row">
                   {statusButtons.map(({ value, label, Icon }) => (
                     <button
                       key={value}
                       type="button"
-                      className={`me-header-status-icon${status === value ? ' active' : ''}`}
+                      className={`me-header-status-icon${entry.status === value ? ' active' : ''}`}
                       onClick={() => {
-                        const nextStatus = status === value ? '' : value;
-                        setStatus(nextStatus);
-                        if (value === 'completed' && nextStatus === 'completed' && data.totalCount && data.totalCount > 0) {
-                          setProgress(data.totalCount);
+                        const next = entry.status === value ? '' : value;
+                        dispatchEntry({ type: 'SET_STATUS', value: next });
+                        if (value === 'completed' && next === 'completed') {
+                          if (data.totalCount   && data.totalCount   > 0) dispatchEntry({ type: 'SET_PROGRESS',  value: data.totalCount   });
+                          if (data.totalCount_2 && data.totalCount_2 > 0) dispatchEntry({ type: 'SET_PROGRESS2', value: data.totalCount_2 });
                         }
                       }}
                       title={label}
@@ -329,28 +375,23 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
                 {/* Progress input */}
                 {progLabel && (() => {
-                  const maxVal = data.totalCount && data.totalCount > 0 ? data.totalCount : undefined;
+                  const maxVal  = data.totalCount   && data.totalCount   > 0 ? data.totalCount   : undefined;
                   const max2Val = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
-                  const label2 = data.type === 'anime' || data.type === 'series' ? t.media.progress_seasons :
-                                 data.type === 'manga' ? t.media.progress_volumes :
-                                 data.type === 'light-novel' ? t.media.progress_volumes :
-                                 data.type === 'books' ? t.media.progress_books : 'Count 2';
+                  const label2  = progressLabel2(data.type, t.media);
                   return (
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="me-header-field">
                         <label className="me-header-field-label">{progLabel}</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <input type="number" className="me-header-field-input" min={0}
-                            max={maxVal}
-                            step={progressStep(data.type)}
-                            value={progress || ''}
+                            max={maxVal} step={progressStep(data.type)}
+                            value={entry.progress || ''}
                             onChange={e => {
-                              let val = parseFloat(e.target.value) || 0;
-                              if (maxVal !== undefined && val > maxVal) val = maxVal;
-                              setProgress(val);
+                              let v = parseFloat(e.target.value) || 0;
+                              if (maxVal !== undefined && v > maxVal) v = maxVal;
+                              dispatchEntry({ type: 'SET_PROGRESS', value: v });
                             }}
-                            placeholder="0"
-                            style={{ width: '60px', order: 1 }} />
+                            placeholder="0" style={{ width: '60px', order: 1 }} />
                           {maxVal !== undefined && (
                             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
                           )}
@@ -361,16 +402,14 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                           <label className="me-header-field-label">{label2}</label>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <input type="number" className="me-header-field-input" min={0}
-                              max={max2Val}
-                              step={1}
-                              value={progressCount2 || ''}
+                              max={max2Val} step={1}
+                              value={entry.progressCount2 || ''}
                               onChange={e => {
-                                let val = parseInt(e.target.value) || 0;
-                                if (max2Val !== undefined && val > max2Val) val = max2Val;
-                                setProgressCount2(val);
+                                let v = parseInt(e.target.value) || 0;
+                                if (v > max2Val) v = max2Val;
+                                dispatchEntry({ type: 'SET_PROGRESS2', value: v });
                               }}
-                              placeholder="0"
-                              style={{ width: '60px' }} />
+                              placeholder="0" style={{ width: '60px' }} />
                             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
                           </div>
                         </div>
@@ -379,88 +418,71 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   );
                 })()}
 
-                 {/* Rating */}
-                 <div className="me-header-field">
-                   <label className="me-header-field-label">{te.score}</label>
-                   <RatingInput rating={rating} onChange={setRating} />
-                 </div>
+                {/* Rating */}
+                <div className="me-header-field">
+                  <label className="me-header-field-label">{te.score}</label>
+                  <RatingInput rating={entry.rating}
+                    onChange={v => dispatchEntry({ type: 'SET_RATING', value: v })} />
+                </div>
 
-                {/* Start date */}
+                {/* Dates */}
                 <div className="me-header-field">
                   <label className="me-header-field-label">{te.started}</label>
                   <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={startedAt}
-                    onChange={e => setStartedAt(e.target.value)} />
+                    value={entry.startedAt}
+                    onChange={e => dispatchEntry({ type: 'SET_STARTED', value: e.target.value })} />
                 </div>
-
-                {/* End date */}
                 <div className="me-header-field">
                   <label className="me-header-field-label">{te.ended}</label>
                   <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={finishedAt}
-                    onChange={e => setFinishedAt(e.target.value)} />
+                    value={entry.finishedAt}
+                    onChange={e => dispatchEntry({ type: 'SET_FINISHED', value: e.target.value })} />
                 </div>
               </div>
             </div>
           </div>
           <div className="me-header-right">
-            <button
-              type="button"
-              className={`me-header-icon-btn${isFavorite ? ' active' : ''}`}
-              onClick={() => setIsFavorite(p => !p)}
-              title={te.favorite}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24"
-                fill={isFavorite ? 'currentColor' : 'none'}
-                stroke="currentColor" strokeWidth="1.8">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
+            <button type="button"
+              className={`me-header-icon-btn${entry.isFavorite ? ' active' : ''}`}
+              onClick={() => dispatchEntry({ type: 'TOGGLE_FAVORITE' })}
+              title={te.favorite}>
+              <IconHeart filled={entry.isFavorite} size={18} />
             </button>
-            <button
-              type="button"
-              className={`me-header-icon-btn${isPlatinum ? ' active' : ''}`}
-              onClick={() => setIsPlatinum(p => !p)}
-              title={te.platinum}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24"
-                fill={isPlatinum ? 'currentColor' : 'none'}
-                stroke="currentColor" strokeWidth="1.8">
-                <circle cx="12" cy="8" r="6" /><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-              </svg>
+            <button type="button"
+              className={`me-header-icon-btn${entry.isPlatinum ? ' active' : ''}`}
+              onClick={() => dispatchEntry({ type: 'TOGGLE_PLATINUM' })}
+              title={te.platinum}>
+              <IconPlatinum filled={entry.isPlatinum} size={18} />
             </button>
           </div>
         </div>
 
-        {loading ? (
+        {ui.loading ? (
           <div className="me-loading"><div className="spinner" /></div>
         ) : (
           <div className="me-body">
             <div className="me-content-wrapper">
-              {/* MAIN CONTENT */}
               <div className="me-main-box">
                 <div className="me-grid">
-
-                  {/* LEFT: Tags */}
                   <div className="me-col">
-                    {/* Tags */}
                     <div className="me-section">
                       <span className="me-label">
                         {te.tags}
-                        <span className="me-label-hint">{tags.length}/5</span>
+                        <span className="me-label-hint">{entry.tags.length}/5</span>
                       </span>
                       <div className="me-tags-box">
-                        {tags.map(tag => (
+                        {entry.tags.map(tag => (
                           <span key={tag} className="me-tag">
                             {tag}
                             <button type="button" className="me-tag-remove"
-                              onClick={() => setTags(prev => prev.filter(t => t !== tag))}>×</button>
+                              onClick={() => dispatchEntry({ type: 'REMOVE_TAG', tag })}>×</button>
                           </span>
                         ))}
-                        {tags.length < 5 && (
+                        {entry.tags.length < 5 && (
                           <input type="text" className="me-tag-input"
                             placeholder={te.add_tag}
-                            value={tagInput}
-                            onChange={e => setTagInput(e.target.value)}
+                            value={ui.tagInput}
+                            onChange={e => dispatchUi({ type: 'SET_TAG_INPUT', value: e.target.value })}
                             onKeyDown={handleTagKeyDown} />
                         )}
                       </div>
@@ -469,35 +491,32 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
               </div>
 
-              {/* LEFT: Notes box (separate) */}
               <div className="me-notes-box-side">
                 <span className="me-label">{te.notes}</span>
                 <textarea className="me-textarea" rows={12}
                   placeholder={te.notes_ph}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)} />
+                  value={entry.notes}
+                  onChange={e => dispatchEntry({ type: 'SET_NOTES', value: e.target.value })} />
 
                 <div className="me-month-selector-section">
                   <div className="me-month-header">
                     <span className="me-label">{lang === 'en' ? 'History Month' : 'Mes de Historial'}</span>
                     <div className="me-year-selector">
-                      <button type="button" className="me-year-arrow" onClick={handlePrevYear}>&lt;</button>
-                      <span className="me-year-val">{selectedYear}</span>
-                      <button type="button" className="me-year-arrow" onClick={handleNextYear}>&gt;</button>
+                      <button type="button" className="me-year-arrow"
+                        onClick={() => dispatchEntry({ type: 'SET_YEAR', delta: -1 })}>&lt;</button>
+                      <span className="me-year-val">{entry.selectedYear}</span>
+                      <button type="button" className="me-year-arrow"
+                        onClick={() => dispatchEntry({ type: 'SET_YEAR', delta: 1 })}>&gt;</button>
                     </div>
                   </div>
                   <div className="me-month-grid">
                     {te.months.map((mName, idx) => {
                       const mNumber = idx + 1;
-                      const key = `${selectedYear}-${String(mNumber).padStart(2, '0')}`;
-                      const isActive = selectedMonthKey === key;
+                      const key = `${entry.selectedYear}-${String(mNumber).padStart(2, '0')}`;
                       return (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`me-month-btn${isActive ? ' active' : ''}`}
-                          onClick={() => handleMonthClick(mNumber)}
-                        >
+                        <button key={key} type="button"
+                          className={`me-month-btn${entry.selectedMonthKey === key ? ' active' : ''}`}
+                          onClick={() => handleMonthClick(mNumber)}>
                           {mName}
                         </button>
                       );
@@ -506,33 +525,23 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
               </div>
 
-              {/* RIGHT: Buttons stack (separate) */}
               <div className="me-button-stack-side">
                 <button type="button" className="me-btn me-btn--save"
-                  onClick={handleSave} disabled={saving}>
-                  {saving ? te.saving : te.save}
+                  onClick={handleSave} disabled={ui.saving}>
+                  {ui.saving ? te.saving : te.save}
                 </button>
                 <button type="button" className="me-btn me-btn--close"
                   onClick={handleClose}>✕</button>
-                {isAniListType(data.type) && anilistStatus !== 'idle' && (
-                  <div className={`me-anilist-status me-anilist-status--${anilistStatus}`}>
-                    {anilistStatus === 'syncing' && (
-                      <>
-                        <span className="me-anilist-spinner" />
-                        <span>AniList…</span>
-                      </>
+                {isAniListType(data.type) && ui.anilistStatus !== 'idle' && (
+                  <div className={`me-anilist-status me-anilist-status--${ui.anilistStatus}`}>
+                    {ui.anilistStatus === 'syncing' && (
+                      <><span className="me-anilist-spinner" /><span>AniList…</span></>
                     )}
-                    {anilistStatus === 'ok' && (
-                      <>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>AniList</span>
-                      </>
+                    {ui.anilistStatus === 'ok' && (
+                      <><IconCheck size={12} strokeWidth={2.5} /><span>AniList</span></>
                     )}
-                    {anilistStatus === 'error' && (
-                      <>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <span title={anilistError ?? ''}>AniList error</span>
-                      </>
+                    {ui.anilistStatus === 'error' && (
+                      <><IconAlertCircle size={12} strokeWidth={2.5} /><span title={ui.anilistError ?? ''}>AniList error</span></>
                     )}
                   </div>
                 )}

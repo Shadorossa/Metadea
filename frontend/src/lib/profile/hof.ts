@@ -2,6 +2,7 @@ import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import type { getAllLibraryEntries } from '../tauri';
 import { buildStarHtml } from '../media/rating-utils';
+import { ICON_CROWN, ICON_PERSON } from '../shared/icon-strings';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P     = ReturnType<typeof getT>['profile'];
@@ -16,14 +17,6 @@ export const HOF_GRADIENTS: Record<string, string> = {
   novel:  'linear-gradient(160deg, #c2410c 0%, #ca8a04 100%)',
   vnovel: 'linear-gradient(160deg, #a21caf 0%, #e11d48 100%)',
 };
-
-const ICON_CROWN = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-  <path d="M2 19.5 4.5 8 9 13l3-7 3 7 4.5-5L22 19.5H2zm0 2h20v1.5H2v-1.5z"/>
-</svg>`;
-
-const ICON_PERSON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-</svg>`;
 
 function getRatingHtml(rating: number | null | undefined): string {
   return buildStarHtml(rating ?? 0, 'hof-card-rating', 'display:flex;gap:2px;align-items:center;color:currentColor;');

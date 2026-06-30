@@ -1,90 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
-import { fetchMediaData, getCachedMediaData } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback } from '../../lib/media/mediaService';
 import { getLibraryEntry, saveCatalogEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
-
-// ── SVG shared props ───────────────────────────────────────────────────────
-
-const SVG = {
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2.5,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-};
-
-// ── Icon components ────────────────────────────────────────────────────────
-
-function IconPlus() {
-  return (
-    <svg width={22} height={22} {...SVG}>
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
-function IconCheck() {
-  return (
-    <svg width={22} height={22} {...SVG}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function StatusIcon({ status }: { status: string }) {
-  switch (status) {
-    case 'planning':
-      return (
-        <svg {...SVG}>
-          <path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1z" />
-          <path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z" />
-        </svg>
-      );
-    case 'watching':
-    case 'reading':
-      return <svg {...SVG}><polygon points="5 3 19 12 5 21 5 3" /></svg>;
-    case 'playing':
-      return (
-        <svg {...SVG}>
-          <rect x="2" y="6" width="20" height="12" rx="2"/>
-          <path d="M6 12h4M8 10v4"/>
-          <circle cx="15" cy="12" r="1" fill="currentColor"/>
-          <circle cx="18" cy="10" r="1" fill="currentColor"/>
-        </svg>
-      );
-    case 'completed':
-      return <svg {...SVG}><polyline points="20 6 9 17 4 12" /></svg>;
-    case 'paused':
-      return (
-        <svg {...SVG}>
-          <rect x="6" y="4" width="4" height="16" rx="1" />
-          <rect x="14" y="4" width="4" height="16" rx="1" />
-        </svg>
-      );
-    case 'dropped':
-      return (
-        <svg {...SVG}>
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...SVG}>
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-      );
-  }
-}
+import { IconPlus, IconCheck, IconTrayStatus } from '../local/ui/icons';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -165,7 +89,7 @@ function StatusDropdown({
         className={`status-dropdown-trigger${status ? ` text-${status}` : ''}`}
         aria-label="Cambiar estado"
       >
-        <StatusIcon status={status} />
+        <IconTrayStatus status={status} />
       </button>
       <div className="status-dropdown-tray">
         {trayButtons.map(btn => (
@@ -204,25 +128,17 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
 
-  // Fetch page data on mount
+  // Fetch page data on mount — catalog-first for fast partial display
   useEffect(() => {
     rawId.current = new URLSearchParams(window.location.search).get('id') ?? '';
     if (!rawId.current) { setPageState('error'); return; }
 
-    const prefetched = getCachedMediaData(rawId.current);
-    if (prefetched) {
-      setData(prefetched);
-      setPageState('ready');
-      return;
-    }
-
-    fetchMediaData(rawId.current)
-      .then(result => {
-        if (!result) { setPageState('error'); return; }
-        setData(result);
-        setPageState('ready');
-      })
-      .catch(() => setPageState('error'));
+    fetchMediaDataWithFallback(
+      rawId.current,
+      partial => { setData(partial); setPageState('ready'); },
+      full    => { setData(full);    setPageState('ready'); },
+      ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); },
+    );
   }, []);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
@@ -370,7 +286,7 @@ export default function MediaPage({ lang }: { lang: string }) {
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">
                   <span className="media-cover-overlay-icon">
-                    {inLibrary ? <IconCheck /> : <IconPlus />}
+                    {inLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
                   </span>
                   <span
                     className="media-cover-overlay-label"

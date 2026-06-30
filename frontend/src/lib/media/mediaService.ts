@@ -3,7 +3,8 @@ import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openli
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapIgdbToMedia } from './igdb-mapper';
-import { igdbGetGameDetail } from '../tauri';
+import { igdbGetGameDetail, getCatalogEntry } from '../tauri';
+import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 
 const ANILIST_TYPES  = ['anime', 'manga', 'novel'];
@@ -80,6 +81,50 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   return null;
 }
 
+// ── Catalog → partial MediaPageData ──────────────────────────────────────────
+// Builds immediately-usable page data from the local catalog (SQLite).
+// Missing fields (stats, characters, relations, metaLines) are empty — filled
+// once the full API fetch completes.
+
+function inferProgressStatus(type: string): 'watching' | 'reading' | 'playing' {
+  if (type === 'game' || type === 'vnovel') return 'playing';
+  if (type === 'anime' || type === 'series' || type === 'movie') return 'watching';
+  return 'reading';
+}
+
+export function mapCatalogEntryToPartialData(c: MediaCatalogEntry): MediaPageData {
+  return {
+    externalId:    c.external_id,
+    type:          c.type,
+    titleMain:     c.title_main   ?? c.external_id,
+    titleNative:   c.title_native ?? undefined,
+    titleEnglish:  c.title_romaji ?? undefined,
+    cover:         c.cover_url    ?? undefined,
+    bannerImage:   c.banners_csv?.split(',')[0] ?? undefined,
+    bannerColor:   'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
+    description:   c.synopsis     ?? undefined,
+    genreDots:     c.genres_csv     ? c.genres_csv.split(',').join(' · ')     : undefined,
+    genreTagDots:  c.genres_tag_csv ? c.genres_tag_csv.split(',').join(' · ') : undefined,
+    totalCount:    c.total_count   ?? undefined,
+    totalCount_2:  c.total_count_2 ?? undefined,
+    scoreGlobal:   c.score_global  ?? undefined,
+    releaseYear:   c.release_year  ?? undefined,
+    releaseMonth:  c.release_month ?? undefined,
+    releaseDay:    c.release_day   ?? undefined,
+    timeLength:    c.time_length   ?? undefined,
+    status:        c.status        ?? undefined,
+    format:        c.format        ?? undefined,
+    source:        c.source        ?? undefined,
+    platforms:     c.platforms_csv ? c.platforms_csv.split(',') : undefined,
+    metaLines:     [],
+    stats:         [],
+    characters:    [],
+    relations:     [],
+    progressStatus: inferProgressStatus(c.type),
+    progressLabel:  'En progreso',
+  };
+}
+
 // ── API pública ───────────────────────────────────────────────────────────
 
 // Comprueba caché primero; si no está, fetcha y guarda
@@ -96,4 +141,40 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 export function prefetchMediaData(rawId: string): void {
   if (getCachedMediaData(rawId)) return; // ya está en caché
   fetchMediaData(rawId).catch(() => {}); // silencioso — es prefetch
+}
+
+// Catalog-first fetch: shows catalog data immediately while API loads in background.
+// onPartial fires as soon as catalog data is available; onFull fires when API completes.
+export function fetchMediaDataWithFallback(
+  rawId: string,
+  onPartial: (data: MediaPageData) => void,
+  onFull:    (data: MediaPageData) => void,
+  onError:   () => void,
+): void {
+  const cached = getCachedMediaData(rawId);
+  if (cached) {
+    onFull(cached);
+    return;
+  }
+
+  let fullArrived = false;
+
+  // Catalog IPC (~1–5ms) — show something fast
+  getCatalogEntry(rawId)
+    .then(catalog => {
+      if (catalog && !fullArrived) onPartial(mapCatalogEntryToPartialData(catalog));
+    })
+    .catch(() => {});
+
+  // Full API fetch (~200–2000ms) — replace with complete data
+  fetchMediaData(rawId)
+    .then(data => {
+      fullArrived = true;
+      if (data) onFull(data);
+      else onError();
+    })
+    .catch(() => {
+      fullArrived = true;
+      onError();
+    });
 }
