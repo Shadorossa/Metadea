@@ -346,6 +346,25 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       `).join('');
   };
 
+  // Event delegation for library card clicks
+  contentEl?.addEventListener('click', (e: Event) => {
+    const target = e.target as HTMLElement;
+    const card = target.closest('.library-card') as HTMLElement | null;
+    if (!card) return;
+
+    if (target.closest('.library-card-thumb')) return; // Allow thumb link
+
+    const externalId = card.dataset.id;
+    if (!externalId) return;
+
+    const libraryEntry = items.find(i => i.external_id === externalId);
+    const catalogEntry = catalogMap.get(externalId);
+
+    window.dispatchEvent(new CustomEvent('open-profile-editor', {
+      detail: { externalId, libraryEntry, catalogEntry }
+    }));
+  });
+
   typeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const type = (btn as HTMLElement).dataset.value || '';

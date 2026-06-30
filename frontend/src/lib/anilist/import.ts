@@ -150,10 +150,11 @@ export async function importFromAniList(
       // Check if already in library
       const existing = existingLibrary.find(i => i.external_id === externalId);
 
-      // Build library entry
+      // Build library entry with proper type format
+      const entryType = mapMediaType(mediaItem.media?.type ?? mediaType, mediaItem.media?.format);
       const entry = {
         external_id: externalId,
-        type: mediaItem.media?.type?.toLowerCase() ?? mediaType,
+        type: entryType,
         status: mapAniListStatus(mediaItem.status),
         rating: mediaItem.score && mediaItem.score > 0 ? (mediaItem.score / 10) * 10 : 0,
         progress: mediaItem.progress ?? 0,
@@ -179,7 +180,7 @@ export async function importFromAniList(
         const newCatalogEntry = {
           id: externalId,
           external_id: externalId,
-          type: mediaItem.media?.type?.toLowerCase() ?? mediaType,
+          type: entryType,
           format: mediaItem.media?.format ?? null,
           source: mediaItem.media?.source ?? null,
           title_main: mediaItem.media?.title?.romaji ?? mediaItem.media?.title?.english ?? mediaItem.media?.title?.native ?? null,
@@ -236,6 +237,14 @@ function mapAniListStatus(anilistStatus: string): string {
     DROPPED: 'dropped',
   };
   return map[anilistStatus] ?? 'planning';
+}
+
+function mapMediaType(mediaType: string, format?: string): string {
+  const baseType = mediaType.toLowerCase();
+  if (!format) return baseType;
+
+  const formatNormalized = format.toLowerCase().replace(/\s+/g, '_');
+  return `${baseType}_${formatNormalized}`;
 }
 
 function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: number } | null): string {

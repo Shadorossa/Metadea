@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData } from '../../lib/media/mediaService';
 import type { LibraryEntry } from '../../lib/tauri';
+import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 
@@ -25,29 +26,35 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
-      const detail = (e as OpenEditorEvent).detail;
-      const id           = detail?.externalId;
-      const catalogEntry = detail?.catalogEntry;
-      const libraryEntry = detail?.libraryEntry;
+      try {
+        const detail = (e as OpenEditorEvent).detail;
+        const id           = detail?.externalId;
+        const catalogEntry = detail?.catalogEntry;
+        const libraryEntry = detail?.libraryEntry;
 
-      if (!id || !catalogEntry) return;
+        if (!id) return;
 
-      // catalogEntry already has all the key fields (totalCount, totalCount_2, genres, etc.)
-      const basicData = mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress);
+        // If catalogEntry exists, use it for instant basic data; otherwise start with empty
+        const basicData = catalogEntry
+          ? mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress)
+          : { title: id, type: libraryEntry?.type ?? 'anime' } as any;
 
-      setState({ externalId: id, mediaData: basicData, libraryEntry });
+        setState({ externalId: id, mediaData: basicData, libraryEntry });
 
-      // Enrich with full API data in background (for stats, relations, characters, metaLines, etc.)
-      fetchMediaData(id)
-        .then(data => {
-          if (data) setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
-        })
-        .catch(() => {});
+        // Always fetch full data from API
+        fetchMediaData(id)
+          .then(data => {
+            if (data) setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
+          })
+          .catch(err => console.error('Error fetching media data:', err));
+      } catch (err) {
+        console.error('Error in ProfileLibraryEditor handleOpen:', err);
+      }
     };
 
-    window.addEventListener('open-profile-editor', handleOpen);
-    return () => window.removeEventListener('open-profile-editor', handleOpen);
-  }, []);
+    window.addEventListener('open-profile-editor', handleOpen as EventListener);
+    return () => window.removeEventListener('open-profile-editor', handleOpen as EventListener);
+  }, [t.media.progress_in_progress]);
 
   if (!state) return null;
 

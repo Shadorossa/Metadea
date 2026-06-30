@@ -5,7 +5,7 @@
 
 const INNER: Record<string, string> = {
   game:      `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>`,
-  anime:     `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
+  anime:     `<path d="M8 4c-1 0-2 1-2 2v2c0 1 .5 2 1 2.5-.5.5-1 1.5-1 2.5 0 2 1 3 2 3h8c1 0 2-1 2-3 0-1-.5-2-1-2.5.5-.5 1-1.5 1-2.5V6c0-1-1-2-2-2H8z"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1" fill="currentColor" stroke="none"/>`,
   manga:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   novel:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   vnovel:    `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
@@ -44,13 +44,26 @@ function fill(size: number, inner: string): string {
 
 const MEDIA_TYPES = ['game', 'anime', 'manga', 'novel', 'vnovel', 'series', 'movie', 'book'] as const;
 
+export function getBaseMediaType(type: string): string {
+  // Extract base type from formats like "anime_tv", "manga_ongoing", etc.
+  return type.split('_')[0] || 'book';
+}
+
 export function typeIconStr(type: string, size: number): string {
-  const inner = INNER[type] ?? INNER.book;
+  const baseType = getBaseMediaType(type);
+  const inner = INNER[baseType] ?? INNER.book;
   return stroke(size, '2', inner);
 }
 
 export function typeIconMap(size: number): Record<string, string> {
-  return Object.fromEntries(MEDIA_TYPES.map(t => [t, stroke(size, '2', INNER[t])]));
+  const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => [t, stroke(size, '2', INNER[t])]));
+  return new Proxy(baseTypes, {
+    get(target, prop) {
+      if (typeof prop !== 'string') return undefined;
+      const baseType = getBaseMediaType(prop);
+      return target[baseType as keyof typeof target] || stroke(size, '2', INNER.book);
+    }
+  });
 }
 
 // ── Status icons ──────────────────────────────────────────────────────────────

@@ -41,7 +41,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   if (!rawId) return null;
 
   const firstColon = rawId.indexOf(':');
-  const type  = rawId.slice(0, firstColon);
+  const type  = rawId.slice(0, firstColon).split('_')[0];
   const idStr = rawId.slice(firstColon + 1);
 
   if (ANILIST_TYPES.includes(type)) {
@@ -87,8 +87,9 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 // once the full API fetch completes.
 
 function inferProgressStatus(type: string): 'watching' | 'reading' | 'playing' {
-  if (type === 'game' || type === 'vnovel') return 'playing';
-  if (type === 'anime' || type === 'series' || type === 'movie') return 'watching';
+  const base = type.split('_')[0];
+  if (base === 'game' || base === 'vnovel') return 'playing';
+  if (base === 'anime' || base === 'series' || base === 'movie') return 'watching';
   return 'reading';
 }
 

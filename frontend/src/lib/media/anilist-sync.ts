@@ -4,7 +4,8 @@ const ANILIST_TYPES = ['anime', 'manga', 'novel'] as const;
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
-  return ANILIST_TYPES.includes(type as AniListSyncType);
+  const base = type.split('_')[0];
+  return ANILIST_TYPES.includes(base as AniListSyncType);
 }
 
 const STATUS_MAP: Record<string, string | null> = {

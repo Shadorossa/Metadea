@@ -176,13 +176,15 @@ function progressLabel(type: string, te: typeof es.media): string | null {
 }
 
 function progressStep(type: string): number {
-  return type === 'game' || type === 'vnovel' ? 0.5 : 1;
+  const base = type.split('_')[0];
+  return base === 'game' || base === 'vnovel' ? 0.5 : 1;
 }
 
 function progressLabel2(type: string, tm: typeof es.media): string {
-  if (type === 'anime' || type === 'series')          return tm.progress_seasons;
-  if (type === 'manga' || type === 'light-novel')     return tm.progress_volumes;
-  if (type === 'books')                               return tm.progress_books;
+  const base = type.split('_')[0];
+  if (base === 'anime' || base === 'series')          return tm.progress_seasons;
+  if (base === 'manga' || base === 'light-novel')     return tm.progress_volumes;
+  if (base === 'books')                               return tm.progress_books;
   return 'Count 2';
 }
 
