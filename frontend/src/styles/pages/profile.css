@@ -679,7 +679,19 @@
 .mh-zigzag {
   display: flex;
   flex-direction: column;
+  gap: 1.2rem;
+}
+
+.mh-row-top,
+.mh-row-bottom {
+  display: flex;
   gap: 0.8rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.mh-row-bottom {
+  padding-left: 4rem;
 }
 
 .mh-card {
@@ -696,19 +708,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .mh-card:hover {
   transform: translateY(-8px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-.mh-card-left {
-  margin-left: 0;
-}
-
-.mh-card-right {
-  margin-left: auto;
 }
 
 .mh-card-overlay {
