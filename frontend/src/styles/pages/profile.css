@@ -674,91 +674,84 @@
 /* ── Monthly History ──────────────────────────────────────────────────────── */
 .monthly-history {
   width: 100%;
-  overflow: hidden;
-  position: relative;
-}
-
-.mh-track {
-  display: flex;
-  flex-direction: row;
-  gap: 0.6rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, black 2rem, black calc(100% - 2rem), transparent 100%);
-}
-
-.mh-track::-webkit-scrollbar {
-  display: none;
-}
-
-.mh-group {
-  display: flex;
-  flex-direction: row;
-  gap: 3px;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.mh-badge {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 2.1rem;
-  padding: 0.5rem 0.3rem;
-  background: var(--bg-elevated);
+  gap: 1rem;
+}
+
+.mh-month-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  gap: 0.15rem;
-  align-self: center;
-  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  transition: border-color var(--anim-fast), background-color var(--anim-fast);
 }
 
-.mh-badge-month {
-  font-size: 0.52rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--accent);
-  line-height: 1;
+.mh-month-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
-.mh-badge-year {
-  font-size: 0.42rem;
-  color: var(--text-dim);
-  line-height: 1;
+.mh-month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.mh-rows {
+.mh-month-label {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0.2rem;
 }
 
-.mh-row {
-  display: flex;
-  flex-direction: row;
-  gap: 3px;
+.mh-month-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: capitalize;
 }
 
-.mh-card {
-  width: 56px;
-  height: 78px;
+.mh-month-year {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.mh-month-count {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+}
+
+.mh-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+
+.mh-card-item {
+  width: 100%;
+  aspect-ratio: 2 / 3;
   border-radius: var(--radius-sm);
   position: relative;
   overflow: hidden;
-  flex-shrink: 0;
   cursor: default;
-  transition: transform 0.2s ease;
+  transition: transform var(--anim-fast), box-shadow var(--anim-fast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.mh-card:hover {
-  transform: translateY(-2px);
+.mh-card-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.mh-card img {
+.mh-card-item img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -766,18 +759,21 @@
   object-fit: cover;
 }
 
-.mh-card-label {
+.mh-card-item-label {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  font-size: 0.38rem;
-  color: rgba(255, 255, 255, 0.55);
-  padding: 2px 3px;
-  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 0.4rem;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.8));
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.2;
 }
 
 /* ── Recent Activity ──────────────────────────────────────────────────────── */

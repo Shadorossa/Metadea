@@ -27,36 +27,36 @@ export function buildMonthlyHistoryHtml(
     }
 
     const itemIds = history[key] || [];
+    const itemCount = itemIds.length;
 
-    const row1 = itemIds.filter((_, i) => i % 2 === 0);
-    const row2 = itemIds.filter((_, i) => i % 2 === 1);
-
-    const card = (extId: string) => {
+    const items = itemIds.map(extId => {
       const item  = libMap.get(extId);
       const meta  = catalogMap.get(extId);
       const type  = item?.type ?? 'game';
       const title = meta?.title_main ?? extId;
       const cover = meta?.cover_url ?? '';
       const bg    = HOF_GRADIENTS[type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
-      return `<div class="mh-card" style="background:${bg}" title="${title}">
+      return `<div class="mh-card-item" style="background:${bg}" title="${title}">
         ${cover ? `<img src="${cover}" alt="${title}" loading="lazy" />` : ''}
-        <span class="mh-card-label">${title}</span>
+        <span class="mh-card-item-label">${title}</span>
       </div>`;
-    };
+    }).join('');
 
-    return `<div class="mh-group">
-      <div class="mh-badge">
-        <span class="mh-badge-month">${monthLabel}</span>
-        ${yearLabel ? `<span class="mh-badge-year">${yearLabel}</span>` : ''}
+    return `<div class="mh-month-card">
+      <div class="mh-month-header">
+        <div class="mh-month-label">
+          <span class="mh-month-name">${monthLabel}</span>
+          <span class="mh-month-year">${yearLabel}</span>
+        </div>
+        <span class="mh-month-count">${itemCount} ${itemCount === 1 ? 'obra' : 'obras'}</span>
       </div>
-      <div class="mh-rows">
-        <div class="mh-row">${row1.map(card).join('')}</div>
-        ${row2.length > 0 ? `<div class="mh-row">${row2.map(card).join('')}</div>` : ''}
+      <div class="mh-items-grid">
+        ${items}
       </div>
     </div>`;
   }).join('');
 
   return `<div class="monthly-history">
-    <div class="mh-track">${content}</div>
+    ${content}
   </div>`;
 }
