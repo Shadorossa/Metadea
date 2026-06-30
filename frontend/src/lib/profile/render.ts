@@ -4,7 +4,7 @@ import { pad, typeLabel, statusLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners, HOF_GRADIENTS } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
-import { buildActivityHtml } from './activity';
+import { buildActivityHtml, initActivityListeners } from './activity';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -24,8 +24,9 @@ function getActiveRatingSystem(): string {
 }
 
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
-  const t = getT();
-  const p = t.profile;
+  try {
+    const t = getT();
+    const p = t.profile;
 
   const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
   const catalogMap = new Map<string, MediaCatalogEntry>(
@@ -128,6 +129,14 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
   el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
   initHofListeners(el);
+  initActivityListeners(el, catalogMap, p);
+  } catch (error: any) {
+    console.error("renderOverview failed:", error);
+    el.innerHTML = `<div style="padding: 2rem; color: #ef4444; font-family: monospace; font-size: 0.9rem;">
+      Error al renderizar perfil: ${error?.message || error}<br/>
+      <pre>${error?.stack || ''}</pre>
+    </div>`;
+  }
 }
 
 const TYPE_ICON: Record<string, string> = {

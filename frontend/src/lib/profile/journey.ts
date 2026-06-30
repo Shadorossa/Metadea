@@ -69,29 +69,48 @@ export async function logJourneyEvent(
     // 3. Check progress updates (always registered on the current calendar day)
     const prevProgress = existing ? existing.progress : 0;
     const newProgress = entry.progress;
-    if (newProgress > prevProgress) {
+    
+    if (newProgress !== prevProgress) {
       let dayEntry = journey.find(d => d.date === today);
-      if (!dayEntry) {
-        dayEntry = { date: today, events: [] };
-        journey.push(dayEntry);
-      }
-
-      let progEvent = dayEntry.events.find(e => e.externalId === externalId && e.type === 'progress');
-      const startVal = prevProgress + 1;
-      const endVal = newProgress;
       
-      if (progEvent) {
-        progEvent.progressEnd = endVal;
-        progEvent.timestamp = timestamp;
-      } else {
-        dayEntry.events.push({
-          externalId,
-          type: 'progress',
-          progressStart: startVal,
-          progressEnd: endVal,
-          mediaType,
-          timestamp
-        });
+      if (newProgress > prevProgress) {
+        if (!dayEntry) {
+          dayEntry = { date: today, events: [] };
+          journey.push(dayEntry);
+        }
+        let progEvent = dayEntry.events.find(e => e.externalId === externalId && e.type === 'progress');
+        const startVal = prevProgress + 1;
+        const endVal = newProgress;
+        
+        if (progEvent) {
+          progEvent.progressEnd = endVal;
+          progEvent.timestamp = timestamp;
+        } else {
+          dayEntry.events.push({
+            externalId,
+            type: 'progress',
+            progressStart: startVal,
+            progressEnd: endVal,
+            mediaType,
+            timestamp
+          });
+        }
+      } else if (newProgress < prevProgress) {
+        // Decreased progress
+        if (dayEntry) {
+          const progEventIndex = dayEntry.events.findIndex(e => e.externalId === externalId && e.type === 'progress');
+          if (progEventIndex !== -1) {
+            const progEvent = dayEntry.events[progEventIndex];
+            if (newProgress <= progEvent.progressStart) {
+              // Undid all progress made today, remove the event
+              dayEntry.events.splice(progEventIndex, 1);
+            } else {
+              // Decreased but still higher than start of today
+              progEvent.progressEnd = newProgress;
+              progEvent.timestamp = timestamp;
+            }
+          }
+        }
       }
     }
     
