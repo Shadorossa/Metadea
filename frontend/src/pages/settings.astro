@@ -564,7 +564,7 @@ const version = pkg.version;
 
           <div
             class="settings-section"
-            style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+            style="max-width: 900px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
           >
             <div
               style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;"
@@ -942,7 +942,7 @@ const version = pkg.version;
         backdrop.style.cssText =
           "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;";
         backdrop.addEventListener("click", hideChooseModal);
-        document.body.appendChild(backdrop);
+        importChooseModal.parentElement!.appendChild(backdrop);
       }
     }
 
