@@ -45,6 +45,8 @@ commands.allow = [
   "write_monthly_history",
   "read_user_favorites",
   "write_user_favorites",
+  "read_user_journey",
+  "write_user_journey",
   "save_catalog_entry",
   "get_catalog_entry",
   "delete_catalog_entry",

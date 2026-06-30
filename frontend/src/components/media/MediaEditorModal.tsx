@@ -4,8 +4,11 @@ import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
+import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
+
+type AniListStatus = 'idle' | 'syncing' | 'ok' | 'error';
 
 interface Props {
   externalId: string;
@@ -91,6 +94,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [monthlyHistory, setMonthlyHistory] = useState<Record<string, string[]>>({});
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [anilistStatus, setAnilistStatus] = useState<AniListStatus>('idle');
+  const [anilistError, setAnilistError] = useState<string | null>(null);
 
   useEffect(() => {
     getLibraryEntry(externalId, data.type)
@@ -219,6 +224,32 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       }
 
       onSaved(entry);
+
+      // Sync to AniList (fire-and-forget, non-blocking)
+      if (isAniListType(data.type)) {
+        setAnilistStatus('syncing');
+        setAnilistError(null);
+        syncToAniList({
+          externalId,
+          type:            data.type,
+          status,
+          rating,
+          progress,
+          progressVolumes: progressCount2,
+          startedAt,
+          finishedAt,
+          notes,
+        }).then(result => {
+          if (result.ok) {
+            setAnilistStatus('ok');
+            setTimeout(() => setAnilistStatus('idle'), 3000);
+          } else {
+            setAnilistStatus('error');
+            setAnilistError(result.error ?? 'Error desconocido');
+          }
+        });
+      }
+
       handleClose();
     } catch (e) {
       console.error('save_library_entry error', e);
@@ -483,6 +514,28 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </button>
                 <button type="button" className="me-btn me-btn--close"
                   onClick={handleClose}>✕</button>
+                {isAniListType(data.type) && anilistStatus !== 'idle' && (
+                  <div className={`me-anilist-status me-anilist-status--${anilistStatus}`}>
+                    {anilistStatus === 'syncing' && (
+                      <>
+                        <span className="me-anilist-spinner" />
+                        <span>AniList…</span>
+                      </>
+                    )}
+                    {anilistStatus === 'ok' && (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>AniList</span>
+                      </>
+                    )}
+                    {anilistStatus === 'error' && (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span title={anilistError ?? ''}>AniList error</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -193,20 +193,10 @@ export default function MediaPage({ lang }: { lang: string }) {
   const t  = lang === 'en' ? en : es;
   const tm = t.media;
 
-  // rawId es constante durante la vida del componente — se lee una vez del URL
-  const rawId = useRef(
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('id') ?? ''
-      : ''
-  );
+  const rawId = useRef('');
 
-  // Lectura síncrona de la caché: si se prefetcheó al hacer hover, no hay spinner
-  const prefetched = typeof window !== 'undefined' ? getCachedMediaData(rawId.current) : null;
-
-  const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>(
-    prefetched ? 'ready' : 'loading'
-  );
-  const [data,               setData]               = useState<MediaPageData | null>(prefetched);
+  const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
+  const [data,               setData]               = useState<MediaPageData | null>(null);
   const [libStatus,          setLibStatus]          = useState('');
   const [libRating,          setLibRating]          = useState(0);
   const [showEditor,         setShowEditor]         = useState(false);
@@ -215,8 +205,16 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   // Fetch page data on mount
   useEffect(() => {
-    if (prefetched) return;
+    rawId.current = new URLSearchParams(window.location.search).get('id') ?? '';
     if (!rawId.current) { setPageState('error'); return; }
+
+    const prefetched = getCachedMediaData(rawId.current);
+    if (prefetched) {
+      setData(prefetched);
+      setPageState('ready');
+      return;
+    }
+
     fetchMediaData(rawId.current)
       .then(result => {
         if (!result) { setPageState('error'); return; }
