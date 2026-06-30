@@ -680,6 +680,8 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .mh-row-top,
@@ -688,10 +690,12 @@
   gap: 0;
   justify-content: flex-start;
   align-items: flex-start;
+  margin: 0;
+  padding: 0;
 }
 
 .mh-row-bottom {
-  padding-left: 4rem;
+  transform: translateX(4rem);
 }
 
 .mh-card {
