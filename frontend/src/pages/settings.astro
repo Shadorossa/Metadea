@@ -636,7 +636,9 @@ const version = pkg.version;
                     >
                   </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                <div
+                  style="display: flex; gap: 0.5rem; flex: 1; min-width: 0;"
+                >
                   <button
                     class="btn btn--sm btn--secondary"
                     id="anilist-import-btn"
@@ -670,19 +672,19 @@ const version = pkg.version;
               <!-- Import Modal -->
               <div
                 id="anilist-import-choose-modal"
-                style="display: none; flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
+                style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000; min-width: 340px;"
               >
                 <span
                   style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
                   >¿Qué descargar de AniList?</span
                 >
                 <div
-                  style="display: flex; flex-direction: column; gap: 0.5rem;"
+                  style="display: flex; flex-direction: row; gap: 0.5rem; width: 100%;"
                 >
                   <button
                     class="btn btn--sm btn--primary"
                     id="anilist-import-anime-btn"
-                    style="width: 100%;"
+                    style="flex: 1;"
                   >
                     <svg
                       width="14"
@@ -701,7 +703,7 @@ const version = pkg.version;
                   <button
                     class="btn btn--sm btn--primary"
                     id="anilist-import-manga-btn"
-                    style="width: 100%;"
+                    style="flex: 1;"
                   >
                     <svg
                       width="14"
@@ -720,7 +722,8 @@ const version = pkg.version;
                   <button
                     class="btn btn--sm btn--ghost"
                     id="anilist-import-cancel-btn"
-                    style="width: 100%; margin-top: 0.5rem;">Cancelar</button
+                    style="flex: 1;"
+                    >Cancelar</button
                   >
                 </div>
               </div>
@@ -925,10 +928,21 @@ const version = pkg.version;
 
     function hideChooseModal() {
       if (importChooseModal) importChooseModal.style.display = "none";
+      const backdrop = document.getElementById("anilist-import-choose-backdrop");
+      if (backdrop) backdrop.remove();
     }
 
     function showChooseModal() {
-      if (importChooseModal) importChooseModal.style.display = "flex";
+      if (importChooseModal) {
+        importChooseModal.style.display = "flex";
+        // Create backdrop
+        const backdrop = document.createElement("div");
+        backdrop.id = "anilist-import-choose-backdrop";
+        backdrop.style.cssText =
+          "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;";
+        backdrop.addEventListener("click", hideChooseModal);
+        document.body.appendChild(backdrop);
+      }
     }
 
     function createProgressModal(title: string) {
@@ -999,20 +1013,26 @@ const version = pkg.version;
       }
     }
 
-    if (importBtn) {
-      importBtn.addEventListener("click", showChooseModal);
-    }
-    if (importAnimeBtn) {
-      importAnimeBtn.addEventListener("click", () => doImport("anime"));
-    }
-    if (importMangaBtn) {
-      importMangaBtn.addEventListener("click", () => doImport("manga"));
-    }
-    if (importCancelBtn) {
-      importCancelBtn.addEventListener("click", hideChooseModal);
-    }
+    // Use event delegation for import buttons
+    document.addEventListener("click", (e: any) => {
+      const btn = (e.target as HTMLElement).closest("button");
+      if (!btn) return;
+      
+      if (btn.id === "anilist-import-btn") {
+        showChooseModal();
+      } else if (btn.id === "anilist-import-anime-btn") {
+        doImport("anime");
+      } else if (btn.id === "anilist-import-manga-btn") {
+        doImport("manga");
+      } else if (btn.id === "anilist-import-cancel-btn") {
+        hideChooseModal();
+      }
+    });
 
-    updateImportButtons();
+    // Update buttons when page loads
+    setTimeout(() => {
+      updateImportButtons();
+    }, 100);
 
     // Rating System
     const activeSystem =
