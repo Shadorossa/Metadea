@@ -6,6 +6,7 @@ import { getLibraryEntry, saveCatalogEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
+import { STAR_PATH } from '../../lib/media/constants';
 
 // ── SVG shared props ───────────────────────────────────────────────────────
 
@@ -17,8 +18,6 @@ const SVG = {
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 };
-
-const STAR_PATH = 'M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z';
 
 // ── Icon components ────────────────────────────────────────────────────────
 

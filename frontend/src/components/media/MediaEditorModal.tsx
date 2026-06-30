@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, readUserFavorites, writeUserFavorites } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
+import { RatingInput } from './RatingInput';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 
@@ -14,9 +15,6 @@ interface Props {
   onSaved: (entry: LibraryEntry) => void;
   onDeleted: () => void;
 }
-
-const STAR_PATH =
-  'M12 17.75l-6.172 3.245 1.179-6.873-4.993-4.867 6.9-1.002L12 2l3.086 6.253 6.9 1.002-4.993 4.867 1.179 6.873z';
 
 // ── Status icons ──────────────────────────────────────────────────────────────
 const IconPlanning = () => (
@@ -79,7 +77,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [existing,    setExisting]    = useState<LibraryEntry | null>(null);
   const [status,      setStatus]      = useState('planning');
   const [rating,      setRating]      = useState(0);
-  const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [progress,      setProgress]      = useState(0);
   const [progressCount2, setProgressCount2] = useState(0);
   const [notes,         setNotes]         = useState('');
@@ -211,27 +208,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       });
 
       await writeMonthlyHistory(monthlyHistory);
-
-      /* ── Sync with user_favorite.json ───────────────────────────────────────── */
-      try {
-        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
-        const type = data.type || 'book';
-        if (!favs[type]) favs[type] = [];
-        
-        if (isFavorite) {
-          if (!favs[type].includes(externalId)) {
-            favs[type].push(externalId);
-          }
-        } else {
-          favs[type] = favs[type].filter(id => id !== externalId);
-          if (favs.multimedia) {
-            favs.multimedia = favs.multimedia.filter(id => id !== externalId);
-          }
-        }
-        await writeUserFavorites(favs);
-      } catch (e) {
-        console.error('Failed to sync favorites JSON', e);
-      }
+      await syncFavorites(data.type, externalId, isFavorite).catch(e => console.error('Failed to sync favorites', e));
 
       // Log to user_journey.json
       try {
@@ -256,21 +233,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     try {
       await deleteLibraryEntry(externalId, data.type);
 
-      /* ── Sync with user_favorite.json upon delete ──────────────────────────── */
-      try {
-        const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
-        const type = data.type || 'book';
-        if (favs[type]) {
-          favs[type] = favs[type].filter(id => id !== externalId);
-        }
-        if (favs.multimedia) {
-          favs.multimedia = favs.multimedia.filter(id => id !== externalId);
-        }
-        await writeUserFavorites(favs);
-      } catch (e) {
-        console.error('Failed to delete from favorites JSON', e);
-      }
-
+      await syncFavorites(data.type, externalId, false).catch(e => console.error('Failed to sync favorites', e));
       onDeleted();
     } catch (e) {
       console.error('delete_library_entry error', e);
@@ -299,8 +262,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     { value: 'dropped',           label: te.status_dropped,     Icon: IconDropped     },
   ], [te, data.progressStatus]);
 
-  const displayRating = hoverRating ?? rating;
-  const progLabel     = progressLabel(data.type, t.media);
+  const progLabel = progressLabel(data.type, t.media);
 
   const modal = (
     <div className={`me-overlay${isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
@@ -386,90 +348,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   );
                 })()}
 
-                 {/* Rating stars */}
+                 {/* Rating */}
                  <div className="me-header-field">
                    <label className="me-header-field-label">{te.score}</label>
-                   {(() => {
-                     const system = typeof window !== 'undefined' ? (localStorage.getItem('metadea_rating_system') || '5-star') : '5-star';
-                     
-                     if (system === '10-dec') {
-                       return (
-                         <input type="number" className="me-header-field-input" min={0} max={10} step={0.01}
-                           value={rating || ''}
-                           onChange={e => {
-                             let val = parseFloat(e.target.value) || 0;
-                             if (val > 10) val = 10;
-                             setRating(val);
-                           }}
-                           placeholder="0.00"
-                           style={{ width: '65px' }} />
-                       );
-                     }
-                     
-                     if (system === '10') {
-                       return (
-                         <input type="number" className="me-header-field-input" min={0} max={10} step={1}
-                           value={rating ? Math.round(rating) : ''}
-                           onChange={e => {
-                             let val = parseInt(e.target.value, 10) || 0;
-                             if (val > 10) val = 10;
-                             setRating(val);
-                           }}
-                           placeholder="0"
-                           style={{ width: '50px' }} />
-                       );
-                     }
-                     
-                     if (system === '3-emoji') {
-                       let activeEmoji = '😐';
-                       if (rating <= 3.5) activeEmoji = '😞';
-                       else if (rating > 7) activeEmoji = '😊';
-                       return (
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                           <button type="button"
-                             onClick={() => setRating(rating === 3 ? 0 : 3)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😞' ? 1 : 0.4, padding: '2px' }}
-                             title="Triste (0-3.5)">😞</button>
-                           <button type="button"
-                             onClick={() => setRating(rating === 5.5 ? 0 : 5.5)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😐' ? 1 : 0.4, padding: '2px' }}
-                             title="Neutral (3.6-7)">😐</button>
-                           <button type="button"
-                             onClick={() => setRating(rating === 8.5 ? 0 : 8.5)}
-                             style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😊' ? 1 : 0.4, padding: '2px' }}
-                             title="Feliz (7.1-10)">😊</button>
-                         </div>
-                       );
-                     }
-                     
-                     // Default: 5-star
-                     return (
-                       <div className="me-header-stars" onMouseLeave={() => setHoverRating(null)}>
-                         {[1, 2, 3, 4, 5].map(v => {
-                           const isFull = displayRating >= v * 2;
-                           const isHalf = !isFull && displayRating >= v * 2 - 1;
-                           return (
-                             <div key={v} className="me-header-star-wrap">
-                               <svg className="me-header-star me-header-star--bg" viewBox="0 0 24 24">
-                                 <path d={STAR_PATH} />
-                               </svg>
-                               <div className="me-header-star-fill" style={{ width: isFull ? '100%' : isHalf ? '50%' : '0%' }}>
-                                 <svg className="me-header-star me-header-star--fg" viewBox="0 0 24 24">
-                                   <path d={STAR_PATH} />
-                                 </svg>
-                               </div>
-                               <button type="button" className="me-header-star-zone me-header-star-zone--left"
-                                 onMouseEnter={() => setHoverRating(v * 2 - 1)}
-                                 onClick={() => setRating(rating === v * 2 - 1 ? 0 : v * 2 - 1)} />
-                               <button type="button" className="me-header-star-zone me-header-star-zone--right"
-                                 onMouseEnter={() => setHoverRating(v * 2)}
-                                 onClick={() => setRating(rating === v * 2 ? 0 : v * 2)} />
-                             </div>
-                           );
-                         })}
-                       </div>
-                     );
-                   })()}
+                   <RatingInput rating={rating} onChange={setRating} />
                  </div>
 
                 {/* Start date */}

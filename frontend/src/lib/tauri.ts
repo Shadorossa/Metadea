@@ -289,6 +289,23 @@ export async function writeUserFavorites(favorites: Record<string, string[]>): P
   return writeStoredJson('write_user_favorites', 'user_favorite', favorites);
 }
 
+export async function syncFavorites(
+  type: string,
+  externalId: string,
+  isFavorite: boolean,
+): Promise<void> {
+  const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+  const key = type || 'book';
+  if (!favs[key]) favs[key] = [];
+  if (isFavorite) {
+    if (!favs[key].includes(externalId)) favs[key].push(externalId);
+  } else {
+    favs[key] = favs[key].filter(id => id !== externalId);
+    if (favs.multimedia) favs.multimedia = favs.multimedia.filter(id => id !== externalId);
+  }
+  await writeUserFavorites(favs);
+}
+
 // ─── User Journey ───────────────────────────────────────────────────────────
 
 export interface UserJourneyEvent {

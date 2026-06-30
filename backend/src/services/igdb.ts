@@ -79,27 +79,18 @@ function extractJapaneseName(alternativeNames?: Array<{ name: string; comment?: 
   return japaneseEntry?.name ?? null;
 }
 
+function hasVisualNovelGenre(genres: Array<{ id: number }>): boolean {
+  const allIds = genres.map(g => g.id);
+  const topThree = genres.slice(0, 3).map(g => g.id);
+  return topThree.includes(IGDB_GENRE_VISUAL_NOVEL)
+    && !allIds.includes(IGDB_GENRE_RPG)
+    && !allIds.includes(IGDB_GENRE_FIGHTING);
+}
+
 function classifyAsVisualNovel(game: IgdbGame): boolean {
-  const allGenreIds    = (game.genres ?? []).map(genre => genre.id);
-  const topThreeGenreIds = (game.genres ?? []).slice(0, 3).map(genre => genre.id);
-
-  const isRpg      = allGenreIds.includes(IGDB_GENRE_RPG);
-  const isFighting = allGenreIds.includes(IGDB_GENRE_FIGHTING);
-  const isVisualNovel = topThreeGenreIds.includes(IGDB_GENRE_VISUAL_NOVEL) && !isRpg && !isFighting;
-
-  if (isVisualNovel) return true;
-
+  if (game.genres && hasVisualNovelGenre(game.genres)) return true;
   const parent = game.version_parent ?? game.parent_game;
-  if (parent?.genres) {
-    const parentAllGenreIds     = parent.genres.map(genre => genre.id);
-    const parentTopThreeGenreIds = parent.genres.slice(0, 3).map(genre => genre.id);
-    const parentIsRpg      = parentAllGenreIds.includes(IGDB_GENRE_RPG);
-    const parentIsFighting = parentAllGenreIds.includes(IGDB_GENRE_FIGHTING);
-    if (parentTopThreeGenreIds.includes(IGDB_GENRE_VISUAL_NOVEL) && !parentIsRpg && !parentIsFighting) {
-      return true;
-    }
-  }
-
+  if (parent?.genres && hasVisualNovelGenre(parent.genres)) return true;
   return false;
 }
 
