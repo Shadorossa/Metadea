@@ -252,10 +252,10 @@ function mapMediaType(mediaType: string, format?: string): string {
 }
 
 function formatMediaId(mediaType: string, format: string | undefined, anilistId: number): string {
-  // Format: anime_tv_166240, manga_ongoing_12345, Lnovel_5678, etc.
+  // Format: anime_tv_166240, manga_ongoing_12345, novel_lightnovel_5678, etc.
   const baseType = mediaType.toLowerCase() === 'anime' ? 'anime'
     : mediaType.toLowerCase() === 'manga' ? 'manga'
-    : 'Lnovel';
+    : 'novel'; // Default to novel for light novels, web novels, etc.
 
   if (!format) return `${baseType}_${anilistId}`;
   const formatNorm = format.toLowerCase().replace(/\s+/g, '');
