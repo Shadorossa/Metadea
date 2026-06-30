@@ -1,8 +1,8 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import '../styles/pages/settings.css';
-import { getLang, useTranslations } from '../i18n/index';
-import pkg from '../../package.json';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/pages/settings.css";
+import { getLang, useTranslations } from "../i18n/index";
+import pkg from "../../package.json";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -12,40 +12,96 @@ const version = pkg.version;
 <BaseLayout title={`${t.settings.title} — Metadea`} lang={lang}>
   <div class="settings-page">
     <div class="settings-container">
-
       <!-- Sidebar vertical -->
       <aside class="settings-sidebar">
-        <span class="section-label settings-sidebar-label">{t.settings.section_account}</span>
+        <span class="section-label settings-sidebar-label"
+          >{t.settings.section_account}</span
+        >
         <button class="settings-tab active" data-tab="profile">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><circle cx="13.5" cy="6.5" r="1.5"></circle><circle
+              cx="17.5"
+              cy="10.5"
+              r="1.5"></circle><circle cx="8.5" cy="7.5" r="1.5"
+            ></circle><circle cx="6.5" cy="12.5" r="1.5"></circle><path
+              d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
+            ></path></svg
+          >
           {t.settings.section_appearance}
         </button>
         <button class="settings-tab" data-tab="application">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path
+              d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+            ></path><path
+              d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+            ></path></svg
+          >
           {t.settings.tab_application}
         </button>
 
-        <span class="section-label settings-sidebar-label" style="margin-top: 1rem; display: block;">{t.settings.section_application}</span>
+        <span
+          class="section-label settings-sidebar-label"
+          style="margin-top: 1rem; display: block;"
+          >{t.settings.section_application}</span
+        >
         <button class="settings-tab" data-tab="environment">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/></svg>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><rect x="2" y="3" width="20" height="14" rx="2"></rect><path
+              d="M8 21h8M12 17v4"></path><path d="M7 8l2 2-2 2M11 12h4"
+            ></path></svg
+          >
           {t.settings.tab_environment}
         </button>
         <button class="settings-tab" data-tab="novedades">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><circle cx="12" cy="12" r="10"></circle><path
+              d="M12 16v-4M12 8h.01"></path></svg
+          >
           {t.settings.tab_novedades}
         </button>
       </aside>
 
       <!-- Contenido -->
       <div class="settings-content">
-
         <!-- Tab: Apariencia (Perfil) -->
         <div class="settings-panel" id="panel-profile">
           <h2 class="settings-panel-title">{t.settings.section_appearance}</h2>
 
           <!-- Avatar + Banner en la misma fila -->
           <div class="profile-media-row">
-
             <!-- Avatar -->
             <div class="settings-section settings-section--avatar">
               <h3 class="settings-section-title">{t.settings.avatar_title}</h3>
@@ -53,10 +109,15 @@ const version = pkg.version;
                 <!-- populated by script -->
               </div>
               <div class="avatar-upload-btns">
-                <button class="btn btn--sm btn--secondary" id="avatar-upload-btn">{t.settings.avatar_upload}</button>
-                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn">{t.settings.avatar_remove}</button>
+                <button
+                  class="btn btn--sm btn--secondary"
+                  id="avatar-upload-btn">{t.settings.avatar_upload}</button
+                >
+                <button class="btn btn--sm btn--ghost" id="avatar-remove-btn"
+                  >{t.settings.avatar_remove}</button
+                >
               </div>
-              <input type="file" id="avatar-input" accept="image/*" hidden>
+              <input type="file" id="avatar-input" accept="image/*" hidden />
             </div>
 
             <!-- Banner -->
@@ -64,15 +125,32 @@ const version = pkg.version;
               <h3 class="settings-section-title">{t.settings.banner_title}</h3>
               <div class="banner-drop-zone" id="banner-drop-zone">
                 <div class="banner-drop-hint">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><rect x="3" y="3" width="18" height="18" rx="2"
+                    ></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline
+                      points="21 15 16 10 5 21"></polyline></svg
+                  >
                   <span>{t.settings.banner_drag}</span>
                 </div>
               </div>
               <div class="banner-actions">
-                <button class="btn btn--sm btn--secondary" id="banner-upload-btn">{t.settings.banner_upload}</button>
-                <button class="btn btn--sm btn--ghost" id="banner-remove-btn">{t.settings.banner_remove}</button>
+                <button
+                  class="btn btn--sm btn--secondary"
+                  id="banner-upload-btn">{t.settings.banner_upload}</button
+                >
+                <button class="btn btn--sm btn--ghost" id="banner-remove-btn"
+                  >{t.settings.banner_remove}</button
+                >
               </div>
-              <input type="file" id="banner-input" accept="image/*" hidden>
+              <input type="file" id="banner-input" accept="image/*" hidden />
             </div>
 
             <!-- Fuente del nombre -->
@@ -81,22 +159,50 @@ const version = pkg.version;
               <div class="font-picker">
                 <div class="font-preview" id="font-preview-name"></div>
                 <div class="font-picker-controls">
-                  <button class="font-arrow" id="font-prev" aria-label={t.settings.font_prev}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  <button
+                    class="font-arrow"
+                    id="font-prev"
+                    aria-label={t.settings.font_prev}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><polyline points="15 18 9 12 15 6"></polyline></svg
+                    >
                   </button>
                   <span class="font-name-label" id="font-name-label"></span>
-                  <button class="font-arrow" id="font-next" aria-label={t.settings.font_next}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  <button
+                    class="font-arrow"
+                    id="font-next"
+                    aria-label={t.settings.font_next}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><polyline points="9 18 15 12 9 6"></polyline></svg
+                    >
                   </button>
                 </div>
               </div>
             </div>
-
           </div>
 
           <!-- Biografía y Sistema de Calificación lado a lado -->
-          <div style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-
+          <div
+            style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;"
+          >
             <!-- Biografía -->
             <div class="settings-section" style="flex: 1;">
               <h3 class="settings-section-title">{t.settings.bio_title}</h3>
@@ -106,68 +212,155 @@ const version = pkg.version;
                 placeholder={t.settings.bio_placeholder}
                 maxlength="500"
                 rows="5"
-                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.85rem; resize: vertical;">
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.85rem; resize: vertical;"
+              >
               </textarea>
-              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;">
+              <div
+                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;"
+              >
                 <span id="bio-char-count">0</span>/500
               </div>
             </div>
 
             <!-- Sistema de Calificación -->
             <div class="settings-section" style="flex: 1;">
-              <h3 class="settings-section-title">{t.settings.rating_system_title}</h3>
+              <h3 class="settings-section-title">
+                {t.settings.rating_system_title}
+              </h3>
               <div class="rating-system-picker">
-                <button type="button" class="rating-system-btn" data-value="5-star" title="5 estrellas">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <button
+                  type="button"
+                  class="rating-system-btn"
+                  data-value="5-star"
+                  title="5 estrellas"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><polygon
+                      points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                    ></polygon></svg
+                  >
                 </button>
-                <button type="button" class="rating-system-btn" data-value="10-dec" title="Nota sobre 10 (2 decimales)">
-                  <span style="font-size: 0.75rem; font-weight: 800;">10.00</span>
+                <button
+                  type="button"
+                  class="rating-system-btn"
+                  data-value="10-dec"
+                  title="Nota sobre 10 (2 decimales)"
+                >
+                  <span style="font-size: 0.75rem; font-weight: 800;"
+                    >10.00</span
+                  >
                 </button>
-                <button type="button" class="rating-system-btn" data-value="10" title="Nota sobre 10 (Entero)">
+                <button
+                  type="button"
+                  class="rating-system-btn"
+                  data-value="10"
+                  title="Nota sobre 10 (Entero)"
+                >
                   <span style="font-size: 0.75rem; font-weight: 800;">10</span>
                 </button>
-                <button type="button" class="rating-system-btn" data-value="3-emoji" title="3 caritas (9, 6 y 3)">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                <button
+                  type="button"
+                  class="rating-system-btn"
+                  data-value="3-emoji"
+                  title="3 caritas (9, 6 y 3)"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><circle cx="12" cy="12" r="10"></circle><path
+                      d="M8 14s1.5 2 4 2 4-2 4-2"></path><line
+                      x1="9"
+                      y1="9"
+                      x2="9.01"
+                      y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"
+                    ></line></svg
+                  >
                 </button>
               </div>
             </div>
           </div>
 
           <!-- Color Personalizado y Selector de Fondo -->
-          <div style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; flex-wrap: wrap;">
-            
+          <div
+            style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; flex-wrap: wrap;"
+          >
             <!-- Color Personalizado -->
             <div class="settings-section" style="flex: 1; min-width: 250px;">
-              <h3 class="settings-section-title">{t.settings.custom_color_title}</h3>
+              <h3 class="settings-section-title">
+                {t.settings.custom_color_title}
+              </h3>
               <p class="settings-hint">{t.settings.custom_color_hint}</p>
-              <div class="color-picker-container" style="display: flex; align-items: center; gap: 1rem;">
-                <input type="color" id="custom-color-input" class="color-input" value="#c084fc" style="width: 80px; height: 80px; border: none; border-radius: var(--radius-md); cursor: pointer;" />
+              <div
+                class="color-picker-container"
+                style="display: flex; align-items: center; gap: 1rem;"
+              >
+                <input
+                  type="color"
+                  id="custom-color-input"
+                  class="color-input"
+                  value="#c084fc"
+                  style="width: 80px; height: 80px; border: none; border-radius: var(--radius-md); cursor: pointer;"
+                />
                 <div>
-                  <p id="color-hex-display" style="font-family: monospace; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.5rem;">Actual: #c084fc</p>
-                  <button class="btn btn--sm btn--ghost" id="color-reset-btn">Restaurar defecto</button>
+                  <p
+                    id="color-hex-display"
+                    style="font-family: monospace; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.5rem;"
+                  >
+                    Actual: #c084fc
+                  </p>
+                  <button class="btn btn--sm btn--ghost" id="color-reset-btn"
+                    >Restaurar defecto</button
+                  >
                 </div>
               </div>
             </div>
 
             <!-- Selector de Fondo Dinámico -->
             <div class="settings-section" style="flex: 2; min-width: 320px;">
-              <h3 class="settings-section-title">{t.settings.appearance_bg_title}</h3>
+              <h3 class="settings-section-title">
+                {t.settings.appearance_bg_title}
+              </h3>
               <p class="settings-hint">{t.settings.appearance_bg_hint}</p>
               <div class="theme-grid" id="theme-grid"></div>
             </div>
-
           </div>
 
           <!-- Sección de Actividad -->
-          <div style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-            <h3 class="settings-section-title">{t.settings.activity_section}</h3>
+          <div
+            style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;"
+          >
+            <h3 class="settings-section-title">
+              {t.settings.activity_section}
+            </h3>
             <div class="settings-checkbox-group">
               <label class="settings-checkbox-label">
-                <input type="checkbox" id="activity-batch-episodes" class="settings-checkbox" />
+                <input
+                  type="checkbox"
+                  id="activity-batch-episodes"
+                  class="settings-checkbox"
+                />
                 <span class="checkbox-custom"></span>
-                <span class="checkbox-label-text">{t.settings.activity_batch_episodes}</span>
+                <span class="checkbox-label-text"
+                  >{t.settings.activity_batch_episodes}</span
+                >
               </label>
-              <p class="settings-hint">{t.settings.activity_batch_episodes_hint}</p>
+              <p class="settings-hint">
+                {t.settings.activity_batch_episodes_hint}
+              </p>
             </div>
           </div>
         </div>
@@ -179,46 +372,108 @@ const version = pkg.version;
           <div class="settings-section">
             <h3 class="settings-section-title">{t.settings.env_title}</h3>
             <p class="settings-hint">{t.settings.env_hint}</p>
-            <button class="btn btn--sm btn--ghost" id="open-env-folder-btn" style="margin-bottom: 1rem;">
+            <button
+              class="btn btn--sm btn--ghost"
+              id="open-env-folder-btn"
+              style="margin-bottom: 1rem;"
+            >
               📁 {t.settings.env_open_folder}
             </button>
 
             <div class="env-services-grid">
-
               <!-- IGDB -->
               <div class="env-service-block">
-                <div class="env-service-header" style="justify-content: center;">
-                  <a href="https://dev.twitch.tv/" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <img class="env-service-logo" src="/API/IGDB_logo.png" alt="IGDB" style="width: 48px; height: 48px;" />
+                <div
+                  class="env-service-header"
+                  style="justify-content: center;"
+                >
+                  <a
+                    href="https://dev.twitch.tv/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                  >
+                    <img
+                      class="env-service-logo"
+                      src="/API/IGDB_logo.png"
+                      alt="IGDB"
+                      style="width: 48px; height: 48px;"
+                    />
                   </a>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-id">{t.settings.env_igdb_client_id}</label>
-                    <input class="env-input" type="text" id="igdb-client-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" />
+                    <label class="env-label" for="igdb-client-id"
+                      >{t.settings.env_igdb_client_id}</label
+                    >
+                    <input
+                      class="env-input"
+                      type="text"
+                      id="igdb-client-id"
+                      placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
+                      autocomplete="off"
+                      spellcheck="false"
+                    />
                   </div>
                   <div class="env-field">
-                    <label class="env-label" for="igdb-client-secret">{t.settings.env_igdb_client_secret}</label>
-                    <input class="env-input" type="password" id="igdb-client-secret" placeholder="••••••••••••••••••••••••" autocomplete="off" />
+                    <label class="env-label" for="igdb-client-secret"
+                      >{t.settings.env_igdb_client_secret}</label
+                    >
+                    <input
+                      class="env-input"
+                      type="password"
+                      id="igdb-client-secret"
+                      placeholder="••••••••••••••••••••••••"
+                      autocomplete="off"
+                    />
                   </div>
                 </div>
               </div>
 
               <!-- TMDB -->
               <div class="env-service-block">
-                <div class="env-service-header" style="justify-content: center;">
-                  <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <img class="env-service-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" style="width: 48px; height: 48px;" />
+                <div
+                  class="env-service-header"
+                  style="justify-content: center;"
+                >
+                  <a
+                    href="https://www.themoviedb.org/settings/api"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                  >
+                    <img
+                      class="env-service-logo"
+                      src="/API/Tmdb.new.logo.png"
+                      alt="TMDB"
+                      style="width: 48px; height: 48px;"
+                    />
                   </a>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <label class="env-label" for="tmdb-access-token">{t.settings.env_tmdb_access_token}</label>
-                    <input class="env-input" type="password" id="tmdb-access-token" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                    <label class="env-label" for="tmdb-access-token"
+                      >{t.settings.env_tmdb_access_token}</label
+                    >
+                    <input
+                      class="env-input"
+                      type="password"
+                      id="tmdb-access-token"
+                      placeholder="••••••••••••••••••••••••••••••••"
+                      autocomplete="off"
+                    />
                   </div>
                   <div class="env-field">
-                    <label class="env-label" for="tmdb-api-key">{t.settings.env_tmdb_api_key}</label>
-                    <input class="env-input" type="password" id="tmdb-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                    <label class="env-label" for="tmdb-api-key"
+                      >{t.settings.env_tmdb_api_key}</label
+                    >
+                    <input
+                      class="env-input"
+                      type="password"
+                      id="tmdb-api-key"
+                      placeholder="••••••••••••••••••••••••••••••••"
+                      autocomplete="off"
+                    />
                   </div>
                 </div>
               </div>
@@ -227,31 +482,78 @@ const version = pkg.version;
               <div class="env-service-block">
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <div class="env-service-header" style="justify-content: center; margin-bottom: 0.5rem;">
-                      <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                        <img class="env-service-logo" src="/platforms/steam_logo.png" alt="Steam" style="width: 48px; height: 48px;" />
+                    <div
+                      class="env-service-header"
+                      style="justify-content: center; margin-bottom: 0.5rem;"
+                    >
+                      <a
+                        href="https://steamcommunity.com/dev/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                      >
+                        <img
+                          class="env-service-logo"
+                          src="/platforms/steam_logo.png"
+                          alt="Steam"
+                          style="width: 48px; height: 48px;"
+                        />
                       </a>
                     </div>
-                    <label class="env-label" for="steam-api-key">{t.settings.env_steam_api_key}</label>
-                    <input class="env-input" type="password" id="steam-api-key" placeholder="••••••••••••••••••••••••••••••••" autocomplete="off" />
+                    <label class="env-label" for="steam-api-key"
+                      >{t.settings.env_steam_api_key}</label
+                    >
+                    <input
+                      class="env-input"
+                      type="password"
+                      id="steam-api-key"
+                      placeholder="••••••••••••••••••••••••••••••••"
+                      autocomplete="off"
+                    />
                   </div>
                   <div class="env-field">
-                    <div class="env-service-header" style="justify-content: center; margin-bottom: 0.5rem;">
-                      <a href="https://anilist.co/settings/developer" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                        <img class="env-service-logo" src="/API/Anilist_logo.png" alt="AniList" style="width: 48px; height: 48px;" />
+                    <div
+                      class="env-service-header"
+                      style="justify-content: center; margin-bottom: 0.5rem;"
+                    >
+                      <a
+                        href="https://anilist.co/settings/developer"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                      >
+                        <img
+                          class="env-service-logo"
+                          src="/API/Anilist_logo.png"
+                          alt="AniList"
+                          style="width: 48px; height: 48px;"
+                        />
                       </a>
                     </div>
-                    <label class="env-label" for="anilist-client-id">Client ID</label>
-                    <input class="env-input" type="text" id="anilist-client-id" placeholder="Ej. 18343" autocomplete="off" />
+                    <label class="env-label" for="anilist-client-id"
+                      >Client ID</label
+                    >
+                    <input
+                      class="env-input"
+                      type="text"
+                      id="anilist-client-id"
+                      placeholder="Ej. 18343"
+                      autocomplete="off"
+                    />
                   </div>
                 </div>
               </div>
-
             </div>
 
-            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem;">
-              <button class="btn btn--primary" id="env-save-btn">{t.settings.env_save}</button>
-              <button class="btn btn--ghost" id="env-clear-btn">{t.settings.env_clear}</button>
+            <div
+              style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem;"
+            >
+              <button class="btn btn--primary" id="env-save-btn"
+                >{t.settings.env_save}</button
+              >
+              <button class="btn btn--ghost" id="env-clear-btn"
+                >{t.settings.env_clear}</button
+              >
             </div>
           </div>
         </div>
@@ -259,80 +561,254 @@ const version = pkg.version;
         <!-- Tab: Conexiones -->
         <div class="settings-panel hidden" id="panel-application">
           <h2 class="settings-panel-title">{t.settings.tab_application}</h2>
-          
-          <div class="settings-section" style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;">
+
+          <div
+            class="settings-section"
+            style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+          >
+            <div
+              style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;"
+            >
               <!-- GitHub Auth Block -->
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); flex: 1 1 200px; min-width: 200px;">
+              <div
+                style="display: flex; align-items: center; justify-content: space-between; gap: 3rem; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); width: fit-content; max-width: 100%;"
+              >
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <div id="github-avatar-container" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                  <div
+                    id="github-avatar-container"
+                    style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="color: var(--text-muted);"
+                      ><path
+                        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+                      ></path></svg
+                    >
                   </div>
                   <div>
-                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">GitHub</span>
-                    <span id="github-user-status" style="font-size: 0.75rem; color: var(--text-dim); display: block;">No conectado</span>
+                    <span
+                      style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
+                      >GitHub</span
+                    >
+                    <span
+                      id="github-user-status"
+                      style="font-size: 0.75rem; color: var(--text-dim); display: block;"
+                      >No conectado</span
+                    >
                   </div>
                 </div>
-                <button class="btn btn--sm btn--primary" id="github-login-btn">Conectar</button>
+                <button class="btn btn--sm btn--primary" id="github-login-btn"
+                  >Conectar</button
+                >
               </div>
 
               <!-- AniList Auth Block -->
-              <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); flex: 1.5 1 350px; min-width: 350px;">
+              <div
+                style="display: flex; align-items: center; justify-content: space-between; gap: 3rem; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); width: fit-content; max-width: 100%;"
+              >
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <div id="anilist-avatar-container" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                    <img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />
+                  <div
+                    id="anilist-avatar-container"
+                    style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;"
+                  >
+                    <img
+                      src="/API/Anilist_logo.png"
+                      style="width: 18px; height: 18px;"
+                    />
                   </div>
                   <div>
-                    <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">AniList</span>
-                    <span id="anilist-user-status" style="font-size: 0.75rem; color: var(--text-dim); display: block;">No conectado</span>
+                    <span
+                      style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
+                      >AniList</span
+                    >
+                    <span
+                      id="anilist-user-status"
+                      style="font-size: 0.75rem; color: var(--text-dim); display: block;"
+                      >No conectado</span
+                    >
                   </div>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                  <button class="btn btn--sm btn--secondary" id="anilist-import-btn" disabled>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                  <button
+                    class="btn btn--sm btn--secondary"
+                    id="anilist-import-btn"
+                    disabled
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="margin-right: 4px;"
+                      ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                      ></path><polyline points="7 10 12 15 17 10"
+                      ></polyline><line x1="12" y1="15" x2="12" y2="3"
+                      ></line></svg
+                    >
                     Importar
                   </button>
-                  <button class="btn btn--sm btn--primary" id="anilist-login-btn">Desconectar</button>
+                  <button
+                    class="btn btn--sm btn--primary"
+                    id="anilist-login-btn"
+                    >Desconectar</button
+                  >
                 </div>
               </div>
 
               <!-- Import Modal -->
-              <div id="anilist-import-choose-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
-                <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">¿Qué descargar de AniList?</span>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                  <button class="btn btn--sm btn--primary" id="anilist-import-anime-btn" style="width: 100%;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 5v14M5 12h14"/></svg>
+              <div
+                id="anilist-import-choose-modal"
+                style="display: none; flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
+              >
+                <span
+                  style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
+                  >¿Qué descargar de AniList?</span
+                >
+                <div
+                  style="display: flex; flex-direction: column; gap: 0.5rem;"
+                >
+                  <button
+                    class="btn btn--sm btn--primary"
+                    id="anilist-import-anime-btn"
+                    style="width: 100%;"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="margin-right: 4px;"
+                      ><path d="M12 5v14M5 12h14"></path></svg
+                    >
                     Descargar Anime
                   </button>
-                  <button class="btn btn--sm btn--primary" id="anilist-import-manga-btn" style="width: 100%;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M12 5v14M5 12h14"/></svg>
+                  <button
+                    class="btn btn--sm btn--primary"
+                    id="anilist-import-manga-btn"
+                    style="width: 100%;"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      style="margin-right: 4px;"
+                      ><path d="M12 5v14M5 12h14"></path></svg
+                    >
                     Descargar Manga
                   </button>
-                  <button class="btn btn--sm btn--ghost" id="anilist-import-cancel-btn" style="width: 100%; margin-top: 0.5rem;">Cancelar</button>
+                  <button
+                    class="btn btn--sm btn--ghost"
+                    id="anilist-import-cancel-btn"
+                    style="width: 100%; margin-top: 0.5rem;">Cancelar</button
+                  >
                 </div>
               </div>
             </div>
 
             <!-- GitHub Device Flow modal -->
-            <div id="github-device-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
-              <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Iniciar Sesión en GitHub</span>
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">Entra en la web a continuación e introduce este código:</p>
-              <div id="github-device-code-box" style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.1em; color: var(--accent); padding: 0.5rem 1rem; border: 1px dashed var(--accent); border-radius: 4px; background: rgba(139, 92, 246, 0.08); margin: 0.5rem 0; width: fit-content; font-family: monospace;">----</div>
-              <a href="https://github.com/login/device" target="_blank" rel="noopener noreferrer" class="btn btn--sm btn--secondary" style="text-decoration: none; text-align: center; width: 100%;">Abrir github.com/login/device</a>
-              <button class="btn btn--sm btn--ghost" id="github-cancel-device-btn" style="width: 100%;">Cancelar</button>
+            <div
+              id="github-device-modal"
+              style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
+            >
+              <span
+                style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
+                >Iniciar Sesión en GitHub</span
+              >
+              <p
+                style="font-size: 0.75rem; color: var(--text-muted); margin: 0;"
+              >
+                Entra en la web a continuación e introduce este código:
+              </p>
+              <div
+                id="github-device-code-box"
+                style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.1em; color: var(--accent); padding: 0.5rem 1rem; border: 1px dashed var(--accent); border-radius: 4px; background: rgba(139, 92, 246, 0.08); margin: 0.5rem 0; width: fit-content; font-family: monospace;"
+              >
+                ----
+              </div>
+              <a
+                href="https://github.com/login/device"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn--sm btn--secondary"
+                style="text-decoration: none; text-align: center; width: 100%;"
+                >Abrir github.com/login/device</a
+              >
+              <button
+                class="btn btn--sm btn--ghost"
+                id="github-cancel-device-btn"
+                style="width: 100%;">Cancelar</button
+              >
             </div>
 
             <!-- AniList token prompt modal -->
-            <div id="anilist-token-modal" style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;">
-              <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;">Iniciar Sesión en AniList</span>
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">1. Haz clic en el botón de abajo para autorizar a Metadea en tu navegador.</p>
-              <a href="#" id="anilist-auth-link" target="_blank" rel="noopener noreferrer" class="btn btn--sm btn--secondary" style="text-decoration: none; text-align: center; width: 100%;">Abrir página de autorización</a>
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; margin-top: 0.5rem;">2. Copia el token/código largo que te da la web y pégalo aquí:</p>
-              <input type="text" id="anilist-token-input" placeholder="Pega el token aquí..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; text-align: center;" />
-              <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;">
-                <button class="btn btn--sm btn--primary" id="anilist-save-token-btn" style="flex: 1;">Validar y guardar</button>
-                <button class="btn btn--sm btn--ghost" id="anilist-cancel-token-btn" style="flex: 1;">Cancelar</button>
+            <div
+              id="anilist-token-modal"
+              style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
+            >
+              <span
+                style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
+                >Iniciar Sesión en AniList</span
+              >
+              <p
+                style="font-size: 0.75rem; color: var(--text-muted); margin: 0;"
+              >
+                1. Haz clic en el botón de abajo para autorizar a Metadea en tu
+                navegador.
+              </p>
+              <a
+                href="#"
+                id="anilist-auth-link"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn--sm btn--secondary"
+                style="text-decoration: none; text-align: center; width: 100%;"
+                >Abrir página de autorización</a
+              >
+              <p
+                style="font-size: 0.75rem; color: var(--text-muted); margin: 0; margin-top: 0.5rem;"
+              >
+                2. Copia el token/código largo que te da la web y pégalo aquí:
+              </p>
+              <input
+                type="text"
+                id="anilist-token-input"
+                placeholder="Pega el token aquí..."
+                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; text-align: center;"
+              />
+              <div
+                style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;"
+              >
+                <button
+                  class="btn btn--sm btn--primary"
+                  id="anilist-save-token-btn"
+                  style="flex: 1;">Validar y guardar</button
+                >
+                <button
+                  class="btn btn--sm btn--ghost"
+                  id="anilist-cancel-token-btn"
+                  style="flex: 1;">Cancelar</button
+                >
               </div>
             </div>
           </div>
@@ -341,21 +817,42 @@ const version = pkg.version;
         <!-- Tab: Novedades -->
         <div class="settings-panel hidden" id="panel-novedades">
           <h2 class="settings-panel-title">{t.settings.tab_novedades}</h2>
-          
-          <div class="settings-section" style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-            <p class="settings-hint" style="margin-bottom: 0.5rem;">Mantente al día con las últimas versiones y mejoras de la aplicación.</p>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+
+          <div
+            class="settings-section"
+            style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+          >
+            <p class="settings-hint" style="margin-bottom: 0.5rem;">
+              Mantente al día con las últimas versiones y mejoras de la
+              aplicación.
+            </p>
+
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);"
+            >
               <div>
-                <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;">{t.settings.app_version_label}</span>
-                <span class="app-curr-ver" data-version={version} style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"></span>
+                <span
+                  style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
+                  >{t.settings.app_version_label}</span
+                >
+                <span
+                  class="app-curr-ver"
+                  data-version={version}
+                  style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"
+                ></span>
               </div>
-              <button class="btn btn--sm btn--secondary" id="app-check-update-btn">{t.settings.app_check_update}</button>
+              <button
+                class="btn btn--sm btn--secondary"
+                id="app-check-update-btn">{t.settings.app_check_update}</button
+              >
             </div>
-            <div id="updater-status-text" style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"></div>
+            <div
+              id="updater-status-text"
+              style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+            >
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -365,33 +862,36 @@ const version = pkg.version;
 </BaseLayout>
 
 <script>
-  import { getAuthToken } from '../lib/tauri';
-  import { decodeJwtPayload } from '../lib/profile/utils';
-  import { initAvatar } from '../lib/settings/avatar';
-  import { initBanner } from '../lib/settings/banner';
-  import { initThemePicker } from '../lib/settings/theme';
-  import { initEnvironment } from '../lib/settings/environment';
-  import { initFontPicker } from '../lib/settings/fonts';
-  import { initGitHubAuth } from '../lib/settings/github';
-  import { initAniListAuth } from '../lib/settings/anilist';
-  import { importFromAniList } from '../lib/anilist/import';
-  import { getT } from '../i18n/client';
+  import { getAuthToken } from "../lib/tauri";
+  import { decodeJwtPayload } from "../lib/profile/utils";
+  import { initAvatar } from "../lib/settings/avatar";
+  import { initBanner } from "../lib/settings/banner";
+  import { initThemePicker } from "../lib/settings/theme";
+  import { initEnvironment } from "../lib/settings/environment";
+  import { initFontPicker } from "../lib/settings/fonts";
+  import { initGitHubAuth } from "../lib/settings/github";
+  import { initAniListAuth } from "../lib/settings/anilist";
+  import { importFromAniList } from "../lib/anilist/import";
+  import { getT } from "../i18n/client";
 
   function showToast(msg?: string) {
     const clientT = getT();
-    const el = document.getElementById('settings-toast')!;
+    const el = document.getElementById("settings-toast")!;
     el.textContent = msg || clientT.settings.env_saved;
-    el.classList.add('visible');
-    setTimeout(() => el.classList.remove('visible'), 2000);
+    el.classList.add("visible");
+    setTimeout(() => el.classList.remove("visible"), 2000);
   }
 
-  document.addEventListener('astro:page-load', async () => {
+  document.addEventListener("astro:page-load", async () => {
     const session = await getAuthToken().catch(() => null);
-    if (!session?.token) { window.location.replace('/login'); return; }
+    if (!session?.token) {
+      window.location.replace("/login");
+      return;
+    }
 
-    const payload      = decodeJwtPayload(session.token);
+    const payload = decodeJwtPayload(session.token);
     const googleAvatar = payload.avatar as string | null;
-    const username     = session.username;
+    const username = session.username;
 
     initAvatar(googleAvatar, username, showToast);
     initBanner(showToast);
@@ -402,28 +902,38 @@ const version = pkg.version;
     initAniListAuth();
 
     // AniList Import
-    const importBtn = document.getElementById('anilist-import-btn') as HTMLButtonElement | null;
-    const importChooseModal = document.getElementById('anilist-import-choose-modal') as HTMLElement | null;
-    const importAnimeBtn = document.getElementById('anilist-import-anime-btn') as HTMLButtonElement | null;
-    const importMangaBtn = document.getElementById('anilist-import-manga-btn') as HTMLButtonElement | null;
-    const importCancelBtn = document.getElementById('anilist-import-cancel-btn') as HTMLButtonElement | null;
+    const importBtn = document.getElementById(
+      "anilist-import-btn",
+    ) as HTMLButtonElement | null;
+    const importChooseModal = document.getElementById(
+      "anilist-import-choose-modal",
+    ) as HTMLElement | null;
+    const importAnimeBtn = document.getElementById(
+      "anilist-import-anime-btn",
+    ) as HTMLButtonElement | null;
+    const importMangaBtn = document.getElementById(
+      "anilist-import-manga-btn",
+    ) as HTMLButtonElement | null;
+    const importCancelBtn = document.getElementById(
+      "anilist-import-cancel-btn",
+    ) as HTMLButtonElement | null;
 
     function updateImportButtons() {
-      const hasToken = localStorage.getItem('metadea_anilist_token');
+      const hasToken = localStorage.getItem("metadea_anilist_token");
       if (importBtn) importBtn.disabled = !hasToken;
     }
 
     function hideChooseModal() {
-      if (importChooseModal) importChooseModal.style.display = 'none';
+      if (importChooseModal) importChooseModal.style.display = "none";
     }
 
     function showChooseModal() {
-      if (importChooseModal) importChooseModal.style.display = 'flex';
+      if (importChooseModal) importChooseModal.style.display = "flex";
     }
 
     function createProgressModal(title: string) {
-      const modal = document.createElement('div');
-      modal.id = 'anilist-import-progress-modal';
+      const modal = document.createElement("div");
+      modal.id = "anilist-import-progress-modal";
       modal.style.cssText = `
         position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
         background: var(--bg-card); border: 1px solid var(--border-color);
@@ -441,8 +951,8 @@ const version = pkg.version;
         </div>
       `;
 
-      const backdrop = document.createElement('div');
-      backdrop.id = 'anilist-import-progress-backdrop';
+      const backdrop = document.createElement("div");
+      backdrop.id = "anilist-import-progress-backdrop";
       backdrop.style.cssText = `position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;`;
 
       document.body.appendChild(backdrop);
@@ -450,22 +960,26 @@ const version = pkg.version;
       return { modal, backdrop };
     }
 
-    async function doImport(mediaType: 'anime' | 'manga') {
+    async function doImport(mediaType: "anime" | "manga") {
       hideChooseModal();
-      const { modal, backdrop } = createProgressModal(`Descargando ${mediaType}...`);
+      const { modal, backdrop } = createProgressModal(
+        `Descargando ${mediaType}...`,
+      );
 
       try {
         const result = await importFromAniList(mediaType, (progress) => {
-          const statusEl = document.getElementById('import-status');
-          const progressEl = document.getElementById('import-progress');
-          const countEl = document.getElementById('import-count');
+          const statusEl = document.getElementById("import-status");
+          const progressEl = document.getElementById("import-progress");
+          const countEl = document.getElementById("import-count");
 
-          if (statusEl) statusEl.textContent = progress.message || progress.status;
+          if (statusEl)
+            statusEl.textContent = progress.message || progress.status;
           if (progressEl && progress.total > 0) {
             const percent = (progress.current / progress.total) * 100;
             progressEl.style.width = `${percent}%`;
           }
-          if (countEl) countEl.textContent = `${progress.current}/${progress.total}`;
+          if (countEl)
+            countEl.textContent = `${progress.current}/${progress.total}`;
         });
 
         modal.remove();
@@ -479,70 +993,78 @@ const version = pkg.version;
       } catch (e) {
         modal.remove();
         backdrop.remove();
-        showToast(`Error: ${e?.message ?? 'Import failed'}`);
+        showToast(`Error: ${e?.message ?? "Import failed"}`);
       } finally {
         updateImportButtons();
       }
     }
 
     if (importBtn) {
-      importBtn.addEventListener('click', showChooseModal);
+      importBtn.addEventListener("click", showChooseModal);
     }
     if (importAnimeBtn) {
-      importAnimeBtn.addEventListener('click', () => doImport('anime'));
+      importAnimeBtn.addEventListener("click", () => doImport("anime"));
     }
     if (importMangaBtn) {
-      importMangaBtn.addEventListener('click', () => doImport('manga'));
+      importMangaBtn.addEventListener("click", () => doImport("manga"));
     }
     if (importCancelBtn) {
-      importCancelBtn.addEventListener('click', hideChooseModal);
+      importCancelBtn.addEventListener("click", hideChooseModal);
     }
 
     updateImportButtons();
 
     // Rating System
-    const activeSystem = localStorage.getItem('metadea_rating_system') || '5-star';
-    const ratingBtns = document.querySelectorAll<HTMLButtonElement>('.rating-system-btn');
-    ratingBtns.forEach(btn => {
+    const activeSystem =
+      localStorage.getItem("metadea_rating_system") || "5-star";
+    const ratingBtns =
+      document.querySelectorAll<HTMLButtonElement>(".rating-system-btn");
+    ratingBtns.forEach((btn) => {
       if (btn.dataset.value === activeSystem) {
-        btn.classList.add('active');
+        btn.classList.add("active");
       }
-      btn.addEventListener('click', () => {
-        ratingBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        localStorage.setItem('metadea_rating_system', btn.dataset.value || '5-star');
+      btn.addEventListener("click", () => {
+        ratingBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem(
+          "metadea_rating_system",
+          btn.dataset.value || "5-star",
+        );
         showToast("Sistema de calificación guardado");
       });
     });
 
     // Custom Color
-    const DEFAULT_COLOR = '#c084fc';
-    const colorInput = document.getElementById('custom-color-input') as HTMLInputElement | null;
-    const colorHexDisplay = document.getElementById('color-hex-display');
-    const colorResetBtn = document.getElementById('color-reset-btn');
+    const DEFAULT_COLOR = "#c084fc";
+    const colorInput = document.getElementById(
+      "custom-color-input",
+    ) as HTMLInputElement | null;
+    const colorHexDisplay = document.getElementById("color-hex-display");
+    const colorResetBtn = document.getElementById("color-reset-btn");
 
     if (colorInput && colorHexDisplay) {
       // Load saved color
-      const savedColor = localStorage.getItem('metadea_custom_color') || DEFAULT_COLOR;
+      const savedColor =
+        localStorage.getItem("metadea_custom_color") || DEFAULT_COLOR;
       colorInput.value = savedColor;
       colorHexDisplay.textContent = `Actual: ${savedColor}`;
       applyCustomColor(savedColor);
 
       // Color change handler
-      colorInput.addEventListener('input', (e) => {
+      colorInput.addEventListener("input", (e) => {
         const color = (e.target as HTMLInputElement).value;
         colorHexDisplay.textContent = `Actual: ${color}`;
-        localStorage.setItem('metadea_custom_color', color);
+        localStorage.setItem("metadea_custom_color", color);
         applyCustomColor(color);
       });
     }
 
     if (colorResetBtn) {
-      colorResetBtn.addEventListener('click', () => {
+      colorResetBtn.addEventListener("click", () => {
         if (colorInput) {
           colorInput.value = DEFAULT_COLOR;
           colorHexDisplay!.textContent = `Actual: ${DEFAULT_COLOR}`;
-          localStorage.setItem('metadea_custom_color', DEFAULT_COLOR);
+          localStorage.setItem("metadea_custom_color", DEFAULT_COLOR);
           applyCustomColor(DEFAULT_COLOR);
           showToast("Color restaurado");
         }
@@ -550,86 +1072,108 @@ const version = pkg.version;
     }
 
     function applyCustomColor(color: string) {
-      document.documentElement.style.setProperty('--accent', color);
-      document.documentElement.style.setProperty('--accent-soft', `${color}19`);
-      document.documentElement.style.setProperty('--accent-border', `${color}40`);
-      document.documentElement.style.setProperty('--accent-glow', `${color}4d`);
+      document.documentElement.style.setProperty("--accent", color);
+      document.documentElement.style.setProperty("--accent-soft", `${color}19`);
+      document.documentElement.style.setProperty(
+        "--accent-border",
+        `${color}40`,
+      );
+      document.documentElement.style.setProperty("--accent-glow", `${color}4d`);
     }
 
     // Activity Settings: Batch Episodes
-    const batchEpisodesCheckbox = document.getElementById('activity-batch-episodes') as HTMLInputElement | null;
+    const batchEpisodesCheckbox = document.getElementById(
+      "activity-batch-episodes",
+    ) as HTMLInputElement | null;
     if (batchEpisodesCheckbox) {
-      const savedBatchEpisodes = localStorage.getItem('metadea_activity_batch_episodes') === 'true';
+      const savedBatchEpisodes =
+        localStorage.getItem("metadea_activity_batch_episodes") === "true";
       batchEpisodesCheckbox.checked = savedBatchEpisodes;
-      batchEpisodesCheckbox.addEventListener('change', () => {
-        localStorage.setItem('metadea_activity_batch_episodes', batchEpisodesCheckbox.checked.toString());
+      batchEpisodesCheckbox.addEventListener("change", () => {
+        localStorage.setItem(
+          "metadea_activity_batch_episodes",
+          batchEpisodesCheckbox.checked.toString(),
+        );
         showToast("Preferencias de actividad guardadas");
       });
     }
 
     // Bio
-    const bioTextarea = document.getElementById('bio-textarea') as HTMLTextAreaElement | null;
-    const bioCharCount = document.getElementById('bio-char-count');
+    const bioTextarea = document.getElementById(
+      "bio-textarea",
+    ) as HTMLTextAreaElement | null;
+    const bioCharCount = document.getElementById("bio-char-count");
 
     if (bioTextarea && bioCharCount) {
-      const savedBio = localStorage.getItem('metadea_user_bio') || '';
+      const savedBio = localStorage.getItem("metadea_user_bio") || "";
       bioTextarea.value = savedBio;
       bioCharCount.textContent = savedBio.length.toString();
 
-      bioTextarea.addEventListener('input', () => {
+      bioTextarea.addEventListener("input", () => {
         bioCharCount.textContent = bioTextarea.value.length.toString();
-        localStorage.setItem('metadea_user_bio', bioTextarea.value);
+        localStorage.setItem("metadea_user_bio", bioTextarea.value);
       });
     }
 
     // Application/Updater Section
-    const checkBtn = document.getElementById('app-check-update-btn') as HTMLButtonElement | null;
-    const statusText = document.getElementById('updater-status-text');
-    const versionSpan = document.querySelector('.app-curr-ver') as HTMLElement | null;
-    const defaultVersion = versionSpan?.dataset.version || '0.1.9';
+    const checkBtn = document.getElementById(
+      "app-check-update-btn",
+    ) as HTMLButtonElement | null;
+    const statusText = document.getElementById("updater-status-text");
+    const versionSpan = document.querySelector(
+      ".app-curr-ver",
+    ) as HTMLElement | null;
+    const defaultVersion = versionSpan?.dataset.version || "0.1.9";
 
-    const isTauri = typeof window !== 'undefined' && (
-      '__TAURI_IPC__' in window ||
-      '__TAURI_INTERNALS__' in window ||
-      '__TAURI__' in window
-    );
+    const isTauri =
+      typeof window !== "undefined" &&
+      ("__TAURI_IPC__" in window ||
+        "__TAURI_INTERNALS__" in window ||
+        "__TAURI__" in window);
 
     if (isTauri) {
-      import('@tauri-apps/api/app').then(async ({ getVersion }) => {
-        const currentVersion = await getVersion();
-        if (versionSpan) versionSpan.textContent = `v${currentVersion}`;
-      }).catch(() => {
-        if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
-      });
+      import("@tauri-apps/api/app")
+        .then(async ({ getVersion }) => {
+          const currentVersion = await getVersion();
+          if (versionSpan) versionSpan.textContent = `v${currentVersion}`;
+        })
+        .catch(() => {
+          if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
+        });
     } else {
       if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
     }
 
     if (checkBtn) {
-      checkBtn.addEventListener('click', async () => {
+      checkBtn.addEventListener("click", async () => {
         if (!isTauri) {
           if (statusText) {
-            statusText.textContent = "Las actualizaciones solo están disponibles en la aplicación instalada.";
-            statusText.style.display = 'block';
+            statusText.textContent =
+              "Las actualizaciones solo están disponibles en la aplicación instalada.";
+            statusText.style.display = "block";
           }
           return;
         }
 
         const clientT = getT();
         checkBtn.disabled = true;
-        checkBtn.textContent = clientT.settings.app_checking_update || 'Buscando...';
-        if (statusText) statusText.style.display = 'none';
+        checkBtn.textContent =
+          clientT.settings.app_checking_update || "Buscando...";
+        if (statusText) statusText.style.display = "none";
 
         try {
-          const { check } = await import('@tauri-apps/plugin-updater');
-          const { relaunch } = await import('@tauri-apps/plugin-process');
+          const { check } = await import("@tauri-apps/plugin-updater");
+          const { relaunch } = await import("@tauri-apps/plugin-process");
           const update = await check();
           if (update && update.available) {
             if (statusText) {
               statusText.textContent = "Nueva actualización encontrada.";
-              statusText.style.display = 'block';
+              statusText.style.display = "block";
             }
-            const confirmMsg = (clientT.settings.app_update_found || 'Nueva versión {version} disponible. ¿Quieres instalarla?').replace('{version}', update.version);
+            const confirmMsg = (
+              clientT.settings.app_update_found ||
+              "Nueva versión {version} disponible. ¿Quieres instalarla?"
+            ).replace("{version}", update.version);
             const confirmUpdate = confirm(confirmMsg);
             if (confirmUpdate) {
               await update.downloadAndInstall();
@@ -637,30 +1181,41 @@ const version = pkg.version;
             }
           } else {
             if (statusText) {
-              statusText.textContent = clientT.settings.app_up_to_date || '¡Estás en la última versión!';
-              statusText.style.display = 'block';
+              statusText.textContent =
+                clientT.settings.app_up_to_date ||
+                "¡Estás en la última versión!";
+              statusText.style.display = "block";
             }
           }
         } catch (error) {
           console.error(error);
           if (statusText) {
-            statusText.textContent = `Error al buscar actualizaciones: ${error?.message || error || 'Conexión fallida'}`;
-            statusText.style.display = 'block';
+            statusText.textContent = `Error al buscar actualizaciones: ${error?.message || error || "Conexión fallida"}`;
+            statusText.style.display = "block";
           }
         } finally {
           checkBtn.disabled = false;
-          checkBtn.textContent = clientT.settings.app_check_update || 'Buscar actualizaciones';
+          checkBtn.textContent =
+            clientT.settings.app_check_update || "Buscar actualizaciones";
         }
       });
     }
 
-    document.querySelectorAll<HTMLButtonElement>('.settings-tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.settings-panel').forEach(p => p.classList.add('hidden'));
-        btn.classList.add('active');
-        document.getElementById(`panel-${btn.dataset.tab}`)?.classList.remove('hidden');
+    document
+      .querySelectorAll<HTMLButtonElement>(".settings-tab")
+      .forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document
+            .querySelectorAll(".settings-tab")
+            .forEach((t) => t.classList.remove("active"));
+          document
+            .querySelectorAll(".settings-panel")
+            .forEach((p) => p.classList.add("hidden"));
+          btn.classList.add("active");
+          document
+            .getElementById(`panel-${btn.dataset.tab}`)
+            ?.classList.remove("hidden");
+        });
       });
-    });
   });
 </script>
