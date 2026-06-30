@@ -700,7 +700,7 @@
 
 .mh-card {
   width: 140px;
-  height: 95px;
+  height: 140px;
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
@@ -713,7 +713,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  clip-path: inset(30% 0 30% 0);
+  clip-path: inset(38% 0 38% 0);
 }
 
 .mh-card:hover {
