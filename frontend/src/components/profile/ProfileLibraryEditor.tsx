@@ -26,35 +26,29 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
-      try {
-        const detail = (e as OpenEditorEvent).detail;
-        const id           = detail?.externalId;
-        const catalogEntry = detail?.catalogEntry;
-        const libraryEntry = detail?.libraryEntry;
+      const detail = (e as OpenEditorEvent).detail;
+      const id           = detail?.externalId;
+      const catalogEntry = detail?.catalogEntry;
+      const libraryEntry = detail?.libraryEntry;
 
-        if (!id) return;
+      if (!id) return;
 
-        // If catalogEntry exists, use it for instant basic data; otherwise start with empty
-        const basicData = catalogEntry
-          ? mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress)
-          : { title: id, type: libraryEntry?.type ?? 'anime' } as any;
+      const basicData = catalogEntry
+        ? mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress)
+        : { title: id, type: libraryEntry?.type ?? 'anime' } as any;
 
-        setState({ externalId: id, mediaData: basicData, libraryEntry });
+      setState({ externalId: id, mediaData: basicData, libraryEntry });
 
-        // Always fetch full data from API
-        fetchMediaData(id)
-          .then(data => {
-            if (data) setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
-          })
-          .catch(err => console.error('Error fetching media data:', err));
-      } catch (err) {
-        console.error('Error in ProfileLibraryEditor handleOpen:', err);
-      }
+      fetchMediaData(id)
+        .then(data => {
+          if (data) setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
+        })
+        .catch(console.error);
     };
 
     window.addEventListener('open-profile-editor', handleOpen as EventListener);
     return () => window.removeEventListener('open-profile-editor', handleOpen as EventListener);
-  }, [t.media.progress_in_progress]);
+  }, []);
 
   if (!state) return null;
 

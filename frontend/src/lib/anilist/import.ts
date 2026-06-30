@@ -145,7 +145,7 @@ export async function importFromAniList(
     // Import each media
     for (const mediaItem of allMediaList) {
       const anilistId = mediaItem.mediaId;
-      const externalId = `anilist:${anilistId}`;
+      const externalId = formatMediaId(mediaItem.media?.type ?? mediaType, anilistId);
 
       // Check if already in library
       const existing = existingLibrary.find(i => i.external_id === externalId);
@@ -245,6 +245,14 @@ function mapMediaType(mediaType: string, format?: string): string {
 
   const formatNormalized = format.toLowerCase().replace(/\s+/g, '_');
   return `${baseType}_${formatNormalized}`;
+}
+
+function formatMediaId(mediaType: string, anilistId: number): string {
+  // Format: anime_166240, manga_12345, Lnovel_5678, etc.
+  const typePrefix = mediaType.toLowerCase() === 'anime' ? 'anime'
+    : mediaType.toLowerCase() === 'manga' ? 'manga'
+    : 'Lnovel'; // Default to Lnovel for light novels
+  return `${typePrefix}_${anilistId}`;
 }
 
 function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: number } | null): string {

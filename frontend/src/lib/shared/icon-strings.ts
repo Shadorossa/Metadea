@@ -8,6 +8,7 @@ const INNER: Record<string, string> = {
   anime:     `<path d="M8 4c-1 0-2 1-2 2v2c0 1 .5 2 1 2.5-.5.5-1 1.5-1 2.5 0 2 1 3 2 3h8c1 0 2-1 2-3 0-1-.5-2-1-2.5.5-.5 1-1.5 1-2.5V6c0-1-1-2-2-2H8z"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1" fill="currentColor" stroke="none"/>`,
   manga:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   novel:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
+  Lnovel:    `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   vnovel:    `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
   series:    `<rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2l-5 5-5-5"/>`,
   movie:     `<rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/>`,
@@ -42,7 +43,7 @@ function fill(size: number, inner: string): string {
 
 // ── Media type icons ──────────────────────────────────────────────────────────
 
-const MEDIA_TYPES = ['game', 'anime', 'manga', 'novel', 'vnovel', 'series', 'movie', 'book'] as const;
+const MEDIA_TYPES = ['game', 'anime', 'manga', 'novel', 'Lnovel', 'vnovel', 'series', 'movie', 'book'] as const;
 
 export function getBaseMediaType(type: string): string {
   // Extract base type from formats like "anime_tv", "manga_ongoing", etc.
