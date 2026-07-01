@@ -37,16 +37,19 @@ const EDITION_KEYWORDS: &[&str] = &[
 
 const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_date,genres.name,rating,category,involved_companies.company.name,involved_companies.developer,involved_companies.publisher";
 
+fn get_game_category(game: &serde_json::Value) -> u64 {
+    game["category"]
+        .as_u64()
+        .or_else(|| game["game_type"].as_u64())
+        .unwrap_or(0)
+}
+
 /// Returns true if the game is a DLC/addon/non-game entry that should be excluded.
-/// Only excludes when category is explicitly set to a non-game value.
-/// Games with no category set (null → 0 in JSON) are treated as main_game.
 fn is_non_game(game: &serde_json::Value) -> bool {
     // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 8 (remake), 9 (remaster), 14 (update)
     const ALLOWED: &[u64] = &[0, 4, 8, 9, 14];
-    game["category"]
-        .as_u64()
-        .map(|c| !ALLOWED.contains(&c))
-        .unwrap_or(false) // Si es null se asume 0 (main_game), por tanto no es non-game (retorna false)
+    let category = get_game_category(game);
+    !ALLOWED.contains(&category)
 }
 
 
@@ -966,13 +969,12 @@ pub async fn igdb_search(
             IGDB_API_GAMES,
             &format!(
                 "fields id,name,cover.image_id,rating,first_release_date,\
-                 genres.id,genres.name,category,\
+                 genres.id,genres.name,category,game_type,\
                  version_parent.id,version_parent.genres.id,\
                  parent_game.id,parent_game.genres.id; \
                  search \"{}\"; where cover != null; limit {}; offset {};",
                 safe_query, PAGE, offset
             ),
-
         )
         .await?;
 
@@ -980,13 +982,13 @@ pub async fn igdb_search(
         let count = items.len();
 
         for item in items {
-            if !item["version_parent"].is_null() || !item["version_title"].is_null() {
+            let category = get_game_category(&item);
+            if !matches!(category, 0 | 4 | 8 | 9 | 14) {
                 continue;
             }
 
-            // Filtrar categorías: solo permitimos 0, 4, 8, 9, 14
-            let category = item["category"].as_u64().unwrap_or(0);
-            if !matches!(category, 0 | 4 | 8 | 9 | 14) {
+            // Si es main_game (0) y tiene parent o version_title, lo saltamos para evitar duplicados de fichas base
+            if category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()) {
                 continue;
             }
 
@@ -1133,10 +1135,11 @@ pub async fn igdb_search_candidates(
         &token,
         IGDB_API_GAMES,
         &format!(
-            "fields id,name,cover.image_id,first_release_date,category; \
+            "fields id,name,cover.image_id,first_release_date,category,game_type; \
              search \"{}\"; where cover != null; limit 20;",
             search_query
         ),
+
 
 
 
