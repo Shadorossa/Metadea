@@ -103,7 +103,7 @@ export const es = {
       all:    'Todos',
       anime:  'Anime',
       manga:  'Manga',
-      novel:  'Novela Ligera',
+      lnovel: 'Novela Ligera',
       game:   'Videojuegos',
       vnovel: 'Novela Visual',
       movie:  'Películas',

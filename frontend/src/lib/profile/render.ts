@@ -869,7 +869,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
   let modified = false;
 
-  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'novel', 'series', 'movie', 'book', 'character'];
+  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'lnovel', 'series', 'movie', 'book', 'character'];
   for (const k of favKeys) {
     if (!favData[k]) {
       favData[k] = [];
@@ -919,7 +919,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       { key: 'manga', label: s.manga, getItems: () => getOrderedItems('manga'), icon: TYPE_ICON['manga'] },
       { key: 'game', label: s.game, getItems: () => getOrderedItems('game'), icon: TYPE_ICON['game'] },
       { key: 'vnovel', label: s.vnovel, getItems: () => getOrderedItems('vnovel'), icon: TYPE_ICON['vnovel'] },
-      { key: 'novel', label: s.novel, getItems: () => getOrderedItems('novel'), icon: TYPE_ICON['novel'] },
+      { key: 'lnovel', label: s.lnovel, getItems: () => getOrderedItems('lnovel'), icon: TYPE_ICON['lnovel'] },
       { key: 'series', label: s.series, getItems: () => getOrderedItems('series'), icon: TYPE_ICON['series'] },
       { key: 'movie', label: s.movie, getItems: () => getOrderedItems('movie'), icon: TYPE_ICON['movie'] },
       { key: 'book', label: s.book, getItems: () => getOrderedItems('book'), icon: TYPE_ICON['book'] },

@@ -229,20 +229,18 @@ export async function importFromAniList(
 }
 
 
-function mapMediaType(mediaType: string, format?: string): string {
-  const baseType = mediaType.toLowerCase();
-  if (!format) return baseType;
+function anilistBaseType(mediaType: string, format?: string): string {
+  if (mediaType.toUpperCase() === 'ANIME') return 'anime';
+  if (format?.toUpperCase() === 'NOVEL') return 'lnovel';
+  return 'manga';
+}
 
-  const formatNormalized = format.toLowerCase().replace(/\s+/g, '_');
-  return `${baseType}_${formatNormalized}`;
+function mapMediaType(mediaType: string, format?: string): string {
+  return anilistBaseType(mediaType, format);
 }
 
 function formatMediaId(mediaType: string, format: string | undefined, anilistId: number): string {
-  // Format: anime_tv_166240, manga_ongoing_12345, novel_lightnovel_5678, etc.
-  const baseType = mediaType.toLowerCase() === 'anime' ? 'anime'
-    : mediaType.toLowerCase() === 'manga' ? 'manga'
-    : 'novel'; // Default to novel for light novels, web novels, etc.
-
+  const baseType = anilistBaseType(mediaType, format);
   if (!format) return `${baseType}_${anilistId}`;
   const formatNorm = format.toLowerCase().replace(/\s+/g, '');
   return `${baseType}_${formatNorm}_${anilistId}`;

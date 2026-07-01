@@ -1,7 +1,4 @@
-// Maps frontend type names to fav list keys (only "novel" differs from the ${type}_fav pattern)
-const FAV_TYPE_MAP: Record<string, string> = {
-  novel: 'lnovel_fav',
-};
+const FAV_TYPE_MAP: Record<string, string> = {};
 function typeToFavKey(type: string): string {
   return FAV_TYPE_MAP[type] ?? `${type}_fav`;
 }

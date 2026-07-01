@@ -13,7 +13,7 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
   all:       <IconAll />,
   anime:     <IconAnime />,
   manga:     <IconManga />,
-  novel:     <IconNovel />,
+  lnovel:    <IconNovel />,
   game:      <IconGame />,
   vnovel:    <IconVNovel />,
   movie:     <IconMovie />,

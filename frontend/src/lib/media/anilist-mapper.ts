@@ -34,8 +34,15 @@ function formatDescription(raw: string | null | undefined): string | undefined {
   );
 }
 
+function resolveAniListType(mediaType: string, format: string | null | undefined): string {
+  if (mediaType === 'manga' && format === 'NOVEL') return 'lnovel';
+  if (mediaType === 'lnovel') return 'lnovel';
+  return mediaType;
+}
+
 export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): MediaPageData {
   const tm = getT().media;
+  const resolvedType = resolveAniListType(mediaType, raw.format);
 
   const titleMain   = raw.title.romaji ?? raw.title.english ?? raw.title.native ?? '—';
   const titleNative = raw.title.native   && raw.title.native   !== titleMain ? raw.title.native   : undefined;
@@ -59,7 +66,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     : undefined;
 
   let quickMeta = formatLabel;
-  if (mediaType === 'anime') {
+  if (resolvedType === 'anime') {
     if (raw.episodes) quickMeta += ` · ${raw.episodes} ep`;
     if (raw.duration) quickMeta += ` · ${raw.duration} min`;
   } else {
@@ -94,26 +101,28 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     })
     .map(e => {
       let typeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
-      if (e.relationType === 'ADAPTATION' && mediaType === 'anime' && e.node.type === 'MANGA') {
+      if (e.relationType === 'ADAPTATION' && resolvedType === 'anime' && e.node.type === 'MANGA') {
         typeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Fuente';
       }
-      const relPrefix = e.node.type?.toLowerCase() === 'anime' ? 'anime' : 'manga';
+      const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
+        : e.node.format === 'NOVEL' ? 'lnovel'
+        : 'manga';
       return {
         typeLabel,
         title: e.node.title.romaji ?? '',
         cover: e.node.coverImage?.medium ?? undefined,
-        url:   `/media?id=${relPrefix}:${e.node.id}`,
+        url:   `/media?id=${relType}:${e.node.id}`,
       };
     });
 
-  const progressStatus = mediaType === 'anime' ? 'watching' as const : 'reading' as const;
-  const progressLabel  = mediaType === 'anime'
+  const progressStatus = resolvedType === 'anime' ? 'watching' as const : 'reading' as const;
+  const progressLabel  = resolvedType === 'anime'
     ? (getT().profile.status_watching)
     : (getT().profile.status_reading);
 
   return {
-    externalId: `${mediaType}:${raw.id}`,
-    type: mediaType,
+    externalId: `${resolvedType}:${raw.id}`,
+    type: resolvedType,
     titleMain,
     titleNative,
     titleEnglish,
@@ -140,9 +149,9 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     releaseDay:   raw.startDate?.day   ?? undefined,
     scoreGlobal:  raw.averageScore ? raw.averageScore / 10 : undefined,
     platforms:    undefined,
-    timeLength:   mediaType === 'anime' ? (raw.duration ?? undefined) : undefined,
+    timeLength:   resolvedType === 'anime' ? (raw.duration ?? undefined) : undefined,
     status:       raw.status ?? undefined,
-    totalCount:   mediaType === 'anime' ? (raw.episodes ?? undefined) : (raw.chapters ?? undefined),
-    totalCount_2: mediaType === 'manga' ? (raw.volumes ?? undefined) : undefined,
+    totalCount:   resolvedType === 'anime' ? (raw.episodes ?? undefined) : (raw.chapters ?? undefined),
+    totalCount_2: (resolvedType === 'manga' || resolvedType === 'lnovel') ? (raw.volumes ?? undefined) : undefined,
   };
 }

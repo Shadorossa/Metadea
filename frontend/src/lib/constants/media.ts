@@ -1,24 +1,24 @@
 // ─── Media type groupings ─────────────────────────────────────────────────────
 
-export const ANILIST_TYPES = ['anime', 'manga', 'novel'] as const;
+export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
 export type AniListMediaType = typeof ANILIST_TYPES[number];
 
 export const IGDB_TYPES = ['game', 'vnovel'] as const;
 export type IgdbMediaType = typeof IGDB_TYPES[number];
 
 export const ALL_MEDIA_TYPES = [
-  'anime', 'manga', 'novel', 'game', 'vnovel', 'series', 'movie', 'book', 'character',
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'character',
 ] as const;
 export type CoreMediaType = typeof ALL_MEDIA_TYPES[number];
 
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [
-  'all', 'anime', 'manga', 'novel', 'game', 'vnovel', 'movie', 'series', 'book', 'character',
+  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'character',
 ] as const;
 
 // Types that have a dedicated detail page
 export const DETAIL_SUPPORTED_TYPES = [
-  'anime', 'manga', 'novel', 'book', 'game', 'vnovel', 'character',
+  'anime', 'manga', 'lnovel', 'book', 'game', 'vnovel', 'character',
 ] as const;
 
 // ─── Labels ───────────────────────────────────────────────────────────────────

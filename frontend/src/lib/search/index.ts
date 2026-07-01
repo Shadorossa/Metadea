@@ -4,7 +4,7 @@ import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 
 export type MediaType =
-  | 'all' | 'anime' | 'manga' | 'novel' | 'game'
+  | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
   | 'vnovel'  | 'movie' | 'series' | 'book' | 'character';
 
 /**
@@ -50,7 +50,7 @@ export async function search(
   switch (mediaType) {
     case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal);
     case 'manga':     return searchAniList(searchQuery, 'MANGA', 'manga', signal);
-    case 'novel':     return searchAniList(searchQuery, 'MANGA', 'novel', signal, 'NOVEL');
+    case 'lnovel':    return searchAniList(searchQuery, 'MANGA', 'lnovel', signal, 'NOVEL');
     case 'game':      return searchGames(searchQuery, 'game', signal);
     case 'vnovel':    return searchGames(searchQuery, 'vnovel', signal);
     case 'movie':     return searchMovies(searchQuery, signal);
