@@ -241,7 +241,7 @@ export interface LibraryEntry {
   status:            string | null;
   rating:            number | null;
   progress:          number;
-  progress_count_2:  number;
+  progress_2:        number;
   minutes_spent:     number;
   is_favorite:       number;
   is_platinum:       number;

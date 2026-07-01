@@ -7,6 +7,7 @@ pub struct LocalGame {
     pub name: String,
     pub launcher: String,
     pub app_id: Option<String>,
+    pub external_id: Option<String>,
     pub install_path: Option<String>,
     pub playtime_minutes: Option<u64>,
     pub last_played: Option<u64>,
@@ -145,6 +146,7 @@ fn scan_steam_games() -> Vec<LocalGame> {
                                     name,
                                     launcher: "steam".to_string(),
                                     app_id: Some(app_id),
+                                    external_id: None,
                                     install_path: Some(install_path),
                                     playtime_minutes: None,
                                     last_played: None,
@@ -186,6 +188,7 @@ fn scan_epic_games() -> Vec<LocalGame> {
                                         name,
                                         launcher: "epic".to_string(),
                                         app_id,
+                                        external_id: None,
                                         install_path,
                                         playtime_minutes: None,
                                         last_played: None,
@@ -243,6 +246,7 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                 name,
                                 launcher: "gog".to_string(),
                                 app_id: None,
+                                external_id: None,
                                 install_path: Some(game_dir.to_string_lossy().to_string()),
                                 playtime_minutes: None,
                                 last_played: None,
@@ -266,6 +270,7 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                             name,
                                             launcher: "gog".to_string(),
                                             app_id,
+                                            external_id: None,
                                             install_path: Some(
                                                 game_dir.to_string_lossy().to_string(),
                                             ),
@@ -424,6 +429,7 @@ fn scan_xbox_games() -> Vec<LocalGame> {
                     name,
                     launcher: "xbox".to_string(),
                     app_id: None,
+                    external_id: None,
                     install_path: Some(path.to_string_lossy().to_string()),
                     playtime_minutes: None,
                     last_played: None,
@@ -461,6 +467,7 @@ fn scan_ea_games() -> Vec<LocalGame> {
                                     name,
                                     launcher: "ea".to_string(),
                                     app_id: None,
+                                    external_id: None,
                                     install_path: Some(path.to_string_lossy().to_string()),
                                     playtime_minutes: None,
                                     last_played: None,
@@ -507,6 +514,7 @@ fn scan_ea_games() -> Vec<LocalGame> {
                                 name,
                                 launcher: "ea".to_string(),
                                 app_id: None,
+                                external_id: None,
                                 install_path: Some(path.to_string_lossy().to_string()),
                                 playtime_minutes: None,
                                 last_played: None,
@@ -537,6 +545,7 @@ fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
                     name: e.file_name().to_string_lossy().to_string(),
                     launcher: "local".to_string(),
                     app_id: None,
+                    external_id: None,
                     install_path: Some(e.path().to_string_lossy().to_string()),
                     playtime_minutes: None,
                     last_played: None,
@@ -548,7 +557,9 @@ fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
 }
 
 #[tauri::command]
-pub async fn scan_all_games(app_handle: tauri::AppHandle) -> Result<Vec<LocalGame>, String> {
+pub async fn scan_all_games(
+    local_db: tauri::State<'_, crate::db::LocalDataDb>,
+) -> Result<Vec<LocalGame>, String> {
     let mut all: Vec<LocalGame> = Vec::new();
     all.extend(scan_steam_games());
     all.extend(scan_epic_games());
@@ -556,15 +567,31 @@ pub async fn scan_all_games(app_handle: tauri::AppHandle) -> Result<Vec<LocalGam
     all.extend(scan_xbox_games());
     all.extend(scan_ea_games());
 
-    // Read custom local games folder from routes.json
-    if let Ok(data_dir) = app_handle.path().app_data_dir() {
-        let routes_path = data_dir.join("routes.json");
-        if let Ok(json) = std::fs::read_to_string(&routes_path) {
-            if let Ok(routes) = serde_json::from_str::<serde_json::Value>(&json) {
-                if let Some(folder) = routes["videojuegos"].as_str() {
-                    all.extend(scan_local_folder(folder));
-                }
-            }
+    let conn = local_db.conn.lock().map_err(|e| e.to_string())?;
+
+    // Read custom local folder from local_routes DB
+    let videojuegos_path: Option<String> = conn
+        .query_row(
+            "SELECT path FROM local_routes WHERE key = 'videojuegos'",
+            [],
+            |r| r.get(0),
+        )
+        .ok();
+    if let Some(folder) = videojuegos_path {
+        if !folder.is_empty() {
+            all.extend(scan_local_folder(&folder));
+        }
+    }
+
+    // Populate external_id from local_game_links
+    let links = crate::folders::lookup_game_links(&conn);
+    for game in &mut all {
+        let key = game.app_id.as_deref()
+            .or(game.install_path.as_deref())
+            .unwrap_or(&game.name)
+            .to_string();
+        if let Some(eid) = links.get(&(game.launcher.clone(), key)) {
+            game.external_id = Some(eid.clone());
         }
     }
 

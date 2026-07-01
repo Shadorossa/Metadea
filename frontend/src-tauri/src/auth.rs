@@ -1,5 +1,5 @@
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthSession {
@@ -9,58 +9,61 @@ pub struct AuthSession {
 
 #[tauri::command]
 pub async fn init_database() -> Result<String, String> {
-    Ok("Database initialized".to_string())
+    Ok("ok".to_string())
 }
 
 #[tauri::command]
 pub async fn store_auth_token(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::SessionDb>,
     token: String,
     username: String,
 ) -> Result<String, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
-    let session_path = app_data_dir.join("session.json");
-    let session = AuthSession { token, username };
-    let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
-    std::fs::write(session_path, json).map_err(|e| e.to_string())?;
-    Ok("Token stored".to_string())
+    let now = chrono::Utc::now().to_rfc3339();
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO user_sessions (service, token, username, updated_at)
+         VALUES ('app_auth', ?1, ?2, ?3)
+         ON CONFLICT(service) DO UPDATE SET
+             token = excluded.token,
+             username = excluded.username,
+             updated_at = excluded.updated_at",
+        rusqlite::params![token, username, now],
+    ).map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
 }
 
 #[tauri::command]
-pub async fn get_auth_token(app_handle: tauri::AppHandle) -> Result<Option<AuthSession>, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let session_path = app_data_dir.join("session.json");
-    if !session_path.exists() {
-        return Ok(None);
-    }
-    let data = std::fs::read_to_string(session_path).map_err(|e| e.to_string())?;
-    let session: AuthSession = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-    Ok(Some(session))
+pub async fn get_auth_token(
+    state: tauri::State<'_, crate::db::SessionDb>,
+) -> Result<Option<AuthSession>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.query_row(
+        "SELECT token, username FROM user_sessions WHERE service = 'app_auth'",
+        [],
+        |row| {
+            Ok(AuthSession {
+                token:    row.get(0)?,
+                username: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+            })
+        },
+    )
+    .optional()
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn clear_auth_token(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
+pub async fn clear_auth_token(
+    state: tauri::State<'_, crate::db::SessionDb>,
+) -> Result<String, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM user_sessions WHERE service = 'app_auth'", [])
         .map_err(|e| e.to_string())?;
-    let session_path = app_data_dir.join("session.json");
-    if session_path.exists() {
-        std::fs::remove_file(session_path).map_err(|e| e.to_string())?;
-    }
-    Ok("Token cleared".to_string())
+    Ok("ok".to_string())
 }
 
 #[tauri::command]
 pub async fn save_library_item() -> Result<String, String> {
-    Ok("Item saved".to_string())
+    Ok("ok".to_string())
 }
 
 #[tauri::command]

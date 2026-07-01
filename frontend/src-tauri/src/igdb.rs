@@ -60,26 +60,36 @@ pub struct EnvConfig {
     pub anilist_client_id: Option<String>,
 }
 
+fn env_from_db(db: &crate::db::EnvDb) -> Result<EnvConfig, String> {
+    use rusqlite::OptionalExtension;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let row: Option<EnvConfig> = conn.query_row(
+        "SELECT anilist_client_id, igdb_client_id, igdb_client_secret,
+                steam_api_key, tmdb_access_token, tmdb_api_key
+         FROM app_env WHERE id = 1",
+        [],
+        |r| {
+            let opt = |s: String| if s.is_empty() { None } else { Some(s) };
+            Ok(EnvConfig {
+                anilist_client_id:  r.get::<_, String>(0).ok().and_then(opt),
+                igdb_client_id:     r.get::<_, String>(1).ok().and_then(opt),
+                igdb_client_secret: r.get::<_, String>(2).ok().and_then(opt),
+                steam_api_key:      r.get::<_, String>(3).ok().and_then(opt),
+                tmdb_access_token:  r.get::<_, String>(4).ok().and_then(opt),
+                tmdb_api_key:       r.get::<_, String>(5).ok().and_then(opt),
+            })
+        },
+    ).optional().map_err(|e| e.to_string())?;
+    Ok(row.unwrap_or(EnvConfig {
+        anilist_client_id: None, igdb_client_id: None, igdb_client_secret: None,
+        steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
+    }))
+}
+
 #[tauri::command]
 pub async fn read_env_config(app_handle: tauri::AppHandle) -> Result<EnvConfig, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let env_path = app_data_dir.join("env.json");
-    if !env_path.exists() {
-        return Ok(EnvConfig {
-            igdb_client_id: None,
-            igdb_client_secret: None,
-            steam_api_key: None,
-            tmdb_access_token: None,
-            tmdb_api_key: None,
-            anilist_client_id: None,
-        });
-    }
-    let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
-    let config: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-    Ok(config)
+    let db = app_handle.state::<crate::db::EnvDb>();
+    env_from_db(&db)
 }
 
 #[tauri::command]
@@ -87,28 +97,41 @@ pub async fn write_env_config(
     app_handle: tauri::AppHandle,
     config: EnvConfig,
 ) -> Result<String, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
-    let env_path = app_data_dir.join("env.json");
-    let json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
-    std::fs::write(env_path, json).map_err(|e| e.to_string())?;
-    Ok("Config saved".to_string())
+    let db = app_handle.state::<crate::db::EnvDb>();
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO app_env (id, anilist_client_id, igdb_client_id, igdb_client_secret,
+             steam_api_key, tmdb_access_token, tmdb_api_key, updated_at)
+         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(id) DO UPDATE SET
+             anilist_client_id  = excluded.anilist_client_id,
+             igdb_client_id     = excluded.igdb_client_id,
+             igdb_client_secret = excluded.igdb_client_secret,
+             steam_api_key      = excluded.steam_api_key,
+             tmdb_access_token  = excluded.tmdb_access_token,
+             tmdb_api_key       = excluded.tmdb_api_key,
+             updated_at         = excluded.updated_at",
+        rusqlite::params![
+            config.anilist_client_id.as_deref().unwrap_or(""),
+            config.igdb_client_id.as_deref().unwrap_or(""),
+            config.igdb_client_secret.as_deref().unwrap_or(""),
+            config.steam_api_key.as_deref().unwrap_or(""),
+            config.tmdb_access_token.as_deref().unwrap_or(""),
+            config.tmdb_api_key.as_deref().unwrap_or(""),
+            now,
+        ],
+    ).map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
 }
 
 fn load_env_config(app_handle: &tauri::AppHandle) -> Result<EnvConfig, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let env_path = app_data_dir.join("env.json");
-    if !env_path.exists() {
-        return Err("No env.json — configure IGDB keys first".into());
+    let db = app_handle.state::<crate::db::EnvDb>();
+    let cfg = env_from_db(&db)?;
+    if cfg.igdb_client_id.is_none() && cfg.igdb_client_secret.is_none() {
+        return Err("No IGDB keys configured".into());
     }
-    let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
-    serde_json::from_str::<EnvConfig>(&data).map_err(|e| e.to_string())
+    Ok(cfg)
 }
 
 // -- HTTP client cache --------------------------------------------------------

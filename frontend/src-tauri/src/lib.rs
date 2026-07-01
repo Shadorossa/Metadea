@@ -1,4 +1,5 @@
 mod auth;
+mod db;
 mod folders;
 mod github;
 mod anilist;
@@ -23,6 +24,39 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let data_dir = app.path().app_data_dir().expect("no app data dir");
+            std::fs::create_dir_all(&data_dir).ok();
+
+            let library_db = db::LibraryDb::open(&data_dir.join("user_library.db"))
+                .expect("failed to open user_library.db");
+            db::migrate_library_from_json(&library_db, &data_dir);
+            app.manage(library_db);
+
+            let catalog_db = db::CatalogDb::open(&data_dir.join("media_catalog.db"))
+                .expect("failed to open media_catalog.db");
+            db::migrate_catalog_from_json(&catalog_db, &data_dir);
+            app.manage(catalog_db);
+
+            let session_db = db::SessionDb::open(&data_dir.join("user_session.db"))
+                .expect("failed to open user_session.db");
+            db::migrate_sessions_from_json(&session_db, &data_dir);
+            app.manage(session_db);
+
+            let env_db = db::EnvDb::open(&data_dir.join("env.db"))
+                .expect("failed to open env.db");
+            db::migrate_env_from_json(&env_db, &data_dir);
+            app.manage(env_db);
+
+            let profile_db = db::ProfileDb::open(&data_dir.join("user_profile.db"))
+                .expect("failed to open user_profile.db");
+            db::migrate_profile_from_json(&profile_db, &data_dir);
+            app.manage(profile_db);
+
+            let local_db = db::LocalDataDb::open(&data_dir.join("local_data.db"))
+                .expect("failed to open local_data.db");
+            db::migrate_local_data_from_json(&local_db, &data_dir);
+            app.manage(local_db);
+
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -47,6 +81,8 @@ pub fn run() {
             folders::read_routes,
             folders::write_routes,
             folders::open_env_folder,
+            folders::save_game_link,
+            folders::delete_game_link,
             igdb::read_env_config,
             igdb::write_env_config,
             igdb::igdb_search,

@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use tauri::Manager;
 
-use crate::igdb::EnvConfig;
 use crate::platform_scanning::steam_root;
 
 /// Downloads achievement icons (both locked and unlocked) and saves achievements.json.
@@ -13,22 +12,17 @@ pub async fn download_achievements(
     game_dir: &PathBuf,
     lang: &str,
 ) {
-    let app_data_dir = match app_handle.path().app_data_dir() {
-        Ok(d) => d,
-        Err(_) => return,
-    };
-    let env_path = app_data_dir.join("env.json");
-    let data = match std::fs::read_to_string(env_path) {
-        Ok(d) => d,
-        Err(_) => return,
-    };
-    let cfg: EnvConfig = match serde_json::from_str(&data) {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    let api_key = match cfg.steam_api_key {
-        Some(k) => k,
-        None => return,
+    let db = app_handle.state::<crate::db::EnvDb>();
+    let api_key = {
+        use rusqlite::OptionalExtension;
+        let conn = match db.conn.lock() { Ok(c) => c, Err(_) => return };
+        let val: Option<String> = conn
+            .query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get(0))
+            .optional()
+            .ok()
+            .flatten()
+            .filter(|s: &String| !s.is_empty());
+        match val { Some(k) => k, None => return }
     };
     let steam_id = match detect_steam_user_id() {
         Some(id) => id,
@@ -240,17 +234,16 @@ pub async fn steam_achievement_icon(
 pub async fn steam_get_owned_games(
     app_handle: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let env_path = app_data_dir.join("env.json");
-    if !env_path.exists() {
-        return Err("No env.json — configure Steam API key first".into());
-    }
-    let data = std::fs::read_to_string(env_path).map_err(|e| e.to_string())?;
-    let cfg: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-    let api_key = cfg.steam_api_key.ok_or("No Steam API key configured")?;
+    let api_key = {
+        use rusqlite::OptionalExtension;
+        let db = app_handle.state::<crate::db::EnvDb>();
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        conn.query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get::<_, String>(0))
+            .optional()
+            .map_err(|e| e.to_string())?
+            .filter(|s| !s.is_empty())
+            .ok_or("No Steam API key configured")?
+    };
 
     let steam_id =
         detect_steam_user_id().ok_or("Could not detect Steam user ID from loginusers.vdf")?;
@@ -276,14 +269,16 @@ pub async fn steam_get_player_achievements(
     app_id: u32,
     lang: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let env_path = app_data_dir.join("env.json");
-    let data = std::fs::read_to_string(env_path).map_err(|_| "No env.json".to_string())?;
-    let cfg: EnvConfig = serde_json::from_str(&data).map_err(|e| e.to_string())?;
-    let api_key = cfg.steam_api_key.ok_or("No Steam API key")?;
+    let api_key = {
+        use rusqlite::OptionalExtension;
+        let db = app_handle.state::<crate::db::EnvDb>();
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        conn.query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get::<_, String>(0))
+            .optional()
+            .map_err(|e| e.to_string())?
+            .filter(|s| !s.is_empty())
+            .ok_or("No Steam API key")?
+    };
     let steam_id = detect_steam_user_id().ok_or("Could not detect Steam user ID")?;
     let language = lang.unwrap_or_else(|| "spanish".to_string());
 

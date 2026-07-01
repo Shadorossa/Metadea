@@ -1,98 +1,140 @@
-use std::path::PathBuf;
-use tauri::Manager;
+use rusqlite::OptionalExtension;
 
-fn user_metadata_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("user_metadata");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir)
+fn upsert_profile_row(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO user_profile (id) VALUES (1)",
+        [],
+    )?;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn save_user_image(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::ProfileDb>,
     key: String,
     data_url: String,
 ) -> Result<(), String> {
-    let allowed = ["avatar", "banner"];
-    if !allowed.contains(&key.as_str()) {
-        return Err(format!("Invalid key: {}", key));
-    }
-    let path = user_metadata_dir(&app_handle)?.join(&key);
-    let base64_data = data_url.splitn(2, ',').nth(1).ok_or("Invalid data URL")?;
-    let bytes = crate::utils::base64_decode(base64_data)?;
-    std::fs::write(path, bytes).map_err(|e| e.to_string())
+    let col = match key.as_str() {
+        "avatar" => "avatar_data",
+        "banner" => "banner_data",
+        _ => return Err(format!("Invalid key: {}", key)),
+    };
+    let now = chrono::Utc::now().to_rfc3339();
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    upsert_profile_row(&conn).map_err(|e| e.to_string())?;
+    conn.execute(
+        &format!("UPDATE user_profile SET {} = ?1, updated_at = ?2 WHERE id = 1", col),
+        rusqlite::params![data_url, now],
+    ).map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_user_image(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::ProfileDb>,
     key: String,
 ) -> Result<Option<String>, String> {
-    let allowed = ["avatar", "banner"];
-    if !allowed.contains(&key.as_str()) {
-        return Err(format!("Invalid key: {}", key));
-    }
-    let path = user_metadata_dir(&app_handle)?.join(&key);
-    if !path.exists() {
-        return Ok(None);
-    }
-    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-    let mime = if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
-        "image/png"
-    } else if bytes.starts_with(&[0xFF, 0xD8]) {
-        "image/jpeg"
-    } else {
-        "image/webp"
+    let col = match key.as_str() {
+        "avatar" => "avatar_data",
+        "banner" => "banner_data",
+        _ => return Err(format!("Invalid key: {}", key)),
     };
-    let encoded = crate::utils::base64_encode(&bytes);
-    Ok(Some(format!("data:{};base64,{}", mime, encoded)))
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let val: Option<String> = conn
+        .query_row(
+            &format!("SELECT {} FROM user_profile WHERE id = 1", col),
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    Ok(val.filter(|s| !s.is_empty()))
 }
 
 #[tauri::command]
-pub async fn remove_user_image(app_handle: tauri::AppHandle, key: String) -> Result<(), String> {
-    let allowed = ["avatar", "banner"];
-    if !allowed.contains(&key.as_str()) {
-        return Err(format!("Invalid key: {}", key));
-    }
-    let path = user_metadata_dir(&app_handle)?.join(&key);
-    if path.exists() {
-        std::fs::remove_file(path).map_err(|e| e.to_string())?;
+pub async fn remove_user_image(
+    state: tauri::State<'_, crate::db::ProfileDb>,
+    key: String,
+) -> Result<(), String> {
+    let col = match key.as_str() {
+        "avatar" => "avatar_data",
+        "banner" => "banner_data",
+        _ => return Err(format!("Invalid key: {}", key)),
+    };
+    let now = chrono::Utc::now().to_rfc3339();
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        &format!("UPDATE user_profile SET {} = '', updated_at = ?1 WHERE id = 1", col),
+        rusqlite::params![now],
+    ).map(|_| ()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn save_user_info(
+    state: tauri::State<'_, crate::db::ProfileDb>,
+    info: serde_json::Value,
+) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    upsert_profile_row(&conn).map_err(|e| e.to_string())?;
+
+    let obj = info.as_object().ok_or("Expected JSON object")?;
+    let allowed = [
+        "bio", "display_name", "dynamic_theme", "font",
+        "language", "source_avatar_url", "source_name",
+        "source_username", "theme",
+    ];
+    for (k, v) in obj {
+        if !allowed.contains(&k.as_str()) {
+            continue;
+        }
+        let sql = format!("UPDATE user_profile SET {} = ?1, updated_at = ?2 WHERE id = 1", k);
+        match v {
+            serde_json::Value::Bool(b) => {
+                conn.execute(&sql, rusqlite::params![*b as i64, now])
+                    .map_err(|e| e.to_string())?;
+            }
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    conn.execute(&sql, rusqlite::params![i, now])
+                        .map_err(|e| e.to_string())?;
+                }
+            }
+            serde_json::Value::String(s) => {
+                conn.execute(&sql, rusqlite::params![s, now])
+                    .map_err(|e| e.to_string())?;
+            }
+            _ => {}
+        }
     }
     Ok(())
 }
 
 #[tauri::command]
-pub async fn save_user_info(
-    app_handle: tauri::AppHandle,
-    info: serde_json::Value,
-) -> Result<(), String> {
-    let path = user_metadata_dir(&app_handle)?.join("user_info.json");
-    let existing: serde_json::Value = if path.exists() {
-        let raw = std::fs::read_to_string(&path).unwrap_or_default();
-        serde_json::from_str(&raw).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
-    let mut merged = existing;
-    if let (Some(obj), Some(new_obj)) = (merged.as_object_mut(), info.as_object()) {
-        for (k, v) in new_obj {
-            obj.insert(k.clone(), v.clone());
-        }
-    }
-    let out = serde_json::to_string_pretty(&merged).map_err(|e| e.to_string())?;
-    std::fs::write(path, out).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn get_user_info(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    let path = user_metadata_dir(&app_handle)?.join("user_info.json");
-    if !path.exists() {
-        return Ok(serde_json::json!({}));
-    }
-    let raw = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map_err(|e| e.to_string())
+pub async fn get_user_info(
+    state: tauri::State<'_, crate::db::ProfileDb>,
+) -> Result<serde_json::Value, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let row: Option<serde_json::Value> = conn
+        .query_row(
+            "SELECT bio, display_name, dynamic_theme, font, language,
+                    source_avatar_url, source_name, source_username, theme
+             FROM user_profile WHERE id = 1",
+            [],
+            |r| {
+                Ok(serde_json::json!({
+                    "bio":               r.get::<_, String>(0).unwrap_or_default(),
+                    "display_name":      r.get::<_, String>(1).unwrap_or_default(),
+                    "dynamic_theme":     r.get::<_, i64>(2).unwrap_or(0) != 0,
+                    "font":              r.get::<_, String>(3).unwrap_or_default(),
+                    "language":          r.get::<_, String>(4).unwrap_or("es".into()),
+                    "source_avatar_url": r.get::<_, String>(5).unwrap_or_default(),
+                    "source_name":       r.get::<_, String>(6).unwrap_or_default(),
+                    "source_username":   r.get::<_, String>(7).unwrap_or_default(),
+                    "theme":             r.get::<_, String>(8).unwrap_or("nebula".into()),
+                }))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    Ok(row.unwrap_or(serde_json::json!({})))
 }

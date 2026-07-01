@@ -672,59 +672,41 @@ const version = pkg.version;
               <!-- Import Modal -->
               <div
                 id="anilist-import-choose-modal"
-                style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000; min-width: 340px;"
+                style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; gap: 1rem; align-items: flex-start; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000; min-width: 380px; max-height: 80vh; overflow-y: auto;"
               >
-                <span
-                  style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
-                  >¿Qué descargar de AniList?</span
-                >
-                <div
-                  style="display: flex; flex-direction: row; gap: 0.5rem; width: 100%;"
-                >
+                <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; width: 100%;">¿Qué descargar de AniList?</span>
+
+                <div style="width: 100%; display: flex; flex-direction: column; gap: 0.5rem;">
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                    <input type="checkbox" id="anilist-filter-anime" checked style="cursor: pointer;" />
+                    <span style="flex: 1; text-align: left; font-size: 0.85rem;">Anime</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                    <input type="checkbox" id="anilist-filter-manga" checked style="cursor: pointer;" />
+                    <span style="flex: 1; text-align: left; font-size: 0.85rem;">Manga</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                    <input type="checkbox" id="anilist-filter-novel" style="cursor: pointer;" />
+                    <span style="flex: 1; text-align: left; font-size: 0.85rem;">Novela</span>
+                  </label>
+                </div>
+
+                <div style="display: flex; flex-direction: row; gap: 0.5rem; width: 100%;">
                   <button
                     class="btn btn--sm btn--primary"
                     id="anilist-import-anime-btn"
                     style="flex: 1;"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      style="margin-right: 4px;"
-                      ><path d="M12 5v14M5 12h14"></path></svg
-                    >
-                    Descargar Anime
-                  </button>
+                  >Descargar Anime</button>
                   <button
                     class="btn btn--sm btn--primary"
                     id="anilist-import-manga-btn"
                     style="flex: 1;"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      style="margin-right: 4px;"
-                      ><path d="M12 5v14M5 12h14"></path></svg
-                    >
-                    Descargar Manga
-                  </button>
+                  >Descargar Manga</button>
                   <button
                     class="btn btn--sm btn--ghost"
                     id="anilist-import-cancel-btn"
                     style="flex: 1;"
-                    >Cancelar</button
-                  >
+                  >Cancelar</button>
                 </div>
               </div>
             </div>
@@ -982,7 +964,11 @@ const version = pkg.version;
       );
 
       try {
-        const result = await importFromAniList(mediaType, (progress) => {
+        const filterAnime = (document.getElementById("anilist-filter-anime") as HTMLInputElement)?.checked ?? true;
+        const filterManga = (document.getElementById("anilist-filter-manga") as HTMLInputElement)?.checked ?? true;
+        const filterNovel = (document.getElementById("anilist-filter-novel") as HTMLInputElement)?.checked ?? false;
+
+        const result = await importFromAniList(mediaType, { filterAnime, filterManga, filterNovel }, (progress) => {
           const statusEl = document.getElementById("import-status");
           const progressEl = document.getElementById("import-progress");
           const countEl = document.getElementById("import-count");

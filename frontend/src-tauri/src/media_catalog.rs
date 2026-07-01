@@ -1,6 +1,6 @@
 use chrono::Utc;
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MediaCatalogEntry {
@@ -37,155 +37,162 @@ pub struct MediaCatalogEntry {
     pub updated_at: String,
 }
 
-fn generate_id() -> String {
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let a = (nanos as u64)
-        .wrapping_mul(6364136223846793005)
-        .wrapping_add(1442695040888963407);
-    let b = ((nanos >> 64) as u64)
-        .wrapping_mul(6364136223846793005)
-        .wrapping_add(a);
-    format!("{:016x}{:016x}", a, b)
-}
+const SELECT_ALL: &str = "
+    SELECT external_id, id, parent_id, type, format, source,
+           title_main, title_romaji, title_native, synopsis, cover_url,
+           banners_csv, release_year, release_month, release_day,
+           time_length, status, score_global, favorites_count,
+           ratings_count, total_count, total_count_2, genres_csv,
+           genres_tag_csv, platforms_csv, companies_cache_csv,
+           last_synced_at, sync_failed_count, last_sync_error,
+           created_at, updated_at
+    FROM media_catalog";
 
-fn entry_path(data_dir: &std::path::Path, external_id: &str) -> std::path::PathBuf {
-    let safe_id: String = external_id
-        .chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '-' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    data_dir
-        .join("media_catalog")
-        .join(format!("{}.json", safe_id))
+fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
+    Ok(MediaCatalogEntry {
+        external_id:         row.get(0)?,
+        id:                  row.get(1)?,
+        parent_id:           row.get(2)?,
+        r#type:              row.get(3)?,
+        format:              row.get(4)?,
+        source:              row.get(5)?,
+        title_main:          row.get(6)?,
+        title_romaji:        row.get(7)?,
+        title_native:        row.get(8)?,
+        synopsis:            row.get(9)?,
+        cover_url:           row.get(10)?,
+        banners_csv:         row.get(11)?,
+        release_year:        row.get(12)?,
+        release_month:       row.get(13)?,
+        release_day:         row.get(14)?,
+        time_length:         row.get(15)?,
+        status:              row.get(16)?,
+        score_global:        row.get(17)?,
+        favorites_count:     row.get(18)?,
+        ratings_count:       row.get(19)?,
+        total_count:         row.get(20)?,
+        total_count_2:       row.get(21)?,
+        genres_csv:          row.get(22)?,
+        genres_tag_csv:      row.get(23)?,
+        platforms_csv:       row.get(24)?,
+        companies_cache_csv: row.get(25)?,
+        last_synced_at:      row.get(26)?,
+        sync_failed_count:   row.get(27)?,
+        last_sync_error:     row.get(28)?,
+        created_at:          row.get(29)?,
+        updated_at:          row.get(30)?,
+    })
 }
 
 #[tauri::command]
 pub async fn save_catalog_entry(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::CatalogDb>,
     mut entry: MediaCatalogEntry,
 ) -> Result<MediaCatalogEntry, String> {
-    let data_dir = app_handle
-        .path()
-        .app_data_dir()
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let existing: Option<(String, String)> = conn
+        .query_row(
+            "SELECT id, created_at FROM media_catalog WHERE external_id = ?1",
+            [&entry.external_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
         .map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(data_dir.join("media_catalog")).map_err(|e| e.to_string())?;
 
-    let path = entry_path(&data_dir, &entry.external_id);
-
-    // Preserve id and created_at from existing entry
-    if path.exists() {
-        if let Ok(json) = std::fs::read_to_string(&path) {
-            if let Ok(existing) = serde_json::from_str::<MediaCatalogEntry>(&json) {
-                if entry.id.is_empty() {
-                    entry.id = existing.id;
-                }
-                entry.created_at = existing.created_at;
-            }
-        }
+    if let Some((eid, eat)) = existing {
+        if entry.id.is_empty() { entry.id = eid; }
+        entry.created_at = eat;
     }
 
-    if entry.id.is_empty() {
-        entry.id = generate_id();
-    }
+    if entry.id.is_empty() { entry.id = crate::db::generate_id(); }
+    if entry.created_at.is_empty() { entry.created_at = Utc::now().to_rfc3339(); }
     entry.updated_at = Utc::now().to_rfc3339();
 
-    let json = serde_json::to_string_pretty(&entry).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT OR REPLACE INTO media_catalog (
+            external_id, id, parent_id, type, format, source,
+            title_main, title_romaji, title_native, synopsis, cover_url,
+            banners_csv, release_year, release_month, release_day,
+            time_length, status, score_global, favorites_count,
+            ratings_count, total_count, total_count_2, genres_csv,
+            genres_tag_csv, platforms_csv, companies_cache_csv,
+            last_synced_at, sync_failed_count, last_sync_error,
+            created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31)",
+        rusqlite::params![
+            &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
+            &entry.format, &entry.source,
+            &entry.title_main, &entry.title_romaji, &entry.title_native,
+            &entry.synopsis, &entry.cover_url, &entry.banners_csv,
+            &entry.release_year, &entry.release_month, &entry.release_day,
+            &entry.time_length, &entry.status, &entry.score_global,
+            &entry.favorites_count, &entry.ratings_count,
+            &entry.total_count, &entry.total_count_2,
+            &entry.genres_csv, &entry.genres_tag_csv,
+            &entry.platforms_csv, &entry.companies_cache_csv,
+            &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
+            &entry.created_at, &entry.updated_at,
+        ],
+    ).map_err(|e| e.to_string())?;
 
     Ok(entry)
 }
 
 #[tauri::command]
 pub async fn get_catalog_entry(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::CatalogDb>,
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
-    let data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let path = entry_path(&data_dir, &external_id);
-    if !path.exists() {
-        return Ok(None);
-    }
-    let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let entry = serde_json::from_str::<MediaCatalogEntry>(&json).map_err(|e| e.to_string())?;
-    Ok(Some(entry))
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.query_row(
+        &format!("{} WHERE external_id = ?1", SELECT_ALL),
+        [&external_id],
+        row_to_entry,
+    )
+    .optional()
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn delete_catalog_entry(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::CatalogDb>,
     external_id: String,
 ) -> Result<(), String> {
-    let data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let path = entry_path(&data_dir, &external_id);
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| e.to_string())?;
-    }
-    Ok(())
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn get_all_catalog_entries(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::CatalogDb>,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
-    let data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    let cat_dir = data_dir.join("media_catalog");
-    if !cat_dir.exists() {
-        return Ok(vec![]);
-    }
-    let mut entries = Vec::new();
-    for item in std::fs::read_dir(&cat_dir).map_err(|e| e.to_string())? {
-        let path = item.map_err(|e| e.to_string())?.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("json") {
-            if let Ok(json) = std::fs::read_to_string(&path) {
-                if let Ok(e) = serde_json::from_str::<MediaCatalogEntry>(&json) {
-                    entries.push(e);
-                }
-            }
-        }
-    }
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(SELECT_ALL).map_err(|e| e.to_string())?;
+    let entries = stmt
+        .query_map([], row_to_entry)
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
     Ok(entries)
 }
 
 #[tauri::command]
 pub async fn search_catalog(
-    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::CatalogDb>,
     query: String,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
-    let entries = get_all_catalog_entries(app_handle).await?;
-    let q = query.to_lowercase();
-    let results: Vec<_> = entries
-        .into_iter()
-        .filter(|e| {
-            e.title_main
-                .as_deref()
-                .map(|t| t.to_lowercase().contains(&q))
-                .unwrap_or(false)
-                || e.title_romaji
-                    .as_deref()
-                    .map(|t| t.to_lowercase().contains(&q))
-                    .unwrap_or(false)
-                || e.title_native
-                    .as_deref()
-                    .map(|t| t.to_lowercase().contains(&q))
-                    .unwrap_or(false)
-        })
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let pattern = format!("%{}%", query.to_lowercase());
+    let mut stmt = conn.prepare(
+        &format!("{} WHERE lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1", SELECT_ALL),
+    ).map_err(|e| e.to_string())?;
+    let entries = stmt
+        .query_map([&pattern], row_to_entry)
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
         .collect();
-    Ok(results)
+    Ok(entries)
 }

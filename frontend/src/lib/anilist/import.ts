@@ -44,15 +44,23 @@ export interface ImportProgress {
 
 type MediaType = 'ANIME' | 'MANGA';
 
+export interface ImportFilters {
+  filterAnime?: boolean;
+  filterManga?: boolean;
+  filterNovel?: boolean;
+}
+
 export async function importFromAniList(
   mediaType: 'anime' | 'manga',
-  onProgress: (progress: ImportProgress) => void
+  filters?: ImportFilters,
+  onProgress?: (progress: ImportProgress) => void
 ): Promise<{ ok: boolean; error?: string; imported?: number }> {
+  const onProg = onProgress || (() => {});
   try {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
     if (!token) return { ok: false, error: 'No AniList token found' };
 
-    onProgress({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });
+    onProg({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });
 
     // Get current user ID
     const userRes = await fetch(ANILIST_API, {
@@ -95,7 +103,7 @@ export async function importFromAniList(
 
     // Fetch all pages
     while (hasNextPage) {
-      onProgress({ current: page - 1, total: page, status: 'loading', message: `Descargando página ${page}...` });
+      onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando página ${page}...` });
 
       const pageRes = await fetch(ANILIST_API, {
         method: 'POST',
@@ -133,7 +141,16 @@ export async function importFromAniList(
       }
     }
 
-    onProgress({ current: 1, total: 1, status: 'importing', message: `Importando ${allMediaList.length} items...` });
+    // Apply type filters
+    const filteredList = allMediaList.filter(item => {
+      const itemType = (item.media?.type ?? mediaType).toLowerCase();
+      if (itemType === 'anime' && filters?.filterAnime === false) return false;
+      if (itemType === 'manga' && filters?.filterManga === false) return false;
+      if (itemType === 'novel' && filters?.filterNovel === false) return false;
+      return true;
+    });
+
+    onProg({ current: 1, total: 1, status: 'importing', message: `Importando ${filteredList.length} items...` });
 
     // Get existing library and catalog
     const existingLibrary = await getAllLibraryEntries().catch(() => []);
@@ -143,7 +160,7 @@ export async function importFromAniList(
     let imported = 0;
 
     // Import each media
-    for (const mediaItem of allMediaList) {
+    for (const mediaItem of filteredList) {
       const anilistId = mediaItem.mediaId;
       const externalId = formatMediaId(mediaItem.media?.type ?? mediaType, mediaItem.media?.format, anilistId);
 
@@ -160,9 +177,9 @@ export async function importFromAniList(
         external_id: externalId,
         type: entryType,
         status: mapAniListStatus(mediaItem.status),
-        rating: mediaItem.score && mediaItem.score > 0 ? (mediaItem.score / 10) * 10 : 0,
+        rating: mediaItem.score && mediaItem.score > 0 ? mediaItem.score : 0,
         progress: mediaItem.progress ?? 0,
-        progressCount2: mediaItem.progressVolumes ?? 0,
+        progress_2: mediaItem.progressVolumes ?? 0,
         started_at: formatFuzzyDate(mediaItem.startedAt),
         finished_at: formatFuzzyDate(mediaItem.completedAt),
         notes: mediaItem.notes ?? '',
@@ -211,18 +228,18 @@ export async function importFromAniList(
 
       imported++;
 
-      onProgress({
+      onProg({
         current: imported,
-        total: allMediaList.length,
+        total: filteredList.length,
         status: 'importing',
-        message: `${imported}/${allMediaList.length}...`,
+        message: `${imported}/${filteredList.length}...`,
       });
     }
 
-    onProgress({ current: allMediaList.length, total: allMediaList.length, status: 'done' });
+    onProg({ current: filteredList.length, total: filteredList.length, status: 'done' });
     return { ok: true, imported };
   } catch (e: any) {
-    onProgress({
+    onProg({
       current: 0,
       total: 0,
       status: 'error',
