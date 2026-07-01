@@ -236,19 +236,17 @@ export default function MediaPage({ lang }: { lang: string }) {
     if (coverUrl.startsWith('//')) {
       coverUrl = 'https:' + coverUrl;
     }
-    // Discord Media Proxy requiere el prefijo mp: para URLs externas
-    if (coverUrl.startsWith('http')) {
-      coverUrl = 'mp:' + coverUrl;
-    }
 
 
-    console.log('[Discord] Actualizando presencia:', detailsText, '/', data.titleMain, 'Cover URL:', coverUrl);
+
+    console.log('[Discord] Actualizando presencia:', detailsText, '/', data.titleMain, 'Cover URL: default metadea asset');
     updateDiscordPresence(
       detailsText,      // Línea 1: "Viendo la ficha de..."
       data.titleMain,   // Línea 2: Título de la obra
-      coverUrl,         // Portada HTTPS corregida
+      'metadea',        // Asset registrado en el Developer Portal (el logotipo de Metadea)
       'Metadea',
     ).then(() => {
+
       console.log('[Discord] Presencia actualizada OK');
     }).catch((err) => {
       console.warn('[Discord] Error al actualizar presencia:', err);
