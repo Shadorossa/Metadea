@@ -968,10 +968,11 @@ pub async fn igdb_search(
                 "fields id,name,cover.image_id,rating,first_release_date,\
                  genres.id,genres.name,category,\
                  version_parent.id,version_parent.genres.id,\
-                 parent_game.id,parent_game.genres.id,\
+                 parent_game.id,parent_game.genres.id; \
                  search \"{}\"; where cover != null; limit {}; offset {};",
                 safe_query, PAGE, offset
             ),
+
         )
         .await?;
 
