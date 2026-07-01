@@ -45,13 +45,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
   const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
-  const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortControllerRef        = useRef<AbortController | null>(null);
-  const searchInputRef            = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const executeSearch = useCallback(async (searchQuery: string, type: MediaType) => {
     if (searchQuery.length < 2) {
@@ -72,7 +67,6 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
       if (!isAbort) {
-        console.error('[search]', error);
         setStatus('error');
       }
     }
@@ -107,6 +101,38 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     if (query.length >= 2) executeSearch(query, mediaType);
   };
 
+  const toggleSort = (field: 'releaseDate' | 'scoreGlobal') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc'); // Por defecto descendente (más nuevo o mejor nota primero)
+    }
+  };
+
+  // Función para ordenar los resultados en base a los estados
+  const sortedResults = [...results].sort((a, b) => {
+    if (sortField === 'releaseDate') {
+      const aYear = a.releaseYear ?? 0;
+      const bYear = b.releaseYear ?? 0;
+      if (aYear !== bYear) {
+        return sortDirection === 'desc' ? bYear - aYear : aYear - bYear;
+      }
+      const aMonth = a.releaseMonth ?? 0;
+      const bMonth = b.releaseMonth ?? 0;
+      if (aMonth !== bMonth) {
+        return sortDirection === 'desc' ? bMonth - aMonth : aMonth - bMonth;
+      }
+      const aDay = a.releaseDay ?? 0;
+      const bDay = b.releaseDay ?? 0;
+      return sortDirection === 'desc' ? bDay - aDay : aDay - aDay;
+    } else {
+      const aScore = a.scoreGlobal ?? -1;
+      const bScore = b.scoreGlobal ?? -1;
+      return sortDirection === 'desc' ? bScore - aScore : aScore - bScore;
+    }
+  });
+
   const activeMediaTypeLabel = i18n.types[mediaType].toLowerCase();
 
   return (
@@ -137,8 +163,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
 
         {/* Barra de búsqueda */}
-        <div className="search-bar-row">
-          <div className="search-input-wrap">
+        <div className="search-bar-row" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div className="search-input-wrap" style={{ flexGrow: 1 }}>
             <input
               ref={searchInputRef}
               type="search"
@@ -166,7 +192,71 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               </svg>
             )}
           </button>
+
+          {/* Botones de ordenación (solo iconos minimalistas) */}
+          {isMounted && results.length > 0 && (
+            <div className="search-sort-group" style={{ display: 'flex', gap: '0.25rem' }}>
+              {/* Ordenar por Fecha */}
+              <button
+                onClick={() => toggleSort('releaseDate')}
+                className={`search-sort-btn${sortField === 'releaseDate' ? ' active' : ''}`}
+                style={{
+                  background: sortField === 'releaseDate' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: sortField === 'releaseDate' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Ordenar por fecha de lanzamiento"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: sortField === 'releaseDate' ? '1px' : '0' }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                {sortField === 'releaseDate' && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+                  </svg>
+                )}
+              </button>
+
+              {/* Ordenar por Calificación */}
+              <button
+                onClick={() => toggleSort('scoreGlobal')}
+                className={`search-sort-btn${sortField === 'scoreGlobal' ? ' active' : ''}`}
+                style={{
+                  background: sortField === 'scoreGlobal' ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '6px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: sortField === 'scoreGlobal' ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Ordenar por puntuación global"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: sortField === 'scoreGlobal' ? '1px' : '0' }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                {sortField === 'scoreGlobal' && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
         </div>
+
 
       </div>
 
@@ -191,9 +281,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {results.length > 0 && (
+        {sortedResults.length > 0 && (
           <div className="results-grid animate-fade-in">
-            {results.map(result => (
+            {sortedResults.map(result => (
               <MediaCard key={result.externalId} result={result} />
             ))}
           </div>
