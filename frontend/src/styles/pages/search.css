@@ -118,6 +118,33 @@
   animation: spin 0.7s linear infinite;
 }
 
+/* Botones de ordenación */
+.search-sort-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--anim-fast) var(--anim-ease);
+}
+.search-sort-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.search-sort-btn.active {
+  color: var(--text-main);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+
 /* ── Results zone ────────────────────────────────────────────────────────── */
 .results-zone {
   max-width: 80rem;
