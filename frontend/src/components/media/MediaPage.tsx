@@ -125,11 +125,18 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [currentId, setCurrentId] = useState('');
   const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [data,               setData]               = useState<MediaPageData | null>(null);
+  const [libEntry,           setLibEntry]           = useState<LibraryEntry | null>(null);
   const [libStatus,          setLibStatus]          = useState('');
   const [libRating,          setLibRating]          = useState(0);
   const [showEditor,         setShowEditor]         = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
+
+  // Last entry known to actually exist in the DB (fetched, saved or deleted).
+  // Quick clicks on the hero widget mutate `libEntry` optimistically before
+  // the editor even opens; if the user closes without saving, we roll back
+  // to this ref instead of leaving the unsaved draft on screen.
+  const lastKnownEntry = useRef<LibraryEntry | null>(null);
 
   // Escuchar cambios de navegación (Astro View Transitions)
   useEffect(() => {
@@ -176,10 +183,10 @@ export default function MediaPage({ lang }: { lang: string }) {
 
     getLibraryEntry(currentId, data.type)
       .then(entry => {
-        if (entry) {
-          setLibStatus(entry.status ?? '');
-          setLibRating(entry.rating ?? 0);
-        }
+        lastKnownEntry.current = entry;
+        setLibEntry(entry);
+        setLibStatus(entry?.status ?? '');
+        setLibRating(entry?.rating ?? 0);
       })
       .catch(() => {});
 
@@ -211,9 +218,11 @@ export default function MediaPage({ lang }: { lang: string }) {
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});
-  // Re-run when bannerImage changes so partial→full transition saves the banner URL to catalog
+  // Re-run when bannerImage changes so partial→full transition saves the banner URL to catalog.
+  // currentId is included so navigating between two items of the same type (and same
+  // transient bannerImage state) still re-fetches the library entry for the new item.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.type, data?.bannerImage]);
+  }, [currentId, data?.type, data?.bannerImage]);
 
   // ── Discord Rich Presence ──────────────────────────────────────────────────
   useEffect(() => {
@@ -261,25 +270,56 @@ export default function MediaPage({ lang }: { lang: string }) {
   }, []);
 
   const handleEditorSaved = useCallback((entry: LibraryEntry) => {
+    lastKnownEntry.current = entry;
+    setLibEntry(entry);
     setLibStatus(entry.status ?? '');
     setLibRating(entry.rating ?? 0);
   }, []);
 
   const handleEditorDeleted = useCallback(() => {
+    lastKnownEntry.current = null;
+    setLibEntry(null);
     setLibStatus('');
     setLibRating(0);
   }, []);
 
+  // Closing without saving: roll back any optimistic quick-click draft to
+  // the last confirmed DB state, so a re-open (or the hero widget) doesn't
+  // keep showing changes that were never actually persisted.
+  const handleEditorClose = useCallback(() => {
+    setShowEditor(false);
+    const truth = lastKnownEntry.current;
+    setLibEntry(truth);
+    setLibStatus(truth?.status ?? '');
+    setLibRating(truth?.rating ?? 0);
+  }, []);
+
+  // Merges a quick edit (status/rating clicked directly on the hero) into the
+  // current entry draft, so the editor modal opens already reflecting it
+  // instead of overwriting it with the stale value from the last DB fetch.
+  const draftEntry = useCallback((overrides: Partial<LibraryEntry>): LibraryEntry => ({
+    id: '', user_id: 'local', external_id: currentId, type: data?.type ?? '',
+    status: null, rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+    is_favorite: 0, is_platinum: 0, tags: null, notes: null,
+    added_at: null, updated_at: null, selected_platform: null, selected_version: null,
+    started_at: null, finished_at: null,
+    ...libEntry,
+    ...overrides,
+  }), [currentId, data?.type, libEntry]);
+
   const handleStatusChange = useCallback((next: string) => {
     setLibStatus(next);
+    setLibEntry(draftEntry({ status: next || null }));
     setShowEditor(true);
-  }, []);
+  }, [draftEntry]);
 
   const handleRate = useCallback((stars: number) => {
     const dbRating = stars * 2;
-    setLibRating(libRating === dbRating ? 0 : dbRating);
+    const nextRating = libRating === dbRating ? 0 : dbRating;
+    setLibRating(nextRating);
+    setLibEntry(draftEntry({ rating: nextRating || null }));
     setShowEditor(true);
-  }, [libRating]);
+  }, [libRating, draftEntry]);
 
   // ── States: loading / error ──────────────────────────────────────────────
 
@@ -301,10 +341,11 @@ export default function MediaPage({ lang }: { lang: string }) {
     <>
       {showEditor && (
         <MediaEditorModal
-          externalId={rawId.current}
+          externalId={currentId}
           data={data}
           lang={lang}
-          onClose={() => setShowEditor(false)}
+          initialEntry={libEntry ?? undefined}
+          onClose={handleEditorClose}
           onSaved={handleEditorSaved}
           onDeleted={handleEditorDeleted}
         />
