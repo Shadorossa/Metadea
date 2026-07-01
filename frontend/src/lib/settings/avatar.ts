@@ -6,10 +6,12 @@ export function initAvatar(
   username: string,
   showToast: (msg?: string) => void,
 ) {
-  const preview   = document.getElementById('avatar-preview')!;
+  const preview   = document.getElementById('avatar-preview');
   const input     = document.getElementById('avatar-input') as HTMLInputElement;
-  const uploadBtn = document.getElementById('avatar-upload-btn')!;
-  const removeBtn = document.getElementById('avatar-remove-btn')!;
+  const uploadBtn = document.getElementById('avatar-upload-btn');
+  const removeBtn = document.getElementById('avatar-remove-btn');
+
+  if (!preview || !input || !uploadBtn || !removeBtn) return;
 
   async function renderAvatarPreview() {
     const custom = await getImage('profile_avatar_custom');
