@@ -199,7 +199,6 @@ export default function MediaPage({ lang }: { lang: string }) {
   useEffect(() => {
     if (!data) return;
 
-    // Estado según tipo, usando las claves i18n ya existentes
     const baseType = data.type?.split('_')[0];
     const stateText =
       baseType === 'anime' || baseType === 'movie' || baseType === 'series'
@@ -210,17 +209,27 @@ export default function MediaPage({ lang }: { lang: string }) {
         ? t.profile.status_playing
         : 'Metadea';
 
+    console.log('[Discord] Actualizando presencia:', data.titleMain, '/', stateText);
     updateDiscordPresence(
-      data.titleMain,  // título de la obra
-      stateText,       // "Viendo" / "Leyendo" / "Jugando" (desde i18n)
-      data.cover,      // portada real (URL HTTPS externa)
-      'Metadea',       // tooltip de la imagen
-    ).catch(() => {});
+      data.titleMain,
+      stateText,
+      data.cover,
+      'Metadea',
+    ).then(() => {
+      console.log('[Discord] Presencia actualizada OK');
+    }).catch((err) => {
+      console.warn('[Discord] Error al actualizar presencia:', err);
+    });
 
-    return () => { clearDiscordPresence().catch(() => {}); };
+    return () => {
+      clearDiscordPresence().catch((err) => {
+        console.warn('[Discord] Error al limpiar presencia:', err);
+      });
+    };
   // Solo re-disparar cuando cambiamos de obra
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.externalId]);
+
 
   const handleCoverClick = useCallback(() => {
     setShowEditor(true);

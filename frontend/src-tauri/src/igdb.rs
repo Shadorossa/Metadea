@@ -284,11 +284,6 @@ fn get_release_timestamp(game: &serde_json::Value) -> i64 {
     game["first_release_date"].as_i64().unwrap_or(i64::MIN)
 }
 
-// Choose the most recent game when multiple matches exist (handles remakes)
-fn choose_most_recent<'a>(games: Vec<&'a serde_json::Value>) -> Option<&'a serde_json::Value> {
-    games.into_iter().max_by_key(|g| get_release_timestamp(g))
-}
-
 fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
     let q = query_norm;
     let c = {

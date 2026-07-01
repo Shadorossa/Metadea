@@ -297,9 +297,6 @@ pub async fn scan_anime_folder(folder_path: String) -> Result<Vec<String>, Strin
 
 #[tauri::command]
 pub async fn play_file_with_vlc(file_path: String) -> Result<(), String> {
-    use tauri_plugin_opener::OpenerExt;
-    // This will be called from the app, but we need the app handle
-    // For now, we'll use open_path which opens with default player
     std::process::Command::new("vlc")
         .arg(&file_path)
         .spawn()

@@ -1,9 +1,7 @@
-﻿use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use std::sync::Mutex;
 
 const CLIENT_ID: &str = "1521817645043810344";
-
-// -- Estado global -------------------------------------------------------------
 
 pub struct DiscordState {
     client: Mutex<Option<DiscordIpcClient>>,
@@ -13,27 +11,21 @@ impl DiscordState {
     pub fn new() -> Self {
         Self { client: Mutex::new(None) }
     }
-
-    /// Intenta conectar con Discord. Si Discord no esta abierto, no hace nada.
-    fn try_connect(guard: &mut Option<DiscordIpcClient>) {
-        if guard.is_some() {
-            return;
-        }
-        match DiscordIpcClient::new(CLIENT_ID) {
-            Ok(mut c) => {
-                if c.connect().is_ok() {
-                    *guard = Some(c);
-                }
-            }
-            Err(_) => {}
-        }
-    }
 }
 
-// -- Comandos Tauri ------------------------------------------------------------
+fn try_connect(guard: &mut Option<DiscordIpcClient>) -> Result<(), String> {
+    if guard.is_some() {
+        return Ok(());
+    }
+    eprintln!("[Discord] Intentando conectar con Discord IPC...");
+    let mut c = DiscordIpcClient::new(CLIENT_ID)
+        .map_err(|e| format!("new() failed: {e}"))?;
+    c.connect().map_err(|e| format!("connect() failed: {e}"))?;
+    eprintln!("[Discord] Conectado con Discord IPC correctamente.");
+    *guard = Some(c);
+    Ok(())
+}
 
-/// Actualiza la presencia de Discord con el titulo y estado de la obra actual.
-/// Si Discord no esta abierto, simplemente no hace nada.
 #[tauri::command]
 pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
@@ -41,38 +33,53 @@ pub fn update_presence(
     state: String,
     large_image_url: Option<String>,
     large_image_text: Option<String>,
-) {
-    let Ok(mut guard) = discord.client.lock() else { return };
+) -> Result<(), String> {
+    eprintln!("[Discord] update_presence llamado: '{details}' / '{state}'");
 
-    // Intento de reconexion lazy si no estamos conectados
-    DiscordState::try_connect(&mut guard);
+    let mut guard = discord.client.lock()
+        .map_err(|e| format!("mutex: {e}"))?;
 
-    let Some(client) = guard.as_mut() else { return };
+    if let Err(e) = try_connect(&mut guard) {
+        eprintln!("[Discord] No se pudo conectar: {e}");
+        return Err(e);
+    }
 
-    let img_url  = large_image_url.as_deref().unwrap_or("metadea");
+    let client = guard.as_mut().ok_or("no client")?;
+
+    let img_url  = large_image_url.as_deref().unwrap_or("");
     let img_text = large_image_text.as_deref().unwrap_or("Metadea");
+
+    let mut assets = activity::Assets::new().large_text(img_text);
+    if !img_url.is_empty() {
+        assets = assets.large_image(img_url);
+    }
 
     let payload = activity::Activity::new()
         .details(&details)
         .state(&state)
-        .assets(
-            activity::Assets::new()
-                .large_image(img_url)
-                .large_text(img_text),
-        );
+        .assets(assets);
 
-    // Si la conexion se perdio, reseteamos para que el proximo update reconecte
-    if client.set_activity(payload).is_err() {
+    let ok = client.set_activity(payload).is_ok();
+
+    if !ok {
+        eprintln!("[Discord] set_activity falló, reseteando cliente para reconectar.");
         *guard = None;
+        return Err("set_activity failed".into());
     }
+
+    eprintln!("[Discord] Presencia actualizada correctamente.");
+    Ok(())
 }
 
-/// Limpia la presencia de Discord (llamar al salir de la media page).
 #[tauri::command]
-pub fn clear_presence(discord: tauri::State<'_, DiscordState>) {
-    let Ok(mut guard) = discord.client.lock() else { return };
-    let Some(client) = guard.as_mut() else { return };
-    if client.clear_activity().is_err() {
-        *guard = None;
-    }
+pub fn clear_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), String> {
+    eprintln!("[Discord] clear_presence llamado.");
+    let mut guard = discord.client.lock()
+        .map_err(|e| format!("mutex: {e}"))?;
+    let Some(client) = guard.as_mut() else { return Ok(()) };
+    client.clear_activity().map_err(|e| {
+        guard.take();
+        e.to_string()
+    })?;
+    Ok(())
 }
