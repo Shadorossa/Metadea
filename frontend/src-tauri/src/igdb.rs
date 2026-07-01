@@ -41,12 +41,14 @@ const IGDB_GAME_FIELDS: &str = "id,cover.image_id,name,summary,first_release_dat
 /// Only excludes when category is explicitly set to a non-game value.
 /// Games with no category set (null → 0 in JSON) are treated as main_game.
 fn is_non_game(game: &serde_json::Value) -> bool {
-    const EXCLUDED: &[u64] = &[1, 3, 5, 6, 7, 13, 14]; // dlc_addon, bundle, mod, episode, season, pack, update
+    // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 8 (remake), 9 (remaster), 14 (update)
+    const ALLOWED: &[u64] = &[0, 4, 8, 9, 14];
     game["category"]
         .as_u64()
-        .map(|c| EXCLUDED.contains(&c))
-        .unwrap_or(false)
+        .map(|c| !ALLOWED.contains(&c))
+        .unwrap_or(false) // Si es null se asume 0 (main_game), por tanto no es non-game (retorna false)
 }
+
 
 // -- Env config ----------------------------------------------------------------
 
@@ -967,10 +969,11 @@ pub async fn igdb_search(
                  genres.id,genres.name,\
                  version_parent.id,version_parent.genres.id,\
                  parent_game.id,parent_game.genres.id,\
-                 version_title; \
-                 search \"{}\"; where cover != null; limit {}; offset {};",
+                 search \"{}\"; where cover != null & category = (0,4,8,9,14); limit {}; offset {};",
                 safe_query, PAGE, offset
             ),
+
+
         )
         .await?;
 
@@ -1016,7 +1019,15 @@ pub async fn igdb_get_game_detail(
             "fields id,name,cover.image_id,summary,first_release_date,rating,total_rating,\
              genres.name,involved_companies.company.name,\
              involved_companies.developer,involved_companies.publisher,platforms.name,\
-             alternative_names.name,alternative_names.comment,game_type; \
+             alternative_names.name,alternative_names.comment,game_type,\
+             remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,\
+             remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,\
+             dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,\
+             expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,\
+             standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,\
+             expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,\
+             ports.id,ports.name,ports.cover.image_id,ports.first_release_date,\
+             forks.id,forks.name,forks.cover.image_id,forks.first_release_date; \
              where id = {}; limit 1;",
             igdb_id
         ),
@@ -1117,9 +1128,11 @@ pub async fn igdb_search_candidates(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date,category; \
-             search \"{}\"; where cover != null; limit 20;",
+             search \"{}\"; where cover != null & category = (0,4,8,9,14); limit 20;",
             search_query
         ),
+
+
     )
     .await?;
 

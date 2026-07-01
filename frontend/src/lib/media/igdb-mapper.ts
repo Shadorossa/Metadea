@@ -1,6 +1,13 @@
 import { igdbImageUrl } from '../tauri';
-import type { MediaPageData } from './types';
+import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
+
+interface IgdbSubGame {
+  id: number;
+  name: string;
+  cover?: { image_id: string };
+  first_release_date?: number;
+}
 
 interface IgdbDetailGame {
   id: number;
@@ -22,6 +29,16 @@ interface IgdbDetailGame {
   platforms?: { id: number; name: string }[];
   alternative_names?: { name: string; comment?: string }[];
   store_links?: { platform: string; url: string }[];
+  
+  // Relaciones de versiones
+  remakes?: IgdbSubGame[];
+  remasters?: IgdbSubGame[];
+  dlcs?: IgdbSubGame[];
+  expansions?: IgdbSubGame[];
+  standalone_expansions?: IgdbSubGame[];
+  expanded_games?: IgdbSubGame[];
+  ports?: IgdbSubGame[];
+  forks?: IgdbSubGame[];
 }
 
 const GAME_TYPE_FORMAT: Record<number, string> = {
@@ -100,6 +117,31 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   if (platforms.length) metaLines.push(platforms.join(' · '));
   if (publishers.length) metaLines.push(publishers.join(', '));
 
+  // Agrupamiento y mapeo de las relaciones de IGDB en secciones
+  const relations: MediaRelation[] = [];
+
+  const addRelations = (subGames: IgdbSubGame[] | undefined, label: string) => {
+    if (!subGames) return;
+    for (const sg of subGames) {
+      const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
+      relations.push({
+        typeLabel: label,
+        title: sg.name,
+        cover,
+        url: `/media?id=game:${sg.id}`,
+      });
+    }
+  };
+
+  addRelations(game.remakes, 'Remake');
+  addRelations(game.remasters, 'Remaster');
+  addRelations(game.dlcs, 'DLC');
+  addRelations(game.expansions, 'Expansión');
+  addRelations(game.standalone_expansions, 'Standalone');
+  addRelations(game.expanded_games, 'Edición expandida');
+  addRelations(game.ports, 'Port');
+  addRelations(game.forks, 'Fork');
+
   return {
     externalId: rawId,
     type: mediaType,
@@ -117,7 +159,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     description: game.summary,
     stats,
     characters: [],
-    relations: [],
+    relations,
     progressStatus: 'playing',
     progressLabel: 'Jugando',
     storeLinks: game.store_links?.filter(l => l.platform && l.url),
@@ -131,3 +173,4 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     scoreGlobal,
   };
 }
+
