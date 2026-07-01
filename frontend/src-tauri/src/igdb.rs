@@ -966,14 +966,12 @@ pub async fn igdb_search(
             IGDB_API_GAMES,
             &format!(
                 "fields id,name,cover.image_id,rating,first_release_date,\
-                 genres.id,genres.name,\
+                 genres.id,genres.name,category,\
                  version_parent.id,version_parent.genres.id,\
                  parent_game.id,parent_game.genres.id,\
-                 search \"{}\"; where cover != null & category = (0,4,8,9,14); limit {}; offset {};",
+                 search \"{}\"; where cover != null; limit {}; offset {};",
                 safe_query, PAGE, offset
             ),
-
-
         )
         .await?;
 
@@ -984,6 +982,13 @@ pub async fn igdb_search(
             if !item["version_parent"].is_null() || !item["version_title"].is_null() {
                 continue;
             }
+
+            // Filtrar categorías: solo permitimos 0, 4, 8, 9, 14
+            let category = item["category"].as_u64().unwrap_or(0);
+            if !matches!(category, 0 | 4 | 8 | 9 | 14) {
+                continue;
+            }
+
             let vn = detect_vn(&item);
             if is_visual_novel == vn {
                 all.push(item);
@@ -1128,9 +1133,10 @@ pub async fn igdb_search_candidates(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date,category; \
-             search \"{}\"; where cover != null & category = (0,4,8,9,14); limit 20;",
+             search \"{}\"; where cover != null; limit 20;",
             search_query
         ),
+
 
 
     )
