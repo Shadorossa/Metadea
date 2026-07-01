@@ -2,10 +2,10 @@
 use std::sync::{Arc, Mutex};
 
 const CLIENT_ID:      &str = "1521817645043810344";
-const DEFAULT_DETAILS: &str = "Metadea";
-const DEFAULT_STATE:   &str = "Navegando por la biblioteca";
+const DEFAULT_DETAILS: &str = "Explorando la biblioteca";
+const DEFAULT_STATE:   &str = "";
 
-// ── Estado global ──────────────────────────────────────────────────────────────
+// -- Estado global -------------------------------------------------------------
 
 pub struct DiscordState {
     client: Arc<Mutex<Option<DiscordIpcClient>>>,
@@ -16,8 +16,7 @@ impl DiscordState {
         Self { client: Arc::new(Mutex::new(None)) }
     }
 
-    /// Hilo de fondo: intenta conectar con Discord cada 15 s y,
-    /// una vez conectado, establece la presencia por defecto.
+    /// Hilo de fondo: conecta y establece presencia por defecto
     pub fn start_background(&self) {
         let arc = Arc::clone(&self.client);
         std::thread::spawn(move || loop {
@@ -26,18 +25,29 @@ impl DiscordState {
                     if guard.is_none() {
                         if let Ok(mut c) = DiscordIpcClient::new(CLIENT_ID) {
                             if c.connect().is_ok() {
+                                let assets = activity::Assets::new()
+                                    .large_image("metadea")
+                                    .large_text("Metadea");
+                                
+                                let button = activity::Button::new(
+                                    "Descargar Metadea",
+                                    "https://github.com/Shadorossa/Metadea"
+                                );
+
                                 let payload = activity::Activity::new()
                                     .details(DEFAULT_DETAILS)
-                                    .state(DEFAULT_STATE);
+                                    .state(DEFAULT_STATE)
+                                    .assets(assets)
+                                    .buttons(vec![button]);
+
                                 if c.set_activity(payload).is_ok() {
-                                    eprintln!("[Discord] Conectado y presencia por defecto establecida.");
                                     *guard = Some(c);
-                                    return; // Salir del hilo: ya no necesitamos reintentar
+                                    return;
                                 }
                             }
                         }
                     } else {
-                        return; // Ya conectado por otro camino
+                        return;
                     }
                 }
             }
@@ -46,15 +56,13 @@ impl DiscordState {
     }
 }
 
-// ── Helpers internos ───────────────────────────────────────────────────────────
+// -- Helpers internos -----------------------------------------------------------
 
 fn ensure_connected(guard: &mut Option<DiscordIpcClient>) -> Result<(), String> {
     if guard.is_some() { return Ok(()); }
-    eprintln!("[Discord] Conectando (lazy)...");
     let mut c = DiscordIpcClient::new(CLIENT_ID)
         .map_err(|e| format!("new() failed: {e}"))?;
     c.connect().map_err(|e| format!("connect() failed: {e}"))?;
-    eprintln!("[Discord] Conectado.");
     *guard = Some(c);
     Ok(())
 }
@@ -63,53 +71,92 @@ fn apply_activity(
     client: &mut DiscordIpcClient,
     details: &str,
     state: &str,
-    img_url: &str,
-    img_text: &str,
+    large_img: &str,
+    large_txt: &str,
+    small_img: &str,
+    small_txt: &str,
 ) -> bool {
-    let mut assets = activity::Assets::new().large_text(img_text);
-    if !img_url.is_empty() {
-        assets = assets.large_image(img_url);
+    let mut assets = activity::Assets::new();
+    
+    if !large_img.is_empty() {
+        assets = assets.large_image(large_img).large_text(large_txt);
     }
-    let payload = activity::Activity::new()
-        .details(details)
-        .state(state)
-        .assets(assets);
+    if !small_img.is_empty() {
+        assets = assets.small_image(small_img).small_text(small_txt);
+    }
+
+    let download_button = activity::Button::new(
+        "Descargar Metadea",
+        "https://github.com/Shadorossa/Metadea"
+    );
+
+    let mut payload = activity::Activity::new()
+        .assets(assets)
+        .buttons(vec![download_button]);
+
+    if !details.is_empty() {
+        payload = payload.details(details);
+    }
+    if !state.is_empty() {
+        payload = payload.state(state);
+    }
+
     client.set_activity(payload).is_ok()
 }
 
-// ── Comandos Tauri ─────────────────────────────────────────────────────────────
+// -- Comandos Tauri -------------------------------------------------------------
 
-/// Actualiza la presencia con el título y el estado de la obra actual.
+/// Actualiza la presencia con cover dinámico (large) y el logo de Metadea (small)
 #[tauri::command]
 pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
     details: String,
     state: String,
-    large_image_url: Option<String>,
-    large_image_text: Option<String>,
+    _large_image_url: Option<String>,
+    _large_image_text: Option<String>,
 ) -> Result<(), String> {
-    eprintln!("[Discord] update_presence: '{details}' / '{state}'");
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     ensure_connected(&mut guard)?;
-    let img_url  = large_image_url.as_deref().unwrap_or("");
-    let img_text = large_image_text.as_deref().unwrap_or("Metadea");
+    
+    let cover_url = "metadea";
+    let cover_txt = "Metadea";
     let client = guard.as_mut().ok_or("no client")?;
-    if !apply_activity(client, &details, &state, img_url, img_text) {
+
+    let ok = apply_activity(
+        client, 
+        &details, 
+        &state, 
+        cover_url, 
+        cover_txt, 
+        "", 
+        ""
+    );
+
+    if !ok {
         *guard = None;
         return Err("set_activity failed".into());
     }
-    eprintln!("[Discord] Presencia actualizada OK.");
     Ok(())
 }
 
-/// Restablece la presencia por defecto "Navegando por la biblioteca".
+/// Restablece la presencia por defecto "Explorando la biblioteca" con la imagen de Metadea
 #[tauri::command]
 pub fn reset_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), String> {
-    eprintln!("[Discord] reset_presence: volviendo a presencia por defecto.");
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     ensure_connected(&mut guard)?;
     let client = guard.as_mut().ok_or("no client")?;
-    if !apply_activity(client, DEFAULT_DETAILS, DEFAULT_STATE, "", "Metadea") {
+
+    let ok = apply_activity(
+        client, 
+        DEFAULT_DETAILS, 
+        DEFAULT_STATE, 
+        "metadea", 
+        "Metadea", 
+        "", 
+        ""
+    );
+
+    if !ok {
         *guard = None;
         return Err("reset failed".into());
     }

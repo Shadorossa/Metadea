@@ -238,27 +238,18 @@ export default function MediaPage({ lang }: { lang: string }) {
     }
 
 
-
-    console.log('[Discord] Actualizando presencia:', detailsText, '/', data.titleMain, 'Cover URL: default metadea asset');
     updateDiscordPresence(
-      detailsText,      // Línea 1: "Viendo la ficha de..."
+      detailsText,      // Línea 1: "Detalles del juego:"
       data.titleMain,   // Línea 2: Título de la obra
-      'metadea',        // Asset registrado en el Developer Portal (el logotipo de Metadea)
+      'metadea',        // Tu logotipo de Metadea subido a Art Assets
       'Metadea',
-    ).then(() => {
-
-      console.log('[Discord] Presencia actualizada OK');
-    }).catch((err) => {
-      console.warn('[Discord] Error al actualizar presencia:', err);
-    });
+    ).catch(() => {});
 
     // Al desmontar (salir de la ficha), restablecemos el estado por defecto
     return () => {
-      console.log('[Discord] cleanup: restableciendo presencia por defecto.');
-      resetDiscordPresence().catch((err) => {
-        console.warn('[Discord] Error al resetear presencia en cleanup:', err);
-      });
+      resetDiscordPresence().catch(() => {});
     };
+
   // Re-disparar si cambia la obra
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.externalId]);

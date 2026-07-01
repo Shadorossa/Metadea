@@ -54,7 +54,8 @@ const t = useTranslations(lang);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <ClientRouter />
-    <link id="theme-stylesheet" rel="stylesheet" href="" />
+    <link id="theme-stylesheet" rel="stylesheet" href="/src/styles/core/themes/nebula.css" />
+
     <!-- Apply theme before CSS loads to prevent flash -->
     <script is:inline define:vars={{ themeUrls }}>
       function applyTheme() {
@@ -179,14 +180,17 @@ const t = useTranslations(lang);
         // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord
         if (!window.location.pathname.startsWith('/media')) {
           try {
-            const { resetDiscordPresence } = await import(/* @vite-ignore */ '../lib/tauri');
-            await resetDiscordPresence();
+            const w = window as any;
+            if (w.__TAURI__?.core?.invoke) {
+              w.__TAURI__.core.invoke('reset_presence').catch(() => {});
+            }
           } catch (e) {
-            // Ignorar silenciosamente fuera de Tauri
+            // Ignorar fuera de Tauri
           }
         }
       });
     </script>
+
 
   </body>
 </html>
