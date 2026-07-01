@@ -197,7 +197,7 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   // ── Discord Rich Presence ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!data) return;
+    if (!data?.externalId) return; // Esperar a que los datos reales carguen
 
     const baseType = data.type?.split('_')[0];
     const stateText =
@@ -221,12 +221,11 @@ export default function MediaPage({ lang }: { lang: string }) {
       console.warn('[Discord] Error al actualizar presencia:', err);
     });
 
+    // Al salir de la página, volvemos a la presencia por defecto
     return () => {
-      resetDiscordPresence().catch((err) => {
-        console.warn('[Discord] Error al resetear presencia:', err);
-      });
+      resetDiscordPresence().catch(() => {});
     };
-  // Solo re-disparar cuando cambiamos de obra
+  // Re-disparar cuando el ID de la obra cambia (navegación entre obras)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.externalId]);
 
