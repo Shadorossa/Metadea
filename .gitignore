@@ -6,3 +6,5 @@ build/
 *.db
 EOF
 .env
+frontend/.tauri-keys
+frontend/.tauri-keys.pub
