@@ -40,6 +40,7 @@ function interpolateTemplate(template: string, variables: Record<string, string>
 }
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
@@ -47,6 +48,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef        = useRef<AbortController | null>(null);
   const searchInputRef            = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const executeSearch = useCallback(async (searchQuery: string, type: MediaType) => {
     if (searchQuery.length < 2) {
@@ -109,21 +114,27 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
       <div className="search-header">
 
-        {/* Tabs de tipo de medio */}
+        {/* Tabs de tipo de medio (solo se renderizan en cliente para evitar fallos de hidratación de SVGs) */}
         <div className="search-tabs-row">
-          <div className="search-tabs-inner">
-            {MEDIA_TYPE_IDS.map(typeId => (
-              <button
-                key={typeId}
-                onClick={() => handleMediaTypeChange(typeId)}
-                className={`search-tab${mediaType === typeId ? ' active' : ''}`}
-              >
-                {TAB_ICONS[typeId]}
-                {i18n.types[typeId]}
-              </button>
-            ))}
+          <div className="search-tabs-inner" style={{ minHeight: '38px' }}>
+            {isMounted ? (
+              MEDIA_TYPE_IDS.map(typeId => (
+                <button
+                  key={typeId}
+                  onClick={() => handleMediaTypeChange(typeId)}
+                  className={`search-tab${mediaType === typeId ? ' active' : ''}`}
+                >
+                  {TAB_ICONS[typeId]}
+                  {i18n.types[typeId]}
+                </button>
+              ))
+            ) : (
+              // Esqueleto/placeholder vacío en servidor para prevenir saltos de layout
+              <div style={{ opacity: 0 }}>Cargando filtros...</div>
+            )}
           </div>
         </div>
+
 
         {/* Barra de búsqueda */}
         <div className="search-bar-row">

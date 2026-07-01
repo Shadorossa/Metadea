@@ -121,8 +121,8 @@ export default function MediaPage({ lang }: { lang: string }) {
   const t  = lang === 'en' ? en : es;
   const tm = t.media;
 
-  const rawId = useRef('');
-
+  // Estado para el ID actual de la obra
+  const [currentId, setCurrentId] = useState('');
   const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [data,               setData]               = useState<MediaPageData | null>(null);
   const [libStatus,          setLibStatus]          = useState('');
@@ -131,18 +131,37 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
 
-  // Fetch page data on mount — catalog-first for fast partial display
+  // Escuchar cambios de navegación (Astro View Transitions)
   useEffect(() => {
-    rawId.current = new URLSearchParams(window.location.search).get('id') ?? '';
-    if (!rawId.current) { setPageState('error'); return; }
+    const updateId = () => {
+      const id = new URLSearchParams(window.location.search).get('id') ?? '';
+      setCurrentId(id);
+    };
+
+    updateId();
+
+    // Eventos de Astro para transiciones de página
+    document.addEventListener('astro:page-load', updateId);
+    return () => {
+      document.removeEventListener('astro:page-load', updateId);
+    };
+  }, []);
+
+  // Fetch page data cuando el currentId cambia
+  useEffect(() => {
+    if (!currentId) return;
+
+    setPageState('loading');
+    setData(null);
 
     fetchMediaDataWithFallback(
-      rawId.current,
+      currentId,
       partial => { setData(partial); setPageState('ready'); },
       full    => { setData(full);    setPageState('ready'); },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); },
     );
-  }, []);
+  }, [currentId]);
+
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -153,9 +172,9 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   // Load library entry + upsert catalog once we know the type
   useEffect(() => {
-    if (!data?.type) return;
+    if (!data?.type || !currentId) return;
 
-    getLibraryEntry(rawId.current, data.type)
+    getLibraryEntry(currentId, data.type)
       .then(entry => {
         if (entry) {
           setLibStatus(entry.status ?? '');
@@ -167,7 +186,8 @@ export default function MediaPage({ lang }: { lang: string }) {
     // Upsert catalog entry with the latest metadata from the API
     saveCatalogEntry({
       id:                    '',
-      external_id:           rawId.current,
+      external_id:           currentId,
+
       type:                  data.type,
       format:                data.format,
       source:                data.source,
@@ -197,23 +217,36 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   // ── Discord Rich Presence ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!data?.externalId) return; // Esperar a que los datos reales carguen
+    if (!data?.externalId) return;
 
     const baseType = data.type?.split('_')[0];
-    const stateText =
+    
+    // Obtener la línea principal de i18n ("Viendo la ficha de...", etc.)
+    const detailsText =
       baseType === 'anime' || baseType === 'movie' || baseType === 'series'
-        ? t.profile.status_watching
+        ? t.discord.watching_details
         : baseType === 'manga' || baseType === 'novel' || baseType === 'book'
-        ? t.profile.status_reading
+        ? t.discord.reading_details
         : baseType === 'game' || baseType === 'vnovel'
-        ? t.profile.status_playing
+        ? t.discord.playing_details
         : 'Metadea';
 
-    console.log('[Discord] Actualizando presencia:', data.titleMain, '/', stateText);
+    // Normalizar la URL de la portada para asegurar que Discord la acepte (debe llevar https:)
+    let coverUrl = data.cover || '';
+    if (coverUrl.startsWith('//')) {
+      coverUrl = 'https:' + coverUrl;
+    }
+    // Discord Media Proxy requiere el prefijo mp: para URLs externas
+    if (coverUrl.startsWith('http')) {
+      coverUrl = 'mp:' + coverUrl;
+    }
+
+
+    console.log('[Discord] Actualizando presencia:', detailsText, '/', data.titleMain, 'Cover URL:', coverUrl);
     updateDiscordPresence(
-      data.titleMain,
-      stateText,
-      data.cover,
+      detailsText,      // Línea 1: "Viendo la ficha de..."
+      data.titleMain,   // Línea 2: Título de la obra
+      coverUrl,         // Portada HTTPS corregida
       'Metadea',
     ).then(() => {
       console.log('[Discord] Presencia actualizada OK');
@@ -221,13 +254,17 @@ export default function MediaPage({ lang }: { lang: string }) {
       console.warn('[Discord] Error al actualizar presencia:', err);
     });
 
-    // Al salir de la página, volvemos a la presencia por defecto
+    // Al desmontar (salir de la ficha), restablecemos el estado por defecto
     return () => {
-      resetDiscordPresence().catch(() => {});
+      console.log('[Discord] cleanup: restableciendo presencia por defecto.');
+      resetDiscordPresence().catch((err) => {
+        console.warn('[Discord] Error al resetear presencia en cleanup:', err);
+      });
     };
-  // Re-disparar cuando el ID de la obra cambia (navegación entre obras)
+  // Re-disparar si cambia la obra
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.externalId]);
+
 
 
   const handleCoverClick = useCallback(() => {

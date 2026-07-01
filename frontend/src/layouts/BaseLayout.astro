@@ -54,23 +54,32 @@ const t = useTranslations(lang);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <ClientRouter />
-    <link id="theme-stylesheet" rel="stylesheet" href="" transition:persist />
+    <link id="theme-stylesheet" rel="stylesheet" href="" />
     <!-- Apply theme before CSS loads to prevent flash -->
     <script is:inline define:vars={{ themeUrls }}>
       function applyTheme() {
         var t = localStorage.getItem('app_theme') || 'nebula';
         document.documentElement.setAttribute('data-theme', t);
         var link = document.getElementById('theme-stylesheet');
-        if (link) link.setAttribute('href', themeUrls[t] || themeUrls['nebula']);
+        if (link) {
+          var url = themeUrls[t] || themeUrls['nebula'];
+          // Asegurar que la url empiece por '/' para evitar rutas relativas rotas
+          if (url && !url.startsWith('/') && !url.startsWith('http')) {
+            url = '/' + url;
+          }
+          link.setAttribute('href', url);
+        }
       }
       applyTheme();
-      // Re-apply theme after each View Transitions navigation
+      // Re-aplicar inmediatamente después de que Astro intercambie el HTML
       document.addEventListener('astro:after-swap', applyTheme);
+      document.addEventListener('astro:page-load', applyTheme);
       window.__updateTheme = function(newTheme) {
         localStorage.setItem('app_theme', newTheme);
         applyTheme();
       };
     </script>
+
   </head>
   <body data-page={activePage}>
     <div id="app-bg" aria-hidden="true" transition:persist></div>
@@ -160,13 +169,24 @@ const t = useTranslations(lang);
         }
       }
 
-      document.addEventListener('astro:page-load', () => {
+      document.addEventListener('astro:page-load', async () => {
         initAuthModal();
         if (!updaterChecked) {
           updaterChecked = true;
           setTimeout(checkAppUpdates, 2000);
         }
+
+        // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord
+        if (!window.location.pathname.startsWith('/media')) {
+          try {
+            const { resetDiscordPresence } = await import(/* @vite-ignore */ '../lib/tauri');
+            await resetDiscordPresence();
+          } catch (e) {
+            // Ignorar silenciosamente fuera de Tauri
+          }
+        }
       });
     </script>
+
   </body>
 </html>

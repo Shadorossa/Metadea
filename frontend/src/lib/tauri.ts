@@ -680,7 +680,14 @@ export async function updateDiscordPresence(
   largeImageUrl?: string,
   largeImageText?: string,
 ): Promise<void> {
-  return tauriRun('update_presence', { details, state, largeImageUrl, largeImageText });
+  // Tauri v2 no convierte camelCase → snake_case; las claves deben coincidir exactamente con el Rust.
+  return tauriRun('update_presence', {
+    details,
+    state,
+    large_image_url: largeImageUrl,
+    large_image_text: largeImageText,
+  });
+
 }
 
 /**

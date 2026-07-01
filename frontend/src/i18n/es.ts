@@ -12,6 +12,15 @@ export const es = {
     login:    'Iniciar sesión',
     register: 'Registrarse',
   },
+  discord: {
+    default_details: 'Metadea',
+    default_state: 'Navegando por la biblioteca',
+    watching_details: 'Detalles del anime:',
+    reading_details: 'Detalles del manga:',
+    playing_details: 'Detalles del juego:',
+  },
+
+
   profile: {
     sign_out:    'Cerrar sesión',
     library:     'Mi biblioteca',

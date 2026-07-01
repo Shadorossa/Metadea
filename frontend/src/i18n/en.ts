@@ -12,6 +12,15 @@ export const en = {
     login:    'Log in',
     register: 'Sign up',
   },
+  discord: {
+    default_details: 'Metadea',
+    default_state: 'Browsing the library',
+    watching_details: 'Anime details:',
+    reading_details: 'Manga details:',
+    playing_details: 'Game details:',
+  },
+
+
   profile: {
     sign_out:    'Sign out',
     library:     'My library',
