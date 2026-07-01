@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaDataWithFallback } from '../../lib/media/mediaService';
-import { getLibraryEntry, saveCatalogEntry } from '../../lib/tauri';
+import { getLibraryEntry, saveCatalogEntry, updateDiscordPresence, clearDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -194,6 +194,33 @@ export default function MediaPage({ lang }: { lang: string }) {
   // Re-run when bannerImage changes so partial→full transition saves the banner URL to catalog
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.type, data?.bannerImage]);
+
+  // ── Discord Rich Presence ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!data) return;
+
+    // Estado según tipo, usando las claves i18n ya existentes
+    const baseType = data.type?.split('_')[0];
+    const stateText =
+      baseType === 'anime' || baseType === 'movie' || baseType === 'series'
+        ? t.profile.status_watching
+        : baseType === 'manga' || baseType === 'novel' || baseType === 'book'
+        ? t.profile.status_reading
+        : baseType === 'game' || baseType === 'vnovel'
+        ? t.profile.status_playing
+        : 'Metadea';
+
+    updateDiscordPresence(
+      data.titleMain,  // título de la obra
+      stateText,       // "Viendo" / "Leyendo" / "Jugando" (desde i18n)
+      data.cover,      // portada real (URL HTTPS externa)
+      'Metadea',       // tooltip de la imagen
+    ).catch(() => {});
+
+    return () => { clearDiscordPresence().catch(() => {}); };
+  // Solo re-disparar cuando cambiamos de obra
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.externalId]);
 
   const handleCoverClick = useCallback(() => {
     setShowEditor(true);

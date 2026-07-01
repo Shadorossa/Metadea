@@ -663,3 +663,30 @@ export async function saveUserInfo(info: Record<string, unknown>): Promise<void>
 export async function getUserInfo(): Promise<Record<string, unknown>> {
   return tauriTry<Record<string, unknown>>('get_user_info', {});
 }
+
+// ─── Discord Rich Presence ───────────────────────────────────────────────────
+
+/**
+ * Actualiza la presencia de Discord con el título y el estado de la obra actual.
+ * Si Discord no está abierto o el usuario no está en Tauri, se ignora silenciosamente.
+ * @param details  - Línea principal: título de la obra
+ * @param state    - Línea secundaria: "Viendo" / "Leyendo" / "Jugando" (desde i18n)
+ * @param largeImageUrl  - URL HTTPS de la portada (cover de AniList/IGDB, etc.)
+ * @param largeImageText - Tooltip al pasar el ratón sobre la imagen
+ */
+export async function updateDiscordPresence(
+  details: string,
+  state: string,
+  largeImageUrl?: string,
+  largeImageText?: string,
+): Promise<void> {
+  return tauriRun('update_presence', { details, state, largeImageUrl, largeImageText });
+}
+
+/**
+ * Limpia la presencia de Discord.
+ * Llamar cuando el usuario sale de la media page o cierra la app.
+ */
+export async function clearDiscordPresence(): Promise<void> {
+  return tauriRun('clear_presence');
+}

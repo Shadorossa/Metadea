@@ -11,6 +11,7 @@ mod user_library;
 mod user_lists;
 mod user_metadata;
 mod utils;
+mod discord;
 
 use tauri::Manager;
 
@@ -32,6 +33,7 @@ pub fn run() {
                 .expect("failed to open metadea.db");
             db::seed_fav_lists(&metadea_db);
             app.manage(metadea_db);
+            app.manage(discord::DiscordState::new());
 
             #[cfg(debug_assertions)]
             {
@@ -117,6 +119,8 @@ pub fn run() {
             anilist::get_anilist_token,
             anilist::delete_anilist_token,
             anilist::get_anilist_user_profile,
+            discord::update_presence,
+            discord::clear_presence,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
