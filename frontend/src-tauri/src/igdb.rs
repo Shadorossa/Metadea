@@ -623,54 +623,58 @@ async fn fetch_landscape_image_id(
     token: &str,
     game_id: u64,
 ) -> Option<String> {
+    // Collect all candidates from artworks and screenshots
+    let mut candidates: Vec<(String, f64, f64)> = Vec::new(); // (image_id, w, h)
+
     if let Ok(arts) = igdb_query(
-        client,
-        client_id,
-        token,
+        client, client_id, token,
         IGDB_API_ARTWORKS,
-        &format!(
-            "fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;",
-            game_id
-        ),
-    )
-    .await
-    {
+        &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
+    ).await {
         if let Some(arr) = arts.as_array() {
             for entry in arr {
-                let w = entry["width"].as_f64().unwrap_or(0.0);
-                let h = entry["height"].as_f64().unwrap_or(1.0);
-                if w >= 1280.0 && h >= 720.0 && w / h >= 1.5 {
-                    if let Some(id) = entry["image_id"].as_str() {
-                        return Some(id.to_string());
-                    }
-                }
-            }
-        }
-    }
-    let ss = igdb_query(
-        client,
-        client_id,
-        token,
-        IGDB_API_SCREENSHOTS,
-        &format!(
-            "fields image_id,width,height; where game = {}; limit 5;",
-            game_id
-        ),
-    )
-    .await
-    .ok()?;
-    if let Some(arr) = ss.as_array() {
-        for entry in arr {
-            let w = entry["width"].as_f64().unwrap_or(0.0);
-            let h = entry["height"].as_f64().unwrap_or(1.0);
-            if w >= 1280.0 && h >= 720.0 && w / h >= 1.5 {
                 if let Some(id) = entry["image_id"].as_str() {
-                    return Some(id.to_string());
+                    let w = entry["width"].as_f64().unwrap_or(0.0);
+                    let h = entry["height"].as_f64().unwrap_or(1.0);
+                    candidates.push((id.to_string(), w, h));
                 }
             }
         }
     }
-    None
+
+    if let Ok(ss) = igdb_query(
+        client, client_id, token,
+        IGDB_API_SCREENSHOTS,
+        &format!("fields image_id,width,height; where game = {}; limit 5;", game_id),
+    ).await {
+        if let Some(arr) = ss.as_array() {
+            for entry in arr {
+                if let Some(id) = entry["image_id"].as_str() {
+                    let w = entry["width"].as_f64().unwrap_or(0.0);
+                    let h = entry["height"].as_f64().unwrap_or(1.0);
+                    candidates.push((id.to_string(), w, h));
+                }
+            }
+        }
+    }
+
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // Prefer images that meet the strict banner criteria (1280×720+, ratio ≥ 1.5)
+    if let Some((id, _, _)) = candidates.iter().find(|(_, w, h)| *w >= 1280.0 && *h >= 720.0 && w / h >= 1.5) {
+        return Some(id.clone());
+    }
+
+    // Fallback: pick the most landscape-like image (highest w/h ratio) that is wider than tall,
+    // so we avoid accidentally picking logos (which tend to be square or portrait)
+    candidates.iter()
+        .filter(|(_, w, h)| w > h)
+        .max_by(|(_, w1, h1), (_, w2, h2)| {
+            (w1 / h1).partial_cmp(&(w2 / h2)).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(id, _, _)| id.clone())
 }
 
 fn save_game_info(
