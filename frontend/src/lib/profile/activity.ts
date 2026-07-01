@@ -1,31 +1,10 @@
 import { readUserJourney, writeUserJourney } from '../tauri';
 import { typeIconMap } from '../shared/icon-strings';
+import { TYPE_LABELS, TYPE_GRADIENTS } from '../constants/media';
 
 type P = any;
 
-const TYPE_LABELS: Record<string, string> = {
-  anime: "Anime",
-  manga: "Manga",
-  novel: "Novela Ligera",
-  game: "Videojuego",
-  vnovel: "Novela Visual",
-  series: "Serie",
-  movie: "Película",
-  book: "Libro"
-};
-
 const TYPE_ICON = typeIconMap(12);
-
-const FALLBACK_GRADIENTS: Record<string, string> = {
-  anime:  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-  manga:  'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-  novel:  'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-  game:   'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
-  vnovel: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-  series: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
-  movie:  'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
-  book:   'linear-gradient(135deg, #6b7280 0%, #374151 100%)',
-};
 
 function formatDay(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
@@ -136,7 +115,7 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
 
     const typeIc = TYPE_ICON[mType] ?? '';
     const typeLabelText = TYPE_LABELS[mType] || mType;
-    const fallbackBg = FALLBACK_GRADIENTS[mType] || 'linear-gradient(135deg, #374151 0%, #1f2937 100%)';
+    const fallbackBg = TYPE_GRADIENTS[mType] || 'linear-gradient(135deg, #374151 0%, #1f2937 100%)';
 
     return `
       <div class="act-card" data-date="${event.date}" data-id="${event.externalId}" data-type="${event.type}" data-timestamp="${event.timestamp}">

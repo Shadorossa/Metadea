@@ -1,6 +1,7 @@
 import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
+import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
@@ -43,20 +44,20 @@ export interface ImportProgress {
   message?: string;
 }
 
-type MediaType = 'ANIME' | 'MANGA';
+type AniListMediaType = 'ANIME' | 'MANGA';
 
-export interface ImportFilters {
-  filterAnime?: boolean;
-  filterManga?: boolean;
-  filterNovel?: boolean;
-}
 
 export async function importFromAniList(
-  mediaType: 'anime' | 'manga',
-  filters?: ImportFilters,
+  selectedFormats: string[],
   onProgress?: (progress: ImportProgress) => void
 ): Promise<{ ok: boolean; error?: string; imported?: number }> {
   const onProg = onProgress || (() => {});
+  const formatSet = new Set(selectedFormats);
+
+  const needAnime = selectedFormats.some(f => ANIME_FORMAT_SET.has(f));
+  const needManga = selectedFormats.some(f => MANGA_FORMAT_SET.has(f));
+  if (!needAnime && !needManga) return { ok: true, imported: 0 };
+
   try {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
     if (!token) return { ok: false, error: 'No AniList token found' };
@@ -74,81 +75,52 @@ export async function importFromAniList(
     });
 
     const userData = await userRes.json() as any;
-    console.log('AniList user response:', userRes.status, userData);
 
     if (!userRes.ok) {
       const errorMsg = userData?.errors?.[0]?.message || `HTTP ${userRes.status}`;
-      console.error('Failed to get user info:', errorMsg);
       return { ok: false, error: errorMsg };
     }
 
     if (userData?.errors) {
-      const errorMsg = userData.errors[0]?.message || 'Unknown GraphQL error';
-      console.error('GraphQL error:', errorMsg);
-      return { ok: false, error: errorMsg };
+      return { ok: false, error: userData.errors[0]?.message || 'Unknown GraphQL error' };
     }
 
     const userId = userData?.data?.Viewer?.id;
-    if (!userId) {
-      console.error('No user ID found in response:', userData);
-      return { ok: false, error: 'Could not get user ID' };
-    }
+    if (!userId) return { ok: false, error: 'Could not get user ID' };
 
-    const anilistMediaType: MediaType = mediaType === 'anime' ? 'ANIME' : 'MANGA';
-    const allMediaList: any[] = [];
-    let page = 1;
-    let hasNextPage = true;
-
-    // Delay function to respect rate limits
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Fetch all pages
-    while (hasNextPage) {
-      onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando página ${page}...` });
-
-      const pageRes = await fetch(ANILIST_API, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          query: IMPORT_QUERY,
-          variables: { userId, type: anilistMediaType, page },
-        }),
-      });
-
-      const pageData = await pageRes.json() as any;
-      if (!pageRes.ok) {
-        const errorMsg = pageData?.errors?.[0]?.message || `HTTP ${pageRes.status} on page ${page}`;
-        return { ok: false, error: errorMsg };
+    // Fetch pages for each needed AniList type
+    async function fetchAllPages(anilistType: AniListMediaType): Promise<any[]> {
+      const result: any[] = [];
+      let page = 1;
+      let hasNextPage = true;
+      while (hasNextPage) {
+        onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando ${anilistType} página ${page}...` });
+        const pageRes = await fetch(ANILIST_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ query: IMPORT_QUERY, variables: { userId, type: anilistType, page } }),
+        });
+        const pageData = await pageRes.json() as any;
+        if (!pageRes.ok) throw new Error(pageData?.errors?.[0]?.message || `HTTP ${pageRes.status}`);
+        if (pageData?.errors) throw new Error(pageData.errors[0]?.message || 'Unknown GraphQL error');
+        result.push(...(pageData?.data?.Page?.mediaList ?? []));
+        hasNextPage = pageData?.data?.Page?.pageInfo?.hasNextPage ?? false;
+        page++;
+        if (hasNextPage) await delay(2000);
       }
-
-      if (pageData?.errors) {
-        const errorMsg = pageData.errors[0]?.message || 'Unknown GraphQL error';
-        return { ok: false, error: errorMsg };
-      }
-
-      const pageInfo = pageData?.data?.Page?.pageInfo;
-      const mediaList = pageData?.data?.Page?.mediaList ?? [];
-
-      allMediaList.push(...mediaList);
-      hasNextPage = pageInfo?.hasNextPage ?? false;
-      page++;
-
-      // Rate limiting: wait 2 seconds before next request
-      if (hasNextPage) {
-        await delay(2000);
-      }
+      return result;
     }
 
-    // Apply type filters
+    const allMediaList: any[] = [];
+    if (needAnime) allMediaList.push(...await fetchAllPages('ANIME'));
+    if (needManga) allMediaList.push(...await fetchAllPages('MANGA'));
+
+    // Keep only items whose format is in the selected set
     const filteredList = allMediaList.filter(item => {
-      const itemType = (item.media?.type ?? mediaType).toLowerCase();
-      if (itemType === 'anime' && filters?.filterAnime === false) return false;
-      if (itemType === 'manga' && filters?.filterManga === false) return false;
-      if (itemType === 'novel' && filters?.filterNovel === false) return false;
-      return true;
+      const fmt = item.media?.format;
+      return fmt && formatSet.has(fmt);
     });
 
     onProg({ current: 1, total: 1, status: 'importing', message: `Importando ${filteredList.length} items...` });
@@ -177,7 +149,7 @@ export async function importFromAniList(
       const entry = {
         external_id: externalId,
         type: entryType,
-        status: mapAniListStatus(mediaItem.status),
+        status: ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning',
         rating: mediaItem.score && mediaItem.score > 0 ? mediaItem.score : 0,
         progress: mediaItem.progress ?? 0,
         progress_2: mediaItem.progressVolumes ?? 0,
@@ -256,16 +228,6 @@ export async function importFromAniList(
   }
 }
 
-function mapAniListStatus(anilistStatus: string): string {
-  const map: Record<string, string> = {
-    CURRENT: 'watching',
-    PLANNING: 'planning',
-    COMPLETED: 'completed',
-    PAUSED: 'paused',
-    DROPPED: 'dropped',
-  };
-  return map[anilistStatus] ?? 'planning';
-}
 
 function mapMediaType(mediaType: string, format?: string): string {
   const baseType = mediaType.toLowerCase();

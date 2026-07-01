@@ -5,10 +5,7 @@ import { getActiveRatingSystem, formatRatingHtml, dbRatingToStars5 } from '../me
 import { typeIconMap } from '../shared/icon-strings';
 import { HOF_GRADIENTS } from './hof';
 
-const TYPE_LABELS: Record<string, string> = {
-  anime: 'Anime', manga: 'Manga', novel: 'Novela Ligera', game: 'Videojuego',
-  vnovel: 'Novela Visual', series: 'Serie', movie: 'Película', book: 'Libro',
-};
+import { TYPE_LABELS } from '../constants/media';
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

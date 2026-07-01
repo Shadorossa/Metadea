@@ -7,8 +7,8 @@ import { igdbGetGameDetail, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 
-const ANILIST_TYPES  = ['anime', 'manga', 'novel'];
-const IGDB_TYPES     = ['game', 'vnovel'];
+import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
+
 const CACHE_PREFIX   = 'media_cache_v3:';
 const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 min
 

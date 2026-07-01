@@ -7,19 +7,9 @@ import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { getActiveRatingSystem, formatRatingHtml, dbRatingToStars5 } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../shared/icon-strings';
+import { TYPE_LABELS } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
-
-const TYPE_LABELS: Record<string, string> = {
-  anime: "Anime",
-  manga: "Manga",
-  novel: "Novela Ligera",
-  game: "Videojuego",
-  vnovel: "Novela Visual",
-  series: "Serie",
-  movie: "Película",
-  book: "Libro"
-};
 
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
   try {

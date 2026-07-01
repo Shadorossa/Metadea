@@ -77,9 +77,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     (comment) => comment.includes('romaji') || comment.includes('romanized'),
   );
 
-  // Format from game_type
+  // Type from rawId prefix (e.g. "vnovel:12345" → "vnovel")
+  const mediaType = rawId.split(':')[0].split('_')[0] as 'game' | 'vnovel';
+
+  // Format: VNs are always VISUAL_NOVEL; games use game_type
   const gameType = game.game_type ?? 0;
-  const format = GAME_TYPE_FORMAT[gameType] ?? 'GAME';
+  const format = mediaType === 'vnovel' ? 'VISUAL_NOVEL' : (GAME_TYPE_FORMAT[gameType] ?? 'GAME');
 
   // Genre split: core genres → genreDots, tags → genreTagDots
   const { core: coreGenres, tags: genreTags } = unifyGenres(genres);
@@ -99,7 +102,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
   return {
     externalId: rawId,
-    type: 'game',
+    type: mediaType,
     titleMain: game.name,
     titleNative: titleNative,
     titleEnglish: titleRomaji,   // romaji plays the "english" slot in MediaPageData

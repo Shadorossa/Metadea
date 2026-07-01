@@ -8,17 +8,7 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from './hof';
 import { dbRatingToStars5 } from '../media/rating-utils';
 
-const TYPE_LABELS: Record<string, string> = {
-  anime: 'Anime', manga: 'Manga', novel: 'Novela Ligera', game: 'Videojuego',
-  vnovel: 'Novela Visual', series: 'Serie', movie: 'Película', book: 'Libro',
-};
-
-const FAV_LABELS: Record<string, string> = {
-  anime_fav: 'Anime', manga_fav: 'Manga', lnovel_fav: 'Novelas Ligeras',
-  game_fav: 'Videojuegos', vnovel_fav: 'Novelas Visuales', series_fav: 'Series',
-  movie_fav: 'Películas', book_fav: 'Libros', multimedia_fav: 'Multimedia',
-  character_fav: 'Personajes',
-};
+import { TYPE_LABELS, FAV_LABELS } from '../constants/media';
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

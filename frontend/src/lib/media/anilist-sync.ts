@@ -1,22 +1,12 @@
 const ANILIST_API = 'https://graphql.anilist.co';
 
-const ANILIST_TYPES = ['anime', 'manga', 'novel'] as const;
+import { ANILIST_TYPES, APP_TO_ANILIST_STATUS } from '../constants/media';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
   const base = type.split('_')[0];
   return ANILIST_TYPES.includes(base as AniListSyncType);
 }
-
-const STATUS_MAP: Record<string, string | null> = {
-  planning:   'PLANNING',
-  watching:   'CURRENT',
-  reading:    'CURRENT',
-  completed:  'COMPLETED',
-  paused:     'PAUSED',
-  dropped:    'DROPPED',
-  '':         null,
-};
 
 type FuzzyDate = { year: number; month: number; day: number } | null;
 
@@ -156,7 +146,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   const mediaId = extractAniListId(params.externalId);
   if (!mediaId) return { ok: false, error: 'Invalid AniList ID' };
 
-  const anilistStatus = STATUS_MAP[params.status] ?? null;
+  const anilistStatus = APP_TO_ANILIST_STATUS[params.status] ?? null;
 
   const rawVars: Record<string, unknown> = {
     mediaId,

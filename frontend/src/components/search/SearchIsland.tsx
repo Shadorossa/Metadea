@@ -3,6 +3,7 @@ import { search, type MediaType, type SearchResult } from '../../lib/search/inde
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconCharacter } from '../local/ui/icons';
+import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 
 type SearchTranslations = Translations['search'];
 
@@ -21,7 +22,7 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
   character: <IconCharacter />,
 };
 
-const MEDIA_TYPE_IDS: MediaType[] = ['all', 'anime', 'manga', 'novel', 'game', 'vnovel', 'movie', 'series', 'book', 'character'];
+const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -191,10 +192,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
-const DETAIL_SUPPORTED: MediaType[] = ['anime', 'manga', 'novel', 'book', 'game', 'vnovel', 'character'];
-
 function MediaCard({ result }: { result: SearchResult }) {
-  const hasDetail = DETAIL_SUPPORTED.includes(result.type);
+  const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
 
   function handleMouseEnter() {
     if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
