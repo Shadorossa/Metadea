@@ -114,7 +114,7 @@ pub async fn write_routes(
     let obj = v.as_object().ok_or("Expected JSON object")?;
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    for (k, val) in obj {
+    for (k, val) in obj.iter() {
         if let Some(p) = val.as_str() {
             conn.execute(
                 "INSERT INTO local_routes (key, path, updated_at) VALUES (?1, ?2, ?3)
@@ -265,4 +265,102 @@ pub async fn launch_game(
             }
         }
     }
+}
+
+#[tauri::command]
+pub async fn scan_anime_folder(folder_path: String) -> Result<Vec<String>, String> {
+    let path = std::path::Path::new(&folder_path);
+    if !path.is_dir() {
+        return Err("Path is not a directory".to_string());
+    }
+
+    let mut files = vec![];
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    let ext_str = ext.to_string_lossy().to_lowercase();
+                    if matches!(ext_str.as_str(), "mkv" | "mp4" | "avi" | "mov" | "flv" | "webm") {
+                        if let Some(name) = path.file_name() {
+                            files.push(name.to_string_lossy().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    files.sort();
+    Ok(files)
+}
+
+#[tauri::command]
+pub async fn play_file_with_vlc(file_path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    // This will be called from the app, but we need the app handle
+    // For now, we'll use open_path which opens with default player
+    std::process::Command::new("vlc")
+        .arg(&file_path)
+        .spawn()
+        .map_err(|e| format!("Failed to launch VLC: {}", e))?;
+    Ok(())
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AnimeLocalEntry {
+    pub anilist_id: i32,
+    pub folder_path: String,
+    pub episode_count: i32,
+    pub updated_at: String,
+}
+
+#[tauri::command]
+pub async fn save_anime_folder(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    anilist_id: i32,
+    folder_path: String,
+    episode_count: i32,
+) -> Result<(), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO local_anime_folders (anilist_id, folder_path, episode_count, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT(anilist_id) DO UPDATE SET
+            folder_path = excluded.folder_path,
+            episode_count = excluded.episode_count,
+            updated_at = excluded.updated_at",
+        rusqlite::params![anilist_id, folder_path, episode_count, now],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_anime_folder(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    anilist_id: i32,
+) -> Result<Option<AnimeLocalEntry>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let result = conn
+        .query_row(
+            "SELECT anilist_id, folder_path, episode_count, updated_at FROM local_anime_folders WHERE anilist_id = ?1",
+            rusqlite::params![anilist_id],
+            |row| {
+                Ok(AnimeLocalEntry {
+                    anilist_id: row.get(0)?,
+                    folder_path: row.get(1)?,
+                    episode_count: row.get(2)?,
+                    updated_at: row.get(3)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    Ok(result)
 }

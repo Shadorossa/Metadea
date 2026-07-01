@@ -61,6 +61,13 @@ CREATE TABLE IF NOT EXISTS local_routes (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS local_anime_folders (
+    anilist_id   INTEGER PRIMARY KEY,
+    folder_path  TEXT NOT NULL,
+    episode_count INTEGER DEFAULT 0,
+    updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS media_catalog (
     id                   TEXT PRIMARY KEY,
     external_id          TEXT UNIQUE NOT NULL,

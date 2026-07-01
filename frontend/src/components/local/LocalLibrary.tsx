@@ -14,6 +14,7 @@ import { FolderEntryCard }  from './cards/FolderEntryCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
+import { AnimeLocal }       from './AnimeLocal';
 import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
 
 export default function LocalLibrary() {
@@ -142,7 +143,7 @@ export default function LocalLibrary() {
       )}
 
       <div className="local-library">
-        {activeCategory === 'videojuegos' && (
+        {activeCategory === 'videojuegos' && activePlatform && availablePlatforms && (
           <PlatformSidebar
             activePlatform={activePlatform}
             availablePlatforms={availablePlatforms}
@@ -241,6 +242,8 @@ export default function LocalLibrary() {
                 )}
               </div>
 
+            ) : activeCategory === 'anime' ? (
+              <AnimeLocal />
             ) : (
               /* ── Folder view ────────────────────────────────────────────────── */
               <div className="local-content">

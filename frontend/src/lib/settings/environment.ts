@@ -126,16 +126,24 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         const chosen = await pickFolder().catch(() => null);
         if (!chosen) return;
         routes = { ...routes, [pickId]: chosen };
-        await writeRoutes(routes).catch(() => {});
-        renderRoutes();
-        showToast('Ruta guardada');
+        try {
+          await writeRoutes(routes);
+          renderRoutes();
+          showToast('Ruta guardada');
+        } catch (err: any) {
+          showToast('Error al guardar: ' + (err?.message ?? String(err)).slice(0, 50));
+        }
       } else if (clearId) {
         const updated = { ...routes };
         delete updated[clearId];
         routes = updated;
-        await writeRoutes(routes).catch(() => {});
-        renderRoutes();
-        showToast('Ruta eliminada');
+        try {
+          await writeRoutes(routes);
+          renderRoutes();
+          showToast('Ruta eliminada');
+        } catch (err: any) {
+          showToast('Error al eliminar: ' + (err?.message ?? String(err)).slice(0, 50));
+        }
       }
     });
   }
