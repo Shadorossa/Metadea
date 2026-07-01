@@ -1,4 +1,4 @@
-﻿use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use std::sync::{Arc, Mutex};
 
 const CLIENT_ID:      &str = "1521817645043810344";
@@ -90,6 +90,7 @@ fn apply_activity(
         "https://github.com/Shadorossa/Metadea"
     );
 
+    // Creamos la actividad asegurando que no se inyectan Timestamps en el payload
     let mut payload = activity::Activity::new()
         .assets(assets)
         .buttons(vec![download_button]);
@@ -103,6 +104,7 @@ fn apply_activity(
 
     client.set_activity(payload).is_ok()
 }
+
 
 // -- Comandos Tauri -------------------------------------------------------------
 
