@@ -48,6 +48,15 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortControllerRef        = useRef<AbortController | null>(null);
+  const searchInputRef            = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+
   const executeSearch = useCallback(async (searchQuery: string, type: MediaType) => {
     if (searchQuery.length < 2) {
       setStatus('idle');
