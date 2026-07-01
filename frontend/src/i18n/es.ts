@@ -125,6 +125,8 @@ export const es = {
     idle_hint:   'Escribe al menos 2 caracteres',
     error:       'Error al buscar. Inténtalo de nuevo.',
     no_results:  'Sin resultados para "{q}"',
+    sort_date:   'Ordenar por fecha de lanzamiento',
+    sort_rating: 'Ordenar por puntuación global',
   },
   media: {
     not_found:      'No se encontró la obra.',

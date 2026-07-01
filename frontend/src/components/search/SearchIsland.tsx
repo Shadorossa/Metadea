@@ -209,7 +209,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               <button
                 onClick={() => toggleSort('releaseDate')}
                 className={`search-sort-btn${sortField === 'releaseDate' ? ' active' : ''}`}
-                title="Ordenar por fecha de lanzamiento"
+                title={i18n.sort_date}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -229,7 +229,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               <button
                 onClick={() => toggleSort('scoreGlobal')}
                 className={`search-sort-btn${sortField === 'scoreGlobal' ? ' active' : ''}`}
-                title="Ordenar por puntuación global"
+                title={i18n.sort_rating}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

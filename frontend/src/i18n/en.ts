@@ -125,6 +125,8 @@ export const en = {
     idle_hint:   'Type at least 2 characters',
     error:       'Search failed. Try again.',
     no_results:  'No results for "{q}"',
+    sort_date:   'Sort by release date',
+    sort_rating: 'Sort by global score',
   },
   media: {
     not_found:      'Media not found.',
