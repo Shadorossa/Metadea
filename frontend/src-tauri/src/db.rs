@@ -99,6 +99,23 @@ CREATE TABLE IF NOT EXISTS user_metadata (
     value TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS user_lists (
+    key         TEXT PRIMARY KEY,
+    name        TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    is_fav      INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_list_items (
+    list_key    TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    position    INTEGER NOT NULL DEFAULT 0,
+    added_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (list_key, external_id)
+);
+
 CREATE TABLE IF NOT EXISTS user_library (
     id                TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     user_id           TEXT NOT NULL,
@@ -229,6 +246,26 @@ CREATE TABLE IF NOT EXISTS local_game_links (
 pub fn migrate_library_from_json(db: &LibraryDb, data_dir: &std::path::Path) {
     let conn = match db.conn.lock() { Ok(c) => c, Err(_) => return };
 
+    // Always seed fav lists — idempotent via INSERT OR IGNORE
+    const FAV_SEEDS: &[(&str, &str)] = &[
+        ("anime_fav",      "Anime favoritos"),
+        ("manga_fav",      "Manga favoritos"),
+        ("multimedia_fav", "Multimedia favoritos"),
+        ("game_fav",       "Juegos favoritos"),
+        ("vnovel_fav",     "Novelas visuales favoritas"),
+        ("lnovel_fav",     "Novelas ligeras favoritas"),
+        ("series_fav",     "Series favoritas"),
+        ("movie_fav",      "Películas favoritas"),
+        ("book_fav",       "Libros favoritos"),
+        ("character_fav",  "Personajes favoritos"),
+    ];
+    for (key, name) in FAV_SEEDS {
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO user_lists (key, name, is_fav) VALUES (?1, ?2, 1)",
+            rusqlite::params![key, name],
+        );
+    }
+
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM user_library", [], |r| r.get(0))
         .unwrap_or(i64::MAX);
@@ -288,9 +325,7 @@ pub fn migrate_library_from_json(db: &LibraryDb, data_dir: &std::path::Path) {
     let meta_dir = data_dir.join("user_metadata");
     let meta_files = [
         ("monthly_history", "monthly_history.json"),
-        ("user_favorites",  "user_favorite.json"),
         ("user_journey",    "user_journey.json"),
-        ("user_lists",      "user_lists.json"),
     ];
     for (key, filename) in &meta_files {
         let path = meta_dir.join(filename);
@@ -300,6 +335,72 @@ pub fn migrate_library_from_json(db: &LibraryDb, data_dir: &std::path::Path) {
                     "INSERT OR IGNORE INTO user_metadata (key, value) VALUES (?1, ?2)",
                     rusqlite::params![key, content],
                 );
+            }
+        }
+    }
+
+    // Migrate old user_favorite.json blob → user_list_items
+    let fav_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM user_list_items WHERE list_key LIKE '%_fav'", [], |r| r.get(0))
+        .unwrap_or(i64::MAX);
+    if fav_count == 0 {
+        let fav_path = meta_dir.join("user_favorite.json");
+        if let Ok(raw) = std::fs::read_to_string(&fav_path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) {
+                if let Some(obj) = v.as_object() {
+                    const MAP: &[(&str, &str)] = &[
+                        ("anime",      "anime_fav"),      ("manga",     "manga_fav"),
+                        ("multimedia", "multimedia_fav"), ("game",      "game_fav"),
+                        ("vnovel",     "vnovel_fav"),     ("novel",     "lnovel_fav"),
+                        ("series",     "series_fav"),     ("movie",     "movie_fav"),
+                        ("book",       "book_fav"),       ("character", "character_fav"),
+                    ];
+                    for (old_key, fav_key) in MAP {
+                        if let Some(ids) = obj.get(*old_key).and_then(|x| x.as_array()) {
+                            for (pos, id) in ids.iter().enumerate() {
+                                if let Some(eid) = id.as_str() {
+                                    let _ = conn.execute(
+                                        "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position) VALUES (?1, ?2, ?3)",
+                                        rusqlite::params![fav_key, eid, pos as i64],
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Migrate old user_lists.json blob → user_lists + user_list_items
+    let custom_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM user_lists WHERE is_fav = 0", [], |r| r.get(0))
+        .unwrap_or(i64::MAX);
+    if custom_count == 0 {
+        let lists_path = meta_dir.join("user_lists.json");
+        if let Ok(raw) = std::fs::read_to_string(&lists_path) {
+            if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(&raw) {
+                for item in &arr {
+                    let id   = item.get("id").and_then(|x| x.as_str()).unwrap_or("");
+                    let name = item.get("name").and_then(|x| x.as_str()).unwrap_or("");
+                    let desc = item.get("description").and_then(|x| x.as_str()).unwrap_or("");
+                    let cat  = item.get("created_at").and_then(|x| x.as_str()).unwrap_or("");
+                    if id.is_empty() { continue; }
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO user_lists (key, name, description, is_fav, created_at) VALUES (?1, ?2, ?3, 0, ?4)",
+                        rusqlite::params![id, name, desc, cat],
+                    );
+                    if let Some(ids) = item.get("item_ids").and_then(|x| x.as_array()) {
+                        for (pos, eid_val) in ids.iter().enumerate() {
+                            if let Some(eid) = eid_val.as_str() {
+                                let _ = conn.execute(
+                                    "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position) VALUES (?1, ?2, ?3)",
+                                    rusqlite::params![id, eid, pos as i64],
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
     }

@@ -113,6 +113,44 @@ pub async fn save_library_entry(
         ],
     ).map_err(|e| e.to_string())?;
 
+    // Sync fav list — self-healing tables so this works even before schema migration
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS user_lists (
+            key TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '', is_fav INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+         );
+         CREATE TABLE IF NOT EXISTS user_list_items (
+            list_key TEXT NOT NULL, external_id TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0, added_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (list_key, external_id)
+         );",
+    ).ok();
+    let fav_key = crate::user_lists::type_to_fav_key(&entry.entry_type);
+    if entry.is_favorite != 0 {
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO user_lists (key, name, is_fav) VALUES (?1, ?1, 1)",
+            [&fav_key],
+        );
+        let max_pos: i64 = conn
+            .query_row(
+                "SELECT COALESCE(MAX(position), -1) FROM user_list_items WHERE list_key = ?1",
+                [&fav_key],
+                |r| r.get(0),
+            )
+            .unwrap_or(-1);
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position, added_at)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![fav_key, entry.external_id, max_pos + 1, now],
+        );
+    } else {
+        let _ = conn.execute(
+            "DELETE FROM user_list_items WHERE list_key = ?1 AND external_id = ?2",
+            rusqlite::params![fav_key, entry.external_id],
+        );
+    }
+
     Ok(entry)
 }
 
@@ -195,16 +233,6 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::LibraryDb>
 }
 
 #[tauri::command]
-pub async fn read_user_favorites(state: tauri::State<'_, crate::db::LibraryDb>) -> Result<String, String> {
-    read_meta(&state, "user_favorites", "{}")
-}
-
-#[tauri::command]
-pub async fn write_user_favorites(state: tauri::State<'_, crate::db::LibraryDb>, content: String) -> Result<(), String> {
-    write_meta(&state, "user_favorites", &content)
-}
-
-#[tauri::command]
 pub async fn read_user_journey(state: tauri::State<'_, crate::db::LibraryDb>) -> Result<String, String> {
     read_meta(&state, "user_journey", "[]")
 }
@@ -212,14 +240,4 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::LibraryDb>) ->
 #[tauri::command]
 pub async fn write_user_journey(state: tauri::State<'_, crate::db::LibraryDb>, content: String) -> Result<(), String> {
     write_meta(&state, "user_journey", &content)
-}
-
-#[tauri::command]
-pub async fn read_user_lists(state: tauri::State<'_, crate::db::LibraryDb>) -> Result<String, String> {
-    read_meta(&state, "user_lists", "[]")
-}
-
-#[tauri::command]
-pub async fn write_user_lists(state: tauri::State<'_, crate::db::LibraryDb>, content: String) -> Result<(), String> {
-    write_meta(&state, "user_lists", &content)
 }

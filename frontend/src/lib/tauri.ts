@@ -1,3 +1,11 @@
+// Maps frontend type names to fav list keys (only "novel" differs from the ${type}_fav pattern)
+const FAV_TYPE_MAP: Record<string, string> = {
+  novel: 'lnovel_fav',
+};
+function typeToFavKey(type: string): string {
+  return FAV_TYPE_MAP[type] ?? `${type}_fav`;
+}
+
 const isTauri = (): boolean => {
   if (typeof window === 'undefined') return false;
   if ('__TAURI_IPC__' in window) return true;
@@ -287,7 +295,11 @@ export async function readUserFavorites(): Promise<Record<string, string[]>> {
 }
 
 export async function writeUserFavorites(favorites: Record<string, string[]>): Promise<void> {
-  return writeStoredJson('write_user_favorites', 'user_favorite', favorites);
+  if (!isTauri()) {
+    localStorage.setItem('user_favorite', JSON.stringify(favorites));
+    return;
+  }
+  return invoke<void>('write_user_favorites', { content: JSON.stringify(favorites) });
 }
 
 export async function syncFavorites(
@@ -295,6 +307,17 @@ export async function syncFavorites(
   externalId: string,
   isFavorite: boolean,
 ): Promise<void> {
+  if (isTauri()) {
+    const listKey = typeToFavKey(type || 'book');
+    if (isFavorite) {
+      await invoke<void>('add_item_to_list', { listKey, externalId });
+    } else {
+      await invoke<void>('remove_item_from_list', { listKey, externalId });
+      await invoke<void>('remove_item_from_list', { listKey: 'multimedia_fav', externalId }).catch(() => {});
+    }
+    return;
+  }
+  // localStorage fallback
   const favs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
   const key = type || 'book';
   if (!favs[key]) favs[key] = [];
@@ -304,7 +327,7 @@ export async function syncFavorites(
     favs[key] = favs[key].filter(id => id !== externalId);
     if (favs.multimedia) favs.multimedia = favs.multimedia.filter(id => id !== externalId);
   }
-  await writeUserFavorites(favs);
+  localStorage.setItem('user_favorite', JSON.stringify(favs));
 }
 
 // ─── User Journey ───────────────────────────────────────────────────────────
@@ -327,26 +350,71 @@ export async function readUserJourney(): Promise<DayJourney[]> {
   return readStoredJson<DayJourney[]>('read_user_journey', 'user_journey', []);
 }
 
-// ─── User Lists ──────────────────────────────────────────────────────────────
-
-export interface UserList {
-  id:          string;
-  name:        string;
-  description: string;
-  created_at:  string;
-  item_ids:    string[];
-}
-
-export async function readUserLists(): Promise<UserList[]> {
-  return readStoredJson<UserList[]>('read_user_lists', 'user_lists', []);
-}
-
-export async function writeUserLists(lists: UserList[]): Promise<void> {
-  return writeStoredJson('write_user_lists', 'user_lists', lists);
-}
-
 export async function writeUserJourney(journey: DayJourney[]): Promise<void> {
   return writeStoredJson('write_user_journey', 'user_journey', journey);
+}
+
+// ─── User Lists ──────────────────────────────────────────────────────────────
+
+export interface ListInfo {
+  key:         string;
+  name:        string;
+  description: string;
+  is_fav:      boolean;
+  item_count:  number;
+  preview_ids: string[];
+}
+
+export interface ListItemFull {
+  external_id: string;
+  position:    number;
+  library_id:  string | null;
+  status:      string | null;
+  rating:      number | null;
+  progress:    number;
+  progress_2:  number;
+  is_favorite: boolean;
+  is_platinum: boolean;
+  title_main:  string | null;
+  cover_url:   string | null;
+  media_type:  string | null;
+  format:      string | null;
+}
+
+export async function getAllUserLists(): Promise<ListInfo[]> {
+  return tauriTry<ListInfo[]>('get_all_user_lists', []);
+}
+
+export async function getListItems(listKey: string): Promise<string[]> {
+  return tauriTry<string[]>('get_list_items', [], { listKey });
+}
+
+export async function getListItemsFull(listKey: string): Promise<ListItemFull[]> {
+  return tauriTry<ListItemFull[]>('get_list_items_full', [], { listKey });
+}
+
+export async function createUserList(username: string, name: string, description: string): Promise<string> {
+  return invoke<string>('create_user_list', { username, name, description });
+}
+
+export async function updateUserList(key: string, name: string, description: string): Promise<void> {
+  return tauriRun('update_user_list', { key, name, description });
+}
+
+export async function deleteUserList(key: string): Promise<void> {
+  return tauriRun('delete_user_list', { key });
+}
+
+export async function addItemToList(listKey: string, externalId: string): Promise<void> {
+  return tauriRun('add_item_to_list', { listKey, externalId });
+}
+
+export async function removeItemFromList(listKey: string, externalId: string): Promise<void> {
+  return tauriRun('remove_item_from_list', { listKey, externalId });
+}
+
+export async function reorderListItems(listKey: string, externalIds: string[]): Promise<void> {
+  return tauriRun('reorder_list_items', { listKey, externalIds });
 }
 
 // ─── Media Catalog ────────────────────────────────────────────────────────────

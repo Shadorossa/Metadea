@@ -8,6 +8,7 @@ mod media_catalog;
 mod platform_scanning;
 mod steam;
 mod user_library;
+mod user_lists;
 mod user_metadata;
 mod utils;
 
@@ -99,12 +100,19 @@ pub fn run() {
             user_library::get_all_library_entries,
             user_library::read_monthly_history,
             user_library::write_monthly_history,
-            user_library::read_user_favorites,
-            user_library::write_user_favorites,
             user_library::read_user_journey,
             user_library::write_user_journey,
-            user_library::read_user_lists,
-            user_library::write_user_lists,
+            user_lists::read_user_favorites,
+            user_lists::write_user_favorites,
+            user_lists::get_all_user_lists,
+            user_lists::get_list_items,
+            user_lists::get_list_items_full,
+            user_lists::create_user_list,
+            user_lists::update_user_list,
+            user_lists::delete_user_list,
+            user_lists::add_item_to_list,
+            user_lists::remove_item_from_list,
+            user_lists::reorder_list_items,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::delete_catalog_entry,
