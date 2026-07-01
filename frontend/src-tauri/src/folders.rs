@@ -220,3 +220,49 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
     }
     Ok(())
 }
+
+#[tauri::command]
+pub async fn launch_game(
+    app_handle: tauri::AppHandle,
+    launcher: String,
+    app_id: Option<String>,
+    install_path: Option<String>,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    match launcher.as_str() {
+        "steam" => {
+            let id = app_id.ok_or("No app_id for Steam game")?;
+            app_handle.opener().open_url(format!("steam://run/{}", id), None::<String>)
+                .map_err(|e| e.to_string())
+        }
+        "epic" => {
+            if let Some(id) = app_id {
+                app_handle.opener()
+                    .open_url(format!("com.epicgames.launcher://apps/{}?action=launch&silent=true", id), None::<String>)
+                    .map_err(|e| e.to_string())
+            } else if let Some(path) = install_path {
+                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+            } else {
+                Err("No launch target for Epic game".into())
+            }
+        }
+        "gog" => {
+            if let Some(id) = app_id {
+                app_handle.opener()
+                    .open_url(format!("goggalaxy://openGame/{}", id), None::<String>)
+                    .map_err(|e| e.to_string())
+            } else if let Some(path) = install_path {
+                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+            } else {
+                Err("No launch target for GOG game".into())
+            }
+        }
+        _ => {
+            if let Some(path) = install_path {
+                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+            } else {
+                Err(format!("No launch target for {} game", launcher))
+            }
+        }
+    }
+}

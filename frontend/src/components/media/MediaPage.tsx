@@ -191,7 +191,9 @@ export default function MediaPage({ lang }: { lang: string }) {
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});
-  }, [data?.type]);
+  // Re-run when bannerImage changes so partial→full transition saves the banner URL to catalog
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.type, data?.bannerImage]);
 
   const handleCoverClick = useCallback(() => {
     setShowEditor(true);

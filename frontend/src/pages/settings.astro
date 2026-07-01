@@ -572,6 +572,15 @@ const version = pkg.version;
               >
             </div>
           </div>
+
+          <!-- Local Routes -->
+          <div class="settings-section" style="margin-top: 2rem;">
+            <h3 class="settings-section-title">Rutas locales</h3>
+            <p class="settings-hint">Carpetas locales para cada tipo de medio. Úsalas en la sección Biblioteca Local.</p>
+            <div id="local-routes-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
         </div>
 
         <!-- Tab: Conexiones -->
@@ -753,6 +762,11 @@ const version = pkg.version;
                     style="flex: 1;"
                   >Importar</button>
                   <button
+                    class="btn btn--sm btn--secondary"
+                    id="anilist-sync-start-btn"
+                    style="flex: 1;"
+                  >Sincronizar</button>
+                  <button
                     class="btn btn--sm btn--ghost"
                     id="anilist-import-cancel-btn"
                   >Cancelar</button>
@@ -905,7 +919,7 @@ const version = pkg.version;
   import { initFontPicker } from "../lib/settings/fonts";
   import { initGitHubAuth } from "../lib/settings/github";
   import { initAniListAuth } from "../lib/settings/anilist";
-  import { importFromAniList } from "../lib/anilist/import";
+  import { importFromAniList, syncFromAniList } from "../lib/anilist/import";
   import { getT } from "../i18n/client";
 
   function showToast(msg?: string) {
@@ -1044,6 +1058,51 @@ const version = pkg.version;
       }
     }
 
+    async function doSync() {
+      const selectedFormats = ALL_FORMATS.filter(
+        f => (document.getElementById(`fmt-${f}`) as HTMLInputElement)?.checked
+      );
+      if (selectedFormats.length === 0) {
+        showToast("Selecciona al menos un formato");
+        return;
+      }
+
+      hideChooseModal();
+      const { modal, backdrop } = createProgressModal("Sincronizando desde AniList...");
+
+      try {
+        const result = await syncFromAniList(selectedFormats, (progress) => {
+          const statusEl = document.getElementById("import-status");
+          const progressEl = document.getElementById("import-progress");
+          const countEl = document.getElementById("import-count");
+
+          if (statusEl)
+            statusEl.textContent = progress.message || progress.status;
+          if (progressEl && progress.total > 0) {
+            const percent = (progress.current / progress.total) * 100;
+            progressEl.style.width = `${percent}%`;
+          }
+          if (countEl)
+            countEl.textContent = `${progress.current}/${progress.total}`;
+        });
+
+        modal.remove();
+        backdrop.remove();
+
+        if (result.ok) {
+          showToast(`✓ ${result.updated ?? 0} actualizados, ${result.added ?? 0} nuevos`);
+        } else {
+          showToast(`Error: ${result.error}`);
+        }
+      } catch (e: any) {
+        modal.remove();
+        backdrop.remove();
+        showToast(`Error: ${e?.message ?? "Sync failed"}`);
+      } finally {
+        await updateImportButtons();
+      }
+    }
+
     // Use event delegation for import buttons
     document.addEventListener("click", (e: any) => {
       const btn = (e.target as HTMLElement).closest("button");
@@ -1053,6 +1112,8 @@ const version = pkg.version;
         showChooseModal();
       } else if (btn.id === "anilist-import-start-btn") {
         doImport();
+      } else if (btn.id === "anilist-sync-start-btn") {
+        doSync();
       } else if (btn.id === "anilist-import-cancel-btn") {
         hideChooseModal();
       }

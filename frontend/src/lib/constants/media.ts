@@ -26,25 +26,25 @@ export const DETAIL_SUPPORTED_TYPES = [
 export const TYPE_LABELS: Record<string, string> = {
   anime:  'Anime',
   manga:  'Manga',
-  novel:  'Novela Ligera',
-  game:   'Videojuego',
-  vnovel: 'Novela Visual',
-  series: 'Serie',
-  movie:  'Película',
-  book:   'Libro',
+  lnovel: 'Light Novel',
+  game:   'Game',
+  vnovel: 'Visual Novel',
+  series: 'Series',
+  movie:  'Movie',
+  book:   'Book',
 };
 
 export const FAV_LABELS: Record<string, string> = {
   anime_fav:     'Anime',
   manga_fav:     'Manga',
-  lnovel_fav:    'Novelas Ligeras',
-  game_fav:      'Videojuegos',
-  vnovel_fav:    'Novelas Visuales',
+  lnovel_fav:    'Light Novels',
+  game_fav:      'Games',
+  vnovel_fav:    'Visual Novels',
   series_fav:    'Series',
-  movie_fav:     'Películas',
-  book_fav:      'Libros',
+  movie_fav:     'Movies',
+  book_fav:      'Books',
   multimedia_fav:'Multimedia',
-  character_fav: 'Personajes',
+  character_fav: 'Characters',
 };
 
 // ─── Gradients ────────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export const FAV_LABELS: Record<string, string> = {
 export const TYPE_GRADIENTS: Record<string, string> = {
   anime:  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
   manga:  'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-  novel:  'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+  lnovel: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
   game:   'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
   vnovel: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
   series: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',

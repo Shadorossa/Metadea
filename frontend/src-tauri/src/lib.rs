@@ -59,6 +59,7 @@ pub fn run() {
             folders::open_env_folder,
             folders::save_game_link,
             folders::delete_game_link,
+            folders::launch_game,
             igdb::read_env_config,
             igdb::write_env_config,
             igdb::igdb_search,

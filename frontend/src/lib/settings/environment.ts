@@ -1,4 +1,14 @@
-import { readEnvConfig, writeEnvConfig, openEnvFolder } from '../tauri';
+import { readEnvConfig, writeEnvConfig, openEnvFolder, readRoutes, writeRoutes, pickFolder } from '../tauri';
+
+const LOCAL_ROUTE_CATEGORIES: Array<{ id: string; label: string }> = [
+  { id: 'visual-novel', label: 'Novela visual' },
+  { id: 'anime',        label: 'Anime' },
+  { id: 'manga',        label: 'Manga' },
+  { id: 'light-novel',  label: 'Novela Ligera' },
+  { id: 'books',        label: 'Libros' },
+  { id: 'series',       label: 'Series' },
+  { id: 'movies',       label: 'Películas' },
+];
 
 export async function initEnvironment(showToast: (msg?: string) => void) {
   const clientIdInput        = document.getElementById('igdb-client-id')         as HTMLInputElement;
@@ -73,4 +83,60 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
       showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
     }
   });
+
+  // ── Local routes ────────────────────────────────────────────────────────────
+  const routesList = document.getElementById('local-routes-list');
+  if (routesList) {
+    let routes: Record<string, string> = {};
+
+    function renderRoutes() {
+      if (!routesList) return;
+      routesList.innerHTML = '';
+      for (const cat of LOCAL_ROUTE_CATEGORIES) {
+        const path = routes[cat.id] ?? '';
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; align-items: center; gap: 0.5rem;';
+        row.innerHTML = `
+          <span style="flex: 0 0 130px; font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${cat.label}</span>
+          <input
+            type="text"
+            readonly
+            value="${path.replace(/"/g, '&quot;')}"
+            placeholder="Sin ruta"
+            style="flex: 1; font-size: 0.75rem; background: var(--bg-input, var(--bg-card)); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.3rem 0.5rem; color: var(--text-main); cursor: default; min-width: 0;"
+            data-route-id="${cat.id}"
+          />
+          <button class="btn btn--sm btn--secondary" data-pick="${cat.id}" style="flex-shrink: 0; padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="Seleccionar carpeta">📁</button>
+          ${path ? `<button class="btn btn--sm btn--ghost" data-clear="${cat.id}" style="flex-shrink: 0; padding: 0.25rem 0.5rem; font-size: 0.75rem; color: var(--color-error, #ff6b6b);" title="Quitar ruta">✕</button>` : ''}
+        `;
+        routesList.appendChild(row);
+      }
+    }
+
+    readRoutes().then(r => { routes = r; renderRoutes(); }).catch(() => {});
+
+    routesList.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+      if (!btn) return;
+
+      const pickId = btn.dataset.pick;
+      const clearId = btn.dataset.clear;
+
+      if (pickId) {
+        const chosen = await pickFolder().catch(() => null);
+        if (!chosen) return;
+        routes = { ...routes, [pickId]: chosen };
+        await writeRoutes(routes).catch(() => {});
+        renderRoutes();
+        showToast('Ruta guardada');
+      } else if (clearId) {
+        const updated = { ...routes };
+        delete updated[clearId];
+        routes = updated;
+        await writeRoutes(routes).catch(() => {});
+        renderRoutes();
+        showToast('Ruta eliminada');
+      }
+    });
+  }
 }

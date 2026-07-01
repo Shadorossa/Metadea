@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  readGameInfo, steamGetPlayerAchievements,
+  readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
 } from '../../../lib/tauri';
 import { AchievementCell } from './AchievementCell';
@@ -75,7 +75,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
         </div>
 
         <div className="local-game-detail-bottom">
-          <button className="local-game-detail-play" onClick={() => console.log('Jugar:', game.name, game.install_path)}>
+          <button className="local-game-detail-play" onClick={() => launchGame(game.launcher, game.app_id, game.install_path).catch(console.error)}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>

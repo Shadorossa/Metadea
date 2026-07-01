@@ -246,8 +246,10 @@
 /* ── Type chips ───────────────────────────────────────────────────────────── */
 .type-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .type-chip {

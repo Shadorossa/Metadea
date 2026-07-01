@@ -587,6 +587,10 @@ export async function openEnvFolder(): Promise<void> {
   return tauriRun('open_env_folder');
 }
 
+export async function launchGame(launcher: string, appId?: string | null, installPath?: string | null): Promise<void> {
+  return tauriRun('launch_game', { launcher, appId: appId ?? null, installPath: installPath ?? null });
+}
+
 // ─── Steam ───────────────────────────────────────────────────────────────────
 
 export interface SteamAchievement {
