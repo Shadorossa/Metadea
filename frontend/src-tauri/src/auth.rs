@@ -14,7 +14,7 @@ pub async fn init_database() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn store_auth_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     token: String,
     username: String,
 ) -> Result<String, String> {
@@ -34,7 +34,7 @@ pub async fn store_auth_token(
 
 #[tauri::command]
 pub async fn get_auth_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<AuthSession>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     conn.query_row(
@@ -53,7 +53,7 @@ pub async fn get_auth_token(
 
 #[tauri::command]
 pub async fn clear_auth_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM user_sessions WHERE service = 'app_auth'", [])

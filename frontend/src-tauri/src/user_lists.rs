@@ -39,7 +39,6 @@ pub struct ListInfo {
 pub struct ListItemFull {
     pub external_id: String,
     pub position:    i64,
-    // From user_library (same DB — LEFT JOIN on external_id)
     pub library_id:  Option<String>,
     pub status:      Option<String>,
     pub rating:      Option<f64>,
@@ -47,7 +46,6 @@ pub struct ListItemFull {
     pub progress_2:  f64,
     pub is_favorite: bool,
     pub is_platinum: bool,
-    // From media_catalog (separate DB — programmatic lookup)
     pub title_main:  Option<String>,
     pub cover_url:   Option<String>,
     pub media_type:  Option<String>,
@@ -58,7 +56,7 @@ pub struct ListItemFull {
 
 #[tauri::command]
 pub async fn read_user_favorites(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let mut result = serde_json::Map::new();
@@ -93,7 +91,7 @@ pub async fn read_user_favorites(
 
 #[tauri::command]
 pub async fn write_user_favorites(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     content: String,
 ) -> Result<(), String> {
     let favs: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
@@ -127,7 +125,7 @@ pub async fn write_user_favorites(
 
 #[tauri::command]
 pub async fn get_all_user_lists(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<ListInfo>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
@@ -171,97 +169,51 @@ pub async fn get_all_user_lists(
     Ok(result)
 }
 
-/// Returns list items enriched with data from user_library (SQL JOIN, same DB)
-/// and media_catalog (separate DB lookup). This is the SQL-relational approach
-/// the user requested — no frontend lookups needed.
 #[tauri::command]
 pub async fn get_list_items_full(
-    lib_state: tauri::State<'_, crate::db::LibraryDb>,
-    cat_state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
 ) -> Result<Vec<ListItemFull>, String> {
-    // Step 1: JOIN user_list_items with user_library (both in user_library.db)
-    let lib_rows: Vec<(String, i64, Option<String>, Option<String>, Option<f64>, f64, f64, bool, bool)> = {
-        let conn = lib_state.conn.lock().map_err(|e| e.to_string())?;
-        let mut stmt = conn.prepare(
-            "SELECT
-                li.external_id,
-                li.position,
-                ul.id,
-                ul.status,
-                ul.rating,
-                COALESCE(ul.progress,   0.0),
-                COALESCE(ul.progress_2, 0.0),
-                COALESCE(ul.is_favorite, 0),
-                COALESCE(ul.is_platinum, 0)
-             FROM user_list_items li
-             LEFT JOIN user_library ul ON ul.external_id = li.external_id
-             WHERE li.list_key = ?1
-             ORDER BY li.position",
-        ).map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    // Single SQL JOIN — everything is in metadea.db
+    let mut stmt = conn.prepare(
+        "SELECT
+            li.external_id, li.position,
+            ul.id, ul.status, ul.rating,
+            COALESCE(ul.progress, 0.0), COALESCE(ul.progress_2, 0.0),
+            COALESCE(ul.is_favorite, 0), COALESCE(ul.is_platinum, 0),
+            mc.title_main, mc.cover_url, mc.type, mc.format
+         FROM user_list_items li
+         LEFT JOIN user_library ul ON ul.external_id = li.external_id
+         LEFT JOIN media_catalog mc ON mc.external_id = li.external_id
+         WHERE li.list_key = ?1
+         ORDER BY li.position"
+    ).map_err(|e| e.to_string())?;
 
-        // Collect into an owned Vec so stmt/conn can be dropped before the await
-        let rows: Vec<(String, i64, Option<String>, Option<String>, Option<f64>, f64, f64, bool, bool)> =
-            stmt.query_map([&list_key], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, i64>(1)?,
-                    r.get::<_, Option<String>>(2)?,
-                    r.get::<_, Option<String>>(3)?,
-                    r.get::<_, Option<f64>>(4)?,
-                    r.get::<_, f64>(5)?,
-                    r.get::<_, f64>(6)?,
-                    r.get::<_, i64>(7)? != 0,
-                    r.get::<_, i64>(8)? != 0,
-                ))
-            })
-            .map_err(|e| e.to_string())?
-            .filter_map(|r| r.ok())
-            .collect();
-        rows
-    }; // lib lock released here
+    let items: Vec<ListItemFull> = stmt.query_map([&list_key], |r| {
+        Ok(ListItemFull {
+            external_id: r.get(0)?,
+            position:    r.get(1)?,
+            library_id:  r.get(2)?,
+            status:      r.get(3)?,
+            rating:      r.get(4)?,
+            progress:    r.get::<_, Option<f64>>(5)?.unwrap_or(0.0),
+            progress_2:  r.get::<_, Option<f64>>(6)?.unwrap_or(0.0),
+            is_favorite: r.get::<_, i64>(7)? != 0,
+            is_platinum: r.get::<_, i64>(8)? != 0,
+            title_main:  r.get(9)?,
+            cover_url:   r.get(10)?,
+            media_type:  r.get(11)?,
+            format:      r.get(12)?,
+        })
+    }).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
 
-    // Step 2: look up catalog data from media_catalog.db for each item
-    let cat_conn = cat_state.conn.lock().map_err(|e| e.to_string())?;
-    let mut result = Vec::with_capacity(lib_rows.len());
-
-    for (ext_id, pos, lib_id, status, rating, progress, progress_2, is_fav, is_plat) in lib_rows {
-        let cat = cat_conn
-            .query_row(
-                "SELECT title_main, cover_url, type, format FROM media_catalog WHERE external_id = ?1",
-                [&ext_id],
-                |r| Ok((
-                    r.get::<_, Option<String>>(0)?,
-                    r.get::<_, Option<String>>(1)?,
-                    r.get::<_, Option<String>>(2)?,
-                    r.get::<_, Option<String>>(3)?,
-                )),
-            )
-            .unwrap_or((None, None, None, None));
-
-        result.push(ListItemFull {
-            external_id: ext_id,
-            position:    pos,
-            library_id:  lib_id,
-            status,
-            rating,
-            progress,
-            progress_2,
-            is_favorite: is_fav,
-            is_platinum: is_plat,
-            title_main:  cat.0,
-            cover_url:   cat.1,
-            media_type:  cat.2,
-            format:      cat.3,
-        });
-    }
-
-    Ok(result)
+    Ok(items)
 }
 
 #[tauri::command]
 pub async fn get_list_items(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
 ) -> Result<Vec<String>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -278,7 +230,7 @@ pub async fn get_list_items(
 
 #[tauri::command]
 pub async fn create_user_list(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     username: String,
     name: String,
     description: String,
@@ -310,7 +262,7 @@ pub async fn create_user_list(
 
 #[tauri::command]
 pub async fn update_user_list(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
     name: String,
     description: String,
@@ -325,7 +277,7 @@ pub async fn update_user_list(
 
 #[tauri::command]
 pub async fn delete_user_list(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -338,25 +290,12 @@ pub async fn delete_user_list(
 
 #[tauri::command]
 pub async fn add_item_to_list(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
     external_id: String,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    // Self-heal: create tables if the DB was opened before this schema version
-    conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS user_lists (
-            key TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
-            description TEXT NOT NULL DEFAULT '', is_fav INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-         );
-         CREATE TABLE IF NOT EXISTS user_list_items (
-            list_key TEXT NOT NULL, external_id TEXT NOT NULL,
-            position INTEGER NOT NULL DEFAULT 0, added_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (list_key, external_id)
-         );",
-    ).ok();
     // Ensure the fav list row exists
     if list_key.ends_with("_fav") {
         let _ = conn.execute(
@@ -380,7 +319,7 @@ pub async fn add_item_to_list(
 
 #[tauri::command]
 pub async fn remove_item_from_list(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
     external_id: String,
 ) -> Result<(), String> {
@@ -393,7 +332,7 @@ pub async fn remove_item_from_list(
 
 #[tauri::command]
 pub async fn reorder_list_items(
-    state: tauri::State<'_, crate::db::LibraryDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
     external_ids: Vec<String>,
 ) -> Result<(), String> {

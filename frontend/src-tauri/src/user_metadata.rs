@@ -10,7 +10,7 @@ fn upsert_profile_row(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
 
 #[tauri::command]
 pub async fn save_user_image(
-    state: tauri::State<'_, crate::db::ProfileDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
     data_url: String,
 ) -> Result<(), String> {
@@ -30,7 +30,7 @@ pub async fn save_user_image(
 
 #[tauri::command]
 pub async fn get_user_image(
-    state: tauri::State<'_, crate::db::ProfileDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<Option<String>, String> {
     let col = match key.as_str() {
@@ -52,7 +52,7 @@ pub async fn get_user_image(
 
 #[tauri::command]
 pub async fn remove_user_image(
-    state: tauri::State<'_, crate::db::ProfileDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<(), String> {
     let col = match key.as_str() {
@@ -70,7 +70,7 @@ pub async fn remove_user_image(
 
 #[tauri::command]
 pub async fn save_user_info(
-    state: tauri::State<'_, crate::db::ProfileDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     info: serde_json::Value,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
@@ -79,8 +79,8 @@ pub async fn save_user_info(
 
     let obj = info.as_object().ok_or("Expected JSON object")?;
     let allowed = [
-        "bio", "display_name", "dynamic_theme", "font",
-        "language", "source_avatar_url", "source_name",
+        "bio", "custom_color", "display_name", "dynamic_theme", "font",
+        "language", "rating_system", "source_avatar_url", "source_name",
         "source_username", "theme",
     ];
     for (k, v) in obj {
@@ -111,26 +111,28 @@ pub async fn save_user_info(
 
 #[tauri::command]
 pub async fn get_user_info(
-    state: tauri::State<'_, crate::db::ProfileDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<serde_json::Value, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let row: Option<serde_json::Value> = conn
         .query_row(
-            "SELECT bio, display_name, dynamic_theme, font, language,
-                    source_avatar_url, source_name, source_username, theme
+            "SELECT bio, custom_color, display_name, dynamic_theme, font, language,
+                    rating_system, source_avatar_url, source_name, source_username, theme
              FROM user_profile WHERE id = 1",
             [],
             |r| {
                 Ok(serde_json::json!({
                     "bio":               r.get::<_, String>(0).unwrap_or_default(),
-                    "display_name":      r.get::<_, String>(1).unwrap_or_default(),
-                    "dynamic_theme":     r.get::<_, i64>(2).unwrap_or(0) != 0,
-                    "font":              r.get::<_, String>(3).unwrap_or_default(),
-                    "language":          r.get::<_, String>(4).unwrap_or("es".into()),
-                    "source_avatar_url": r.get::<_, String>(5).unwrap_or_default(),
-                    "source_name":       r.get::<_, String>(6).unwrap_or_default(),
-                    "source_username":   r.get::<_, String>(7).unwrap_or_default(),
-                    "theme":             r.get::<_, String>(8).unwrap_or("nebula".into()),
+                    "custom_color":      r.get::<_, String>(1).unwrap_or("#c084fc".into()),
+                    "display_name":      r.get::<_, String>(2).unwrap_or_default(),
+                    "dynamic_theme":     r.get::<_, i64>(3).unwrap_or(0) != 0,
+                    "font":              r.get::<_, String>(4).unwrap_or_default(),
+                    "language":          r.get::<_, String>(5).unwrap_or("es".into()),
+                    "rating_system":     r.get::<_, String>(6).unwrap_or("5-star".into()),
+                    "source_avatar_url": r.get::<_, String>(7).unwrap_or_default(),
+                    "source_name":       r.get::<_, String>(8).unwrap_or_default(),
+                    "source_username":   r.get::<_, String>(9).unwrap_or_default(),
+                    "theme":             r.get::<_, String>(10).unwrap_or("nebula".into()),
                 }))
             },
         )

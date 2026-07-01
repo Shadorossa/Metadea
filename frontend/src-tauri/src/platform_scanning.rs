@@ -558,7 +558,7 @@ fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
 
 #[tauri::command]
 pub async fn scan_all_games(
-    local_db: tauri::State<'_, crate::db::LocalDataDb>,
+    local_db: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<LocalGame>, String> {
     let mut all: Vec<LocalGame> = Vec::new();
     all.extend(scan_steam_games());

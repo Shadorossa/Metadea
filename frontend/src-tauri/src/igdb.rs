@@ -60,35 +60,41 @@ pub struct EnvConfig {
     pub anilist_client_id: Option<String>,
 }
 
-fn env_from_db(db: &crate::db::EnvDb) -> Result<EnvConfig, String> {
-    use rusqlite::OptionalExtension;
+fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
-    let row: Option<EnvConfig> = conn.query_row(
-        "SELECT anilist_client_id, igdb_client_id, igdb_client_secret,
-                steam_api_key, tmdb_access_token, tmdb_api_key
-         FROM app_env WHERE id = 1",
-        [],
-        |r| {
-            let opt = |s: String| if s.is_empty() { None } else { Some(s) };
-            Ok(EnvConfig {
-                anilist_client_id:  r.get::<_, String>(0).ok().and_then(opt),
-                igdb_client_id:     r.get::<_, String>(1).ok().and_then(opt),
-                igdb_client_secret: r.get::<_, String>(2).ok().and_then(opt),
-                steam_api_key:      r.get::<_, String>(3).ok().and_then(opt),
-                tmdb_access_token:  r.get::<_, String>(4).ok().and_then(opt),
-                tmdb_api_key:       r.get::<_, String>(5).ok().and_then(opt),
-            })
-        },
-    ).optional().map_err(|e| e.to_string())?;
-    Ok(row.unwrap_or(EnvConfig {
+    let mut stmt = conn.prepare(
+        "SELECT name, value FROM app_env WHERE name IN (
+            'anilist_client_id','igdb_client_id','igdb_client_secret',
+            'steam_api_key','tmdb_access_token','tmdb_api_key'
+         )"
+    ).map_err(|e| e.to_string())?;
+    let mut cfg = EnvConfig {
         anilist_client_id: None, igdb_client_id: None, igdb_client_secret: None,
         steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
-    }))
+    };
+    let rows: Vec<(String, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect();
+    for (name, value) in rows {
+        let opt = if value.is_empty() { None } else { Some(value) };
+        match name.as_str() {
+            "anilist_client_id"  => cfg.anilist_client_id  = opt,
+            "igdb_client_id"     => cfg.igdb_client_id     = opt,
+            "igdb_client_secret" => cfg.igdb_client_secret = opt,
+            "steam_api_key"      => cfg.steam_api_key      = opt,
+            "tmdb_access_token"  => cfg.tmdb_access_token  = opt,
+            "tmdb_api_key"       => cfg.tmdb_api_key       = opt,
+            _ => {}
+        }
+    }
+    Ok(cfg)
 }
 
 #[tauri::command]
 pub async fn read_env_config(app_handle: tauri::AppHandle) -> Result<EnvConfig, String> {
-    let db = app_handle.state::<crate::db::EnvDb>();
+    let db = app_handle.state::<crate::db::MetadeaDb>();
     env_from_db(&db)
 }
 
@@ -97,36 +103,29 @@ pub async fn write_env_config(
     app_handle: tauri::AppHandle,
     config: EnvConfig,
 ) -> Result<String, String> {
-    let db = app_handle.state::<crate::db::EnvDb>();
+    let db = app_handle.state::<crate::db::MetadeaDb>();
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let now = chrono::Utc::now().to_rfc3339();
-    conn.execute(
-        "INSERT INTO app_env (id, anilist_client_id, igdb_client_id, igdb_client_secret,
-             steam_api_key, tmdb_access_token, tmdb_api_key, updated_at)
-         VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)
-         ON CONFLICT(id) DO UPDATE SET
-             anilist_client_id  = excluded.anilist_client_id,
-             igdb_client_id     = excluded.igdb_client_id,
-             igdb_client_secret = excluded.igdb_client_secret,
-             steam_api_key      = excluded.steam_api_key,
-             tmdb_access_token  = excluded.tmdb_access_token,
-             tmdb_api_key       = excluded.tmdb_api_key,
-             updated_at         = excluded.updated_at",
-        rusqlite::params![
-            config.anilist_client_id.as_deref().unwrap_or(""),
-            config.igdb_client_id.as_deref().unwrap_or(""),
-            config.igdb_client_secret.as_deref().unwrap_or(""),
-            config.steam_api_key.as_deref().unwrap_or(""),
-            config.tmdb_access_token.as_deref().unwrap_or(""),
-            config.tmdb_api_key.as_deref().unwrap_or(""),
-            now,
-        ],
-    ).map_err(|e| e.to_string())?;
+    let pairs = [
+        ("anilist_client_id",  config.anilist_client_id.as_deref().unwrap_or("")),
+        ("igdb_client_id",     config.igdb_client_id.as_deref().unwrap_or("")),
+        ("igdb_client_secret", config.igdb_client_secret.as_deref().unwrap_or("")),
+        ("steam_api_key",      config.steam_api_key.as_deref().unwrap_or("")),
+        ("tmdb_access_token",  config.tmdb_access_token.as_deref().unwrap_or("")),
+        ("tmdb_api_key",       config.tmdb_api_key.as_deref().unwrap_or("")),
+    ];
+    for (name, value) in pairs {
+        conn.execute(
+            "INSERT INTO app_env (name, value, updated_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+            rusqlite::params![name, value, now],
+        ).map_err(|e| e.to_string())?;
+    }
     Ok("ok".to_string())
 }
 
 fn load_env_config(app_handle: &tauri::AppHandle) -> Result<EnvConfig, String> {
-    let db = app_handle.state::<crate::db::EnvDb>();
+    let db = app_handle.state::<crate::db::MetadeaDb>();
     let cfg = env_from_db(&db)?;
     if cfg.igdb_client_id.is_none() && cfg.igdb_client_secret.is_none() {
         return Err("No IGDB keys configured".into());

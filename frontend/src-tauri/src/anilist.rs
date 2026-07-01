@@ -30,7 +30,7 @@ fn decrypt_token(encrypted: &[u8]) -> Result<String, String> {
 
 #[tauri::command]
 pub fn save_anilist_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     token: String,
 ) -> Result<(), String> {
     let encrypted = crate::utils::base64_encode(&encrypt_token(&token)?);
@@ -46,7 +46,7 @@ pub fn save_anilist_token(
 
 #[tauri::command]
 pub fn get_anilist_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<String>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let encrypted: Option<String> = conn
@@ -69,7 +69,7 @@ pub fn get_anilist_token(
 
 #[tauri::command]
 pub fn delete_anilist_token(
-    state: tauri::State<'_, crate::db::SessionDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM user_sessions WHERE service = 'anilist'", [])

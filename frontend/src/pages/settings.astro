@@ -102,6 +102,22 @@ const version = pkg.version;
 
           <!-- Avatar + Banner en la misma fila -->
           <div class="profile-media-row">
+            <!-- Nombre en la app -->
+            <div class="settings-section settings-section--display-name">
+              <h3 class="settings-section-title">Nombre en la app</h3>
+              <input
+                type="text"
+                id="display-name-input"
+                class="env-input"
+                placeholder="Tu nombre..."
+                maxlength="40"
+                autocomplete="off"
+                spellcheck="false"
+                style="width: 100%; margin-top: 0.5rem;"
+              />
+              <p class="settings-hint" style="margin-top: 0.5rem;">Se muestra en tu perfil.</p>
+            </div>
+
             <!-- Avatar -->
             <div class="settings-section settings-section--avatar">
               <h3 class="settings-section-title">{t.settings.avatar_title}</h3>
@@ -1021,27 +1037,52 @@ const version = pkg.version;
       updateImportButtons();
     }, 100);
 
-    // Rating System
-    const activeSystem =
-      localStorage.getItem("metadea_rating_system") || "5-star";
+    // Load user profile once and wire up display_name, rating_system, custom_color
+    const { getUserInfo, saveUserInfo } = await import('../lib/tauri');
+    const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
+
+    // Display Name
+    const displayNameInput = document.getElementById('display-name-input') as HTMLInputElement | null;
+    if (displayNameInput) {
+      displayNameInput.value = (info.display_name as string) || '';
+
+      let saveTimer: ReturnType<typeof setTimeout>;
+      async function saveDisplayName() {
+        const newName = displayNameInput!.value.trim();
+        await saveUserInfo({ display_name: newName }).catch(() => {});
+        showToast('Nombre guardado');
+      }
+
+      displayNameInput.addEventListener('blur', saveDisplayName);
+      displayNameInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') { e.preventDefault(); saveDisplayName(); }
+      });
+      displayNameInput.addEventListener('input', () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveDisplayName, 1500);
+      });
+    }
+
+    // Rating System — DB is source of truth; localStorage kept as fast read cache
     const ratingBtns =
       document.querySelectorAll<HTMLButtonElement>(".rating-system-btn");
+    const activeSystem = (info.rating_system as string)
+      || localStorage.getItem("metadea_rating_system")
+      || "5-star";
+    localStorage.setItem("metadea_rating_system", activeSystem);
     ratingBtns.forEach((btn) => {
-      if (btn.dataset.value === activeSystem) {
-        btn.classList.add("active");
-      }
-      btn.addEventListener("click", () => {
+      if (btn.dataset.value === activeSystem) btn.classList.add("active");
+      btn.addEventListener("click", async () => {
         ratingBtns.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        localStorage.setItem(
-          "metadea_rating_system",
-          btn.dataset.value || "5-star",
-        );
+        const value = btn.dataset.value || "5-star";
+        localStorage.setItem("metadea_rating_system", value);
+        await saveUserInfo({ rating_system: value }).catch(() => {});
         showToast("Sistema de calificación guardado");
       });
     });
 
-    // Custom Color
+    // Custom Color — DB is source of truth; localStorage kept as fast read cache
     const DEFAULT_COLOR = "#c084fc";
     const colorInput = document.getElementById(
       "custom-color-input",
@@ -1050,29 +1091,33 @@ const version = pkg.version;
     const colorResetBtn = document.getElementById("color-reset-btn");
 
     if (colorInput && colorHexDisplay) {
-      // Load saved color
-      const savedColor =
-        localStorage.getItem("metadea_custom_color") || DEFAULT_COLOR;
+      const savedColor = (info.custom_color as string)
+        || localStorage.getItem("metadea_custom_color")
+        || DEFAULT_COLOR;
       colorInput.value = savedColor;
       colorHexDisplay.textContent = `Actual: ${savedColor}`;
+      localStorage.setItem("metadea_custom_color", savedColor);
       applyCustomColor(savedColor);
 
-      // Color change handler
+      let colorTimer: ReturnType<typeof setTimeout>;
       colorInput.addEventListener("input", (e) => {
         const color = (e.target as HTMLInputElement).value;
         colorHexDisplay.textContent = `Actual: ${color}`;
         localStorage.setItem("metadea_custom_color", color);
         applyCustomColor(color);
+        clearTimeout(colorTimer);
+        colorTimer = setTimeout(() => saveUserInfo({ custom_color: color }).catch(() => {}), 800);
       });
     }
 
     if (colorResetBtn) {
-      colorResetBtn.addEventListener("click", () => {
+      colorResetBtn.addEventListener("click", async () => {
         if (colorInput) {
           colorInput.value = DEFAULT_COLOR;
           colorHexDisplay!.textContent = `Actual: ${DEFAULT_COLOR}`;
           localStorage.setItem("metadea_custom_color", DEFAULT_COLOR);
           applyCustomColor(DEFAULT_COLOR);
+          await saveUserInfo({ custom_color: DEFAULT_COLOR }).catch(() => {});
           showToast("Color restaurado");
         }
       });

@@ -9,7 +9,8 @@ function getCleanDate(dateStr: string | null | undefined): string | null {
 export async function logJourneyEvent(
   existing: LibraryEntry | null,
   entry: LibraryEntry,
-  mediaType: string
+  mediaType: string,
+  totalCount?: number
 ): Promise<void> {
   try {
     const journey = await readUserJourney();
@@ -41,13 +42,17 @@ export async function logJourneyEvent(
       });
     }
 
-    // 2. Check progress updates (only if not a direct-completion)
-    // If going from new/planning → completed directly, don't log progress
+    // 2. Check progress updates (only if not a direct-completion or batch entry)
     const wasPlanningOrNew = !existing || existing.status === 'planning' || !existing.status;
     const isDirectCompletion = wasPlanningOrNew && isNowCompleted;
+    // Batch entry: user added a work with all chapters/episodes already done at once
+    const prevProgress = existing ? existing.progress : 0;
+    const isBatchEntry = wasPlanningOrNew
+      && totalCount !== undefined && totalCount > 0
+      && entry.progress >= totalCount
+      && prevProgress === 0;
 
-    if (!isDirectCompletion) {
-      const prevProgress = existing ? existing.progress : 0;
+    if (!isDirectCompletion && !isBatchEntry) {
       const newProgress = entry.progress;
 
       if (newProgress !== prevProgress && newProgress > 0) {

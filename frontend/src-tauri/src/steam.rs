@@ -12,12 +12,12 @@ pub async fn download_achievements(
     game_dir: &PathBuf,
     lang: &str,
 ) {
-    let db = app_handle.state::<crate::db::EnvDb>();
+    let db = app_handle.state::<crate::db::MetadeaDb>();
     let api_key = {
         use rusqlite::OptionalExtension;
         let conn = match db.conn.lock() { Ok(c) => c, Err(_) => return };
         let val: Option<String> = conn
-            .query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get(0))
+            .query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get(0))
             .optional()
             .ok()
             .flatten()
@@ -236,9 +236,9 @@ pub async fn steam_get_owned_games(
 ) -> Result<serde_json::Value, String> {
     let api_key = {
         use rusqlite::OptionalExtension;
-        let db = app_handle.state::<crate::db::EnvDb>();
+        let db = app_handle.state::<crate::db::MetadeaDb>();
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        conn.query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get::<_, String>(0))
+        conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
             .optional()
             .map_err(|e| e.to_string())?
             .filter(|s| !s.is_empty())
@@ -271,9 +271,9 @@ pub async fn steam_get_player_achievements(
 ) -> Result<serde_json::Value, String> {
     let api_key = {
         use rusqlite::OptionalExtension;
-        let db = app_handle.state::<crate::db::EnvDb>();
+        let db = app_handle.state::<crate::db::MetadeaDb>();
         let conn = db.conn.lock().map_err(|e| e.to_string())?;
-        conn.query_row("SELECT steam_api_key FROM app_env WHERE id = 1", [], |r| r.get::<_, String>(0))
+        conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
             .optional()
             .map_err(|e| e.to_string())?
             .filter(|s| !s.is_empty())

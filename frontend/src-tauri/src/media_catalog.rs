@@ -86,7 +86,7 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
 
 #[tauri::command]
 pub async fn save_catalog_entry(
-    state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     mut entry: MediaCatalogEntry,
 ) -> Result<MediaCatalogEntry, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -141,7 +141,7 @@ pub async fn save_catalog_entry(
 
 #[tauri::command]
 pub async fn get_catalog_entry(
-    state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -156,7 +156,7 @@ pub async fn get_catalog_entry(
 
 #[tauri::command]
 pub async fn delete_catalog_entry(
-    state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
@@ -167,7 +167,7 @@ pub async fn delete_catalog_entry(
 
 #[tauri::command]
 pub async fn get_all_catalog_entries(
-    state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(SELECT_ALL).map_err(|e| e.to_string())?;
@@ -181,7 +181,7 @@ pub async fn get_all_catalog_entries(
 
 #[tauri::command]
 pub async fn search_catalog(
-    state: tauri::State<'_, crate::db::CatalogDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     query: String,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;

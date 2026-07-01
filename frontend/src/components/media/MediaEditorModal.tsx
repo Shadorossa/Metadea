@@ -100,7 +100,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
         status:        e.status        ?? 'planning',
         rating:        e.rating        ?? 0,
         progress:      e.progress      ?? 0,
-        progressCount2: e.progress_count_2 ?? 0,
+        progressCount2: e.progress_2 ?? 0,
         notes:         e.notes         ?? '',
         startedAt:     e.started_at    ?? '',
         finishedAt:    e.finished_at   ?? '',
@@ -249,7 +249,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         status:           entry.status || null,
         rating:           entry.rating > 0 ? entry.rating : null,
         progress:         entry.progress,
-        progress_count_2: entry.progressCount2,
+        progress_2:       entry.progressCount2,
         minutes_spent:    data.type === 'game' || data.type === 'vnovel'
                             ? entry.progress * 60
                             : (entry.existing?.minutes_spent ?? 0),
@@ -271,7 +271,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
       try {
         const { logJourneyEvent } = await import('../../lib/profile/journey');
-        await logJourneyEvent(entry.existing, saved, data.type);
+        await logJourneyEvent(entry.existing, saved, data.type, data.totalCount ?? undefined);
       } catch (e) {
         console.error('Failed to log journey event', e);
       }
@@ -383,9 +383,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
                 {/* Progress input */}
                 {progLabel && (() => {
-                  const maxVal  = data.totalCount   && data.totalCount   > 0 ? data.totalCount   : undefined;
-                  const max2Val = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
-                  const label2  = progressLabel2(data.type, t.media);
+                  const maxVal   = data.totalCount   && data.totalCount   > 0 ? data.totalCount   : undefined;
+                  const max2Val  = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
+                  const label2   = progressLabel2(data.type, t.media);
+                  const hasSecondary = label2 !== 'Count 2';
                   return (
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="me-header-field">
@@ -405,7 +406,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                           )}
                         </div>
                       </div>
-                      {max2Val !== undefined && (
+                      {hasSecondary && (
                         <div className="me-header-field">
                           <label className="me-header-field-label">{label2}</label>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -414,11 +415,13 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                               value={entry.progressCount2 || ''}
                               onChange={e => {
                                 let v = parseInt(e.target.value) || 0;
-                                if (v > max2Val) v = max2Val;
+                                if (max2Val !== undefined && v > max2Val) v = max2Val;
                                 dispatchEntry({ type: 'SET_PROGRESS2', value: v });
                               }}
                               placeholder="0" style={{ width: '60px' }} />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
+                            {max2Val !== undefined && (
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
+                            )}
                           </div>
                         </div>
                       )}

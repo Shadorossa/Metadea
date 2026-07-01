@@ -47,7 +47,7 @@ pub async fn scan_folder_contents(path: String) -> Result<Vec<FolderEntry>, Stri
 
 #[tauri::command]
 pub async fn get_local_folders(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<SavedFolder>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -68,7 +68,7 @@ pub async fn get_local_folders(
 
 #[tauri::command]
 pub async fn save_local_folders(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     folders_json: String,
 ) -> Result<String, String> {
     let folders: Vec<SavedFolder> =
@@ -88,7 +88,7 @@ pub async fn save_local_folders(
 
 #[tauri::command]
 pub async fn read_routes(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -106,7 +106,7 @@ pub async fn read_routes(
 
 #[tauri::command]
 pub async fn write_routes(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     routes_json: String,
 ) -> Result<(), String> {
     let v: serde_json::Value =
@@ -129,7 +129,7 @@ pub async fn write_routes(
 
 #[tauri::command]
 pub async fn save_game_link(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     launcher: String,
     link_key: String,
     external_id: String,
@@ -150,7 +150,7 @@ pub async fn save_game_link(
 
 #[tauri::command]
 pub async fn delete_game_link(
-    state: tauri::State<'_, crate::db::LocalDataDb>,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     launcher: String,
     link_key: String,
 ) -> Result<(), String> {

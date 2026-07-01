@@ -1,4 +1,5 @@
 import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry } from '../tauri';
+import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
 
 const ANILIST_API = 'https://graphql.anilist.co';
@@ -214,7 +215,13 @@ export async function importFromAniList(
           release_month: null,
           release_day: null,
           status: mediaItem.media?.status ?? null,
-          genres_csv: mediaItem.media?.genres?.join(',') ?? null,
+          ...(() => {
+            const { core, tags } = unifyGenres(mediaItem.media?.genres ?? []);
+            return {
+              genres_csv:     core.join(',') || null,
+              genres_tag_csv: tags.join(',') || null,
+            };
+          })(),
           score_avg: null,
           score_count: null,
           total_episodes: mediaItem.media?.type === 'ANIME' ? null : null,
