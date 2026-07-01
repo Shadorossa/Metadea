@@ -33,7 +33,9 @@ pub fn run() {
                 .expect("failed to open metadea.db");
             db::seed_fav_lists(&metadea_db);
             app.manage(metadea_db);
-            app.manage(discord::DiscordState::new());
+            let discord = discord::DiscordState::new();
+            discord.start_background();
+            app.manage(discord);
 
             #[cfg(debug_assertions)]
             {
@@ -120,7 +122,7 @@ pub fn run() {
             anilist::delete_anilist_token,
             anilist::get_anilist_user_profile,
             discord::update_presence,
-            discord::clear_presence,
+            discord::reset_presence,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

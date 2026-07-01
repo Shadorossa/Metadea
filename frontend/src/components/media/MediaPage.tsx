@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaDataWithFallback } from '../../lib/media/mediaService';
-import { getLibraryEntry, saveCatalogEntry, updateDiscordPresence, clearDiscordPresence } from '../../lib/tauri';
+import { getLibraryEntry, saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -222,8 +222,8 @@ export default function MediaPage({ lang }: { lang: string }) {
     });
 
     return () => {
-      clearDiscordPresence().catch((err) => {
-        console.warn('[Discord] Error al limpiar presencia:', err);
+      resetDiscordPresence().catch((err) => {
+        console.warn('[Discord] Error al resetear presencia:', err);
       });
     };
   // Solo re-disparar cuando cambiamos de obra

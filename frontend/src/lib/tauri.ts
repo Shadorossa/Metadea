@@ -684,9 +684,9 @@ export async function updateDiscordPresence(
 }
 
 /**
- * Limpia la presencia de Discord.
- * Llamar cuando el usuario sale de la media page o cierra la app.
+ * Restablece la presencia de Discord al estado por defecto "Navegando por la biblioteca".
+ * Llamar cuando el usuario sale de la media page.
  */
-export async function clearDiscordPresence(): Promise<void> {
-  return tauriRun('clear_presence');
+export async function resetDiscordPresence(): Promise<void> {
+  return tauriRun('reset_presence');
 }
