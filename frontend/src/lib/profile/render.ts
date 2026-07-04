@@ -1040,9 +1040,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const container = el.querySelector('.fav-grid') as HTMLElement | null;
       if (container) {
         let dragCard: HTMLElement | null = null;
-        let ghost: HTMLElement | null = null;
-        let offsetX = 0;
-        let offsetY = 0;
+        let dragActive = false;
 
         // Cache of card centers/edges, only recomputed right after a real
         // DOM reorder (insertBefore) — not on every mousemove/rAF tick —
@@ -1092,10 +1090,8 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         };
 
         const onMouseMove = (e: MouseEvent) => {
-          if (!ghost || !dragCard) return;
+          if (!dragActive || !dragCard) return;
           e.preventDefault();
-          ghost.style.left = `${e.clientX - offsetX}px`;
-          ghost.style.top = `${e.clientY - offsetY}px`;
 
           // Throttle DOM reordering to one per frame
           lastMoveX = e.clientX;
@@ -1108,7 +1104,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           document.removeEventListener('mouseup', onMouseUp);
           if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
-          if (ghost) { ghost.remove(); ghost = null; }
+          dragActive = false;
           if (dragCard) {
             dragCard.classList.remove('drag-source');
 
@@ -1134,27 +1130,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
             window.getSelection()?.removeAllRanges();
 
             dragCard = card;
-            const rect = card.getBoundingClientRect();
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
-
-            // Create visual ghost clone
-            ghost = card.cloneNode(true) as HTMLElement;
-            ghost.classList.add('fav-card-ghost');
-            ghost.style.cssText = `
-              position: fixed;
-              left: ${rect.left}px;
-              top: ${rect.top}px;
-              width: ${rect.width}px;
-              height: ${rect.height}px;
-              z-index: 9999;
-              pointer-events: none;
-              opacity: 0.85;
-              transform: scale(1.05);
-              transition: none;
-            `;
-            document.body.appendChild(ghost);
-
+            dragActive = true;
             card.classList.add('drag-source');
             refreshRectCache();
 

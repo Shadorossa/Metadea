@@ -1437,12 +1437,6 @@
   transition: none;
 }
 
-.fav-card-ghost {
-  border-radius: var(--radius);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  overflow: hidden;
-  will-change: transform, left, top;
-}
 
 /* ── Tab Content Transition ────────────────────────────────────────────────── */
 .profile-tab-content {
@@ -2768,12 +2762,6 @@
   opacity: 0.35;
   border: 1px dashed var(--accent) !important;
   transition: none;
-}
-
-.list-item-ghost {
-  border-radius: var(--radius-sm);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  will-change: transform, top;
 }
 
 .list-add-panel {

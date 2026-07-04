@@ -283,14 +283,13 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         </div>
       `;
 
-      // ── Pointer-based reordering (translucent ghost follows the cursor) ────
+      // ── Pointer-based reordering (no floating ghost — card reorders in place) ─
 
       {
         const grid = el.querySelector('.list-items-grid') as HTMLElement | null;
         if (grid) {
           let dragCard: HTMLElement | null = null;
-          let ghost: HTMLElement | null = null;
-          let offsetY = 0;
+          let dragActive = false;
 
           // Cache of {el, cy, top, height} for non-dragged cards, only
           // refreshed right after an actual reorder swap — not on every
@@ -334,9 +333,8 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           };
 
           const onMouseMove = (e: MouseEvent) => {
-            if (!ghost || !dragCard) return;
+            if (!dragActive || !dragCard) return;
             e.preventDefault();
-            ghost.style.top = `${e.clientY - offsetY}px`;
 
             lastMoveY = e.clientY;
             if (!rafId) rafId = requestAnimationFrame(reorderTick);
@@ -347,7 +345,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
             document.removeEventListener('mouseup', onMouseUp);
             if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
-            if (ghost) { ghost.remove(); ghost = null; }
+            dragActive = false;
             if (dragCard) {
               dragCard.classList.remove('drag-source');
 
@@ -371,24 +369,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
               window.getSelection()?.removeAllRanges();
 
               dragCard = card;
-              const rect = card.getBoundingClientRect();
-              offsetY = e.clientY - rect.top;
-
-              ghost = card.cloneNode(true) as HTMLElement;
-              ghost.classList.add('list-item-ghost');
-              ghost.style.cssText = `
-                position: fixed;
-                left: ${rect.left}px;
-                top: ${rect.top}px;
-                width: ${rect.width}px;
-                height: ${rect.height}px;
-                z-index: 9999;
-                pointer-events: none;
-                opacity: 0.85;
-                transition: none;
-              `;
-              document.body.appendChild(ghost);
-
+              dragActive = true;
               card.classList.add('drag-source');
               refreshRectCache();
 
