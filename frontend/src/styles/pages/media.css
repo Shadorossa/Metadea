@@ -1199,8 +1199,8 @@
 .me-header-star--bg {
   fill: none;
   stroke: var(--text-muted);
-  stroke-width: 1.5;
-  opacity: 0.25;
+  stroke-width: 1;
+  opacity: 0.4;
 }
 
 .me-header-star-fill {
