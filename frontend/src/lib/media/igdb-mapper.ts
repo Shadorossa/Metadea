@@ -2,6 +2,7 @@ import { igdbImageUrl } from '../tauri';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
+import { unixToDateParts, formatDateParts, normalizeScore100 } from './mapper-utils';
 
 export interface IgdbSubGame {
   id: number;
@@ -87,14 +88,13 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const bannerUrl = game.banner_image_id ? igdbImageUrl(game.banner_image_id, '1080p') : undefined;
 
   // Release date breakdown
-  const releaseYear = game.first_release_date ? new Date(game.first_release_date * 1000).getFullYear() : undefined;
-  const releaseMonth = game.first_release_date ? new Date(game.first_release_date * 1000).getUTCMonth() + 1 : undefined;
-  const releaseDay = game.first_release_date ? new Date(game.first_release_date * 1000).getUTCDate() : undefined;
+  const releaseDateParts = game.first_release_date ? unixToDateParts(game.first_release_date) : undefined;
+  const releaseYear = releaseDateParts?.year ?? undefined;
+  const releaseMonth = releaseDateParts?.month ?? undefined;
+  const releaseDay = releaseDateParts?.day ?? undefined;
 
-  const releaseDate = releaseYear
-    ? new Date(game.first_release_date! * 1000).toLocaleDateString('es-ES', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    })
+  const releaseDate = releaseDateParts
+    ? formatDateParts(releaseDateParts, { monthStyle: 'long', requireDay: true })
     : null;
 
   // Alternative names: native (JP chars or "japanese" comment) and romaji
@@ -121,8 +121,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const genreTagDots = genreTags.join(' · ') || undefined;
 
   // Score (prefer total_rating, fallback to rating — IGDB is /100)
-  const rawScore = game.total_rating ?? game.rating;
-  const scoreGlobal = rawScore ? Math.round((rawScore / 10) * 10) / 10 : undefined;
+  const scoreGlobal = normalizeScore100(game.total_rating ?? game.rating);
 
   const stats: { label: string; value: string }[] = [];
   if (scoreGlobal) stats.push({ label: 'Puntuación', value: scoreGlobal.toFixed(1) + ' / 10' });

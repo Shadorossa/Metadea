@@ -1,7 +1,8 @@
 import type { AniListMediaDetail } from '../search/providers/anilist';
-import { getT, getLangCode } from '../../i18n/client';
+import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
+import { formatDateParts, normalizeScore100 } from './mapper-utils';
 
 const STATUS_CLASS: Record<string, string> = {
   RELEASING:        'media-badge--status-airing',
@@ -12,19 +13,6 @@ const RELATION_PRIORITY: Record<string, number> = {
   PARENT: 1, ADAPTATION: 2, PREQUEL: 3, SEQUEL: 4,
   SPIN_OFF: 5, ALTERNATIVE: 6, SUMMARY: 7,
 };
-
-type NullableDate = { year: number | null; month: number | null; day: number | null } | null;
-
-function fmtDate(d: NullableDate): string {
-  if (!d?.year) return '';
-  if (!d.month) return String(d.year);
-  const date = new Date(d.year, d.month - 1, d.day ?? 1);
-  return date.toLocaleDateString(getLangCode(), {
-    year: 'numeric',
-    month: 'short',
-    day: d.day ? 'numeric' : undefined,
-  });
-}
 
 function formatDescription(raw: string | null | undefined): string | undefined {
   if (!raw) return undefined;
@@ -57,10 +45,10 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
 
   const seasonInfo = (raw.season && raw.seasonYear)
     ? `${(tm.seasons as Record<string, string>)[raw.season] ?? raw.season} ${raw.seasonYear}`
-    : fmtDate(raw.startDate);
+    : formatDateParts(raw.startDate);
 
-  const startFmt = fmtDate(raw.startDate);
-  const endFmt   = fmtDate(raw.endDate);
+  const startFmt = formatDateParts(raw.startDate);
+  const endFmt   = formatDateParts(raw.endDate);
   const dateBadge = startFmt
     ? (endFmt ? `${startFmt} - ${endFmt}` : startFmt)
     : undefined;
@@ -147,7 +135,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     releaseYear:  raw.startDate?.year  ?? undefined,
     releaseMonth: raw.startDate?.month ?? undefined,
     releaseDay:   raw.startDate?.day   ?? undefined,
-    scoreGlobal:  raw.averageScore ? raw.averageScore / 10 : undefined,
+    scoreGlobal:  normalizeScore100(raw.averageScore),
     platforms:    undefined,
     timeLength:   resolvedType === 'anime' ? (raw.duration ?? undefined) : undefined,
     status:       raw.status ?? undefined,
