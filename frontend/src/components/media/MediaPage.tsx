@@ -124,6 +124,7 @@ export default function MediaPage({ lang }: { lang: string }) {
   // Estado para el ID actual de la obra
   const [currentId, setCurrentId] = useState('');
   const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
+  const [isFetchingFull,     setIsFetchingFull]     = useState(false);
   const [data,               setData]               = useState<MediaPageData | null>(null);
   const [libEntry,           setLibEntry]           = useState<LibraryEntry | null>(null);
   const [libStatus,          setLibStatus]          = useState('');
@@ -160,12 +161,13 @@ export default function MediaPage({ lang }: { lang: string }) {
 
     setPageState('loading');
     setData(null);
+    setIsFetchingFull(true);
 
     fetchMediaDataWithFallback(
       currentId,
       partial => { setData(partial); setPageState('ready'); },
-      full    => { setData(full);    setPageState('ready'); },
-      ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); },
+      full    => { setData(full);    setPageState('ready'); setIsFetchingFull(false); },
+      ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
     );
   }, [currentId]);
 
@@ -339,6 +341,7 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   return (
     <>
+      {isFetchingFull && <div className="media-bottom-progress" />}
       {showEditor && (
         <MediaEditorModal
           externalId={currentId}
@@ -459,7 +462,7 @@ export default function MediaPage({ lang }: { lang: string }) {
                 {data.relations
                   .slice((relationPage - 1) * 12, relationPage * 12)
                   .map((r, i) => (
-                    <a key={i} href={r.url ?? '#'} className="media-relation-card">
+                    <a key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} href={r.url ?? '#'} className="media-relation-card">
                       <div className="media-relation-bg-layer">
                         {r.cover && <img src={r.cover} alt="" loading="lazy" />}
                       </div>
@@ -515,7 +518,7 @@ export default function MediaPage({ lang }: { lang: string }) {
 
                   return (
                     <button
-                      key={i}
+                      key={link.platform}
                       type="button"
                       className="media-store-link"
                       title={link.platform}

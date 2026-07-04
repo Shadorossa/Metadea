@@ -2,8 +2,8 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
-import { mapIgdbToMedia } from './igdb-mapper';
-import { igdbGetGameDetail, getCatalogEntry } from '../tauri';
+import { mapIgdbToMedia, mergeBaseGameRelation, type IgdbSubGame } from './igdb-mapper';
+import { igdbGetGameDetail, igdbGetBaseGames, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 
@@ -54,8 +54,21 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   if (IGDB_TYPES.includes(type)) {
     const numericId = parseInt(idStr, 10);
     if (!numericId) return null;
+
+    // Single request: banner image and store links ride along as Game
+    // sub-fields in the core IGDB query (see igdb_get_game_detail).
     const game = await igdbGetGameDetail(numericId);
-    return game ? mapIgdbToMedia(game, rawId) : null;
+    if (!game) return null;
+    let data = mapIgdbToMedia(game, rawId);
+
+    // Remakes need one extra request — IGDB has no back-reference field to
+    // find the base/original game, only a reverse `where remakes = id` lookup.
+    if ((game as { game_type?: number }).game_type === 8) {
+      const baseGames = await igdbGetBaseGames(numericId).catch(() => null);
+      if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
+    }
+
+    return data;
   }
 
   if (type === 'book') {

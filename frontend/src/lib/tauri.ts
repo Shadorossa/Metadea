@@ -508,6 +508,10 @@ export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, 
   return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
 }
 
+export async function igdbGetBaseGames(igdbId: number): Promise<unknown[] | null> {
+  return tauriTry<unknown[] | null>('igdb_get_base_games', null, { igdbId });
+}
+
 function steamLang(): string {
   const l = navigator.language;
   if (l.startsWith('es')) return 'spanish';

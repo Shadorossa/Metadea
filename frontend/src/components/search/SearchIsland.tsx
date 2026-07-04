@@ -73,6 +73,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       const searchResults = await search(searchQuery, type, signal);
       setResults(searchResults);
       setStatus('done');
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('type', type);
+      currentUrl.searchParams.set('q', searchQuery);
+      history.replaceState(null, '', currentUrl.toString());
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
       if (!isAbort) {
@@ -96,6 +100,11 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   };
 
   const handleMediaTypeChange = (selectedType: MediaType) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    abortControllerRef.current?.abort();
     setMediaType(selectedType);
     setQuery('');
     setResults([]);

@@ -25,6 +25,7 @@ commands.allow = [
   "save_user_info",
   "get_user_info",
   "igdb_get_game_detail",
+  "igdb_get_base_games",
   "igdb_get_cover_by_steam_id",
   "igdb_search_candidates",
   "igdb_force_by_igdb_id",

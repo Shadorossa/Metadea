@@ -617,51 +617,31 @@ async fn download_game_metadata(
     Ok(())
 }
 
-async fn fetch_landscape_image_id(
-    client: &reqwest::Client,
-    client_id: &str,
-    token: &str,
-    game_id: u64,
-) -> Option<String> {
-    // Collect all candidates from artworks and screenshots
-    let mut candidates: Vec<(String, f64, f64)> = Vec::new(); // (image_id, w, h)
-
-    if let Ok(arts) = igdb_query(
-        client, client_id, token,
-        IGDB_API_ARTWORKS,
-        &format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id),
-    ).await {
-        if let Some(arr) = arts.as_array() {
-            for entry in arr {
-                if let Some(id) = entry["image_id"].as_str() {
+// Pulls (image_id, width, height) triples out of a raw IGDB artworks/screenshots
+// array, skipping any entry flagged `alpha_channel: true` (transparent artworks
+// tend to be logos/PNGs, not usable banner photography).
+fn extract_image_candidates(value: &serde_json::Value) -> Vec<(String, f64, f64)> {
+    value
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|entry| {
+                    if entry["alpha_channel"].as_bool() == Some(true) {
+                        return None;
+                    }
+                    let id = entry["image_id"].as_str()?;
                     let w = entry["width"].as_f64().unwrap_or(0.0);
                     let h = entry["height"].as_f64().unwrap_or(1.0);
-                    candidates.push((id.to_string(), w, h));
-                }
-            }
-        }
-    }
+                    Some((id.to_string(), w, h))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
-    if let Ok(ss) = igdb_query(
-        client, client_id, token,
-        IGDB_API_SCREENSHOTS,
-        &format!("fields image_id,width,height; where game = {}; limit 5;", game_id),
-    ).await {
-        if let Some(arr) = ss.as_array() {
-            for entry in arr {
-                if let Some(id) = entry["image_id"].as_str() {
-                    let w = entry["width"].as_f64().unwrap_or(0.0);
-                    let h = entry["height"].as_f64().unwrap_or(1.0);
-                    candidates.push((id.to_string(), w, h));
-                }
-            }
-        }
-    }
-
-    if candidates.is_empty() {
-        return None;
-    }
-
+// Picks the best landscape/banner-shaped image out of a set of candidates.
+fn pick_landscape_image(candidates: &[(String, f64, f64)]) -> Option<String> {
     // Prefer images that meet the strict banner criteria (1280×720+, ratio ≥ 1.5)
     if let Some((id, _, _)) = candidates.iter().find(|(_, w, h)| *w >= 1280.0 && *h >= 720.0 && w / h >= 1.5) {
         return Some(id.clone());
@@ -675,6 +655,60 @@ async fn fetch_landscape_image_id(
             (w1 / h1).partial_cmp(&(w2 / h2)).unwrap_or(std::cmp::Ordering::Equal)
         })
         .map(|(id, _, _)| id.clone())
+}
+
+// Derives {platform, url} store links from a raw IGDB external_games array,
+// matching known storefront domains and dropping everything else.
+fn build_store_links(external_games: &serde_json::Value) -> Option<Vec<serde_json::Value>> {
+    let arr = external_games.as_array()?;
+    let links: Vec<serde_json::Value> = arr
+        .iter()
+        .filter_map(|e| {
+            let url = e["url"].as_str().filter(|u| !u.is_empty())?;
+            let platform = if url.contains("store.steampowered.com") {
+                "steam"
+            } else if url.contains("gog.com") {
+                "gog"
+            } else if url.contains("epicgames.com") {
+                "epic"
+            } else if url.contains("xbox.com") || url.contains("microsoft.com/store") {
+                "xbox"
+            } else if url.contains("playstation.com") {
+                "playstation"
+            } else {
+                return None;
+            };
+            Some(serde_json::json!({ "platform": platform, "url": url }))
+        })
+        .collect();
+    if links.is_empty() { None } else { Some(links) }
+}
+
+async fn fetch_landscape_image_id(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    game_id: u64,
+) -> Option<String> {
+    let arts_query = format!("fields image_id,width,height; where game = {} & alpha_channel = false; limit 10;", game_id);
+    let ss_query = format!("fields image_id,width,height; where game = {}; limit 5;", game_id);
+    let (arts_res, ss_res) = futures::join!(
+        igdb_query(client, client_id, token, IGDB_API_ARTWORKS, &arts_query),
+        igdb_query(client, client_id, token, IGDB_API_SCREENSHOTS, &ss_query),
+    );
+
+    let mut candidates: Vec<(String, f64, f64)> = Vec::new();
+    if let Ok(arts) = arts_res {
+        candidates.extend(extract_image_candidates(&arts));
+    }
+    if let Ok(ss) = ss_res {
+        candidates.extend(extract_image_candidates(&ss));
+    }
+
+    if candidates.is_empty() {
+        return None;
+    }
+    pick_landscape_image(&candidates)
 }
 
 fn save_game_info(
@@ -1008,6 +1042,12 @@ pub async fn igdb_search(
     Ok(serde_json::Value::Array(all))
 }
 
+// Single-request detail fetch: banner candidates (artworks/screenshots) and
+// store links (external_games) are Game sub-fields in IGDB's schema, so they
+// ride along in the same query instead of requiring separate round-trips.
+// Only the remake→base-game reverse lookup (`igdb_get_base_games`) can't be
+// embedded this way — IGDB has no back-reference field for it — and it's
+// only fired for the minority of games that are actually remakes.
 #[tauri::command]
 pub async fn igdb_get_game_detail(
     app_handle: tauri::AppHandle,
@@ -1019,77 +1059,73 @@ pub async fn igdb_get_game_detail(
     let token = get_twitch_token(&client_id, &client_secret).await?;
     let client = get_http_client();
 
-    let games = igdb_query(
-        &client,
-        &client_id,
-        &token,
-        IGDB_API_GAMES,
-        &format!(
-            "fields id,name,cover.image_id,summary,first_release_date,rating,total_rating,\
-             genres.name,involved_companies.company.name,\
-             involved_companies.developer,involved_companies.publisher,platforms.name,\
-             alternative_names.name,alternative_names.comment,game_type,\
-             remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,\
-             remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,\
-             dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,\
-             expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,\
-             standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,\
-             expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,\
-             ports.id,ports.name,ports.cover.image_id,ports.first_release_date,\
-             forks.id,forks.name,forks.cover.image_id,forks.first_release_date; \
-             where id = {}; limit 1;",
-            igdb_id
-        ),
-    )
-    .await?;
+    let games_query = format!(
+        "fields id,name,cover.image_id,summary,first_release_date,rating,total_rating,\
+         genres.name,involved_companies.company.name,\
+         involved_companies.developer,involved_companies.publisher,platforms.name,\
+         alternative_names.name,alternative_names.comment,game_type,\
+         artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,\
+         screenshots.image_id,screenshots.width,screenshots.height,\
+         external_games.category,external_games.url,\
+         remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,\
+         remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,\
+         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,\
+         expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,\
+         standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,\
+         expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,\
+         ports.id,ports.name,ports.cover.image_id,ports.first_release_date,\
+         forks.id,forks.name,forks.cover.image_id,forks.first_release_date; \
+         where id = {}; limit 1;",
+        igdb_id
+    );
 
+    let games = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &games_query).await?;
     let mut game = games[0].clone();
     if game.is_null() {
-        return Ok(serde_json::json!(null));
+        return Ok(game);
     }
 
-    let banner_id = fetch_landscape_image_id(&client, &client_id, &token, igdb_id).await;
-    game["banner_image_id"] = banner_id
+    let mut candidates = extract_image_candidates(&game["artworks"]);
+    candidates.extend(extract_image_candidates(&game["screenshots"]));
+    game["banner_image_id"] = pick_landscape_image(&candidates)
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
 
-    if let Ok(ext) = igdb_query(
-        &client,
-        &client_id,
-        &token,
-        IGDB_API_EXTERNAL_GAMES,
-        &format!("fields category,url; where game = {}; limit 30;", igdb_id),
-    )
-    .await
-    {
-        if let Some(arr) = ext.as_array() {
-            let links: Vec<serde_json::Value> = arr
-                .iter()
-                .filter_map(|e| {
-                    let url = e["url"].as_str().filter(|u| !u.is_empty())?;
-                    let platform = if url.contains("store.steampowered.com") {
-                        "steam"
-                    } else if url.contains("gog.com") {
-                        "gog"
-                    } else if url.contains("epicgames.com") {
-                        "epic"
-                    } else if url.contains("xbox.com") || url.contains("microsoft.com/store") {
-                        "xbox"
-                    } else if url.contains("playstation.com") {
-                        "playstation"
-                    } else {
-                        return None;
-                    };
-                    Some(serde_json::json!({ "platform": platform, "url": url }))
-                })
-                .collect();
-            if !links.is_empty() {
-                game["store_links"] = serde_json::Value::Array(links);
-            }
-        }
+    if let Some(links) = build_store_links(&game["external_games"]) {
+        game["store_links"] = serde_json::Value::Array(links);
+    }
+
+    // These were only needed to derive banner_image_id/store_links above —
+    // drop them so the IPC payload isn't carrying raw sub-arrays twice over.
+    if let Some(obj) = game.as_object_mut() {
+        obj.remove("artworks");
+        obj.remove("screenshots");
+        obj.remove("external_games");
     }
 
     Ok(game)
+}
+
+// Reverse lookup for remakes: IGDB only exposes the forward "remakes" array
+// on the original game, not a back-reference on the remake itself. Only
+// called by the frontend when the core detail response has game_type == 8.
+#[tauri::command]
+pub async fn igdb_get_base_games(
+    app_handle: tauri::AppHandle,
+    igdb_id: u64,
+) -> Result<serde_json::Value, String> {
+    let cfg = load_env_config(&app_handle)?;
+    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let client = get_http_client();
+
+    let base_query = format!(
+        "fields id,name,cover.image_id,first_release_date; where remakes = {}; limit 5;",
+        igdb_id
+    );
+
+    igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &base_query).await
 }
 
 // Search IGDB candidates for manual override — returns lightweight list for picker UI

@@ -2,7 +2,7 @@ import { igdbImageUrl } from '../tauri';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
 
-interface IgdbSubGame {
+export interface IgdbSubGame {
   id: number;
   name: string;
   cover?: { image_id: string };
@@ -55,6 +55,18 @@ const GAME_TYPE_FORMAT: Record<number, string> = {
   12: 'FORK',
   14: 'UPDATE',
 };
+
+function dedupeStoreLinks(links: { platform: string; url: string }[] | undefined) {
+  if (!links) return links;
+  const seenPlatforms = new Set<string>();
+  return links.filter(l => {
+    if (!l.platform || !l.url) return false;
+    const key = l.platform.toLowerCase();
+    if (seenPlatforms.has(key)) return false;
+    seenPlatforms.add(key);
+    return true;
+  });
+}
 
 function findAltName(
   altNames: { name: string; comment?: string }[],
@@ -162,7 +174,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     relations,
     progressStatus: 'playing',
     progressLabel: 'Jugando',
-    storeLinks: game.store_links?.filter(l => l.platform && l.url),
+    storeLinks: dedupeStoreLinks(game.store_links),
     // Catalog fields
     format,
     source: 'igdb',
@@ -172,5 +184,20 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     platforms,
     scoreGlobal,
   };
+}
+
+// ── Base game merge (remakes only) ────────────────────────────────────────
+// Fetched separately (see igdb_get_base_games) since it's a reverse lookup
+// only needed for the minority of games that are remakes.
+
+export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
+  if (!baseGames.length) return data;
+  const baseRelations: MediaRelation[] = baseGames.map(sg => ({
+    typeLabel: 'Juego base',
+    title: sg.name,
+    cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
+    url: `/media?id=game:${sg.id}`,
+  }));
+  return { ...data, relations: [...baseRelations, ...data.relations] };
 }
 

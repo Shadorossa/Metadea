@@ -71,6 +71,7 @@ pub fn run() {
             igdb::write_env_config,
             igdb::igdb_search,
             igdb::igdb_get_game_detail,
+            igdb::igdb_get_base_games,
             igdb::igdb_get_cover_by_steam_id,
             igdb::igdb_search_candidates,
             igdb::igdb_force_by_igdb_id,
