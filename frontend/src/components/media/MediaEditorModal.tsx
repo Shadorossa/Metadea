@@ -74,6 +74,7 @@ interface UiState {
   tagInput:      string;
   anilistStatus: AniListStatus;
   anilistError:  string | null;
+  showEditions:  boolean;
 }
 
 type UiAction =
@@ -81,7 +82,9 @@ type UiAction =
   | { type: 'SET_SAVING';    value: boolean }
   | { type: 'SET_CLOSING' }
   | { type: 'SET_TAG_INPUT'; value: string }
-  | { type: 'SET_ANILIST';   status: AniListStatus; error?: string };
+  | { type: 'SET_ANILIST';   status: AniListStatus; error?: string }
+  | { type: 'TOGGLE_EDITIONS' }
+  | { type: 'CLOSE_EDITIONS' };
 
 // ── Reducers ──────────────────────────────────────────────────────────────────
 
@@ -159,6 +162,8 @@ function uiReducer(state: UiState, action: UiAction): UiState {
     case 'SET_CLOSING':   return { ...state, isClosing: true };
     case 'SET_TAG_INPUT': return { ...state, tagInput: action.value };
     case 'SET_ANILIST':   return { ...state, anilistStatus: action.status, anilistError: action.error ?? null };
+    case 'TOGGLE_EDITIONS': return { ...state, showEditions: !state.showEditions };
+    case 'CLOSE_EDITIONS':  return { ...state, showEditions: false };
     default: return state;
   }
 }
@@ -202,7 +207,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
     // If we already have the entry from the caller, skip loading state entirely
     loading: !initialEntry, saving: false, isClosing: false,
-    tagInput: '', anilistStatus: 'idle', anilistError: null,
+    tagInput: '', anilistStatus: 'idle', anilistError: null, showEditions: false,
   });
 
   // Load entry + monthly history on open
@@ -374,7 +379,38 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         {/* Header */}
         <div className="me-header">
           <div className="me-header-left">
-            {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
+            <div className="me-header-cover-wrap">
+              {data.cover && (
+                <img
+                  src={data.cover}
+                  alt=""
+                  className={`me-header-cover${editionOptions.length > 0 ? ' me-header-cover--clickable' : ''}`}
+                  title={editionOptions.length > 0 ? te.editions : undefined}
+                  onClick={() => editionOptions.length > 0 && dispatchUi({ type: 'TOGGLE_EDITIONS' })}
+                />
+              )}
+              {ui.showEditions && editionOptions.length > 0 && (
+                <>
+                  <div className="me-editions-backdrop" onClick={() => dispatchUi({ type: 'CLOSE_EDITIONS' })} />
+                  <div className="me-editions-popover">
+                    <span className="me-editions-popover-title">{te.editions}</span>
+                    <select
+                      className="me-editions-select"
+                      value={entry.selectedVersion}
+                      onChange={e => {
+                        dispatchEntry({ type: 'SET_VERSION', value: e.target.value });
+                        dispatchUi({ type: 'CLOSE_EDITIONS' });
+                      }}
+                    >
+                      <option value="">{te.edition_current}</option>
+                      {editionOptions.map(opt => (
+                        <option key={opt.externalId} value={opt.externalId}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+            </div>
             <div className="me-header-col">
               <span className="me-header-title">{data.titleMain}</span>
               <div className="me-header-bottom-row">
@@ -516,27 +552,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                         )}
                       </div>
                     </div>
-
-                    {editionOptions.length > 0 && (
-                      <div className="me-section">
-                        <span className="me-label">{te.editions}</span>
-                        <p className="me-edition-hint">{te.edition_hint}</p>
-                        <div className="me-editions-box">
-                          <label className="me-edition-option">
-                            <input type="radio" name="me-edition" checked={!entry.selectedVersion}
-                              onChange={() => dispatchEntry({ type: 'SET_VERSION', value: '' })} />
-                            <span>{te.edition_current}</span>
-                          </label>
-                          {editionOptions.map(opt => (
-                            <label key={opt.externalId} className="me-edition-option">
-                              <input type="radio" name="me-edition" checked={entry.selectedVersion === opt.externalId}
-                                onChange={() => dispatchEntry({ type: 'SET_VERSION', value: opt.externalId })} />
-                              <span>{opt.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

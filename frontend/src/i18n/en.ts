@@ -204,7 +204,6 @@ export const en = {
       months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
       editions:        'Editions',
       edition_current: 'This edition',
-      edition_hint:    "If you're tracking progress for another edition or version, select it here.",
     },
     load_more: 'Load more',
     progress_hours:        'Hours',

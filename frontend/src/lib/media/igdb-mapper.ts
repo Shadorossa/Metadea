@@ -211,3 +211,55 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
   return { ...data, relations: [...baseRelations, ...data.relations] };
 }
 
+// ── Transitive relation graph merge ──────────────────────────────────────
+// igdb_get_relation_graph walks the forward relation arrays (and parent_game)
+// breadth-first so that e.g. a remaster of an expanded edition, or a port of
+// a remaster, still surfaces here even though it's 2-3 hops away from the
+// game currently being viewed, not a direct IGDB relation.
+
+interface RelationGraphNode {
+  id: number;
+  name: string;
+  cover?: { image_id: string };
+  via: string;
+}
+
+const VIA_LABELS: Record<string, string> = {
+  remakes: 'Remake',
+  remasters: 'Remaster',
+  dlcs: 'DLC',
+  expansions: 'Expansión',
+  standalone_expansions: 'Standalone',
+  expanded_games: 'Edición expandida',
+  ports: 'Port',
+  forks: 'Fork',
+  parent_game: 'Juego base',
+  relation: 'Relacionado',
+};
+
+export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[]): MediaPageData {
+  if (!nodes.length) return data;
+
+  const seen = new Set<string>([data.externalId]);
+  if (data.parentGame) seen.add(data.parentGame.externalId);
+  for (const r of data.relations) {
+    const match = r.url?.match(/id=([^&]+)/);
+    if (match) seen.add(decodeURIComponent(match[1]));
+  }
+
+  const extra: MediaRelation[] = [];
+  for (const n of nodes) {
+    const externalId = `game:${n.id}`;
+    if (seen.has(externalId)) continue;
+    seen.add(externalId);
+    extra.push({
+      typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
+      title: n.name,
+      cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
+      url: `/media?id=${externalId}`,
+    });
+  }
+  if (!extra.length) return data;
+  return { ...data, relations: [...data.relations, ...extra] };
+}
+

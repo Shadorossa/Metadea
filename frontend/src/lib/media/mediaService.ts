@@ -2,8 +2,8 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, type IgdbSubGame } from './igdb-mapper';
-import { igdbGetGameDetail, igdbGetBaseGames, getCatalogEntry } from '../tauri';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame } from './igdb-mapper';
+import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData } from './types';
 
@@ -67,6 +67,12 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
       const baseGames = await igdbGetBaseGames(numericId).catch(() => null);
       if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
     }
+
+    // Transitive relations (e.g. a remaster of an expanded edition, or a
+    // port of a remaster) aren't direct IGDB relations of this game — walk
+    // the graph a few hops out so they still show up here.
+    const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);
+    if (graphNodes.length) data = mergeRelationGraph(data, graphNodes as any);
 
     return data;
   }

@@ -204,7 +204,6 @@ export const es = {
       months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
       editions:        'Ediciones',
       edition_current: 'Esta edición',
-      edition_hint:    'Si sigues el progreso de otra edición o versión, selecciónala aquí.',
     },
     load_more: 'Cargar más',
     progress_hours:        'Horas',

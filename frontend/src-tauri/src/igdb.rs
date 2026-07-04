@@ -1129,6 +1129,102 @@ pub async fn igdb_get_base_games(
     igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &base_query).await
 }
 
+// Walks the forward edition/version relation graph (remakes, remasters,
+// dlcs, expansions, standalone_expansions, expanded_games, ports, forks,
+// parent_game) breadth-first, batching one IGDB query per depth level, so
+// that e.g. "a remaster of an expanded edition" or "a port of a remaster"
+// still surfaces on the original game's page even though it's two or three
+// hops away rather than a direct relation. Bounded by MAX_DEPTH/MAX_NODES
+// to keep this to a handful of requests. Each returned node carries a
+// synthetic "via" field naming the relation array that first discovered it,
+// so the frontend can label it (the node's own further relation arrays are
+// stripped before returning — only needed for traversal).
+#[tauri::command]
+pub async fn igdb_get_relation_graph(
+    app_handle: tauri::AppHandle,
+    root_id: u64,
+) -> Result<Vec<serde_json::Value>, String> {
+    let cfg = load_env_config(&app_handle)?;
+    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let client = get_http_client();
+
+    const MAX_DEPTH: usize = 4;
+    const MAX_NODES: usize = 40;
+    const REL_FIELDS: &[&str] = &[
+        "remakes", "remasters", "dlcs", "expansions",
+        "standalone_expansions", "expanded_games", "ports", "forks",
+    ];
+
+    let mut visited: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
+    visited.insert(root_id, "root".to_string());
+    let mut frontier: Vec<u64> = vec![root_id];
+    let mut collected: Vec<serde_json::Value> = Vec::new();
+
+    for _ in 0..MAX_DEPTH {
+        if frontier.is_empty() || visited.len() >= MAX_NODES {
+            break;
+        }
+        let ids_csv = frontier.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",");
+        let query = format!(
+            "fields id,name,cover.image_id,first_release_date,\
+             parent_game.id,\
+             remakes.id,remasters.id,dlcs.id,expansions.id,\
+             standalone_expansions.id,expanded_games.id,ports.id,forks.id; \
+             where id = ({}); limit {};",
+            ids_csv,
+            frontier.len()
+        );
+
+        let results = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &query).await?;
+        let arr = results.as_array().cloned().unwrap_or_default();
+
+        let mut next_frontier: Vec<u64> = Vec::new();
+        for item in &arr {
+            let id = match item["id"].as_u64() {
+                Some(v) => v,
+                None => continue,
+            };
+
+            if id != root_id {
+                let mut out = item.clone();
+                if let Some(obj) = out.as_object_mut() {
+                    let via = visited.get(&id).cloned().unwrap_or_else(|| "relation".to_string());
+                    obj.insert("via".to_string(), serde_json::Value::String(via));
+                    for f in REL_FIELDS {
+                        obj.remove(*f);
+                    }
+                    obj.remove("parent_game");
+                }
+                collected.push(out);
+            }
+
+            for field in REL_FIELDS {
+                if let Some(list) = item[*field].as_array() {
+                    for sub in list {
+                        if let Some(sid) = sub["id"].as_u64() {
+                            if visited.len() < MAX_NODES && !visited.contains_key(&sid) {
+                                visited.insert(sid, field.to_string());
+                                next_frontier.push(sid);
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(pid) = item["parent_game"]["id"].as_u64() {
+                if visited.len() < MAX_NODES && !visited.contains_key(&pid) {
+                    visited.insert(pid, "parent_game".to_string());
+                    next_frontier.push(pid);
+                }
+            }
+        }
+        frontier = next_frontier;
+    }
+
+    Ok(collected)
+}
+
 // Search IGDB candidates for manual override — returns lightweight list for picker UI
 #[tauri::command]
 pub async fn igdb_search_candidates(
