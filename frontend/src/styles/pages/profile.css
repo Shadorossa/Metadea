@@ -2764,13 +2764,16 @@
 .list-item-drag-handle:hover { opacity: 0.7; color: var(--text-main); }
 .list-item-drag-handle:active { cursor: grabbing; }
 
-.list-item--dragging {
+.list-item-card.drag-source {
   opacity: 0.35;
+  border: 1px dashed var(--accent) !important;
+  transition: none;
 }
 
-.list-item--drag-over {
-  border-color: var(--accent) !important;
-  background: rgba(124, 106, 247, 0.06);
+.list-item-ghost {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  will-change: transform, top;
 }
 
 .list-add-panel {

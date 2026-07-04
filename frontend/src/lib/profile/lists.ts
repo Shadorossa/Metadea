@@ -161,7 +161,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
     const renderDetailContent = () => {
       const currentIds = new Set(listItems.map(i => i.external_id));
 
-      const listItemsHtml = listItems.map((item, idx) => {
+      const listItemsHtml = listItems.map(item => {
         const title    = item.title_main ?? item.external_id;
         const cover    = item.cover_url  ?? '';
         const fallback = HOF_GRADIENTS[item.media_type ?? 'anime'] ?? 'linear-gradient(160deg,#374151,#1f2937)';
@@ -170,7 +170,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         const ratingDisplay = item.rating ? `★ ${dbRatingToStars5(item.rating).toFixed(1)}` : null;
 
         return `
-          <div class="list-item-card" draggable="true" data-idx="${idx}">
+          <div class="list-item-card" data-id="${escAttr(item.external_id)}">
             <span class="list-item-drag-handle" title="Arrastrar para reordenar">⠿</span>
             <a class="list-item-cover-link" href="${url}">
               ${cover
@@ -283,54 +283,118 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         </div>
       `;
 
-      // ── Drag-and-drop reordering ──────────────────────────────────────────
+      // ── Pointer-based reordering (translucent ghost follows the cursor) ────
 
       {
         const grid = el.querySelector('.list-items-grid') as HTMLElement | null;
         if (grid) {
-          let dragIdx: number | null = null;
+          let dragCard: HTMLElement | null = null;
+          let ghost: HTMLElement | null = null;
+          let offsetY = 0;
 
-          grid.addEventListener('dragstart', (e: DragEvent) => {
-            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
-            if (!card) return;
-            dragIdx = parseInt(card.dataset.idx ?? '', 10);
-            card.classList.add('list-item--dragging');
-            e.dataTransfer!.effectAllowed = 'move';
-            e.dataTransfer!.setData('text/plain', String(dragIdx));
-          });
+          // Cache of {el, cy, top, height} for non-dragged cards, only
+          // refreshed right after an actual reorder swap — not on every
+          // mousemove/rAF tick — to avoid forcing a reflow every frame.
+          type CardRect = { el: HTMLElement; cy: number; top: number; height: number };
+          let rectCache: CardRect[] = [];
 
-          grid.addEventListener('dragend', (e: DragEvent) => {
-            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
-            card?.classList.remove('list-item--dragging');
-            grid.querySelectorAll('.list-item-card').forEach(c => c.classList.remove('list-item--drag-over'));
-            dragIdx = null;
-          });
+          const refreshRectCache = () => {
+            rectCache = Array.from(grid.querySelectorAll('.list-item-card:not(.drag-source)')).map(cardEl => {
+              const r = (cardEl as HTMLElement).getBoundingClientRect();
+              return { el: cardEl as HTMLElement, cy: r.top + r.height / 2, top: r.top, height: r.height };
+            });
+          };
 
-          grid.addEventListener('dragover', (e: DragEvent) => {
+          const getClosestCard = (clientY: number): CardRect | null => {
+            let closest: CardRect | null = null;
+            let closestDist = Infinity;
+            for (const entry of rectCache) {
+              const dist = Math.abs(clientY - entry.cy);
+              if (dist < closestDist) { closestDist = dist; closest = entry; }
+            }
+            return closest;
+          };
+
+          let rafId = 0;
+          let lastMoveY = 0;
+
+          const reorderTick = () => {
+            rafId = 0;
+            if (!dragCard) return;
+            const target = getClosestCard(lastMoveY);
+            if (target && target.el !== dragCard) {
+              const insertBefore = (lastMoveY - target.top) < target.height / 2;
+              if (insertBefore) {
+                grid.insertBefore(dragCard, target.el);
+              } else {
+                grid.insertBefore(dragCard, target.el.nextSibling);
+              }
+              refreshRectCache();
+            }
+          };
+
+          const onMouseMove = (e: MouseEvent) => {
+            if (!ghost || !dragCard) return;
             e.preventDefault();
-            e.dataTransfer!.dropEffect = 'move';
-            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
-            if (!card) return;
-            grid.querySelectorAll('.list-item-card').forEach(c => c.classList.remove('list-item--drag-over'));
-            card.classList.add('list-item--drag-over');
-          });
+            ghost.style.top = `${e.clientY - offsetY}px`;
 
-          grid.addEventListener('drop', async (e: DragEvent) => {
-            e.preventDefault();
-            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
-            if (!card || dragIdx === null) return;
-            const dropIdx = parseInt(card.dataset.idx ?? '', 10);
-            if (isNaN(dropIdx) || dragIdx === dropIdx) return;
+            lastMoveY = e.clientY;
+            if (!rafId) rafId = requestAnimationFrame(reorderTick);
+          };
 
-            // Reorder the local array
-            const [moved] = listItems.splice(dragIdx, 1);
-            listItems.splice(dropIdx, 0, moved);
+          const onMouseUp = async () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
-            // Persist to backend
-            const newOrder = listItems.map(i => i.external_id);
-            reorderListItems(listKey, newOrder).catch(() => {});
+            if (ghost) { ghost.remove(); ghost = null; }
+            if (dragCard) {
+              dragCard.classList.remove('drag-source');
 
-            renderDetailContent();
+              const newIds = Array.from(grid.querySelectorAll('.list-item-card'))
+                .map(c => (c as HTMLElement).dataset.id)
+                .filter(Boolean) as string[];
+              listItems.sort((a, b) => newIds.indexOf(a.external_id) - newIds.indexOf(b.external_id));
+
+              reorderListItems(listKey, newIds).catch(() => {});
+
+              dragCard = null;
+              renderDetailContent();
+            }
+          };
+
+          grid.querySelectorAll<HTMLElement>('.list-item-drag-handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e: MouseEvent) => {
+              const card = handle.closest('.list-item-card') as HTMLElement | null;
+              if (!card) return;
+              e.preventDefault();
+              window.getSelection()?.removeAllRanges();
+
+              dragCard = card;
+              const rect = card.getBoundingClientRect();
+              offsetY = e.clientY - rect.top;
+
+              ghost = card.cloneNode(true) as HTMLElement;
+              ghost.classList.add('list-item-ghost');
+              ghost.style.cssText = `
+                position: fixed;
+                left: ${rect.left}px;
+                top: ${rect.top}px;
+                width: ${rect.width}px;
+                height: ${rect.height}px;
+                z-index: 9999;
+                pointer-events: none;
+                opacity: 0.85;
+                transition: none;
+              `;
+              document.body.appendChild(ghost);
+
+              card.classList.add('drag-source');
+              refreshRectCache();
+
+              document.addEventListener('mousemove', onMouseMove);
+              document.addEventListener('mouseup', onMouseUp);
+            });
           });
         }
       }
