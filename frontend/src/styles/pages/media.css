@@ -246,23 +246,17 @@
   color: var(--color-completed);
 }
 
-/* ── Hero titles (izquierda) ─────────────────────────────────────────────── */
-.media-parent-badge {
-  display: inline-flex;
-  align-self: flex-end;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: var(--radius-sm);
-  padding: 0.2rem 0.6rem;
-  margin-bottom: 0.4rem;
-  text-decoration: none;
-  transition: opacity 0.15s;
+/* Estado "es una edición/versión de otro juego" — no se puede loguear aparte,
+   el hover redirige al juego base en vez de abrir el editor de biblioteca */
+.media-cover-wrap.is-edition .media-cover-overlay-inner {
+  padding: 0 0.6rem;
 }
 
-.media-parent-badge:hover { opacity: 0.8; }
+.media-cover-wrap.is-edition .media-cover-overlay-label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.76rem;
+}
 
 .media-title-main {
   font-size: 1.75rem;

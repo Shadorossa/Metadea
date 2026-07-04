@@ -375,11 +375,6 @@ export default function MediaPage({ lang }: { lang: string }) {
         <div className="media-hero-body">
           {/* Izquierda: títulos */}
           <div className="media-hero-left">
-            {data.parentGame && (
-              <a className="media-parent-badge" href={`/media?id=${encodeURIComponent(data.parentGame.externalId)}`}>
-                {tm.is_version_of.replace('{title}', data.parentGame.title)}
-              </a>
-            )}
             <h1 className="media-title-main">{data.titleMain}</h1>
             {data.titleNative  && <p className="media-title-native">{data.titleNative}</p>}
             {data.titleEnglish && <p className="media-title-english">{data.titleEnglish}</p>}
@@ -388,31 +383,52 @@ export default function MediaPage({ lang }: { lang: string }) {
           {/* Centro: cover + widget de biblioteca */}
           <div className="media-cover-column">
             <div
-              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}`}
+              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${data.parentGame ? ' is-edition' : ''}`}
               role="button"
               tabIndex={0}
-              aria-label={tm.add_to_library.replace('\n', ' ')}
-              onClick={handleCoverClick}
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && handleCoverClick()}
+              aria-label={data.parentGame
+                ? tm.is_version_of.replace('{title}', data.parentGame.title)
+                : tm.add_to_library.replace('\n', ' ')}
+              onClick={() => {
+                if (data.parentGame) {
+                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame.externalId)}`;
+                  return;
+                }
+                handleCoverClick();
+              }}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (
+                data.parentGame
+                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame.externalId)}`)
+                  : handleCoverClick()
+              )}
             >
               {data.cover && (
                 <img className="media-cover-img" src={data.cover} alt={data.titleMain} />
               )}
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">
-                  <span className="media-cover-overlay-icon">
-                    {inLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
-                  </span>
-                  <span
-                    className="media-cover-overlay-label"
-                    dangerouslySetInnerHTML={{
-                      __html: (inLibrary ? tm.in_library : tm.add_to_library).replace('\n', '<br>'),
-                    }}
-                  />
+                  {data.parentGame ? (
+                    <span className="media-cover-overlay-label">
+                      {tm.is_version_of.replace('{title}', data.parentGame.title)}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="media-cover-overlay-icon">
+                        {inLibrary ? <IconCheck size={22} strokeWidth={2.5} /> : <IconPlus size={22} strokeWidth={2.5} />}
+                      </span>
+                      <span
+                        className="media-cover-overlay-label"
+                        dangerouslySetInnerHTML={{
+                          __html: (inLibrary ? tm.in_library : tm.add_to_library).replace('\n', '<br>'),
+                        }}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
 
+            {!data.parentGame && (
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown
@@ -425,6 +441,7 @@ export default function MediaPage({ lang }: { lang: string }) {
                 <StarRating rating={libRating} onRate={handleRate} />
               </div>
             </div>
+            )}
           </div>
 
           {/* Derecha: géneros + meta */}
