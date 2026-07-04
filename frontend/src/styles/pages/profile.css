@@ -1425,7 +1425,7 @@
   cursor: grab;
   outline: 1px dashed var(--border-color);
   outline-offset: -1px;
-  animation: fav-wiggle 0.22s ease-in-out infinite;
+  animation: fav-wiggle 1.6s ease-in-out infinite;
 }
 
 .fav-card.reordering .fav-card-link {

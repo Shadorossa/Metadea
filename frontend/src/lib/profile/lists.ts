@@ -317,17 +317,23 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           let rafId = 0;
           let lastMoveY = 0;
 
+          // Guards against oscillation: don't immediately swap back with
+          // the neighbor we just swapped with (see profile/render.ts for
+          // the same fix on the favorites grid).
+          let lastSwappedWith: HTMLElement | null = null;
+
           const reorderTick = () => {
             rafId = 0;
             if (!dragCard) return;
             const target = getClosestCard(lastMoveY);
-            if (target && target.el !== dragCard) {
+            if (target && target.el !== dragCard && target.el !== lastSwappedWith) {
               const insertBefore = (lastMoveY - target.top) < target.height / 2;
               if (insertBefore) {
                 grid.insertBefore(dragCard, target.el);
               } else {
                 grid.insertBefore(dragCard, target.el.nextSibling);
               }
+              lastSwappedWith = target.el;
               refreshRectCache();
             }
           };

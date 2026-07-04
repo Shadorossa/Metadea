@@ -1073,17 +1073,25 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         let lastMoveX = 0;
         let lastMoveY = 0;
 
+        // Guards against oscillation: once we've just swapped with a given
+        // neighbor, don't immediately swap back with it — the cursor
+        // position that triggered the swap is often still "closest" to
+        // that same neighbor right after the DOM move, which without this
+        // guard causes an infinite back-and-forth flicker.
+        let lastSwappedWith: HTMLElement | null = null;
+
         const reorderTick = () => {
           rafId = 0;
           if (!dragCard) return;
           const target = getClosestCard(lastMoveX, lastMoveY);
-          if (target && target.el !== dragCard) {
+          if (target && target.el !== dragCard && target.el !== lastSwappedWith) {
             const insertBefore = (lastMoveX - target.left) < target.width / 2;
             if (insertBefore) {
               container.insertBefore(dragCard, target.el);
             } else {
               container.insertBefore(dragCard, target.el.nextSibling);
             }
+            lastSwappedWith = target.el;
             // Layout just changed — refresh cached positions for the next comparison
             refreshRectCache();
           }
