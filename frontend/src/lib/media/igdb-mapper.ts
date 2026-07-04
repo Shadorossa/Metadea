@@ -155,12 +155,14 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     : undefined;
 
   addRelations(game.remakes, 'Remake');
-  addRelations(game.remasters, 'Remaster');
+  // Expanded editions (game_type 10) commonly point at unrelated remasters
+  // of the base game rather than a remaster of the edition itself — skip.
+  if (gameType !== 10) addRelations(game.remasters, 'Remaster');
   addRelations(game.dlcs, 'DLC');
   addRelations(game.expansions, 'Expansión');
   addRelations(game.standalone_expansions, 'Standalone');
   addRelations(game.expanded_games, 'Edición expandida');
-  addRelations(game.ports, 'Port');
+  // Ports are never shown as related versions.
   addRelations(game.forks, 'Fork');
 
   return {
@@ -237,7 +239,7 @@ const VIA_LABELS: Record<string, string> = {
   relation: 'Relacionado',
 };
 
-export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[]): MediaPageData {
+export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {
   if (!nodes.length) return data;
 
   const seen = new Set<string>([data.externalId]);
@@ -249,6 +251,12 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
 
   const extra: MediaRelation[] = [];
   for (const n of nodes) {
+    // Ports never show as related versions.
+    if (n.via === 'ports') continue;
+    // Expanded editions (game_type 10) commonly turn up unrelated remasters
+    // of the base game rather than a remaster of the edition itself — skip.
+    if (n.via === 'remasters' && gameType === 10) continue;
+
     const externalId = `game:${n.id}`;
     if (seen.has(externalId)) continue;
     seen.add(externalId);

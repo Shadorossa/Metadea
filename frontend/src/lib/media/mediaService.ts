@@ -72,7 +72,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     // port of a remaster) aren't direct IGDB relations of this game — walk
     // the graph a few hops out so they still show up here.
     const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);
-    if (graphNodes.length) data = mergeRelationGraph(data, graphNodes as any);
+    if (graphNodes.length) data = mergeRelationGraph(data, graphNodes as any, (game as { game_type?: number }).game_type);
 
     return data;
   }
