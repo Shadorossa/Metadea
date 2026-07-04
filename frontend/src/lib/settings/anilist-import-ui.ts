@@ -1,4 +1,5 @@
 import { importFromAniList, syncFromAniList, type ImportProgress } from '../anilist/import';
+import { showModal, hideModal } from '../shared/modal-utils';
 
 const ALL_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC', 'MANGA', 'ONE_SHOT', 'NOVEL'];
 
@@ -53,13 +54,13 @@ export function initAniListImportUI(showToast: (msg?: string) => void) {
   }
 
   function hideChooseModal() {
-    if (importChooseModal) importChooseModal.style.display = 'none';
+    hideModal(importChooseModal);
     document.getElementById('anilist-import-choose-backdrop')?.remove();
   }
 
   function showChooseModal() {
     if (!importChooseModal) return;
-    importChooseModal.style.display = 'flex';
+    showModal(importChooseModal);
     const backdrop = document.createElement('div');
     backdrop.id = 'anilist-import-choose-backdrop';
     backdrop.className = 'settings-modal-backdrop';

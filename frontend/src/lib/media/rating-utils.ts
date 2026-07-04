@@ -1,10 +1,11 @@
 import { STAR_PATH } from './constants';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export type RatingSystem = '5-star' | '10-dec' | '10' | '3-emoji';
 
 export function getActiveRatingSystem(): RatingSystem {
   if (typeof window === 'undefined') return '5-star';
-  return (localStorage.getItem('metadea_rating_system') as RatingSystem) || '5-star';
+  return (localStorage.getItem(STORAGE_KEYS.ratingSystem) as RatingSystem) || '5-star';
 }
 
 export function dbRatingToStars5(rating: number): number {

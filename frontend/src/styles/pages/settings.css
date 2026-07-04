@@ -84,6 +84,60 @@
   gap: 0.85rem;
 }
 
+.flex-1 {
+  flex: 1;
+}
+
+.settings-section--color {
+  flex: 1;
+  min-width: 250px;
+}
+
+.settings-section--theme {
+  flex: 2;
+  min-width: 320px;
+}
+
+/* ── Divider rows (section separators) ───────────────────────────────────── */
+.settings-divider {
+  margin-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.5rem;
+}
+
+.settings-divider--row {
+  display: flex;
+  gap: 2rem;
+}
+
+.settings-divider--wrap {
+  flex-wrap: wrap;
+}
+
+.settings-divider--actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.settings-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.settings-bio-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  text-align: right;
+}
+
 .settings-section-title {
   font-size: 0.78rem;
   font-weight: 600;
@@ -402,6 +456,18 @@
   opacity: 0.85;
 }
 
+.env-service-logo--lg {
+  width: 48px;
+  height: 48px;
+}
+
+.env-service-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .env-service-block {
   display: flex;
   flex-direction: column;
@@ -417,6 +483,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  justify-content: center;
+}
+
+.env-service-header--compact {
+  margin-bottom: 0.5rem;
 }
 
 .env-service-name {
@@ -515,16 +586,35 @@
   color: #fff;
 }
 
+.rating-value-text {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 /* ── Color Picker ──────────────────────────────────────────────────────── */
 .color-input {
+  width: 80px;
+  height: 80px;
+  border: none;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 
 .color-picker-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   padding: 1.5rem;
   background: var(--bg-card);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
+}
+
+.settings-hex-display {
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
 }
 
 /* Service logos hover effect */
@@ -663,6 +753,20 @@
   margin-right: 4px;
 }
 
+.settings-auth-status--mono {
+  font-family: monospace;
+}
+
+.settings-version-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
 /* ── Modals (GitHub device flow / AniList token) ─────────────────────────── */
 .settings-modal {
   display: none;
@@ -730,6 +834,10 @@
   gap: 0.5rem;
   width: 100%;
   margin-top: 0.5rem;
+}
+
+.settings-modal-actions button {
+  flex: 1;
 }
 
 .settings-modal-backdrop {
@@ -806,6 +914,10 @@
 
 .settings-import-format-text {
   font-size: 0.82rem;
+}
+
+.settings-import-format-label input[type="checkbox"] {
+  cursor: pointer;
 }
 
 .settings-import-actions {

@@ -1,6 +1,7 @@
 import { readUserJourney, writeUserJourney } from '../tauri';
 import { typeIconMap } from '../shared/icon-strings';
 import { TYPE_LABELS, TYPE_GRADIENTS } from '../constants/media';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 type P = any;
 
@@ -52,7 +53,7 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
 
   // Optionally show progress events by date and media (batch them)
   const batchEpisodes = typeof localStorage !== 'undefined'
-    ? localStorage.getItem('metadea_activity_batch_episodes') === 'true'
+    ? localStorage.getItem(STORAGE_KEYS.activityBatchEpisodes) === 'true'
     : true; // Default: true (batched)
 
   let finalEvents: typeof allEvents;

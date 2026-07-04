@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from './shared/storage-keys';
+
 const FAV_TYPE_MAP: Record<string, string> = {};
 function typeToFavKey(type: string): string {
   return FAV_TYPE_MAP[type] ?? `${type}_fav`;
@@ -623,7 +625,7 @@ export async function getAnimeFolder(anilistId: number): Promise<AnimeLocalEntry
 }
 
 export async function getAniListToken(): Promise<string | null> {
-  const token = localStorage.getItem('metadea_anilist_token');
+  const token = localStorage.getItem(STORAGE_KEYS.anilistToken);
   return token || null;
 }
 

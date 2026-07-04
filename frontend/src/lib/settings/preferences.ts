@@ -2,12 +2,12 @@
 // shared between the settings page (writer) and any consumer that needs to
 // read them without importing the whole settings UI (e.g. search providers).
 
-const ADULT_CONTENT_KEY = 'metadea_show_adult_content';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export function isAdultContentEnabled(): boolean {
-  return localStorage.getItem(ADULT_CONTENT_KEY) === 'true';
+  return localStorage.getItem(STORAGE_KEYS.showAdultContent) === 'true';
 }
 
 export function setAdultContentEnabled(enabled: boolean): void {
-  localStorage.setItem(ADULT_CONTENT_KEY, enabled.toString());
+  localStorage.setItem(STORAGE_KEYS.showAdultContent, enabled.toString());
 }

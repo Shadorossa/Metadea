@@ -3,6 +3,7 @@ import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
@@ -50,7 +51,7 @@ type AniListMediaType = 'ANIME' | 'MANGA';
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function getToken(): string | null {
-  return typeof localStorage !== 'undefined' ? localStorage.getItem('metadea_anilist_token') : null;
+  return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anilistToken) : null;
 }
 
 async function fetchCurrentUserId(token: string): Promise<number | null> {

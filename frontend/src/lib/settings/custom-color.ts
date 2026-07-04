@@ -1,4 +1,5 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 const DEFAULT_COLOR = '#c084fc';
 
@@ -18,18 +19,18 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
 
   const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
   const savedColor = (info.custom_color as string)
-    || localStorage.getItem('metadea_custom_color')
+    || localStorage.getItem(STORAGE_KEYS.customColor)
     || DEFAULT_COLOR;
   colorInput.value = savedColor;
   colorHexDisplay.textContent = `Actual: ${savedColor}`;
-  localStorage.setItem('metadea_custom_color', savedColor);
+  localStorage.setItem(STORAGE_KEYS.customColor, savedColor);
   applyCustomColor(savedColor);
 
   let colorTimer: ReturnType<typeof setTimeout>;
   colorInput.addEventListener('input', (e) => {
     const color = (e.target as HTMLInputElement).value;
     colorHexDisplay.textContent = `Actual: ${color}`;
-    localStorage.setItem('metadea_custom_color', color);
+    localStorage.setItem(STORAGE_KEYS.customColor, color);
     applyCustomColor(color);
     clearTimeout(colorTimer);
     colorTimer = setTimeout(() => saveUserInfo({ custom_color: color }).catch(() => {}), 800);
@@ -38,7 +39,7 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
   colorResetBtn?.addEventListener('click', async () => {
     colorInput.value = DEFAULT_COLOR;
     colorHexDisplay.textContent = `Actual: ${DEFAULT_COLOR}`;
-    localStorage.setItem('metadea_custom_color', DEFAULT_COLOR);
+    localStorage.setItem(STORAGE_KEYS.customColor, DEFAULT_COLOR);
     applyCustomColor(DEFAULT_COLOR);
     await saveUserInfo({ custom_color: DEFAULT_COLOR }).catch(() => {});
     showToast('Color restaurado');

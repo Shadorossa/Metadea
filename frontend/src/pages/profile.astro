@@ -4,6 +4,14 @@ import '../styles/pages/profile.css';
 import '../styles/pages/media.css';
 import { getLang } from '../i18n/index';
 import { ProfileLibraryEditor } from '../components/profile/ProfileLibraryEditor';
+import {
+  ICON_PROFILE_OVERVIEW,
+  ICON_PROFILE_LIBRARY,
+  ICON_PROFILE_FAVORITES,
+  ICON_PROFILE_STATS,
+  ICON_PROFILE_REVIEWS,
+  ICON_PROFILE_LISTS,
+} from '../lib/shared/icon-strings';
 
 const lang = getLang(Astro.url);
 ---
@@ -20,24 +28,12 @@ const lang = getLang(Astro.url);
     </div>
 
     <nav class="profile-tabs">
-      <button class="profile-tab active" data-tab="overview" title="Perfil">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      </button>
-      <button class="profile-tab" data-tab="library" title="Biblioteca">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      </button>
-      <button class="profile-tab" data-tab="favorites" title="Favoritos">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      </button>
-      <button class="profile-tab" data-tab="stats" title="Estadísticas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      </button>
-      <button class="profile-tab" data-tab="reviews" title="Reseñas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      </button>
-      <button class="profile-tab" data-tab="lists" title="Listas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-      </button>
+      <button class="profile-tab active" data-tab="overview" title="Perfil" set:html={ICON_PROFILE_OVERVIEW}></button>
+      <button class="profile-tab" data-tab="library" title="Biblioteca" set:html={ICON_PROFILE_LIBRARY}></button>
+      <button class="profile-tab" data-tab="favorites" title="Favoritos" set:html={ICON_PROFILE_FAVORITES}></button>
+      <button class="profile-tab" data-tab="stats" title="Estadísticas" set:html={ICON_PROFILE_STATS}></button>
+      <button class="profile-tab" data-tab="reviews" title="Reseñas" set:html={ICON_PROFILE_REVIEWS}></button>
+      <button class="profile-tab" data-tab="lists" title="Listas" set:html={ICON_PROFILE_LISTS}></button>
     </nav>
 
     <div id="profile-tab-content" class="profile-tab-content"></div>
@@ -54,6 +50,7 @@ const lang = getLang(Astro.url);
   import { renderReviews } from '../lib/profile/reviews';
   import { renderLists }   from '../lib/profile/lists';
   import { getImage } from '../lib/storage/images';
+  import { getFontFile } from '../lib/settings/fonts';
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
@@ -124,21 +121,7 @@ const lang = getLang(Astro.url);
       const { getUserInfo } = await import('../lib/tauri');
       const userInfo = await getUserInfo();
       const fontId = (userInfo.profile_font as string | undefined) ?? 'inter';
-      const fontFiles: Record<string, string> = {
-        inter: 'inter/Inter-VariableFont_opsz,wght.woff2',
-        roboto: 'roboto/Roboto-VariableFont_wdth,wght.woff2',
-        montserrat: 'montserrat/Montserrat-VariableFont_wght.woff2',
-        raleway: 'raleway/Raleway-VariableFont_wght.woff2',
-        syne: 'syne/Syne-VariableFont_wght.woff2',
-        sourcesanspro: 'sourcesanspro/SourceSans3-VariableFont_wght.woff2',
-        lora: 'lora/Lora-VariableFont_wght.woff2',
-        playfairdisplay: 'playfairdisplay/PlayfairDisplay-VariableFont_wght.woff2',
-        alegreya: 'alegreya/Alegreya-VariableFont_wght.woff2',
-        fraunces: 'fraunces/Fraunces-VariableFont_SOFT,WONK,opsz,wght.woff2',
-        librebaskerville: 'librebaskerville/LibreBaskerville-Bold.woff2',
-        inconsolata: 'inconsolata/Inconsolata-VariableFont_wdth,wght.woff2',
-      };
-      const fontSrc = fontFiles[fontId];
+      const fontSrc = getFontFile(fontId);
       if (fontSrc) {
         const s = document.createElement('style');
         s.textContent = `@font-face { font-family: "profile-font"; src: url("/fonts/${fontSrc}") format("woff2"); font-display: swap; }`;

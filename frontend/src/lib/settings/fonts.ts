@@ -15,6 +15,10 @@ export const PROFILE_FONTS = [
   { id: 'inconsolata',      name: 'Inconsolata',       file: 'inconsolata/Inconsolata-VariableFont_wdth,wght.woff2' },
 ] as const;
 
+export function getFontFile(fontId: string): string | undefined {
+  return PROFILE_FONTS.find(f => f.id === fontId)?.file;
+}
+
 export async function initFontPicker(username: string, showToast: (msg?: string) => void) {
   const preview = document.getElementById('font-preview-name')!;
   const label   = document.getElementById('font-name-label')!;

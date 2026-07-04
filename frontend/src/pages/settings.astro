@@ -144,11 +144,9 @@ const version = pkg.version;
           </div>
 
           <!-- Biografía y Sistema de Calificación lado a lado -->
-          <div
-            style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;"
-          >
+          <div class="settings-divider settings-divider--row">
             <!-- Biografía -->
-            <div class="settings-section" style="flex: 1;">
+            <div class="settings-section flex-1">
               <h3 class="settings-section-title">{t.settings.bio_title}</h3>
               <textarea
                 id="bio-textarea"
@@ -156,18 +154,15 @@ const version = pkg.version;
                 placeholder={t.settings.bio_placeholder}
                 maxlength="500"
                 rows="5"
-                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.85rem; resize: vertical;"
               >
               </textarea>
-              <div
-                style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; text-align: right;"
-              >
+              <div class="settings-bio-count">
                 <span id="bio-char-count">0</span>/500
               </div>
             </div>
 
             <!-- Sistema de Calificación -->
-            <div class="settings-section" style="flex: 1;">
+            <div class="settings-section flex-1">
               <h3 class="settings-section-title">
                 {t.settings.rating_system_title}
               </h3>
@@ -186,9 +181,7 @@ const version = pkg.version;
                   data-value="10-dec"
                   title="Nota sobre 10 (2 decimales)"
                 >
-                  <span style="font-size: 0.75rem; font-weight: 800;"
-                    >10.00</span
-                  >
+                  <span class="rating-value-text">10.00</span>
                 </button>
                 <button
                   type="button"
@@ -196,7 +189,7 @@ const version = pkg.version;
                   data-value="10"
                   title="Nota sobre 10 (Entero)"
                 >
-                  <span style="font-size: 0.75rem; font-weight: 800;">10</span>
+                  <span class="rating-value-text">10</span>
                 </button>
                 <button
                   type="button"
@@ -211,31 +204,22 @@ const version = pkg.version;
           </div>
 
           <!-- Color Personalizado y Selector de Fondo -->
-          <div
-            style="display: flex; gap: 2rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; flex-wrap: wrap;"
-          >
+          <div class="settings-divider settings-divider--row settings-divider--wrap">
             <!-- Color Personalizado -->
-            <div class="settings-section" style="flex: 1; min-width: 250px;">
+            <div class="settings-section settings-section--color">
               <h3 class="settings-section-title">
                 {t.settings.custom_color_title}
               </h3>
               <p class="settings-hint">{t.settings.custom_color_hint}</p>
-              <div
-                class="color-picker-container"
-                style="display: flex; align-items: center; gap: 1rem;"
-              >
+              <div class="color-picker-container">
                 <input
                   type="color"
                   id="custom-color-input"
                   class="color-input"
                   value="#c084fc"
-                  style="width: 80px; height: 80px; border: none; border-radius: var(--radius-md); cursor: pointer;"
                 />
                 <div>
-                  <p
-                    id="color-hex-display"
-                    style="font-family: monospace; font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.5rem;"
-                  >
+                  <p id="color-hex-display" class="settings-hex-display">
                     Actual: #c084fc
                   </p>
                   <button class="btn btn--sm btn--ghost" id="color-reset-btn"
@@ -246,7 +230,7 @@ const version = pkg.version;
             </div>
 
             <!-- Selector de Fondo Dinámico -->
-            <div class="settings-section" style="flex: 2; min-width: 320px;">
+            <div class="settings-section settings-section--theme">
               <h3 class="settings-section-title">
                 {t.settings.appearance_bg_title}
               </h3>
@@ -256,9 +240,7 @@ const version = pkg.version;
           </div>
 
           <!-- Sección de Actividad -->
-          <div
-            style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;"
-          >
+          <div class="settings-divider">
             <h3 class="settings-section-title">
               {t.settings.activity_section}
             </h3>
@@ -316,21 +298,17 @@ const version = pkg.version;
             <div class="env-services-grid">
               <!-- IGDB -->
               <div class="env-service-block">
-                <div
-                  class="env-service-header"
-                  style="justify-content: center;"
-                >
+                <div class="env-service-header">
                   <a
                     href="https://dev.twitch.tv/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                    class="env-service-link"
                   >
                     <img
-                      class="env-service-logo"
+                      class="env-service-logo env-service-logo--lg"
                       src="/API/IGDB_logo.png"
                       alt="IGDB"
-                      style="width: 48px; height: 48px;"
                     />
                   </a>
                 </div>
@@ -365,21 +343,17 @@ const version = pkg.version;
 
               <!-- TMDB -->
               <div class="env-service-block">
-                <div
-                  class="env-service-header"
-                  style="justify-content: center;"
-                >
+                <div class="env-service-header">
                   <a
                     href="https://www.themoviedb.org/settings/api"
                     target="_blank"
                     rel="noopener noreferrer"
-                    style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                    class="env-service-link"
                   >
                     <img
-                      class="env-service-logo"
+                      class="env-service-logo env-service-logo--lg"
                       src="/API/Tmdb.new.logo.png"
                       alt="TMDB"
-                      style="width: 48px; height: 48px;"
                     />
                   </a>
                 </div>
@@ -415,21 +389,17 @@ const version = pkg.version;
               <div class="env-service-block">
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <div
-                      class="env-service-header"
-                      style="justify-content: center; margin-bottom: 0.5rem;"
-                    >
+                    <div class="env-service-header env-service-header--compact">
                       <a
                         href="https://steamcommunity.com/dev/apikey"
                         target="_blank"
                         rel="noopener noreferrer"
-                        style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                        class="env-service-link"
                       >
                         <img
-                          class="env-service-logo"
+                          class="env-service-logo env-service-logo--lg"
                           src="/platforms/steam_logo.png"
                           alt="Steam"
-                          style="width: 48px; height: 48px;"
                         />
                       </a>
                     </div>
@@ -445,21 +415,17 @@ const version = pkg.version;
                     />
                   </div>
                   <div class="env-field">
-                    <div
-                      class="env-service-header"
-                      style="justify-content: center; margin-bottom: 0.5rem;"
-                    >
+                    <div class="env-service-header env-service-header--compact">
                       <a
                         href="https://anilist.co/settings/developer"
                         target="_blank"
                         rel="noopener noreferrer"
-                        style="display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                        class="env-service-link"
                       >
                         <img
-                          class="env-service-logo"
+                          class="env-service-logo env-service-logo--lg"
                           src="/API/Anilist_logo.png"
                           alt="AniList"
-                          style="width: 48px; height: 48px;"
                         />
                       </a>
                     </div>
@@ -478,9 +444,7 @@ const version = pkg.version;
               </div>
             </div>
 
-            <div
-              style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); display: flex; gap: 1rem;"
-            >
+            <div class="settings-divider settings-divider--actions">
               <button class="btn btn--primary" id="env-save-btn"
                 >{t.settings.env_save}</button
               >
@@ -568,31 +532,31 @@ const version = pkg.version;
                     <span class="settings-import-group-label">Anime</span>
                     <div class="settings-import-format-grid">
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-TV" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-TV" checked />
                         <span class="settings-import-format-text">TV</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-TV_SHORT" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-TV_SHORT" checked />
                         <span class="settings-import-format-text">TV Short</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-MOVIE" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-MOVIE" checked />
                         <span class="settings-import-format-text">Movie</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-SPECIAL" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-SPECIAL" checked />
                         <span class="settings-import-format-text">Special</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-OVA" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-OVA" checked />
                         <span class="settings-import-format-text">OVA</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-ONA" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-ONA" checked />
                         <span class="settings-import-format-text">ONA</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-MUSIC" style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-MUSIC" />
                         <span class="settings-import-format-text">Music</span>
                       </label>
                     </div>
@@ -602,15 +566,15 @@ const version = pkg.version;
                     <span class="settings-import-group-label">Manga</span>
                     <div class="settings-import-format-grid">
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-MANGA" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-MANGA" checked />
                         <span class="settings-import-format-text">Manga</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-ONE_SHOT" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-ONE_SHOT" checked />
                         <span class="settings-import-format-text">One-Shot</span>
                       </label>
                       <label class="settings-import-format-label">
-                        <input type="checkbox" id="fmt-NOVEL" checked style="cursor: pointer;" />
+                        <input type="checkbox" id="fmt-NOVEL" checked />
                         <span class="settings-import-format-text">Light Novel</span>
                       </label>
                     </div>
@@ -619,14 +583,12 @@ const version = pkg.version;
 
                 <div class="settings-import-actions">
                   <button
-                    class="btn btn--sm btn--primary"
+                    class="btn btn--sm btn--primary flex-1"
                     id="anilist-import-start-btn"
-                    style="flex: 1;"
                   >Importar</button>
                   <button
-                    class="btn btn--sm btn--secondary"
+                    class="btn btn--sm btn--secondary flex-1"
                     id="anilist-sync-start-btn"
-                    style="flex: 1;"
                   >Sincronizar</button>
                   <button
                     class="btn btn--sm btn--ghost"
@@ -687,12 +649,12 @@ const version = pkg.version;
                 <button
                   class="btn btn--sm btn--primary"
                   id="anilist-save-token-btn"
-                  style="flex: 1;">Validar y guardar</button
+                  >Validar y guardar</button
                 >
                 <button
                   class="btn btn--sm btn--ghost"
                   id="anilist-cancel-token-btn"
-                  style="flex: 1;">Cancelar</button
+                  >Cancelar</button
                 >
               </div>
             </div>
@@ -712,18 +674,12 @@ const version = pkg.version;
               aplicación.
             </p>
 
-            <div
-              style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);"
-            >
+            <div class="settings-version-card">
               <div>
+                <span class="settings-auth-name">{t.settings.app_version_label}</span>
                 <span
-                  style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
-                  >{t.settings.app_version_label}</span
-                >
-                <span
-                  class="app-curr-ver"
+                  class="app-curr-ver settings-auth-status settings-auth-status--mono"
                   data-version={version}
-                  style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;"
                 ></span>
               </div>
               <button
