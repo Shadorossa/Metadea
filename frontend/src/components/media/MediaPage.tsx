@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
-import { getLibraryEntry, saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
+import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus } from '../local/ui/icons';
+import { useLibraryEntry } from './hooks/useLibraryEntry';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -126,18 +127,20 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [pageState, setPageState] = useState<'loading' | 'error' | 'ready'>('loading');
   const [isFetchingFull,     setIsFetchingFull]     = useState(false);
   const [data,               setData]               = useState<MediaPageData | null>(null);
-  const [libEntry,           setLibEntry]           = useState<LibraryEntry | null>(null);
-  const [libStatus,          setLibStatus]          = useState('');
-  const [libRating,          setLibRating]          = useState(0);
   const [showEditor,         setShowEditor]         = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
 
-  // Last entry known to actually exist in the DB (fetched, saved or deleted).
-  // Quick clicks on the hero widget mutate `libEntry` optimistically before
-  // the editor even opens; if the user closes without saving, we roll back
-  // to this ref instead of leaving the unsaved draft on screen.
-  const lastKnownEntry = useRef<LibraryEntry | null>(null);
+  const {
+    entry: libEntry,
+    status: libStatus,
+    rating: libRating,
+    inLibrary,
+    updateLocal,
+    applySaved,
+    applyDeleted,
+    rollback,
+  } = useLibraryEntry(currentId, data?.type);
 
   // Escuchar cambios de navegación (Astro View Transitions)
   useEffect(() => {
@@ -195,20 +198,11 @@ export default function MediaPage({ lang }: { lang: string }) {
     if (params.get('edit') === '1') setShowEditor(true);
   }, [data]);
 
-  // Load library entry + upsert catalog once we know the type
+  // Upsert catalog entry with the latest metadata from the API once we know the type
+  // (library entry loading is handled by useLibraryEntry above)
   useEffect(() => {
     if (!data?.type || !currentId) return;
 
-    getLibraryEntry(currentId, data.type)
-      .then(entry => {
-        lastKnownEntry.current = entry;
-        setLibEntry(entry);
-        setLibStatus(entry?.status ?? '');
-        setLibRating(entry?.rating ?? 0);
-      })
-      .catch(() => {});
-
-    // Upsert catalog entry with the latest metadata from the API
     saveCatalogEntry({
       id:                    '',
       external_id:           currentId,
@@ -288,56 +282,32 @@ export default function MediaPage({ lang }: { lang: string }) {
   }, []);
 
   const handleEditorSaved = useCallback((entry: LibraryEntry) => {
-    lastKnownEntry.current = entry;
-    setLibEntry(entry);
-    setLibStatus(entry.status ?? '');
-    setLibRating(entry.rating ?? 0);
-  }, []);
+    applySaved(entry);
+  }, [applySaved]);
 
   const handleEditorDeleted = useCallback(() => {
-    lastKnownEntry.current = null;
-    setLibEntry(null);
-    setLibStatus('');
-    setLibRating(0);
-  }, []);
+    applyDeleted();
+  }, [applyDeleted]);
 
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
   // keep showing changes that were never actually persisted.
   const handleEditorClose = useCallback(() => {
     setShowEditor(false);
-    const truth = lastKnownEntry.current;
-    setLibEntry(truth);
-    setLibStatus(truth?.status ?? '');
-    setLibRating(truth?.rating ?? 0);
-  }, []);
-
-  // Merges a quick edit (status/rating clicked directly on the hero) into the
-  // current entry draft, so the editor modal opens already reflecting it
-  // instead of overwriting it with the stale value from the last DB fetch.
-  const draftEntry = useCallback((overrides: Partial<LibraryEntry>): LibraryEntry => ({
-    id: '', user_id: 'local', external_id: currentId, type: data?.type ?? '',
-    status: null, rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
-    is_favorite: 0, is_platinum: 0, tags: null, notes: null,
-    added_at: null, updated_at: null, selected_platform: null, selected_version: null,
-    started_at: null, finished_at: null,
-    ...libEntry,
-    ...overrides,
-  }), [currentId, data?.type, libEntry]);
+    rollback();
+  }, [rollback]);
 
   const handleStatusChange = useCallback((next: string) => {
-    setLibStatus(next);
-    setLibEntry(draftEntry({ status: next || null }));
+    updateLocal({ status: next || null });
     setShowEditor(true);
-  }, [draftEntry]);
+  }, [updateLocal]);
 
   const handleRate = useCallback((stars: number) => {
     const dbRating = stars * 2;
     const nextRating = libRating === dbRating ? 0 : dbRating;
-    setLibRating(nextRating);
-    setLibEntry(draftEntry({ rating: nextRating || null }));
+    updateLocal({ rating: nextRating || null });
     setShowEditor(true);
-  }, [libRating, draftEntry]);
+  }, [libRating, updateLocal]);
 
   // ── States: loading / error ──────────────────────────────────────────────
 
@@ -350,7 +320,6 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   // ── Ready ────────────────────────────────────────────────────────────────
 
-  const inLibrary  = !!libStatus;
   // Only true expansions/bundled editions get redirected to their base game
   // and blocked from being logged separately — remakes/remasters are their
   // own standalone releases and stay fully trackable in the library.

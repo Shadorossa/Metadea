@@ -46,7 +46,10 @@ const lang = getLang(Astro.url);
 <script>
   import { getAuthToken, getAllLibraryEntries, getAllCatalogEntries } from '../lib/tauri';
   import { decodeJwtPayload } from '../lib/profile/utils';
-  import { renderOverview, renderLibrary, renderFavorites, renderStats } from '../lib/profile/render';
+  import { renderOverview } from '../lib/profile/render-overview';
+  import { renderLibrary } from '../lib/profile/render-library';
+  import { renderFavorites } from '../lib/profile/render-favorites';
+  import { renderStats } from '../lib/profile/render-stats';
   import { renderReviews } from '../lib/profile/reviews';
   import { renderLists }   from '../lib/profile/lists';
   import { getImage } from '../lib/storage/images';

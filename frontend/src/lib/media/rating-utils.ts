@@ -22,6 +22,23 @@ const STAR_FULL  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="curren
 const STAR_HALF  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="${STAR_PATH}" clip-path="polygon(0 0, 50% 0, 50% 100%, 0 100%)"/><path d="${STAR_PATH}" fill="none"/></svg>`;
 const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="${STAR_PATH}"/></svg>`;
 
+/** Formats an average rating value (DB 0-10 scale) per the active rating system, with no unit suffix. */
+export function formatAverageScore(avgVal: number, system: RatingSystem): string {
+  if (system === '10-dec') return avgVal.toFixed(2);
+  if (system === '10') return Math.round(avgVal).toString();
+  if (system === '3-emoji') {
+    const { emoji } = ratingToEmoji(avgVal);
+    return `${emoji} (${avgVal.toFixed(1)})`;
+  }
+  return (avgVal / 2).toFixed(1);
+}
+
+/** Unit suffix to append after formatAverageScore's output (empty for the emoji system, which is self-contained). */
+export function averageScoreSuffix(system: RatingSystem): string {
+  if (system === '3-emoji') return '';
+  return system === '10-dec' || system === '10' ? ' / 10' : ' / 5';
+}
+
 export function buildStarHtml(rating: number, cssClass: string, wrapperStyle = ''): string {
   if (!rating) return '';
   const stars5 = dbRatingToStars5(rating);

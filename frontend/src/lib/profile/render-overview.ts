@@ -1,0 +1,113 @@
+import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory, readUserFavorites } from '../tauri';
+import type { MediaCatalogEntry } from '../tauri';
+import { pad, typeLabel } from './utils';
+import { getT } from '../../i18n/client';
+import { buildHofHtml, initHofListeners } from './hof';
+import { buildMonthlyHistoryHtml } from './monthly';
+import { buildActivityHtml, initActivityListeners } from './activity';
+import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
+
+type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
+
+export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
+  try {
+    const t = getT();
+    const p = t.profile;
+
+    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+    const catalogMap = new Map<string, MediaCatalogEntry>(
+      catalogEntries.map(e => [e.external_id, e])
+    );
+
+    const monthlyHistory = await readMonthlyHistory().catch(() => ({}));
+
+    let completed = 0, inProgress = 0, planning = 0, dropped = 0;
+    let totalRating = 0, ratedCount = 0, totalMinutes = 0;
+    const completedByType: Record<string, number> = {};
+
+    for (const item of items) {
+      const s = item.status ?? 'planning';
+      if (s === 'completed') {
+        completed++;
+        completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
+      }
+      else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
+      else if (s === 'planning') planning++;
+      else if (s === 'dropped') dropped++;
+
+      if (item.rating) { totalRating += item.rating; ratedCount++; }
+      if (item.minutes_spent) totalMinutes += item.minutes_spent;
+    }
+
+    const system = getActiveRatingSystem();
+    const avgRatingStr = ratedCount > 0
+      ? formatAverageScore(totalRating / ratedCount, system)
+      : '0.0';
+
+    const totalHours = Math.round(totalMinutes / 60);
+
+    const completedTooltipHtml = `
+    <span class="stat-help-wrap">
+      <span class="stat-help-icon">?</span>
+      <span class="stat-tooltip">
+        ${Object.entries(completedByType).length > 0
+        ? Object.entries(completedByType).map(([type, count]) => `
+              <span class="stat-tooltip-row">
+                <span class="stat-tooltip-label">${typeLabel(type)}</span>
+                <span class="stat-tooltip-value">${count}</span>
+              </span>
+            `).join('')
+        : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
+      }
+      </span>
+    </span>
+  `;
+
+    const statsHtml = `
+    <div class="profile-stats-bar">
+      ${([
+        [p.stat_total, pad(items.length)],
+        [p.stat_progress, pad(inProgress)],
+        [p.stat_completed, pad(completed)],
+        [p.stat_pending, pad(planning)],
+        [p.stat_dropped, pad(dropped)],
+        [p.stat_avg, avgRatingStr],
+        [p.stat_hours, totalHours + 'h'],
+      ] as [string, string][]).map(([label, value]) =>
+        `<div class="profile-stat">
+           <span class="profile-stat-value">${value}</span>
+           <span class="profile-stat-label">
+             ${label}
+             ${label === p.stat_completed ? completedTooltipHtml : ''}
+           </span>
+         </div>`
+      ).join('')}
+    </div>`;
+
+    const bottomHtml = `
+    <div class="profile-bottom-grid">
+      <div class="profile-bottom-col">
+        <p class="profile-section-label">${p.monthly_history}</p>
+        ${buildMonthlyHistoryHtml(monthlyHistory, items, catalogMap)}
+      </div>
+      <div class="profile-bottom-col">
+        <p class="profile-section-label">${p.recent_activity}</p>
+        ${await buildActivityHtml(catalogMap, p)}
+      </div>
+    </div>`;
+
+    const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+    const multimediaIds = favData.multimedia || [];
+    const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+
+    el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
+    initHofListeners(el);
+    initActivityListeners(el, catalogMap, p);
+  } catch (error: any) {
+    console.error("renderOverview failed:", error);
+    el.innerHTML = `<div style="padding: 2rem; color: #ef4444; font-family: monospace; font-size: 0.9rem;">
+      Error al renderizar perfil: ${error?.message || error}<br/>
+      <pre>${error?.stack || ''}</pre>
+    </div>`;
+  }
+}
