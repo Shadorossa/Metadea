@@ -78,6 +78,166 @@
   font-size: 0.85rem;
 }
 
+/* ── Tier list cards (índice) ────────────────────────────────────────────── */
+
+.tier-index-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1.25rem;
+}
+
+.tier-index-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.tier-index-card-collage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.tier-index-card:hover .tier-index-card-collage {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.tier-index-card-collage-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tier-index-card-collage-fallback {
+  width: 100%;
+  height: 100%;
+}
+
+.tier-index-card-empty-icon {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.tier-index-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.tier-index-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tier-index-card-meta {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+/* ── Create tier list modal ──────────────────────────────────────────────── */
+
+.tier-create-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tier-create-modal {
+  width: 360px;
+  max-width: 90vw;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tier-create-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 0.5rem;
+}
+
+.tier-create-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-top: 0.4rem;
+}
+
+.tier-create-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.tier-create-input:focus { border-color: var(--accent); }
+
+.tier-create-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.tier-create-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.tier-create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.tier-create-btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tier-create-btn--ghost {
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+.tier-create-btn:not(:disabled):hover { opacity: 0.85; }
+
 /* ── /tier/new (editor) ──────────────────────────────────────────────────── */
 
 .tier-new-page {
@@ -101,6 +261,7 @@
   padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  gap: 1rem;
 }
 
 .tier-maker-back {
@@ -121,18 +282,38 @@
   color: var(--text-main);
 }
 
+.tier-maker-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.tier-maker-add-btn:hover { opacity: 0.85; }
+
 .tier-maker-body {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* ── Tier rows (columna izquierda) ───────────────────────────────────────── */
+/* ── Tier rows + pool (columna única, scroll vertical) ───────────────────── */
 
 .tier-rows-wrap {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .tier-rows {
@@ -146,7 +327,7 @@
 
 .tier-row {
   display: flex;
-  min-height: 66px;
+  min-height: 128px;
   background: var(--bg-elevated);
   transition: background 0.1s;
 }
@@ -158,8 +339,8 @@
 }
 
 .tier-label {
-  width: 56px;
-  min-width: 56px;
+  width: 64px;
+  min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -172,7 +353,7 @@
   border: none;
   outline: none;
   text-align: center;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #000;
   width: 100%;
@@ -197,18 +378,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 3px;
-  padding: 4px 6px;
-  min-height: 66px;
+  gap: 6px;
+  padding: 8px 10px;
+  min-height: 128px;
   border-left: 1px solid var(--border-color);
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
 
 .tier-card {
-  width: 46px;
-  height: 66px;
-  border-radius: 3px;
+  width: 84px;
+  height: 120px;
+  border-radius: 4px;
   overflow: hidden;
   cursor: grab;
   flex-shrink: 0;
@@ -217,11 +398,11 @@
 }
 
 .tier-card--sm {
-  width: 42px;
-  height: 60px;
+  width: 56px;
+  height: 80px;
 }
 
-.tier-card:hover { transform: scale(1.07); z-index: 2; }
+.tier-card:hover { transform: scale(1.06); z-index: 2; }
 .tier-card:active { cursor: grabbing; }
 .tier-card--faded { opacity: 0.3; }
 
@@ -248,16 +429,14 @@
   color: var(--text-dim);
 }
 
-/* ── Pool (columna derecha) ──────────────────────────────────────────────── */
+/* ── Pool (panel a ancho completo, 6 por fila) ───────────────────────────── */
 
 .tier-pool {
-  width: 260px;
-  min-width: 260px;
-  border-left: 1px solid var(--border-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   padding: 1rem;
-  overflow-y: auto;
   transition: background 0.1s;
 }
 
@@ -274,10 +453,10 @@
 }
 
 .tier-pool-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+  justify-items: center;
 }
 
 /* ── Ghost (floating card while dragging) ────────────────────────────────── */
@@ -289,12 +468,8 @@
   transform: scale(1.06) rotate(2deg);
   filter: drop-shadow(0 8px 20px rgba(0,0,0,0.55));
   cursor: grabbing;
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
-}
-
-.tier-card--faded {
-  opacity: 0.3;
 }
 
 .tier-card-wrap {
@@ -310,6 +485,92 @@
   color: var(--text-dim);
   font-size: 0.85rem;
 }
+
+/* ── Add-works picker modal ──────────────────────────────────────────────── */
+
+.tier-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tier-picker-modal {
+  width: 640px;
+  max-width: 92vw;
+  max-height: 80vh;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tier-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tier-picker-search {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.tier-picker-search:focus { border-color: var(--accent); }
+
+.tier-picker-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem;
+}
+
+.tier-picker-close:hover { color: var(--text-main); }
+
+.tier-picker-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.tier-picker-empty {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 2rem 0;
+  margin: 0;
+}
+
+.tier-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.6rem;
+  justify-items: center;
+}
+
+.tier-picker-item {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tier-picker-item .tier-card { cursor: pointer; }
 
 /* ── Navbar S badge ──────────────────────────────────────────────────────── */
 

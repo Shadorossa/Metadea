@@ -111,6 +111,23 @@ CREATE TABLE IF NOT EXISTS monthly_history (
     PRIMARY KEY (month, external_id)
 );
 
+CREATE TABLE IF NOT EXISTS tier_list_items (
+    tier_list_id TEXT NOT NULL,
+    external_id  TEXT NOT NULL,
+    tier_key     TEXT NOT NULL DEFAULT 'pool',
+    position     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (tier_list_id, external_id)
+);
+
+CREATE TABLE IF NOT EXISTS tier_lists (
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL DEFAULT '',
+    list_type  TEXT NOT NULL DEFAULT 'works',
+    tiers      TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_activity (
     id             TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
     date           TEXT NOT NULL,

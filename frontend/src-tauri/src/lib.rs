@@ -7,6 +7,7 @@ mod igdb;
 mod media_catalog;
 mod platform_scanning;
 mod steam;
+mod tier_lists;
 mod user_library;
 mod user_lists;
 mod user_metadata;
@@ -123,6 +124,14 @@ pub fn run() {
             anilist::get_anilist_user_profile,
             discord::update_presence,
             discord::reset_presence,
+            tier_lists::create_tier_list,
+            tier_lists::get_all_tier_lists,
+            tier_lists::get_tier_list,
+            tier_lists::delete_tier_list,
+            tier_lists::update_tier_list_tiers,
+            tier_lists::add_item_to_tier_list,
+            tier_lists::remove_item_from_tier_list,
+            tier_lists::set_tier_list_placements,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

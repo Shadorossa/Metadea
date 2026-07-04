@@ -1,29 +1,45 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getAllCatalogEntries } from '../../lib/tauri';
-import type { MediaCatalogEntry } from '../../lib/tauri';
+import {
+  getTierList, updateTierListTiers, addItemToTierList,
+  setTierListPlacements, searchCatalog,
+} from '../../lib/tauri';
+import type { TierDef, TierListItemFull } from '../../lib/tauri';
+import { getT } from '../../i18n/client';
 
-interface Tier {
-  id: string;
-  label: string;
-  color: string;
-  items: MediaCatalogEntry[];
+interface Entry {
+  external_id: string;
+  title_main:  string | null;
+  cover_url:   string | null;
+  media_type:  string | null;
+}
+
+interface Tier extends TierDef {
+  items: Entry[];
 }
 
 interface State {
+  id:    string | null;
+  name:  string;
+  type:  string;
   tiers: Tier[];
-  pool: MediaCatalogEntry[];
+  pool:  Entry[];
 }
 
-const DEFAULT_TIERS: Omit<Tier, 'items'>[] = [
-  { id: 's', label: 'S', color: '#ff7f7f' },
-  { id: 'a', label: 'A', color: '#ffbf7f' },
-  { id: 'b', label: 'B', color: '#ffdf7f' },
-  { id: 'c', label: 'C', color: '#7fff7f' },
-  { id: 'd', label: 'D', color: '#7fbfff' },
-  { id: 'f', label: 'F', color: '#bf7fff' },
-];
+function getTierListId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('id');
+}
 
-function CoverCard({ entry, faded, small }: { entry: MediaCatalogEntry; faded?: boolean; small?: boolean }) {
+function toEntry(item: TierListItemFull): Entry {
+  return {
+    external_id: item.external_id,
+    title_main:  item.title_main,
+    cover_url:   item.cover_url,
+    media_type:  item.media_type,
+  };
+}
+
+function CoverCard({ entry, faded, small }: { entry: Entry; faded?: boolean; small?: boolean }) {
   const name = entry.title_main ?? entry.external_id;
   return (
     <div
@@ -39,13 +55,16 @@ function CoverCard({ entry, faded, small }: { entry: MediaCatalogEntry; faded?: 
 }
 
 export default function TierMaker() {
-  const [state, setState] = useState<State>({
-    tiers: DEFAULT_TIERS.map(t => ({ ...t, items: [] })),
-    pool: [],
-  });
+  const t = getT().tier;
+  const tierListId = getTierListId();
+
+  const [state, setState] = useState<State>({ id: null, name: '', type: 'works', tiers: [], pool: [] });
   const [loading, setLoading]       = useState(true);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [pickerResults, setPickerResults] = useState<Entry[]>([]);
 
   // Refs that don't need re-renders
   const ghostRef   = useRef<HTMLDivElement>(null);
@@ -53,9 +72,29 @@ export default function TierMaker() {
   const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    getAllCatalogEntries()
-      .then(entries => { setState(prev => ({ ...prev, pool: entries })); setLoading(false); })
+    if (!tierListId) { setLoading(false); return; }
+    getTierList(tierListId)
+      .then(detail => {
+        if (!detail) { setLoading(false); return; }
+        const tiers: Tier[] = detail.tiers.map(td => ({
+          ...td,
+          items: detail.items.filter(i => i.tier_key === td.id).map(toEntry),
+        }));
+        const pool = detail.items.filter(i => i.tier_key === 'pool').map(toEntry);
+        setState({ id: detail.id, name: detail.name, type: detail.list_type, tiers, pool });
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
+  }, [tierListId]);
+
+  // Persist the current tier/pool assignment for every item
+  const persistPlacements = useCallback((next: State) => {
+    if (!next.id) return;
+    const placements = [
+      ...next.pool.map((e, pos) => ({ external_id: e.external_id, tier_key: 'pool', position: pos })),
+      ...next.tiers.flatMap(t => t.items.map((e, pos) => ({ external_id: e.external_id, tier_key: t.id, position: pos }))),
+    ];
+    setTierListPlacements(next.id, placements).catch(() => {});
   }, []);
 
   const getDropZone = (x: number, y: number): string | null => {
@@ -76,34 +115,36 @@ export default function TierMaker() {
     const { itemId, fromTier } = src;
 
     setState(prev => {
-      let entry: MediaCatalogEntry | null =
+      let entry: Entry | null =
         fromTier === 'pool'
-          ? prev.pool.find(e => e.id === itemId) ?? null
-          : prev.tiers.find(t => t.id === fromTier)?.items.find(e => e.id === itemId) ?? null;
+          ? prev.pool.find(e => e.external_id === itemId) ?? null
+          : prev.tiers.find(t => t.id === fromTier)?.items.find(e => e.external_id === itemId) ?? null;
       if (!entry) return prev;
 
       const newTiers = prev.tiers.map(t => {
         let items = [...t.items];
-        if (t.id === fromTier) items = items.filter(e => e.id !== itemId);
+        if (t.id === fromTier) items = items.filter(e => e.external_id !== itemId);
         if (t.id === toId)     items = [...items, entry!];
         return { ...t, items };
       });
       let newPool = [...prev.pool];
-      if (fromTier === 'pool') newPool = newPool.filter(e => e.id !== itemId);
+      if (fromTier === 'pool') newPool = newPool.filter(e => e.external_id !== itemId);
       if (toId === 'pool')     newPool = [...newPool, entry];
 
-      return { tiers: newTiers, pool: newPool };
+      const next = { ...prev, tiers: newTiers, pool: newPool };
+      persistPlacements(next);
+      return next;
     });
-  }, []);
+  }, [persistPlacements]);
 
-  const startDrag = useCallback((e: React.PointerEvent, entry: MediaCatalogEntry, fromTier: string | 'pool') => {
+  const startDrag = useCallback((e: React.PointerEvent, entry: Entry, fromTier: string | 'pool') => {
     // Ignore right-click / multi-touch
     if (e.button !== undefined && e.button !== 0) return;
 
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    dragSrc.current = { itemId: entry.id, fromTier };
+    dragSrc.current = { itemId: entry.external_id, fromTier };
 
     // Position ghost before showing it
     const ghost = ghostRef.current;
@@ -120,7 +161,7 @@ export default function TierMaker() {
     document.body.style.pointerEvents = 'none';
     if (ghost) ghost.style.pointerEvents = 'auto';
 
-    setDraggingId(entry.id);
+    setDraggingId(entry.external_id);
 
     const onMove = (ev: PointerEvent) => {
       if (ghost) {
@@ -151,11 +192,55 @@ export default function TierMaker() {
   }, [commitDrop]);
 
   const onLabelChange = (tierId: string, v: string) =>
-    setState(prev => ({ ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, label: v } : t) }));
-  const onColorChange = (tierId: string, v: string) =>
-    setState(prev => ({ ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, color: v } : t) }));
+    setState(prev => {
+      const next = { ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, label: v } : t) };
+      if (next.id) updateTierListTiers(next.id, next.tiers.map(({ id, label, color }) => ({ id, label, color }))).catch(() => {});
+      return next;
+    });
 
-  if (loading) return <div className="tier-loading">Cargando catálogo…</div>;
+  const onColorChange = (tierId: string, v: string) =>
+    setState(prev => {
+      const next = { ...prev, tiers: prev.tiers.map(t => t.id === tierId ? { ...t, color: v } : t) };
+      if (next.id) updateTierListTiers(next.id, next.tiers.map(({ id, label, color }) => ({ id, label, color }))).catch(() => {});
+      return next;
+    });
+
+  // ── Picker (add works) ────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!showPicker || state.type === 'characters') return;
+    const q = pickerQuery.trim();
+    if (!q) { setPickerResults([]); return; }
+    let cancelled = false;
+    searchCatalog(q).then(results => {
+      if (cancelled) return;
+      const existingIds = new Set([...state.pool, ...state.tiers.flatMap(t => t.items)].map(e => e.external_id));
+      setPickerResults(
+        results
+          .filter(r => !existingIds.has(r.external_id))
+          .slice(0, 30)
+          .map(r => ({ external_id: r.external_id, title_main: r.title_main ?? null, cover_url: r.cover_url ?? null, media_type: r.type }))
+      );
+    }).catch(() => setPickerResults([]));
+    return () => { cancelled = true; };
+  }, [showPicker, pickerQuery, state.type, state.pool, state.tiers]);
+
+  const addWork = async (entry: Entry) => {
+    if (!state.id) return;
+    await addItemToTierList(state.id, entry.external_id).catch(() => {});
+    setState(prev => ({ ...prev, pool: [...prev.pool, entry] }));
+    setPickerResults(prev => prev.filter(r => r.external_id !== entry.external_id));
+  };
+
+  if (loading) return <div className="tier-loading">…</div>;
+
+  if (!tierListId || !state.id) {
+    return (
+      <div className="tier-loading">
+        <a href="/tier" className="tier-maker-back">{t.back}</a>
+      </div>
+    );
+  }
 
   const { tiers, pool } = state;
 
@@ -166,10 +251,15 @@ export default function TierMaker() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
-          Mis tier lists
+          {t.back}
         </a>
-        <span className="tier-maker-page-title">Nueva Tier List</span>
-        <div />
+        <span className="tier-maker-page-title">{state.name}</span>
+        <button type="button" className="tier-maker-add-btn" onClick={() => setShowPicker(true)}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          {t.add_works}
+        </button>
       </div>
 
       <div className="tier-maker-body">
@@ -190,30 +280,30 @@ export default function TierMaker() {
                 </div>
                 <div className="tier-items" data-tier-id={tier.id}>
                   {tier.items.map(entry => (
-                    <div key={entry.id} className="tier-card-wrap"
+                    <div key={entry.external_id} className="tier-card-wrap"
                       onPointerDown={e => startDrag(e, entry, tier.id)}>
-                      <CoverCard entry={entry} faded={draggingId === entry.id} />
+                      <CoverCard entry={entry} faded={draggingId === entry.external_id} />
                     </div>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Pool */}
-        <div data-pool="true"
-          className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}>
-          <p className="tier-pool-label">
-            {pool.length === 0 ? 'Todo clasificado' : `Sin clasificar (${pool.length})`}
-          </p>
-          <div className="tier-pool-grid" data-pool="true">
-            {pool.map(entry => (
-              <div key={entry.id} className="tier-card-wrap"
-                onPointerDown={e => startDrag(e, entry, 'pool')}>
-                <CoverCard entry={entry} faded={draggingId === entry.id} small />
-              </div>
-            ))}
+          {/* Pool */}
+          <div data-pool="true"
+            className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}>
+            <p className="tier-pool-label">
+              {pool.length === 0 ? t.pool_empty : t.pool_unclassified.replace('{count}', String(pool.length))}
+            </p>
+            <div className="tier-pool-grid" data-pool="true">
+              {pool.map(entry => (
+                <div key={entry.external_id} className="tier-card-wrap"
+                  onPointerDown={e => startDrag(e, entry, 'pool')}>
+                  <CoverCard entry={entry} faded={draggingId === entry.external_id} />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -222,11 +312,46 @@ export default function TierMaker() {
       <div ref={ghostRef} className="tier-ghost" style={{ display: 'none' }}>
         {draggingId && (() => {
           const entry =
-            pool.find(e => e.id === draggingId) ??
-            tiers.flatMap(t => t.items).find(e => e.id === draggingId);
+            pool.find(e => e.external_id === draggingId) ??
+            tiers.flatMap(t => t.items).find(e => e.external_id === draggingId);
           return entry ? <CoverCard entry={entry} faded={false} /> : null;
         })()}
       </div>
+
+      {showPicker && (
+        <div className="tier-picker-backdrop" onClick={() => setShowPicker(false)}>
+          <div className="tier-picker-modal" onClick={e => e.stopPropagation()}>
+            <div className="tier-picker-header">
+              <input
+                className="tier-picker-search"
+                type="text"
+                placeholder={t.add_works_search_ph}
+                value={pickerQuery}
+                onChange={e => setPickerQuery(e.target.value)}
+                autoFocus
+              />
+              <button type="button" className="tier-picker-close" onClick={() => setShowPicker(false)}>✕</button>
+            </div>
+            <div className="tier-picker-results">
+              {state.type === 'characters'
+                ? <p className="tier-picker-empty">{t.characters_soon}</p>
+                : pickerResults.length === 0
+                  ? <p className="tier-picker-empty">{pickerQuery.trim() ? t.add_works_no_results : ''}</p>
+                  : (
+                    <div className="tier-picker-grid">
+                      {pickerResults.map(entry => (
+                        <button key={entry.external_id} type="button" className="tier-picker-item"
+                          onClick={() => addWork(entry)} title={entry.title_main ?? entry.external_id}>
+                          <CoverCard entry={entry} small />
+                        </button>
+                      ))}
+                    </div>
+                  )
+              }
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
