@@ -39,6 +39,7 @@ export interface MediaPageData {
   stats: MediaStat[];
   characters: MediaCharacter[];
   relations: MediaRelation[];
+  parentGame?: { title: string; externalId: string; cover?: string }; // base game this edition/expansion belongs to
   progressStatus: 'watching' | 'reading' | 'playing';
   progressLabel: string;       // label i18n del botón de progreso en el tray
   // Catalog metadata

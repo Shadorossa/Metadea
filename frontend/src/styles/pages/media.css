@@ -247,6 +247,23 @@
 }
 
 /* ── Hero titles (izquierda) ─────────────────────────────────────────────── */
+.media-parent-badge {
+  display: inline-flex;
+  align-self: flex-end;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.6rem;
+  margin-bottom: 0.4rem;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.media-parent-badge:hover { opacity: 0.8; }
+
 .media-title-main {
   font-size: 1.75rem;
   font-weight: 800;
@@ -1506,6 +1523,44 @@
   min-width: 100px;
 }
 .me-tag-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+
+/* ── Editions/versions picker ────────────────────────────────────────────── */
+
+.me-edition-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0 0.5rem;
+}
+
+.me-editions-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
+  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
+  border-radius: 0px;
+  padding: 0.5rem;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.me-edition-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.25rem 0.3rem;
+  border-radius: 4px;
+}
+
+.me-edition-option:hover { background: rgba(255,255,255,0.04); }
+
+.me-edition-option input[type="radio"] {
+  accent-color: var(--accent, #7c6af7);
+  cursor: pointer;
+}
 
 
 /* ── Action buttons ──────────────────────────────────────────────────────── */

@@ -1064,6 +1064,7 @@ pub async fn igdb_get_game_detail(
          genres.name,involved_companies.company.name,\
          involved_companies.developer,involved_companies.publisher,platforms.name,\
          alternative_names.name,alternative_names.comment,game_type,\
+         parent_game.id,parent_game.name,parent_game.cover.image_id,parent_game.first_release_date,\
          artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,\
          screenshots.image_id,screenshots.width,screenshots.height,\
          external_games.category,external_games.url,\

@@ -41,6 +41,7 @@ interface EntryState {
   isPlatinum:      boolean;
   tags:            string[];
   platform:        string;
+  selectedVersion: string;
   monthlyHistory:  Record<string, string[]>;
   selectedMonthKey: string | null;
   selectedYear:    number;
@@ -61,6 +62,7 @@ type EntryAction =
   | { type: 'ADD_TAG';      tag: string }
   | { type: 'REMOVE_TAG';   tag: string }
   | { type: 'SET_PLATFORM'; value: string }
+  | { type: 'SET_VERSION';  value: string }
   | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
   | { type: 'SET_YEAR';     delta: 1 | -1 };
 
@@ -86,7 +88,7 @@ type UiAction =
 const entryInit: EntryState = {
   existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
   notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-  tags: [], platform: '', monthlyHistory: {}, selectedMonthKey: null,
+  tags: [], platform: '', selectedVersion: '', monthlyHistory: {}, selectedMonthKey: null,
   selectedYear: new Date().getFullYear(),
 };
 
@@ -108,6 +110,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
         isPlatinum:    e.is_platinum   === 1,
         tags:          e.tags          ?? [],
         platform:      e.selected_platform ?? '',
+        selectedVersion: e.selected_version ?? '',
       };
     }
     case 'LOAD_HISTORY': {
@@ -129,6 +132,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
     case 'REMOVE_TAG':
       return { ...state, tags: state.tags.filter(t => t !== action.tag) };
     case 'SET_PLATFORM':  return { ...state, platform: action.value };
+    case 'SET_VERSION':   return { ...state, selectedVersion: action.value };
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
     case 'SET_MONTH': {
@@ -260,7 +264,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         added_at:         entry.existing?.added_at ?? null,
         updated_at:       null,
         selected_platform: entry.platform || null,
-        selected_version:  entry.existing?.selected_version ?? null,
+        selected_version:  entry.selectedVersion || null,
         started_at:       entry.startedAt || null,
         finished_at:      entry.finishedAt || null,
       });
@@ -348,6 +352,20 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   ], [te, data.progressStatus]);
 
   const progLabel = progressLabel(data.type, t.media);
+
+  // Editions/versions this entry could be linked to (base game + expansions/
+  // remakes/etc. from the IGDB relation list) — only relevant for games.
+  const editionOptions = useMemo(() => {
+    if (data.type !== 'game') return [] as { externalId: string; label: string }[];
+    const opts: { externalId: string; label: string }[] = [];
+    if (data.parentGame) opts.push({ externalId: data.parentGame.externalId, label: data.parentGame.title });
+    for (const rel of data.relations) {
+      const match = rel.url?.match(/id=([^&]+)/);
+      const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
+      if (relExternalId) opts.push({ externalId: relExternalId, label: `${rel.typeLabel}: ${rel.title}` });
+    }
+    return opts;
+  }, [data.type, data.parentGame, data.relations]);
 
   const modal = (
     <div className={`me-overlay${ui.isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
@@ -498,6 +516,27 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                         )}
                       </div>
                     </div>
+
+                    {editionOptions.length > 0 && (
+                      <div className="me-section">
+                        <span className="me-label">{te.editions}</span>
+                        <p className="me-edition-hint">{te.edition_hint}</p>
+                        <div className="me-editions-box">
+                          <label className="me-edition-option">
+                            <input type="radio" name="me-edition" checked={!entry.selectedVersion}
+                              onChange={() => dispatchEntry({ type: 'SET_VERSION', value: '' })} />
+                            <span>{te.edition_current}</span>
+                          </label>
+                          {editionOptions.map(opt => (
+                            <label key={opt.externalId} className="me-edition-option">
+                              <input type="radio" name="me-edition" checked={entry.selectedVersion === opt.externalId}
+                                onChange={() => dispatchEntry({ type: 'SET_VERSION', value: opt.externalId })} />
+                              <span>{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

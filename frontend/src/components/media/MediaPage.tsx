@@ -375,6 +375,11 @@ export default function MediaPage({ lang }: { lang: string }) {
         <div className="media-hero-body">
           {/* Izquierda: títulos */}
           <div className="media-hero-left">
+            {data.parentGame && (
+              <a className="media-parent-badge" href={`/media?id=${encodeURIComponent(data.parentGame.externalId)}`}>
+                {tm.is_version_of.replace('{title}', data.parentGame.title)}
+              </a>
+            )}
             <h1 className="media-title-main">{data.titleMain}</h1>
             {data.titleNative  && <p className="media-title-native">{data.titleNative}</p>}
             {data.titleEnglish && <p className="media-title-english">{data.titleEnglish}</p>}

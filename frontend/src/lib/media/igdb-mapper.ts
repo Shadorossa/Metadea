@@ -29,7 +29,8 @@ interface IgdbDetailGame {
   platforms?: { id: number; name: string }[];
   alternative_names?: { name: string; comment?: string }[];
   store_links?: { platform: string; url: string }[];
-  
+  parent_game?: IgdbSubGame;
+
   // Relaciones de versiones
   remakes?: IgdbSubGame[];
   remasters?: IgdbSubGame[];
@@ -145,6 +146,14 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     }
   };
 
+  const parentGame = game.parent_game
+    ? {
+        title: game.parent_game.name,
+        externalId: `game:${game.parent_game.id}`,
+        cover: game.parent_game.cover?.image_id ? igdbImageUrl(game.parent_game.cover.image_id, 'cover_big') : undefined,
+      }
+    : undefined;
+
   addRelations(game.remakes, 'Remake');
   addRelations(game.remasters, 'Remaster');
   addRelations(game.dlcs, 'DLC');
@@ -172,6 +181,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     stats,
     characters: [],
     relations,
+    parentGame,
     progressStatus: 'playing',
     progressLabel: 'Jugando',
     storeLinks: dedupeStoreLinks(game.store_links),
