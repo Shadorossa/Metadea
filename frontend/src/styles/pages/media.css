@@ -1180,13 +1180,13 @@
 .me-header-stars {
   display: flex;
   align-items: center;
-  gap: 0.1rem;
+  gap: 0.25rem;
 }
 
 .me-header-star-wrap {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .me-header-star {
