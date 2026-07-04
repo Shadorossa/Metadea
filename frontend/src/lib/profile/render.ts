@@ -1105,6 +1105,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
 
           dragActive = false;
+          container.classList.remove('is-dragging');
           if (dragCard) {
             dragCard.classList.remove('drag-source');
 
@@ -1132,6 +1133,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
             dragCard = card;
             dragActive = true;
             card.classList.add('drag-source');
+            container.classList.add('is-dragging');
             refreshRectCache();
 
             document.addEventListener('mousemove', onMouseMove);

@@ -1415,11 +1415,17 @@
 }
 
 /* ── Drag & Drop Reordering ──────────────────────────────────────────────── */
+@keyframes fav-wiggle {
+  0%   { transform: rotate(-1deg); }
+  50%  { transform: rotate(1deg); }
+  100% { transform: rotate(-1deg); }
+}
+
 .fav-card.reordering {
   cursor: grab;
   outline: 1px dashed var(--border-color);
   outline-offset: -1px;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: fav-wiggle 0.22s ease-in-out infinite;
 }
 
 .fav-card.reordering .fav-card-link {
@@ -1430,11 +1436,22 @@
   cursor: grabbing;
 }
 
+/* The card actively being dragged stays still — only its neighbors wiggle */
 .fav-card.drag-source {
+  animation: none;
   opacity: 0.4;
   border: 1px dashed var(--accent) !important;
   box-shadow: none !important;
   transition: none;
+}
+
+/* While an active drag is in progress, DOM nodes get shuffled under the
+   cursor via insertBefore, which fires spurious mouseenter/mouseleave and
+   makes the hover title overlay flicker in and out. Suppress it entirely
+   for the duration of the drag. */
+.fav-grid.is-dragging .fav-overlay {
+  opacity: 0 !important;
+  transition: none !important;
 }
 
 
