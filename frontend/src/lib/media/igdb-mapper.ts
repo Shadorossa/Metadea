@@ -1,6 +1,7 @@
 import { igdbImageUrl } from '../tauri';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
+import { cleanEditionTitle } from './title-utils';
 
 export interface IgdbSubGame {
   id: number;
@@ -139,7 +140,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
       relations.push({
         typeLabel: label,
-        title: sg.name,
+        title: cleanEditionTitle(sg.name),
         cover,
         url: `/media?id=game:${sg.id}`,
       });
@@ -206,7 +207,7 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
   if (!baseGames.length) return data;
   const baseRelations: MediaRelation[] = baseGames.map(sg => ({
     typeLabel: 'Juego base',
-    title: sg.name,
+    title: cleanEditionTitle(sg.name),
     cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
     url: `/media?id=game:${sg.id}`,
   }));
@@ -262,7 +263,7 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
     seen.add(externalId);
     extra.push({
       typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
-      title: n.name,
+      title: cleanEditionTitle(n.name),
       cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
       url: `/media?id=${externalId}`,
     });

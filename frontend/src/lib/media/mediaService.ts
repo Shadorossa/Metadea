@@ -35,6 +35,19 @@ function setCachedMediaData(rawId: string, data: MediaPageData): void {
   } catch { /* sessionStorage lleno */ }
 }
 
+// Patches just the relations field of an already-cached entry (used once the
+// background transitive-relations fetch resolves), keeping its original
+// timestamp so the TTL isn't reset.
+function patchCachedRelations(rawId: string, relations: MediaPageData['relations']): void {
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${rawId}`);
+    if (!raw) return;
+    const entry: CacheEntry = JSON.parse(raw);
+    entry.data = { ...entry.data, relations };
+    sessionStorage.setItem(`${CACHE_PREFIX}${rawId}`, JSON.stringify(entry));
+  } catch { /* sessionStorage lleno */ }
+}
+
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
 async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
@@ -68,11 +81,10 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
       if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
     }
 
-    // Transitive relations (e.g. a remaster of an expanded edition, or a
-    // port of a remaster) aren't direct IGDB relations of this game — walk
-    // the graph a few hops out so they still show up here.
-    const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);
-    if (graphNodes.length) data = mergeRelationGraph(data, graphNodes as any, (game as { game_type?: number }).game_type);
+    // The transitive relation graph (remaster-of-an-expansion, port-of-a-
+    // remaster, etc.) needs up to 4 sequential IGDB requests — too slow to
+    // block the initial page render. Fetched separately and merged in the
+    // background (see fetchExtraRelations), not awaited here.
 
     return data;
   }
@@ -197,4 +209,27 @@ export function fetchMediaDataWithFallback(
       fullArrived = true;
       onError();
     });
+}
+
+// Background enrichment: walks the transitive IGDB relation graph (up to a
+// few sequential requests) and returns the merged relations list. Meant to
+// be called *after* the page already has full data, so the slow multi-hop
+// walk never blocks the initial render — call setData with the result and
+// patchCachedRelations() to keep the sessionStorage cache in sync.
+export async function fetchExtraRelations(rawId: string, currentData: MediaPageData): Promise<MediaPageData['relations'] | null> {
+  const type = rawId.slice(0, rawId.indexOf(':')).split('_')[0];
+  if (!IGDB_TYPES.includes(type)) return null;
+
+  const numericId = parseInt(rawId.slice(rawId.indexOf(':') + 1), 10);
+  if (!numericId) return null;
+
+  const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);
+  if (!graphNodes.length) return null;
+
+  const gameType = currentData.format === 'EXPANDED_GAME' ? 10 : undefined;
+  const merged = mergeRelationGraph(currentData, graphNodes as any, gameType);
+  if (merged.relations.length === currentData.relations.length) return null; // nothing new
+
+  patchCachedRelations(rawId, merged.relations);
+  return merged.relations;
 }

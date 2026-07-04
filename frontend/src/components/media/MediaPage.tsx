@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
-import { fetchMediaDataWithFallback } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
 import { getLibraryEntry, saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -163,12 +163,28 @@ export default function MediaPage({ lang }: { lang: string }) {
     setData(null);
     setIsFetchingFull(true);
 
+    let cancelled = false;
+
     fetchMediaDataWithFallback(
       currentId,
       partial => { setData(partial); setPageState('ready'); },
-      full    => { setData(full);    setPageState('ready'); setIsFetchingFull(false); },
+      full    => {
+        setData(full);
+        setPageState('ready');
+        setIsFetchingFull(false);
+
+        // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
+        // etc.) take a few extra sequential IGDB requests — fetch them after
+        // the page is already showing instead of delaying first render.
+        fetchExtraRelations(currentId, full).then(relations => {
+          if (cancelled || !relations) return;
+          setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+        });
+      },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
     );
+
+    return () => { cancelled = true; };
   }, [currentId]);
 
 

@@ -1,6 +1,7 @@
 import { API_URL } from '../../config';
 import { igdbSearch, igdbImageUrl } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
+import { cleanEditionTitle } from '../../media/title-utils';
 
 const isTauri = () => typeof window !== 'undefined' && '__TAURI__' in window;
 
@@ -46,7 +47,7 @@ async function searchGamesLocal(
       type:         mediaType as MediaType,
       format:       mediaType === 'vnovel' ? 'VISUAL_NOVEL' : 'GAME',
       source:       'igdb' as const,
-      titleMain:    g.name,
+      titleMain:    cleanEditionTitle(g.name),
       titleRomaji:  null,
       titleNative:  null,
       coverUrl,
