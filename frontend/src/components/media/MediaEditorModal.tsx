@@ -418,9 +418,9 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                                 if (max2Val !== undefined && v > max2Val) v = max2Val;
                                 dispatchEntry({ type: 'SET_PROGRESS2', value: v });
                               }}
-                              placeholder="0" style={{ width: '60px' }} />
+                              placeholder="0" style={{ width: '60px', order: 1 }} />
                             {max2Val !== undefined && (
-                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {max2Val}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {max2Val}</span>
                             )}
                           </div>
                         </div>
