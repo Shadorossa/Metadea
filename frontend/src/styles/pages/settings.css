@@ -539,6 +539,12 @@
 }
 
 /* ── Checkbox Group ───────────────────────────────────────────────────────── */
+.settings-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
 .settings-checkbox-group {
   display: flex;
   flex-direction: column;
@@ -594,4 +600,269 @@
   font-size: 0.82rem;
   color: var(--text-main);
   font-weight: 500;
+}
+
+/* ── Auth blocks (GitHub / AniList connections) ──────────────────────────── */
+.settings-auth-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.settings-auth-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.settings-auth-avatar {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.settings-auth-icon {
+  color: var(--text-muted);
+}
+
+.settings-auth-name {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  font-weight: 600;
+  display: block;
+}
+
+.settings-auth-status {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  display: block;
+}
+
+.settings-auth-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Modals (GitHub device flow / AniList token) ─────────────────────────── */
+.settings-modal {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  margin-top: 1rem;
+}
+
+.settings-modal-title {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.settings-modal-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.settings-modal-hint--spaced {
+  margin-top: 0.5rem;
+}
+
+.settings-modal-code {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  padding: 0.5rem 1rem;
+  border: 1px dashed var(--accent);
+  border-radius: 4px;
+  background: rgba(139, 92, 246, 0.08);
+  margin: 0.5rem 0;
+  width: fit-content;
+  font-family: monospace;
+}
+
+.settings-modal-link {
+  text-decoration: none;
+  text-align: center;
+  width: 100%;
+}
+
+.settings-modal-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.settings-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.settings-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+
+/* ── AniList import/sync "choose formats" modal ──────────────────────────── */
+.settings-import-choose-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  min-width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-import-modal-title {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.settings-import-groups {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-import-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settings-import-group-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.settings-import-format-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+}
+
+.settings-import-format-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-import-format-text {
+  font-size: 0.82rem;
+}
+
+.settings-import-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+/* ── AniList import/sync progress modal (created dynamically in JS) ─────── */
+.settings-progress-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  min-width: 300px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+}
+
+.settings-progress-modal-title {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.settings-progress-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.settings-progress-status {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.settings-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.settings-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.settings-progress-count {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+  text-align: right;
 }

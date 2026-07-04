@@ -1,4 +1,5 @@
 import type { MediaType, SearchResult } from '../index';
+import { isAdultContentEnabled } from '../../settings/preferences';
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
@@ -152,10 +153,10 @@ interface AniListResponse {
 }
 
 const SEARCH_QUERY = `
-  query Search($searchQuery: String!, $type: MediaType!, $page: Int) {
+  query Search($searchQuery: String!, $type: MediaType!, $page: Int, $isAdult: Boolean) {
     Page(page: $page, perPage: 50) {
       pageInfo { hasNextPage }
-      media(search: $searchQuery, type: $type, sort: SEARCH_MATCH) {
+      media(search: $searchQuery, type: $type, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore
       }
@@ -164,10 +165,10 @@ const SEARCH_QUERY = `
 `;
 
 const SEARCH_QUERY_WITH_FORMAT = `
-  query Search($searchQuery: String!, $type: MediaType!, $page: Int, $format: MediaFormat!) {
+  query Search($searchQuery: String!, $type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean) {
     Page(page: $page, perPage: 50) {
       pageInfo { hasNextPage }
-      media(search: $searchQuery, type: $type, format: $format, sort: SEARCH_MATCH) {
+      media(search: $searchQuery, type: $type, format: $format, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore
       }
@@ -199,13 +200,18 @@ export async function searchAniList(
   signal: AbortSignal,
   format?: string,
 ): Promise<SearchResult[]> {
+  // Adult content is opt-in (Settings → Actividad). Off by default: filter to
+  // isAdult: false. When enabled, omit the filter entirely (null) so both
+  // adult and non-adult results are returned.
+  const isAdult = isAdultContentEnabled() ? null : false;
+
   const response = await fetch('https://graphql.anilist.co', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(
       format
-        ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page: 1, format } }
-        : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page: 1 } },
+        ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page: 1, format, isAdult } }
+        : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page: 1, isAdult } },
     ),
     signal,
   });

@@ -257,6 +257,8 @@ export const en = {
     activity_section: 'Activity',
     activity_batch_episodes: 'Batch episodes by day',
     activity_batch_episodes_hint: 'Groups episodes watched on the same day into a single activity entry.',
+    activity_adult_content: 'Show +18 content',
+    activity_adult_content_hint: 'Enables adult content search on AniList (anime and manga).',
     tab_application: 'Connections',
     tab_novedades: "What's New",
     section_application: 'Application',

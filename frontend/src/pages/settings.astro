@@ -362,21 +362,38 @@ const version = pkg.version;
             <h3 class="settings-section-title">
               {t.settings.activity_section}
             </h3>
-            <div class="settings-checkbox-group">
-              <label class="settings-checkbox-label">
-                <input
-                  type="checkbox"
-                  id="activity-batch-episodes"
-                  class="settings-checkbox"
-                />
-                <span class="checkbox-custom"></span>
-                <span class="checkbox-label-text"
-                  >{t.settings.activity_batch_episodes}</span
-                >
-              </label>
-              <p class="settings-hint">
-                {t.settings.activity_batch_episodes_hint}
-              </p>
+            <div class="settings-checkbox-row">
+              <div class="settings-checkbox-group">
+                <label class="settings-checkbox-label">
+                  <input
+                    type="checkbox"
+                    id="activity-batch-episodes"
+                    class="settings-checkbox"
+                  />
+                  <span class="checkbox-label-text"
+                    >{t.settings.activity_batch_episodes}</span
+                  >
+                </label>
+                <p class="settings-hint">
+                  {t.settings.activity_batch_episodes_hint}
+                </p>
+              </div>
+
+              <div class="settings-checkbox-group">
+                <label class="settings-checkbox-label">
+                  <input
+                    type="checkbox"
+                    id="activity-adult-content"
+                    class="settings-checkbox"
+                  />
+                  <span class="checkbox-label-text"
+                    >{t.settings.activity_adult_content}</span
+                  >
+                </label>
+                <p class="settings-hint">
+                  {t.settings.activity_adult_content_hint}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -595,14 +612,9 @@ const version = pkg.version;
               style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;"
             >
               <!-- GitHub Auth Block -->
-              <div
-                style="display: flex; align-items: center; justify-content: space-between; gap: 3rem; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); width: fit-content; max-width: 100%;"
-              >
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <div
-                    id="github-avatar-container"
-                    style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;"
-                  >
+              <div class="settings-auth-block">
+                <div class="settings-auth-info">
+                  <div id="github-avatar-container" class="settings-auth-avatar">
                     <svg
                       width="18"
                       height="18"
@@ -612,20 +624,15 @@ const version = pkg.version;
                       stroke-width="2"
                       stroke-linecap="round"
                       stroke-linejoin="round"
-                      style="color: var(--text-muted);"
+                      class="settings-auth-icon"
                       ><path
                         d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
                       ></path></svg
                     >
                   </div>
                   <div>
-                    <span
-                      style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
-                      >GitHub</span
-                    >
-                    <span
-                      id="github-user-status"
-                      style="font-size: 0.75rem; color: var(--text-dim); display: block;"
+                    <span class="settings-auth-name">GitHub</span>
+                    <span id="github-user-status" class="settings-auth-status"
                       >No conectado</span
                     >
                   </div>
@@ -636,34 +643,19 @@ const version = pkg.version;
               </div>
 
               <!-- AniList Auth Block -->
-              <div
-                style="display: flex; align-items: center; justify-content: space-between; gap: 3rem; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); width: fit-content; max-width: 100%;"
-              >
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                  <div
-                    id="anilist-avatar-container"
-                    style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;"
-                  >
-                    <img
-                      src="/API/Anilist_logo.png"
-                      style="width: 18px; height: 18px;"
-                    />
+              <div class="settings-auth-block">
+                <div class="settings-auth-info">
+                  <div id="anilist-avatar-container" class="settings-auth-avatar">
+                    <img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />
                   </div>
                   <div>
-                    <span
-                      style="font-size: 0.85rem; color: var(--text-main); font-weight: 600; display: block;"
-                      >AniList</span
-                    >
-                    <span
-                      id="anilist-user-status"
-                      style="font-size: 0.75rem; color: var(--text-dim); display: block;"
+                    <span class="settings-auth-name">AniList</span>
+                    <span id="anilist-user-status" class="settings-auth-status"
                       >No conectado</span
                     >
                   </div>
                 </div>
-                <div
-                  style="display: flex; gap: 0.5rem; flex: 1; min-width: 0;"
-                >
+                <div class="settings-auth-actions">
                   <button
                     class="btn btn--sm btn--secondary"
                     id="anilist-import-btn"
@@ -695,67 +687,64 @@ const version = pkg.version;
               </div>
 
               <!-- Import Modal -->
-              <div
-                id="anilist-import-choose-modal"
-                style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; gap: 1rem; align-items: flex-start; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000; min-width: 380px; max-height: 80vh; overflow-y: auto;"
-              >
-                <span style="font-weight: 700; color: var(--text-main); font-size: 0.9rem; width: 100%;">¿Qué descargar de AniList?</span>
+              <div id="anilist-import-choose-modal" class="settings-import-choose-modal">
+                <span class="settings-import-modal-title">¿Qué descargar de AniList?</span>
 
-                <div style="width: 100%; display: flex; flex-direction: column; gap: 0.75rem;">
-                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0 0.25rem;">Anime</span>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem;">
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                <div class="settings-import-groups">
+                  <div class="settings-import-group">
+                    <span class="settings-import-group-label">Anime</span>
+                    <div class="settings-import-format-grid">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-TV" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">TV</span>
+                        <span class="settings-import-format-text">TV</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-TV_SHORT" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">TV Short</span>
+                        <span class="settings-import-format-text">TV Short</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-MOVIE" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">Movie</span>
+                        <span class="settings-import-format-text">Movie</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-SPECIAL" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">Special</span>
+                        <span class="settings-import-format-text">Special</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-OVA" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">OVA</span>
+                        <span class="settings-import-format-text">OVA</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-ONA" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">ONA</span>
+                        <span class="settings-import-format-text">ONA</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-MUSIC" style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">Music</span>
+                        <span class="settings-import-format-text">Music</span>
                       </label>
                     </div>
                   </div>
 
-                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 0 0.25rem;">Manga</span>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.2rem;">
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                  <div class="settings-import-group">
+                    <span class="settings-import-group-label">Manga</span>
+                    <div class="settings-import-format-grid">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-MANGA" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">Manga</span>
+                        <span class="settings-import-format-text">Manga</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-ONE_SHOT" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">One-Shot</span>
+                        <span class="settings-import-format-text">One-Shot</span>
                       </label>
-                      <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.02);">
+                      <label class="settings-import-format-label">
                         <input type="checkbox" id="fmt-NOVEL" checked style="cursor: pointer;" />
-                        <span style="font-size: 0.82rem;">Light Novel</span>
+                        <span class="settings-import-format-text">Light Novel</span>
                       </label>
                     </div>
                   </div>
                 </div>
 
-                <div style="display: flex; flex-direction: row; gap: 0.5rem; width: 100%;">
+                <div class="settings-import-actions">
                   <button
                     class="btn btn--sm btn--primary"
                     id="anilist-import-start-btn"
@@ -775,31 +764,19 @@ const version = pkg.version;
             </div>
 
             <!-- GitHub Device Flow modal -->
-            <div
-              id="github-device-modal"
-              style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
-            >
-              <span
-                style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
-                >Iniciar Sesión en GitHub</span
-              >
-              <p
-                style="font-size: 0.75rem; color: var(--text-muted); margin: 0;"
-              >
+            <div id="github-device-modal" class="settings-modal">
+              <span class="settings-modal-title">Iniciar Sesión en GitHub</span>
+              <p class="settings-modal-hint">
                 Entra en la web a continuación e introduce este código:
               </p>
-              <div
-                id="github-device-code-box"
-                style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.1em; color: var(--accent); padding: 0.5rem 1rem; border: 1px dashed var(--accent); border-radius: 4px; background: rgba(139, 92, 246, 0.08); margin: 0.5rem 0; width: fit-content; font-family: monospace;"
-              >
+              <div id="github-device-code-box" class="settings-modal-code">
                 ----
               </div>
               <a
                 href="https://github.com/login/device"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="btn btn--sm btn--secondary"
-                style="text-decoration: none; text-align: center; width: 100%;"
+                class="btn btn--sm btn--secondary settings-modal-link"
                 >Abrir github.com/login/device</a
               >
               <button
@@ -810,17 +787,9 @@ const version = pkg.version;
             </div>
 
             <!-- AniList token prompt modal -->
-            <div
-              id="anilist-token-modal"
-              style="display: none; flex-direction: column; gap: 1rem; align-items: center; text-align: center; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-top: 1rem;"
-            >
-              <span
-                style="font-weight: 700; color: var(--text-main); font-size: 0.9rem;"
-                >Iniciar Sesión en AniList</span
-              >
-              <p
-                style="font-size: 0.75rem; color: var(--text-muted); margin: 0;"
-              >
+            <div id="anilist-token-modal" class="settings-modal">
+              <span class="settings-modal-title">Iniciar Sesión en AniList</span>
+              <p class="settings-modal-hint">
                 1. Haz clic en el botón de abajo para autorizar a Metadea en tu
                 navegador.
               </p>
@@ -829,24 +798,19 @@ const version = pkg.version;
                 id="anilist-auth-link"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="btn btn--sm btn--secondary"
-                style="text-decoration: none; text-align: center; width: 100%;"
+                class="btn btn--sm btn--secondary settings-modal-link"
                 >Abrir página de autorización</a
               >
-              <p
-                style="font-size: 0.75rem; color: var(--text-muted); margin: 0; margin-top: 0.5rem;"
-              >
+              <p class="settings-modal-hint settings-modal-hint--spaced">
                 2. Copia el token/código largo que te da la web y pégalo aquí:
               </p>
               <input
                 type="text"
                 id="anilist-token-input"
                 placeholder="Pega el token aquí..."
-                style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-main); font-size: 0.8rem; text-align: center;"
+                class="settings-modal-input"
               />
-              <div
-                style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.5rem;"
-              >
+              <div class="settings-modal-actions">
                 <button
                   class="btn btn--sm btn--primary"
                   id="anilist-save-token-btn"
@@ -919,7 +883,14 @@ const version = pkg.version;
   import { initFontPicker } from "../lib/settings/fonts";
   import { initGitHubAuth } from "../lib/settings/github";
   import { initAniListAuth } from "../lib/settings/anilist";
-  import { importFromAniList, syncFromAniList } from "../lib/anilist/import";
+  import { initAniListImportUI } from "../lib/settings/anilist-import-ui";
+  import { initDisplayName } from "../lib/settings/display-name";
+  import { initRatingSystem } from "../lib/settings/rating-system";
+  import { initCustomColor } from "../lib/settings/custom-color";
+  import { initActivitySettings } from "../lib/settings/activity";
+  import { initBio } from "../lib/settings/bio";
+  import { initUpdater } from "../lib/settings/updater";
+  import { initSettingsTabs } from "../lib/settings/tabs";
   import { getT } from "../i18n/client";
 
   function showToast(msg?: string) {
@@ -948,413 +919,16 @@ const version = pkg.version;
     initEnvironment(showToast);
     initGitHubAuth();
     initAniListAuth();
+    initAniListImportUI(showToast);
+    initDisplayName(showToast);
+    initRatingSystem(showToast);
+    initCustomColor(showToast);
+    initActivitySettings(showToast);
+    initBio();
 
-    // AniList Import
-    const importBtn = document.getElementById(
-      "anilist-import-btn",
-    ) as HTMLButtonElement | null;
-    const importChooseModal = document.getElementById(
-      "anilist-import-choose-modal",
-    ) as HTMLElement | null;
-
-    async function updateImportButtons() {
-      const { invoke } = await import("../lib/tauri");
-      const hasToken = await invoke("get_anilist_token").catch(() => null);
-      if (importBtn) importBtn.disabled = !hasToken;
-    }
-
-    function hideChooseModal() {
-      if (importChooseModal) importChooseModal.style.display = "none";
-      const backdrop = document.getElementById("anilist-import-choose-backdrop");
-      if (backdrop) backdrop.remove();
-    }
-
-    function showChooseModal() {
-      if (importChooseModal) {
-        importChooseModal.style.display = "flex";
-        // Create backdrop
-        const backdrop = document.createElement("div");
-        backdrop.id = "anilist-import-choose-backdrop";
-        backdrop.style.cssText =
-          "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;";
-        backdrop.addEventListener("click", hideChooseModal);
-        importChooseModal.parentElement!.appendChild(backdrop);
-      }
-    }
-
-    function createProgressModal(title: string) {
-      const modal = document.createElement("div");
-      modal.id = "anilist-import-progress-modal";
-      modal.style.cssText = `
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        background: var(--bg-card); border: 1px solid var(--border-color);
-        border-radius: var(--radius-md); padding: 2rem; min-width: 300px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 10000;
-      `;
-      modal.innerHTML = `
-        <h3 style="margin: 0 0 1rem; font-size: 0.95rem; color: var(--text-main);">${title}</h3>
-        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
-          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;" id="import-status">Iniciando...</div>
-          <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-            <div id="import-progress" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.3s;"></div>
-          </div>
-          <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 0.5rem; text-align: right;" id="import-count">0/0</div>
-        </div>
-      `;
-
-      const backdrop = document.createElement("div");
-      backdrop.id = "anilist-import-progress-backdrop";
-      backdrop.style.cssText = `position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;`;
-
-      document.body.appendChild(backdrop);
-      document.body.appendChild(modal);
-      return { modal, backdrop };
-    }
-
-    const ALL_FORMATS = ['TV','TV_SHORT','MOVIE','SPECIAL','OVA','ONA','MUSIC','MANGA','ONE_SHOT','NOVEL'];
-
-    async function doImport() {
-      const selectedFormats = ALL_FORMATS.filter(
-        f => (document.getElementById(`fmt-${f}`) as HTMLInputElement)?.checked
-      );
-      if (selectedFormats.length === 0) {
-        showToast("Selecciona al menos un formato");
-        return;
-      }
-
-      hideChooseModal();
-      const { modal, backdrop } = createProgressModal("Importando desde AniList...");
-
-      try {
-        const result = await importFromAniList(selectedFormats, (progress) => {
-          const statusEl = document.getElementById("import-status");
-          const progressEl = document.getElementById("import-progress");
-          const countEl = document.getElementById("import-count");
-
-          if (statusEl)
-            statusEl.textContent = progress.message || progress.status;
-          if (progressEl && progress.total > 0) {
-            const percent = (progress.current / progress.total) * 100;
-            progressEl.style.width = `${percent}%`;
-          }
-          if (countEl)
-            countEl.textContent = `${progress.current}/${progress.total}`;
-        });
-
-        modal.remove();
-        backdrop.remove();
-
-        if (result.ok) {
-          showToast(`✓ Importados ${result.imported ?? 0} items`);
-        } else {
-          showToast(`Error: ${result.error}`);
-        }
-      } catch (e: any) {
-        modal.remove();
-        backdrop.remove();
-        showToast(`Error: ${e?.message ?? "Import failed"}`);
-      } finally {
-        await updateImportButtons();
-      }
-    }
-
-    async function doSync() {
-      const selectedFormats = ALL_FORMATS.filter(
-        f => (document.getElementById(`fmt-${f}`) as HTMLInputElement)?.checked
-      );
-      if (selectedFormats.length === 0) {
-        showToast("Selecciona al menos un formato");
-        return;
-      }
-
-      hideChooseModal();
-      const { modal, backdrop } = createProgressModal("Sincronizando desde AniList...");
-
-      try {
-        const result = await syncFromAniList(selectedFormats, (progress) => {
-          const statusEl = document.getElementById("import-status");
-          const progressEl = document.getElementById("import-progress");
-          const countEl = document.getElementById("import-count");
-
-          if (statusEl)
-            statusEl.textContent = progress.message || progress.status;
-          if (progressEl && progress.total > 0) {
-            const percent = (progress.current / progress.total) * 100;
-            progressEl.style.width = `${percent}%`;
-          }
-          if (countEl)
-            countEl.textContent = `${progress.current}/${progress.total}`;
-        });
-
-        modal.remove();
-        backdrop.remove();
-
-        if (result.ok) {
-          showToast(`✓ ${result.updated ?? 0} actualizados, ${result.added ?? 0} nuevos`);
-        } else {
-          showToast(`Error: ${result.error}`);
-        }
-      } catch (e: any) {
-        modal.remove();
-        backdrop.remove();
-        showToast(`Error: ${e?.message ?? "Sync failed"}`);
-      } finally {
-        await updateImportButtons();
-      }
-    }
-
-    // Use event delegation for import buttons
-    document.addEventListener("click", (e: any) => {
-      const btn = (e.target as HTMLElement).closest("button");
-      if (!btn) return;
-
-      if (btn.id === "anilist-import-btn") {
-        showChooseModal();
-      } else if (btn.id === "anilist-import-start-btn") {
-        doImport();
-      } else if (btn.id === "anilist-sync-start-btn") {
-        doSync();
-      } else if (btn.id === "anilist-import-cancel-btn") {
-        hideChooseModal();
-      }
-    });
-
-    // Update buttons when page loads
-    setTimeout(() => {
-      updateImportButtons();
-    }, 100);
-
-    // Load user profile once and wire up display_name, rating_system, custom_color
-    const { getUserInfo, saveUserInfo } = await import('../lib/tauri');
-    const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
-
-    // Display Name
-    const displayNameInput = document.getElementById('display-name-input') as HTMLInputElement | null;
-    if (displayNameInput) {
-      displayNameInput.value = (info.display_name as string) || '';
-
-      let saveTimer: ReturnType<typeof setTimeout>;
-      async function saveDisplayName() {
-        const newName = displayNameInput!.value.trim();
-        await saveUserInfo({ display_name: newName }).catch(() => {});
-        showToast('Nombre guardado');
-      }
-
-      displayNameInput.addEventListener('blur', saveDisplayName);
-      displayNameInput.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveDisplayName(); }
-      });
-      displayNameInput.addEventListener('input', () => {
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(saveDisplayName, 1500);
-      });
-    }
-
-    // Rating System — DB is source of truth; localStorage kept as fast read cache
-    const ratingBtns =
-      document.querySelectorAll<HTMLButtonElement>(".rating-system-btn");
-    const activeSystem = (info.rating_system as string)
-      || localStorage.getItem("metadea_rating_system")
-      || "5-star";
-    localStorage.setItem("metadea_rating_system", activeSystem);
-    ratingBtns.forEach((btn) => {
-      if (btn.dataset.value === activeSystem) btn.classList.add("active");
-      btn.addEventListener("click", async () => {
-        ratingBtns.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        const value = btn.dataset.value || "5-star";
-        localStorage.setItem("metadea_rating_system", value);
-        await saveUserInfo({ rating_system: value }).catch(() => {});
-        showToast("Sistema de calificación guardado");
-      });
-    });
-
-    // Custom Color — DB is source of truth; localStorage kept as fast read cache
-    const DEFAULT_COLOR = "#c084fc";
-    const colorInput = document.getElementById(
-      "custom-color-input",
-    ) as HTMLInputElement | null;
-    const colorHexDisplay = document.getElementById("color-hex-display");
-    const colorResetBtn = document.getElementById("color-reset-btn");
-
-    if (colorInput && colorHexDisplay) {
-      const savedColor = (info.custom_color as string)
-        || localStorage.getItem("metadea_custom_color")
-        || DEFAULT_COLOR;
-      colorInput.value = savedColor;
-      colorHexDisplay.textContent = `Actual: ${savedColor}`;
-      localStorage.setItem("metadea_custom_color", savedColor);
-      applyCustomColor(savedColor);
-
-      let colorTimer: ReturnType<typeof setTimeout>;
-      colorInput.addEventListener("input", (e) => {
-        const color = (e.target as HTMLInputElement).value;
-        colorHexDisplay.textContent = `Actual: ${color}`;
-        localStorage.setItem("metadea_custom_color", color);
-        applyCustomColor(color);
-        clearTimeout(colorTimer);
-        colorTimer = setTimeout(() => saveUserInfo({ custom_color: color }).catch(() => {}), 800);
-      });
-    }
-
-    if (colorResetBtn) {
-      colorResetBtn.addEventListener("click", async () => {
-        if (colorInput) {
-          colorInput.value = DEFAULT_COLOR;
-          colorHexDisplay!.textContent = `Actual: ${DEFAULT_COLOR}`;
-          localStorage.setItem("metadea_custom_color", DEFAULT_COLOR);
-          applyCustomColor(DEFAULT_COLOR);
-          await saveUserInfo({ custom_color: DEFAULT_COLOR }).catch(() => {});
-          showToast("Color restaurado");
-        }
-      });
-    }
-
-    function applyCustomColor(color: string) {
-      document.documentElement.style.setProperty("--accent", color);
-      document.documentElement.style.setProperty("--accent-soft", `${color}19`);
-      document.documentElement.style.setProperty(
-        "--accent-border",
-        `${color}40`,
-      );
-      document.documentElement.style.setProperty("--accent-glow", `${color}4d`);
-    }
-
-    // Activity Settings: Batch Episodes
-    const batchEpisodesCheckbox = document.getElementById(
-      "activity-batch-episodes",
-    ) as HTMLInputElement | null;
-    if (batchEpisodesCheckbox) {
-      const savedBatchEpisodes =
-        localStorage.getItem("metadea_activity_batch_episodes") === "true";
-      batchEpisodesCheckbox.checked = savedBatchEpisodes;
-      batchEpisodesCheckbox.addEventListener("change", () => {
-        localStorage.setItem(
-          "metadea_activity_batch_episodes",
-          batchEpisodesCheckbox.checked.toString(),
-        );
-        showToast("Preferencias de actividad guardadas");
-      });
-    }
-
-    // Bio
-    const bioTextarea = document.getElementById(
-      "bio-textarea",
-    ) as HTMLTextAreaElement | null;
-    const bioCharCount = document.getElementById("bio-char-count");
-
-    if (bioTextarea && bioCharCount) {
-      const savedBio = localStorage.getItem("metadea_user_bio") || "";
-      bioTextarea.value = savedBio;
-      bioCharCount.textContent = savedBio.length.toString();
-
-      bioTextarea.addEventListener("input", () => {
-        bioCharCount.textContent = bioTextarea.value.length.toString();
-        localStorage.setItem("metadea_user_bio", bioTextarea.value);
-      });
-    }
-
-    // Application/Updater Section
-    const checkBtn = document.getElementById(
-      "app-check-update-btn",
-    ) as HTMLButtonElement | null;
-    const statusText = document.getElementById("updater-status-text");
-    const versionSpan = document.querySelector(
-      ".app-curr-ver",
-    ) as HTMLElement | null;
-    const defaultVersion = versionSpan?.dataset.version || "0.1.9";
-
-    const isTauri =
-      typeof window !== "undefined" &&
-      ("__TAURI_IPC__" in window ||
-        "__TAURI_INTERNALS__" in window ||
-        "__TAURI__" in window);
-
-    if (isTauri) {
-      import("@tauri-apps/api/app")
-        .then(async ({ getVersion }) => {
-          const currentVersion = await getVersion();
-          if (versionSpan) versionSpan.textContent = `v${currentVersion}`;
-        })
-        .catch(() => {
-          if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
-        });
-    } else {
-      if (versionSpan) versionSpan.textContent = `v${defaultVersion}`;
-    }
-
-    if (checkBtn) {
-      checkBtn.addEventListener("click", async () => {
-        if (!isTauri) {
-          if (statusText) {
-            statusText.textContent =
-              "Las actualizaciones solo están disponibles en la aplicación instalada.";
-            statusText.style.display = "block";
-          }
-          return;
-        }
-
-        const clientT = getT();
-        checkBtn.disabled = true;
-        checkBtn.textContent =
-          clientT.settings.app_checking_update || "Buscando...";
-        if (statusText) statusText.style.display = "none";
-
-        try {
-          const { check } = await import("@tauri-apps/plugin-updater");
-          const { relaunch } = await import("@tauri-apps/plugin-process");
-          const update = await check();
-          if (update && update.available) {
-            if (statusText) {
-              statusText.textContent = "Nueva actualización encontrada.";
-              statusText.style.display = "block";
-            }
-            const confirmMsg = (
-              clientT.settings.app_update_found ||
-              "Nueva versión {version} disponible. ¿Quieres instalarla?"
-            ).replace("{version}", update.version);
-            const confirmUpdate = confirm(confirmMsg);
-            if (confirmUpdate) {
-              await update.downloadAndInstall();
-              await relaunch();
-            }
-          } else {
-            if (statusText) {
-              statusText.textContent =
-                clientT.settings.app_up_to_date ||
-                "¡Estás en la última versión!";
-              statusText.style.display = "block";
-            }
-          }
-        } catch (error) {
-          console.error(error);
-          if (statusText) {
-            statusText.textContent = `Error al buscar actualizaciones: ${error?.message || error || "Conexión fallida"}`;
-            statusText.style.display = "block";
-          }
-        } finally {
-          checkBtn.disabled = false;
-          checkBtn.textContent =
-            clientT.settings.app_check_update || "Buscar actualizaciones";
-        }
-      });
-    }
-
-    document
-      .querySelectorAll<HTMLButtonElement>(".settings-tab")
-      .forEach((btn) => {
-        btn.addEventListener("click", () => {
-          document
-            .querySelectorAll(".settings-tab")
-            .forEach((t) => t.classList.remove("active"));
-          document
-            .querySelectorAll(".settings-panel")
-            .forEach((p) => p.classList.add("hidden"));
-          btn.classList.add("active");
-          document
-            .getElementById(`panel-${btn.dataset.tab}`)
-            ?.classList.remove("hidden");
-        });
-      });
+    const defaultVersion =
+      (document.querySelector(".app-curr-ver") as HTMLElement | null)?.dataset.version || "0.1.9";
+    initUpdater(defaultVersion);
+    initSettingsTabs();
   });
 </script>

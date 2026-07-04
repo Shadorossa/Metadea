@@ -26,6 +26,14 @@ const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error';
 
+// ── In-flight request de-duplication ────────────────────────────────────────
+// No result caching — just prevents the exact same type+query from firing
+// two overlapping network requests (e.g. debounce and Enter racing each other).
+// The entry is removed as soon as the request settles, so nothing is reused
+// after the fact; a repeat search always hits the API again.
+
+const inFlightSearches = new Map<string, Promise<SearchResult[]>>();
+
 interface Props {
   initialQuery?: string;
   initialType?: MediaType;
@@ -64,13 +72,23 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       return;
     }
 
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
-    const { signal } = abortControllerRef.current;
-
     setStatus('loading');
+
+    // If the exact same type+query is already in flight (e.g. debounce and
+    // Enter racing each other), ride that request instead of firing another
+    // one — this is the only thing avoided, no results are ever reused later.
+    const key = `${type}:${searchQuery.toLowerCase()}`;
+    let promise = inFlightSearches.get(key);
+    if (!promise) {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      promise = search(searchQuery, type, abortControllerRef.current.signal)
+        .finally(() => inFlightSearches.delete(key));
+      inFlightSearches.set(key, promise);
+    }
+
     try {
-      const searchResults = await search(searchQuery, type, signal);
+      const searchResults = await promise;
       setResults(searchResults);
       setStatus('done');
       const currentUrl = new URL(window.location.href);
@@ -116,6 +134,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   };
 
   const handleSearchSubmit = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
     if (query.length >= 2) executeSearch(query, mediaType);
   };
 
