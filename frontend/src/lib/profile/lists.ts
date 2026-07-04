@@ -316,26 +316,30 @@ export async function renderLists(el: HTMLElement): Promise<void> {
 
           let rafId = 0;
           let lastMoveY = 0;
+          let prevMoveY = 0;
 
-          // Guards against oscillation: don't immediately swap back with
-          // the neighbor we just swapped with (see profile/render.ts for
-          // the same fix on the favorites grid).
-          let lastSwappedWith: HTMLElement | null = null;
-
+          // Which side of the target the dragged card lands on is decided
+          // by the direction of travel, not a static 50/50 split — see
+          // profile/render.ts for why (self-stabilizing, avoids the
+          // oscillation flicker a fixed midpoint check causes).
           const reorderTick = () => {
             rafId = 0;
             if (!dragCard) return;
             const target = getClosestCard(lastMoveY);
-            if (target && target.el !== dragCard && target.el !== lastSwappedWith) {
-              const insertBefore = (lastMoveY - target.top) < target.height / 2;
-              if (insertBefore) {
-                grid.insertBefore(dragCard, target.el);
-              } else {
-                grid.insertBefore(dragCard, target.el.nextSibling);
+            if (target && target.el !== dragCard) {
+              const movingDown = lastMoveY >= prevMoveY;
+              const midpoint = target.top + target.height / 2;
+              const passedMidpoint = movingDown ? lastMoveY > midpoint : lastMoveY < midpoint;
+              if (passedMidpoint) {
+                if (movingDown) {
+                  grid.insertBefore(dragCard, target.el.nextSibling);
+                } else {
+                  grid.insertBefore(dragCard, target.el);
+                }
+                refreshRectCache();
               }
-              lastSwappedWith = target.el;
-              refreshRectCache();
             }
+            prevMoveY = lastMoveY;
           };
 
           const onMouseMove = (e: MouseEvent) => {
@@ -376,6 +380,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
 
               dragCard = card;
               dragActive = true;
+              prevMoveY = e.clientY;
               card.classList.add('drag-source');
               refreshRectCache();
 

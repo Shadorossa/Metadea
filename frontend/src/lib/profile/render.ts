@@ -1072,29 +1072,36 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         let rafId = 0;
         let lastMoveX = 0;
         let lastMoveY = 0;
+        let prevMoveX = 0;
 
-        // Guards against oscillation: once we've just swapped with a given
-        // neighbor, don't immediately swap back with it — the cursor
-        // position that triggered the swap is often still "closest" to
-        // that same neighbor right after the DOM move, which without this
-        // guard causes an infinite back-and-forth flicker.
-        let lastSwappedWith: HTMLElement | null = null;
-
+        // Which side of the target card the dragged card lands on is
+        // decided by the direction of travel, not a static 50/50 split:
+        // moving right, it only swaps once the cursor has actually passed
+        // the target's center (landing after it); moving left, once it's
+        // passed the center from the other side (landing before it). This
+        // is self-stabilizing — once swapped, the same test keeps holding
+        // true without re-triggering a move, unlike a fixed midpoint check
+        // which flips its own verdict as soon as the swap shifts the
+        // target's position, causing an infinite back-and-forth flicker.
         const reorderTick = () => {
           rafId = 0;
           if (!dragCard) return;
           const target = getClosestCard(lastMoveX, lastMoveY);
-          if (target && target.el !== dragCard && target.el !== lastSwappedWith) {
-            const insertBefore = (lastMoveX - target.left) < target.width / 2;
-            if (insertBefore) {
-              container.insertBefore(dragCard, target.el);
-            } else {
-              container.insertBefore(dragCard, target.el.nextSibling);
+          if (target && target.el !== dragCard) {
+            const movingRight = lastMoveX >= prevMoveX;
+            const midpoint = target.left + target.width / 2;
+            const passedMidpoint = movingRight ? lastMoveX > midpoint : lastMoveX < midpoint;
+            if (passedMidpoint) {
+              if (movingRight) {
+                container.insertBefore(dragCard, target.el.nextSibling);
+              } else {
+                container.insertBefore(dragCard, target.el);
+              }
+              // Layout just changed — refresh cached positions for the next comparison
+              refreshRectCache();
             }
-            lastSwappedWith = target.el;
-            // Layout just changed — refresh cached positions for the next comparison
-            refreshRectCache();
           }
+          prevMoveX = lastMoveX;
         };
 
         const onMouseMove = (e: MouseEvent) => {
@@ -1140,6 +1147,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
 
             dragCard = card;
             dragActive = true;
+            prevMoveX = e.clientX;
             card.classList.add('drag-source');
             container.classList.add('is-dragging');
             refreshRectCache();
