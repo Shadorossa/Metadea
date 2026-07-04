@@ -1,7 +1,7 @@
 import { igdbImageUrl } from '../tauri';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
-import { cleanEditionTitle } from './title-utils';
+import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
 
 export interface IgdbSubGame {
   id: number;
@@ -136,7 +136,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
   const addRelations = (subGames: IgdbSubGame[] | undefined, label: string) => {
     if (!subGames) return;
-    for (const sg of subGames) {
+    for (const sg of dedupeEditionVariants(subGames)) {
       const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
       relations.push({
         typeLabel: label,
@@ -205,7 +205,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
-  const baseRelations: MediaRelation[] = baseGames.map(sg => ({
+  const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => ({
     typeLabel: 'Juego base',
     title: cleanEditionTitle(sg.name),
     cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
@@ -250,23 +250,32 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
     if (match) seen.add(decodeURIComponent(match[1]));
   }
 
-  const extra: MediaRelation[] = [];
+  // Group by "via" so edition/collection SKU duplicates are deduped within
+  // their own relation category, same as the direct-relation path.
+  const byVia = new Map<string, RelationGraphNode[]>();
   for (const n of nodes) {
     // Ports never show as related versions.
     if (n.via === 'ports') continue;
     // Expanded editions (game_type 10) commonly turn up unrelated remasters
     // of the base game rather than a remaster of the edition itself — skip.
     if (n.via === 'remasters' && gameType === 10) continue;
+    const group = byVia.get(n.via);
+    if (group) group.push(n); else byVia.set(n.via, [n]);
+  }
 
-    const externalId = `game:${n.id}`;
-    if (seen.has(externalId)) continue;
-    seen.add(externalId);
-    extra.push({
-      typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
-      title: cleanEditionTitle(n.name),
-      cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
-      url: `/media?id=${externalId}`,
-    });
+  const extra: MediaRelation[] = [];
+  for (const group of byVia.values()) {
+    for (const n of dedupeEditionVariants(group)) {
+      const externalId = `game:${n.id}`;
+      if (seen.has(externalId)) continue;
+      seen.add(externalId);
+      extra.push({
+        typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
+        title: cleanEditionTitle(n.name),
+        cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
+        url: `/media?id=${externalId}`,
+      });
+    }
   }
   if (!extra.length) return data;
   return { ...data, relations: [...data.relations, ...extra] };

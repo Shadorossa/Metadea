@@ -12,3 +12,20 @@ export function cleanEditionTitle(title: string): string {
     .replace(/[\s:—-]+$/, '')
     .trim() || title;
 }
+
+export function isEditionVariant(title: string): boolean {
+  EDITION_WORDS.lastIndex = 0; // stateful due to /g — reset before each test
+  return EDITION_WORDS.test(title);
+}
+
+// Within one relation category (e.g. all "remakes" of the game being viewed),
+// IGDB often lists both a plain entry and one or more edition/collection/
+// version SKUs of that same release. The edition SKUs aren't a distinct
+// related game — drop them when a plain sibling already covers that entry;
+// if every entry in the group happens to be an edition variant, keep just
+// one so the category isn't dropped entirely.
+export function dedupeEditionVariants<T extends { name: string }>(items: T[]): T[] {
+  if (items.length <= 1) return items;
+  const plain = items.filter(i => !isEditionVariant(i.name));
+  return plain.length > 0 ? plain : items.slice(0, 1);
+}

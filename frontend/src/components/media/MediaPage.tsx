@@ -351,6 +351,10 @@ export default function MediaPage({ lang }: { lang: string }) {
   // ── Ready ────────────────────────────────────────────────────────────────
 
   const inLibrary  = !!libStatus;
+  // Only true expansions/bundled editions get redirected to their base game
+  // and blocked from being logged separately — remakes/remasters are their
+  // own standalone releases and stay fully trackable in the library.
+  const isBlockedEdition = !!data.parentGame && (data.format === 'EXPANSION' || data.format === 'EXPANDED_GAME');
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
@@ -399,22 +403,22 @@ export default function MediaPage({ lang }: { lang: string }) {
           {/* Centro: cover + widget de biblioteca */}
           <div className="media-cover-column">
             <div
-              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${data.parentGame ? ' is-edition' : ''}`}
+              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isBlockedEdition ? ' is-edition' : ''}`}
               role="button"
               tabIndex={0}
-              aria-label={data.parentGame
-                ? tm.is_version_of.replace('{title}', data.parentGame.title)
+              aria-label={isBlockedEdition
+                ? tm.is_version_of.replace('{title}', data.parentGame!.title)
                 : tm.add_to_library.replace('\n', ' ')}
               onClick={() => {
-                if (data.parentGame) {
-                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame.externalId)}`;
+                if (isBlockedEdition) {
+                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`;
                   return;
                 }
                 handleCoverClick();
               }}
               onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (
-                data.parentGame
-                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame.externalId)}`)
+                isBlockedEdition
+                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`)
                   : handleCoverClick()
               )}
             >
@@ -423,9 +427,9 @@ export default function MediaPage({ lang }: { lang: string }) {
               )}
               <div className="media-cover-overlay">
                 <div className="media-cover-overlay-inner">
-                  {data.parentGame ? (
+                  {isBlockedEdition ? (
                     <span className="media-cover-overlay-label">
-                      {tm.is_version_of.replace('{title}', data.parentGame.title)}
+                      {tm.is_version_of.replace('{title}', data.parentGame!.title)}
                     </span>
                   ) : (
                     <>
@@ -444,7 +448,7 @@ export default function MediaPage({ lang }: { lang: string }) {
               </div>
             </div>
 
-            {!data.parentGame && (
+            {!isBlockedEdition && (
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown
