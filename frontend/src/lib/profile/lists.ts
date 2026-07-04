@@ -1,7 +1,7 @@
 import {
   getAllLibraryEntries, getAllCatalogEntries, getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
-  deleteUserList, addItemToList, removeItemFromList,
+  deleteUserList, addItemToList, removeItemFromList, reorderListItems,
 } from '../tauri';
 import type { MediaCatalogEntry, ListInfo, ListItemFull } from '../tauri';
 import { getT } from '../../i18n/client';
@@ -161,7 +161,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
     const renderDetailContent = () => {
       const currentIds = new Set(listItems.map(i => i.external_id));
 
-      const listItemsHtml = listItems.map(item => {
+      const listItemsHtml = listItems.map((item, idx) => {
         const title    = item.title_main ?? item.external_id;
         const cover    = item.cover_url  ?? '';
         const fallback = HOF_GRADIENTS[item.media_type ?? 'anime'] ?? 'linear-gradient(160deg,#374151,#1f2937)';
@@ -170,7 +170,8 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         const ratingDisplay = item.rating ? `★ ${dbRatingToStars5(item.rating).toFixed(1)}` : null;
 
         return `
-          <div class="list-item-card">
+          <div class="list-item-card" draggable="true" data-idx="${idx}">
+            <span class="list-item-drag-handle" title="Arrastrar para reordenar">⠿</span>
             <a class="list-item-cover-link" href="${url}">
               ${cover
                 ? `<img class="list-item-cover" src="${esc(cover)}" alt="${escAttr(title)}" loading="lazy">`
@@ -281,6 +282,58 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           </div>
         </div>
       `;
+
+      // ── Drag-and-drop reordering ──────────────────────────────────────────
+
+      {
+        const grid = el.querySelector('.list-items-grid') as HTMLElement | null;
+        if (grid) {
+          let dragIdx: number | null = null;
+
+          grid.addEventListener('dragstart', (e: DragEvent) => {
+            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
+            if (!card) return;
+            dragIdx = parseInt(card.dataset.idx ?? '', 10);
+            card.classList.add('list-item--dragging');
+            e.dataTransfer!.effectAllowed = 'move';
+            e.dataTransfer!.setData('text/plain', String(dragIdx));
+          });
+
+          grid.addEventListener('dragend', (e: DragEvent) => {
+            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
+            card?.classList.remove('list-item--dragging');
+            grid.querySelectorAll('.list-item-card').forEach(c => c.classList.remove('list-item--drag-over'));
+            dragIdx = null;
+          });
+
+          grid.addEventListener('dragover', (e: DragEvent) => {
+            e.preventDefault();
+            e.dataTransfer!.dropEffect = 'move';
+            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
+            if (!card) return;
+            grid.querySelectorAll('.list-item-card').forEach(c => c.classList.remove('list-item--drag-over'));
+            card.classList.add('list-item--drag-over');
+          });
+
+          grid.addEventListener('drop', async (e: DragEvent) => {
+            e.preventDefault();
+            const card = (e.target as HTMLElement).closest('.list-item-card') as HTMLElement | null;
+            if (!card || dragIdx === null) return;
+            const dropIdx = parseInt(card.dataset.idx ?? '', 10);
+            if (isNaN(dropIdx) || dragIdx === dropIdx) return;
+
+            // Reorder the local array
+            const [moved] = listItems.splice(dragIdx, 1);
+            listItems.splice(dropIdx, 0, moved);
+
+            // Persist to backend
+            const newOrder = listItems.map(i => i.external_id);
+            reorderListItems(listKey, newOrder).catch(() => {});
+
+            renderDetailContent();
+          });
+        }
+      }
 
       // ── Event listeners ───────────────────────────────────────────────────
 

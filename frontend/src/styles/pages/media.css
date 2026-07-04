@@ -925,7 +925,7 @@
 /* Stars Rating */
 .media-library-rating {
   display: flex;
-  gap: 0.2rem;
+  gap: 0.35rem;
   justify-content: center;
   align-items: center;
   margin-top: 0.25rem;
@@ -942,8 +942,8 @@
 }
 
 .star-icon {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
 .star-empty {
@@ -953,9 +953,9 @@
 
 .star-filled-wrap {
   position: absolute;
-  left: 3px;
-  top: 3px;
-  height: 18px;
+  left: 0;
+  top: 0;
+  height: 24px;
   overflow: hidden;
   pointer-events: none;
   z-index: 10;
@@ -963,16 +963,16 @@
 
 .star-filled-wrap svg {
   color: var(--accent);
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
 .star-preview-full,
 .star-preview-half {
   position: absolute;
-  left: 3px;
-  top: 3px;
-  height: 18px;
+  left: 0;
+  top: 0;
+  height: 24px;
   overflow: hidden;
   pointer-events: none;
   z-index: 20;
@@ -983,12 +983,12 @@
 .star-preview-half svg {
   color: var(--accent);
   opacity: 0.5;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
 }
 
 .star-preview-half {
-  width: 9px;
+  width: 12px;
 }
 
 .star-zone {
@@ -1210,8 +1210,8 @@
 .me-header-star--fg {
   fill: var(--accent, #7c6af7);
   stroke: none;
-  width: 100%;
-  height: 100%;
+  width: 24px;
+  height: 24px;
 }
 
 .me-header-star-zone {

@@ -1415,23 +1415,15 @@
 }
 
 /* ── Drag & Drop Reordering ──────────────────────────────────────────────── */
-@keyframes fav-wiggle {
-  0% {
-    transform: rotate(-0.5deg);
-  }
-
-  50% {
-    transform: rotate(0.5deg);
-  }
-
-  100% {
-    transform: rotate(-0.5deg);
-  }
+.fav-card.reordering {
+  cursor: grab;
+  outline: 1px dashed var(--border-color);
+  outline-offset: -1px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.fav-card.reordering {
-  animation: fav-wiggle 0.25s ease-in-out infinite;
-  cursor: grab;
+.fav-card.reordering .fav-card-link {
+  pointer-events: none;
 }
 
 .fav-card.reordering:active {
@@ -1442,14 +1434,14 @@
   opacity: 0.4;
   border: 1px dashed var(--accent) !important;
   box-shadow: none !important;
+  transition: none;
 }
 
-.fav-card.drag-over-left {
-  border-left: 4px solid var(--accent) !important;
-}
-
-.fav-card.drag-over-right {
-  border-right: 4px solid var(--accent) !important;
+.fav-card-ghost {
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  overflow: hidden;
+  will-change: transform, left, top;
 }
 
 /* ── Tab Content Transition ────────────────────────────────────────────────── */
@@ -2757,6 +2749,29 @@
 }
 
 .list-item-remove:hover { opacity: 1; color: #ef4444; }
+
+.list-item-drag-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--text-dim);
+  opacity: 0.35;
+  font-size: 1.1rem;
+  line-height: 1;
+  user-select: none;
+  transition: opacity 0.12s, color 0.12s;
+  padding: 0 0.1rem;
+}
+.list-item-drag-handle:hover { opacity: 0.7; color: var(--text-main); }
+.list-item-drag-handle:active { cursor: grabbing; }
+
+.list-item--dragging {
+  opacity: 0.35;
+}
+
+.list-item--drag-over {
+  border-color: var(--accent) !important;
+  background: rgba(124, 106, 247, 0.06);
+}
 
 .list-add-panel {
   background: rgba(255,255,255,0.03);

@@ -16,78 +16,78 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const t = getT();
     const p = t.profile;
 
-  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
-  const catalogMap = new Map<string, MediaCatalogEntry>(
-    catalogEntries.map(e => [e.external_id, e])
-  );
+    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+    const catalogMap = new Map<string, MediaCatalogEntry>(
+      catalogEntries.map(e => [e.external_id, e])
+    );
 
-  const monthlyHistory = await readMonthlyHistory().catch(() => ({}));
+    const monthlyHistory = await readMonthlyHistory().catch(() => ({}));
 
-  let completed = 0, inProgress = 0, planning = 0, dropped = 0;
-  let totalRating = 0, ratedCount = 0, totalMinutes = 0;
-  const completedByType: Record<string, number> = {};
+    let completed = 0, inProgress = 0, planning = 0, dropped = 0;
+    let totalRating = 0, ratedCount = 0, totalMinutes = 0;
+    const completedByType: Record<string, number> = {};
 
-  for (const item of items) {
-    const s = item.status ?? 'planning';
-    if (s === 'completed') {
-      completed++;
-      completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
+    for (const item of items) {
+      const s = item.status ?? 'planning';
+      if (s === 'completed') {
+        completed++;
+        completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
+      }
+      else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
+      else if (s === 'planning') planning++;
+      else if (s === 'dropped') dropped++;
+
+      if (item.rating) { totalRating += item.rating; ratedCount++; }
+      if (item.minutes_spent) totalMinutes += item.minutes_spent;
     }
-    else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
-    else if (s === 'planning') planning++;
-    else if (s === 'dropped') dropped++;
 
-    if (item.rating)         { totalRating += item.rating; ratedCount++; }
-    if (item.minutes_spent)    totalMinutes += item.minutes_spent;
-  }
-
-  const system = getActiveRatingSystem();
-  let avgRatingStr = '0.0';
-  if (ratedCount > 0) {
-    const avgVal = totalRating / ratedCount;
-    if (system === '10-dec') {
-      avgRatingStr = avgVal.toFixed(2);
-    } else if (system === '10') {
-      avgRatingStr = Math.round(avgVal).toString();
-    } else if (system === '3-emoji') {
-      let emoji = '😐';
-      if (avgVal <= 3.5) emoji = '😞';
-      else if (avgVal > 7) emoji = '😊';
-      avgRatingStr = `${emoji} (${avgVal.toFixed(1)})`;
-    } else {
-      avgRatingStr = (avgVal / 2).toFixed(1);
+    const system = getActiveRatingSystem();
+    let avgRatingStr = '0.0';
+    if (ratedCount > 0) {
+      const avgVal = totalRating / ratedCount;
+      if (system === '10-dec') {
+        avgRatingStr = avgVal.toFixed(2);
+      } else if (system === '10') {
+        avgRatingStr = Math.round(avgVal).toString();
+      } else if (system === '3-emoji') {
+        let emoji = '😐';
+        if (avgVal <= 3.5) emoji = '😞';
+        else if (avgVal > 7) emoji = '😊';
+        avgRatingStr = `${emoji} (${avgVal.toFixed(1)})`;
+      } else {
+        avgRatingStr = (avgVal / 2).toFixed(1);
+      }
     }
-  }
 
-  const totalHours = Math.round(totalMinutes / 60);
+    const totalHours = Math.round(totalMinutes / 60);
 
-  const completedTooltipHtml = `
+    const completedTooltipHtml = `
     <span class="stat-help-wrap">
       <span class="stat-help-icon">?</span>
       <span class="stat-tooltip">
-        ${Object.entries(completedByType).length > 0 
-          ? Object.entries(completedByType).map(([type, count]) => `
+        ${Object.entries(completedByType).length > 0
+        ? Object.entries(completedByType).map(([type, count]) => `
               <span class="stat-tooltip-row">
                 <span class="stat-tooltip-label">${typeLabel(type)}</span>
                 <span class="stat-tooltip-value">${count}</span>
               </span>
             `).join('')
-          : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
-        }
+        : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
+      }
       </span>
     </span>
   `;
 
-  const statsHtml = `
+    const statsHtml = `
     <div class="profile-stats-bar">
       ${([
-        [p.stat_total,     pad(items.length)],
-        [p.stat_progress,  pad(inProgress)],
+        [p.stat_total, pad(items.length)],
+        [p.stat_progress, pad(inProgress)],
         [p.stat_completed, pad(completed)],
-        [p.stat_pending,   pad(planning)],
-        [p.stat_dropped,   pad(dropped)],
-        [p.stat_avg,       avgRatingStr],
-        [p.stat_hours,     totalHours + 'h'],
+        [p.stat_pending, pad(planning)],
+        [p.stat_dropped, pad(dropped)],
+        [p.stat_avg, avgRatingStr],
+        [p.stat_hours, totalHours + 'h'],
       ] as [string, string][]).map(([label, value]) =>
         `<div class="profile-stat">
            <span class="profile-stat-value">${value}</span>
@@ -99,7 +99,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       ).join('')}
     </div>`;
 
-  const bottomHtml = `
+    const bottomHtml = `
     <div class="profile-bottom-grid">
       <div class="profile-bottom-col">
         <p class="profile-section-label">${p.monthly_history}</p>
@@ -111,13 +111,13 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       </div>
     </div>`;
 
-  const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
-  const multimediaIds = favData.multimedia || [];
-  const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+    const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+    const multimediaIds = favData.multimedia || [];
+    const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
 
-  el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
-  initHofListeners(el);
-  initActivityListeners(el, catalogMap, p);
+    el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
+    initHofListeners(el);
+    initActivityListeners(el, catalogMap, p);
   } catch (error: any) {
     console.error("renderOverview failed:", error);
     el.innerHTML = `<div style="padding: 2rem; color: #ef4444; font-family: monospace; font-size: 0.9rem;">
@@ -143,7 +143,7 @@ function buildRatingHtml(rating: number | null | undefined): string {
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
   if (!started && !finished) return '';
   const parts: string[] = [];
-  if (started)  parts.push(fmtDate(started));
+  if (started) parts.push(fmtDate(started));
   if (finished) parts.push(fmtDate(finished));
   return `<span class="library-card-date">${CALENDAR_ICON}${parts.join(' → ')}</span>`;
 }
@@ -229,20 +229,20 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     </div>
   `;
 
-  const filterName   = el.querySelector('#filter-name') as HTMLInputElement | null;
-  const statusValEl  = el.querySelector('#status-val') as HTMLElement | null;
-  const btnPrev      = el.querySelector('#status-prev') as HTMLButtonElement | null;
-  const btnNext      = el.querySelector('#status-next') as HTMLButtonElement | null;
-  const contentEl    = el.querySelector('.library-content') as HTMLElement | null;
-  const typeBtns     = el.querySelectorAll('.library-type-btn');
-  const sortBtns     = el.querySelectorAll('.library-sort-btn');
+  const filterName = el.querySelector('#filter-name') as HTMLInputElement | null;
+  const statusValEl = el.querySelector('#status-val') as HTMLElement | null;
+  const btnPrev = el.querySelector('#status-prev') as HTMLButtonElement | null;
+  const btnNext = el.querySelector('#status-next') as HTMLButtonElement | null;
+  const contentEl = el.querySelector('.library-content') as HTMLElement | null;
+  const typeBtns = el.querySelectorAll('.library-type-btn');
+  const sortBtns = el.querySelectorAll('.library-sort-btn');
 
   const applyFilters = () => {
     if (!contentEl) return;
     const sectionsListEl = contentEl.querySelector('.library-sections-list') as HTMLElement | null;
     if (!sectionsListEl) return;
 
-    const nameVal   = filterName?.value.toLowerCase().trim() || '';
+    const nameVal = filterName?.value.toLowerCase().trim() || '';
     const statusKey = STATUS_LIST[currentStatusIndex].key;
 
     const filtered = items.filter(item => {
@@ -285,10 +285,10 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     };
 
     const inProgress = sortItems(filtered.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing'));
-    const completed  = sortItems(filtered.filter(item => item.status === 'completed'));
-    const planning   = sortItems(filtered.filter(item => item.status === 'planning'));
-    const paused     = sortItems(filtered.filter(item => item.status === 'paused'));
-    const dropped    = sortItems(filtered.filter(item => item.status === 'dropped'));
+    const completed = sortItems(filtered.filter(item => item.status === 'completed'));
+    const planning = sortItems(filtered.filter(item => item.status === 'planning'));
+    const paused = sortItems(filtered.filter(item => item.status === 'paused'));
+    const dropped = sortItems(filtered.filter(item => item.status === 'dropped'));
 
     const sectionsData = [
       { title: p.section_in_progress, items: inProgress },
@@ -305,21 +305,21 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           <h3 class="library-section-title">${sec.title}</h3>
           <div class="library-grid">
             ${sec.items.map(item => {
-              const meta     = catalogMap.get(item.external_id);
-              const title    = meta?.title_main ?? item.external_id;
-              const cover    = meta?.cover_url ?? '';
-              const typeIc   = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-              const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-              const style    = cover ? `style="--cover: url('${cover}')"` : '';
+        const meta = catalogMap.get(item.external_id);
+        const title = meta?.title_main ?? item.external_id;
+        const cover = meta?.cover_url ?? '';
+        const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+        const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+        const style = cover ? `style="--cover: url('${cover}')"` : '';
 
-              return `
+        return `
                 <div class="library-card" data-id="${item.external_id}" ${style}>
                   ${cover ? `<div class="library-card-bg"></div>` : ''}
                   <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
                     ${cover
-                      ? `<img src="${cover}" alt="${title}" loading="lazy" />`
-                      : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
-                    }
+            ? `<img src="${cover}" alt="${title}" loading="lazy" />`
+            : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+          }
                   </a>
                   <div class="library-card-info">
                     <span class="library-card-title">${title}</span>
@@ -330,7 +330,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
                     </div>
                   </div>
                 </div>`;
-            }).join('')}
+      }).join('')}
           </div>
         </div>
       `).join('');
@@ -417,7 +417,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   const totalWorks = items.length;
   const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
   const totalHours = totalMinutes / 60;
-  
+
   const ratedItems = items.filter(item => item.rating != null && item.rating > 0);
   const totalRating = ratedItems.reduce((acc, item) => acc + (item.rating || 0), 0);
   const avgScore = ratedItems.length > 0 ? (totalRating / ratedItems.length) : 0;
@@ -448,11 +448,11 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   })).sort((a, b) => b.hours - a.hours); // Sorted by hours spent
 
   const statusList = [
-    { label: p.section_completed,   value: completed, color: 'completed',  icon: STATUS_ICONS_14.completed   },
+    { label: p.section_completed, value: completed, color: 'completed', icon: STATUS_ICONS_14.completed },
     { label: p.section_in_progress, value: currently, color: 'in_progress', icon: STATUS_ICONS_14.in_progress },
-    { label: p.section_planning,    value: planning,  color: 'planning',   icon: STATUS_ICONS_14.planning    },
-    { label: p.section_paused,      value: paused,    color: 'paused',     icon: STATUS_ICONS_14.paused      },
-    { label: p.section_dropped,     value: dropped,   color: 'dropped',    icon: STATUS_ICONS_14.dropped     },
+    { label: p.section_planning, value: planning, color: 'planning', icon: STATUS_ICONS_14.planning },
+    { label: p.section_paused, value: paused, color: 'paused', icon: STATUS_ICONS_14.paused },
+    { label: p.section_dropped, value: dropped, color: 'dropped', icon: STATUS_ICONS_14.dropped },
   ].filter(s => s.value > 0);
 
   const system = getActiveRatingSystem();
@@ -490,11 +490,11 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     .map(item => {
       const entry = catalogMap.get(item.external_id);
       if (!entry) return null;
-      
+
       const year = entry.release_year;
       const month = entry.release_month;
       const day = entry.release_day || 1;
-      
+
       if (year && month) {
         const releaseDate = new Date(year, month - 1, day);
         if (releaseDate >= todayDate) {
@@ -571,11 +571,11 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   // Build the list of releases below (list all future releases in planning)
   const releasesListHtml = upcomingPlanningReleases.length > 0
     ? upcomingPlanningReleases.map(r => {
-        const typeLabelText = TYPE_LABELS[r.type] || r.type;
-        const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
-        const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
-        const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-        return `
+      const typeLabelText = TYPE_LABELS[r.type] || r.type;
+      const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
+      const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
+      const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `
           <div class="calendar-release-item">
             <div class="calendar-release-img" style="${style}"></div>
             <div class="calendar-release-info">
@@ -584,7 +584,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
             </div>
           </div>
         `;
-      }).join('')
+    }).join('')
     : `<p style="font-size: 0.8rem; color: var(--text-dim); text-align: center; padding: 1.5rem 0;">${p.stats_no_calendar}</p>`;
 
   /* ── 3. Calculate Activity Heatmap ─────────────────────────────────────── */
@@ -603,7 +603,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     curDate.setDate(curDate.getDate() + i);
     const dateKey = curDate.toISOString().split('T')[0];
     const count = activityMap[dateKey] || 0;
-    
+
     let level = 0;
     if (count > 0 && count <= 2) level = 1;
     else if (count > 2 && count <= 4) level = 2;
@@ -634,7 +634,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   const scoreBuckets = [
     { label: '1–2', min: 1, max: 2.99 }, { label: '3–4', min: 3, max: 4.99 },
     { label: '5–6', min: 5, max: 6.99 }, { label: '7–8', min: 7, max: 8.99 },
-    { label: '9–10', min: 9, max: 10  },
+    { label: '9–10', min: 9, max: 10 },
   ];
   const scoreDist = scoreBuckets.map(b => ({
     label: b.label,
@@ -693,9 +693,9 @@ export async function renderStats(el: HTMLElement): Promise<void> {
             <h3 class="stats-block-title">${p.stats_by_status}</h3>
             <div class="stats-status-list">
               ${statusList.map(s => {
-                const pct = ((s.value / totalWorks) * 100).toFixed(0);
-                const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
-                return `
+    const pct = ((s.value / totalWorks) * 100).toFixed(0);
+    const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
+    return `
                   <div class="stats-status-row">
                     <div class="stats-status-icon">${s.icon}</div>
                     <span class="stats-status-label">${s.label}</span>
@@ -706,7 +706,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                     <span class="stats-status-percent">${pct}%</span>
                   </div>
                 `;
-              }).join('')}
+  }).join('')}
             </div>
           </div>
         ` : ''}
@@ -716,9 +716,9 @@ export async function renderStats(el: HTMLElement): Promise<void> {
             <h3 class="stats-block-title">${p.stats_by_time}</h3>
             <div class="stats-time-bars">
               ${byType.map(t => {
-                const label = TYPE_LABELS[t.type] || t.type;
-                const percent = maxHours > 0 ? (t.hours / maxHours) * 100 : 0;
-                return `
+    const label = TYPE_LABELS[t.type] || t.type;
+    const percent = maxHours > 0 ? (t.hours / maxHours) * 100 : 0;
+    return `
                   <div class="stats-time-row">
                     <div class="stats-time-meta">
                       <span class="stats-time-label">${label}</span>
@@ -729,7 +729,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                     </div>
                   </div>
                 `;
-              }).join('')}
+  }).join('')}
             </div>
           </div>
         ` : ''}
@@ -824,12 +824,12 @@ export async function renderStats(el: HTMLElement): Promise<void> {
           </div>
           <div class="stats-calendar-list">
             ${upcomingPlanningReleases.length > 0
-              ? upcomingPlanningReleases.map(r => {
-                  const typeLabelText = TYPE_LABELS[r.type] || r.type;
-                  const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
-                  const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
-                  const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-                  return `
+      ? upcomingPlanningReleases.map(r => {
+        const typeLabelText = TYPE_LABELS[r.type] || r.type;
+        const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
+        const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
+        const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+        return `
                     <div class="calendar-release-item">
                       <div class="calendar-release-img" style="${style}"></div>
                       <div class="calendar-release-info">
@@ -838,9 +838,9 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                       </div>
                     </div>
                   `;
-                }).join('')
-              : `<p class="stats-calendar-empty">${p.stats_no_calendar}</p>`
-            }
+      }).join('')
+      : `<p class="stats-calendar-empty">${p.stats_no_calendar}</p>`
+    }
           </div>
         </div>
       </div>
@@ -897,7 +897,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   }
 
   if (modified) {
-    await writeUserFavorites(favData).catch(() => {});
+    await writeUserFavorites(favData).catch(() => { });
   }
 
   const getOrderedItems = (catKey: string) => {
@@ -942,7 +942,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const isCrowned = favData.multimedia?.includes(item.external_id);
 
       return `
-        <div class="fav-card ${reorderModeActive ? 'reordering' : ''}" data-id="${item.external_id}" ${reorderModeActive ? 'draggable="true"' : ''}>
+        <div class="fav-card ${reorderModeActive ? 'reordering' : ''}" data-id="${item.external_id}">
           <a class="fav-card-link" href="${mediaUrl}"></a>
           <div class="fav-badge">#${idx + 1}</div>
 
@@ -954,9 +954,9 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           ` : ''}
 
           ${cover
-            ? `<img class="fav-cover" src="${cover}" alt="${title}" loading="lazy" />`
-            : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
-          }
+          ? `<img class="fav-cover" src="${cover}" alt="${title}" loading="lazy" />`
+          : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+        }
           <div class="fav-overlay">
             <span class="fav-title">${title}</span>
             <div class="fav-meta">
@@ -1024,7 +1024,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         const id = (btn as HTMLElement).dataset.id || '';
         if (!id) return;
         if (!favData.multimedia) favData.multimedia = [];
-        
+
         if (favData.multimedia.includes(id)) {
           favData.multimedia = favData.multimedia.filter(x => x !== id);
         } else {
@@ -1035,91 +1035,132 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       });
     });
 
-    /* ── Hook Drag & Drop Listeners ───────────────────────────────────────── */
+    /* ── Pointer-based Reordering (works in Tauri WebView) ─────────────── */
     if (reorderModeActive) {
       const container = el.querySelector('.fav-grid') as HTMLElement | null;
       if (container) {
-        let activeDragSource: HTMLElement | null = null;
+        let dragCard: HTMLElement | null = null;
+        let ghost: HTMLElement | null = null;
+        let offsetX = 0;
+        let offsetY = 0;
 
-        const getInsertionPoint = (clientX: number, clientY: number) => {
-          const cards = Array.from(container.querySelectorAll('.fav-card:not(.drag-source)')) as HTMLElement[];
-          let closestCard: HTMLElement | null = null;
-          let closestDistance = Infinity;
-          let insertBefore = true;
+        // Cache of card centers/edges, only recomputed right after a real
+        // DOM reorder (insertBefore) — not on every mousemove/rAF tick —
+        // since that was forcing a full-grid reflow on every frame.
+        type CardRect = { el: HTMLElement; cx: number; cy: number; left: number; width: number };
+        let rectCache: CardRect[] = [];
 
-          for (const card of cards) {
-            const rect = card.getBoundingClientRect();
-            if (
-              clientX >= rect.left && clientX <= rect.right &&
-              clientY >= rect.top && clientY <= rect.bottom
-            ) {
-              closestCard = card;
-              insertBefore = (clientX - rect.left) < rect.width / 2;
-              break;
-            }
+        const refreshRectCache = () => {
+          rectCache = Array.from(container.querySelectorAll('.fav-card:not(.drag-source)')).map(cardEl => {
+            const r = (cardEl as HTMLElement).getBoundingClientRect();
+            return { el: cardEl as HTMLElement, cx: r.left + r.width / 2, cy: r.top + r.height / 2, left: r.left, width: r.width };
+          });
+        };
 
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const distance = Math.hypot(clientX - centerX, clientY - centerY);
+        const getClosestCard = (clientX: number, clientY: number): CardRect | null => {
+          let closest: CardRect | null = null;
+          let closestDist = Infinity;
 
-            if (distance < closestDistance) {
-              closestDistance = distance;
-              closestCard = card;
-              insertBefore = clientX < centerX;
+          for (const entry of rectCache) {
+            const dist = Math.hypot(clientX - entry.cx, clientY - entry.cy);
+            if (dist < closestDist) {
+              closestDist = dist;
+              closest = entry;
             }
           }
-          return { closestCard, insertBefore };
+          return closest;
+        };
+
+        let rafId = 0;
+        let lastMoveX = 0;
+        let lastMoveY = 0;
+
+        const reorderTick = () => {
+          rafId = 0;
+          if (!dragCard) return;
+          const target = getClosestCard(lastMoveX, lastMoveY);
+          if (target && target.el !== dragCard) {
+            const insertBefore = (lastMoveX - target.left) < target.width / 2;
+            if (insertBefore) {
+              container.insertBefore(dragCard, target.el);
+            } else {
+              container.insertBefore(dragCard, target.el.nextSibling);
+            }
+            // Layout just changed — refresh cached positions for the next comparison
+            refreshRectCache();
+          }
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+          if (!ghost || !dragCard) return;
+          e.preventDefault();
+          ghost.style.left = `${e.clientX - offsetX}px`;
+          ghost.style.top = `${e.clientY - offsetY}px`;
+
+          // Throttle DOM reordering to one per frame
+          lastMoveX = e.clientX;
+          lastMoveY = e.clientY;
+          if (!rafId) rafId = requestAnimationFrame(reorderTick);
+        };
+
+        const onMouseUp = async () => {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+
+          if (ghost) { ghost.remove(); ghost = null; }
+          if (dragCard) {
+            dragCard.classList.remove('drag-source');
+
+            // Persist new order from DOM
+            const newOrder = Array.from(container.querySelectorAll('.fav-card'))
+              .map(c => (c as HTMLElement).dataset.id)
+              .filter(Boolean) as string[];
+            favData[activeCatKey] = newOrder;
+            await writeUserFavorites(favData);
+
+            dragCard = null;
+            renderContent();
+          }
         };
 
         const cards = container.querySelectorAll('.fav-card') as NodeListOf<HTMLElement>;
         cards.forEach(card => {
-          card.addEventListener('dragstart', (e: DragEvent) => {
+          card.addEventListener('mousedown', (e: MouseEvent) => {
+            if (!reorderModeActive) return;
+            // Ignore clicks on crown buttons
+            if ((e.target as HTMLElement).closest('.fav-crown-btn')) return;
+            e.preventDefault();
             window.getSelection()?.removeAllRanges();
-            activeDragSource = card;
+
+            dragCard = card;
+            const rect = card.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+
+            // Create visual ghost clone
+            ghost = card.cloneNode(true) as HTMLElement;
+            ghost.classList.add('fav-card-ghost');
+            ghost.style.cssText = `
+              position: fixed;
+              left: ${rect.left}px;
+              top: ${rect.top}px;
+              width: ${rect.width}px;
+              height: ${rect.height}px;
+              z-index: 9999;
+              pointer-events: none;
+              opacity: 0.85;
+              transform: scale(1.05);
+              transition: none;
+            `;
+            document.body.appendChild(ghost);
+
             card.classList.add('drag-source');
-            if (e.dataTransfer) {
-              e.dataTransfer.effectAllowed = 'move';
-              e.dataTransfer.setData('text/plain', card.getAttribute('data-id') || '');
-              const img = card.querySelector('.fav-cover') as HTMLImageElement | null;
-              if (img && e.dataTransfer.setDragImage) {
-                // Set the cover image as the drag visual under the cursor
-                e.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
-              }
-            }
+            refreshRectCache();
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
           });
-
-          card.addEventListener('dragend', () => {
-            card.classList.remove('drag-source');
-            activeDragSource = null;
-          });
-        });
-
-        container.addEventListener('dragover', (e: DragEvent) => {
-          e.preventDefault();
-          if (!activeDragSource) return;
-
-          const { closestCard, insertBefore } = getInsertionPoint(e.clientX, e.clientY);
-          if (closestCard && closestCard !== activeDragSource) {
-            if (insertBefore) {
-              container.insertBefore(activeDragSource, closestCard);
-            } else {
-              container.insertBefore(activeDragSource, closestCard.nextSibling);
-            }
-          }
-        });
-
-        container.addEventListener('drop', async (e: DragEvent) => {
-          e.preventDefault();
-          if (activeDragSource) {
-            // Update favData based on new DOM order
-            const newOrder = Array.from(container.querySelectorAll('.fav-card'))
-              .map(c => (c as HTMLElement).dataset.id)
-              .filter(Boolean) as string[];
-
-            favData[activeCatKey] = newOrder;
-            await writeUserFavorites(favData);
-            renderContent();
-          }
         });
       }
     }
