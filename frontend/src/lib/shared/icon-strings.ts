@@ -28,6 +28,18 @@ const INNER: Record<string, string> = {
   chart:       `<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>`,
   crown:       `<path d="M2 19.5 4.5 8 9 13l3-7 3 7 4.5-5L22 19.5H2zm0 2h20v1.5H2v-1.5z"/>`,
   person:      `<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>`,
+
+  // Settings page
+  settings_appearance:   `<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`,
+  settings_connections:  `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
+  settings_environment:  `<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/>`,
+  settings_novedades:    `<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>`,
+  upload_image:          `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>`,
+  chevron_left:          `<polyline points="15 18 9 12 15 6"/>`,
+  chevron_right:         `<polyline points="9 18 15 12 9 6"/>`,
+  rating_faces:          `<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>`,
+  github:                `<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>`,
+  import_download:       `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
 };
 
 // ── Factory helpers ───────────────────────────────────────────────────────────
@@ -99,3 +111,16 @@ export const ICON_CHART  = stroke(18, '2', INNER.chart);
 
 export const ICON_CROWN  = fill(16, INNER.crown);
 export const ICON_PERSON = stroke(16, '2', INNER.person);
+
+// ── Settings page icons ────────────────────────────────────────────────────
+
+export const ICON_SETTINGS_APPEARANCE  = stroke(14, '2', INNER.settings_appearance);
+export const ICON_SETTINGS_CONNECTIONS = stroke(14, '2', INNER.settings_connections);
+export const ICON_SETTINGS_ENVIRONMENT = stroke(14, '2', INNER.settings_environment);
+export const ICON_SETTINGS_NOVEDADES   = stroke(14, '2', INNER.settings_novedades);
+export const ICON_UPLOAD_IMAGE         = stroke(24, '1.5', INNER.upload_image);
+export const ICON_CHEVRON_LEFT         = stroke(16, '2.5', INNER.chevron_left);
+export const ICON_CHEVRON_RIGHT        = stroke(16, '2.5', INNER.chevron_right);
+export const ICON_RATING_FACES         = stroke(18, '2', INNER.rating_faces);
+export const ICON_GITHUB               = stroke(18, '2', INNER.github);
+export const ICON_IMPORT_DOWNLOAD      = stroke(14, '2', INNER.import_download);

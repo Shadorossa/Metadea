@@ -635,7 +635,7 @@
   flex-shrink: 0;
 }
 
-.settings-auth-icon {
+.settings-auth-avatar svg {
   color: var(--text-muted);
 }
 
@@ -657,6 +657,10 @@
   gap: 0.5rem;
   flex: 1;
   min-width: 0;
+}
+
+.settings-auth-actions svg {
+  margin-right: 4px;
 }
 
 /* ── Modals (GitHub device flow / AniList token) ─────────────────────────── */
