@@ -277,14 +277,39 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   useEffect(() => {
     const loadAllVersions = async (bId: string) => {
       try {
+        // 1. Cargar el juego base
         const baseEntry = await getLibraryEntry(bId, 'game');
         if (baseEntry) {
           dispatchEntry({ type: 'LOAD_LOG', id: bId, entry: baseEntry });
-          if (baseEntry.selected_version) {
-            for (const versionId of baseEntry.selected_version.split(',')) {
-              const ev = await getLibraryEntry(versionId, 'game');
-              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
-            }
+        }
+
+        // 2. Reunir candidatos de ids relacionados (remakes, remasters, etc.) para buscar logs guardados
+        const candidates = new Set<string>();
+        if (data.parentGame) {
+          candidates.add(data.parentGame.externalId);
+        }
+        for (const rel of (data.relations || [])) {
+          const match = rel.url?.match(/id=([^&]+)/);
+          const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
+          if (relExternalId && relExternalId !== bId) {
+            candidates.add(relExternalId);
+          }
+        }
+
+        // 3. Cargar logs existentes para los candidatos
+        for (const candId of candidates) {
+          const ev = await getLibraryEntry(candId, 'game');
+          if (ev) {
+            dispatchEntry({ type: 'LOAD_LOG', id: candId, entry: ev });
+          }
+        }
+
+        // 4. Si el juego base tiene versiones enlazadas explícitamente en selected_version
+        // que no se cargaron como existentes, inicializarlas vacías
+        if (baseEntry && baseEntry.selected_version) {
+          for (const versionId of baseEntry.selected_version.split(',')) {
+            const ev = await getLibraryEntry(versionId, 'game');
+            dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
           }
         }
       } catch (err) {
@@ -306,7 +331,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         dispatchEntry({ type: 'LOAD_HISTORY', history, foundKey });
       })
       .catch(() => {});
-  }, [externalId, data.parentGame, data.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [externalId, data.parentGame, data.type, data.relations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dynamically load newly selected edition
   useEffect(() => {
