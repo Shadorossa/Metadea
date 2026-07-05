@@ -1131,7 +1131,7 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  width: 100%;
+  width: calc(100% + 30rem);
   /* .profile-tab-content (shared by every tab) has a fixed 15rem side padding
      tuned for narrower, text-centric tabs. Favorites is a media grid that
      needs far more width to fit 10 cover-sized cards per row without
@@ -1182,7 +1182,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .fav-tab-btn {
@@ -1237,13 +1237,13 @@
 /* Favorites Grid & Cards */
 .fav-grid {
   display: grid;
-  /* Fixed 150px columns (not 1fr) so cards pack left-to-right at a constant
-     size instead of stretching to fill the row; justify-content centers the
-     whole block of cards as a unit when it doesn't fill the container. */
-  grid-template-columns: repeat(auto-fill, 150px);
+  /* Centered cover cards supporting 10 columns per row on desktop */
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
   justify-content: center;
-  gap: 1.5rem;
+  gap: 1rem;
   width: 100%;
+  max-width: 1650px;
+  margin: 0 auto;
 }
 
 .fav-card {
