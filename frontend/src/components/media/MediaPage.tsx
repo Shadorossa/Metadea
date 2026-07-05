@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
 import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
@@ -130,6 +130,8 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [showEditor,         setShowEditor]         = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
+  const [savedToast,         setSavedToast]         = useState(false);
+  const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     entry: libEntry,
@@ -284,6 +286,9 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   const handleEditorSaved = useCallback((entry: LibraryEntry) => {
     applySaved(entry);
+    setSavedToast(true);
+    if (savedToastTimer.current) clearTimeout(savedToastTimer.current);
+    savedToastTimer.current = setTimeout(() => setSavedToast(false), 2500);
   }, [applySaved]);
 
   const handleEditorDeleted = useCallback(() => {
@@ -332,6 +337,14 @@ export default function MediaPage({ lang }: { lang: string }) {
   return (
     <>
       {isFetchingFull && <div className="media-bottom-progress" />}
+      {savedToast && (
+        <div className="media-saved-toast" role="status" aria-live="polite">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {tm.editor.saved_toast}
+        </div>
+      )}
       {showEditor && (
         <MediaEditorModal
           externalId={currentId}

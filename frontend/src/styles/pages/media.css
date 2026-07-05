@@ -47,6 +47,37 @@
   100% { left: 100%; }
 }
 
+/* ── Save confirmation toast ─────────────────────────────────────────────── */
+@keyframes media-saved-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.media-saved-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: color-mix(in srgb, var(--accent, #7c6af7) 15%, var(--bg-secondary, #1a1a2e));
+  color: var(--text-primary);
+  border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  animation: media-saved-toast-in 0.22s ease-out;
+  pointer-events: none;
+}
+
+.media-saved-toast svg {
+  color: var(--accent, #7c6af7);
+  flex-shrink: 0;
+}
+
 /* ── Hero ────────────────────────────────────────────────────────────────── */
 .media-hero {
   position: relative;
