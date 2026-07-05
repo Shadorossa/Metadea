@@ -603,12 +603,12 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   // Editions/versions this entry could be linked to (base game + expansions/
   // remakes/etc. from the IGDB relation list) grouped by relation type.
   const editionGroups = useMemo(() => {
-    if (data.type !== 'game') return [] as { label: string; options: { externalId: string; label: string }[] }[];
+    if (data.type !== 'game') return [] as { label: string; options: { externalId: string; label: string; cover?: string }[] }[];
 
-    const groupsMap: Record<string, { externalId: string; label: string }[]> = {};
+    const groupsMap: Record<string, { externalId: string; label: string; cover?: string }[]> = {};
 
     if (data.parentGame) {
-      groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title }];
+      groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title, cover: data.parentGame.cover }];
     }
 
     for (const rel of (data.relations || [])) {
@@ -624,7 +624,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         if (!groupsMap[groupLabel]) {
           groupsMap[groupLabel] = [];
         }
-        groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title });
+        groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title, cover: rel.cover });
       }
     }
 
@@ -632,7 +632,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   }, [data.type, data.parentGame, data.relations]);
 
   const allAvailableEditions = useMemo(() => {
-    const list: { externalId: string; label: string }[] = [];
+    const list: { externalId: string; label: string; cover?: string }[] = [];
     for (const group of editionGroups) {
       for (const opt of group.options) {
         if (opt.externalId !== baseId && !list.some(item => item.externalId === opt.externalId)) {
@@ -640,8 +640,29 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         }
       }
     }
+    // Viewing a version's own page: IGDB relations aren't symmetric, so this
+    // version rarely lists its own siblings back — add its own tab explicitly
+    // so the log switcher looks the same as it does from the base's page.
+    if (data.parentGame && !list.some(item => item.externalId === externalId)) {
+      list.push({ externalId, label: data.titleMain, cover: data.cover });
+    }
     return list;
-  }, [editionGroups, baseId]);
+  }, [editionGroups, baseId, data.parentGame, externalId, data.titleMain, data.cover]);
+
+  // Header cover/title follow whichever log tab is active — the base game's
+  // own title/cover, the current version's, or another linked edition's.
+  const activeLogDisplay = useMemo(() => {
+    if (entry.activeLogId === baseId) {
+      return {
+        title: data.parentGame ? data.parentGame.title : data.titleMain,
+        cover: data.parentGame ? data.parentGame.cover : data.cover,
+      };
+    }
+    const found = allAvailableEditions.find(ed => ed.externalId === entry.activeLogId);
+    return found
+      ? { title: found.label, cover: found.cover }
+      : { title: data.titleMain, cover: data.cover };
+  }, [entry.activeLogId, baseId, data.parentGame, data.titleMain, data.cover, allAvailableEditions]);
 
   const modal = (
     <div className={`me-overlay${ui.isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
@@ -650,9 +671,9 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         {/* Header */}
         <div className="me-header">
           <div className="me-header-left">
-            {data.cover && <img src={data.cover} alt="" className="me-header-cover" />}
+            {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
             <div className="me-header-col">
-              <span className="me-header-title">{data.titleMain}</span>
+              <span className="me-header-title">{activeLogDisplay.title}</span>
               <div className="me-header-bottom-row">
                 <div className="me-header-status-row">
                   {statusButtons.map(({ value, label, Icon }) => (
@@ -797,7 +818,11 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       </div>
                     </div>
 
-                    {allAvailableEditions.length > 0 && (
+                    {/* Show the log switcher whenever there's a base to link to (we're
+                        viewing a version) or other editions were found via IGDB relations
+                        (we're viewing the base) — the base game itself never shows up in
+                        allAvailableEditions since it already has its own fixed tab below. */}
+                    {(data.parentGame || allAvailableEditions.length > 0) && (
                       <div className="me-section">
                         <span className="me-label">Log</span>
                         <div className="me-log-tabs">

@@ -7,6 +7,7 @@ import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus } from '../constants/media';
+import { getNonEditionItems } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -26,7 +27,10 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     let totalRating = 0, ratedCount = 0, totalMinutes = 0;
     const completedByType: Record<string, number> = {};
 
-    for (const item of items) {
+    // Version-log child entries (tracking one specific edition/platform of a
+    // work) shouldn't be counted as separate works — same exclusion as the
+    // rest of the stats dashboard.
+    for (const item of getNonEditionItems(items)) {
       const s = item.status ?? 'planning';
       if (s === 'completed') {
         completed++;
@@ -37,6 +41,11 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       else if (s === 'dropped') dropped++;
 
       if (item.rating) { totalRating += item.rating; ratedCount++; }
+    }
+
+    // Hours played DO include version-log time — each logged version is a
+    // real playthrough, so its minutes still count toward total time spent.
+    for (const item of items) {
       if (item.minutes_spent) totalMinutes += item.minutes_spent;
     }
 

@@ -4,6 +4,7 @@ import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
+import { getNonEditionItems } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -34,15 +35,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
   ]);
 
-  const childIds = new Set<string>();
-  for (const item of rawItems) {
-    if (item.selected_version) {
-      for (const id of item.selected_version.split(',')) {
-        childIds.add(id);
-      }
-    }
-  }
-  const items = rawItems.filter(item => !childIds.has(item.external_id));
+  const items = getNonEditionItems(rawItems);
 
   if (items.length === 0) {
     el.innerHTML = `

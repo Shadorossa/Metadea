@@ -19,7 +19,12 @@ export interface OverviewAggregate {
   planning: number;
 }
 
-function getNonEditionItems(items: Items): Items {
+// A "version log" is a library entry created to track one specific edition/
+// platform of a work (e.g. tracking "Skyrim Special Edition" time separately
+// from the base "Skyrim" entry). Its own external_id shows up in the parent
+// entry's `selected_version` list — exclude those from any stat that counts
+// or buckets *works*, so the same conceptual work isn't counted twice.
+export function getNonEditionItems(items: Items): Items {
   const childIds = new Set<string>();
   for (const item of items) {
     if (item.selected_version) {
@@ -155,7 +160,7 @@ export function computeUpcomingPlanningReleases(
   catalogMap: Map<string, MediaCatalogEntry>,
   todayDate: Date,
 ): UpcomingRelease[] {
-  const releases = items
+  const releases = getNonEditionItems(items)
     .filter(item => item.status === 'planning')
     .map(item => {
       const entry = catalogMap.get(item.external_id);
