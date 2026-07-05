@@ -27,6 +27,23 @@ interface Props {
 
 type AniListStatus = 'idle' | 'syncing' | 'ok' | 'error';
 
+// Log specific values
+interface LogState {
+  existing:        LibraryEntry | null;
+  status:          string;
+  rating:          number;
+  progress:        number;
+  progressCount2:  number;
+  notes:           string;
+  startedAt:       string;
+  finishedAt:      string;
+  isFavorite:      boolean;
+  isPlatinum:      boolean;
+  tags:            string[];
+  platform:        string;
+  selectedVersion: string;
+}
+
 // Entry state: mirrors the fields saved to the library
 interface EntryState {
   existing:        LibraryEntry | null;
@@ -45,6 +62,8 @@ interface EntryState {
   monthlyHistory:  Record<string, string[]>;
   selectedMonthKey: string | null;
   selectedYear:    number;
+  activeLogId:     string;
+  logs:            Record<string, LogState>;
 }
 
 type EntryAction =
@@ -62,9 +81,12 @@ type EntryAction =
   | { type: 'ADD_TAG';      tag: string }
   | { type: 'REMOVE_TAG';   tag: string }
   | { type: 'SET_PLATFORM'; value: string }
-  | { type: 'SET_VERSION';  value: string }
+  | { type: 'SET_VERSION';  value: string; baseId: string }
   | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
-  | { type: 'SET_YEAR';     delta: 1 | -1 };
+  | { type: 'SET_YEAR';     delta: 1 | -1 }
+  | { type: 'LOAD_LOG';     id: string; entry: LibraryEntry }
+  | { type: 'SWITCH_LOG';   id: string }
+  | { type: 'INITIALIZE_LOGS'; activeLogId: string };
 
 // UI state: loading flags, tag input, anilist feedback
 interface UiState {
@@ -90,14 +112,30 @@ const entryInit: EntryState = {
   notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
   tags: [], platform: '', selectedVersion: '', monthlyHistory: {}, selectedMonthKey: null,
   selectedYear: new Date().getFullYear(),
+  activeLogId: '',
+  logs: {},
 };
+
+function updateActiveLog(state: EntryState, updates: Partial<LogState>): EntryState {
+  const activeId = state.activeLogId || 'active';
+  const current = state.logs[activeId] || {
+    existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+    notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+    tags: [], platform: '', selectedVersion: '',
+  };
+  const updatedLog = { ...current, ...updates };
+  return {
+    ...state,
+    ...updates,
+    logs: { ...state.logs, [activeId]: updatedLog },
+  };
+}
 
 function entryReducer(state: EntryState, action: EntryAction): EntryState {
   switch (action.type) {
     case 'LOAD_ENTRY': {
       const e = action.entry;
-      return {
-        ...state,
+      const logVal: LogState = {
         existing: e,
         status:        e.status        ?? 'planning',
         rating:        e.rating        ?? 0,
@@ -112,27 +150,131 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
         platform:      e.selected_platform ?? '',
         selectedVersion: e.selected_version ?? '',
       };
+      const activeId = state.activeLogId || e.external_id;
+      return {
+        ...state,
+        activeLogId: activeId,
+        logs: { ...state.logs, [e.external_id]: logVal },
+        ...(activeId === e.external_id ? logVal : {}),
+      };
+    }
+    case 'LOAD_LOG': {
+      const e = action.entry;
+      const logVal: LogState = {
+        existing: e,
+        status:        e.status        ?? 'planning',
+        rating:        e.rating        ?? 0,
+        progress:      e.progress      ?? 0,
+        progressCount2: e.progress_2 ?? 0,
+        notes:         e.notes         ?? '',
+        startedAt:     e.started_at    ?? '',
+        finishedAt:    e.finished_at   ?? '',
+        isFavorite:    e.is_favorite   === 1,
+        isPlatinum:    e.is_platinum   === 1,
+        tags:          e.tags          ?? [],
+        platform:      e.selected_platform ?? '',
+        selectedVersion: e.selected_version ?? '',
+      };
+      const isCurrentlyActive = state.activeLogId === action.id;
+      return {
+        ...state,
+        logs: { ...state.logs, [action.id]: logVal },
+        ...(isCurrentlyActive ? logVal : {}),
+      };
+    }
+    case 'SWITCH_LOG': {
+      const targetId = action.id;
+      const log = state.logs[targetId];
+      if (!log) return state;
+      return {
+        ...state,
+        activeLogId: targetId,
+        existing:        log.existing,
+        status:          log.status,
+        rating:          log.rating,
+        progress:        log.progress,
+        progressCount2:  log.progressCount2,
+        notes:           log.notes,
+        startedAt:       log.startedAt,
+        finishedAt:      log.finishedAt,
+        isFavorite:      log.isFavorite,
+        isPlatinum:      log.isPlatinum,
+        tags:            log.tags,
+        platform:        log.platform,
+        selectedVersion: log.selectedVersion,
+      };
+    }
+    case 'INITIALIZE_LOGS': {
+      const id = action.activeLogId;
+      const defaultLog: LogState = {
+        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+        tags: [], platform: '', selectedVersion: '',
+      };
+      return {
+        ...state,
+        activeLogId: id,
+        logs: { ...state.logs, [id]: state.logs[id] || defaultLog },
+      };
     }
     case 'LOAD_HISTORY': {
       const year = action.foundKey ? Number(action.foundKey.split('-')[0]) : state.selectedYear;
       return { ...state, monthlyHistory: action.history, selectedMonthKey: action.foundKey, selectedYear: year };
     }
-    case 'SET_STATUS':    return { ...state, status: action.value };
-    case 'SET_RATING':    return { ...state, rating: action.value };
-    case 'SET_PROGRESS':  return { ...state, progress: action.value };
-    case 'SET_PROGRESS2': return { ...state, progressCount2: action.value };
-    case 'SET_NOTES':     return { ...state, notes: action.value };
-    case 'SET_STARTED':   return { ...state, startedAt: action.value };
-    case 'SET_FINISHED':  return { ...state, finishedAt: action.value };
-    case 'TOGGLE_FAVORITE': return { ...state, isFavorite: !state.isFavorite };
-    case 'TOGGLE_PLATINUM': return { ...state, isPlatinum: !state.isPlatinum };
+    case 'SET_STATUS':    return updateActiveLog(state, { status: action.value });
+    case 'SET_RATING':    return updateActiveLog(state, { rating: action.value });
+    case 'SET_PROGRESS':  return updateActiveLog(state, { progress: action.value });
+    case 'SET_PROGRESS2': return updateActiveLog(state, { progressCount2: action.value });
+    case 'SET_NOTES':     return updateActiveLog(state, { notes: action.value });
+    case 'SET_STARTED':   return updateActiveLog(state, { startedAt: action.value });
+    case 'SET_FINISHED':  return updateActiveLog(state, { finishedAt: action.value });
+    case 'TOGGLE_FAVORITE': return updateActiveLog(state, { isFavorite: !state.isFavorite });
+    case 'TOGGLE_PLATINUM': return updateActiveLog(state, { isPlatinum: !state.isPlatinum });
     case 'ADD_TAG':
       if (state.tags.length >= 5 || state.tags.includes(action.tag)) return state;
-      return { ...state, tags: [...state.tags, action.tag] };
+      return updateActiveLog(state, { tags: [...state.tags, action.tag] });
     case 'REMOVE_TAG':
-      return { ...state, tags: state.tags.filter(t => t !== action.tag) };
-    case 'SET_PLATFORM':  return { ...state, platform: action.value };
-    case 'SET_VERSION':   return { ...state, selectedVersion: action.value };
+      return updateActiveLog(state, { tags: state.tags.filter(t => t !== action.tag) });
+    case 'SET_PLATFORM':  return updateActiveLog(state, { platform: action.value });
+    case 'SET_VERSION': {
+      const baseId = action.baseId;
+      const currentBaseLog = state.logs[baseId] || {
+        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+        tags: [], platform: '', selectedVersion: '',
+      };
+      const updatedBaseLog = { ...currentBaseLog, selectedVersion: action.value };
+      
+      const nextActiveLogId = action.value || baseId;
+      const targetLog = state.logs[nextActiveLogId] || {
+        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+        tags: [], platform: '', selectedVersion: '',
+      };
+
+      return {
+        ...state,
+        activeLogId: nextActiveLogId,
+        selectedVersion: action.value,
+        existing:        targetLog.existing,
+        status:          targetLog.status,
+        rating:          targetLog.rating,
+        progress:        targetLog.progress,
+        progressCount2:  targetLog.progressCount2,
+        notes:           targetLog.notes,
+        startedAt:       targetLog.startedAt,
+        finishedAt:      targetLog.finishedAt,
+        isFavorite:      targetLog.isFavorite,
+        isPlatinum:      targetLog.isPlatinum,
+        tags:            targetLog.tags,
+        platform:        targetLog.platform,
+        logs: { 
+          ...state.logs, 
+          [baseId]: updatedBaseLog,
+          [nextActiveLogId]: state.logs[nextActiveLogId] || targetLog
+        },
+      };
+    }
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
     case 'SET_MONTH': {
@@ -192,6 +334,21 @@ function progressLabel2(type: string, tm: typeof es.media): string {
   return 'Count 2';
 }
 
+function getNameDifference(baseTitle: string, editionTitle: string): string {
+  if (!editionTitle) return 'Edition';
+  const cleanBase = baseTitle.trim().toLowerCase();
+  const cleanEdition = editionTitle.trim().toLowerCase();
+  
+  if (cleanEdition.startsWith(cleanBase)) {
+    let diff = editionTitle.slice(baseTitle.length).trim();
+    if (diff.startsWith(':') || diff.startsWith('-')) {
+      diff = diff.slice(1).trim();
+    }
+    if (diff) return diff;
+  }
+  return editionTitle;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onDeleted, initialEntry }: Props) {
@@ -205,19 +362,49 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     tagInput: '', anilistStatus: 'idle', anilistError: null,
   });
 
-  // Load entry + monthly history on open
+  const baseId = data.parentGame?.externalId || externalId;
+  const baseLog = entry.logs[baseId];
+  const baseSelectedVersion = baseLog?.selectedVersion || '';
+
+  // Load base game and edition logs
   useEffect(() => {
+
+    dispatchEntry({ type: 'INITIALIZE_LOGS', activeLogId: externalId });
+
     if (initialEntry) {
-      // Fast path: entry already provided by caller (e.g. profile page with cached data)
       dispatchEntry({ type: 'LOAD_ENTRY', entry: initialEntry });
+      if (initialEntry.selected_version) {
+        for (const versionId of initialEntry.selected_version.split(',')) {
+          getLibraryEntry(versionId, 'game')
+            .then(ev => {
+              if (ev) dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
+            });
+        }
+      }
     } else {
-      // Slow path: fetch from SQLite
-      getLibraryEntry(externalId, data.type)
+      getLibraryEntry(baseId, 'game')
         .then(e => {
-          if (e) dispatchEntry({ type: 'LOAD_ENTRY', entry: e });
+          if (e) {
+            dispatchEntry({ type: 'LOAD_LOG', id: baseId, entry: e });
+            if (e.selected_version) {
+              for (const versionId of e.selected_version.split(',')) {
+                getLibraryEntry(versionId, 'game')
+                  .then(ev => {
+                    if (ev) dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
+                  });
+              }
+            }
+          }
           dispatchUi({ type: 'SET_LOADING', value: false });
         })
         .catch(() => dispatchUi({ type: 'SET_LOADING', value: false }));
+    }
+
+    if (data.parentGame) {
+      getLibraryEntry(externalId, 'game')
+        .then(e => {
+          if (e) dispatchEntry({ type: 'LOAD_LOG', id: externalId, entry: e });
+        });
     }
 
     readMonthlyHistory()
@@ -229,7 +416,32 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         dispatchEntry({ type: 'LOAD_HISTORY', history, foundKey });
       })
       .catch(() => {});
-  }, [externalId, data.type]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [externalId, data.parentGame, data.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dynamically load newly selected edition
+  useEffect(() => {
+    if (baseSelectedVersion) {
+      for (const versionId of baseSelectedVersion.split(',')) {
+        getLibraryEntry(versionId, 'game')
+          .then(ev => {
+            if (ev) {
+              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
+            } else {
+              dispatchEntry({
+                type: 'LOAD_LOG',
+                id: versionId,
+                entry: {
+                  id: '', user_id: 'local', external_id: versionId, type: 'game',
+                  status: 'planning', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+                  is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
+                  selected_platform: null, selected_version: null, started_at: null, finished_at: null
+                }
+              });
+            }
+          });
+      }
+    }
+  }, [baseSelectedVersion]);
 
   const handleClose = useCallback(() => {
     dispatchUi({ type: 'SET_CLOSING' });
@@ -245,62 +457,87 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
     try {
-      const saved = await saveLibraryEntry({
-        id:               entry.existing?.id ?? '',
-        user_id:          'local',
-        external_id:      externalId,
-        type:             data.type,
-        status:           entry.status || null,
-        rating:           entry.rating > 0 ? entry.rating : null,
-        progress:         entry.progress,
-        progress_2:       entry.progressCount2,
-        minutes_spent:    data.type === 'game' || data.type === 'vnovel'
-                            ? entry.progress * 60
-                            : (entry.existing?.minutes_spent ?? 0),
-        is_favorite:      entry.isFavorite ? 1 : 0,
-        is_platinum:      entry.isPlatinum ? 1 : 0,
-        tags:             entry.tags.length > 0 ? entry.tags : null,
-        notes:            entry.notes.trim() || null,
-        added_at:         entry.existing?.added_at ?? null,
-        updated_at:       null,
-        selected_platform: entry.platform || null,
-        selected_version:  entry.selectedVersion || null,
-        started_at:       entry.startedAt || null,
-        finished_at:      entry.finishedAt || null,
-      });
+      const baseId = data.parentGame?.externalId || externalId;
+      let primarySaved: LibraryEntry | null = null;
+
+      for (const [logId, log] of Object.entries(entry.logs)) {
+        const isEmpty =
+          log.status === 'planning' &&
+          log.rating === 0 &&
+          log.progress === 0 &&
+          !log.notes &&
+          !log.isFavorite &&
+          !log.isPlatinum &&
+          log.tags.length === 0 &&
+          !log.platform &&
+          !log.startedAt &&
+          !log.finishedAt;
+
+        if (isEmpty && !log.existing && logId !== externalId) continue;
+
+        const saved = await saveLibraryEntry({
+          id:               log.existing?.id ?? '',
+          user_id:          'local',
+          external_id:      logId,
+          type:             data.type,
+          status:           log.status || null,
+          rating:           log.rating > 0 ? log.rating : null,
+          progress:         log.progress,
+          progress_2:       log.progressCount2,
+          minutes_spent:    log.progress * 60,
+          is_favorite:      log.isFavorite ? 1 : 0,
+          is_platinum:      log.isPlatinum ? 1 : 0,
+          tags:             log.tags.length > 0 ? log.tags : null,
+          notes:            log.notes.trim() || null,
+          added_at:         log.existing?.added_at ?? null,
+          updated_at:       null,
+          selected_platform: log.platform || null,
+          selected_version:  logId === baseId ? (entry.selectedVersion || null) : null,
+          started_at:       log.startedAt || null,
+          finished_at:      log.finishedAt || null,
+        });
+
+        if (logId === externalId) {
+          primarySaved = saved;
+        }
+      }
+
+      const activeLog = entry.logs[entry.activeLogId] || entry;
 
       await writeMonthlyHistory(entry.monthlyHistory);
-      await syncFavorites(data.type, externalId, entry.isFavorite)
+      await syncFavorites(data.type, externalId, activeLog.isFavorite)
         .catch(e => console.error('Failed to sync favorites', e));
 
       try {
         const { logJourneyEvent } = await import('../../lib/profile/journey');
-        await logJourneyEvent(entry.existing, saved, data.type, data.totalCount ?? undefined);
+        if (primarySaved) {
+          await logJourneyEvent(entry.existing, primarySaved, data.type, data.totalCount ?? undefined);
+        }
       } catch (e) {
         console.error('Failed to log journey event', e);
       }
 
-      onSaved(saved);
+      if (primarySaved) {
+        onSaved(primarySaved);
+      }
 
       if (isAniListType(data.type)) {
         dispatchUi({ type: 'SET_ANILIST', status: 'syncing' });
         syncToAniList({
           externalId, type: data.type,
-          status:          entry.status,
-          rating:          entry.rating,
-          progress:        entry.progress,
-          progressVolumes: entry.progressCount2,
-          startedAt:       entry.startedAt,
-          finishedAt:      entry.finishedAt,
-          notes:           entry.notes,
+          status:          activeLog.status,
+          rating:          activeLog.rating,
+          progress:        activeLog.progress,
+          progressVolumes: activeLog.progressCount2,
+          startedAt:       activeLog.startedAt,
+          finishedAt:      activeLog.finishedAt,
+          notes:           activeLog.notes,
         }).then(result => {
           if (result.ok) {
             if (!result.skipped) {
-              // Only show "ok" indicator if we actually synced
               dispatchUi({ type: 'SET_ANILIST', status: 'ok' });
               setTimeout(() => dispatchUi({ type: 'SET_ANILIST', status: 'idle' }), 3000);
             } else {
-              // Silently skip if no changes detected
               dispatchUi({ type: 'SET_ANILIST', status: 'idle' });
             }
           } else {
@@ -315,20 +552,22 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } finally {
       dispatchUi({ type: 'SET_SAVING', value: false });
     }
-  }, [entry, externalId, data.type, onSaved, handleClose]);
+  }, [entry, externalId, data.type, data.parentGame, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
-    if (!entry.existing) { onClose(); return; }
+    const activeId = entry.activeLogId || externalId;
+    const existing = entry.logs[activeId]?.existing || entry.existing;
+    if (!existing) { onClose(); return; }
     try {
-      await deleteLibraryEntry(externalId, data.type);
-      await syncFavorites(data.type, externalId, false)
+      await deleteLibraryEntry(activeId, data.type);
+      await syncFavorites(data.type, activeId, false)
         .catch(e => console.error('Failed to sync favorites', e));
       onDeleted();
     } catch (e) {
       console.error('delete_library_entry error', e);
     }
     onClose();
-  }, [entry.existing, externalId, data.type, onDeleted, onClose]);
+  }, [entry.existing, entry.logs, entry.activeLogId, externalId, data.type, onDeleted, onClose]);
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
@@ -352,6 +591,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   ], [te, data.progressStatus]);
 
   const progLabel = progressLabel(data.type, t.media);
+
+
 
   // Editions/versions this entry could be linked to (base game + expansions/
   // remakes/etc. from the IGDB relation list) grouped by relation type.
@@ -383,6 +624,18 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
     return Object.entries(groupsMap).map(([label, options]) => ({ label, options }));
   }, [data.type, data.parentGame, data.relations]);
+
+  const allAvailableEditions = useMemo(() => {
+    const list: { externalId: string; label: string }[] = [];
+    for (const group of editionGroups) {
+      for (const opt of group.options) {
+        if (opt.externalId !== baseId && !list.some(item => item.externalId === opt.externalId)) {
+          list.push(opt);
+        }
+      }
+    }
+    return list;
+  }, [editionGroups, baseId]);
 
   const modal = (
     <div className={`me-overlay${ui.isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
@@ -485,25 +738,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     onChange={e => dispatchEntry({ type: 'SET_FINISHED', value: e.target.value })} />
                 </div>
 
-                {editionGroups.length > 0 && (
-                  <div className="me-header-field">
-                    <label className="me-header-field-label">{te.editions}</label>
-                    <select
-                      className="me-header-field-input me-header-field-input--edition"
-                      value={entry.selectedVersion}
-                      onChange={e => dispatchEntry({ type: 'SET_VERSION', value: e.target.value })}
-                    >
-                      <option value="">{te.edition_current}</option>
-                      {editionGroups.map(group => (
-                        <optgroup key={group.label} label={group.label}>
-                          {group.options.map(opt => (
-                            <option key={opt.externalId} value={opt.externalId}>{opt.label}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </div>
-                )}
+
               </div>
             </div>
           </div>
@@ -555,6 +790,48 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                         )}
                       </div>
                     </div>
+
+                    {allAvailableEditions.length > 0 && (
+                      <div className="me-section">
+                        <span className="me-label">Log</span>
+                        <div className="me-log-tabs">
+                          <button
+                            type="button"
+                            className={`me-log-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+                            onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+                          >
+                            Base Game
+                          </button>
+                          {allAvailableEditions.map(ed => {
+                            const isActive = entry.activeLogId === ed.externalId;
+                            const cleanLabel = getNameDifference(
+                              data.parentGame ? data.parentGame.title : data.titleMain,
+                              ed.label
+                            );
+                            return (
+                              <button
+                                key={ed.externalId}
+                                type="button"
+                                className={`me-log-tab-btn${isActive ? ' active' : ''}`}
+                                onClick={() => {
+                                  const baseLogVal = entry.logs[baseId] || entry;
+                                  const currentVersions = baseLogVal.selectedVersion
+                                    ? baseLogVal.selectedVersion.split(',')
+                                    : [];
+                                  if (!currentVersions.includes(ed.externalId)) {
+                                    const nextVersions = [...currentVersions, ed.externalId].join(',');
+                                    dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                                  }
+                                  dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
+                                }}
+                              >
+                                {cleanLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

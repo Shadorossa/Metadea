@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::Manager;
+use crate::db::ToStringErr;
 
 // -- Constants ----------------------------------------------------------------
 
@@ -66,20 +67,20 @@ pub struct EnvConfig {
 }
 
 fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT name, value FROM app_env WHERE name IN (
             'anilist_client_id','igdb_client_id','igdb_client_secret',
             'steam_api_key','tmdb_access_token','tmdb_api_key'
          )"
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
     let mut cfg = EnvConfig {
         anilist_client_id: None, igdb_client_id: None, igdb_client_secret: None,
         steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
     };
     let rows: Vec<(String, String)> = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     for (name, value) in rows {
@@ -109,7 +110,7 @@ pub async fn write_env_config(
     config: EnvConfig,
 ) -> Result<String, String> {
     let db = app_handle.state::<crate::db::MetadeaDb>();
-    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = db.conn.lock().str_err()?;
     let now = chrono::Utc::now().to_rfc3339();
     let pairs = [
         ("anilist_client_id",  config.anilist_client_id.as_deref().unwrap_or("")),
@@ -124,7 +125,7 @@ pub async fn write_env_config(
             "INSERT INTO app_env (name, value, updated_at) VALUES (?1, ?2, ?3)
              ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
             rusqlite::params![name, value, now],
-        ).map_err(|e| e.to_string())?;
+        ).str_err()?;
     }
     Ok("ok".to_string())
 }
@@ -226,7 +227,7 @@ async fn igdb_query(
             .body(body.to_string())
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
 
         let status = resp.status();
 
@@ -257,7 +258,7 @@ async fn igdb_query(
         return resp
             .json::<serde_json::Value>()
             .await
-            .map_err(|e| e.to_string());
+            .str_err();
     }
     Err("IGDB: unreachable".into())
 }
@@ -582,7 +583,7 @@ async fn download_game_metadata(
         None
     };
 
-    std::fs::create_dir_all(game_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(game_dir).str_err()?;
 
     let cover_path = game_dir.join(format!("{}_cover.webp", cover_image_id));
     let banner_path = banner_id
@@ -777,7 +778,7 @@ fn save_game_info(
         &info_path,
         serde_json::to_string_pretty(&info).unwrap_or_default(),
     )
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 // VN filter: genre 34 in top-3, not RPG (12) or Fighting (4), with parent inheritance
@@ -821,7 +822,7 @@ pub async fn igdb_get_cover_by_steam_id(
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let meta_root = app_data_dir.join("metadata");
     let game_dir = meta_root.join(&app_id);
 
@@ -906,13 +907,13 @@ pub async fn read_metadata_index(
     let meta_root = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .join("metadata");
     let index_path = meta_root.join("index.json");
     if !index_path.exists() {
         return Ok(std::collections::HashMap::new());
     }
-    let data = std::fs::read_to_string(&index_path).map_err(|e| e.to_string())?;
+    let data = std::fs::read_to_string(&index_path).str_err()?;
     let index: serde_json::Value =
         serde_json::from_str(&data).unwrap_or_else(|_| serde_json::json!({}));
     let mut out = std::collections::HashMap::new();
@@ -947,19 +948,19 @@ pub async fn read_game_info(
     let meta_root = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .join("metadata");
     let info_path = meta_root.join(&app_id).join("info.json");
     if !info_path.exists() {
         return Ok(serde_json::json!({}));
     }
-    let data = std::fs::read_to_string(&info_path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&data).map_err(|e| e.to_string())
+    let data = std::fs::read_to_string(&info_path).str_err()?;
+    serde_json::from_str(&data).str_err()
 }
 
 #[tauri::command]
 pub async fn file_to_data_url(file_path: String) -> Result<String, String> {
-    let bytes = std::fs::read(&file_path).map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(&file_path).str_err()?;
     let mime = if file_path.ends_with(".webp") {
         "image/webp"
     } else if file_path.ends_with(".png") {
@@ -1394,7 +1395,7 @@ pub async fn igdb_force_by_igdb_id(
     let meta_root = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .join("metadata");
     let game_dir = meta_root.join(&app_id);
 

@@ -1744,3 +1744,43 @@
   to { transform: rotate(360deg); }
 }
 
+/* Log Selector inside modal */
+.me-log-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.35rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+
+.me-log-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  border-radius: calc(var(--radius-sm, 6px) - 2px);
+  transition: all var(--anim-fast, 120ms);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.me-log-tab-btn:hover {
+  color: var(--text-main, #fff);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.me-log-tab-btn.active {
+  color: #fff;
+  background: var(--accent, #7c6af7);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb, 124, 106, 247), 0.35);
+}
+

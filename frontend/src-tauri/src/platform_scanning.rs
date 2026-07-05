@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalGame {
@@ -566,7 +567,7 @@ pub async fn scan_all_games(
     all.extend(scan_xbox_games());
     all.extend(scan_ea_games());
 
-    let conn = local_db.conn.lock().map_err(|e| e.to_string())?;
+    let conn = local_db.conn.lock().str_err()?;
 
     // Read custom local folder from local_routes DB
     let videojuegos_path: Option<String> = conn

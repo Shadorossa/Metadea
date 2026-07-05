@@ -1,5 +1,6 @@
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthSession {
@@ -19,7 +20,7 @@ pub async fn store_auth_token(
     username: String,
 ) -> Result<String, String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "INSERT INTO user_sessions (service, token, username, updated_at)
          VALUES ('app_auth', ?1, ?2, ?3)
@@ -28,7 +29,7 @@ pub async fn store_auth_token(
              username = excluded.username,
              updated_at = excluded.updated_at",
         rusqlite::params![token, username, now],
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
     Ok("ok".to_string())
 }
 
@@ -36,7 +37,7 @@ pub async fn store_auth_token(
 pub async fn get_auth_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<AuthSession>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.query_row(
         "SELECT token, username FROM user_sessions WHERE service = 'app_auth'",
         [],
@@ -48,16 +49,16 @@ pub async fn get_auth_token(
         },
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 #[tauri::command]
 pub async fn clear_auth_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_sessions WHERE service = 'app_auth'", [])
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     Ok("ok".to_string())
 }
 

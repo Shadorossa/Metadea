@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CharacterEntry {
@@ -41,7 +42,7 @@ pub async fn save_character(
     name: String,
     image_url: Option<String>,
 ) -> Result<CharacterEntry, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     let existing: Option<(String, String, Option<String>)> = conn
         .query_row(
@@ -50,7 +51,7 @@ pub async fn save_character(
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     let (id, created_at, reaction) = match existing {
         Some((id, created_at, reaction)) => (id, created_at, reaction),
@@ -62,7 +63,7 @@ pub async fn save_character(
         "INSERT OR REPLACE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         rusqlite::params![&id, &external_id, &name, &image_url, &reaction, &created_at, &updated_at],
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     Ok(CharacterEntry { id, external_id, name, image_url, reaction, created_at, updated_at })
 }
@@ -72,14 +73,14 @@ pub async fn get_character(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<Option<CharacterEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.query_row(
         &format!("{} WHERE external_id = ?1", SELECT_CHARACTER),
         [&external_id],
         row_to_character,
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 #[tauri::command]
@@ -88,14 +89,14 @@ pub async fn set_character_reaction(
     external_id: String,
     reaction: Option<String>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let now = Utc::now().to_rfc3339();
     let updated = conn
         .execute(
             "UPDATE characters SET reaction = ?1, updated_at = ?2 WHERE external_id = ?3",
             rusqlite::params![&reaction, &now, &external_id],
         )
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     if updated == 0 {
         return Err("Character not found; save it before setting a reaction".to_string());
     }
@@ -108,14 +109,14 @@ pub async fn save_character_appearances(
     character_external_id: String,
     appearances: Vec<CharacterAppearance>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let now = Utc::now().to_rfc3339();
     for a in appearances {
         conn.execute(
             "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
              VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &now],
-        ).map_err(|e| e.to_string())?;
+        ).str_err()?;
     }
     Ok(())
 }
@@ -125,10 +126,10 @@ pub async fn get_character_appearances(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     character_external_id: String,
 ) -> Result<Vec<CharacterAppearance>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare("SELECT media_external_id, relation_type FROM character_appearances WHERE character_external_id = ?1")
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let rows = stmt
         .query_map([&character_external_id], |row| {
             Ok(CharacterAppearance {
@@ -136,7 +137,7 @@ pub async fn get_character_appearances(
                 relation_type: row.get(1)?,
             })
         })
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(rows)

@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MediaCatalogEntry {
@@ -89,7 +90,7 @@ pub async fn save_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     mut entry: MediaCatalogEntry,
 ) -> Result<MediaCatalogEntry, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     let existing: Option<(String, String)> = conn
         .query_row(
@@ -98,7 +99,7 @@ pub async fn save_catalog_entry(
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     if let Some((eid, eat)) = existing {
         if entry.id.is_empty() { entry.id = eid; }
@@ -134,7 +135,7 @@ pub async fn save_catalog_entry(
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
             &entry.created_at, &entry.updated_at,
         ],
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     Ok(entry)
 }
@@ -144,14 +145,14 @@ pub async fn get_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.query_row(
         &format!("{} WHERE external_id = ?1", SELECT_ALL),
         [&external_id],
         row_to_entry,
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 #[tauri::command]
@@ -159,21 +160,21 @@ pub async fn delete_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .str_err()
 }
 
 #[tauri::command]
 pub async fn get_all_catalog_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn.prepare(SELECT_ALL).map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(SELECT_ALL).str_err()?;
     let entries = stmt
         .query_map([], row_to_entry)
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(entries)
@@ -184,14 +185,14 @@ pub async fn search_catalog(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     query: String,
 ) -> Result<Vec<MediaCatalogEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let pattern = format!("%{}%", query.to_lowercase());
     let mut stmt = conn.prepare(
         &format!("{} WHERE lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1", SELECT_ALL),
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
     let entries = stmt
         .query_map([&pattern], row_to_entry)
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(entries)

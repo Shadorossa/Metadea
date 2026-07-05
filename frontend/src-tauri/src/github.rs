@@ -1,6 +1,7 @@
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use crate::db::ToStringErr;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceCodeResponse {
@@ -42,7 +43,7 @@ fn encrypt_token(token: &str) -> Result<Vec<u8>, String> {
 
 #[cfg(not(target_os = "windows"))]
 fn decrypt_token(encrypted: &[u8]) -> Result<String, String> {
-    String::from_utf8(encrypted.to_vec()).map_err(|e| e.to_string())
+    String::from_utf8(encrypted.to_vec()).str_err()
 }
 
 // ─── Token commands ───────────────────────────────────────────────────────────
@@ -54,20 +55,20 @@ pub fn save_github_token(
 ) -> Result<(), String> {
     let encrypted = crate::utils::base64_encode(&encrypt_token(&token)?);
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "INSERT INTO user_sessions (service, token, updated_at)
          VALUES ('github', ?1, ?2)
          ON CONFLICT(service) DO UPDATE SET token = excluded.token, updated_at = excluded.updated_at",
         rusqlite::params![encrypted, now],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
 pub fn get_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<String>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let encrypted: Option<String> = conn
         .query_row(
             "SELECT token FROM user_sessions WHERE service = 'github'",
@@ -75,7 +76,7 @@ pub fn get_github_token(
             |row| row.get(0),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     match encrypted {
         None => Ok(None),
@@ -90,9 +91,9 @@ pub fn get_github_token(
 pub fn delete_github_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_sessions WHERE service = 'github'", [])
-        .map(|_| ()).map_err(|e| e.to_string())
+        .map(|_| ()).str_err()
 }
 
 // ─── API commands ─────────────────────────────────────────────────────────────
@@ -106,11 +107,11 @@ pub async fn request_github_device_code(client_id: String) -> Result<DeviceCodeR
         .json(&serde_json::json!({ "client_id": client_id, "scope": "public_repo" }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     if !res.status().is_success() {
         return Err(format!("GitHub API error: {}", res.status()));
     }
-    res.json().await.map_err(|e| e.to_string())
+    res.json().await.str_err()
 }
 
 #[tauri::command]
@@ -129,11 +130,11 @@ pub async fn request_github_device_token(
         }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     if !res.status().is_success() {
         return Err(format!("GitHub API error: {}", res.status()));
     }
-    res.json().await.map_err(|e| e.to_string())
+    res.json().await.str_err()
 }
 
 #[tauri::command]
@@ -146,9 +147,9 @@ pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     if !res.status().is_success() {
         return Err(format!("Failed to load GitHub profile: {}", res.status()));
     }
-    res.json().await.map_err(|e| e.to_string())
+    res.json().await.str_err()
 }

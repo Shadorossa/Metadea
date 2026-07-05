@@ -1,6 +1,21 @@
 use rusqlite::{Connection, Result as SqlResult};
 use std::sync::Mutex;
 
+// ─── Error conversion ─────────────────────────────────────────────────────────
+// Every Tauri command returns Result<T, String>, but rusqlite/serde_json errors
+// aren't String — this collapses the `.map_err(|e| e.to_string())` boilerplate
+// that used to appear at nearly every fallible call site into a single `.str_err()`.
+
+pub trait ToStringErr<T> {
+    fn str_err(self) -> Result<T, String>;
+}
+
+impl<T, E: std::fmt::Display> ToStringErr<T> for Result<T, E> {
+    fn str_err(self) -> Result<T, String> {
+        self.map_err(|e| e.to_string())
+    }
+}
+
 // ─── Unified DB handle ────────────────────────────────────────────────────────
 
 pub struct MetadeaDb {

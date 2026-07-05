@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::db::ToStringErr;
 
 const FAV_MAP: &[(&str, &str)] = &[
     ("anime",      "anime_fav"),
@@ -58,7 +59,7 @@ pub struct ListItemFull {
 pub async fn read_user_favorites(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut result = serde_json::Map::new();
 
     // Initialize all known types with empty arrays
@@ -72,11 +73,11 @@ pub async fn read_user_favorites(
          JOIN user_list_items i ON i.list_key = l.key
          WHERE l.is_fav = 1
          ORDER BY l.key, i.position",
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     let rows = stmt
         .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     for row in rows.flatten() {
         let type_name = fav_key_to_type(&row.0);
@@ -86,7 +87,7 @@ pub async fn read_user_favorites(
         }
     }
 
-    serde_json::to_string(&result).map_err(|e| e.to_string())
+    serde_json::to_string(&result).str_err()
 }
 
 #[tauri::command]
@@ -94,10 +95,10 @@ pub async fn write_user_favorites(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     content: String,
 ) -> Result<(), String> {
-    let favs: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    let favs: serde_json::Value = serde_json::from_str(&content).str_err()?;
     let obj = favs.as_object().ok_or("Expected JSON object")?;
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     for (type_name, ids_val) in obj {
         let fav_key = type_to_fav_key(type_name);
@@ -107,14 +108,14 @@ pub async fn write_user_favorites(
             .unwrap_or_default();
 
         conn.execute("DELETE FROM user_list_items WHERE list_key = ?1", [&fav_key])
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
 
         for (pos, id) in ids.iter().enumerate() {
             conn.execute(
                 "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position, added_at)
                  VALUES (?1, ?2, ?3, ?4)",
                 rusqlite::params![fav_key, id, pos as i64, now],
-            ).map_err(|e| e.to_string())?;
+            ).str_err()?;
         }
     }
 
@@ -127,7 +128,7 @@ pub async fn write_user_favorites(
 pub async fn get_all_user_lists(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<ListInfo>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     let mut stmt = conn.prepare(
         "SELECT l.key, l.name, l.description, l.is_fav,
@@ -136,7 +137,7 @@ pub async fn get_all_user_lists(
          LEFT JOIN user_list_items i ON i.list_key = l.key
          GROUP BY l.key
          ORDER BY l.is_fav DESC, l.created_at ASC",
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     let rows: Vec<(String, String, String, bool, i64)> = stmt
         .query_map([], |r| {
@@ -148,7 +149,7 @@ pub async fn get_all_user_lists(
                 r.get::<_, i64>(4)?,
             ))
         })
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
 
@@ -156,10 +157,10 @@ pub async fn get_all_user_lists(
     for (key, name, description, is_fav, item_count) in rows {
         let mut prev_stmt = conn.prepare(
             "SELECT external_id FROM user_list_items WHERE list_key = ?1 ORDER BY position LIMIT 4",
-        ).map_err(|e| e.to_string())?;
+        ).str_err()?;
         let preview_ids: Vec<String> = prev_stmt
             .query_map([&key], |r| r.get(0))
-            .map_err(|e| e.to_string())?
+            .str_err()?
             .filter_map(|r| r.ok())
             .collect();
 
@@ -174,7 +175,7 @@ pub async fn get_list_items_full(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
 ) -> Result<Vec<ListItemFull>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     // Single SQL JOIN — everything is in metadea.db
     let mut stmt = conn.prepare(
         "SELECT
@@ -188,7 +189,7 @@ pub async fn get_list_items_full(
          LEFT JOIN media_catalog mc ON mc.external_id = li.external_id
          WHERE li.list_key = ?1
          ORDER BY li.position"
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     let items: Vec<ListItemFull> = stmt.query_map([&list_key], |r| {
         Ok(ListItemFull {
@@ -206,7 +207,7 @@ pub async fn get_list_items_full(
             media_type:  r.get(11)?,
             format:      r.get(12)?,
         })
-    }).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+    }).str_err()?.filter_map(|r| r.ok()).collect();
 
     Ok(items)
 }
@@ -216,13 +217,13 @@ pub async fn get_list_items(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     list_key: String,
 ) -> Result<Vec<String>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT external_id FROM user_list_items WHERE list_key = ?1 ORDER BY position",
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
     let items: Vec<String> = stmt
         .query_map([&list_key], |r| r.get(0))
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(items)
@@ -236,7 +237,7 @@ pub async fn create_user_list(
     description: String,
 ) -> Result<String, String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let prefix = format!("{}_", username.to_lowercase());
     let prefix_like = format!("{}%", prefix);
 
@@ -255,7 +256,7 @@ pub async fn create_user_list(
         "INSERT INTO user_lists (key, name, description, is_fav, created_at, updated_at)
          VALUES (?1, ?2, ?3, 0, ?4, ?4)",
         rusqlite::params![key, name, description, now],
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     Ok(key)
 }
@@ -268,11 +269,11 @@ pub async fn update_user_list(
     description: String,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "UPDATE user_lists SET name = ?1, description = ?2, updated_at = ?3 WHERE key = ?4",
         rusqlite::params![name, description, now, key],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -280,11 +281,11 @@ pub async fn delete_user_list(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     key: String,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_list_items WHERE list_key = ?1", [&key])
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     conn.execute("DELETE FROM user_lists WHERE key = ?1 AND is_fav = 0", [&key])
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     Ok(())
 }
 
@@ -295,7 +296,7 @@ pub async fn add_item_to_list(
     external_id: String,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     // Ensure the fav list row exists
     if list_key.ends_with("_fav") {
         let _ = conn.execute(
@@ -314,7 +315,7 @@ pub async fn add_item_to_list(
         "INSERT OR IGNORE INTO user_list_items (list_key, external_id, position, added_at)
          VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![list_key, external_id, max_pos + 1, now],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -323,11 +324,11 @@ pub async fn remove_item_from_list(
     list_key: String,
     external_id: String,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "DELETE FROM user_list_items WHERE list_key = ?1 AND external_id = ?2",
         rusqlite::params![list_key, external_id],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -336,12 +337,12 @@ pub async fn reorder_list_items(
     list_key: String,
     external_ids: Vec<String>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     for (pos, id) in external_ids.iter().enumerate() {
         conn.execute(
             "UPDATE user_list_items SET position = ?1 WHERE list_key = ?2 AND external_id = ?3",
             rusqlite::params![pos as i64, list_key, id],
-        ).map_err(|e| e.to_string())?;
+        ).str_err()?;
     }
     Ok(())
 }

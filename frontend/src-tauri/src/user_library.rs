@@ -1,6 +1,7 @@
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LibraryEntry {
@@ -37,11 +38,23 @@ fn default_user() -> String {
     "local".to_string()
 }
 
-const SELECT_ALL: &str = "
+const SELECT_BASE: &str = "
     SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
            minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
            selected_platform, selected_version, started_at, finished_at
     FROM user_library";
+
+const SELECT_ALL: &str = "
+    SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
+           minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
+           selected_platform, selected_version, started_at, finished_at
+    FROM user_library
+    WHERE NOT EXISTS (
+        SELECT 1 FROM user_library ul 
+        WHERE ul.selected_version IS NOT NULL 
+          AND (ul.selected_version = user_library.external_id 
+               OR instr(',' || ul.selected_version || ',', ',' || user_library.external_id || ',') > 0)
+    )";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryEntry> {
     let tags_json: Option<String> = row.get(11)?;
@@ -73,7 +86,7 @@ pub async fn save_library_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     mut entry: LibraryEntry,
 ) -> Result<LibraryEntry, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     let existing: Option<(String, Option<String>)> = conn
         .query_row(
@@ -82,7 +95,7 @@ pub async fn save_library_entry(
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     if let Some((eid, eat)) = existing {
         if entry.id.is_empty() { entry.id = eid; }
@@ -111,7 +124,7 @@ pub async fn save_library_entry(
             &entry.selected_platform, &entry.selected_version,
             &entry.started_at, &entry.finished_at,
         ],
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     // Sync fav list
     let fav_key = crate::user_lists::type_to_fav_key(&entry.entry_type);
@@ -149,14 +162,14 @@ pub async fn get_library_entry(
     entry_type: String,
 ) -> Result<Option<LibraryEntry>, String> {
     let _ = entry_type;
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.query_row(
-        &format!("{} WHERE external_id = ?1", SELECT_ALL),
+        &format!("{} WHERE external_id = ?1", SELECT_BASE),
         [&external_id],
         row_to_entry,
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 #[tauri::command]
@@ -166,21 +179,21 @@ pub async fn delete_library_entry(
     entry_type: String,
 ) -> Result<(), String> {
     let _ = entry_type;
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_library WHERE external_id = ?1", [&external_id])
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .str_err()
 }
 
 #[tauri::command]
 pub async fn get_all_library_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<LibraryEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn.prepare(SELECT_ALL).map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(SELECT_ALL).str_err()?;
     let entries = stmt
         .query_map([], row_to_entry)
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(entries)
@@ -190,30 +203,30 @@ pub async fn get_all_library_entries(
 
 #[tauri::command]
 pub async fn read_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>) -> Result<String, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT month, external_id FROM monthly_history ORDER BY month DESC, position"
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
     let rows: Vec<(String, String)> = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-        .map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+        .str_err()?.filter_map(|r| r.ok()).collect();
     let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
     for (month, eid) in rows {
         map.entry(month).or_default().push(eid);
     }
-    serde_json::to_string(&map).map_err(|e| e.to_string())
+    serde_json::to_string(&map).str_err()
 }
 
 #[tauri::command]
 pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>, content: String) -> Result<(), String> {
-    let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).str_err()?;
+    let conn = state.conn.lock().str_err()?;
     for (month, ids) in &map {
-        conn.execute("DELETE FROM monthly_history WHERE month = ?1", [month]).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM monthly_history WHERE month = ?1", [month]).str_err()?;
         for (pos, id) in ids.iter().enumerate() {
             conn.execute(
                 "INSERT INTO monthly_history (month, external_id, position) VALUES (?1, ?2, ?3)",
                 rusqlite::params![month, id, pos as i64],
-            ).map_err(|e| e.to_string())?;
+            ).str_err()?;
         }
     }
     Ok(())
@@ -223,17 +236,17 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>
 
 #[tauri::command]
 pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) -> Result<String, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT date, external_id, event_type, media_type, progress_start, progress_end, timestamp
          FROM user_activity ORDER BY date DESC, timestamp"
-    ).map_err(|e| e.to_string())?;
+    ).str_err()?;
 
     struct Row { date: String, ext_id: String, etype: String, mtype: Option<String>, pstart: Option<i64>, pend: Option<i64>, ts: String }
     let rows: Vec<Row> = stmt.query_map([], |r| Ok(Row {
         date: r.get(0)?, ext_id: r.get(1)?, etype: r.get(2)?,
         mtype: r.get(3)?, pstart: r.get(4)?, pend: r.get(5)?, ts: r.get(6)?
-    })).map_err(|e| e.to_string())?.filter_map(|r| r.ok()).collect();
+    })).str_err()?.filter_map(|r| r.ok()).collect();
 
     // Group by date (maintain descending order from SQL)
     let mut days: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
@@ -252,15 +265,15 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) ->
     let result: Vec<serde_json::Value> = days.into_iter()
         .map(|(date, events)| serde_json::json!({"date": date, "events": events}))
         .collect();
-    serde_json::to_string(&result).map_err(|e| e.to_string())
+    serde_json::to_string(&result).str_err()
 }
 
 #[tauri::command]
 pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, content: String) -> Result<(), String> {
-    let days: Vec<serde_json::Value> = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let days: Vec<serde_json::Value> = serde_json::from_str(&content).str_err()?;
+    let conn = state.conn.lock().str_err()?;
     // Full replace — journey.ts always writes the complete array
-    conn.execute("DELETE FROM user_activity", []).map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM user_activity", []).str_err()?;
     for day in &days {
         let date = day.get("date").and_then(|x| x.as_str()).unwrap_or("");
         if let Some(events) = day.get("events").and_then(|x| x.as_array()) {
@@ -276,7 +289,7 @@ pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, c
                 conn.execute(
                     "INSERT INTO user_activity (id, date, external_id, event_type, media_type, progress_start, progress_end, timestamp) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
                     rusqlite::params![id, date, ext_id, etype, mtype, pstart, pend, ts],
-                ).map_err(|e| e.to_string())?;
+                ).str_err()?;
             }
         }
     }

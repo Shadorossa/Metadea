@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use tauri::Manager;
 
 use crate::platform_scanning::steam_root;
+use crate::db::ToStringErr;
 
 /// Downloads achievement icons (both locked and unlocked) and saves achievements.json.
 /// Always refreshes progress from Steam; only skips icon files that already exist on disk.
@@ -198,9 +199,9 @@ pub async fn steam_achievements_download(
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let game_dir = app_data_dir.join("metadata").join(&app_id);
-    std::fs::create_dir_all(&game_dir).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&game_dir).str_err()?;
     let l = lang.unwrap_or_else(|| "spanish".to_string());
     download_achievements(&app_handle, &app_id, &game_dir, &l).await;
     Ok(())
@@ -215,7 +216,7 @@ pub async fn steam_achievement_icon(
     let icons_dir = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .join("metadata")
         .join(&app_id)
         .join("achievements");
@@ -223,7 +224,7 @@ pub async fn steam_achievement_icon(
     if !path.exists() {
         return Err("not found".into());
     }
-    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(&path).str_err()?;
     Ok(format!(
         "data:image/jpeg;base64,{}",
         crate::utils::base64_encode(&bytes)
@@ -237,10 +238,10 @@ pub async fn steam_get_owned_games(
     let api_key = {
         use rusqlite::OptionalExtension;
         let db = app_handle.state::<crate::db::MetadeaDb>();
-        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        let conn = db.conn.lock().str_err()?;
         conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
             .optional()
-            .map_err(|e| e.to_string())?
+            .str_err()?
             .filter(|s| !s.is_empty())
             .ok_or("No Steam API key configured")?
     };
@@ -255,11 +256,11 @@ pub async fn steam_get_owned_games(
     );
 
     let client = reqwest::Client::new();
-    let resp = client.get(&url).send().await.map_err(|e| e.to_string())?;
+    let resp = client.get(&url).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Steam API error (HTTP {})", resp.status()));
     }
-    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let json: serde_json::Value = resp.json().await.str_err()?;
     Ok(json["response"].clone())
 }
 
@@ -272,10 +273,10 @@ pub async fn steam_get_player_achievements(
     let api_key = {
         use rusqlite::OptionalExtension;
         let db = app_handle.state::<crate::db::MetadeaDb>();
-        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        let conn = db.conn.lock().str_err()?;
         conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
             .optional()
-            .map_err(|e| e.to_string())?
+            .str_err()?
             .filter(|s| !s.is_empty())
             .ok_or("No Steam API key")?
     };
@@ -294,11 +295,11 @@ pub async fn steam_get_player_achievements(
         .get(&progress_url)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     if !progress_resp.status().is_success() {
         return Err(format!("Steam API error (HTTP {})", progress_resp.status()));
     }
-    let progress_json: serde_json::Value = progress_resp.json().await.map_err(|e| e.to_string())?;
+    let progress_json: serde_json::Value = progress_resp.json().await.str_err()?;
     let progress_list = progress_json["playerstats"]["achievements"]
         .as_array()
         .cloned()
@@ -314,7 +315,7 @@ pub async fn steam_get_player_achievements(
         .get(&schema_url)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let schema_map: std::collections::HashMap<String, serde_json::Value> =
         if schema_resp.status().is_success() {
             let schema_json: serde_json::Value = schema_resp.json().await.unwrap_or_default();

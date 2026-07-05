@@ -1,4 +1,5 @@
 use rusqlite::OptionalExtension;
+use crate::db::ToStringErr;
 
 fn upsert_profile_row(conn: &rusqlite::Connection) -> rusqlite::Result<()> {
     conn.execute(
@@ -20,12 +21,12 @@ pub async fn save_user_image(
         _ => return Err(format!("Invalid key: {}", key)),
     };
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    upsert_profile_row(&conn).map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
+    upsert_profile_row(&conn).str_err()?;
     conn.execute(
         &format!("UPDATE user_profile SET {} = ?1, updated_at = ?2 WHERE id = 1", col),
         rusqlite::params![data_url, now],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -38,7 +39,7 @@ pub async fn get_user_image(
         "banner" => "banner_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let val: Option<String> = conn
         .query_row(
             &format!("SELECT {} FROM user_profile WHERE id = 1", col),
@@ -46,7 +47,7 @@ pub async fn get_user_image(
             |row| row.get(0),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     Ok(val.filter(|s| !s.is_empty()))
 }
 
@@ -61,11 +62,11 @@ pub async fn remove_user_image(
         _ => return Err(format!("Invalid key: {}", key)),
     };
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         &format!("UPDATE user_profile SET {} = '', updated_at = ?1 WHERE id = 1", col),
         rusqlite::params![now],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -74,8 +75,8 @@ pub async fn save_user_info(
     info: serde_json::Value,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    upsert_profile_row(&conn).map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
+    upsert_profile_row(&conn).str_err()?;
 
     let obj = info.as_object().ok_or("Expected JSON object")?;
     let allowed = [
@@ -91,17 +92,17 @@ pub async fn save_user_info(
         match v {
             serde_json::Value::Bool(b) => {
                 conn.execute(&sql, rusqlite::params![*b as i64, now])
-                    .map_err(|e| e.to_string())?;
+                    .str_err()?;
             }
             serde_json::Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     conn.execute(&sql, rusqlite::params![i, now])
-                        .map_err(|e| e.to_string())?;
+                        .str_err()?;
                 }
             }
             serde_json::Value::String(s) => {
                 conn.execute(&sql, rusqlite::params![s, now])
-                    .map_err(|e| e.to_string())?;
+                    .str_err()?;
             }
             _ => {}
         }
@@ -113,7 +114,7 @@ pub async fn save_user_info(
 pub async fn get_user_info(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let row: Option<serde_json::Value> = conn
         .query_row(
             "SELECT bio, custom_color, display_name, dynamic_theme, font, language,
@@ -137,6 +138,6 @@ pub async fn get_user_info(
             },
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     Ok(row.unwrap_or(serde_json::json!({})))
 }

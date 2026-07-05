@@ -1,6 +1,7 @@
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::db::ToStringErr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderEntry {
@@ -49,10 +50,10 @@ pub async fn scan_folder_contents(path: String) -> Result<Vec<FolderEntry>, Stri
 pub async fn get_local_folders(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<SavedFolder>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare("SELECT label, path FROM local_folders ORDER BY id")
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let folders = stmt
         .query_map([], |row| {
             Ok(SavedFolder {
@@ -60,7 +61,7 @@ pub async fn get_local_folders(
                 path: row.get(1)?,
             })
         })
-        .map_err(|e| e.to_string())?
+        .str_err()?
         .filter_map(|r| r.ok())
         .collect();
     Ok(folders)
@@ -72,16 +73,16 @@ pub async fn save_local_folders(
     folders_json: String,
 ) -> Result<String, String> {
     let folders: Vec<SavedFolder> =
-        serde_json::from_str(&folders_json).map_err(|e| e.to_string())?;
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+        serde_json::from_str(&folders_json).str_err()?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM local_folders", [])
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     for f in &folders {
         conn.execute(
             "INSERT INTO local_folders (label, path) VALUES (?1, ?2)",
             rusqlite::params![f.label, f.path],
         )
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     }
     Ok("ok".to_string())
 }
@@ -90,18 +91,18 @@ pub async fn save_local_folders(
 pub async fn read_routes(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<String, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare("SELECT key, path FROM local_routes")
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     let mut map = serde_json::Map::new();
     let rows = stmt
         .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
     for row in rows.flatten() {
         map.insert(row.0, serde_json::Value::String(row.1));
     }
-    serde_json::to_string(&map).map_err(|e| e.to_string())
+    serde_json::to_string(&map).str_err()
 }
 
 #[tauri::command]
@@ -110,10 +111,10 @@ pub async fn write_routes(
     routes_json: String,
 ) -> Result<(), String> {
     let v: serde_json::Value =
-        serde_json::from_str(&routes_json).map_err(|e| e.to_string())?;
+        serde_json::from_str(&routes_json).str_err()?;
     let obj = v.as_object().ok_or("Expected JSON object")?;
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     for (k, val) in obj.iter() {
         if let Some(p) = val.as_str() {
             conn.execute(
@@ -121,7 +122,7 @@ pub async fn write_routes(
                  ON CONFLICT(key) DO UPDATE SET path = excluded.path, updated_at = excluded.updated_at",
                 rusqlite::params![k, p, now],
             )
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
         }
     }
     Ok(())
@@ -135,7 +136,7 @@ pub async fn save_game_link(
     external_id: String,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "INSERT INTO local_game_links (launcher, link_key, external_id, updated_at)
          VALUES (?1, ?2, ?3, ?4)
@@ -145,7 +146,7 @@ pub async fn save_game_link(
         rusqlite::params![launcher, link_key, external_id, now],
     )
     .map(|_| ())
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 #[tauri::command]
@@ -154,13 +155,13 @@ pub async fn delete_game_link(
     launcher: String,
     link_key: String,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "DELETE FROM local_game_links WHERE launcher = ?1 AND link_key = ?2",
         rusqlite::params![launcher, link_key],
     )
     .map(|_| ())
-    .map_err(|e| e.to_string())
+    .str_err()
 }
 
 pub fn lookup_game_links(
@@ -191,8 +192,8 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
-        .map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
+        .str_err()?;
+    std::fs::create_dir_all(&app_data_dir).str_err()?;
     let path_str = app_data_dir.to_string_lossy().to_string();
     #[cfg(target_os = "windows")]
     {
@@ -200,7 +201,7 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
         Command::new("explorer")
             .arg(&path_str)
             .spawn()
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
     }
     #[cfg(target_os = "macos")]
     {
@@ -208,7 +209,7 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
         Command::new("open")
             .arg(&path_str)
             .spawn()
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
     }
     #[cfg(target_os = "linux")]
     {
@@ -216,7 +217,7 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
         Command::new("xdg-open")
             .arg(&path_str)
             .spawn()
-            .map_err(|e| e.to_string())?;
+            .str_err()?;
     }
     Ok(())
 }
@@ -233,15 +234,15 @@ pub async fn launch_game(
         "steam" => {
             let id = app_id.ok_or("No app_id for Steam game")?;
             app_handle.opener().open_url(format!("steam://run/{}", id), None::<String>)
-                .map_err(|e| e.to_string())
+                .str_err()
         }
         "epic" => {
             if let Some(id) = app_id {
                 app_handle.opener()
                     .open_url(format!("com.epicgames.launcher://apps/{}?action=launch&silent=true", id), None::<String>)
-                    .map_err(|e| e.to_string())
+                    .str_err()
             } else if let Some(path) = install_path {
-                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+                app_handle.opener().open_path(path, None::<String>).str_err()
             } else {
                 Err("No launch target for Epic game".into())
             }
@@ -250,16 +251,16 @@ pub async fn launch_game(
             if let Some(id) = app_id {
                 app_handle.opener()
                     .open_url(format!("goggalaxy://openGame/{}", id), None::<String>)
-                    .map_err(|e| e.to_string())
+                    .str_err()
             } else if let Some(path) = install_path {
-                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+                app_handle.opener().open_path(path, None::<String>).str_err()
             } else {
                 Err("No launch target for GOG game".into())
             }
         }
         _ => {
             if let Some(path) = install_path {
-                app_handle.opener().open_path(path, None::<String>).map_err(|e| e.to_string())
+                app_handle.opener().open_path(path, None::<String>).str_err()
             } else {
                 Err(format!("No launch target for {} game", launcher))
             }
@@ -320,7 +321,7 @@ pub async fn save_anime_folder(
     episode_count: i32,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     conn.execute(
         "INSERT INTO local_anime_folders (anilist_id, folder_path, episode_count, updated_at)
@@ -331,7 +332,7 @@ pub async fn save_anime_folder(
             updated_at = excluded.updated_at",
         rusqlite::params![anilist_id, folder_path, episode_count, now],
     )
-    .map_err(|e| e.to_string())?;
+    .str_err()?;
 
     Ok(())
 }
@@ -341,7 +342,7 @@ pub async fn get_anime_folder(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     anilist_id: i32,
 ) -> Result<Option<AnimeLocalEntry>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
 
     let result = conn
         .query_row(
@@ -357,7 +358,7 @@ pub async fn get_anime_folder(
             },
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     Ok(result)
 }

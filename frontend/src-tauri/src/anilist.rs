@@ -1,5 +1,6 @@
 use rusqlite::OptionalExtension;
 use serde_json::Value;
+use crate::db::ToStringErr;
 
 // ─── DPAPI encryption helpers ─────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ fn encrypt_token(token: &str) -> Result<Vec<u8>, String> {
 
 #[cfg(not(target_os = "windows"))]
 fn decrypt_token(encrypted: &[u8]) -> Result<String, String> {
-    String::from_utf8(encrypted.to_vec()).map_err(|e| e.to_string())
+    String::from_utf8(encrypted.to_vec()).str_err()
 }
 
 // ─── Commands ─────────────────────────────────────────────────────────────────
@@ -35,20 +36,20 @@ pub fn save_anilist_token(
 ) -> Result<(), String> {
     let encrypted = crate::utils::base64_encode(&encrypt_token(&token)?);
     let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute(
         "INSERT INTO user_sessions (service, token, updated_at)
          VALUES ('anilist', ?1, ?2)
          ON CONFLICT(service) DO UPDATE SET token = excluded.token, updated_at = excluded.updated_at",
         rusqlite::params![encrypted, now],
-    ).map(|_| ()).map_err(|e| e.to_string())
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]
 pub fn get_anilist_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Option<String>, String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     let encrypted: Option<String> = conn
         .query_row(
             "SELECT token FROM user_sessions WHERE service = 'anilist'",
@@ -56,7 +57,7 @@ pub fn get_anilist_token(
             |row| row.get(0),
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     match encrypted {
         None => Ok(None),
@@ -71,9 +72,9 @@ pub fn get_anilist_token(
 pub fn delete_anilist_token(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_sessions WHERE service = 'anilist'", [])
-        .map(|_| ()).map_err(|e| e.to_string())
+        .map(|_| ()).str_err()
 }
 
 #[tauri::command]
@@ -88,10 +89,10 @@ pub async fn get_anilist_user_profile(token: String) -> Result<Value, String> {
         .json(&serde_json::json!({ "query": query }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .str_err()?;
 
     if !res.status().is_success() {
         return Err(format!("Failed to load AniList profile: {}", res.status()));
     }
-    res.json().await.map_err(|e| e.to_string())
+    res.json().await.str_err()
 }
