@@ -302,6 +302,20 @@
   box-shadow: 0 0 16px rgba(var(--accent-rgb, 139, 92, 246), 0.4);
 }
 
+.library-card--stacked {
+  box-shadow: 
+    0.2rem 0.2rem 0 0 color-mix(in srgb, var(--bg-base) 90%, #000),
+    0.2rem 0.2rem 0 1px var(--border-color);
+}
+
+.library-card--stacked:hover {
+  border-color: var(--accent);
+  box-shadow: 
+    0.2rem 0.2rem 0 0 color-mix(in srgb, var(--bg-base) 90%, #000),
+    0.2rem 0.2rem 0 1px var(--accent),
+    0 0 16px rgba(var(--accent-rgb, 139, 92, 246), 0.4);
+}
+
 .library-card-bg {
   position: absolute;
   inset: -6px;

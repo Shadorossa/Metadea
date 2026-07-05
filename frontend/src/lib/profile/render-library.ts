@@ -59,9 +59,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   );
 
   const STATUS_LIST = [
-    { key: '', label: (p as any).section_all ?? 'Todos' },
+    { key: '', label: p.section_all },
     { key: 'planning', label: p.status_planning },
-    { key: 'in_progress', label: (p as any).section_in_progress ?? 'En progreso' },
+    { key: 'in_progress', label: p.section_in_progress },
     { key: 'completed', label: p.status_completed },
     { key: 'paused', label: p.status_paused },
     { key: 'dropped', label: p.status_dropped }
@@ -74,7 +74,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   el.innerHTML = `
     <div class="library-layout">
       <aside class="library-filters">
-        <p class="library-filters-title">${(p as any).library_filters ?? 'Filtros'}</p>
+        <p class="library-filters-title">${p.library_filters}</p>
 
         <div class="library-filter-group">
           <label class="library-filter-label" for="filter-name">Nombre</label>
@@ -96,7 +96,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           <label class="library-filter-label">Estado</label>
           <div class="library-status-cycler">
             <button type="button" class="library-status-arrow" id="status-prev">&lt;</button>
-            <span class="library-status-val" id="status-val">${(p as any).section_all ?? 'Todos'}</span>
+            <span class="library-status-val" id="status-val">${p.section_all}</span>
             <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
           </div>
         </div>
@@ -200,9 +200,11 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
         const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
         const style = cover ? `style="--cover: url('${cover}')"` : '';
+        const hasEditions = !!item.selected_version;
+        const stackClass = hasEditions ? ' library-card--stacked' : '';
 
         return `
-                <div class="library-card" data-id="${item.external_id}" ${style}>
+                <div class="library-card${stackClass}" data-id="${item.external_id}" ${style}>
                   ${cover ? `<div class="library-card-bg"></div>` : ''}
                   <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
                     ${cover

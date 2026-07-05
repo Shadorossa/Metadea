@@ -2,7 +2,7 @@ import type { AniListMediaDetail } from '../search/providers/anilist';
 import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
-import { formatDateParts, normalizeScore100 } from './mapper-utils';
+import { formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
 
 const STATUS_CLASS: Record<string, string> = {
   RELEASING:        'media-badge--status-airing',
@@ -39,12 +39,12 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const cover      = raw.coverImage?.extraLarge ?? raw.coverImage?.large ?? undefined;
   const coverColor = raw.coverImage?.color ?? '#1a1a2e';
 
-  const formatLabel = (tm.formats  as Record<string, string>)[raw.format ?? ''] ?? raw.format ?? '';
-  const statusLabel = (tm.statuses as Record<string, string>)[raw.status ?? ''] ?? raw.status ?? '';
+  const formatLabel = lookupLabel(tm.formats, raw.format, raw.format ?? '');
+  const statusLabel = lookupLabel(tm.statuses, raw.status, raw.status ?? '');
   const statusClass = STATUS_CLASS[raw.status ?? ''] ?? '';
 
   const seasonInfo = (raw.season && raw.seasonYear)
-    ? `${(tm.seasons as Record<string, string>)[raw.season] ?? raw.season} ${raw.seasonYear}`
+    ? `${lookupLabel(tm.seasons, raw.season, raw.season)} ${raw.seasonYear}`
     : formatDateParts(raw.startDate);
 
   const startFmt = formatDateParts(raw.startDate);
@@ -88,9 +88,9 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       return (aYear * 12 + aMonth) - (bYear * 12 + bMonth);
     })
     .map(e => {
-      let typeLabel = (tm.relations as Record<string, string>)[e.relationType] ?? e.relationType;
+      let typeLabel = lookupLabel(tm.relations, e.relationType, e.relationType);
       if (e.relationType === 'ADAPTATION' && resolvedType === 'anime' && e.node.type === 'MANGA') {
-        typeLabel = (tm.relations as Record<string, string>)['PARENT'] ?? 'Fuente';
+        typeLabel = lookupLabel(tm.relations, 'PARENT', 'Fuente');
       }
       const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'

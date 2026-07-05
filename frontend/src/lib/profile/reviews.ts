@@ -71,7 +71,7 @@ export async function renderReviews(el: HTMLElement): Promise<void> {
 
     const types = [...new Set(reviewed.map(i => i.type))];
     const typeFilterHtml = [
-      `<button class="reviews-type-btn ${!filterType ? 'active' : ''}" data-type=""><span>${(t.profile as any).section_all ?? 'Todos'}</span></button>`,
+      `<button class="reviews-type-btn ${!filterType ? 'active' : ''}" data-type=""><span>${t.profile.section_all}</span></button>`,
       ...types.map(tp => `
         <button class="reviews-type-btn ${filterType === tp ? 'active' : ''}" data-type="${tp}">
           ${TYPE_ICON[tp] ?? TYPE_ICON['book']}

@@ -43,7 +43,8 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
         .then(data => {
           if (data) {
             setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
-            fetchExtraRelations(id, data).then(relations => {
+            const targetRelationsId = data.parentGame?.externalId || id;
+            fetchExtraRelations(targetRelationsId, data).then(relations => {
               if (relations) {
                 setState(prev => prev?.externalId === id ? {
                   ...prev,

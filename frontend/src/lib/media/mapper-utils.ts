@@ -33,3 +33,13 @@ export function normalizeScore100(raw: number | undefined | null): number | unde
   if (!raw) return undefined;
   return Math.round((raw / 10) * 10) / 10;
 }
+
+/**
+ * Look up a translated label by a runtime API value (e.g. AniList's
+ * 'RELEASING', 'ADAPTATION') in an i18n dict keyed by those same enum-like
+ * strings. Centralizes the `as Record<string, string>` cast that dict lookups
+ * by a dynamic key would otherwise need at every call site.
+ */
+export function lookupLabel(dict: Record<string, string>, key: string | null | undefined, fallback: string): string {
+  return (key ? dict[key] : undefined) ?? fallback;
+}

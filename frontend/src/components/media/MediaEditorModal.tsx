@@ -108,7 +108,7 @@ type UiAction =
 // ── Reducers ──────────────────────────────────────────────────────────────────
 
 const entryInit: EntryState = {
-  existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+  existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
   notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
   tags: [], platform: '', selectedVersion: '', monthlyHistory: {}, selectedMonthKey: null,
   selectedYear: new Date().getFullYear(),
@@ -119,7 +119,7 @@ const entryInit: EntryState = {
 function updateActiveLog(state: EntryState, updates: Partial<LogState>): EntryState {
   const activeId = state.activeLogId || 'active';
   const current = state.logs[activeId] || {
-    existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+    existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
     notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
     tags: [], platform: '', selectedVersion: '',
   };
@@ -137,7 +137,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       const e = action.entry;
       const logVal: LogState = {
         existing: e,
-        status:        e.status        ?? 'planning',
+        status:        e.status        ?? '',
         rating:        e.rating        ?? 0,
         progress:      e.progress      ?? 0,
         progressCount2: e.progress_2 ?? 0,
@@ -162,7 +162,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       const e = action.entry;
       const logVal: LogState = {
         existing: e,
-        status:        e.status        ?? 'planning',
+        status:        e.status        ?? '',
         rating:        e.rating        ?? 0,
         progress:      e.progress      ?? 0,
         progressCount2: e.progress_2 ?? 0,
@@ -207,7 +207,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
     case 'INITIALIZE_LOGS': {
       const id = action.activeLogId;
       const defaultLog: LogState = {
-        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
+        existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
         notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
         tags: [], platform: '', selectedVersion: '',
       };
@@ -368,43 +368,45 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
   // Load base game and edition logs
   useEffect(() => {
-
     dispatchEntry({ type: 'INITIALIZE_LOGS', activeLogId: externalId });
 
-    if (initialEntry) {
-      dispatchEntry({ type: 'LOAD_ENTRY', entry: initialEntry });
-      if (initialEntry.selected_version) {
-        for (const versionId of initialEntry.selected_version.split(',')) {
-          getLibraryEntry(versionId, 'game')
-            .then(ev => {
-              if (ev) dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
-            });
-        }
-      }
-    } else {
-      getLibraryEntry(baseId, 'game')
-        .then(e => {
-          if (e) {
-            dispatchEntry({ type: 'LOAD_LOG', id: baseId, entry: e });
-            if (e.selected_version) {
-              for (const versionId of e.selected_version.split(',')) {
-                getLibraryEntry(versionId, 'game')
-                  .then(ev => {
-                    if (ev) dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
-                  });
+    const loadAllVersions = async (bId: string) => {
+      try {
+        const baseEntry = await getLibraryEntry(bId, 'game');
+        if (baseEntry) {
+          dispatchEntry({ type: 'LOAD_LOG', id: bId, entry: baseEntry });
+          if (baseEntry.selected_version) {
+            for (const versionId of baseEntry.selected_version.split(',')) {
+              const ev = await getLibraryEntry(versionId, 'game');
+              if (ev) {
+                dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
+              } else {
+                dispatchEntry({
+                  type: 'LOAD_LOG',
+                  id: versionId,
+                  entry: {
+                    id: '', user_id: 'local', external_id: versionId, type: 'game',
+                    status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+                    is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
+                    selected_platform: null, selected_version: null, started_at: null, finished_at: null
+                  }
+                });
               }
             }
           }
-          dispatchUi({ type: 'SET_LOADING', value: false });
-        })
-        .catch(() => dispatchUi({ type: 'SET_LOADING', value: false }));
-    }
+        }
+      } catch (err) {
+        console.error('Failed to load base and versions', err);
+      } finally {
+        dispatchUi({ type: 'SET_LOADING', value: false });
+      }
+    };
 
-    if (data.parentGame) {
-      getLibraryEntry(externalId, 'game')
-        .then(e => {
-          if (e) dispatchEntry({ type: 'LOAD_LOG', id: externalId, entry: e });
-        });
+    if (initialEntry) {
+      dispatchEntry({ type: 'LOAD_ENTRY', entry: initialEntry });
+      loadAllVersions(baseId);
+    } else {
+      loadAllVersions(baseId);
     }
 
     readMonthlyHistory()
@@ -432,7 +434,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 id: versionId,
                 entry: {
                   id: '', user_id: 'local', external_id: versionId, type: 'game',
-                  status: 'planning', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+                  status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
                   is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
                   selected_platform: null, selected_version: null, started_at: null, finished_at: null
                 }
@@ -461,8 +463,11 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       let primarySaved: LibraryEntry | null = null;
 
       for (const [logId, log] of Object.entries(entry.logs)) {
+        const isBase = logId === baseId;
+        const hasLink = isBase && !!entry.selectedVersion;
+
         const isEmpty =
-          log.status === 'planning' &&
+          !log.status &&
           log.rating === 0 &&
           log.progress === 0 &&
           !log.notes &&
@@ -471,9 +476,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           log.tags.length === 0 &&
           !log.platform &&
           !log.startedAt &&
-          !log.finishedAt;
+          !log.finishedAt &&
+          !hasLink;
 
-        if (isEmpty && !log.existing && logId !== externalId) continue;
+        if (isEmpty && !log.existing) continue;
 
         const saved = await saveLibraryEntry({
           id:               log.existing?.id ?? '',

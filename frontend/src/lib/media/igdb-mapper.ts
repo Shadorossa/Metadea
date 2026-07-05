@@ -32,6 +32,7 @@ interface IgdbDetailGame {
   alternative_names?: { name: string; comment?: string }[];
   store_links?: { platform: string; url: string }[];
   parent_game?: IgdbSubGame;
+  version_parent?: IgdbSubGame;
 
   // Relaciones de versiones
   remakes?: IgdbSubGame[];
@@ -146,11 +147,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     }
   };
 
-  const parentGame = game.parent_game
+  const parentSub = game.parent_game || game.version_parent;
+  const parentGame = parentSub
     ? {
-        title: game.parent_game.name,
-        externalId: `game:${game.parent_game.id}`,
-        cover: game.parent_game.cover?.image_id ? igdbImageUrl(game.parent_game.cover.image_id, 'cover_big') : undefined,
+        title: parentSub.name,
+        externalId: `game:${parentSub.id}`,
+        cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
       }
     : undefined;
 

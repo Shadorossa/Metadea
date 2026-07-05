@@ -179,7 +179,8 @@ export default function MediaPage({ lang }: { lang: string }) {
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
         // etc.) take a few extra sequential IGDB requests — fetch them after
         // the page is already showing instead of delaying first render.
-        fetchExtraRelations(currentId, full).then(relations => {
+        const targetRelationsId = full.parentGame?.externalId || currentId;
+        fetchExtraRelations(targetRelationsId, full).then(relations => {
           if (cancelled || !relations) return;
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
         });

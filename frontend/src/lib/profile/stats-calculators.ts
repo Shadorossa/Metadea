@@ -18,20 +18,33 @@ export interface OverviewAggregate {
   planning: number;
 }
 
+function getNonEditionItems(items: Items): Items {
+  const childIds = new Set<string>();
+  for (const item of items) {
+    if (item.selected_version) {
+      for (const id of item.selected_version.split(',')) {
+        childIds.add(id);
+      }
+    }
+  }
+  return items.filter(item => !childIds.has(item.external_id));
+}
+
 export function computeOverviewAggregate(items: Items): OverviewAggregate {
-  const totalWorks = items.length;
+  const nonEditionItems = getNonEditionItems(items);
+  const totalWorks = nonEditionItems.length;
   const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
   const totalHours = totalMinutes / 60;
 
-  const ratedItems = items.filter(item => item.rating != null && item.rating > 0);
+  const ratedItems = nonEditionItems.filter(item => item.rating != null && item.rating > 0);
   const totalRating = ratedItems.reduce((acc, item) => acc + (item.rating || 0), 0);
   const avgScore = ratedItems.length > 0 ? (totalRating / ratedItems.length) : 0;
 
-  const completed = items.filter(item => item.status === 'completed').length;
-  const currently = items.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing').length;
-  const paused = items.filter(item => item.status === 'paused').length;
-  const dropped = items.filter(item => item.status === 'dropped').length;
-  const planning = items.filter(item => item.status === 'planning').length;
+  const completed = nonEditionItems.filter(item => item.status === 'completed').length;
+  const currently = nonEditionItems.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing').length;
+  const paused = nonEditionItems.filter(item => item.status === 'paused').length;
+  const dropped = nonEditionItems.filter(item => item.status === 'dropped').length;
+  const planning = nonEditionItems.filter(item => item.status === 'planning').length;
 
   const totalDays = (totalHours / 24).toFixed(1);
   const avgPerWork = totalWorks > 0 ? (totalHours / totalWorks).toFixed(1) : '0.0';
@@ -48,13 +61,21 @@ export interface TypeBreakdownEntry {
 }
 
 export function computeTypeBreakdown(items: Items): TypeBreakdownEntry[] {
+  const nonEditionItems = getNonEditionItems(items);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
-  for (const item of items) {
+  
+  for (const item of nonEditionItems) {
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
     val.count++;
+    byTypeMap.set(item.type, val);
+  }
+
+  for (const item of items) {
+    const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
     val.minutes += (item.minutes_spent || 0);
     byTypeMap.set(item.type, val);
   }
+
   return Array.from(byTypeMap.entries())
     .map(([type, val]) => ({ type, count: val.count, hours: Number((val.minutes / 60).toFixed(1)) }))
     .sort((a, b) => b.hours - a.hours);
@@ -63,8 +84,9 @@ export function computeTypeBreakdown(items: Items): TypeBreakdownEntry[] {
 // ── Genre breakdown ──────────────────────────────────────────────────────────
 
 export function computeTopGenres(items: Items, catalogMap: Map<string, MediaCatalogEntry>, limit = 10): [string, number][] {
+  const nonEditionItems = getNonEditionItems(items);
   const genreCount: Record<string, number> = {};
-  for (const item of items) {
+  for (const item of nonEditionItems) {
     const entry = catalogMap.get(item.external_id);
     if (!entry?.genres_csv) continue;
     for (const g of entry.genres_csv.split(',')) {
@@ -103,8 +125,9 @@ export interface YearEntry {
 }
 
 export function computeCompletedByYear(items: Items, currentYear: number): YearEntry[] {
+  const nonEditionItems = getNonEditionItems(items);
   const byYear: Record<number, number> = {};
-  for (const item of items) {
+  for (const item of nonEditionItems) {
     if (item.status !== 'completed') continue;
     const year = parseInt((item.finished_at ?? item.updated_at ?? '').slice(0, 4), 10);
     if (year > 2000 && year <= currentYear) byYear[year] = (byYear[year] ?? 0) + 1;
