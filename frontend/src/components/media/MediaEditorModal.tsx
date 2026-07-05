@@ -127,6 +127,11 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       return { ...state, logs: { ...state.logs, [action.id]: libraryEntryToLog(action.entry) } };
     case 'SWITCH_LOG':
       return { ...state, activeLogId: action.id };
+    case 'UPDATE_LOG': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
+    }
     case 'SET_STATUS': {
       const id = state.activeLogId;
       const current = state.logs[id] || createDefaultLog();
