@@ -33,7 +33,12 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
     localStorage.setItem(STORAGE_KEYS.customColor, color);
     applyCustomColor(color);
     clearTimeout(colorTimer);
-    colorTimer = setTimeout(() => saveUserInfo({ custom_color: color }).catch(() => {}), 800);
+    colorTimer = setTimeout(() => {
+      // No toast here (this is a debounced autosave, not a user action), but
+      // still log — the DB write silently failing would otherwise be
+      // indistinguishable from it succeeding.
+      saveUserInfo({ custom_color: color }).catch(err => console.error('Failed to save custom color:', err));
+    }, 800);
   });
 
   colorResetBtn?.addEventListener('click', async () => {
@@ -41,7 +46,12 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
     colorHexDisplay.textContent = `Actual: ${DEFAULT_COLOR}`;
     localStorage.setItem(STORAGE_KEYS.customColor, DEFAULT_COLOR);
     applyCustomColor(DEFAULT_COLOR);
-    await saveUserInfo({ custom_color: DEFAULT_COLOR }).catch(() => {});
-    showToast('Color restaurado');
+    try {
+      await saveUserInfo({ custom_color: DEFAULT_COLOR });
+      showToast('Color restaurado');
+    } catch (err) {
+      console.error('Failed to save custom color:', err);
+      showToast('Error al guardar el color');
+    }
   });
 }

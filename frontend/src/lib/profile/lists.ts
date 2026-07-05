@@ -364,7 +364,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
                 .filter(Boolean) as string[];
               listItems.sort((a, b) => newIds.indexOf(a.external_id) - newIds.indexOf(b.external_id));
 
-              reorderListItems(listKey, newIds).catch(() => {});
+              reorderListItems(listKey, newIds).catch(err => console.error('Failed to persist list reorder:', err));
 
               dragCard = null;
               renderDetailContent();
@@ -412,7 +412,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           const descEl = el.querySelector('.list-meta-desc-input') as HTMLInputElement | null;
           const name = nameEl?.value.trim();
           if (!name) { nameEl?.focus(); return; }
-          await updateUserList(list.key, name, descEl?.value.trim() ?? '').catch(() => {});
+          await updateUserList(list.key, name, descEl?.value.trim() ?? '').catch(err => console.error('Failed to save list metadata:', err));
           list.name        = name;
           list.description = descEl?.value.trim() ?? '';
           isEditingMeta = false;
@@ -421,7 +421,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
 
         el.querySelector('#list-delete')?.addEventListener('click', async () => {
           if (!confirm(`¿Eliminar la lista "${list.name}"?`)) return;
-          await deleteUserList(list.key).catch(() => {});
+          await deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err));
           customLists = customLists.filter(l => l.key !== list.key);
           activeListKey = null;
           renderGrid();
@@ -448,7 +448,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           btn.addEventListener('click', async () => {
             const id = btn.dataset.addId ?? '';
             if (!id || currentIds.has(id)) return;
-            await addItemToList(list.key, id).catch(() => {});
+            await addItemToList(list.key, id).catch(err => console.error('Failed to add item to list:', err));
             // Construct a partial ListItemFull from the pre-fetched data
             const libEntry = items.find(i => i.external_id === id);
             const meta     = catalogMap.get(id);
@@ -476,7 +476,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           btn.addEventListener('click', async () => {
             const id = btn.dataset.removeId ?? '';
             if (!id) return;
-            await removeItemFromList(list.key, id).catch(() => {});
+            await removeItemFromList(list.key, id).catch(err => console.error('Failed to remove item from list:', err));
             listItems = listItems.filter(x => x.external_id !== id);
             list.item_count = Math.max(0, list.item_count - 1);
             renderDetailContent();

@@ -10,8 +10,13 @@ export async function initDisplayName(showToast: (msg?: string) => void) {
   let saveTimer: ReturnType<typeof setTimeout>;
   async function saveDisplayName() {
     const newName = input!.value.trim();
-    await saveUserInfo({ display_name: newName }).catch(() => {});
-    showToast('Nombre guardado');
+    try {
+      await saveUserInfo({ display_name: newName });
+      showToast('Nombre guardado');
+    } catch (err) {
+      console.error('Failed to save display name:', err);
+      showToast('Error al guardar el nombre');
+    }
   }
 
   input.addEventListener('blur', saveDisplayName);

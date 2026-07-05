@@ -67,11 +67,16 @@ export function initAniListAuth() {
         clearToken();
         showDisconnected();
       }
-    }).catch(() => {
+    }).catch(err => {
+      // Could be an expired/invalid token, but could just as easily be a
+      // network blip — log it so a real failure doesn't look identical to
+      // "token was fine, just logged out" with zero trace.
+      console.error('AniList token validation failed:', err);
       clearToken();
       showDisconnected();
     });
-  }).catch(() => {
+  }).catch(err => {
+    console.error('AniList cached-token lookup failed:', err);
     showDisconnected();
   });
 

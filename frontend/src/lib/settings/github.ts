@@ -35,14 +35,19 @@ export function initGitHubAuth() {
       setAuthButtonBusy(githubLoginBtn, 'Verificando...');
       fetchGitHubUser(cachedToken).then(user => {
         showConnected(user.login, user.avatar_url);
-      }).catch(async () => {
+      }).catch(async err => {
+        // Could be an expired/revoked token, but could just as easily be a
+        // network blip — log it so a real failure doesn't look identical to
+        // "token was fine, just logged out" with zero trace.
+        console.error('GitHub token validation failed:', err);
         await invoke('delete_github_token').catch(console.error);
         showDisconnected();
       });
     } else {
       showDisconnected();
     }
-  }).catch(() => {
+  }).catch(err => {
+    console.error('GitHub cached-token lookup failed:', err);
     showDisconnected();
   });
 

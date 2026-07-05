@@ -56,7 +56,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   }
 
   if (modified) {
-    await writeUserFavorites(favData).catch(() => { });
+    await writeUserFavorites(favData).catch(err => console.error('Failed to persist favorites reorder:', err));
   }
 
   const getOrderedItems = (catKey: string) => {

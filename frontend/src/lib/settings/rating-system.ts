@@ -20,8 +20,13 @@ export async function initRatingSystem(showToast: (msg?: string) => void) {
       btn.classList.add('active');
       const value = btn.dataset.value || '5-star';
       localStorage.setItem(STORAGE_KEYS.ratingSystem, value);
-      await saveUserInfo({ rating_system: value }).catch(() => {});
-      showToast('Sistema de calificación guardado');
+      try {
+        await saveUserInfo({ rating_system: value });
+        showToast('Sistema de calificación guardado');
+      } catch (err) {
+        console.error('Failed to save rating system:', err);
+        showToast('Error al guardar el sistema de calificación');
+      }
     });
   });
 }
