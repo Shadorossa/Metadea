@@ -1160,7 +1160,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.5rem, 2vw, 1rem);
   padding-bottom: 1rem;
   width: 100%;
 }
@@ -1184,7 +1183,6 @@
   justify-content: center;
   gap: 0.4rem;
   flex-wrap: nowrap;
-  flex: 1;
 }
 
 .fav-tab-btn {
@@ -1217,8 +1215,14 @@
 }
 
 .fav-reorder-btn {
+  /* Taken out of the flex row so it doesn't skew .fav-tabs off-center —
+     without this, .fav-tabs only centers within (row width - button width),
+     shifting the pill tabs left of true center. */
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   padding: 0.4rem 0.6rem;
-  flex-shrink: 0;
   font-size: 0.75rem;
 }
 
@@ -1233,7 +1237,11 @@
 /* Favorites Grid & Cards */
 .fav-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  /* Fixed 150px columns (not 1fr) so cards pack left-to-right at a constant
+     size instead of stretching to fill the row; justify-content centers the
+     whole block of cards as a unit when it doesn't fill the container. */
+  grid-template-columns: repeat(auto-fill, 150px);
+  justify-content: center;
   gap: 1.5rem;
   width: 100%;
 }
