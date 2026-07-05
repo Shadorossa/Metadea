@@ -701,15 +701,12 @@
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  animation: slideInRight 0.3s var(--anim-ease);
+  animation: slide-in-right 0.3s var(--anim-ease);
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-@keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
+
 
 .local-game-detail-header {
   position: relative;

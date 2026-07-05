@@ -322,11 +322,12 @@ function MediaCard({ result }: { result: SearchResult }) {
     if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
   }
 
-  function handleClick() {
+  async function handleClick() {
     if (hasDetail) {
+      const { navigate } = await import('astro:transitions/client');
       if (result.type === 'character') {
         const rawId = result.externalId.replace('character:', '');
-        window.location.href = `/character?id=${rawId}`;
+        navigate(`/character?id=${rawId}`);
         return;
       }
       if (result.authorNames?.length) {
@@ -335,7 +336,7 @@ function MediaCard({ result }: { result: SearchResult }) {
       if (result.authorKey) {
         sessionStorage.setItem(`book_author_key:${result.externalId}`, result.authorKey);
       }
-      window.location.href = `/media?id=${result.externalId}`;
+      navigate(`/media?id=${result.externalId}`);
     }
   }
 

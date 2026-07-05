@@ -116,6 +116,21 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* ── Generic animation primitives (consumed via utility classes below) ─────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Utility classes — prefer these over writing inline animations in page CSS */
+.animate-fade-in   { animation: fade-in 0.25s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both; }
+.animate-slide-in-right { animation: slide-in-right 0.3s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)); }
+
 /* Film grain */
 body::before {
   content: "";
