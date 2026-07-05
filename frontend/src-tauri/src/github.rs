@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::db::ToStringErr;
 
+const GITHUB_API: &str = "https://api.github.com";
+const GITHUB_OAUTH_DEVICE_CODE: &str = "https://github.com/login/device/code";
+const GITHUB_OAUTH_ACCESS_TOKEN: &str = "https://github.com/login/oauth/access_token";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeviceCodeResponse {
     pub device_code: String,
@@ -102,7 +106,7 @@ pub fn delete_github_token(
 pub async fn request_github_device_code(client_id: String) -> Result<DeviceCodeResponse, String> {
     let client = reqwest::Client::new();
     let res = client
-        .post("https://github.com/login/device/code")
+        .post(GITHUB_OAUTH_DEVICE_CODE)
         .header("Accept", "application/json")
         .json(&serde_json::json!({ "client_id": client_id, "scope": "public_repo" }))
         .send()
@@ -121,7 +125,7 @@ pub async fn request_github_device_token(
 ) -> Result<TokenResponse, String> {
     let client = reqwest::Client::new();
     let res = client
-        .post("https://github.com/login/oauth/access_token")
+        .post(GITHUB_OAUTH_ACCESS_TOKEN)
         .header("Accept", "application/json")
         .json(&serde_json::json!({
             "client_id": client_id,
@@ -141,7 +145,7 @@ pub async fn request_github_device_token(
 pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
     let client = reqwest::Client::new();
     let res = client
-        .get("https://api.github.com/user")
+        .get(&format!("{}/user", GITHUB_API))
         .header("Authorization", format!("token {}", token))
         .header("User-Agent", "Metadea-App")
         .header("Accept", "application/json")

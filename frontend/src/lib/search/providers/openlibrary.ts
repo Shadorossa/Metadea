@@ -1,7 +1,5 @@
 import type { SearchResult } from '../index';
-
-const OPENLIBRARY_BASE_URL   = 'https://openlibrary.org';
-const OPENLIBRARY_COVERS_URL = 'https://covers.openlibrary.org/b/id';
+import { API_ENDPOINTS } from '../../api/endpoints';
 
 interface OpenLibraryBook {
   key: string;
@@ -33,18 +31,18 @@ export interface OpenLibWork {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildCoverUrl(coverId?: number, size: 'S' | 'M' | 'L' = 'M'): string | null {
-  return coverId ? `${OPENLIBRARY_COVERS_URL}/${coverId}-${size}.jpg` : null;
+  return coverId ? `${API_ENDPOINTS.OPENLIBRARY_COVERS}/${coverId}-${size}.jpg` : null;
 }
 
 export function openLibCoverUrl(coverId: number, size: 'S' | 'M' | 'L' = 'L'): string {
-  return `${OPENLIBRARY_COVERS_URL}/${coverId}-${size}.jpg`;
+  return `${API_ENDPOINTS.OPENLIBRARY_COVERS}/${coverId}-${size}.jpg`;
 }
 
 // ── Detail fetchers ───────────────────────────────────────────────────────────
 
 export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | null> {
   try {
-    const res = await fetch(`${OPENLIBRARY_BASE_URL}${workKey}.json`);
+    const res = await fetch(`${API_ENDPOINTS.OPENLIBRARY}${workKey}.json`);
     if (!res.ok) return null;
     return res.json() as Promise<OpenLibWork>;
   } catch { return null; }
@@ -52,7 +50,7 @@ export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | n
 
 export async function fetchOpenLibAuthor(authorKey: string): Promise<string | null> {
   try {
-    const res = await fetch(`${OPENLIBRARY_BASE_URL}${authorKey}.json`);
+    const res = await fetch(`${API_ENDPOINTS.OPENLIBRARY}${authorKey}.json`);
     if (!res.ok) return null;
     const data = await res.json() as { name: string };
     return data.name ?? null;
@@ -86,7 +84,7 @@ export async function searchBooks(searchQuery: string, signal: AbortSignal): Pro
   let total = Infinity;
 
   while (offset < total) {
-    const url = `${OPENLIBRARY_BASE_URL}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE}&offset=${offset}&fields=${fields}`;
+    const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE}&offset=${offset}&fields=${fields}`;
     const response = await fetch(url, { signal });
     if (!response.ok) break;
 

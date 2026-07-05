@@ -1,3 +1,5 @@
+import { API_ENDPOINTS } from '../../../lib/api/endpoints';
+
 export type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation' | 'local';
 export type CategoryId = 'videojuegos' | 'visual-novel' | 'anime' | 'manga' | 'light-novel' | 'books' | 'series' | 'movies';
 
@@ -36,5 +38,4 @@ export const PLATFORM_LOGO: Record<PlatformId, string> = {
   local:       '',
 };
 
-export const STEAM_COVER = (appId: string) =>
-  `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`;
+export const STEAM_COVER = API_ENDPOINTS.STEAM_COVERS;

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { API_ENDPOINTS } from '../api/endpoints';
 
 export interface AnimeWatchEntry {
   id: number;
@@ -68,7 +69,7 @@ const PLAN_TO_WATCH_QUERY = `
 `;
 
 async function queryAniList<T>(token: string, query: string): Promise<T> {
-  const response = await fetch('https://graphql.anilist.co/', {
+  const response = await fetch(API_ENDPOINTS.ANILIST, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -143,7 +144,7 @@ export async function updateAniListProgress(token: string, mediaId: number, prog
     }
   `;
 
-  const response = await fetch('https://graphql.anilist.co/', {
+  const response = await fetch(API_ENDPOINTS.ANILIST, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -4,8 +4,7 @@ import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
 import { STORAGE_KEYS } from '../shared/storage-keys';
-
-const ANILIST_API = 'https://graphql.anilist.co';
+import { API_ENDPOINTS } from '../api/endpoints';
 
 const IMPORT_QUERY = `
 query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
@@ -55,7 +54,7 @@ function getToken(): string | null {
 }
 
 async function fetchCurrentUserId(token: string): Promise<number | null> {
-  const res = await fetch(ANILIST_API, {
+  const res = await fetch(API_ENDPOINTS.ANILIST, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ query: CURRENT_USER_QUERY }),
@@ -77,7 +76,7 @@ async function fetchAllPages(
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   while (hasNextPage) {
     onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando ${anilistType} página ${page}...` });
-    const pageRes = await fetch(ANILIST_API, {
+    const pageRes = await fetch(API_ENDPOINTS.ANILIST, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ query: IMPORT_QUERY, variables: { userId, type: anilistType, page } }),

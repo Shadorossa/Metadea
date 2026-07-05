@@ -1,5 +1,6 @@
 import type { MediaType, SearchResult } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
+import { API_ENDPOINTS } from '../../api/endpoints';
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ const CHARACTERS_QUERY = `
 
 async function anilistPost<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
   try {
-    const res = await fetch('https://graphql.anilist.co', {
+    const res = await fetch(API_ENDPOINTS.ANILIST, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables }),

@@ -1,6 +1,5 @@
-const ANILIST_API = 'https://graphql.anilist.co';
-
 import { ANILIST_TYPES, APP_TO_ANILIST_STATUS } from '../constants/media';
+import { API_ENDPOINTS } from '../api/endpoints';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
@@ -105,7 +104,7 @@ function fuzzyDateToString(fd: { year: number; month: number; day: number } | nu
 
 async function getAniListEntry(mediaId: number, token: string): Promise<Record<string, any> | null> {
   try {
-    const res = await fetch(ANILIST_API, {
+    const res = await fetch(API_ENDPOINTS.ANILIST, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -173,7 +172,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   );
 
   try {
-    const res = await fetch(ANILIST_API, {
+    const res = await fetch(API_ENDPOINTS.ANILIST, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

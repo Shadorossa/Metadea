@@ -2,6 +2,8 @@ use rusqlite::OptionalExtension;
 use serde_json::Value;
 use crate::db::ToStringErr;
 
+const ANILIST_API: &str = "https://graphql.anilist.co";
+
 // ─── DPAPI encryption helpers ─────────────────────────────────────────────────
 
 #[cfg(target_os = "windows")]
@@ -82,7 +84,7 @@ pub async fn get_anilist_user_profile(token: String) -> Result<Value, String> {
     let client = reqwest::Client::new();
     let query = r#"query { Viewer { name avatar { large } } }"#;
     let res = client
-        .post("https://graphql.anilist.co")
+        .post(ANILIST_API)
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")

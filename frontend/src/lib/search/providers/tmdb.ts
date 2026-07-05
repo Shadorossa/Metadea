@@ -1,8 +1,6 @@
 import { readEnvConfig } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
-
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+import { API_ENDPOINTS } from '../../api/endpoints';
 
 interface TmdbMovie {
   id: number;
@@ -19,7 +17,7 @@ interface TmdbPageResponse {
 }
 
 function buildPosterUrl(posterPath: string | null): string | null {
-  return posterPath ? `${TMDB_IMAGE_BASE_URL}${posterPath}` : null;
+  return posterPath ? `${API_ENDPOINTS.TMDB_IMAGES}${posterPath}` : null;
 }
 
 function parseDateParts(dateString?: string): { year: number | null; month: number | null; day: number | null } {
@@ -71,7 +69,7 @@ async function fetchFromTmdb(
 
   if (!accessToken && !apiKey) return [];
 
-  let url = `${TMDB_BASE_URL}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
+  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
   const headers: Record<string, string> = {};
 
   if (accessToken) {
