@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
-import { fetchMediaData, mapCatalogEntryToPartialData } from '../../lib/media/mediaService';
+import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations } from '../../lib/media/mediaService';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
@@ -41,7 +41,17 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
 
       fetchMediaData(id)
         .then(data => {
-          if (data) setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
+          if (data) {
+            setState(prev => prev?.externalId === id ? { ...prev, mediaData: data } : prev);
+            fetchExtraRelations(id, data).then(relations => {
+              if (relations) {
+                setState(prev => prev?.externalId === id ? {
+                  ...prev,
+                  mediaData: { ...prev.mediaData, relations }
+                } : prev);
+              }
+            });
+          }
         })
         .catch(console.error);
     };

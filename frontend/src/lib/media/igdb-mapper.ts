@@ -159,9 +159,9 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // of the base game rather than a remaster of the edition itself — skip.
   if (gameType !== 10) addRelations(game.remasters, 'Remaster');
   addRelations(game.dlcs, 'DLC');
-  addRelations(game.expansions, 'Expansión');
+  addRelations(game.expansions, 'Expansion');
   addRelations(game.standalone_expansions, 'Standalone');
-  addRelations(game.expanded_games, 'Edición expandida');
+  addRelations(game.expanded_games, 'Expanded Edition');
   // Ports are never shown as related versions.
   addRelations(game.forks, 'Fork');
 
@@ -205,7 +205,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => ({
-    typeLabel: 'Juego base',
+    typeLabel: 'Base Game',
     title: cleanEditionTitle(sg.name),
     cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
     url: `/media?id=game:${sg.id}`,
@@ -230,13 +230,13 @@ const VIA_LABELS: Record<string, string> = {
   remakes: 'Remake',
   remasters: 'Remaster',
   dlcs: 'DLC',
-  expansions: 'Expansión',
+  expansions: 'Expansion',
   standalone_expansions: 'Standalone',
-  expanded_games: 'Edición expandida',
+  expanded_games: 'Expanded Edition',
   ports: 'Port',
   forks: 'Fork',
-  parent_game: 'Juego base',
-  relation: 'Relacionado',
+  parent_game: 'Base Game',
+  relation: 'Related',
 };
 
 export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {

@@ -354,17 +354,34 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const progLabel = progressLabel(data.type, t.media);
 
   // Editions/versions this entry could be linked to (base game + expansions/
-  // remakes/etc. from the IGDB relation list) — only relevant for games.
-  const editionOptions = useMemo(() => {
-    if (data.type !== 'game') return [] as { externalId: string; label: string }[];
-    const opts: { externalId: string; label: string }[] = [];
-    if (data.parentGame) opts.push({ externalId: data.parentGame.externalId, label: data.parentGame.title });
-    for (const rel of data.relations) {
+  // remakes/etc. from the IGDB relation list) grouped by relation type.
+  const editionGroups = useMemo(() => {
+    if (data.type !== 'game') return [] as { label: string; options: { externalId: string; label: string }[] }[];
+
+    const groupsMap: Record<string, { externalId: string; label: string }[]> = {};
+
+    if (data.parentGame) {
+      groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title }];
+    }
+
+    for (const rel of (data.relations || [])) {
+      if (
+        rel.typeLabel === 'Standalone' ||
+        rel.typeLabel === 'Expansion' ||
+        rel.typeLabel === 'DLC'
+      ) continue;
       const match = rel.url?.match(/id=([^&]+)/);
       const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
-      if (relExternalId) opts.push({ externalId: relExternalId, label: `${rel.typeLabel}: ${rel.title}` });
+      if (relExternalId) {
+        const groupLabel = rel.typeLabel || 'Others';
+        if (!groupsMap[groupLabel]) {
+          groupsMap[groupLabel] = [];
+        }
+        groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title });
+      }
     }
-    return opts;
+
+    return Object.entries(groupsMap).map(([label, options]) => ({ label, options }));
   }, [data.type, data.parentGame, data.relations]);
 
   const modal = (
@@ -468,7 +485,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     onChange={e => dispatchEntry({ type: 'SET_FINISHED', value: e.target.value })} />
                 </div>
 
-                {editionOptions.length > 0 && (
+                {editionGroups.length > 0 && (
                   <div className="me-header-field">
                     <label className="me-header-field-label">{te.editions}</label>
                     <select
@@ -477,8 +494,12 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                       onChange={e => dispatchEntry({ type: 'SET_VERSION', value: e.target.value })}
                     >
                       <option value="">{te.edition_current}</option>
-                      {editionOptions.map(opt => (
-                        <option key={opt.externalId} value={opt.externalId}>{opt.label}</option>
+                      {editionGroups.map(group => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.options.map(opt => (
+                            <option key={opt.externalId} value={opt.externalId}>{opt.label}</option>
+                          ))}
+                        </optgroup>
                       ))}
                     </select>
                   </div>
@@ -493,12 +514,14 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
               title={te.favorite}>
               <IconHeart filled={entry.isFavorite} size={18} />
             </button>
-            <button type="button"
-              className={`me-header-icon-btn${entry.isPlatinum ? ' active' : ''}`}
-              onClick={() => dispatchEntry({ type: 'TOGGLE_PLATINUM' })}
-              title={te.platinum}>
-              <IconPlatinum filled={entry.isPlatinum} size={18} />
-            </button>
+            {(data.type === 'game' || data.type === 'vnovel') && (
+              <button type="button"
+                className={`me-header-icon-btn${entry.isPlatinum ? ' active' : ''}`}
+                onClick={() => dispatchEntry({ type: 'TOGGLE_PLATINUM' })}
+                title={te.platinum}>
+                <IconPlatinum filled={entry.isPlatinum} size={18} />
+              </button>
+            )}
           </div>
         </div>
 
