@@ -44,21 +44,10 @@ interface LogState {
   selectedVersion: string;
 }
 
-// Entry state: mirrors the fields saved to the library
-interface EntryState {
-  existing:        LibraryEntry | null;
-  status:          string;
-  rating:          number;
-  progress:        number;
-  progressCount2:  number;
-  notes:           string;
-  startedAt:       string;
-  finishedAt:      string;
-  isFavorite:      boolean;
-  isPlatinum:      boolean;
-  tags:            string[];
-  platform:        string;
-  selectedVersion: string;
+// Entry state: mirrors the fields saved to the library, plus the log-switching
+// bookkeeping. Extends LogState instead of repeating its 13 fields since the
+// "active" log's values always live directly on EntryState (see SWITCH_LOG).
+interface EntryState extends LogState {
   monthlyHistory:  Record<string, string[]>;
   selectedMonthKey: string | null;
   selectedYear:    number;
@@ -107,10 +96,19 @@ type UiAction =
 
 // ── Reducers ──────────────────────────────────────────────────────────────────
 
+// Blank LogState, used whenever a log is referenced (switched to, initialized,
+// linked as a version) before it's ever been loaded or saved.
+function createDefaultLog(status = ''): LogState {
+  return {
+    existing: null, status, rating: 0, progress: 0, progressCount2: 0,
+    notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
+    tags: [], platform: '', selectedVersion: '',
+  };
+}
+
 const entryInit: EntryState = {
-  existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
-  notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-  tags: [], platform: '', selectedVersion: '', monthlyHistory: {}, selectedMonthKey: null,
+  ...createDefaultLog(),
+  monthlyHistory: {}, selectedMonthKey: null,
   selectedYear: new Date().getFullYear(),
   activeLogId: '',
   logs: {},
@@ -118,11 +116,7 @@ const entryInit: EntryState = {
 
 function updateActiveLog(state: EntryState, updates: Partial<LogState>): EntryState {
   const activeId = state.activeLogId || 'active';
-  const current = state.logs[activeId] || {
-    existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
-    notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-    tags: [], platform: '', selectedVersion: '',
-  };
+  const current = state.logs[activeId] || createDefaultLog();
   const updatedLog = { ...current, ...updates };
   return {
     ...state,
@@ -131,25 +125,31 @@ function updateActiveLog(state: EntryState, updates: Partial<LogState>): EntrySt
   };
 }
 
+// Maps a saved LibraryEntry (snake_case DB row) to the editor's LogState
+// (camelCase, non-null defaults) — used whenever a log is loaded from disk.
+function libraryEntryToLog(e: LibraryEntry): LogState {
+  return {
+    existing: e,
+    status:        e.status        ?? '',
+    rating:        e.rating        ?? 0,
+    progress:      e.progress      ?? 0,
+    progressCount2: e.progress_2 ?? 0,
+    notes:         e.notes         ?? '',
+    startedAt:     e.started_at    ?? '',
+    finishedAt:    e.finished_at   ?? '',
+    isFavorite:    e.is_favorite   === 1,
+    isPlatinum:    e.is_platinum   === 1,
+    tags:          e.tags          ?? [],
+    platform:      e.selected_platform ?? '',
+    selectedVersion: e.selected_version ?? '',
+  };
+}
+
 function entryReducer(state: EntryState, action: EntryAction): EntryState {
   switch (action.type) {
     case 'LOAD_ENTRY': {
       const e = action.entry;
-      const logVal: LogState = {
-        existing: e,
-        status:        e.status        ?? '',
-        rating:        e.rating        ?? 0,
-        progress:      e.progress      ?? 0,
-        progressCount2: e.progress_2 ?? 0,
-        notes:         e.notes         ?? '',
-        startedAt:     e.started_at    ?? '',
-        finishedAt:    e.finished_at   ?? '',
-        isFavorite:    e.is_favorite   === 1,
-        isPlatinum:    e.is_platinum   === 1,
-        tags:          e.tags          ?? [],
-        platform:      e.selected_platform ?? '',
-        selectedVersion: e.selected_version ?? '',
-      };
+      const logVal = libraryEntryToLog(e);
       const activeId = state.activeLogId || e.external_id;
       return {
         ...state,
@@ -160,21 +160,7 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
     }
     case 'LOAD_LOG': {
       const e = action.entry;
-      const logVal: LogState = {
-        existing: e,
-        status:        e.status        ?? '',
-        rating:        e.rating        ?? 0,
-        progress:      e.progress      ?? 0,
-        progressCount2: e.progress_2 ?? 0,
-        notes:         e.notes         ?? '',
-        startedAt:     e.started_at    ?? '',
-        finishedAt:    e.finished_at   ?? '',
-        isFavorite:    e.is_favorite   === 1,
-        isPlatinum:    e.is_platinum   === 1,
-        tags:          e.tags          ?? [],
-        platform:      e.selected_platform ?? '',
-        selectedVersion: e.selected_version ?? '',
-      };
+      const logVal = libraryEntryToLog(e);
       const isCurrentlyActive = state.activeLogId === action.id;
       return {
         ...state,
@@ -186,35 +172,14 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       const targetId = action.id;
       const log = state.logs[targetId];
       if (!log) return state;
-      return {
-        ...state,
-        activeLogId: targetId,
-        existing:        log.existing,
-        status:          log.status,
-        rating:          log.rating,
-        progress:        log.progress,
-        progressCount2:  log.progressCount2,
-        notes:           log.notes,
-        startedAt:       log.startedAt,
-        finishedAt:      log.finishedAt,
-        isFavorite:      log.isFavorite,
-        isPlatinum:      log.isPlatinum,
-        tags:            log.tags,
-        platform:        log.platform,
-        selectedVersion: log.selectedVersion,
-      };
+      return { ...state, ...log, activeLogId: targetId };
     }
     case 'INITIALIZE_LOGS': {
       const id = action.activeLogId;
-      const defaultLog: LogState = {
-        existing: null, status: '', rating: 0, progress: 0, progressCount2: 0,
-        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-        tags: [], platform: '', selectedVersion: '',
-      };
       return {
         ...state,
         activeLogId: id,
-        logs: { ...state.logs, [id]: state.logs[id] || defaultLog },
+        logs: { ...state.logs, [id]: state.logs[id] || createDefaultLog() },
       };
     }
     case 'LOAD_HISTORY': {
@@ -238,40 +203,21 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
     case 'SET_PLATFORM':  return updateActiveLog(state, { platform: action.value });
     case 'SET_VERSION': {
       const baseId = action.baseId;
-      const currentBaseLog = state.logs[baseId] || {
-        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
-        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-        tags: [], platform: '', selectedVersion: '',
-      };
+      const currentBaseLog = state.logs[baseId] || createDefaultLog('planning');
       const updatedBaseLog = { ...currentBaseLog, selectedVersion: action.value };
-      
+
       const nextActiveLogId = action.value || baseId;
-      const targetLog = state.logs[nextActiveLogId] || {
-        existing: null, status: 'planning', rating: 0, progress: 0, progressCount2: 0,
-        notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
-        tags: [], platform: '', selectedVersion: '',
-      };
+      const targetLog = state.logs[nextActiveLogId] || createDefaultLog('planning');
 
       return {
         ...state,
+        ...targetLog,
         activeLogId: nextActiveLogId,
-        selectedVersion: action.value,
-        existing:        targetLog.existing,
-        status:          targetLog.status,
-        rating:          targetLog.rating,
-        progress:        targetLog.progress,
-        progressCount2:  targetLog.progressCount2,
-        notes:           targetLog.notes,
-        startedAt:       targetLog.startedAt,
-        finishedAt:      targetLog.finishedAt,
-        isFavorite:      targetLog.isFavorite,
-        isPlatinum:      targetLog.isPlatinum,
-        tags:            targetLog.tags,
-        platform:        targetLog.platform,
-        logs: { 
-          ...state.logs, 
+        selectedVersion: action.value, // track the base's full version list, not the target log's own
+        logs: {
+          ...state.logs,
           [baseId]: updatedBaseLog,
-          [nextActiveLogId]: state.logs[nextActiveLogId] || targetLog
+          [nextActiveLogId]: state.logs[nextActiveLogId] || targetLog,
         },
       };
     }
@@ -326,12 +272,26 @@ function progressStep(type: string): number {
   return base === 'game' || base === 'vnovel' ? 0.5 : 1;
 }
 
-function progressLabel2(type: string, tm: typeof es.media): string {
+// Only anime/series/manga/light-novel/books track a secondary count
+// (seasons/volumes) alongside the primary progress field — null means
+// this media type has none.
+function progressLabel2(type: string, tm: typeof es.media): string | null {
   const base = type.split('_')[0];
   if (base === 'anime' || base === 'series')          return tm.progress_seasons;
   if (base === 'manga' || base === 'light-novel')     return tm.progress_volumes;
   if (base === 'books')                               return tm.progress_books;
-  return 'Count 2';
+  return null;
+}
+
+// Placeholder LibraryEntry for a version the user has linked but never
+// actually logged (no save has happened for that version's external_id yet).
+function createEmptyVersionEntry(versionId: string): LibraryEntry {
+  return {
+    id: '', user_id: 'local', external_id: versionId, type: 'game',
+    status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+    is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
+    selected_platform: null, selected_version: null, started_at: null, finished_at: null,
+  };
 }
 
 function getNameDifference(baseTitle: string, editionTitle: string): string {
@@ -381,16 +341,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
               if (ev) {
                 dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
               } else {
-                dispatchEntry({
-                  type: 'LOAD_LOG',
-                  id: versionId,
-                  entry: {
-                    id: '', user_id: 'local', external_id: versionId, type: 'game',
-                    status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
-                    is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
-                    selected_platform: null, selected_version: null, started_at: null, finished_at: null
-                  }
-                });
+                dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: createEmptyVersionEntry(versionId) });
               }
             }
           }
@@ -429,16 +380,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
             if (ev) {
               dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
             } else {
-              dispatchEntry({
-                type: 'LOAD_LOG',
-                id: versionId,
-                entry: {
-                  id: '', user_id: 'local', external_id: versionId, type: 'game',
-                  status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
-                  is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
-                  selected_platform: null, selected_version: null, started_at: null, finished_at: null
-                }
-              });
+              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: createEmptyVersionEntry(versionId) });
             }
           });
       }
@@ -460,11 +402,28 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     dispatchUi({ type: 'SET_SAVING', value: true });
     try {
       const baseId = data.parentGame?.externalId || externalId;
+
+      // Editing a version's own page IS the intent to link it to its base —
+      // don't require the user to have clicked through the Log tab switcher
+      // for that link to actually get persisted.
+      let logsToSave = entry.logs;
+      if (data.parentGame && externalId !== baseId) {
+        const baseLog = logsToSave[baseId] || createDefaultLog();
+        const linkedIds = baseLog.selectedVersion ? baseLog.selectedVersion.split(',') : [];
+        if (!linkedIds.includes(externalId)) {
+          const nextSelectedVersion = [...linkedIds, externalId].join(',');
+          logsToSave = { ...logsToSave, [baseId]: { ...baseLog, selectedVersion: nextSelectedVersion } };
+        }
+      }
+
       let primarySaved: LibraryEntry | null = null;
 
-      for (const [logId, log] of Object.entries(entry.logs)) {
+      for (const [logId, log] of Object.entries(logsToSave)) {
         const isBase = logId === baseId;
-        const hasLink = isBase && !!entry.selectedVersion;
+        // Use this log's own stored selectedVersion, not entry.selectedVersion —
+        // that mirrors whichever tab is currently active, which is wrong here
+        // when the active tab is a version (versions never persist this field).
+        const hasLink = isBase && !!log.selectedVersion;
 
         const isEmpty =
           !log.status &&
@@ -498,7 +457,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           added_at:         log.existing?.added_at ?? null,
           updated_at:       null,
           selected_platform: log.platform || null,
-          selected_version:  logId === baseId ? (entry.selectedVersion || null) : null,
+          selected_version:  isBase ? (log.selectedVersion || null) : null,
           started_at:       log.startedAt || null,
           finished_at:      log.finishedAt || null,
         });
@@ -597,8 +556,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   ], [te, data.progressStatus]);
 
   const progLabel = progressLabel(data.type, t.media);
-
-
 
   // Editions/versions this entry could be linked to (base game + expansions/
   // remakes/etc. from the IGDB relation list) grouped by relation type.
@@ -701,7 +658,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                   const maxVal   = data.totalCount   && data.totalCount   > 0 ? data.totalCount   : undefined;
                   const max2Val  = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
                   const label2   = progressLabel2(data.type, t.media);
-                  const hasSecondary = label2 !== 'Count 2';
+                  const hasSecondary = label2 !== null;
                   return (
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="me-header-field">
@@ -764,8 +721,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     value={entry.finishedAt}
                     onChange={e => dispatchEntry({ type: 'SET_FINISHED', value: e.target.value })} />
                 </div>
-
-
               </div>
             </div>
           </div>

@@ -903,6 +903,12 @@
   gap: 1rem;
 }
 
+.stat-tooltip-row--sub {
+  padding-left: 0.85rem;
+  font-size: 0.62rem;
+  opacity: 0.85;
+}
+
 .stat-tooltip-label {
   font-weight: 500;
   text-transform: capitalize;

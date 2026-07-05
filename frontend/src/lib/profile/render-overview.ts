@@ -6,8 +6,8 @@ import { buildHofHtml, initHofListeners } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
-import { isInProgressStatus } from '../constants/media';
-import { getNonEditionItems } from './stats-calculators';
+import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
+import { getNonEditionItems, getEditionItems } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -30,7 +30,8 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     // Version-log child entries (tracking one specific edition/platform of a
     // work) shouldn't be counted as separate works — same exclusion as the
     // rest of the stats dashboard.
-    for (const item of getNonEditionItems(items)) {
+    const nonEditionItems = getNonEditionItems(items);
+    for (const item of nonEditionItems) {
       const s = item.status ?? 'planning';
       if (s === 'completed') {
         completed++;
@@ -41,6 +42,16 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       else if (s === 'dropped') dropped++;
 
       if (item.rating) { totalRating += item.rating; ratedCount++; }
+    }
+
+    // Completed version-logs don't count as their own "work", but the info
+    // isn't thrown away — tally them by edition type (remake/remaster/port/…)
+    // so the "?" tooltip can show that breakdown under Videojuegos.
+    const completedVersionsByFormat: Record<string, number> = {};
+    for (const item of getEditionItems(items)) {
+      if (item.status !== 'completed') continue;
+      const format = catalogMap.get(item.external_id)?.format || 'GAME';
+      completedVersionsByFormat[format] = (completedVersionsByFormat[format] ?? 0) + 1;
     }
 
     // Hours played DO include version-log time — each logged version is a
@@ -56,6 +67,14 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
     const totalHours = Math.round(totalMinutes / 60);
 
+    const versionBreakdownHtml = Object.entries(completedVersionsByFormat)
+      .map(([format, count]) => `
+        <span class="stat-tooltip-row stat-tooltip-row--sub">
+          <span class="stat-tooltip-label">${GAME_FORMAT_LABELS[format] ?? format}</span>
+          <span class="stat-tooltip-value">${count}</span>
+        </span>
+      `).join('');
+
     const completedTooltipHtml = `
     <span class="stat-help-wrap">
       <span class="stat-help-icon">?</span>
@@ -66,6 +85,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
                 <span class="stat-tooltip-label">${typeLabel(type)}</span>
                 <span class="stat-tooltip-value">${count}</span>
               </span>
+              ${type === 'game' ? versionBreakdownHtml : ''}
             `).join('')
         : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
       }
@@ -76,7 +96,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const statsHtml = `
     <div class="profile-stats-bar">
       ${([
-        [p.stat_total, pad(items.length)],
+        [p.stat_total, pad(nonEditionItems.length)],
         [p.stat_progress, pad(inProgress)],
         [p.stat_completed, pad(completed)],
         [p.stat_pending, pad(planning)],

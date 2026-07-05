@@ -24,7 +24,7 @@ export interface OverviewAggregate {
 // from the base "Skyrim" entry). Its own external_id shows up in the parent
 // entry's `selected_version` list — exclude those from any stat that counts
 // or buckets *works*, so the same conceptual work isn't counted twice.
-export function getNonEditionItems(items: Items): Items {
+function getEditionChildIds(items: Items): Set<string> {
   const childIds = new Set<string>();
   for (const item of items) {
     if (item.selected_version) {
@@ -33,7 +33,20 @@ export function getNonEditionItems(items: Items): Items {
       }
     }
   }
+  return childIds;
+}
+
+export function getNonEditionItems(items: Items): Items {
+  const childIds = getEditionChildIds(items);
   return items.filter(item => !childIds.has(item.external_id));
+}
+
+// Complement of getNonEditionItems: only the version-log child entries
+// themselves — used where a stat wants to break those down separately
+// instead of just excluding them.
+export function getEditionItems(items: Items): Items {
+  const childIds = getEditionChildIds(items);
+  return items.filter(item => childIds.has(item.external_id));
 }
 
 export function computeOverviewAggregate(items: Items): OverviewAggregate {

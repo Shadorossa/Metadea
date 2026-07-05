@@ -4,7 +4,6 @@ import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
-import { getNonEditionItems } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -35,7 +34,10 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
   ]);
 
-  const items = getNonEditionItems(rawItems);
+  // Unlike the stats dashboard, the library grid itself shows every logged
+  // entry — including version logs — so they stay browsable/editable even
+  // though they don't count toward the profile's totals.
+  const items = rawItems;
 
   if (items.length === 0) {
     el.innerHTML = `
