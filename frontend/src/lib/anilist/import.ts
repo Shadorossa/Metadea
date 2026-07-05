@@ -5,6 +5,7 @@ import type { MediaCatalogEntry } from '../tauri';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { API_ENDPOINTS } from '../api/endpoints';
+import { graphqlPost } from '../api/client';
 
 const IMPORT_QUERY = `
 query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
@@ -54,14 +55,11 @@ function getToken(): string | null {
 }
 
 async function fetchCurrentUserId(token: string): Promise<number | null> {
-  const res = await fetch(API_ENDPOINTS.ANILIST, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-    body: JSON.stringify({ query: CURRENT_USER_QUERY }),
-  });
-  const data = await res.json() as any;
-  if (!res.ok || data?.errors) return null;
-  return data?.data?.Viewer?.id ?? null;
+  const { ok, result } = await graphqlPost<{ Viewer: { id: number } }>(
+    API_ENDPOINTS.ANILIST, CURRENT_USER_QUERY, undefined, { token },
+  );
+  if (!ok || result?.errors) return null;
+  return result?.data?.Viewer?.id ?? null;
 }
 
 async function fetchAllPages(
@@ -76,16 +74,13 @@ async function fetchAllPages(
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   while (hasNextPage) {
     onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando ${anilistType} página ${page}...` });
-    const pageRes = await fetch(API_ENDPOINTS.ANILIST, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ query: IMPORT_QUERY, variables: { userId, type: anilistType, page } }),
-    });
-    const pageData = await pageRes.json() as any;
-    if (!pageRes.ok) throw new Error(pageData?.errors?.[0]?.message || `HTTP ${pageRes.status}`);
-    if (pageData?.errors) throw new Error(pageData.errors[0]?.message || 'Unknown GraphQL error');
-    result.push(...(pageData?.data?.Page?.mediaList ?? []));
-    hasNextPage = pageData?.data?.Page?.pageInfo?.hasNextPage ?? false;
+    const { ok, status, result: pageResult } = await graphqlPost<{ Page: any }>(
+      API_ENDPOINTS.ANILIST, IMPORT_QUERY, { userId, type: anilistType, page }, { token },
+    );
+    if (!ok) throw new Error(pageResult?.errors?.[0]?.message || `HTTP ${status}`);
+    if (pageResult?.errors) throw new Error(pageResult.errors[0]?.message || 'Unknown GraphQL error');
+    result.push(...(pageResult?.data?.Page?.mediaList ?? []));
+    hasNextPage = pageResult?.data?.Page?.pageInfo?.hasNextPage ?? false;
     page++;
     if (hasNextPage) await delay(2000);
   }

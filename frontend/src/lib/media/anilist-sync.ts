@@ -1,5 +1,6 @@
 import { ANILIST_TYPES, APP_TO_ANILIST_STATUS } from '../constants/media';
 import { API_ENDPOINTS } from '../api/endpoints';
+import { graphqlPost } from '../api/client';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
@@ -104,18 +105,11 @@ function fuzzyDateToString(fd: { year: number; month: number; day: number } | nu
 
 async function getAniListEntry(mediaId: number, token: string): Promise<Record<string, any> | null> {
   try {
-    const res = await fetch(API_ENDPOINTS.ANILIST, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: GET_ENTRY_QUERY, variables: { mediaId } }),
-    });
-
-    if (!res.ok) return null;
-    const json = await res.json() as { data?: { MediaList: any } };
-    return json.data?.MediaList ?? null;
+    const { ok, result } = await graphqlPost<{ MediaList: any }>(
+      API_ENDPOINTS.ANILIST, GET_ENTRY_QUERY, { mediaId }, { token },
+    );
+    if (!ok) return null;
+    return result?.data?.MediaList ?? null;
   } catch {
     return null;
   }
@@ -172,19 +166,10 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   );
 
   try {
-    const res = await fetch(API_ENDPOINTS.ANILIST, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query: SAVE_MUTATION, variables }),
-    });
+    const { ok, status, result } = await graphqlPost(API_ENDPOINTS.ANILIST, SAVE_MUTATION, variables, { token });
 
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-
-    const json = await res.json() as { errors?: Array<{ message: string }> };
-    if (json.errors?.length) return { ok: false, error: json.errors[0].message };
+    if (!ok) return { ok: false, error: `HTTP ${status}` };
+    if (result?.errors?.length) return { ok: false, error: result.errors[0].message };
 
     return { ok: true };
   } catch (e: any) {

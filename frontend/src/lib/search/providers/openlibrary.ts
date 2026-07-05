@@ -1,5 +1,6 @@
 import type { SearchResult } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
+import { fetchJson } from '../../api/client';
 
 interface OpenLibraryBook {
   key: string;
@@ -41,20 +42,12 @@ export function openLibCoverUrl(coverId: number, size: 'S' | 'M' | 'L' = 'L'): s
 // ── Detail fetchers ───────────────────────────────────────────────────────────
 
 export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | null> {
-  try {
-    const res = await fetch(`${API_ENDPOINTS.OPENLIBRARY}${workKey}.json`);
-    if (!res.ok) return null;
-    return res.json() as Promise<OpenLibWork>;
-  } catch { return null; }
+  return fetchJson<OpenLibWork>(`${API_ENDPOINTS.OPENLIBRARY}${workKey}.json`);
 }
 
 export async function fetchOpenLibAuthor(authorKey: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${API_ENDPOINTS.OPENLIBRARY}${authorKey}.json`);
-    if (!res.ok) return null;
-    const data = await res.json() as { name: string };
-    return data.name ?? null;
-  } catch { return null; }
+  const data = await fetchJson<{ name: string }>(`${API_ENDPOINTS.OPENLIBRARY}${authorKey}.json`);
+  return data?.name ?? null;
 }
 
 function mapBook(book: OpenLibraryBook): SearchResult {
@@ -85,10 +78,9 @@ export async function searchBooks(searchQuery: string, signal: AbortSignal): Pro
 
   while (offset < total) {
     const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE}&offset=${offset}&fields=${fields}`;
-    const response = await fetch(url, { signal });
-    if (!response.ok) break;
+    const data = await fetchJson<OpenLibrarySearchResponse>(url, { signal });
+    if (!data) break;
 
-    const data: OpenLibrarySearchResponse = await response.json();
     if (total === Infinity) total = data.numFound ?? 0;
 
     const docs = data.docs ?? [];

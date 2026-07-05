@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { API_ENDPOINTS } from '../api/endpoints';
+import { graphqlPost } from '../api/client';
 
 export interface AnimeWatchEntry {
   id: number;
@@ -68,26 +69,17 @@ const PLAN_TO_WATCH_QUERY = `
   }
 `;
 
-async function queryAniList<T>(token: string, query: string): Promise<T> {
-  const response = await fetch(API_ENDPOINTS.ANILIST, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ query }),
-  });
+async function queryAniList<T>(token: string, query: string): Promise<{ data: T }> {
+  const { ok, status, result } = await graphqlPost<T>(API_ENDPOINTS.ANILIST, query, undefined, { token });
 
-  if (!response.ok) {
-    throw new Error(`AniList API error: ${response.statusText}`);
+  if (!ok) {
+    throw new Error(`AniList API error: ${status}`);
+  }
+  if (result?.errors) {
+    throw new Error(`AniList GraphQL error: ${result.errors.map(e => e.message).join(', ')}`);
   }
 
-  const data = await response.json();
-  if (data.errors) {
-    throw new Error(`AniList GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`);
-  }
-
-  return data;
+  return { data: result?.data as T };
 }
 
 function parseEntries(rawEntries: any[]): AnimeWatchEntry[] {
@@ -144,24 +136,17 @@ export async function updateAniListProgress(token: string, mediaId: number, prog
     }
   `;
 
-  const response = await fetch(API_ENDPOINTS.ANILIST, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      query: mutation,
-      variables: { mediaId, progress, status },
-    }),
-  });
+  const { ok, status: httpStatus, result } = await graphqlPost(
+    API_ENDPOINTS.ANILIST,
+    mutation,
+    { mediaId, progress, status },
+    { token },
+  );
 
-  if (!response.ok) {
-    throw new Error(`AniList API error: ${response.statusText}`);
+  if (!ok) {
+    throw new Error(`AniList API error: ${httpStatus}`);
   }
-
-  const data = await response.json();
-  if (data.errors) {
-    throw new Error(`AniList GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`);
+  if (result?.errors) {
+    throw new Error(`AniList GraphQL error: ${result.errors.map(e => e.message).join(', ')}`);
   }
 }

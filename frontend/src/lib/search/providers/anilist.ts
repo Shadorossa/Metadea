@@ -1,6 +1,7 @@
 import type { MediaType, SearchResult } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
+import { graphqlPost } from '../../api/client';
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
@@ -100,13 +101,9 @@ const CHARACTERS_QUERY = `
 
 async function anilistPost<T>(query: string, variables: Record<string, unknown>): Promise<T | null> {
   try {
-    const res = await fetch(API_ENDPOINTS.ANILIST, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables }),
-    });
-    if (!res.ok) return null;
-    return (await res.json() as { data?: T }).data ?? null;
+    const { ok, result } = await graphqlPost<T>(API_ENDPOINTS.ANILIST, query, variables);
+    if (!ok) return null;
+    return result?.data ?? null;
   } catch { return null; }
 }
 
@@ -206,20 +203,18 @@ export async function searchAniList(
   // adult and non-adult results are returned.
   const isAdult = isAdultContentEnabled() ? null : false;
 
-  const response = await fetch('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(
-      format
-        ? { query: SEARCH_QUERY_WITH_FORMAT, variables: { searchQuery, type: anilistType, page: 1, format, isAdult } }
-        : { query: SEARCH_QUERY,             variables: { searchQuery, type: anilistType, page: 1, isAdult } },
-    ),
-    signal,
-  });
+  const variables = format
+    ? { searchQuery, type: anilistType, page: 1, format, isAdult }
+    : { searchQuery, type: anilistType, page: 1, isAdult };
+  const { ok, result } = await graphqlPost<AniListResponse['data']>(
+    API_ENDPOINTS.ANILIST,
+    format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY,
+    variables,
+    { signal },
+  );
 
-  if (!response.ok) return [];
-  const json: AniListResponse = await response.json();
-  const pageData = json.data?.Page;
+  if (!ok) return [];
+  const pageData = result?.data?.Page;
   if (!pageData) return [];
 
   return (pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType));
@@ -252,19 +247,15 @@ export async function searchAniListCharacters(
   searchQuery: string,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
-  const response = await fetch('https://graphql.anilist.co', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: SEARCH_CHARACTERS_QUERY,
-      variables: { searchQuery, page: 1 },
-    }),
-    signal,
-  });
+  const { ok, result } = await graphqlPost<AniListCharResponse['data']>(
+    API_ENDPOINTS.ANILIST,
+    SEARCH_CHARACTERS_QUERY,
+    { searchQuery, page: 1 },
+    { signal },
+  );
 
-  if (!response.ok) return [];
-  const json: AniListCharResponse = await response.json();
-  const pageData = json.data?.Page;
+  if (!ok) return [];
+  const pageData = result?.data?.Page;
   if (!pageData) return [];
 
   const chars = pageData.characters ?? [];

@@ -1,6 +1,7 @@
 import { readEnvConfig } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
+import { fetchJson } from '../../api/client';
 
 interface TmdbMovie {
   id: number;
@@ -80,11 +81,8 @@ async function fetchFromTmdb(
     url += `&api_key=${encodeURIComponent(apiKey)}`;
   }
 
-  const response = await fetch(url, { signal, headers });
-
-  if (!response.ok) return [];
-  const data: TmdbPageResponse = await response.json();
-  return (data.results ?? []).map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
+  const data = await fetchJson<TmdbPageResponse>(url, { signal, headers });
+  return (data?.results ?? []).map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
 }
 
 export const searchMovies = (searchQuery: string, signal: AbortSignal) =>
