@@ -44,17 +44,7 @@ const SELECT_BASE: &str = "
            selected_platform, selected_version, started_at, finished_at
     FROM user_library";
 
-const SELECT_ALL: &str = "
-    SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
-           minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
-           selected_platform, selected_version, started_at, finished_at
-    FROM user_library
-    WHERE NOT EXISTS (
-        SELECT 1 FROM user_library ul 
-        WHERE ul.selected_version IS NOT NULL 
-          AND (ul.selected_version = user_library.external_id 
-               OR instr(',' || ul.selected_version || ',', ',' || user_library.external_id || ',') > 0)
-    )";
+
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryEntry> {
     let tags_json: Option<String> = row.get(11)?;
@@ -190,7 +180,7 @@ pub async fn get_all_library_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<LibraryEntry>, String> {
     let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn.prepare(SELECT_ALL).str_err()?;
+    let mut stmt = conn.prepare(SELECT_BASE).str_err()?;
     let entries = stmt
         .query_map([], row_to_entry)
         .str_err()?

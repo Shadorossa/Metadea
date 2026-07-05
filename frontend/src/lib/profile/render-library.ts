@@ -29,10 +29,20 @@ function buildDateHtml(started: string | null | undefined, finished: string | nu
 
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
-  const [items, catalogEntries] = await Promise.all([
+  let [rawItems, catalogEntries] = await Promise.all([
     getAllLibraryEntries().catch(() => []),
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
   ]);
+
+  const childIds = new Set<string>();
+  for (const item of rawItems) {
+    if (item.selected_version) {
+      for (const id of item.selected_version.split(',')) {
+        childIds.add(id);
+      }
+    }
+  }
+  const items = rawItems.filter(item => !childIds.has(item.external_id));
 
   if (items.length === 0) {
     el.innerHTML = `
