@@ -49,28 +49,37 @@
 
 /* ── Save confirmation toast ─────────────────────────────────────────────── */
 @keyframes media-saved-toast-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes media-saved-toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(14px); }
 }
 
 .media-saved-toast {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: 1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1rem;
+  padding: 0.65rem 1.25rem;
   background: color-mix(in srgb, var(--accent, #7c6af7) 15%, var(--bg-secondary, #1a1a2e));
   color: var(--text-primary);
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
   border-radius: 0.5rem;
   font-size: 0.85rem;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-  animation: media-saved-toast-in 0.22s ease-out;
+  white-space: nowrap;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  animation: media-saved-toast-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   pointer-events: none;
+}
+.media-saved-toast--out {
+  animation: media-saved-toast-out 0.3s cubic-bezier(0.55, 0, 0.78, 0) forwards;
 }
 
 .media-saved-toast svg {

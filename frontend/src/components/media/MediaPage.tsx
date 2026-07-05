@@ -130,7 +130,7 @@ export default function MediaPage({ lang }: { lang: string }) {
   const [showEditor,         setShowEditor]         = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
-  const [savedToast,         setSavedToast]         = useState(false);
+  const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
@@ -286,9 +286,13 @@ export default function MediaPage({ lang }: { lang: string }) {
 
   const handleEditorSaved = useCallback((entry: LibraryEntry) => {
     applySaved(entry);
-    setSavedToast(true);
+    setSavedToast('visible');
     if (savedToastTimer.current) clearTimeout(savedToastTimer.current);
-    savedToastTimer.current = setTimeout(() => setSavedToast(false), 2500);
+    // After 2s start exit animation, then hide after animation (300ms)
+    savedToastTimer.current = setTimeout(() => {
+      setSavedToast('leaving');
+      savedToastTimer.current = setTimeout(() => setSavedToast('hidden'), 320);
+    }, 2000);
   }, [applySaved]);
 
   const handleEditorDeleted = useCallback(() => {
@@ -337,8 +341,12 @@ export default function MediaPage({ lang }: { lang: string }) {
   return (
     <>
       {isFetchingFull && <div className="media-bottom-progress" />}
-      {savedToast && (
-        <div className="media-saved-toast" role="status" aria-live="polite">
+      {savedToast !== 'hidden' && (
+        <div
+          className={`media-saved-toast${savedToast === 'leaving' ? ' media-saved-toast--out' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
