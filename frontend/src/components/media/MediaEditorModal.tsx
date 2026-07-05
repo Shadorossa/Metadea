@@ -883,6 +883,15 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </button>
                 <button type="button" className="me-btn me-btn--close"
                   onClick={handleClose}>✕</button>
+                {entry.existing && (
+                  <button type="button" className="me-btn me-btn--delete"
+                    onClick={handleDelete} title={te.delete}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                )}
                 {isAniListType(data.type) && ui.anilistStatus !== 'idle' && (
                   <div className={`me-anilist-status me-anilist-status--${ui.anilistStatus}`}>
                     {ui.anilistStatus === 'syncing' && (

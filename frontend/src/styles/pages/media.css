@@ -1594,6 +1594,21 @@
   background: color-mix(in srgb, var(--accent, #7c6af7) 8%, transparent);
 }
 
+.me-btn--delete {
+  background: transparent;
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.18);
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.me-btn--delete:hover:not(:disabled) {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.08);
+}
+
 /* ── Month Selector ──────────────────────────────────────────────────────── */
 .me-month-selector-section {
   display: flex;
