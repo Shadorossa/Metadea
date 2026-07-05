@@ -3,7 +3,7 @@ import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION } from '../shared/icon-strings';
-import { TYPE_LABELS } from '../constants/media';
+import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -142,9 +142,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) return false;
       if (statusKey) {
         if (statusKey === 'in_progress') {
-          if (item.status !== 'watching' && item.status !== 'reading' && item.status !== 'playing') {
-            return false;
-          }
+          if (!isInProgressStatus(item.status)) return false;
         } else {
           if (item.status !== statusKey) return false;
         }
@@ -173,7 +171,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
       });
     };
 
-    const inProgress = sortItems(filtered.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing'));
+    const inProgress = sortItems(filtered.filter(item => isInProgressStatus(item.status)));
     const completed = sortItems(filtered.filter(item => item.status === 'completed'));
     const planning = sortItems(filtered.filter(item => item.status === 'planning'));
     const paused = sortItems(filtered.filter(item => item.status === 'paused'));

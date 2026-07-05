@@ -6,6 +6,7 @@ import { buildHofHtml, initHofListeners } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
+import { isInProgressStatus } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -31,7 +32,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
         completed++;
         completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
       }
-      else if (s === 'watching' || s === 'playing' || s === 'reading') inProgress++;
+      else if (isInProgressStatus(s)) inProgress++;
       else if (s === 'planning') planning++;
       else if (s === 'dropped') dropped++;
 

@@ -1,3 +1,5 @@
+import type { IN_PROGRESS_STATUSES } from '../constants/media';
+
 // Interfaz normalizada que consume buildMediaHtml, independiente del proveedor
 
 export interface MediaStat {
@@ -40,7 +42,7 @@ export interface MediaPageData {
   characters: MediaCharacter[];
   relations: MediaRelation[];
   parentGame?: { title: string; externalId: string; cover?: string }; // base game this edition/expansion belongs to
-  progressStatus: 'watching' | 'reading' | 'playing';
+  progressStatus: typeof IN_PROGRESS_STATUSES[number];
   progressLabel: string;       // label i18n del botón de progreso en el tray
   // Catalog metadata
   format?: string;             // GAME, REMAKE, REMASTER, EXPANSION...

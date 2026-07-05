@@ -1,4 +1,5 @@
 import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
+import { isInProgressStatus } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -41,7 +42,7 @@ export function computeOverviewAggregate(items: Items): OverviewAggregate {
   const avgScore = ratedItems.length > 0 ? (totalRating / ratedItems.length) : 0;
 
   const completed = nonEditionItems.filter(item => item.status === 'completed').length;
-  const currently = nonEditionItems.filter(item => item.status === 'watching' || item.status === 'reading' || item.status === 'playing').length;
+  const currently = nonEditionItems.filter(item => isInProgressStatus(item.status)).length;
   const paused = nonEditionItems.filter(item => item.status === 'paused').length;
   const dropped = nonEditionItems.filter(item => item.status === 'dropped').length;
   const planning = nonEditionItems.filter(item => item.status === 'planning').length;

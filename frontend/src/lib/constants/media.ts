@@ -89,3 +89,14 @@ export const ANILIST_TO_APP_STATUS: Record<string, string> = {
   PAUSED:    'paused',
   DROPPED:   'dropped',
 };
+
+// ─── Library status groupings ────────────────────────────────────────────────
+
+// "In progress" spans three verbs depending on media type (watching an anime,
+// reading a manga, playing a game) — every place that buckets library entries
+// by progress state used to repeat this 3-way check inline.
+export const IN_PROGRESS_STATUSES = ['watching', 'reading', 'playing'] as const;
+
+export function isInProgressStatus(status: string | null | undefined): boolean {
+  return status != null && (IN_PROGRESS_STATUSES as readonly string[]).includes(status);
+}
