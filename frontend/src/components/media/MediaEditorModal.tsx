@@ -127,15 +127,71 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       return { ...state, logs: { ...state.logs, [action.id]: libraryEntryToLog(action.entry) } };
     case 'SWITCH_LOG':
       return { ...state, activeLogId: action.id };
-    case 'UPDATE_LOG': {
+    case 'SET_STATUS': {
       const id = state.activeLogId;
       const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
+      return { ...state, logs: { ...state.logs, [id]: { ...current, status: action.value } } };
+    }
+    case 'SET_RATING': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, rating: action.value } } };
+    }
+    case 'SET_PROGRESS': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, progress: action.value } } };
+    }
+    case 'SET_PROGRESS2': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, progressCount2: action.value } } };
+    }
+    case 'SET_NOTES': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, notes: action.value } } };
+    }
+    case 'SET_STARTED': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, startedAt: action.value } } };
+    }
+    case 'SET_FINISHED': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, finishedAt: action.value } } };
+    }
+    case 'TOGGLE_FAVORITE': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, isFavorite: !current.isFavorite } } };
+    }
+    case 'TOGGLE_PLATINUM': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, isPlatinum: !current.isPlatinum } } };
+    }
+    case 'ADD_TAG': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      if (current.tags.includes(action.tag)) return state;
+      return { ...state, logs: { ...state.logs, [id]: { ...current, tags: [...current.tags, action.tag] } } };
+    }
+    case 'REMOVE_TAG': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, tags: current.tags.filter(t => t !== action.tag) } } };
+    }
+    case 'SET_PLATFORM': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, platform: action.value } } };
     }
     case 'SET_VERSION': {
       // Only updates the base's own link list — SWITCH_LOG (always dispatched
       // right after this by the caller) handles which tab becomes active.
-      const baseLog = state.logs[action.baseId] || createDefaultLog('planning');
+      const baseLog = state.logs[action.baseId] || createDefaultLog('');
       return { ...state, logs: { ...state.logs, [action.baseId]: { ...baseLog, selectedVersion: action.value } } };
     }
     case 'LOAD_HISTORY': {
