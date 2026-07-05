@@ -1197,9 +1197,17 @@
   overflow: hidden;
 }
 
+.me-header-field-input--edition optgroup {
+  background: var(--bg-card, #1a1a1a);
+  color: var(--accent, #7c6af7);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 0.75rem;
+}
+
 .me-header-field-input--edition option {
   background: var(--bg-card, #1a1a1a);
-  color: var(--text-primary, #eee);
+  color: var(--text-main, #fff);
 }
 
 /* Remove number input spinner arrows */
