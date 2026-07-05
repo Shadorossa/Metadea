@@ -44,38 +44,26 @@ interface LogState {
   selectedVersion: string;
 }
 
-// Entry state: mirrors the fields saved to the library, plus the log-switching
-// bookkeeping. Extends LogState instead of repeating its 13 fields since the
-// "active" log's values always live directly on EntryState (see SWITCH_LOG).
-interface EntryState extends LogState {
-  monthlyHistory:  Record<string, string[]>;
+// Entry state holds every log keyed by external_id (one per version/edition)
+// plus the switching bookkeeping. The active log's own values are read
+// straight out of `logs` (see the `activeLog` derivation below) instead of
+// being duplicated onto this type — a single source of truth per log.
+interface EntryState {
+  monthlyHistory:   Record<string, string[]>;
   selectedMonthKey: string | null;
-  selectedYear:    number;
-  activeLogId:     string;
-  logs:            Record<string, LogState>;
+  selectedYear:     number;
+  activeLogId:      string;
+  logs:             Record<string, LogState>;
 }
 
 type EntryAction =
-  | { type: 'LOAD_ENTRY'; entry: LibraryEntry }
-  | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
-  | { type: 'SET_STATUS';   value: string }
-  | { type: 'SET_RATING';   value: number }
-  | { type: 'SET_PROGRESS'; value: number }
-  | { type: 'SET_PROGRESS2'; value: number }
-  | { type: 'SET_NOTES';    value: string }
-  | { type: 'SET_STARTED';  value: string }
-  | { type: 'SET_FINISHED'; value: string }
-  | { type: 'TOGGLE_FAVORITE' }
-  | { type: 'TOGGLE_PLATINUM' }
-  | { type: 'ADD_TAG';      tag: string }
-  | { type: 'REMOVE_TAG';   tag: string }
-  | { type: 'SET_PLATFORM'; value: string }
-  | { type: 'SET_VERSION';  value: string; baseId: string }
-  | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
-  | { type: 'SET_YEAR';     delta: 1 | -1 }
   | { type: 'LOAD_LOG';     id: string; entry: LibraryEntry }
   | { type: 'SWITCH_LOG';   id: string }
-  | { type: 'INITIALIZE_LOGS'; activeLogId: string };
+  | { type: 'UPDATE_LOG';   updates: Partial<LogState> }
+  | { type: 'SET_VERSION';  value: string; baseId: string }
+  | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
+  | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
+  | { type: 'SET_YEAR';     delta: 1 | -1 };
 
 // UI state: loading flags, tag input, anilist feedback
 interface UiState {
@@ -107,23 +95,11 @@ function createDefaultLog(status = ''): LogState {
 }
 
 const entryInit: EntryState = {
-  ...createDefaultLog(),
   monthlyHistory: {}, selectedMonthKey: null,
   selectedYear: new Date().getFullYear(),
   activeLogId: '',
   logs: {},
 };
-
-function updateActiveLog(state: EntryState, updates: Partial<LogState>): EntryState {
-  const activeId = state.activeLogId || 'active';
-  const current = state.logs[activeId] || createDefaultLog();
-  const updatedLog = { ...current, ...updates };
-  return {
-    ...state,
-    ...updates,
-    logs: { ...state.logs, [activeId]: updatedLog },
-  };
-}
 
 // Maps a saved LibraryEntry (snake_case DB row) to the editor's LogState
 // (camelCase, non-null defaults) — used whenever a log is loaded from disk.
@@ -147,79 +123,24 @@ function libraryEntryToLog(e: LibraryEntry): LogState {
 
 function entryReducer(state: EntryState, action: EntryAction): EntryState {
   switch (action.type) {
-    case 'LOAD_ENTRY': {
-      const e = action.entry;
-      const logVal = libraryEntryToLog(e);
-      const activeId = state.activeLogId || e.external_id;
-      return {
-        ...state,
-        activeLogId: activeId,
-        logs: { ...state.logs, [e.external_id]: logVal },
-        ...(activeId === e.external_id ? logVal : {}),
-      };
+    case 'LOAD_LOG':
+      return { ...state, logs: { ...state.logs, [action.id]: libraryEntryToLog(action.entry) } };
+    case 'SWITCH_LOG':
+      return { ...state, activeLogId: action.id };
+    case 'UPDATE_LOG': {
+      const id = state.activeLogId;
+      const current = state.logs[id] || createDefaultLog();
+      return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
     }
-    case 'LOAD_LOG': {
-      const e = action.entry;
-      const logVal = libraryEntryToLog(e);
-      const isCurrentlyActive = state.activeLogId === action.id;
-      return {
-        ...state,
-        logs: { ...state.logs, [action.id]: logVal },
-        ...(isCurrentlyActive ? logVal : {}),
-      };
-    }
-    case 'SWITCH_LOG': {
-      const targetId = action.id;
-      const log = state.logs[targetId];
-      if (!log) return state;
-      return { ...state, ...log, activeLogId: targetId };
-    }
-    case 'INITIALIZE_LOGS': {
-      const id = action.activeLogId;
-      return {
-        ...state,
-        activeLogId: id,
-        logs: { ...state.logs, [id]: state.logs[id] || createDefaultLog() },
-      };
+    case 'SET_VERSION': {
+      // Only updates the base's own link list — SWITCH_LOG (always dispatched
+      // right after this by the caller) handles which tab becomes active.
+      const baseLog = state.logs[action.baseId] || createDefaultLog('planning');
+      return { ...state, logs: { ...state.logs, [action.baseId]: { ...baseLog, selectedVersion: action.value } } };
     }
     case 'LOAD_HISTORY': {
       const year = action.foundKey ? Number(action.foundKey.split('-')[0]) : state.selectedYear;
       return { ...state, monthlyHistory: action.history, selectedMonthKey: action.foundKey, selectedYear: year };
-    }
-    case 'SET_STATUS':    return updateActiveLog(state, { status: action.value });
-    case 'SET_RATING':    return updateActiveLog(state, { rating: action.value });
-    case 'SET_PROGRESS':  return updateActiveLog(state, { progress: action.value });
-    case 'SET_PROGRESS2': return updateActiveLog(state, { progressCount2: action.value });
-    case 'SET_NOTES':     return updateActiveLog(state, { notes: action.value });
-    case 'SET_STARTED':   return updateActiveLog(state, { startedAt: action.value });
-    case 'SET_FINISHED':  return updateActiveLog(state, { finishedAt: action.value });
-    case 'TOGGLE_FAVORITE': return updateActiveLog(state, { isFavorite: !state.isFavorite });
-    case 'TOGGLE_PLATINUM': return updateActiveLog(state, { isPlatinum: !state.isPlatinum });
-    case 'ADD_TAG':
-      if (state.tags.length >= 5 || state.tags.includes(action.tag)) return state;
-      return updateActiveLog(state, { tags: [...state.tags, action.tag] });
-    case 'REMOVE_TAG':
-      return updateActiveLog(state, { tags: state.tags.filter(t => t !== action.tag) });
-    case 'SET_PLATFORM':  return updateActiveLog(state, { platform: action.value });
-    case 'SET_VERSION': {
-      const baseId = action.baseId;
-      const currentBaseLog = state.logs[baseId] || createDefaultLog('planning');
-      const updatedBaseLog = { ...currentBaseLog, selectedVersion: action.value };
-
-      const nextActiveLogId = action.value || baseId;
-      const targetLog = state.logs[nextActiveLogId] || createDefaultLog('planning');
-
-      return {
-        ...state,
-        ...targetLog,
-        activeLogId: nextActiveLogId,
-        selectedVersion: action.value, // track the base's full version list, not the target log's own
-        logs: {
-          ...state.logs,
-          [baseId]: updatedBaseLog,
-          [nextActiveLogId]: state.logs[nextActiveLogId] || targetLog,
-        },
-      };
     }
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
@@ -253,34 +174,27 @@ function uiReducer(state: UiState, action: UiAction): UiState {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function progressLabel(type: string, te: typeof es.media): string | null {
-  switch (type) {
-    case 'game':
-    case 'vnovel':       return te.progress_hours;
-    case 'anime':
-    case 'series':       return te.progress_episodes;
-    case 'manga':
-    case 'light-novel':  return te.progress_chapters;
-    case 'books':        return te.progress_percent;
-    case 'movies':       return null;
-    default:             return te.editor.progress;
-  }
-}
-
-function progressStep(type: string): number {
+// Progress field(s) shown in the header — which label(s) and step apply
+// depend on the media type. progLabel matches the raw type (not its
+// underscore-stripped base) to preserve each edge case's original mapping.
+function getProgressConfig(type: string, tm: typeof es.media): { label: string | null; label2: string | null; step: number } {
   const base = type.split('_')[0];
-  return base === 'game' || base === 'vnovel' ? 0.5 : 1;
-}
 
-// Only anime/series/manga/light-novel/books track a secondary count
-// (seasons/volumes) alongside the primary progress field — null means
-// this media type has none.
-function progressLabel2(type: string, tm: typeof es.media): string | null {
-  const base = type.split('_')[0];
-  if (base === 'anime' || base === 'series')          return tm.progress_seasons;
-  if (base === 'manga' || base === 'light-novel')     return tm.progress_volumes;
-  if (base === 'books')                               return tm.progress_books;
-  return null;
+  let label: string | null;
+  if (type === 'game' || type === 'vnovel')            label = tm.progress_hours;
+  else if (type === 'anime' || type === 'series')      label = tm.progress_episodes;
+  else if (type === 'manga' || type === 'light-novel') label = tm.progress_chapters;
+  else if (type === 'books')                           label = tm.progress_percent;
+  else if (type === 'movies')                          label = null;
+  else                                                 label = tm.editor.progress;
+
+  const label2 =
+    base === 'anime' || base === 'series'      ? tm.progress_seasons :
+    base === 'manga' || base === 'light-novel' ? tm.progress_volumes :
+    base === 'books'                           ? tm.progress_books : null;
+
+  const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;
+  return { label, label2, step };
 }
 
 // Placeholder LibraryEntry for a version the user has linked but never
@@ -294,19 +208,45 @@ function createEmptyVersionEntry(versionId: string): LibraryEntry {
   };
 }
 
-function getNameDifference(baseTitle: string, editionTitle: string): string {
+// Log tab labels show only what's after the title's colon (e.g. "Trails in
+// the Sky: 2nd Chapter" → "2nd Chapter") — titles rarely share a common
+// prefix with the base game, so diffing against it wasn't reliable.
+function editionTabLabel(editionTitle: string): string {
   if (!editionTitle) return 'Edition';
-  const cleanBase = baseTitle.trim().toLowerCase();
-  const cleanEdition = editionTitle.trim().toLowerCase();
-  
-  if (cleanEdition.startsWith(cleanBase)) {
-    let diff = editionTitle.slice(baseTitle.length).trim();
-    if (diff.startsWith(':') || diff.startsWith('-')) {
-      diff = diff.slice(1).trim();
-    }
-    if (diff) return diff;
-  }
-  return editionTitle;
+  const idx = editionTitle.indexOf(':');
+  return idx === -1 ? editionTitle : editionTitle.slice(idx + 1).trim();
+}
+
+// ── Small header-field building blocks ───────────────────────────────────────
+
+function HeaderField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="me-header-field">
+      <label className="me-header-field-label">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function NumberField({ label, value, max, step, onChange }: {
+  label: string; value: number; max?: number; step: number; onChange: (v: number) => void;
+}) {
+  return (
+    <HeaderField label={label}>
+      <div className="me-header-field-row">
+        <input type="number" className="me-header-field-input me-header-field-input--number" min={0}
+          max={max} step={step}
+          value={value || ''}
+          onChange={e => {
+            let v = parseFloat(e.target.value) || 0;
+            if (max !== undefined && v > max) v = max;
+            onChange(v);
+          }}
+          placeholder="0" />
+        {max !== undefined && <span className="me-header-field-max">/ {max}</span>}
+      </div>
+    </HeaderField>
+  );
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -315,21 +255,26 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const t  = lang === 'en' ? en : es;
   const te = t.media.editor;
 
-  const [entry, dispatchEntry] = useReducer(entryReducer, entryInit);
+  const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
     // If we already have the entry from the caller, skip loading state entirely
     loading: !initialEntry, saving: false, isClosing: false,
     tagInput: '', anilistStatus: 'idle', anilistError: null,
   });
 
+  // The single source of truth for whatever log tab is currently active —
+  // everything in the form reads/writes through this instead of a mirrored
+  // copy on EntryState.
+  const activeLog = useMemo(
+    () => entry.logs[entry.activeLogId] || createDefaultLog(),
+    [entry.logs, entry.activeLogId],
+  );
+
   const baseId = data.parentGame?.externalId || externalId;
-  const baseLog = entry.logs[baseId];
-  const baseSelectedVersion = baseLog?.selectedVersion || '';
+  const baseSelectedVersion = entry.logs[baseId]?.selectedVersion || '';
 
   // Load base game and edition logs
   useEffect(() => {
-    dispatchEntry({ type: 'INITIALIZE_LOGS', activeLogId: externalId });
-
     const loadAllVersions = async (bId: string) => {
       try {
         const baseEntry = await getLibraryEntry(bId, 'game');
@@ -338,11 +283,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
           if (baseEntry.selected_version) {
             for (const versionId of baseEntry.selected_version.split(',')) {
               const ev = await getLibraryEntry(versionId, 'game');
-              if (ev) {
-                dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
-              } else {
-                dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: createEmptyVersionEntry(versionId) });
-              }
+              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
             }
           }
         }
@@ -353,12 +294,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       }
     };
 
-    if (initialEntry) {
-      dispatchEntry({ type: 'LOAD_ENTRY', entry: initialEntry });
-      loadAllVersions(baseId);
-    } else {
-      loadAllVersions(baseId);
-    }
+    if (initialEntry) dispatchEntry({ type: 'LOAD_LOG', id: externalId, entry: initialEntry });
+    loadAllVersions(baseId);
 
     readMonthlyHistory()
       .then(history => {
@@ -373,17 +310,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
   // Dynamically load newly selected edition
   useEffect(() => {
-    if (baseSelectedVersion) {
-      for (const versionId of baseSelectedVersion.split(',')) {
-        getLibraryEntry(versionId, 'game')
-          .then(ev => {
-            if (ev) {
-              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev });
-            } else {
-              dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: createEmptyVersionEntry(versionId) });
-            }
-          });
-      }
+    if (!baseSelectedVersion) return;
+    for (const versionId of baseSelectedVersion.split(',')) {
+      getLibraryEntry(versionId, 'game')
+        .then(ev => dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) }));
     }
   }, [baseSelectedVersion]);
 
@@ -418,56 +348,51 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
       let primarySaved: LibraryEntry | null = null;
 
-      for (const [logId, log] of Object.entries(logsToSave)) {
+      for (const [logId, entryLog] of Object.entries(logsToSave)) {
         const isBase = logId === baseId;
-        // Use this log's own stored selectedVersion, not entry.selectedVersion —
-        // that mirrors whichever tab is currently active, which is wrong here
-        // when the active tab is a version (versions never persist this field).
-        const hasLink = isBase && !!log.selectedVersion;
+        const hasLink = isBase && !!entryLog.selectedVersion;
 
         const isEmpty =
-          !log.status &&
-          log.rating === 0 &&
-          log.progress === 0 &&
-          !log.notes &&
-          !log.isFavorite &&
-          !log.isPlatinum &&
-          log.tags.length === 0 &&
-          !log.platform &&
-          !log.startedAt &&
-          !log.finishedAt &&
+          !entryLog.status &&
+          entryLog.rating === 0 &&
+          entryLog.progress === 0 &&
+          !entryLog.notes &&
+          !entryLog.isFavorite &&
+          !entryLog.isPlatinum &&
+          entryLog.tags.length === 0 &&
+          !entryLog.platform &&
+          !entryLog.startedAt &&
+          !entryLog.finishedAt &&
           !hasLink;
 
-        if (isEmpty && !log.existing) continue;
+        if (isEmpty && !entryLog.existing) continue;
 
         const saved = await saveLibraryEntry({
-          id:               log.existing?.id ?? '',
+          id:               entryLog.existing?.id ?? '',
           user_id:          'local',
           external_id:      logId,
           type:             data.type,
-          status:           log.status || null,
-          rating:           log.rating > 0 ? log.rating : null,
-          progress:         log.progress,
-          progress_2:       log.progressCount2,
-          minutes_spent:    log.progress * 60,
-          is_favorite:      log.isFavorite ? 1 : 0,
-          is_platinum:      log.isPlatinum ? 1 : 0,
-          tags:             log.tags.length > 0 ? log.tags : null,
-          notes:            log.notes.trim() || null,
-          added_at:         log.existing?.added_at ?? null,
+          status:           entryLog.status || null,
+          rating:           entryLog.rating > 0 ? entryLog.rating : null,
+          progress:         entryLog.progress,
+          progress_2:       entryLog.progressCount2,
+          minutes_spent:    entryLog.progress * 60,
+          is_favorite:      entryLog.isFavorite ? 1 : 0,
+          is_platinum:      entryLog.isPlatinum ? 1 : 0,
+          tags:             entryLog.tags.length > 0 ? entryLog.tags : null,
+          notes:            entryLog.notes.trim() || null,
+          added_at:         entryLog.existing?.added_at ?? null,
           updated_at:       null,
-          selected_platform: log.platform || null,
-          selected_version:  isBase ? (log.selectedVersion || null) : null,
-          started_at:       log.startedAt || null,
-          finished_at:      log.finishedAt || null,
+          selected_platform: entryLog.platform || null,
+          selected_version:  isBase ? (entryLog.selectedVersion || null) : null,
+          started_at:       entryLog.startedAt || null,
+          finished_at:      entryLog.finishedAt || null,
         });
 
         if (logId === externalId) {
           primarySaved = saved;
         }
       }
-
-      const activeLog = entry.logs[entry.activeLogId] || entry;
 
       await writeMonthlyHistory(entry.monthlyHistory);
       await syncFavorites(data.type, externalId, activeLog.isFavorite)
@@ -476,7 +401,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       try {
         const { logJourneyEvent } = await import('../../lib/profile/journey');
         if (primarySaved) {
-          await logJourneyEvent(entry.existing, primarySaved, data.type, data.totalCount ?? undefined);
+          await logJourneyEvent(activeLog.existing, primarySaved, data.type, data.totalCount ?? undefined);
         }
       } catch (e) {
         console.error('Failed to log journey event', e);
@@ -517,11 +442,11 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     } finally {
       dispatchUi({ type: 'SET_SAVING', value: false });
     }
-  }, [entry, externalId, data.type, data.parentGame, onSaved, handleClose]);
+  }, [entry, activeLog, externalId, data.type, data.parentGame, data.totalCount, onSaved, handleClose]);
 
   const handleDelete = useCallback(async () => {
     const activeId = entry.activeLogId || externalId;
-    const existing = entry.logs[activeId]?.existing || entry.existing;
+    const existing = entry.logs[activeId]?.existing;
     if (!existing) { onClose(); return; }
     try {
       await deleteLibraryEntry(activeId, data.type);
@@ -532,20 +457,22 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
       console.error('delete_library_entry error', e);
     }
     onClose();
-  }, [entry.existing, entry.logs, entry.activeLogId, externalId, data.type, onDeleted, onClose]);
+  }, [entry.logs, entry.activeLogId, externalId, data.type, onDeleted, onClose]);
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const tag = ui.tagInput.trim();
       if (tag) {
-        dispatchEntry({ type: 'ADD_TAG', tag });
+        if (activeLog.tags.length < 5 && !activeLog.tags.includes(tag)) {
+          dispatchEntry({ type: 'UPDATE_LOG', updates: { tags: [...activeLog.tags, tag] } });
+        }
         dispatchUi({ type: 'SET_TAG_INPUT', value: '' });
       }
-    } else if (e.key === 'Backspace' && !ui.tagInput && entry.tags.length > 0) {
-      dispatchEntry({ type: 'REMOVE_TAG', tag: entry.tags[entry.tags.length - 1] });
+    } else if (e.key === 'Backspace' && !ui.tagInput && activeLog.tags.length > 0) {
+      dispatchEntry({ type: 'UPDATE_LOG', updates: { tags: activeLog.tags.slice(0, -1) } });
     }
-  }, [ui.tagInput, entry.tags]);
+  }, [ui.tagInput, activeLog.tags]);
 
   const statusButtons = useMemo(() => [
     { value: 'planning',          label: te.status_planning,    Icon: IconStatusPlanning    },
@@ -555,7 +482,10 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
     { value: 'dropped',           label: te.status_dropped,     Icon: IconStatusDropped     },
   ], [te, data.progressStatus]);
 
-  const progLabel = progressLabel(data.type, t.media);
+  const { label: progLabel, label2, step: progStep } = useMemo(
+    () => getProgressConfig(data.type, t.media),
+    [data.type, t.media],
+  );
 
   // Editions/versions this entry could be linked to (base game + expansions/
   // remakes/etc. from the IGDB relation list) grouped by relation type.
@@ -637,14 +567,15 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     <button
                       key={value}
                       type="button"
-                      className={`me-header-status-icon${entry.status === value ? ' active' : ''}`}
+                      className={`me-header-status-icon${activeLog.status === value ? ' active' : ''}`}
                       onClick={() => {
-                        const next = entry.status === value ? '' : value;
-                        dispatchEntry({ type: 'SET_STATUS', value: next });
+                        const next = activeLog.status === value ? '' : value;
+                        const updates: Partial<LogState> = { status: next };
                         if (value === 'completed' && next === 'completed') {
-                          if (data.totalCount   && data.totalCount   > 0) dispatchEntry({ type: 'SET_PROGRESS',  value: data.totalCount   });
-                          if (data.totalCount_2 && data.totalCount_2 > 0) dispatchEntry({ type: 'SET_PROGRESS2', value: data.totalCount_2 });
+                          if (data.totalCount   && data.totalCount   > 0) updates.progress = data.totalCount;
+                          if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                         }
+                        dispatchEntry({ type: 'UPDATE_LOG', updates });
                       }}
                       title={label}
                     >
@@ -654,89 +585,52 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </div>
 
                 {/* Progress input */}
-                {progLabel && (() => {
-                  const maxVal   = data.totalCount   && data.totalCount   > 0 ? data.totalCount   : undefined;
-                  const max2Val  = data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined;
-                  const label2   = progressLabel2(data.type, t.media);
-                  const hasSecondary = label2 !== null;
-                  return (
-                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end' }}>
-                      <div className="me-header-field">
-                        <label className="me-header-field-label">{progLabel}</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                          <input type="number" className="me-header-field-input" min={0}
-                            max={maxVal} step={progressStep(data.type)}
-                            value={entry.progress || ''}
-                            onChange={e => {
-                              let v = parseFloat(e.target.value) || 0;
-                              if (maxVal !== undefined && v > maxVal) v = maxVal;
-                              dispatchEntry({ type: 'SET_PROGRESS', value: v });
-                            }}
-                            placeholder="0" style={{ width: '60px', order: 1 }} />
-                          {maxVal !== undefined && (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {maxVal}</span>
-                          )}
-                        </div>
-                      </div>
-                      {hasSecondary && (
-                        <div className="me-header-field">
-                          <label className="me-header-field-label">{label2}</label>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <input type="number" className="me-header-field-input" min={0}
-                              max={max2Val} step={1}
-                              value={entry.progressCount2 || ''}
-                              onChange={e => {
-                                let v = parseInt(e.target.value) || 0;
-                                if (max2Val !== undefined && v > max2Val) v = max2Val;
-                                dispatchEntry({ type: 'SET_PROGRESS2', value: v });
-                              }}
-                              placeholder="0" style={{ width: '60px', order: 1 }} />
-                            {max2Val !== undefined && (
-                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, order: 2 }}>/ {max2Val}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                {progLabel && (
+                  <div className="me-header-progress-pair">
+                    <NumberField label={progLabel} value={activeLog.progress} step={progStep}
+                      max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
+                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progress: v } })} />
+                    {label2 && (
+                      <NumberField label={label2} value={activeLog.progressCount2} step={1}
+                        max={data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined}
+                        onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
+                    )}
+                  </div>
+                )}
 
                 {/* Rating */}
-                <div className="me-header-field">
-                  <label className="me-header-field-label">{te.score}</label>
-                  <RatingInput rating={entry.rating}
-                    onChange={v => dispatchEntry({ type: 'SET_RATING', value: v })} />
-                </div>
+                <HeaderField label={te.score}>
+                  <RatingInput rating={activeLog.rating}
+                    onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } })} />
+                </HeaderField>
 
                 {/* Dates */}
-                <div className="me-header-field">
-                  <label className="me-header-field-label">{te.started}</label>
+                <HeaderField label={te.started}>
                   <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={entry.startedAt}
-                    onChange={e => dispatchEntry({ type: 'SET_STARTED', value: e.target.value })} />
-                </div>
-                <div className="me-header-field">
-                  <label className="me-header-field-label">{te.ended}</label>
+                    value={activeLog.startedAt}
+                    onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })} />
+                </HeaderField>
+                <HeaderField label={te.ended}>
                   <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={entry.finishedAt}
-                    onChange={e => dispatchEntry({ type: 'SET_FINISHED', value: e.target.value })} />
-                </div>
+                    value={activeLog.finishedAt}
+                    onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: e.target.value } })} />
+                </HeaderField>
               </div>
             </div>
           </div>
           <div className="me-header-right">
             <button type="button"
-              className={`me-header-icon-btn${entry.isFavorite ? ' active' : ''}`}
-              onClick={() => dispatchEntry({ type: 'TOGGLE_FAVORITE' })}
+              className={`me-header-icon-btn${activeLog.isFavorite ? ' active' : ''}`}
+              onClick={() => dispatchEntry({ type: 'UPDATE_LOG', updates: { isFavorite: !activeLog.isFavorite } })}
               title={te.favorite}>
-              <IconHeart filled={entry.isFavorite} size={18} />
+              <IconHeart filled={activeLog.isFavorite} size={18} />
             </button>
             {(data.type === 'game' || data.type === 'vnovel') && (
               <button type="button"
-                className={`me-header-icon-btn${entry.isPlatinum ? ' active' : ''}`}
-                onClick={() => dispatchEntry({ type: 'TOGGLE_PLATINUM' })}
+                className={`me-header-icon-btn${activeLog.isPlatinum ? ' active' : ''}`}
+                onClick={() => dispatchEntry({ type: 'UPDATE_LOG', updates: { isPlatinum: !activeLog.isPlatinum } })}
                 title={te.platinum}>
-                <IconPlatinum filled={entry.isPlatinum} size={18} />
+                <IconPlatinum filled={activeLog.isPlatinum} size={18} />
               </button>
             )}
           </div>
@@ -753,17 +647,17 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                     <div className="me-section">
                       <span className="me-label">
                         {te.tags}
-                        <span className="me-label-hint">{entry.tags.length}/5</span>
+                        <span className="me-label-hint">{activeLog.tags.length}/5</span>
                       </span>
                       <div className="me-tags-box">
-                        {entry.tags.map(tag => (
+                        {activeLog.tags.map(tag => (
                           <span key={tag} className="me-tag">
                             {tag}
                             <button type="button" className="me-tag-remove"
-                              onClick={() => dispatchEntry({ type: 'REMOVE_TAG', tag })}>×</button>
+                              onClick={() => dispatchEntry({ type: 'UPDATE_LOG', updates: { tags: activeLog.tags.filter(t => t !== tag) } })}>×</button>
                           </span>
                         ))}
-                        {entry.tags.length < 5 && (
+                        {activeLog.tags.length < 5 && (
                           <input type="text" className="me-tag-input"
                             placeholder={te.add_tag}
                             value={ui.tagInput}
@@ -790,17 +684,15 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                           </button>
                           {allAvailableEditions.map(ed => {
                             const isActive = entry.activeLogId === ed.externalId;
-                            const cleanLabel = getNameDifference(
-                              data.parentGame ? data.parentGame.title : data.titleMain,
-                              ed.label
-                            );
+                            const cleanLabel = editionTabLabel(ed.label);
                             return (
                               <button
                                 key={ed.externalId}
                                 type="button"
                                 className={`me-log-tab-btn${isActive ? ' active' : ''}`}
+                                title={ed.label}
                                 onClick={() => {
-                                  const baseLogVal = entry.logs[baseId] || entry;
+                                  const baseLogVal = entry.logs[baseId] || createDefaultLog();
                                   const currentVersions = baseLogVal.selectedVersion
                                     ? baseLogVal.selectedVersion.split(',')
                                     : [];
@@ -826,8 +718,8 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 <span className="me-label">{te.notes}</span>
                 <textarea className="me-textarea" rows={12}
                   placeholder={te.notes_ph}
-                  value={entry.notes}
-                  onChange={e => dispatchEntry({ type: 'SET_NOTES', value: e.target.value })} />
+                  value={activeLog.notes}
+                  onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { notes: e.target.value } })} />
 
                 <div className="me-month-selector-section">
                   <div className="me-month-header">
@@ -863,7 +755,7 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
                 </button>
                 <button type="button" className="me-btn me-btn--close"
                   onClick={handleClose}>✕</button>
-                {entry.existing && (
+                {activeLog.existing && (
                   <button type="button" className="me-btn me-btn--delete"
                     onClick={handleDelete} title={te.delete}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

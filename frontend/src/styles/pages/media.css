@@ -1151,6 +1151,28 @@
   align-items: flex-start;
 }
 
+.me-header-progress-pair {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+}
+
+.me-header-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.me-header-field-input--number {
+  width: 60px;
+}
+
+.me-header-field-max {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 .me-header-field-label {
   font-size: 0.65rem;
   font-weight: 600;
@@ -1785,6 +1807,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
+  min-width: 0; /* flex items don't shrink below their content size by default */
   box-sizing: border-box;
 }
 
