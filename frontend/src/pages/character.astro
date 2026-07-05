@@ -38,6 +38,34 @@ const lang = getLang(Astro.url);
           <!-- Rellenado dinámicamente por JS -->
         </div>
 
+        <!-- Favorito + Reacciones -->
+        <div class="character-action-row" id="char-action-row">
+          <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title="Favorito">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span>Favorito</span>
+          </button>
+          <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title="Me gusta">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+            </svg>
+            <span>Me gusta</span>
+          </button>
+          <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title="Interesa">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>Interesa</span>
+          </button>
+          <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title="No me gusta">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
+            </svg>
+            <span>No me gusta</span>
+          </button>
+        </div>
+
         <!-- Lista de Detalles Técnicos -->
         <div class="character-stats-card" id="char-stats-card" style="display: none;">
           <div class="character-sidebar-stats-list" id="char-stats-list">
@@ -48,21 +76,11 @@ const lang = getLang(Astro.url);
 
       <!-- Columna Derecha: Contenido Principal -->
       <div class="character-main-col">
-        
+
         <!-- Nombres y Cabecera -->
         <div class="character-names-header">
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-            <div>
-              <h1 class="character-name-title" id="char-name-full"></h1>
-              <p class="character-name-native" id="char-name-native" style="display: none; margin: 0;"></p>
-            </div>
-            <button class="btn btn--sm btn--secondary" id="char-fav-btn" style="display: flex; align-items: center; gap: 0.5rem;">
-              <svg id="char-fav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); transition: fill 0.2s, stroke 0.2s;">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              <span id="char-fav-text">Favorito</span>
-            </button>
-          </div>
+          <h1 class="character-name-title" id="char-name-full"></h1>
+          <p class="character-name-native" id="char-name-native" style="display: none; margin: 0;"></p>
           <div class="character-alt-names" id="char-alt-names" style="display: none;">
             <!-- Rellenado dinámicamente por JS -->
           </div>
@@ -95,8 +113,15 @@ const lang = getLang(Astro.url);
 
 <script>
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
-  import { invoke } from '@tauri-apps/api/core';
-  import { readUserFavorites, writeUserFavorites } from '../lib/tauri';
+  import {
+    saveCatalogEntry,
+    readUserFavorites,
+    writeUserFavorites,
+    saveCharacter,
+    getCharacter,
+    setCharacterReaction,
+    saveCharacterAppearances,
+  } from '../lib/tauri';
 
   async function loadCharacterData() {
     const loadingEl = document.getElementById('character-loading')!;
@@ -297,18 +322,25 @@ const lang = getLang(Astro.url);
       const sortedEdges = [...mainMedia, ...otherMedia];
 
       let currentPage = 1;
+      // Safe default until the ResizeObserver below reports the real grid width.
+      let itemsPerPage = 6;
 
-      // Calcular dinámicamente itemsPerPage para rellenar exactamente 2 filas
-      function getItemsPerPage() {
-        const computedStyle = window.getComputedStyle(appearancesGrid);
-        // Contar cuántas columnas caben
-        const gridCols = computedStyle.getPropertyValue('grid-template-columns').split(' ').length;
-        // Retornar exactamente el doble (2 filas)
-        return Math.max(gridCols * 2, 6); // Mínimo 6 por página como salvaguarda
+      // Must match .character-appearance-cover-wrap's minmax() lower bound in character.css
+      const MIN_CARD_WIDTH = 130;
+
+      // Deterministic itemsPerPage from the grid's actual rendered width, instead
+      // of reading grid-template-columns via getComputedStyle — that value only
+      // reflects whatever the browser had already painted at call time, which
+      // was inconsistent between the very first render (images/layout not yet
+      // settled) and a later revisit (everything already warm), causing 1 row
+      // to show on first load but 2 rows after navigating away and back.
+      function computeItemsPerPage(containerWidth: number): number {
+        const gapPx = parseFloat(window.getComputedStyle(appearancesGrid).columnGap || '20') || 20;
+        const cols = Math.max(1, Math.floor((containerWidth + gapPx) / (MIN_CARD_WIDTH + gapPx)));
+        return Math.max(cols * 2, 6); // exactamente 2 filas, mínimo 6 como salvaguarda
       }
 
       function renderMediaPage() {
-        const itemsPerPage = getItemsPerPage();
         const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
 
         // Limitar página actual
@@ -351,19 +383,21 @@ const lang = getLang(Astro.url);
       }
 
       if (sortedEdges.length > 0) {
-        // Renderizado inicial
-        setTimeout(() => {
+        appearancesSection.style.display = 'block';
+
+        // ResizeObserver fires once immediately with the grid's real post-layout
+        // width, so itemsPerPage is deterministic from the very first render —
+        // this also covers window resizes on its own, no separate listener needed.
+        const ro = new ResizeObserver(entries => {
+          const width = entries[0]?.contentRect.width;
+          if (!width) return;
+          itemsPerPage = computeItemsPerPage(width);
           renderMediaPage();
-          appearancesSection.style.display = 'block';
-        }, 50);
+        });
+        ro.observe(appearancesGrid);
+        document.addEventListener('astro:before-swap', () => ro.disconnect(), { once: true });
 
-        // Controladores de eventos de paginación
-        const newBtnPrev = btnPrev.cloneNode(true) as HTMLButtonElement;
-        const newBtnNext = btnNext.cloneNode(true) as HTMLButtonElement;
-        btnPrev.parentNode!.replaceChild(newBtnPrev, btnPrev);
-        btnNext.parentNode!.replaceChild(newBtnNext, btnNext);
-
-        newBtnPrev.addEventListener('click', () => {
+        btnPrev.addEventListener('click', () => {
           if (currentPage > 1) {
             currentPage--;
             renderMediaPage();
@@ -371,8 +405,7 @@ const lang = getLang(Astro.url);
           }
         });
 
-        newBtnNext.addEventListener('click', () => {
-          const itemsPerPage = getItemsPerPage();
+        btnNext.addEventListener('click', () => {
           const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
           if (currentPage < totalPages) {
             currentPage++;
@@ -381,64 +414,59 @@ const lang = getLang(Astro.url);
           }
         });
 
-        // Recalcular paginación al redimensionar pantalla
-        let resizeTimeout: any;
-        window.addEventListener('resize', () => {
-          clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            renderMediaPage();
-          }, 150);
-        });
-
       } else {
         appearancesSection.style.display = 'none';
       }
 
-      // ── CACHE CHARACTER IN CATALOG ─────────────────────────────────────
+      // ── PERSIST CHARACTER + APPEARANCES IN metadea.db ───────────────────
       const charKey = `character:${characterId}`;
-      await invoke('save_catalog_entry', {
-        entry: {
-          external_id: charKey,
-          type: 'character',
-          title_main: character.name.full,
-          cover_url: character.image?.large || '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          id: ''
-        }
+
+      await saveCatalogEntry({
+        id: '',
+        external_id: charKey,
+        type: 'character',
+        title_main: character.name.full,
+        cover_url: character.image?.large || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }).catch(console.error);
 
-      // ── FAVORITE BUTTON LOGIC ──────────────────────────────────────────
+      await saveCharacter(charKey, character.name.full, character.image?.large || null).catch(console.error);
+
+      if (sortedEdges.length > 0) {
+        const appearances = sortedEdges.map((edge: any) => ({
+          media_external_id: `${edge.node.type.toLowerCase()}:${edge.node.id}`,
+          relation_type: edge.relationType ?? null,
+        }));
+        await saveCharacterAppearances(charKey, appearances).catch(console.error);
+      }
+
+      // ── FAVORITE + REACTION BUTTONS ──────────────────────────────────────
       const favBtn = document.getElementById('char-fav-btn')!;
-      const favIcon = document.getElementById('char-fav-icon')!;
-      const favText = document.getElementById('char-fav-text')!;
-      
+      const reactionBtns = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('.char-action-btn[data-reaction]')
+      );
+
       let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
       if (!favData.character) favData.character = [];
 
+      const savedCharacter = await getCharacter(charKey).catch(() => null);
+      let currentReaction: string | null = savedCharacter?.reaction ?? null;
+
       function updateFavUI() {
-        const isFav = favData.character.includes(charKey);
-        if (isFav) {
-          favIcon.setAttribute('fill', 'var(--accent)');
-          favIcon.setAttribute('stroke', 'var(--accent)');
-          favText.textContent = 'Favorito';
-          favBtn.classList.remove('btn--secondary');
-          favBtn.classList.add('btn--primary');
-        } else {
-          favIcon.setAttribute('fill', 'none');
-          favIcon.setAttribute('stroke', 'currentColor');
-          favText.textContent = 'Añadir a Favoritos';
-          favBtn.classList.remove('btn--primary');
-          favBtn.classList.add('btn--secondary');
+        favBtn.classList.toggle('active', favData.character.includes(charKey));
+      }
+
+      function updateReactionUI() {
+        for (const btn of reactionBtns) {
+          btn.classList.toggle('active', btn.dataset.reaction === currentReaction);
         }
       }
 
       updateFavUI();
+      updateReactionUI();
 
-      const newFavBtn = favBtn.cloneNode(true) as HTMLButtonElement;
-      favBtn.parentNode!.replaceChild(newFavBtn, favBtn);
-
-      newFavBtn.addEventListener('click', async () => {
+      favBtn.addEventListener('click', async () => {
         if (favData.character.includes(charKey)) {
           favData.character = favData.character.filter((id: string) => id !== charKey);
         } else {
@@ -447,6 +475,15 @@ const lang = getLang(Astro.url);
         await writeUserFavorites(favData).catch(console.error);
         updateFavUI();
       });
+
+      for (const btn of reactionBtns) {
+        btn.addEventListener('click', async () => {
+          const clicked = btn.dataset.reaction!;
+          currentReaction = currentReaction === clicked ? null : clicked;
+          updateReactionUI();
+          await setCharacterReaction(charKey, currentReaction).catch(console.error);
+        });
+      }
 
       // Mostrar el contenido final
       loadingEl.style.display = 'none';

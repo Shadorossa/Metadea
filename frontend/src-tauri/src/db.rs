@@ -40,6 +40,25 @@ CREATE TABLE IF NOT EXISTS app_env (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS characters (
+    id          TEXT PRIMARY KEY,
+    external_id TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL DEFAULT '',
+    image_url   TEXT,
+    reaction    TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS characters_external_idx ON characters(external_id);
+
+CREATE TABLE IF NOT EXISTS character_appearances (
+    character_external_id TEXT NOT NULL,
+    media_external_id     TEXT NOT NULL,
+    relation_type         TEXT,
+    added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (character_external_id, media_external_id)
+);
+
 CREATE TABLE IF NOT EXISTS local_folders (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     label      TEXT NOT NULL DEFAULT '',

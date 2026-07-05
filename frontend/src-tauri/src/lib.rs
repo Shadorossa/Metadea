@@ -1,4 +1,5 @@
 mod auth;
+mod characters;
 mod db;
 mod folders;
 mod github;
@@ -104,6 +105,11 @@ pub fn run() {
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
             media_catalog::search_catalog,
+            characters::save_character,
+            characters::get_character,
+            characters::set_character_reaction,
+            characters::save_character_appearances,
+            characters::get_character_appearances,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
             user_metadata::remove_user_image,

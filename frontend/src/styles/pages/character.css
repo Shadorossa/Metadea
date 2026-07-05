@@ -84,6 +84,70 @@
   color: var(--text-dim);
 }
 
+/* Favorite + reaction buttons */
+.character-action-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.char-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  aspect-ratio: 1;
+  padding: 0.5rem 0.25rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.char-action-btn svg {
+  flex-shrink: 0;
+}
+
+.char-action-btn:hover {
+  color: var(--text-main);
+  transform: translateY(-2px);
+}
+
+.char-action-btn.active svg {
+  fill: currentColor;
+}
+
+.char-action-btn.active[data-action="favorite"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.char-action-btn.active[data-action="interested"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.char-action-btn.active[data-action="like"] {
+  color: #4ade80;
+  background: color-mix(in srgb, #4ade80 12%, var(--bg-card));
+  border-color: color-mix(in srgb, #4ade80 40%, transparent);
+}
+
+.char-action-btn.active[data-action="dislike"] {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+}
+
 /* Stats list inside sidebar */
 .character-stats-card {
   background: var(--bg-card);

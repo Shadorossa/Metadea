@@ -1132,19 +1132,25 @@
   flex-direction: column;
   gap: 2rem;
   width: 100%;
-  padding: 0 24rem;
+  /* .profile-tab-content (shared by every tab) has a fixed 15rem side padding
+     tuned for narrower, text-centric tabs. Favorites is a media grid that
+     needs far more width to fit 10 cover-sized cards per row without
+     shrinking them, so cancel that padding out here and apply a much
+     smaller one of our own. */
+  margin: 0 -15rem;
+  padding: 0 2rem;
   box-sizing: border-box;
 }
 
 @media (max-width: 1024px) {
   .fav-layout {
-    padding: 0 3rem;
+    padding: 0 1rem;
   }
 }
 
 @media (max-width: 768px) {
   .fav-layout {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
   }
 }
 

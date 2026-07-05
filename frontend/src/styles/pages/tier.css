@@ -571,11 +571,3 @@
 }
 
 .tier-picker-item .tier-card { cursor: pointer; }
-
-/* ── Navbar S badge ──────────────────────────────────────────────────────── */
-
-.nav-tier-s {
-  font-size: 0.9rem;
-  font-weight: 800;
-  line-height: 1;
-}

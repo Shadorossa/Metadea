@@ -84,7 +84,7 @@ const t = useTranslations(lang);
   </head>
   <body data-page={activePage}>
     <div id="app-bg" aria-hidden="true" transition:persist></div>
-    <Navbar activePage={activePage} i18n={t.nav} />
+    <Navbar activePage={activePage} i18n={t.nav} transition:persist />
     <div id="page-content" transition:name="page-content">
       <slot />
     </div>
