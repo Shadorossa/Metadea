@@ -1,7 +1,7 @@
-import React, { useReducer, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useReducer, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, igdbGetGameDetail } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
@@ -355,8 +355,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   const t  = lang === 'en' ? en : es;
   const te = t.media.editor;
 
-  const [parentGameRelations, setParentGameRelations] = useState<any[] | null>(null);
-
   const [entry, dispatchEntry] = useReducer(entryReducer, entryInit);
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
     // If we already have the entry from the caller, skip loading state entirely
@@ -371,21 +369,6 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
   // Load base game and edition logs
   useEffect(() => {
     dispatchEntry({ type: 'INITIALIZE_LOGS', activeLogId: externalId });
-
-    // Si estamos editando un sub-juego (DLC/remake), cargamos el detalle de IGDB del juego base
-    // para recuperar sus relaciones y mostrar el selector de Log completo (igual que en la obra principal).
-    if (data.parentGame?.externalId) {
-      const numericId = parseInt(data.parentGame.externalId.replace('game:', ''), 10);
-      if (numericId) {
-        igdbGetGameDetail(numericId)
-          .then(detail => {
-            // detail es MediaPageData – el mapper ya construyó el array relations normalizado
-            const rels = Array.isArray((detail as any)?.relations) ? (detail as any).relations : [];
-            setParentGameRelations(rels);
-          })
-          .catch(e => console.error('Failed to load parent game relations', e));
-      }
-    }
 
     const loadAllVersions = async (bId: string) => {
       try {
@@ -624,15 +607,11 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
 
     const groupsMap: Record<string, { externalId: string; label: string }[]> = {};
 
-    // Si data.parentGame está presente, es que estamos editando una versión de log (sub-juego)
     if (data.parentGame) {
       groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title }];
     }
 
-    // Usamos parentGameRelations si está disponible, si no, data.relations de la obra actual
-    const targetRelations = parentGameRelations || data.relations || [];
-
-    for (const rel of targetRelations) {
+    for (const rel of (data.relations || [])) {
       if (
         rel.typeLabel === 'Standalone' ||
         rel.typeLabel === 'Expansion' ||
@@ -645,15 +624,12 @@ export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onD
         if (!groupsMap[groupLabel]) {
           groupsMap[groupLabel] = [];
         }
-        // Evitamos meter la versión actual en la lista si coincide con externalId
-        if (relExternalId !== externalId) {
-          groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title });
-        }
+        groupsMap[groupLabel].push({ externalId: relExternalId, label: rel.title });
       }
     }
 
     return Object.entries(groupsMap).map(([label, options]) => ({ label, options }));
-  }, [data.type, data.parentGame, data.relations, parentGameRelations, externalId]);
+  }, [data.type, data.parentGame, data.relations]);
 
   const allAvailableEditions = useMemo(() => {
     const list: { externalId: string; label: string }[] = [];
