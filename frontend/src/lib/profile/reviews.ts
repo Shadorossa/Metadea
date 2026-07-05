@@ -130,7 +130,7 @@ export async function renderReviews(el: HTMLElement): Promise<void> {
       </div>
     `;
 
-    (el.querySelector('.reviews-search') as HTMLInputElement | null)
+    (el.querySelector<HTMLInputElement>('.reviews-search'))
       ?.addEventListener('input', e => {
         searchQuery = (e.target as HTMLInputElement).value;
         render();

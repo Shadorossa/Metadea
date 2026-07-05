@@ -123,8 +123,8 @@ export async function renderLists(el: HTMLElement): Promise<void> {
     });
 
     el.querySelector('#list-create-confirm')?.addEventListener('click', async () => {
-      const nameEl = el.querySelector('.list-create-name') as HTMLInputElement | null;
-      const descEl = el.querySelector('.list-create-desc') as HTMLInputElement | null;
+      const nameEl = el.querySelector<HTMLInputElement>('.list-create-name');
+      const descEl = el.querySelector<HTMLInputElement>('.list-create-desc');
       const name = nameEl?.value.trim();
       if (!name) { nameEl?.focus(); return; }
 
@@ -286,7 +286,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
       // ── Pointer-based reordering (no floating ghost — card reorders in place) ─
 
       {
-        const grid = el.querySelector('.list-items-grid') as HTMLElement | null;
+        const grid = el.querySelector<HTMLElement>('.list-items-grid');
         if (grid) {
           let dragCard: HTMLElement | null = null;
           let dragActive = false;
@@ -373,7 +373,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
 
           grid.querySelectorAll<HTMLElement>('.list-item-drag-handle').forEach(handle => {
             handle.addEventListener('mousedown', (e: MouseEvent) => {
-              const card = handle.closest('.list-item-card') as HTMLElement | null;
+              const card = handle.closest<HTMLElement>('.list-item-card');
               if (!card) return;
               e.preventDefault();
               window.getSelection()?.removeAllRanges();
@@ -408,8 +408,8 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           renderDetailContent();
         });
         el.querySelector('#list-meta-save')?.addEventListener('click', async () => {
-          const nameEl = el.querySelector('.list-meta-name-input') as HTMLInputElement | null;
-          const descEl = el.querySelector('.list-meta-desc-input') as HTMLInputElement | null;
+          const nameEl = el.querySelector<HTMLInputElement>('.list-meta-name-input');
+          const descEl = el.querySelector<HTMLInputElement>('.list-meta-desc-input');
           const name = nameEl?.value.trim();
           if (!name) { nameEl?.focus(); return; }
           await updateUserList(list.key, name, descEl?.value.trim() ?? '').catch(err => console.error('Failed to save list metadata:', err));
@@ -438,7 +438,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           renderDetailContent();
         });
 
-        (el.querySelector('.list-add-search') as HTMLInputElement | null)
+        (el.querySelector<HTMLInputElement>('.list-add-search'))
           ?.addEventListener('input', e => {
             searchQuery = (e.target as HTMLInputElement).value;
             renderDetailContent();

@@ -116,7 +116,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
     readRoutes().then(r => { routes = r; renderRoutes(); }).catch(() => {});
 
     routesList.addEventListener('click', async (e) => {
-      const btn = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
       if (!btn) return;
 
       const pickId = btn.dataset.pick;

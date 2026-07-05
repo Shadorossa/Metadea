@@ -1,7 +1,8 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
+import { byId } from '../shared/dom';
 
 export async function initDisplayName(showToast: (msg?: string) => void) {
-  const input = document.getElementById('display-name-input') as HTMLInputElement | null;
+  const input = byId<HTMLInputElement>('display-name-input');
   if (!input) return;
 
   const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));

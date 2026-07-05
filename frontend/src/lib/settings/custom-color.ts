@@ -1,5 +1,6 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { byId } from '../shared/dom';
 
 const DEFAULT_COLOR = '#c084fc';
 
@@ -12,7 +13,7 @@ function applyCustomColor(color: string) {
 
 // DB is the source of truth; localStorage is kept as a fast read cache.
 export async function initCustomColor(showToast: (msg?: string) => void) {
-  const colorInput = document.getElementById('custom-color-input') as HTMLInputElement | null;
+  const colorInput = byId<HTMLInputElement>('custom-color-input');
   const colorHexDisplay = document.getElementById('color-hex-display');
   const colorResetBtn = document.getElementById('color-reset-btn');
   if (!colorInput || !colorHexDisplay) return;

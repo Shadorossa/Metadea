@@ -70,10 +70,10 @@ export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): 
 }
 
 export function initHofListeners(el: HTMLElement): void {
-  const viewWorks = el.querySelector('#hof-view-works') as HTMLElement | null;
-  const viewChars = el.querySelector('#hof-view-chars') as HTMLElement | null;
-  const btnWorks  = el.querySelector('#hof-btn-works')  as HTMLButtonElement | null;
-  const btnChars  = el.querySelector('#hof-btn-chars')  as HTMLButtonElement | null;
+  const viewWorks = el.querySelector<HTMLElement>('#hof-view-works');
+  const viewChars = el.querySelector<HTMLElement>('#hof-view-chars');
+  const btnWorks  = el.querySelector<HTMLButtonElement>('#hof-btn-works');
+  const btnChars  = el.querySelector<HTMLButtonElement>('#hof-btn-chars');
   if (!viewWorks || !viewChars || !btnWorks || !btnChars) return;
 
   function switchView(type: 'works' | 'chars') {

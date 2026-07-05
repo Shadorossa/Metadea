@@ -1,9 +1,10 @@
 import { saveImage, getImage, removeImage } from '../storage/images';
 import { readFileAsDataURL, fileTooLarge, compressImage } from './image-utils';
+import { byId } from '../shared/dom';
 
 export function initBanner(showToast: (msg?: string) => void) {
   const dropZone  = document.getElementById('banner-drop-zone')!;
-  const input     = document.getElementById('banner-input') as HTMLInputElement;
+  const input     = byId<HTMLInputElement>('banner-input')!;
   const uploadBtn = document.getElementById('banner-upload-btn')!;
   const removeBtn = document.getElementById('banner-remove-btn')!;
 

@@ -17,7 +17,7 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
     console.warn(`[Tauri] "${cmd}" called outside Tauri`);
     throw new Error('Tauri not available');
   }
-  const tauri = (window as any).__TAURI__;
+  const tauri = window.__TAURI__;
   if (tauri?.core?.invoke) return tauri.core.invoke(cmd, args);
   const { invoke: tauriInvoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
   return tauriInvoke<T>(cmd, args);
@@ -114,7 +114,7 @@ interface LibraryItem {
 
 export async function initTauriDatabase(): Promise<string> {
   if (!isTauri()) return 'not-tauri';
-  const tauri   = (window as any).__TAURI__;
+  const tauri   = window.__TAURI__;
   const dataDir = tauri?.path?.appDataDir ? await tauri.path.appDataDir() : 'unknown';
   return invoke<string>('init_database', { app_data_dir: dataDir });
 }

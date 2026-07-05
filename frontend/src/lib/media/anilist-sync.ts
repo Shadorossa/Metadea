@@ -25,7 +25,7 @@ function extractAniListId(externalId: string): number | null {
 
 async function getToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
-  const tauri = (window as any).__TAURI__;
+  const tauri = window.__TAURI__;
   if (!tauri) return null;
   try {
     if (tauri.core?.invoke) return await tauri.core.invoke('get_anilist_token');

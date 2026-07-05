@@ -118,17 +118,17 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     </div>
   `;
 
-  const filterName = el.querySelector('#filter-name') as HTMLInputElement | null;
-  const statusValEl = el.querySelector('#status-val') as HTMLElement | null;
-  const btnPrev = el.querySelector('#status-prev') as HTMLButtonElement | null;
-  const btnNext = el.querySelector('#status-next') as HTMLButtonElement | null;
-  const contentEl = el.querySelector('.library-content') as HTMLElement | null;
+  const filterName = el.querySelector<HTMLInputElement>('#filter-name');
+  const statusValEl = el.querySelector<HTMLElement>('#status-val');
+  const btnPrev = el.querySelector<HTMLButtonElement>('#status-prev');
+  const btnNext = el.querySelector<HTMLButtonElement>('#status-next');
+  const contentEl = el.querySelector<HTMLElement>('.library-content');
   const typeBtns = el.querySelectorAll('.library-type-btn');
   const sortBtns = el.querySelectorAll('.library-sort-btn');
 
   const applyFilters = () => {
     if (!contentEl) return;
-    const sectionsListEl = contentEl.querySelector('.library-sections-list') as HTMLElement | null;
+    const sectionsListEl = contentEl.querySelector<HTMLElement>('.library-sections-list');
     if (!sectionsListEl) return;
 
     const nameVal = filterName?.value.toLowerCase().trim() || '';
@@ -230,7 +230,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   // Event delegation for library card clicks
   contentEl?.addEventListener('click', (e: Event) => {
     const target = e.target as HTMLElement;
-    const card = target.closest('.library-card') as HTMLElement | null;
+    const card = target.closest<HTMLElement>('.library-card');
     if (!card) return;
 
     if (target.closest('.library-card-thumb')) return; // Allow thumb link

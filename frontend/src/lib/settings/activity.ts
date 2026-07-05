@@ -1,8 +1,9 @@
 import { isAdultContentEnabled, setAdultContentEnabled } from './preferences';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { byId } from '../shared/dom';
 
 export function initActivitySettings(showToast: (msg?: string) => void) {
-  const batchEpisodesCheckbox = document.getElementById('activity-batch-episodes') as HTMLInputElement | null;
+  const batchEpisodesCheckbox = byId<HTMLInputElement>('activity-batch-episodes');
   if (batchEpisodesCheckbox) {
     batchEpisodesCheckbox.checked = localStorage.getItem(STORAGE_KEYS.activityBatchEpisodes) === 'true';
     batchEpisodesCheckbox.addEventListener('change', () => {
@@ -11,7 +12,7 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     });
   }
 
-  const adultContentCheckbox = document.getElementById('activity-adult-content') as HTMLInputElement | null;
+  const adultContentCheckbox = byId<HTMLInputElement>('activity-adult-content');
   if (adultContentCheckbox) {
     adultContentCheckbox.checked = isAdultContentEnabled();
     adultContentCheckbox.addEventListener('change', () => {

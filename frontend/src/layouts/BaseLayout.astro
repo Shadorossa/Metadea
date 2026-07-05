@@ -180,9 +180,8 @@ const t = useTranslations(lang);
         // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord
         if (!window.location.pathname.startsWith('/media')) {
           try {
-            const w = window as any;
-            if (w.__TAURI__?.core?.invoke) {
-              w.__TAURI__.core.invoke('reset_presence').catch(() => {});
+            if (window.__TAURI__?.core?.invoke) {
+              window.__TAURI__.core.invoke('reset_presence').catch(() => {});
             }
           } catch (e) {
             // Ignorar fuera de Tauri

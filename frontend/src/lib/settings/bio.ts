@@ -1,7 +1,8 @@
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { byId } from '../shared/dom';
 
 export function initBio() {
-  const bioTextarea = document.getElementById('bio-textarea') as HTMLTextAreaElement | null;
+  const bioTextarea = byId<HTMLTextAreaElement>('bio-textarea');
   const bioCharCount = document.getElementById('bio-char-count');
   if (!bioTextarea || !bioCharCount) return;
 

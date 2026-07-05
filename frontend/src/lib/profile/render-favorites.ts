@@ -196,7 +196,7 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
 
     /* ── Pointer-based Reordering (works in Tauri WebView) ─────────────── */
     if (reorderModeActive) {
-      const container = el.querySelector('.fav-grid') as HTMLElement | null;
+      const container = el.querySelector<HTMLElement>('.fav-grid');
       if (container) {
         let dragCard: HTMLElement | null = null;
         let dragActive = false;

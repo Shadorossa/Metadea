@@ -9,7 +9,7 @@ const isTauri = () =>
   ('__TAURI__' in window || '__TAURI_IPC__' in window);
 
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const tauri = (window as any).__TAURI__;
+  const tauri = window.__TAURI__;
   if (tauri?.core?.invoke) {
     return tauri.core.invoke(cmd, args);
   }

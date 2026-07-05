@@ -3,9 +3,10 @@ import { ICON_GITHUB } from '../shared/icon-strings';
 import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
+import { byId } from '../shared/dom';
 
 export function initGitHubAuth() {
-  const githubLoginBtn = document.getElementById('github-login-btn') as HTMLButtonElement | null;
+  const githubLoginBtn = byId<HTMLButtonElement>('github-login-btn');
   const githubUserStatus = document.getElementById('github-user-status');
   const githubAvatarContainer = document.getElementById('github-avatar-container');
   const githubDeviceModal = document.getElementById('github-device-modal');

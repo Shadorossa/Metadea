@@ -80,8 +80,8 @@ export function initThemePicker(showToast: (msg?: string) => void) {
     card.addEventListener('click', () => {
       const id = card.dataset.themeId!;
       localStorage.setItem('app_theme', id);
-      if (typeof (window as any).__updateTheme === 'function') {
-        (window as any).__updateTheme(id);
+      if (typeof window.__updateTheme === 'function') {
+        window.__updateTheme(id);
       } else {
         document.documentElement.setAttribute('data-theme', id);
       }

@@ -535,7 +535,7 @@ export default function MediaPage({ lang }: { lang: string }) {
                       className="media-store-link"
                       title={link.platform}
                       onClick={() => {
-                        const tauri = (window as any).__TAURI__;
+                        const tauri = window.__TAURI__;
                         if (tauri?.opener?.openUrl) {
                           tauri.opener.openUrl(link.url);
                         } else {

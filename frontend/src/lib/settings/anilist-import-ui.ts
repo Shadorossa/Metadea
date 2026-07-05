@@ -1,10 +1,11 @@
 import { importFromAniList, syncFromAniList, type ImportProgress } from '../anilist/import';
 import { showModal, hideModal } from '../shared/modal-utils';
+import { byId } from '../shared/dom';
 
 const ALL_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC', 'MANGA', 'ONE_SHOT', 'NOVEL'];
 
 function selectedFormats(): string[] {
-  return ALL_FORMATS.filter(f => (document.getElementById(`fmt-${f}`) as HTMLInputElement | null)?.checked);
+  return ALL_FORMATS.filter(f => (byId<HTMLInputElement>(`fmt-${f}`))?.checked);
 }
 
 function updateProgressUI(progress: ImportProgress) {
@@ -44,8 +45,8 @@ function createProgressModal(title: string) {
 }
 
 export function initAniListImportUI(showToast: (msg?: string) => void) {
-  const importBtn = document.getElementById('anilist-import-btn') as HTMLButtonElement | null;
-  const importChooseModal = document.getElementById('anilist-import-choose-modal') as HTMLElement | null;
+  const importBtn = byId<HTMLButtonElement>('anilist-import-btn');
+  const importChooseModal = byId<HTMLElement>('anilist-import-choose-modal');
 
   async function updateImportButtons() {
     const { invoke } = await import('../tauri');

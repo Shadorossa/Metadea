@@ -1,5 +1,6 @@
 import { saveImage, getImage, removeImage } from '../storage/images';
 import { readFileAsDataURL, fileTooLarge, compressImage } from './image-utils';
+import { byId } from '../shared/dom';
 
 export function initAvatar(
   googleAvatar: string | null,
@@ -7,7 +8,7 @@ export function initAvatar(
   showToast: (msg?: string) => void,
 ) {
   const preview   = document.getElementById('avatar-preview');
-  const input     = document.getElementById('avatar-input') as HTMLInputElement;
+  const input     = byId<HTMLInputElement>('avatar-input');
   const uploadBtn = document.getElementById('avatar-upload-btn');
   const removeBtn = document.getElementById('avatar-remove-btn');
 

@@ -4,6 +4,7 @@ import { STORAGE_KEYS } from '../shared/storage-keys';
 import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
+import { byId } from '../shared/dom';
 
 const DISCONNECTED_AVATAR_HTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
 
@@ -16,13 +17,13 @@ const ls = {
 const TOKEN_KEY = STORAGE_KEYS.anilistToken;
 
 export function initAniListAuth() {
-  const anilistLoginBtn     = document.getElementById('anilist-login-btn') as HTMLButtonElement | null;
+  const anilistLoginBtn     = byId<HTMLButtonElement>('anilist-login-btn');
   const anilistUserStatus   = document.getElementById('anilist-user-status');
   const anilistAvatarContainer = document.getElementById('anilist-avatar-container');
   const anilistTokenModal   = document.getElementById('anilist-token-modal');
-  const anilistAuthLink     = document.getElementById('anilist-auth-link') as HTMLAnchorElement | null;
-  const anilistTokenInput   = document.getElementById('anilist-token-input') as HTMLInputElement | null;
-  const anilistSaveTokenBtn = document.getElementById('anilist-save-token-btn') as HTMLButtonElement | null;
+  const anilistAuthLink     = byId<HTMLAnchorElement>('anilist-auth-link');
+  const anilistTokenInput   = byId<HTMLInputElement>('anilist-token-input');
+  const anilistSaveTokenBtn = byId<HTMLButtonElement>('anilist-save-token-btn');
   const anilistCancelTokenBtn = document.getElementById('anilist-cancel-token-btn');
 
   async function fetchAniListUser(token: string) {

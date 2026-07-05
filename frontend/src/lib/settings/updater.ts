@@ -1,4 +1,5 @@
 import { getT } from '../../i18n/client';
+import { byId } from '../shared/dom';
 
 function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' &&
@@ -6,9 +7,9 @@ function isTauriRuntime(): boolean {
 }
 
 export function initUpdater(defaultVersionFallback: string) {
-  const checkBtn = document.getElementById('app-check-update-btn') as HTMLButtonElement | null;
+  const checkBtn = byId<HTMLButtonElement>('app-check-update-btn');
   const statusText = document.getElementById('updater-status-text');
-  const versionSpan = document.querySelector('.app-curr-ver') as HTMLElement | null;
+  const versionSpan = document.querySelector<HTMLElement>('.app-curr-ver');
   const isTauri = isTauriRuntime();
 
   if (isTauri) {
