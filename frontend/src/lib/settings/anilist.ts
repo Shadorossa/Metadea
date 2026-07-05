@@ -1,8 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import { readEnvConfig } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
-import { setAuthButtonState, setAuthButtonBusy } from '../shared/auth-button';
+import { setAuthButtonBusy } from '../shared/auth-button';
+import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
+
+const DISCONNECTED_AVATAR_HTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
 
 const ls = {
   get: (key: string) => localStorage.getItem(key),
@@ -26,21 +29,15 @@ export function initAniListAuth() {
     return invoke<any>('get_anilist_user_profile', { token });
   }
 
+  const statusEls = { loginBtn: anilistLoginBtn, statusEl: anilistUserStatus, avatarEl: anilistAvatarContainer };
+
   function showDisconnected() {
-    if (anilistUserStatus) anilistUserStatus.textContent = 'No conectado';
-    setAuthButtonState(anilistLoginBtn, 'disconnected');
-    if (anilistAvatarContainer) {
-      anilistAvatarContainer.innerHTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
-    }
+    showAuthDisconnected(statusEls, DISCONNECTED_AVATAR_HTML);
     if (anilistTokenInput) anilistTokenInput.value = '';
   }
 
   function showConnected(name: string, avatarUrl?: string) {
-    if (anilistUserStatus) anilistUserStatus.textContent = `@${name}`;
-    setAuthButtonState(anilistLoginBtn, 'connected');
-    if (anilistAvatarContainer && avatarUrl) {
-      anilistAvatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
-    }
+    showAuthConnected(statusEls, name, avatarUrl);
   }
 
   function clearToken() {

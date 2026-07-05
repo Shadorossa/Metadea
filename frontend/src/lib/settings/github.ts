@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { ICON_GITHUB } from '../shared/icon-strings';
-import { setAuthButtonState, setAuthButtonBusy } from '../shared/auth-button';
+import { setAuthButtonBusy } from '../shared/auth-button';
+import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 
 export function initGitHubAuth() {
@@ -18,20 +19,14 @@ export function initGitHubAuth() {
     return invoke<any>('get_github_user_profile', { token });
   }
 
+  const statusEls = { loginBtn: githubLoginBtn, statusEl: githubUserStatus, avatarEl: githubAvatarContainer };
+
   function showDisconnected() {
-    if (githubUserStatus) githubUserStatus.textContent = 'No conectado';
-    setAuthButtonState(githubLoginBtn, 'disconnected');
-    if (githubAvatarContainer) {
-      githubAvatarContainer.innerHTML = ICON_GITHUB;
-    }
+    showAuthDisconnected(statusEls, ICON_GITHUB);
   }
 
   function showConnected(login: string, avatarUrl?: string) {
-    if (githubUserStatus) githubUserStatus.textContent = `@${login}`;
-    setAuthButtonState(githubLoginBtn, 'connected');
-    if (githubAvatarContainer && avatarUrl) {
-      githubAvatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
-    }
+    showAuthConnected(statusEls, login, avatarUrl);
   }
 
   // Check cached token on load via Rust filesystem session.json

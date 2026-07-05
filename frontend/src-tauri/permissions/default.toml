@@ -64,6 +64,20 @@ commands.allow = [
   "delete_anilist_token",
   "get_anilist_user_profile",
   "update_presence",
-  "reset_presence"
+  "reset_presence",
+  "get_all_user_lists",
+  "get_list_items",
+  "get_list_items_full",
+  "create_user_list",
+  "update_user_list",
+  "delete_user_list",
+  "add_item_to_list",
+  "remove_item_from_list",
+  "reorder_list_items",
+  "save_character",
+  "get_character",
+  "set_character_reaction",
+  "save_character_appearances",
+  "get_character_appearances"
 ]
 
