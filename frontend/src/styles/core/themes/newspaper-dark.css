@@ -519,3 +519,130 @@ h2, h3, .settings-panel-title, .section-label {
   box-shadow: 2px 2px 0px var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
+
+/* ── Saga overrides for Newspaper Dark ───────────────────────────────────── */
+.media-saga-btn {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: 2px 2px 0px var(--border-color) !important;
+  transition: all 0.2s ease !important;
+}
+
+.media-saga-btn:hover {
+  background-color: var(--bg-card) !important;
+  color: var(--accent) !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+}
+
+.saga-strip-container {
+  border-radius: 0px !important;
+  border-top: 3px double var(--border-color) !important;
+  border-bottom: 3px double var(--border-color) !important;
+  background-color: #12110f !important;
+  box-shadow: none !important;
+}
+
+.saga-strip-header {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.saga-strip-subtitle {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-muted) !important;
+}
+
+.saga-strip-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-main) !important;
+  font-weight: 800 !important;
+}
+
+.saga-strip-item {
+  border-radius: 0px !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.saga-strip-item-bg img {
+  filter: grayscale(0.8) sepia(0.2) blur(3px) !important;
+  opacity: 0.1 !important;
+}
+
+.saga-strip-item:hover .saga-strip-item-bg img {
+  opacity: 0.2 !important;
+  filter: grayscale(0.8) sepia(0.2) blur(1px) !important;
+}
+
+.saga-strip-item-overlay {
+  background: linear-gradient(to bottom, #12110f 0%, rgba(18, 17, 15, 0.3) 25%, rgba(18, 17, 15, 0.3) 75%, #12110f 100%) !important;
+}
+
+.saga-strip-item-cover {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  filter: grayscale(0.35) sepia(0.15) !important;
+  background: var(--bg-elevated) !important;
+}
+
+.saga-strip-item:hover .saga-strip-item-cover {
+  transform: translateY(-5px) !important;
+  box-shadow: 5px 5px 0px var(--border-color) !important;
+}
+
+.saga-strip-item-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: bold !important;
+  color: var(--text-main) !important;
+}
+
+.saga-strip-item-badge {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-primary) !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+.saga-strip-item-year {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-muted) !important;
+}
+
+.saga-strip-item--current .saga-strip-item-cover {
+  border: 2px solid var(--accent) !important;
+  box-shadow: 4px 4px 0px var(--accent) !important;
+}
+
+.saga-strip-item--current:hover .saga-strip-item-cover {
+  transform: none !important;
+}
+
+.saga-strip-item-current-indicator {
+  border-radius: 0px !important;
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+
+.saga-strip-close {
+  background-color: #12110f !important;
+  border: 3px double var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: 3px 3px 0px var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+.saga-strip-close:hover {
+  background-color: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+  transform: translateX(-50%) translate(-2px, -2px) !important;
+  box-shadow: 5px 5px 0px var(--border-color) !important;
+}
+
+

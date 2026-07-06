@@ -137,6 +137,22 @@ CREATE TABLE IF NOT EXISTS media_catalog (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS media_catalog_external_idx ON media_catalog(external_id);
 
+CREATE TABLE IF NOT EXISTS sagas (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL DEFAULT '',
+    description TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS saga_relations (
+    media_external_id TEXT NOT NULL,
+    saga_id           TEXT NOT NULL,
+    PRIMARY KEY (media_external_id, saga_id),
+    FOREIGN KEY (saga_id) REFERENCES sagas(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS saga_relations_saga_idx ON saga_relations(saga_id);
+
 CREATE TABLE IF NOT EXISTS monthly_history (
     month        TEXT NOT NULL,
     external_id  TEXT NOT NULL,

@@ -105,6 +105,8 @@ pub fn run() {
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
             media_catalog::search_catalog,
+            media_catalog::get_cached_saga,
+            media_catalog::save_cached_saga,
             characters::save_character,
             characters::get_character,
             characters::set_character_reaction,

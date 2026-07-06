@@ -54,3 +54,13 @@ export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
 export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('search_catalog', [], { query });
 }
+
+import type { SagaEntry } from '../anilist/saga';
+
+export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | null> {
+  return tauriCmd<SagaEntry[] | null>('get_cached_saga', null, { externalId });
+}
+
+export async function saveCachedSaga(entries: SagaEntry[]): Promise<void> {
+  return tauriRun('save_cached_saga', { entries });
+}

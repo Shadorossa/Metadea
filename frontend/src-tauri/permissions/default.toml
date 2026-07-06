@@ -53,6 +53,8 @@ commands.allow = [
   "delete_catalog_entry",
   "get_all_catalog_entries",
   "search_catalog",
+  "get_cached_saga",
+  "save_cached_saga",
   "request_github_device_code",
   "request_github_device_token",
   "get_github_user_profile",

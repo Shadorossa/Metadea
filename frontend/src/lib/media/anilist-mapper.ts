@@ -22,7 +22,7 @@ function formatDescription(raw: string | null | undefined): string | undefined {
   );
 }
 
-function resolveAniListType(mediaType: string, format: string | null | undefined): string {
+export function resolveAniListType(mediaType: string, format: string | null | undefined): string {
   if (mediaType === 'manga' && format === 'NOVEL') return 'lnovel';
   if (mediaType === 'lnovel') return 'lnovel';
   return mediaType;
@@ -103,6 +103,11 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       };
     });
 
+  // SagaViewer only makes sense when there's at least one direct prequel/sequel
+  // to walk from — the full transitive chain is resolved later, on demand,
+  // by lib/anilist/saga.ts when the user actually opens the viewer.
+  const hasSaga = raw.relations.edges.some(e => e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL');
+
   const progressStatus = resolvedType === 'anime' ? 'watching' as const : 'reading' as const;
   const progressLabel  = resolvedType === 'anime'
     ? (getT().profile.status_watching)
@@ -144,5 +149,6 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     // Studios only apply to anime — AniList's `studios` connection is
     // effectively unused for manga/light novels (no animation involved).
     companies:    resolvedType === 'anime' ? raw.studios.nodes.map(n => n.name) : undefined,
+    hasSaga,
   };
 }

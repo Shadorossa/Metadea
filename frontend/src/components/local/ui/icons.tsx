@@ -158,6 +158,10 @@ export function IconAlertCircle(p: SvgProps) {
   return <Svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></Svg>;
 }
 
+export function IconLayers(p: SvgProps) {
+  return <Svg {...p}><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></Svg>;
+}
+
 export function IconHeart({ filled = false, size = 20, strokeWidth = 1.8 }: SvgProps & { filled?: boolean }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}

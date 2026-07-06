@@ -5,9 +5,10 @@ import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '.
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
+import { SagaViewerModal } from './SagaViewerModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
-import { IconPlus, IconCheck, IconTrayStatus } from '../local/ui/icons';
+import { IconPlus, IconCheck, IconTrayStatus, IconLayers } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export default function MediaPage() {
   const [isFetchingFull,     setIsFetchingFull]     = useState(false);
   const [data,               setData]               = useState<MediaPageData | null>(null);
   const [showEditor,         setShowEditor]         = useState(false);
+  const [showSaga,           setShowSaga]           = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
@@ -364,6 +366,9 @@ export default function MediaPage() {
           onDeleted={handleEditorDeleted}
         />
       )}
+      {showSaga && (
+        <SagaViewerModal externalId={currentId} onClose={() => setShowSaga(false)} />
+      )}
 
       {/* Hero */}
       <div className={`media-hero${data.type === 'game' || data.type === 'vnovel' ? ' media-hero--game' : ''}`}>
@@ -393,6 +398,12 @@ export default function MediaPage() {
 
           {/* Centro: cover + widget de biblioteca */}
           <div className="media-cover-column">
+            {data.hasSaga && (
+              <button type="button" className="media-saga-btn" onClick={() => setShowSaga(true)}>
+                <IconLayers size={14} />
+                {tm.saga_button}
+              </button>
+            )}
             <div
               className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isBlockedEdition ? ' is-edition' : ''}`}
               role="button"

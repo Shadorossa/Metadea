@@ -197,3 +197,169 @@ pub async fn search_catalog(
         .collect();
     Ok(entries)
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SagaEntry {
+    #[serde(rename = "externalId")]
+    pub external_id: String,
+    pub title: String,
+    pub cover: Option<String>,
+    pub format: Option<String>,
+    #[serde(rename = "mediaType")]
+    pub media_type: String,
+    pub year: Option<i32>,
+    pub month: Option<i32>,
+    pub day: Option<i32>,
+}
+
+#[tauri::command]
+pub async fn get_cached_saga(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<Option<Vec<SagaEntry>>, String> {
+    let conn = state.conn.lock().str_err()?;
+
+    // 1. Check if the external_id is mapped to a saga
+    let saga_id: Option<String> = conn
+        .query_row(
+            "SELECT saga_id FROM saga_relations WHERE media_external_id = ?1",
+            [&external_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .str_err()?;
+
+    let saga_id = match saga_id {
+        Some(sid) => sid,
+        None => return Ok(None),
+    };
+
+    // 2. Fetch all entries related to this saga_id
+    let mut stmt = conn
+        .prepare(
+            "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.format, mc.type, mc.release_year, mc.release_month, mc.release_day
+             FROM saga_relations sr
+             JOIN media_catalog mc ON mc.external_id = sr.media_external_id
+             WHERE sr.saga_id = ?1",
+        )
+        .str_err()?;
+
+    let entries: Vec<SagaEntry> = stmt
+        .query_map([&saga_id], |row| {
+            let external_id: String = row.get::<_, Option<String>>(0)?.unwrap_or_default();
+            let title: String = row.get::<_, Option<String>>(1)?.unwrap_or_default();
+            let cover: Option<String> = row.get(2)?;
+            let format: Option<String> = row.get(3)?;
+            let media_type: String = row.get::<_, Option<String>>(4)?.unwrap_or_else(|| "anime".to_string());
+            let year: Option<i32> = row.get(5)?;
+            let month: Option<i32> = row.get(6)?;
+            let day: Option<i32> = row.get(7)?;
+
+            Ok(SagaEntry {
+                external_id,
+                title,
+                cover,
+                format,
+                media_type,
+                year,
+                month,
+                day,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    if entries.is_empty() {
+        Ok(None)
+    } else {
+        // Sort entries by date locally to ensure correct timeline
+        let mut sorted = entries;
+        sorted.sort_by(|a, b| {
+            let ay = a.year.unwrap_or(9999);
+            let by = b.year.unwrap_or(9999);
+            if ay != by {
+                return ay.cmp(&by);
+            }
+            let am = a.month.unwrap_or(12);
+            let bm = b.month.unwrap_or(12);
+            if am != bm {
+                return am.cmp(&bm);
+            }
+            let ad = a.day.unwrap_or(31);
+            let bd = b.day.unwrap_or(31);
+            ad.cmp(&bd)
+        });
+        Ok(Some(sorted))
+    }
+}
+
+#[tauri::command]
+pub async fn save_cached_saga(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    entries: Vec<SagaEntry>,
+) -> Result<(), String> {
+    if entries.is_empty() {
+        return Ok(());
+    }
+
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    // Use the first entry's externalId as the saga_id (it's stable and unique)
+    let saga_id = entries[0].external_id.clone();
+    let saga_name = entries[0].title.clone();
+
+    // 1. Insert saga
+    tx.execute(
+        "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
+        rusqlite::params![&saga_id, &saga_name],
+    )
+    .str_err()?;
+
+    // 2. Insert entries into media_catalog (minimal metadata for caching) and relations
+    for entry in &entries {
+        let now = Utc::now().to_rfc3339();
+        
+        let exists_val: i32 = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
+                [&entry.external_id],
+                |row| row.get(0),
+            )
+            .str_err()?;
+        let exists = exists_val == 1;
+
+        if !exists {
+            tx.execute(
+                "INSERT INTO media_catalog (
+                    id, external_id, type, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                rusqlite::params![
+                    crate::db::generate_id(),
+                    &entry.external_id,
+                    &entry.media_type,
+                    &entry.format,
+                    &entry.title,
+                    &entry.cover,
+                    &entry.year,
+                    &entry.month,
+                    &entry.day,
+                    &now,
+                    &now,
+                ],
+            )
+            .str_err()?;
+        }
+
+        // Insert relation
+        tx.execute(
+            "INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id) VALUES (?1, ?2)",
+            rusqlite::params![&entry.external_id, &saga_id],
+        )
+        .str_err()?;
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}

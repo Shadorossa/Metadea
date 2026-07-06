@@ -674,9 +674,9 @@ export function MediaEditorModal({ externalId, data, onClose, onSaved, onDeleted
                     <NumberField label={progLabel} value={activeLog.progress} step={progStep}
                       max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
                       onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progress: v } })} />
-                    {label2 && (
+                    {label2 && data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0 && (
                       <NumberField label={label2} value={activeLog.progressCount2} step={1}
-                        max={data.totalCount_2 && data.totalCount_2 > 0 ? data.totalCount_2 : undefined}
+                        max={data.totalCount_2}
                         onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progressCount2: v } })} />
                     )}
                   </div>

@@ -201,23 +201,42 @@ export function fetchMediaDataWithFallback(
 
   let fullArrived = false;
 
-  // Catalog IPC (~1–5ms) — show something fast
   getCatalogEntry(rawId)
     .then(catalog => {
-      if (catalog && !fullArrived) onPartial(mapCatalogEntryToPartialData(catalog));
-    })
-    .catch(() => {});
+      if (catalog && catalog.title_main) {
+        const mapped = mapCatalogEntryToPartialData(catalog);
+        onFull(mapped);
+        fullArrived = true;
+        setCachedMediaData(rawId, mapped);
+        return;
+      }
 
-  // Full API fetch (~200–2000ms) — replace with complete data
-  fetchMediaData(rawId)
-    .then(data => {
-      fullArrived = true;
-      if (data) onFull(data);
-      else onError();
+      if (catalog && !fullArrived) {
+        onPartial(mapCatalogEntryToPartialData(catalog));
+      }
+
+      fetchMediaData(rawId)
+        .then(data => {
+          fullArrived = true;
+          if (data) onFull(data);
+          else onError();
+        })
+        .catch(() => {
+          fullArrived = true;
+          onError();
+        });
     })
     .catch(() => {
-      fullArrived = true;
-      onError();
+      fetchMediaData(rawId)
+        .then(data => {
+          fullArrived = true;
+          if (data) onFull(data);
+          else onError();
+        })
+        .catch(() => {
+          fullArrived = true;
+          onError();
+        });
     });
 }
 
