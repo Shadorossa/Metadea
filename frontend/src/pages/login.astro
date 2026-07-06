@@ -52,9 +52,9 @@ const t    = useTranslations(lang);
           try {
             await storeAuthToken('offline_token', username);
             window.location.replace('/home');
-          } catch (err: any) {
+          } catch (err) {
             if (errorMsg) {
-              errorMsg.textContent = err.message || 'Error al iniciar sesión';
+              errorMsg.textContent = (err instanceof Error ? err.message : null) || 'Error al iniciar sesión';
               errorMsg.style.display = 'block';
             }
           }

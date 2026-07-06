@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
+import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
 
 import nebulaUrl from '../styles/core/themes/nebula.css?url';
@@ -57,9 +58,9 @@ const t = useTranslations(lang);
     <link id="theme-stylesheet" rel="stylesheet" href="/src/styles/core/themes/nebula.css" />
 
     <!-- Apply theme before CSS loads to prevent flash -->
-    <script is:inline define:vars={{ themeUrls }}>
+    <script is:inline define:vars={{ themeUrls, themeStorageKey: STORAGE_KEYS.appTheme }}>
       function applyTheme() {
-        var t = localStorage.getItem('app_theme') || 'nebula';
+        var t = localStorage.getItem(themeStorageKey) || 'nebula';
         document.documentElement.setAttribute('data-theme', t);
         var link = document.getElementById('theme-stylesheet');
         if (link) {
@@ -76,7 +77,7 @@ const t = useTranslations(lang);
       document.addEventListener('astro:after-swap', applyTheme);
       document.addEventListener('astro:page-load', applyTheme);
       window.__updateTheme = function(newTheme) {
-        localStorage.setItem('app_theme', newTheme);
+        localStorage.setItem(themeStorageKey, newTheme);
         applyTheme();
       };
     </script>

@@ -1,4 +1,5 @@
 import { readStoredJson, writeStoredJson } from './core';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface UserJourneyEvent {
   externalId:     string;
@@ -15,9 +16,9 @@ export interface DayJourney {
 }
 
 export async function readUserJourney(): Promise<DayJourney[]> {
-  return readStoredJson<DayJourney[]>('read_user_journey', 'user_journey', []);
+  return readStoredJson<DayJourney[]>('read_user_journey', STORAGE_KEYS.userJourney, []);
 }
 
 export async function writeUserJourney(journey: DayJourney[]): Promise<void> {
-  return writeStoredJson('write_user_journey', 'user_journey', journey);
+  return writeStoredJson('write_user_journey', STORAGE_KEYS.userJourney, journey);
 }

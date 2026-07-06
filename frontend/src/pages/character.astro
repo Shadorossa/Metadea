@@ -489,7 +489,7 @@ const lang = getLang(Astro.url);
       loadingEl.style.display = 'none';
       contentEl.style.display = 'grid';
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       loadingEl.style.display = 'none';
       errorTextEl.textContent = 'Error de conexión o fallo al consultar la API de AniList.';

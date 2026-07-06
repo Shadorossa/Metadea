@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { es } from '../../i18n/es';
-import { en } from '../../i18n/en';
+import { getT } from '../../i18n/client';
 import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
@@ -76,7 +75,7 @@ function StatusDropdown({
   progressStatus: string;
   progressLabel: string;
   onChange: (next: string) => void;
-  t: typeof es.media;
+  t: ReturnType<typeof getT>['media'];
 }) {
   const te = t.editor;
   const trayButtons = [
@@ -118,8 +117,8 @@ function StatusDropdown({
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
 
-export default function MediaPage({ lang }: { lang: string }) {
-  const t  = lang === 'en' ? en : es;
+export default function MediaPage() {
+  const t  = getT();
   const tm = t.media;
 
   // Estado para el ID actual de la obra
@@ -357,7 +356,6 @@ export default function MediaPage({ lang }: { lang: string }) {
         <MediaEditorModal
           externalId={currentId}
           data={data}
-          lang={lang}
           initialEntry={libEntry ?? undefined}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}

@@ -172,7 +172,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
     if (result?.errors?.length) return { ok: false, error: result.errors[0].message };
 
     return { ok: true };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? 'Network error' };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Network error' };
   }
 }

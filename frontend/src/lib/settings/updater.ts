@@ -62,10 +62,11 @@ export function initUpdater(defaultVersionFallback: string) {
         statusText.textContent = clientT.settings.app_up_to_date || '¡Estás en la última versión!';
         statusText.style.display = 'block';
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
       if (statusText) {
-        statusText.textContent = `Error al buscar actualizaciones: ${error?.message || error || 'Conexión fallida'}`;
+        const message = error instanceof Error ? error.message : String(error) || 'Conexión fallida';
+        statusText.textContent = `Error al buscar actualizaciones: ${message}`;
         statusText.style.display = 'block';
       }
     } finally {

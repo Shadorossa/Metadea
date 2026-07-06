@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from '../shared/storage-keys';
+
 const THEMES = [
   {
     id: 'nebula',
@@ -79,7 +81,7 @@ export function initThemePicker(showToast: (msg?: string) => void) {
   grid.querySelectorAll<HTMLButtonElement>('.theme-card').forEach(card => {
     card.addEventListener('click', () => {
       const id = card.dataset.themeId!;
-      localStorage.setItem('app_theme', id);
+      localStorage.setItem(STORAGE_KEYS.appTheme, id);
       if (typeof window.__updateTheme === 'function') {
         window.__updateTheme(id);
       } else {

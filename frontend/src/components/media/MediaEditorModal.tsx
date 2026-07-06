@@ -5,8 +5,7 @@ import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHisto
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
-import { es } from '../../i18n/es';
-import { en } from '../../i18n/en';
+import { getT } from '../../i18n/client';
 import {
   IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
   IconStatusPaused, IconStatusDropped,
@@ -18,7 +17,6 @@ import {
 interface Props {
   externalId: string;
   data: MediaPageData;
-  lang: string;
   onClose: () => void;
   onSaved: (entry: LibraryEntry) => void;
   onDeleted: () => void;
@@ -238,7 +236,7 @@ function uiReducer(state: UiState, action: UiAction): UiState {
 // Progress field(s) shown in the header — which label(s) and step apply
 // depend on the media type. progLabel matches the raw type (not its
 // underscore-stripped base) to preserve each edge case's original mapping.
-function getProgressConfig(type: string, tm: typeof es.media): { label: string | null; label2: string | null; step: number } {
+function getProgressConfig(type: string, tm: ReturnType<typeof getT>['media']): { label: string | null; label2: string | null; step: number } {
   const base = type.split('_')[0];
 
   let label: string | null;
@@ -312,8 +310,8 @@ function NumberField({ label, value, max, step, onChange }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MediaEditorModal({ externalId, data, lang, onClose, onSaved, onDeleted, initialEntry }: Props) {
-  const t  = lang === 'en' ? en : es;
+export function MediaEditorModal({ externalId, data, onClose, onSaved, onDeleted, initialEntry }: Props) {
+  const t  = getT();
   const te = t.media.editor;
 
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: id }));

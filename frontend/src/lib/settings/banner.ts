@@ -2,6 +2,7 @@ import { saveImage, getImage, removeImage } from '../storage/images';
 import { readFileAsDataURL, fileTooLarge, compressImage } from './image-utils';
 import { byId } from '../shared/dom';
 import { getT } from '../../i18n/client';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export function initBanner(showToast: (msg?: string) => void) {
   const t = getT().settings;
@@ -11,7 +12,7 @@ export function initBanner(showToast: (msg?: string) => void) {
   const removeBtn = document.getElementById('banner-remove-btn')!;
 
   async function renderBannerPreview() {
-    const src = await getImage('profile_banner_custom');
+    const src = await getImage(STORAGE_KEYS.profileBannerCustom);
     dropZone.querySelector('img')?.remove();
     if (src) {
       const img = document.createElement('img');
@@ -31,7 +32,7 @@ export function initBanner(showToast: (msg?: string) => void) {
     if (fileTooLarge(file, 20)) { showToast(t.banner_too_large); return; }
     let dataUrl = await readFileAsDataURL(file);
     dataUrl = await compressImage(dataUrl, 2560, 0.80);
-    if (!await saveImage('profile_banner_custom', dataUrl)) {
+    if (!await saveImage(STORAGE_KEYS.profileBannerCustom, dataUrl)) {
       showToast(t.banner_save_error); return;
     }
     renderBannerPreview();
@@ -47,7 +48,7 @@ export function initBanner(showToast: (msg?: string) => void) {
   });
 
   removeBtn.addEventListener('click', async () => {
-    await removeImage('profile_banner_custom');
+    await removeImage(STORAGE_KEYS.profileBannerCustom);
     renderBannerPreview();
     showToast(t.banner_removed);
   });

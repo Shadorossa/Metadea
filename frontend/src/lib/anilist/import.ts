@@ -318,9 +318,10 @@ export async function syncFromAniList(
 
     onProg({ current: filteredList.length, total: filteredList.length, status: 'done' });
     return { ok: true, updated, added };
-  } catch (e: any) {
-    onProg({ current: 0, total: 0, status: 'error', message: e?.message ?? 'Unknown error' });
-    return { ok: false, error: e?.message ?? 'Sync failed' };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    onProg({ current: 0, total: 0, status: 'error', message });
+    return { ok: false, error: message };
   }
 }
 

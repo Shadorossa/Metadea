@@ -133,11 +133,13 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
     initHofListeners(el);
     initActivityListeners(el, catalogMap, p);
-  } catch (error: any) {
+  } catch (error) {
     console.error("renderOverview failed:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack ?? '' : '';
     el.innerHTML = `<div style="padding: 2rem; color: #ef4444; font-family: monospace; font-size: 0.9rem;">
-      Error al renderizar perfil: ${error?.message || error}<br/>
-      <pre>${error?.stack || ''}</pre>
+      Error al renderizar perfil: ${message}<br/>
+      <pre>${stack}</pre>
     </div>`;
   }
 }

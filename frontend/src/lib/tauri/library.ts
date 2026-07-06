@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } from './core';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface LibraryEntry {
   id:                string;
@@ -40,9 +41,9 @@ export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
 }
 
 export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
-  return readStoredJson<Record<string, string[]>>('read_monthly_history', 'monthly_history', {});
+  return readStoredJson<Record<string, string[]>>('read_monthly_history', STORAGE_KEYS.monthlyHistory, {});
 }
 
 export async function writeMonthlyHistory(history: Record<string, string[]>): Promise<void> {
-  return writeStoredJson('write_monthly_history', 'monthly_history', history);
+  return writeStoredJson('write_monthly_history', STORAGE_KEYS.monthlyHistory, history);
 }

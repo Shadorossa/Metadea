@@ -1,4 +1,5 @@
 import { isTauri, invoke, tauriCmd } from './core';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface LocalGame {
   name:              string;
@@ -44,13 +45,13 @@ export async function scanAllGames(): Promise<LocalGame[]> {
 
 export async function getLocalFolders(): Promise<SavedFolder[]> {
   if (!isTauri()) {
-    const stored = localStorage.getItem('local_folders');
+    const stored = localStorage.getItem(STORAGE_KEYS.localFolders);
     return stored ? JSON.parse(stored) : [];
   }
   return invoke<SavedFolder[]>('get_local_folders');
 }
 
 export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
-  if (!isTauri()) { localStorage.setItem('local_folders', JSON.stringify(folders)); return; }
+  if (!isTauri()) { localStorage.setItem(STORAGE_KEYS.localFolders, JSON.stringify(folders)); return; }
   return invoke<void>('save_local_folders', { folders_json: JSON.stringify(folders) });
 }

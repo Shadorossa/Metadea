@@ -46,8 +46,9 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         anilist_client_id:  anilistClientIdInput.value.trim() || undefined,
       });
       showToast('Credenciales guardadas');
-    } catch (err: any) {
-      showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      showToast('Error: ' + message.slice(0, 60));
     }
   });
 
@@ -79,8 +80,9 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
     try {
       await openEnvFolder();
       showToast('Carpeta abierta');
-    } catch (err: any) {
-      showToast('Error: ' + (err?.message ?? String(err)).slice(0, 60));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      showToast('Error: ' + message.slice(0, 60));
     }
   });
 
@@ -130,8 +132,9 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
           await writeRoutes(routes);
           renderRoutes();
           showToast('Ruta guardada');
-        } catch (err: any) {
-          showToast('Error al guardar: ' + (err?.message ?? String(err)).slice(0, 50));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          showToast('Error al guardar: ' + message.slice(0, 50));
         }
       } else if (clearId) {
         const updated = { ...routes };
@@ -141,8 +144,9 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
           await writeRoutes(routes);
           renderRoutes();
           showToast('Ruta eliminada');
-        } catch (err: any) {
-          showToast('Error al eliminar: ' + (err?.message ?? String(err)).slice(0, 50));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          showToast('Error al eliminar: ' + message.slice(0, 50));
         }
       }
     });

@@ -1,4 +1,4 @@
-import { jsonResponse } from '../middleware/cors';
+import { jsonResponse, jsonError } from '../middleware/cors';
 import { searchGames, mapIgdbGameToSearchResult } from '../services/igdb';
 import type { CloudflareEnv } from '../types';
 
@@ -20,6 +20,6 @@ export async function searchGamesRoute(
     });
     return jsonResponse({ results: games.map(mapIgdbGameToSearchResult) });
   } catch {
-    return jsonResponse({ error: 'Search failed' }, 500);
+    return jsonError('Search failed', 500);
   }
 }

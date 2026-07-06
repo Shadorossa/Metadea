@@ -3,8 +3,7 @@ import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, inferProgressStatus } from '../../lib/media/mediaService';
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
-import { es } from '../../i18n/es';
-import { en } from '../../i18n/en';
+import { getT } from '../../i18n/client';
 
 interface OpenEditorEvent extends Event {
   detail?: {
@@ -20,9 +19,9 @@ interface EditorState {
   libraryEntry: LibraryEntry | undefined;
 }
 
-export function ProfileLibraryEditor({ lang }: { lang: string }) {
+export function ProfileLibraryEditor() {
   const [state, setState] = useState<EditorState | null>(null);
-  const t = lang === 'en' ? en : es;
+  const t = getT();
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -79,7 +78,6 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
     <MediaEditorModal
       externalId={state.externalId}
       data={state.mediaData}
-      lang={lang}
       initialEntry={state.libraryEntry}
       onClose={() => setState(null)}
       onSaved={() => {

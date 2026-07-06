@@ -38,7 +38,7 @@ const lang = getLang(Astro.url);
 
     <div id="profile-tab-content" class="profile-tab-content"></div>
 
-    <ProfileLibraryEditor lang={lang} client:load />
+    <ProfileLibraryEditor client:load />
 
   </main>
 </BaseLayout>
@@ -54,6 +54,7 @@ const lang = getLang(Astro.url);
   import { renderLists }   from '../lib/profile/lists';
   import { getImage } from '../lib/storage/images';
   import { getFontFile } from '../lib/settings/fonts';
+  import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
@@ -103,7 +104,7 @@ const lang = getLang(Astro.url);
 
     // Custom banner image
     const bannerEl = document.querySelector('.profile-banner') as HTMLElement | null;
-    const customBanner = await getImage('profile_banner_custom');
+    const customBanner = await getImage(STORAGE_KEYS.profileBannerCustom);
     if (bannerEl && customBanner) {
       bannerEl.style.backgroundImage = `url('${customBanner}')`;
       bannerEl.style.backgroundSize = 'cover';
@@ -112,7 +113,7 @@ const lang = getLang(Astro.url);
     }
 
     // Custom avatar takes priority over Google avatar
-    const customAvatar = await getImage('profile_avatar_custom');
+    const customAvatar = await getImage(STORAGE_KEYS.profileAvatarCustom);
     const avatarSrc = customAvatar || avatar;
 
     const bannerContent = document.getElementById('banner-content');

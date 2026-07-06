@@ -9,6 +9,7 @@
   <body>
     <script>
       import { initTauriDatabase, getAuthToken } from '../lib/tauri';
+      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
       async function boot() {
         try {
@@ -17,7 +18,7 @@
           window.location.replace(session ? '/home' : '/login');
         } catch {
           // Fallback navegador sin Tauri
-          const token = localStorage.getItem('auth_token');
+          const token = localStorage.getItem(STORAGE_KEYS.authToken);
           window.location.replace(token ? '/home' : '/login');
         }
       }

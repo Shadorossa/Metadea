@@ -1,7 +1,9 @@
+import { STORAGE_KEYS } from '../shared/storage-keys';
+
 // Keys that map to files in %appdata%\com.metadea.app\user_metadata\
 const TAURI_KEYS: Record<string, string> = {
-  profile_avatar_custom: 'avatar',
-  profile_banner_custom: 'banner',
+  [STORAGE_KEYS.profileAvatarCustom]: 'avatar',
+  [STORAGE_KEYS.profileBannerCustom]: 'banner',
 };
 
 const isTauri = () =>
