@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MediaEditorModal } from '../media/MediaEditorModal';
-import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations } from '../../lib/media/mediaService';
-import type { LibraryEntry } from '../../lib/tauri';
+import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, inferProgressStatus } from '../../lib/media/mediaService';
+import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { es } from '../../i18n/es';
 import { en } from '../../i18n/en';
@@ -10,7 +10,7 @@ interface OpenEditorEvent extends Event {
   detail?: {
     externalId: string;
     libraryEntry?: LibraryEntry;
-    catalogEntry?: any;
+    catalogEntry?: MediaCatalogEntry;
   };
 }
 
@@ -33,9 +33,21 @@ export function ProfileLibraryEditor({ lang }: { lang: string }) {
 
       if (!id) return;
 
-      const basicData = catalogEntry
+      const fallbackType = libraryEntry?.type ?? 'anime';
+      const basicData: MediaPageData = catalogEntry
         ? mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress)
-        : { title: id, type: libraryEntry?.type ?? 'anime' } as any;
+        : {
+            externalId: id,
+            type: fallbackType,
+            titleMain: id,
+            bannerColor: 'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
+            metaLines: [],
+            stats: [],
+            characters: [],
+            relations: [],
+            progressStatus: inferProgressStatus(fallbackType),
+            progressLabel: t.media.progress_in_progress,
+          };
 
       setState({ externalId: id, mediaData: basicData, libraryEntry });
 

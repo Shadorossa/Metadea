@@ -312,6 +312,15 @@ export interface AniListCharacterDetail {
   };
 }
 
+type AniListCharacterMediaEdge = AniListCharacterDetail['media']['edges'][number];
+
+interface AniListCharacterDetailPage extends Omit<AniListCharacterDetail, 'media'> {
+  media: {
+    pageInfo: { hasNextPage: boolean };
+    edges: AniListCharacterMediaEdge[];
+  };
+}
+
 const DETAIL_CHARACTER_QUERY = `
   query GetCharacterDetail($id: Int, $mediaPage: Int) {
     Character(id: $id) {
@@ -358,11 +367,11 @@ const DETAIL_CHARACTER_QUERY = `
 
 export async function fetchAniListCharacterDetail(id: number): Promise<AniListCharacterDetail | null> {
   let page = 1;
-  let character: AniListCharacterDetail | null = null;
-  const allEdges: any[] = [];
+  let character: AniListCharacterDetailPage | null = null;
+  const allEdges: AniListCharacterMediaEdge[] = [];
 
   while (true) {
-    const data = await anilistPost<{ Character: any }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page });
+    const data = await anilistPost<{ Character: AniListCharacterDetailPage }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page });
     const char = data?.Character;
     if (!char) break;
 

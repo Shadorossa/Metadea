@@ -13,6 +13,26 @@ export interface AnimeWatchEntry {
   status: string;
 }
 
+interface AniListMediaListEntry {
+  id: number;
+  mediaId: number;
+  progress: number | null;
+  score: number | null;
+  status: string;
+  media: {
+    id: number;
+    title: { romaji: string | null; english: string | null; native: string | null };
+    coverImage: { large: string | null } | null;
+    episodes: number | null;
+  };
+}
+
+interface AniListMediaListCollection {
+  MediaListCollection: {
+    lists: Array<{ entries: AniListMediaListEntry[] | null }>;
+  };
+}
+
 const WATCHING_QUERY = `
   query {
     MediaListCollection(userName: "viewer", type: ANIME, status: CURRENT) {
@@ -82,13 +102,13 @@ async function queryAniList<T>(token: string, query: string): Promise<{ data: T 
   return { data: result?.data as T };
 }
 
-function parseEntries(rawEntries: any[]): AnimeWatchEntry[] {
+function parseEntries(rawEntries: AniListMediaListEntry[]): AnimeWatchEntry[] {
   return rawEntries.map(entry => ({
     id: entry.id,
     mediaId: entry.mediaId,
     title: entry.media.title.romaji || entry.media.title.english || entry.media.title.native || 'Unknown',
-    cover: entry.media.coverImage?.large,
-    totalEpisodes: entry.media.episodes,
+    cover: entry.media.coverImage?.large ?? undefined,
+    totalEpisodes: entry.media.episodes ?? undefined,
     currentProgress: entry.progress || 0,
     score: entry.score || 0,
     status: entry.status,
@@ -96,9 +116,9 @@ function parseEntries(rawEntries: any[]): AnimeWatchEntry[] {
 }
 
 export async function fetchAniListAnimes(token: string, query: string): Promise<AnimeWatchEntry[]> {
-  const result = await queryAniList<any>(token, query);
+  const result = await queryAniList<AniListMediaListCollection>(token, query);
   const lists = result.data?.MediaListCollection?.lists || [];
-  const allEntries: any[] = [];
+  const allEntries: AniListMediaListEntry[] = [];
 
   for (const list of lists) {
     if (list.entries) {

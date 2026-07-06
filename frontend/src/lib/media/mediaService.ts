@@ -117,7 +117,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 // Missing fields (stats, characters, relations, metaLines) are empty — filled
 // once the full API fetch completes.
 
-function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
+export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
   const base = type.split('_')[0];
   if (base === 'game' || base === 'vnovel') return 'playing';
   if (base === 'anime' || base === 'series' || base === 'movie') return 'watching';

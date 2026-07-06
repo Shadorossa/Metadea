@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
 
   // GitHub API
   GITHUB: 'https://api.github.com',
+  GITHUB_DEVICE_LOGIN: 'https://github.com/login/device',
 
   // Steam covers (dynamic)
   STEAM_COVERS: (appId: string | number) =>

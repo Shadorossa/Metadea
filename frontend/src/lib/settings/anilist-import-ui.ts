@@ -89,10 +89,11 @@ export function initAniListImportUI(showToast: (msg?: string) => void) {
       modal.remove();
       backdrop.remove();
       showToast(result.ok ? successMessage(result) : `Error: ${result.error}`);
-    } catch (e: any) {
+    } catch (e) {
       modal.remove();
       backdrop.remove();
-      showToast(`Error: ${e?.message ?? `${kind === 'import' ? 'Import' : 'Sync'} failed`}`);
+      const message = e instanceof Error ? e.message : `${kind === 'import' ? 'Import' : 'Sync'} failed`;
+      showToast(`Error: ${message}`);
     } finally {
       await updateImportButtons();
     }
@@ -113,7 +114,7 @@ export function initAniListImportUI(showToast: (msg?: string) => void) {
   );
 
   // Event delegation for import buttons (choose modal is created/destroyed dynamically)
-  document.addEventListener('click', (e: any) => {
+  document.addEventListener('click', (e: MouseEvent) => {
     const btn = (e.target as HTMLElement).closest('button');
     if (!btn) return;
 

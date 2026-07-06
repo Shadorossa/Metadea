@@ -5,6 +5,7 @@ import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
+import { getT } from '../../i18n/client';
 
 const DISCONNECTED_AVATAR_HTML = `<img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />`;
 
@@ -17,6 +18,7 @@ const ls = {
 const TOKEN_KEY = STORAGE_KEYS.anilistToken;
 
 export function initAniListAuth() {
+  const t = getT().settings;
   const anilistLoginBtn     = byId<HTMLButtonElement>('anilist-login-btn');
   const anilistUserStatus   = document.getElementById('anilist-user-status');
   const anilistAvatarContainer = document.getElementById('anilist-avatar-container');
@@ -58,7 +60,7 @@ export function initAniListAuth() {
     // Migrate from Tauri-only storage to localStorage
     if (!lsToken) ls.set(TOKEN_KEY, cachedToken);
 
-    setAuthButtonBusy(anilistLoginBtn, 'Verificando...');
+    setAuthButtonBusy(anilistLoginBtn, t.anilist_verifying);
 
     fetchAniListUser(cachedToken).then(res => {
       const user = res?.data?.Viewer;
@@ -93,7 +95,7 @@ export function initAniListAuth() {
       const envConfig = await readEnvConfig();
       const clientId = envConfig.anilist_client_id?.trim();
       if (!clientId) {
-        alert('Por favor, configura tu AniList Client ID en la pestaña Entorno (Ajustes de Aplicación) antes de conectar.');
+        alert(t.anilist_client_id_required);
         return;
       }
 
@@ -105,16 +107,16 @@ export function initAniListAuth() {
       }
     } catch (err) {
       console.error(err);
-      alert('Error al leer la configuración de entorno.');
+      alert(t.anilist_env_read_error);
     }
   });
 
   if (anilistSaveTokenBtn && anilistTokenInput) {
     anilistSaveTokenBtn.addEventListener('click', async () => {
       const rawToken = anilistTokenInput.value.trim();
-      if (!rawToken) { alert('Por favor, introduce un token válido.'); return; }
+      if (!rawToken) { alert(t.anilist_token_required); return; }
 
-      setAuthButtonBusy(anilistSaveTokenBtn, 'Validando...');
+      setAuthButtonBusy(anilistSaveTokenBtn, t.anilist_validating);
 
       try {
         const res = await fetchAniListUser(rawToken);
@@ -126,15 +128,15 @@ export function initAniListAuth() {
           hideModal(anilistTokenModal);
           showConnected(user.name, user.avatar?.large);
         } else {
-          alert('Token no válido o expirado.');
+          alert(t.anilist_token_invalid);
           anilistSaveTokenBtn.disabled = false;
-          anilistSaveTokenBtn.textContent = 'Validar y guardar';
+          anilistSaveTokenBtn.textContent = t.anilist_validate_save;
         }
       } catch (err) {
         console.error(err);
-        alert('Error al validar el token de AniList.');
+        alert(t.anilist_token_validate_error);
         anilistSaveTokenBtn.disabled = false;
-        anilistSaveTokenBtn.textContent = 'Validar y guardar';
+        anilistSaveTokenBtn.textContent = t.anilist_validate_save;
       }
     });
   }
@@ -144,7 +146,7 @@ export function initAniListAuth() {
     if (anilistTokenInput) anilistTokenInput.value = '';
     if (anilistSaveTokenBtn) {
       anilistSaveTokenBtn.disabled = false;
-      anilistSaveTokenBtn.textContent = 'Validar y guardar';
+      anilistSaveTokenBtn.textContent = t.anilist_validate_save;
     }
   });
 }

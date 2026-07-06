@@ -1,9 +1,16 @@
 import { readUserJourney, writeUserJourney } from '../tauri';
+import type { DayJourney, UserJourneyEvent, MediaCatalogEntry } from '../tauri';
 import { typeIconMap } from '../shared/icon-strings';
 import { TYPE_LABELS, TYPE_GRADIENTS } from '../constants/media';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import type { getT } from '../../i18n/client';
 
-type P = any;
+type P = ReturnType<typeof getT>['profile'];
+
+interface ActivityEvent extends UserJourneyEvent {
+  date: string;
+  formattedDate: string;
+}
 
 const TYPE_ICON = typeIconMap(12);
 
@@ -20,11 +27,11 @@ function interpolate(template: string, vars: Record<string, string | number>): s
   return Object.entries(vars).reduce((acc, [key, val]) => acc.replace(`{${key}}`, String(val)), template);
 }
 
-export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Promise<string> {
+export async function buildActivityHtml(catalogMap: Map<string, MediaCatalogEntry>, p: P): Promise<string> {
   const journey = await readUserJourney();
   const j = p.journey || {};
 
-  const journeyArr = Array.isArray(journey) ? journey : [];
+  const journeyArr: DayJourney[] = Array.isArray(journey) ? journey : [];
   const daysWithEvents = journeyArr.filter(day => day && day.date && day.events && day.events.length > 0).slice(0, 7);
 
   if (daysWithEvents.length === 0) {
@@ -61,14 +68,14 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
   if (batchEpisodes) {
     // Group progress events by date and media
     const groupedEvents: typeof allEvents = [];
-    const progressByDateAndMedia = new Map<string, any>();
+    const progressByDateAndMedia = new Map<string, ActivityEvent>();
 
     for (const event of allEvents) {
       if (event.type === 'progress') {
         const key = `${event.date}_${event.externalId}`;
         if (progressByDateAndMedia.has(key)) {
           // Merge with existing progress for this date+media
-          const existing = progressByDateAndMedia.get(key);
+          const existing = progressByDateAndMedia.get(key)!;
           existing.progressEnd = event.progressEnd;
           existing.timestamp = event.timestamp;
         } else {
@@ -146,7 +153,7 @@ export async function buildActivityHtml(catalogMap: Map<string, any>, p: P): Pro
   `;
 }
 
-export function initActivityListeners(el: HTMLElement, catalogMap: Map<string, any>, p: any) {
+export function initActivityListeners(el: HTMLElement, catalogMap: Map<string, MediaCatalogEntry>, p: P) {
   const removeMenu = () => {
     const existing = document.getElementById('act-ctx-menu');
     if (existing) existing.remove();
@@ -182,14 +189,14 @@ export function initActivityListeners(el: HTMLElement, catalogMap: Map<string, a
       
       btn.addEventListener('click', async () => {
         const journey = await readUserJourney();
-        const updated = journey.map((day: any) => {
+        const updated = journey.map((day): DayJourney => {
           if (day.date === date) {
-            day.events = (day.events || []).filter((evt: any) => 
+            day.events = (day.events || []).filter(evt =>
               !(evt.externalId === externalId && evt.type === type && evt.timestamp === timestamp)
             );
           }
           return day;
-        }).filter((day: any) => day.events && day.events.length > 0);
+        }).filter((day): boolean => day.events && day.events.length > 0);
         
         await writeUserJourney(updated);
         

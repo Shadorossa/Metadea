@@ -48,6 +48,40 @@ export interface ImportProgress {
 
 type AniListMediaType = 'ANIME' | 'MANGA';
 
+interface AniListFuzzyDate {
+  year?: number;
+  month?: number;
+  day?: number;
+}
+
+interface AniListImportMediaItem {
+  mediaId: number;
+  status: string;
+  score: number | null;
+  progress: number | null;
+  progressVolumes: number | null;
+  startedAt: AniListFuzzyDate | null;
+  completedAt: AniListFuzzyDate | null;
+  notes: string | null;
+  media: {
+    id: number;
+    type: string;
+    format?: string;
+    title: { romaji: string | null; english: string | null; native: string | null };
+    coverImage: { large: string | null } | null;
+    genres: string[];
+    source: string | null;
+    status: string | null;
+  };
+}
+
+interface AniListImportPage {
+  Page: {
+    pageInfo: { hasNextPage: boolean; currentPage: number };
+    mediaList: AniListImportMediaItem[];
+  };
+}
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function getToken(): string | null {
@@ -67,14 +101,14 @@ async function fetchAllPages(
   userId: number,
   anilistType: AniListMediaType,
   onProg: (p: ImportProgress) => void
-): Promise<any[]> {
-  const result: any[] = [];
+): Promise<AniListImportMediaItem[]> {
+  const result: AniListImportMediaItem[] = [];
   let page = 1;
   let hasNextPage = true;
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
   while (hasNextPage) {
     onProg({ current: page - 1, total: page, status: 'loading', message: `Descargando ${anilistType} página ${page}...` });
-    const { ok, status, result: pageResult } = await graphqlPost<{ Page: any }>(
+    const { ok, status, result: pageResult } = await graphqlPost<AniListImportPage>(
       API_ENDPOINTS.ANILIST, IMPORT_QUERY, { userId, type: anilistType, page }, { token },
     );
     if (!ok) throw new Error(pageResult?.errors?.[0]?.message || `HTTP ${status}`);
@@ -90,7 +124,7 @@ async function fetchAllPages(
 async function fetchAniListItems(
   selectedFormats: string[],
   onProg: (p: ImportProgress) => void
-): Promise<{ token: string; filteredList: any[] } | { ok: false; error: string }> {
+): Promise<{ token: string; filteredList: AniListImportMediaItem[] } | { ok: false; error: string }> {
   const token = getToken();
   if (!token) return { ok: false, error: 'No AniList token found' };
 
@@ -102,7 +136,7 @@ async function fetchAniListItems(
   const needAnime = selectedFormats.some(f => ANIME_FORMAT_SET.has(f));
   const needManga = selectedFormats.some(f => MANGA_FORMAT_SET.has(f));
 
-  const allItems: any[] = [];
+  const allItems: AniListImportMediaItem[] = [];
   if (needAnime) allItems.push(...await fetchAllPages(token, userId, 'ANIME', onProg));
   if (needManga) allItems.push(...await fetchAllPages(token, userId, 'MANGA', onProg));
 
@@ -132,10 +166,10 @@ export async function importFromAniList(
 
     onProg({ current: 1, total: 1, status: 'importing', message: `Importando ${filteredList.length} items...` });
 
-    const existingLibrary = await getAllLibraryEntries().catch(() => [] as any[]);
-    const existingMap = new Map(existingLibrary.map((e: any) => [e.external_id, e]));
-    const catalogEntries = await getAllCatalogEntries().catch(() => [] as any[]);
-    const catalogMap = new Map(catalogEntries.map((e: any) => [e.external_id, e]));
+    const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
+    const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
+    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+    const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
 
     let imported = 0;
 
@@ -178,9 +212,10 @@ export async function importFromAniList(
 
     onProg({ current: filteredList.length, total: filteredList.length, status: 'done' });
     return { ok: true, imported };
-  } catch (e: any) {
-    onProg({ current: 0, total: 0, status: 'error', message: e?.message ?? 'Unknown error' });
-    return { ok: false, error: e?.message ?? 'Import failed' };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    onProg({ current: 0, total: 0, status: 'error', message });
+    return { ok: false, error: message };
   }
 }
 
@@ -202,8 +237,8 @@ export async function syncFromAniList(
 
     const existingLibrary = await getAllLibraryEntries().catch(() => [] as LibraryEntry[]);
     const existingMap = new Map(existingLibrary.map(e => [e.external_id, e]));
-    const catalogEntries = await getAllCatalogEntries().catch(() => [] as any[]);
-    const catalogMap = new Map(catalogEntries.map((e: any) => [e.external_id, e]));
+    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+    const catalogMap = new Map(catalogEntries.map(e => [e.external_id, e]));
 
     let updated = 0;
     let added = 0;
@@ -316,7 +351,7 @@ function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: numbe
   return `${year}-${month}-${day}`;
 }
 
-function buildCatalogEntry(externalId: string, entryType: string, mediaItem: any): any {
+function buildCatalogEntry(externalId: string, entryType: string, mediaItem: AniListImportMediaItem): MediaCatalogEntry {
   const now = new Date().toISOString();
   const { core, tags } = unifyGenres(mediaItem.media?.genres ?? []);
   return {
@@ -337,11 +372,6 @@ function buildCatalogEntry(externalId: string, entryType: string, mediaItem: any
     status: mediaItem.media?.status ?? null,
     genres_csv: core.join(',') || null,
     genres_tag_csv: tags.join(',') || null,
-    score_avg: null,
-    score_count: null,
-    total_episodes: null,
-    total_chapters: null,
-    total_volumes: null,
     created_at: now,
     updated_at: now,
   };

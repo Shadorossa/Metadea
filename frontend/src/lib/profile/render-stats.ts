@@ -1,6 +1,6 @@
 import { getAllLibraryEntries, getAllCatalogEntries, readUserJourney } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import { getT } from '../../i18n/client';
+import { getT, getLangCode } from '../../i18n/client';
 import { HOF_GRADIENTS } from './hof';
 import { getActiveRatingSystem, formatAverageScore, averageScoreSuffix } from '../media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../shared/icon-strings';
@@ -23,7 +23,8 @@ function renderReleaseItemHtml(r: UpcomingRelease): string {
   const typeLabelText = TYPE_LABELS[r.type] || r.type;
   const fallbackBg = HOF_GRADIENTS[r.type] || 'linear-gradient(160deg, #374151, #1f2937)';
   const style = r.cover ? `background-image: url('${r.cover}'); background-size: cover;` : `background: ${fallbackBg};`;
-  const formattedReleaseDate = r.releaseDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  const dateLocale = getLangCode() === 'en' ? 'en-US' : 'es-ES';
+  const formattedReleaseDate = r.releaseDate.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
   return `
     <div class="calendar-release-item">
       <div class="calendar-release-img" style="${style}"></div>
@@ -39,7 +40,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   const t = getT();
   const p = t.profile;
 
-  el.innerHTML = `<div class="profile-empty"><p>Cargando estadísticas...</p></div>`;
+  el.innerHTML = `<div class="profile-empty"><p>${p.stats_loading}</p></div>`;
 
   const items = await getAllLibraryEntries().catch(() => [] as Items);
 

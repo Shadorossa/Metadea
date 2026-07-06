@@ -1,8 +1,10 @@
 import { saveImage, getImage, removeImage } from '../storage/images';
 import { readFileAsDataURL, fileTooLarge, compressImage } from './image-utils';
 import { byId } from '../shared/dom';
+import { getT } from '../../i18n/client';
 
 export function initBanner(showToast: (msg?: string) => void) {
+  const t = getT().settings;
   const dropZone  = document.getElementById('banner-drop-zone')!;
   const input     = byId<HTMLInputElement>('banner-input')!;
   const uploadBtn = document.getElementById('banner-upload-btn')!;
@@ -25,15 +27,15 @@ export function initBanner(showToast: (msg?: string) => void) {
   renderBannerPreview();
 
   async function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) { showToast('Solo se admiten imágenes'); return; }
-    if (fileTooLarge(file, 20)) { showToast('La imagen supera los 20 MB'); return; }
+    if (!file.type.startsWith('image/')) { showToast(t.banner_only_images); return; }
+    if (fileTooLarge(file, 20)) { showToast(t.banner_too_large); return; }
     let dataUrl = await readFileAsDataURL(file);
     dataUrl = await compressImage(dataUrl, 2560, 0.80);
     if (!await saveImage('profile_banner_custom', dataUrl)) {
-      showToast('Error: no se pudo guardar'); return;
+      showToast(t.banner_save_error); return;
     }
     renderBannerPreview();
-    showToast('Banner actualizado');
+    showToast(t.banner_updated);
   }
 
   uploadBtn.addEventListener('click', () => input.click());
@@ -47,7 +49,7 @@ export function initBanner(showToast: (msg?: string) => void) {
   removeBtn.addEventListener('click', async () => {
     await removeImage('profile_banner_custom');
     renderBannerPreview();
-    showToast('Banner eliminado');
+    showToast(t.banner_removed);
   });
 
   dropZone.addEventListener('dragover', (e) => {

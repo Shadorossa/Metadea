@@ -2,6 +2,7 @@ import { readEnvConfig } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
+import { getLangCode } from '../../../i18n/client';
 
 interface TmdbMovie {
   id: number;
@@ -70,7 +71,8 @@ async function fetchFromTmdb(
 
   if (!accessToken && !apiKey) return [];
 
-  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=es-ES`;
+  const tmdbLocale = getLangCode() === 'en' ? 'en-US' : 'es-ES';
+  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=${tmdbLocale}`;
   const headers: Record<string, string> = {};
 
   if (accessToken) {

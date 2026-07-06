@@ -4,8 +4,11 @@ import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
+import { getT } from '../../i18n/client';
+import { API_ENDPOINTS } from '../api/endpoints';
 
 export function initGitHubAuth() {
+  const t = getT().settings;
   const githubLoginBtn = byId<HTMLButtonElement>('github-login-btn');
   const githubUserStatus = document.getElementById('github-user-status');
   const githubAvatarContainer = document.getElementById('github-avatar-container');
@@ -33,7 +36,7 @@ export function initGitHubAuth() {
   // Check cached token on load via Rust filesystem session.json
   invoke<string | null>('get_github_token').then(cachedToken => {
     if (cachedToken) {
-      setAuthButtonBusy(githubLoginBtn, 'Verificando...');
+      setAuthButtonBusy(githubLoginBtn, t.github_verifying);
       fetchGitHubUser(cachedToken).then(user => {
         showConnected(user.login, user.avatar_url);
       }).catch(async err => {
@@ -63,7 +66,7 @@ export function initGitHubAuth() {
       }
 
       // Start device code flow
-      setAuthButtonBusy(githubLoginBtn, 'Iniciando...');
+      setAuthButtonBusy(githubLoginBtn, t.github_starting);
 
       try {
         const data = await invoke<any>('request_github_device_code', { clientId: GITHUB_CLIENT_ID });
@@ -72,7 +75,7 @@ export function initGitHubAuth() {
         showModal(githubDeviceModal);
 
         // Open browser
-        window.open('https://github.com/login/device', '_blank');
+        window.open(API_ENDPOINTS.GITHUB_DEVICE_LOGIN, '_blank');
 
         let currentInterval = (data.interval || 5) * 1000;
 
@@ -100,7 +103,7 @@ export function initGitHubAuth() {
             } else {
               hideModal(githubDeviceModal);
               showDisconnected();
-              alert('Fallo en el inicio de sesión: ' + (tokenData.error_description || tokenData.error));
+              alert(t.github_login_failed.replace('{error}', tokenData.error_description || tokenData.error));
               return; // Stop polling
             }
           } catch (e) {
@@ -115,7 +118,7 @@ export function initGitHubAuth() {
       } catch (err) {
         console.error(err);
         showDisconnected();
-        alert('No se pudo iniciar el flujo de autenticación.');
+        alert(t.github_auth_flow_error);
       }
     });
   }
