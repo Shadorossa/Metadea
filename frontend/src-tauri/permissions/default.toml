@@ -59,6 +59,7 @@ commands.allow = [
   "get_media_relations",
   "save_media_authors",
   "get_media_authors",
+  "save_author_profile_and_relations",
   "request_github_device_code",
   "request_github_device_token",
   "get_github_user_profile",

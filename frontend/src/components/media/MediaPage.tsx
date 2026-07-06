@@ -253,7 +253,7 @@ export default function MediaPage() {
       genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
       platforms_csv:         data.platforms?.join(',') || undefined,
       companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
-      authors_csv:           data.authors?.join(',') || undefined,
+      authors_csv:           data.authors?.map(a => a.external_id || `author:${a.name}`).join(',') || undefined,
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});
@@ -648,11 +648,15 @@ export default function MediaPage() {
                               <span
                                 className="media-author-name media-author-name--link"
                                 onClick={() => {
-                                  const tauri = window.__TAURI__;
-                                  if (tauri?.opener?.openUrl) {
-                                    tauri.opener.openUrl(auth.url!);
+                                  if (auth.url!.startsWith('http')) {
+                                    const tauri = window.__TAURI__;
+                                    if (tauri?.opener?.openUrl) {
+                                      tauri.opener.openUrl(auth.url!);
+                                    } else {
+                                      window.open(auth.url!, '_blank');
+                                    }
                                   } else {
-                                    window.open(auth.url!, '_blank');
+                                    window.location.href = auth.url!;
                                   }
                                 }}
                               >

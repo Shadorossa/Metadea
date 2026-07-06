@@ -141,13 +141,30 @@ pub async fn save_catalog_entry(
     ).str_err()?;
 
     if let Some(ref authors) = entry.authors_csv {
-        let _ = conn.execute("DELETE FROM media_author WHERE media_external_id = ?1", [&entry.external_id]);
-        for author in authors.split(',') {
-            let author = author.trim();
-            if !author.is_empty() {
+        let _ = conn.execute("DELETE FROM media_by_author WHERE media_external_id = ?1", [&entry.external_id]);
+        for author_id in authors.split(',') {
+            let author_id = author_id.trim();
+            if !author_id.is_empty() {
+                let clean_id = if author_id.contains(':') {
+                    author_id.to_string()
+                } else {
+                    format!("author:{}", author_id)
+                };
+
+                let name = if author_id.contains(':') {
+                    author_id.split(':').nth(1).unwrap_or(author_id)
+                } else {
+                    author_id
+                };
+
                 let _ = conn.execute(
-                    "INSERT OR IGNORE INTO media_author (media_external_id, author_name) VALUES (?1, ?2)",
-                    rusqlite::params![&entry.external_id, author],
+                    "INSERT OR IGNORE INTO media_author (external_id, name) VALUES (?1, ?2)",
+                    rusqlite::params![&clean_id, name],
+                );
+                let _ = conn.execute(
+                    "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
+                     VALUES (?1, ?2, ?3)",
+                    rusqlite::params![&entry.external_id, &clean_id, "AUTHOR"],
                 );
             }
         }
@@ -569,4 +586,77 @@ pub async fn get_media_authors(
         .collect();
 
     Ok(rows)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthorWorkRelation {
+    pub media_external_id: String,
+    pub role: Option<String>,
+    pub title: String,
+    pub cover: Option<String>,
+}
+
+#[tauri::command]
+pub async fn save_author_profile_and_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    author: DbMediaAuthor,
+    relations: Vec<AuthorWorkRelation>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    let now = Utc::now().to_rfc3339();
+
+    // 1. Save or replace author profile in media_author
+    tx.execute(
+        "INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![
+            &author.external_id,
+            &author.name,
+            &author.image,
+            &author.url,
+            &now,
+        ],
+    )
+    .str_err()?;
+
+    // 2. Clear previous relations for this author in media_by_author
+    tx.execute(
+        "DELETE FROM media_by_author WHERE author_external_id = ?1",
+        [&author.external_id],
+    )
+    .str_err()?;
+
+    // 3. Save works and relationships
+    for rel in relations {
+        tx.execute(
+            "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
+             VALUES (?1, ?2, ?3)",
+            rusqlite::params![
+                &rel.media_external_id,
+                &author.external_id,
+                &rel.role,
+            ],
+        )
+        .str_err()?;
+
+        let exists_val: i32 = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
+            [&rel.media_external_id],
+            |row| row.get(0)
+        ).str_err()?;
+
+        if exists_val == 0 {
+            let rel_type = rel.media_external_id.split(':').next().unwrap_or("anime").to_string();
+            tx.execute(
+                "INSERT INTO media_catalog (id, external_id, type, title_main, cover_url, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                rusqlite::params![crate::db::generate_id(), &rel.media_external_id, &rel_type, &rel.title, &rel.cover, &now, &now],
+            ).str_err()?;
+        }
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
 }

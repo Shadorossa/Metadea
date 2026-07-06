@@ -77,6 +77,7 @@ const lang = getLang(Astro.url);
 </BaseLayout>
 
 <script>
+  import { invoke } from '@tauri-apps/api/core';
   import { fetchAniListStaffDetail } from '../lib/search/providers/anilist';
   import { fetchOpenLibAuthorFullDetail } from '../lib/search/providers/openlibrary';
 
@@ -168,6 +169,28 @@ const lang = getLang(Astro.url);
           document.getElementById('author-works-section')!.style.display = 'block';
         }
 
+        // Save profile and relations to local DB
+        const dbAuthor = {
+          external_id: externalId,
+          name: staff.name.full,
+          image: staff.image?.large || null,
+          role: null,
+          url: `/author?id=${externalId}`
+        };
+        const dbRelations = edges.map(edge => {
+          const item = edge.node;
+          const type = item.type?.toLowerCase() === 'anime' ? 'anime'
+            : item.format === 'NOVEL' ? 'lnovel'
+            : 'manga';
+          return {
+            media_external_id: `${type}:${item.id}`,
+            role: edge.staffRole || null,
+            title: item.title.english || item.title.romaji || 'Unknown Title',
+            cover: item.coverImage?.medium || null
+          };
+        });
+        invoke('save_author_profile_and_relations', { author: dbAuthor, relations: dbRelations }).catch(console.error);
+
       } else if (provider === 'author') {
         const author = await fetchOpenLibAuthorFullDetail(idVal);
         if (!author) throw new Error('OpenLibrary author details not found');
@@ -177,9 +200,10 @@ const lang = getLang(Astro.url);
 
         // Photo
         const avatarContainer = document.getElementById('author-avatar-container')!;
+        let authorPhotoUrl: string | null = null;
         if (author.photos && author.photos.length > 0) {
-          const photoUrl = `https://covers.openlibrary.org/a/id/${author.photos[0]}-L.jpg`;
-          avatarContainer.innerHTML = `<img src="${photoUrl}" alt="${author.name}" class="author-avatar-img" />`;
+          authorPhotoUrl = `https://covers.openlibrary.org/a/id/${author.photos[0]}-L.jpg`;
+          avatarContainer.innerHTML = `<img src="${authorPhotoUrl}" alt="${author.name}" class="author-avatar-img" />`;
         } else {
           avatarContainer.innerHTML = `<div class="author-avatar-placeholder">No Image</div>`;
         }
@@ -222,7 +246,6 @@ const lang = getLang(Astro.url);
         if (works.length > 0) {
           worksGrid.innerHTML = works
             .map(work => {
-              const workId = work.key.split('/').pop() || '';
               const title = work.title;
               const coverImg = work.covers && work.covers.length > 0
                 ? `<img src="https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg" alt="${title}" class="author-work-cover" />`
@@ -240,6 +263,25 @@ const lang = getLang(Astro.url);
             .join('');
           document.getElementById('author-works-section')!.style.display = 'block';
         }
+
+        // Save profile and relations to local DB
+        const dbAuthor = {
+          external_id: externalId,
+          name: author.name,
+          image: authorPhotoUrl,
+          role: null,
+          url: `/author?id=${externalId}`
+        };
+        const dbRelations = works.map(work => ({
+          media_external_id: `book:${work.key}`,
+          role: 'AUTHOR',
+          title: work.title,
+          cover: work.covers && work.covers.length > 0
+            ? `https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg`
+            : null
+        }));
+        invoke('save_author_profile_and_relations', { author: dbAuthor, relations: dbRelations }).catch(console.error);
+
       } else {
         throw new Error(`Unsupported author provider: ${provider}`);
       }
