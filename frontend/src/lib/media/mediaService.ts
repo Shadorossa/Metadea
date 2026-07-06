@@ -117,9 +117,10 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     let richAuthors: MediaAuthor[] = [];
     if (authorDetail) {
       richAuthors.push({
+        external_id: authorDetail.key ? `author:${authorDetail.key}` : `author:${authorDetail.name}`,
         name: authorDetail.name,
         image: authorDetail.image || undefined,
-        url: authorDetail.key ? `https://openlibrary.org/authors/${authorDetail.key}` : undefined
+        url: authorDetail.key ? `/author?id=author:${authorDetail.key}` : undefined
       });
     } else if (preloadNames) {
       richAuthors = preloadNames.map(name => ({ name }));
@@ -278,7 +279,7 @@ export function fetchMediaDataWithFallback(
               name: a.name,
               image: a.image || undefined,
               role: a.role || undefined,
-              url: a.url || undefined
+              url: `/author?id=${a.external_id}`
             }));
           }
         } catch (e) {

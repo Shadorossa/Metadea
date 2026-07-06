@@ -95,3 +95,35 @@ export async function searchBooks(searchQuery: string, signal: AbortSignal): Pro
 
   return results;
 }
+
+export interface OpenLibAuthorDetail {
+  name: string;
+  birth_date?: string;
+  death_date?: string;
+  bio?: string | { type: string; value: string };
+  photos?: number[];
+  works: {
+    title: string;
+    key: string;
+    covers?: number[];
+  }[];
+}
+
+export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<OpenLibAuthorDetail | null> {
+  const detail = await fetchJson<any>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`);
+  if (!detail) return null;
+  const worksRes = await fetchJson<{ entries?: any[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`).catch(() => null);
+  const works = (worksRes?.entries || []).map(entry => ({
+    title: entry.title,
+    key: entry.key,
+    covers: entry.covers
+  }));
+  return {
+    name: detail.name,
+    birth_date: detail.birth_date,
+    death_date: detail.death_date,
+    bio: detail.bio,
+    photos: detail.photos,
+    works
+  };
+}

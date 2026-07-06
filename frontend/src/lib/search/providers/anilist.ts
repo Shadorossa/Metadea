@@ -413,4 +413,44 @@ export async function fetchAniListCharacterDetail(id: number): Promise<AniListCh
   return character;
 }
 
+export interface AniListStaffDetail {
+  name: { full: string; native: string | null; alternative: string[] };
+  image: { large: string | null } | null;
+  description: string | null;
+  staffMedia: {
+    edges: {
+      staffRole: string;
+      node: {
+        id: number;
+        type: string;
+        format: string | null;
+        title: { romaji: string | null; english: string | null };
+        coverImage: { medium: string | null } | null;
+      };
+    }[];
+  };
+}
+
+export async function fetchAniListStaffDetail(staffId: number): Promise<AniListStaffDetail | null> {
+  const query = `
+    query Staff($id: Int!) {
+      Staff(id: $id) {
+        name { full native alternative }
+        image { large }
+        description(asHtml: true)
+        staffMedia(sort: [START_DATE_DESC]) {
+          edges {
+            staffRole
+            node {
+              id type format title { romaji english } coverImage { medium }
+            }
+          }
+        }
+      }
+    }
+  `;
+  const res = await anilistPost<{ Staff: AniListStaffDetail }>(query, { id: staffId });
+  return res?.Staff ?? null;
+}
+
 

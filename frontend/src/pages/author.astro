@@ -1,0 +1,260 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages/author.css';
+import { getLang } from '../i18n/index';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title="Author Details — Metadea" lang={lang} activePage="search">
+  <div class="author-page-container">
+    
+    <!-- Back Button -->
+    <div class="back-btn-wrap">
+      <a href="#" onclick="history.back(); return false;" class="btn btn--sm btn--secondary back-btn-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Go back
+      </a>
+    </div>
+
+    <!-- Loading State -->
+    <div id="author-loading" class="author-empty-box">
+      <p>Loading author details...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="author-error" class="author-error-box" style="display: none;">
+      <p style="font-weight: 700; margin-bottom: 0.5rem;">Error loading author details</p>
+      <p id="author-error-text" style="font-size: 0.85rem; opacity: 0.8;"></p>
+    </div>
+
+    <!-- Author Content -->
+    <div id="author-content" class="author-detail-layout" style="display: none;">
+      
+      <!-- Left Column: Sidebar -->
+      <div class="author-sidebar-col">
+        <!-- Author Photo -->
+        <div class="author-avatar-wrap" id="author-avatar-container">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Sidebar Stats Card -->
+        <div class="author-stats-card" id="author-stats-card" style="display: none;">
+          <div class="author-sidebar-stats-list" id="author-stats-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Main Content -->
+      <div class="author-main-col">
+
+        <!-- Names Header -->
+        <div class="author-names-header">
+          <h1 class="author-name-title" id="author-name-full"></h1>
+          <p class="author-name-native" id="author-name-native" style="display: none; margin: 0;"></p>
+          <div class="author-alt-names" id="author-alt-names" style="display: none;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Biography Section -->
+        <div class="author-section-box" id="author-bio-section" style="display: none;">
+          <h2 class="author-section-title">Biography</h2>
+          <div class="author-description-text" id="author-description"></div>
+        </div>
+
+        <!-- Works Section -->
+        <div class="author-section-box" id="author-works-section" style="display: none;">
+          <h2 class="author-section-title">Works</h2>
+          <div class="author-works-grid" id="author-works-grid"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { fetchAniListStaffDetail } from '../lib/search/providers/anilist';
+  import { fetchOpenLibAuthorFullDetail } from '../lib/search/providers/openlibrary';
+
+  async function loadAuthorData() {
+    const loadingEl = document.getElementById('author-loading')!;
+    const errorEl = document.getElementById('author-error')!;
+    const errorTextEl = document.getElementById('author-error-text')!;
+    const contentEl = document.getElementById('author-content')!;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const externalId = urlParams.get('id') ?? '';
+
+    if (!externalId) {
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = 'Invalid or missing Author ID parameter';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const parts = externalId.split(':');
+      const provider = parts[0];
+      const idVal = parts.slice(1).join(':');
+
+      if (provider === 'staff') {
+        const staffId = parseInt(idVal, 10);
+        if (isNaN(staffId)) throw new Error('Invalid AniList staff numerical ID');
+
+        const staff = await fetchAniListStaffDetail(staffId);
+        if (!staff) throw new Error('AniList staff member not found');
+
+        // Name
+        document.getElementById('author-name-full')!.textContent = staff.name.full;
+        const nativeEl = document.getElementById('author-name-native')!;
+        if (staff.name.native) {
+          nativeEl.textContent = staff.name.native;
+          nativeEl.style.display = 'block';
+        }
+
+        // Image
+        const avatarContainer = document.getElementById('author-avatar-container')!;
+        if (staff.image?.large) {
+          avatarContainer.innerHTML = `<img src="${staff.image.large}" alt="${staff.name.full}" class="author-avatar-img" />`;
+        } else {
+          avatarContainer.innerHTML = `<div class="author-avatar-placeholder">No Image</div>`;
+        }
+
+        // Alternatives
+        const altNamesContainer = document.getElementById('author-alt-names')!;
+        if (staff.name.alternative && staff.name.alternative.length > 0) {
+          altNamesContainer.innerHTML = staff.name.alternative
+            .map((alt: string) => `<span class="author-alt-name-tag">${alt}</span>`)
+            .join('');
+          altNamesContainer.style.display = 'flex';
+        }
+
+        // Biography
+        if (staff.description) {
+          document.getElementById('author-description')!.innerHTML = staff.description;
+          document.getElementById('author-bio-section')!.style.display = 'block';
+        }
+
+        // Works
+        const worksGrid = document.getElementById('author-works-grid')!;
+        const edges = staff.staffMedia?.edges || [];
+        if (edges.length > 0) {
+          worksGrid.innerHTML = edges
+            .map(edge => {
+              const item = edge.node;
+              const type = item.type?.toLowerCase() === 'anime' ? 'anime'
+                : item.format === 'NOVEL' ? 'lnovel'
+                : 'manga';
+              const title = item.title.english || item.title.romaji || 'Unknown Title';
+              const coverImg = item.coverImage?.medium
+                ? `<img src="${item.coverImage.medium}" alt="${title}" class="author-work-cover" />`
+                : `<div class="author-work-placeholder">${title}</div>`;
+
+              return `
+                <a href="/media?id=${type}:${item.id}" class="author-work-card">
+                  <div class="author-work-cover-wrap">
+                    ${coverImg}
+                  </div>
+                  <span class="author-work-title" title="${title}">${title}</span>
+                  ${edge.staffRole ? `<span class="author-work-role">${edge.staffRole}</span>` : ''}
+                </a>
+              `;
+            })
+            .join('');
+          document.getElementById('author-works-section')!.style.display = 'block';
+        }
+
+      } else if (provider === 'author') {
+        const author = await fetchOpenLibAuthorFullDetail(idVal);
+        if (!author) throw new Error('OpenLibrary author details not found');
+
+        // Name
+        document.getElementById('author-name-full')!.textContent = author.name;
+
+        // Photo
+        const avatarContainer = document.getElementById('author-avatar-container')!;
+        if (author.photos && author.photos.length > 0) {
+          const photoUrl = `https://covers.openlibrary.org/a/id/${author.photos[0]}-L.jpg`;
+          avatarContainer.innerHTML = `<img src="${photoUrl}" alt="${author.name}" class="author-avatar-img" />`;
+        } else {
+          avatarContainer.innerHTML = `<div class="author-avatar-placeholder">No Image</div>`;
+        }
+
+        // Stats card
+        const statsList = document.getElementById('author-stats-list')!;
+        let hasStats = false;
+        if (author.birth_date) {
+          statsList.innerHTML += `
+            <div class="author-sidebar-stat-item">
+              <span class="author-stat-label">Birth Date</span>
+              <span class="author-stat-value">${author.birth_date}</span>
+            </div>
+          `;
+          hasStats = true;
+        }
+        if (author.death_date) {
+          statsList.innerHTML += `
+            <div class="author-sidebar-stat-item">
+              <span class="author-stat-label">Death Date</span>
+              <span class="author-stat-value">${author.death_date}</span>
+            </div>
+          `;
+          hasStats = true;
+        }
+        if (hasStats) {
+          document.getElementById('author-stats-card')!.style.display = 'block';
+        }
+
+        // Biography
+        const bioText = typeof author.bio === 'object' ? author.bio.value : author.bio;
+        if (bioText) {
+          document.getElementById('author-description')!.textContent = bioText;
+          document.getElementById('author-bio-section')!.style.display = 'block';
+        }
+
+        // Works
+        const worksGrid = document.getElementById('author-works-grid')!;
+        const works = author.works || [];
+        if (works.length > 0) {
+          worksGrid.innerHTML = works
+            .map(work => {
+              const workId = work.key.split('/').pop() || '';
+              const title = work.title;
+              const coverImg = work.covers && work.covers.length > 0
+                ? `<img src="https://covers.openlibrary.org/b/id/${work.covers[0]}-M.jpg" alt="${title}" class="author-work-cover" />`
+                : `<div class="author-work-placeholder">${title}</div>`;
+
+              return `
+                <a href="/media?id=book:${work.key}" class="author-work-card">
+                  <div class="author-work-cover-wrap">
+                    ${coverImg}
+                  </div>
+                  <span class="author-work-title" title="${title}">${title}</span>
+                </a>
+              `;
+            })
+            .join('');
+          document.getElementById('author-works-section')!.style.display = 'block';
+        }
+      } else {
+        throw new Error(`Unsupported author provider: ${provider}`);
+      }
+
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'grid';
+
+    } catch (err: any) {
+      console.error(err);
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = err.message || 'Error communicating with external API';
+      errorEl.style.display = 'block';
+    }
+  }
+
+  // Load immediately
+  loadAuthorData();
+</script>
