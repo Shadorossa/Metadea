@@ -23,10 +23,6 @@ interface SagaNode {
   relations: { edges: Array<{ relationType: string; node: { id: number } }> };
 }
 
-interface SagaNodeResponse {
-  Media: SagaNode | null;
-}
-
 // Deliberately light — only the fields needed to keep walking (relations)
 // plus what a saga-list card displays. The full detail query (search/
 // providers/anilist.ts) pulls much more (characters, studios, ...) that

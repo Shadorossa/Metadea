@@ -8,6 +8,7 @@ export interface MediaStat {
 }
 
 export interface MediaCharacter {
+  id?: string;
   name: string;
   image?: string;
   role?: string;

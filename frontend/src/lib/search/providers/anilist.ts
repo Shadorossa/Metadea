@@ -64,7 +64,7 @@ export interface AniListMediaDetail {
   endDate: { year: number | null; month: number | null; day: number | null } | null;
   source: string | null;
   studios: { nodes: AniListStudio[] };
-  characters: { pageInfo: { hasNextPage: boolean }; edges: AniListCharacterEdge[] };
+  characters: { pageInfo: { hasNextPage: boolean; total: number | null }; edges: AniListCharacterEdge[] };
   relations: { edges: AniListRelationEdge[] };
   staff: { edges: AniListStaffEdge[] };
 }
@@ -85,7 +85,7 @@ const DETAIL_QUERY = `
       source
       studios(isMain: true) { nodes { name siteUrl } }
       characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
-        pageInfo { hasNextPage }
+        pageInfo { hasNextPage total }
         edges { role node { id name { full } image { medium } } }
       }
       relations {
@@ -132,20 +132,34 @@ export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail
   const media = data?.Media ?? null;
   if (!media) return null;
 
-  // Si hay más páginas de personajes, las pedimos todas en serie
+  // Remaining character pages, fetched concurrently instead of one-after-
+  // another — `total` (from PageInfo) tells us upfront how many pages exist,
+  // so there's no need to wait for page N to know whether page N+1 exists.
   if (media.characters.pageInfo.hasNextPage) {
-    let page = 2;
-    const extraEdges: AniListCharacterEdge[] = [];
+    const fetchPage = (page: number) =>
+      anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(CHARACTERS_QUERY, { id, page })
+        .then(pageData => pageData?.Media?.characters ?? null);
 
-    while (true) {
-      const pageData = await anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(
-        CHARACTERS_QUERY, { id, page }
+    const total = media.characters.pageInfo.total;
+    let extraEdges: AniListCharacterEdge[];
+
+    if (total) {
+      const totalPages = Math.ceil(total / 25);
+      const pages = await Promise.all(
+        Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) => fetchPage(i + 2)),
       );
-      const chars = pageData?.Media?.characters;
-      if (!chars) break;
-      extraEdges.push(...chars.edges);
-      if (!chars.pageInfo.hasNextPage) break;
-      page++;
+      extraEdges = pages.filter((c): c is NonNullable<typeof c> => c !== null).flatMap(c => c.edges);
+    } else {
+      // Defensive fallback if AniList ever omits `total` — walk page by page.
+      extraEdges = [];
+      let page = 2;
+      while (true) {
+        const chars = await fetchPage(page);
+        if (!chars) break;
+        extraEdges.push(...chars.edges);
+        if (!chars.pageInfo.hasNextPage) break;
+        page++;
+      }
     }
 
     media.characters.edges = [
@@ -336,7 +350,7 @@ type AniListCharacterMediaEdge = AniListCharacterDetail['media']['edges'][number
 
 interface AniListCharacterDetailPage extends Omit<AniListCharacterDetail, 'media'> {
   media: {
-    pageInfo: { hasNextPage: boolean };
+    pageInfo: { hasNextPage: boolean; total: number | null };
     edges: AniListCharacterMediaEdge[];
   };
 }
@@ -366,6 +380,7 @@ const DETAIL_CHARACTER_QUERY = `
       media(page: $mediaPage, perPage: 50, sort: START_DATE) {
         pageInfo {
           hasNextPage
+          total
         }
         edges {
           relationType
@@ -386,30 +401,45 @@ const DETAIL_CHARACTER_QUERY = `
 `;
 
 export async function fetchAniListCharacterDetail(id: number): Promise<AniListCharacterDetail | null> {
-  let page = 1;
-  let character: AniListCharacterDetailPage | null = null;
-  const allEdges: AniListCharacterMediaEdge[] = [];
+  // Page 1 also carries the character's own profile fields, so it has to be
+  // fetched (and awaited) on its own — but once we know `total`, every
+  // remaining media page is independent and can be fetched concurrently
+  // instead of walking hasNextPage one page at a time.
+  const firstData = await anilistPost<{ Character: AniListCharacterDetailPage }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: 1 });
+  const character = firstData?.Character ?? null;
+  if (!character) return null;
 
-  while (true) {
-    const data = await anilistPost<{ Character: AniListCharacterDetailPage }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page });
-    const char = data?.Character;
-    if (!char) break;
+  const allEdges: AniListCharacterMediaEdge[] = [...(character.media?.edges ?? [])];
 
-    if (!character) {
-      character = char;
+  if (character.media?.pageInfo?.hasNextPage) {
+    const fetchPage = (page: number) =>
+      anilistPost<{ Character: AniListCharacterDetailPage }>(DETAIL_CHARACTER_QUERY, { id, mediaPage: page })
+        .then(data => data?.Character?.media ?? null);
+
+    const total = character.media.pageInfo.total;
+
+    if (total) {
+      const totalPages = Math.ceil(total / 50);
+      const pages = await Promise.all(
+        Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) => fetchPage(i + 2)),
+      );
+      for (const media of pages) {
+        if (media) allEdges.push(...media.edges);
+      }
+    } else {
+      // Defensive fallback if AniList ever omits `total` — walk page by page.
+      let page = 2;
+      while (true) {
+        const media = await fetchPage(page);
+        if (!media) break;
+        allEdges.push(...media.edges);
+        if (!media.pageInfo.hasNextPage) break;
+        page++;
+      }
     }
-
-    const edges = char.media?.edges ?? [];
-    allEdges.push(...edges);
-
-    if (!char.media?.pageInfo?.hasNextPage) break;
-    page++;
   }
 
-  if (character) {
-    character.media.edges = allEdges;
-  }
-
+  character.media.edges = allEdges;
   return character;
 }
 

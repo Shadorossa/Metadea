@@ -110,9 +110,13 @@ export interface OpenLibAuthorDetail {
 }
 
 export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<OpenLibAuthorDetail | null> {
-  const detail = await fetchJson<any>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`);
+  // The works list doesn't depend on the author detail response — fetch both
+  // at once instead of awaiting them one after another.
+  const [detail, worksRes] = await Promise.all([
+    fetchJson<any>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`),
+    fetchJson<{ entries?: any[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`),
+  ]);
   if (!detail) return null;
-  const worksRes = await fetchJson<{ entries?: any[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`).catch(() => null);
   const works = (worksRes?.entries || []).map(entry => ({
     title: entry.title,
     key: entry.key,

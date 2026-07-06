@@ -5,7 +5,7 @@ import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHisto
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
-import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n/index';
 import {
   IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
   IconStatusPaused, IconStatusDropped,
@@ -17,6 +17,7 @@ import {
 interface Props {
   externalId: string;
   data: MediaPageData;
+  i18n: Translations['media'];
   onClose: () => void;
   onSaved: (entry: LibraryEntry) => void;
   onDeleted: () => void;
@@ -236,7 +237,7 @@ function uiReducer(state: UiState, action: UiAction): UiState {
 // Progress field(s) shown in the header — which label(s) and step apply
 // depend on the media type. progLabel matches the raw type (not its
 // underscore-stripped base) to preserve each edge case's original mapping.
-function getProgressConfig(type: string, tm: ReturnType<typeof getT>['media']): { label: string | null; label2: string | null; step: number } {
+function getProgressConfig(type: string, tm: Translations['media']): { label: string | null; label2: string | null; step: number } {
   const base = type.split('_')[0];
 
   let label: string | null;
@@ -310,9 +311,9 @@ function NumberField({ label, value, max, step, onChange }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MediaEditorModal({ externalId, data, onClose, onSaved, onDeleted, initialEntry }: Props) {
-  const t  = getT();
-  const te = t.media.editor;
+export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry }: Props) {
+  const t  = i18n;
+  const te = t.editor;
 
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
@@ -567,8 +568,8 @@ export function MediaEditorModal({ externalId, data, onClose, onSaved, onDeleted
   ], [te, data.progressStatus]);
 
   const { label: progLabel, label2, step: progStep } = useMemo(
-    () => getProgressConfig(data.type, t.media),
-    [data.type, t.media],
+    () => getProgressConfig(data.type, t),
+    [data.type, t],
   );
 
   // Editions/versions this entry could be linked to (base game + expansions/

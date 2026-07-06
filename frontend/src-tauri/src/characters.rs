@@ -109,15 +109,17 @@ pub async fn save_character_appearances(
     character_external_id: String,
     appearances: Vec<CharacterAppearance>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
     let now = Utc::now().to_rfc3339();
     for a in appearances {
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
              VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &now],
         ).str_err()?;
     }
+    tx.commit().str_err()?;
     Ok(())
 }
 

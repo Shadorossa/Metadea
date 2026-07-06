@@ -1,6 +1,6 @@
-import type { AniListMediaDetail } from '../search/providers/anilist';
+import type { AniListMediaDetail, AniListStaffEdge } from '../search/providers/anilist';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation } from './types';
+import type { MediaPageData, MediaRelation, MediaAuthor } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
 
@@ -104,41 +104,33 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       };
     });
 
-  // Staff / Authors
+  // Staff / Authors — AniList lists staff roles (Original Creator, Original
+  // Story, Director, ...) without ranking them, so the first non-empty group
+  // in priority order becomes the work's credited author(s). Anime falls
+  // back to Director too since many anime don't credit an Original Creator
+  // staff entry at all; manga/light novels stop at Original Story.
   const staffEdges = raw.staff?.edges || [];
-  const originalCreators = staffEdges.filter(e => e.role === 'Original Creator').map(e => ({
-    name: e.node.name.full,
-    image: e.node.image?.medium || undefined,
-    role: 'Original Creator',
-    url: e.node.id ? `/author?id=staff:${e.node.id}` : undefined
-  }));
-  const originalStories = staffEdges.filter(e => e.role === 'Original Story').map(e => ({
-    name: e.node.name.full,
-    image: e.node.image?.medium || undefined,
-    role: 'Original Story',
-    url: e.node.id ? `/author?id=staff:${e.node.id}` : undefined
-  }));
-  const directors = staffEdges.filter(e => e.role === 'Director').map(e => ({
-    name: e.node.name.full,
-    image: e.node.image?.medium || undefined,
-    role: 'Director',
-    url: e.node.id ? `/author?id=staff:${e.node.id}` : undefined
-  }));
+  const mapStaffEdges = (edges: AniListStaffEdge[], role: string): MediaAuthor[] =>
+    edges.filter(e => e.role === role).map(e => ({
+      external_id: `staff:${e.node.id}`,
+      name: e.node.name.full,
+      image: e.node.image?.medium || undefined,
+      role,
+      url: `/author?id=staff:${e.node.id}`,
+    }));
+
+  const rolePriority = resolvedType === 'anime'
+    ? ['Original Creator', 'Original Story', 'Director']
+    : resolvedType === 'manga' || resolvedType === 'lnovel'
+      ? ['Original Creator', 'Original Story']
+      : [];
 
   let authors: MediaAuthor[] = [];
-  if (resolvedType === 'anime') {
-    if (originalCreators.length > 0) {
-      authors = originalCreators;
-    } else if (originalStories.length > 0) {
-      authors = originalStories;
-    } else if (directors.length > 0) {
-      authors = directors;
-    }
-  } else if (resolvedType === 'manga' || resolvedType === 'lnovel') {
-    if (originalCreators.length > 0) {
-      authors = originalCreators;
-    } else if (originalStories.length > 0) {
-      authors = originalStories;
+  for (const role of rolePriority) {
+    const matches = mapStaffEdges(staffEdges, role);
+    if (matches.length > 0) {
+      authors = matches;
+      break;
     }
   }
 

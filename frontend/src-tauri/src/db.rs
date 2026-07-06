@@ -26,30 +26,13 @@ impl MetadeaDb {
     pub fn open(path: &std::path::Path) -> SqlResult<Self> {
         let conn = Connection::open(path)?;
         conn.execute_batch(METADEA_SCHEMA)?;
+        // Upgrade path for DBs created before authors_csv existed on media_catalog.
+        // media_author/media_by_author/media_relations are already created by
+        // METADEA_SCHEMA above (CREATE TABLE IF NOT EXISTS) — do not repeat or
+        // drop them here, that previously wiped every saved author profile on
+        // every app launch.
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
-        let _ = conn.execute("DROP TABLE IF EXISTS media_author", []);
-        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_author (
-            external_id      TEXT PRIMARY KEY,
-            name             TEXT NOT NULL,
-            author_image_url TEXT,
-            author_url       TEXT,
-            created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
-        )", []);
-        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_by_author (
-            media_external_id  TEXT NOT NULL,
-            author_external_id TEXT NOT NULL,
-            role               TEXT,
-            PRIMARY KEY (media_external_id, author_external_id),
-            FOREIGN KEY (author_external_id) REFERENCES media_author(external_id) ON DELETE CASCADE
-        )", []);
-        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_relations (
-            media_external_id         TEXT NOT NULL,
-            related_media_external_id TEXT NOT NULL,
-            relation_type             TEXT NOT NULL,
-            type_label                TEXT NOT NULL,
-            PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
-        )", []);
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(Self { conn: Mutex::new(conn) })
     }
 }

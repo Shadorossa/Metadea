@@ -3,7 +3,7 @@ import { MediaEditorModal } from '../media/MediaEditorModal';
 import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, inferProgressStatus } from '../../lib/media/mediaService';
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
-import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n/index';
 
 interface OpenEditorEvent extends Event {
   detail?: {
@@ -19,9 +19,13 @@ interface EditorState {
   libraryEntry: LibraryEntry | undefined;
 }
 
-export function ProfileLibraryEditor() {
+interface Props {
+  i18n: Translations['media'];
+}
+
+export function ProfileLibraryEditor({ i18n }: Props) {
   const [state, setState] = useState<EditorState | null>(null);
-  const t = getT();
+  const t = i18n;
 
   useEffect(() => {
     const handleOpen = (e: Event) => {
@@ -34,7 +38,7 @@ export function ProfileLibraryEditor() {
 
       const fallbackType = libraryEntry?.type ?? 'anime';
       const basicData: MediaPageData = catalogEntry
-        ? mapCatalogEntryToPartialData(catalogEntry, t.media.progress_in_progress)
+        ? mapCatalogEntryToPartialData(catalogEntry, t.progress_in_progress)
         : {
             externalId: id,
             type: fallbackType,
@@ -45,7 +49,7 @@ export function ProfileLibraryEditor() {
             characters: [],
             relations: [],
             progressStatus: inferProgressStatus(fallbackType),
-            progressLabel: t.media.progress_in_progress,
+            progressLabel: t.progress_in_progress,
           };
 
       setState({ externalId: id, mediaData: basicData, libraryEntry });
@@ -78,6 +82,7 @@ export function ProfileLibraryEditor() {
     <MediaEditorModal
       externalId={state.externalId}
       data={state.mediaData}
+      i18n={t}
       initialEntry={state.libraryEntry}
       onClose={() => setState(null)}
       onSaved={() => {

@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { search, type MediaType, type SearchResult } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
-import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconCharacter } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
+
+type SearchTranslations = Translations['search'];
 
 // ── Tab icons ────────────────────────────────────────────────────────────────
 
@@ -35,6 +37,7 @@ const inFlightSearches = new Map<string, Promise<SearchResult[]>>();
 interface Props {
   initialQuery?: string;
   initialType?: MediaType;
+  i18n: SearchTranslations;
 }
 
 function interpolateTemplate(template: string, variables: Record<string, string>): string {
@@ -44,8 +47,7 @@ function interpolateTemplate(template: string, variables: Record<string, string>
   );
 }
 
-export default function SearchIsland({ initialQuery = '', initialType = 'all' }: Props) {
-  const i18n = getT().search;
+export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);

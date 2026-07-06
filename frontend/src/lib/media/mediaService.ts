@@ -7,7 +7,7 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData } from './types';
+import type { MediaPageData, MediaAuthor, MediaStat } from './types';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -123,7 +123,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
         url: authorDetail.key ? `/author?id=author:${authorDetail.key}` : undefined
       });
     } else if (preloadNames) {
-      richAuthors = preloadNames.map(name => ({ name }));
+      richAuthors = preloadNames.map(name => ({ external_id: `author:${name}`, name }));
     }
     return mapOpenLibToMedia(work, richAuthors, rawId);
   }
@@ -135,8 +135,6 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 // Builds immediately-usable page data from the local catalog (SQLite).
 // Missing fields (stats, characters, relations, metaLines) are empty — filled
 // once the full API fetch completes.
-
-import type { MediaAuthor } from './types';
 
 export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
   const base = type.split('_')[0];

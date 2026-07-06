@@ -1,7 +1,35 @@
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use crate::db::ToStringErr;
+
+// Batch existence check used by save_cached_saga / save_media_relations /
+// save_author_profile_and_relations — each used to run one
+// "SELECT EXISTS(...)" query per row inside its loop (N+1 against SQLite for
+// an author with dozens of works, or a long saga). One IN-query up front is
+// enough since every caller here only needs a yes/no per id, not row data.
+fn existing_catalog_ids(
+    tx: &rusqlite::Transaction,
+    ids: &[String],
+) -> Result<HashSet<String>, String> {
+    if ids.is_empty() {
+        return Ok(HashSet::new());
+    }
+    let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT external_id FROM media_catalog WHERE external_id IN ({})",
+        placeholders
+    );
+    let mut stmt = tx.prepare(&sql).str_err()?;
+    let params = rusqlite::params_from_iter(ids.iter());
+    let found = stmt
+        .query_map(params, |row| row.get::<_, String>(0))
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(found)
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MediaCatalogEntry {
@@ -140,35 +168,15 @@ pub async fn save_catalog_entry(
         ],
     ).str_err()?;
 
-    if let Some(ref authors) = entry.authors_csv {
-        let _ = conn.execute("DELETE FROM media_by_author WHERE media_external_id = ?1", [&entry.external_id]);
-        for author_id in authors.split(',') {
-            let author_id = author_id.trim();
-            if !author_id.is_empty() {
-                let clean_id = if author_id.contains(':') {
-                    author_id.to_string()
-                } else {
-                    format!("author:{}", author_id)
-                };
-
-                let name = if author_id.contains(':') {
-                    author_id.split(':').nth(1).unwrap_or(author_id)
-                } else {
-                    author_id
-                };
-
-                let _ = conn.execute(
-                    "INSERT OR IGNORE INTO media_author (external_id, name) VALUES (?1, ?2)",
-                    rusqlite::params![&clean_id, name],
-                );
-                let _ = conn.execute(
-                    "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
-                     VALUES (?1, ?2, ?3)",
-                    rusqlite::params![&entry.external_id, &clean_id, "AUTHOR"],
-                );
-            }
-        }
-    }
+    // authors_csv is a flat name-only display cache (see MediaPage.tsx) — the
+    // real author relations (id, image, role, url) go through save_media_authors
+    // / save_author_profile_and_relations into media_author/media_by_author.
+    // This used to also parse authors_csv here and re-derive relational rows
+    // from it, which (a) produced garbage names for any external_id containing
+    // a colon (e.g. OpenLibrary's "author:/authors/OL123A" — split(':').nth(1)
+    // returned the OpenLibrary key, not a name) and (b) wiped every real
+    // author relation whenever authors_csv was empty, since the DELETE ran
+    // unconditionally before the (then no-op) insert loop.
 
     Ok(entry)
 }
@@ -339,9 +347,18 @@ pub async fn save_cached_saga(
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
 
-    // Use the first entry's externalId as the saga_id (it's stable and unique)
-    let saga_id = entries[0].external_id.clone();
-    let saga_name = entries[0].title.clone();
+    // Anchor the saga_id on the lexicographically-smallest external_id rather
+    // than entries[0] — the caller's array order isn't guaranteed (the TS side
+    // sorts chronologically before calling, but nothing enforces that here),
+    // and anchoring on array position meant saving the same saga twice with a
+    // differently-ordered list would mint a second saga_id, orphaning the
+    // previous saga_relations rows.
+    let anchor = entries
+        .iter()
+        .min_by(|a, b| a.external_id.cmp(&b.external_id))
+        .expect("entries is non-empty, checked above");
+    let saga_id = anchor.external_id.clone();
+    let saga_name = anchor.title.clone();
 
     // 1. Insert saga
     tx.execute(
@@ -351,19 +368,13 @@ pub async fn save_cached_saga(
     .str_err()?;
 
     // 2. Insert entries into media_catalog (minimal metadata for caching) and relations
+    let all_ids: Vec<String> = entries.iter().map(|e| e.external_id.clone()).collect();
+    let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
+
     for entry in &entries {
         let now = Utc::now().to_rfc3339();
-        
-        let exists_val: i32 = tx
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
-                [&entry.external_id],
-                |row| row.get(0),
-            )
-            .str_err()?;
-        let exists = exists_val == 1;
 
-        if !exists {
+        if !existing_ids.contains(&entry.external_id) {
             tx.execute(
                 "INSERT INTO media_catalog (
                     id, external_id, type, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
@@ -423,6 +434,9 @@ pub async fn save_media_relations(
 
     let now = Utc::now().to_rfc3339();
 
+    let all_ids: Vec<String> = relations.iter().map(|r| r.related_media_external_id.clone()).collect();
+    let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
+
     for rel in relations {
         tx.execute(
             "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
@@ -436,16 +450,16 @@ pub async fn save_media_relations(
         )
         .str_err()?;
 
-        let exists_val: i32 = tx
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
-                [&rel.related_media_external_id],
-                |row| row.get(0),
-            )
-            .str_err()?;
-
-        if exists_val == 0 {
-            let rel_type = rel.related_media_external_id.split(':').next().unwrap_or("anime").to_string();
+        if !existing_ids.contains(&rel.related_media_external_id) {
+            // split_once (not split().next(), which always yields at least
+            // one item and made the "anime" fallback unreachable) so a
+            // colon-less id actually falls back to "anime" instead of using
+            // the whole id string as the type.
+            let rel_type = rel.related_media_external_id
+                .split_once(':')
+                .map(|(prefix, _)| prefix)
+                .unwrap_or("anime")
+                .to_string();
             tx.execute(
                 "INSERT INTO media_catalog (
                     id, external_id, type, title_main, cover_url, created_at, updated_at
@@ -629,6 +643,9 @@ pub async fn save_author_profile_and_relations(
     .str_err()?;
 
     // 3. Save works and relationships
+    let all_ids: Vec<String> = relations.iter().map(|r| r.media_external_id.clone()).collect();
+    let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
+
     for rel in relations {
         tx.execute(
             "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
@@ -641,14 +658,12 @@ pub async fn save_author_profile_and_relations(
         )
         .str_err()?;
 
-        let exists_val: i32 = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
-            [&rel.media_external_id],
-            |row| row.get(0)
-        ).str_err()?;
-
-        if exists_val == 0 {
-            let rel_type = rel.media_external_id.split(':').next().unwrap_or("anime").to_string();
+        if !existing_ids.contains(&rel.media_external_id) {
+            let rel_type = rel.media_external_id
+                .split_once(':')
+                .map(|(prefix, _)| prefix)
+                .unwrap_or("anime")
+                .to_string();
             tx.execute(
                 "INSERT INTO media_catalog (id, external_id, type, title_main, cover_url, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",

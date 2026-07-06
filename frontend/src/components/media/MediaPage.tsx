@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n/index';
 import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
@@ -78,7 +78,7 @@ function StatusDropdown({
   progressStatus: string;
   progressLabel: string;
   onChange: (next: string) => void;
-  t: ReturnType<typeof getT>['media'];
+  t: Translations['media'];
 }) {
   const te = t.editor;
   const trayButtons = [
@@ -120,8 +120,12 @@ function StatusDropdown({
 
 // ── MediaPage ──────────────────────────────────────────────────────────────
 
-export default function MediaPage() {
-  const t  = getT();
+interface Props {
+  i18n: Pick<Translations, 'media' | 'discord'>;
+}
+
+export default function MediaPage({ i18n }: Props) {
+  const t  = i18n;
   const tm = t.media;
 
   // Estado para el ID actual de la obra
@@ -253,7 +257,11 @@ export default function MediaPage() {
       genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
       platforms_csv:         data.platforms?.join(',') || undefined,
       companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
-      authors_csv:           data.authors?.map(a => a.external_id || `author:${a.name}`).join(',') || undefined,
+      // Names only, same convention as companies_cache_csv — this is a flat
+      // display cache for the instant partial-load path (mapCatalogEntryToPartialData),
+      // not a relation store. The real author relations (id, image, role, url)
+      // are synced separately via saveMediaAuthors below, into media_author/media_by_author.
+      authors_csv:           data.authors?.length ? data.authors.map(a => a.name).join(',') : undefined,
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});
@@ -381,6 +389,7 @@ export default function MediaPage() {
         <MediaEditorModal
           externalId={currentId}
           data={data}
+          i18n={tm}
           initialEntry={libEntry ?? undefined}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
@@ -388,7 +397,7 @@ export default function MediaPage() {
         />
       )}
       {showSaga && (
-        <SagaViewerModal externalId={currentId} onClose={() => setShowSaga(false)} />
+        <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
       )}
       {showPrEditor && (
         <PrEditorModal

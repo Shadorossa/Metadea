@@ -1,14 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/media.css';
-import { getLang } from '../i18n/index';
+import { getLang, useTranslations } from '../i18n/index';
 import MediaPage from '../components/media/MediaPage';
 
 const lang = getLang(Astro.url);
+const t    = useTranslations(lang);
 ---
 
 <BaseLayout title="Media — Metadea" lang={lang}>
   <div class="media-page">
-    <MediaPage client:load />
+    <MediaPage client:load i18n={{ media: t.media, discord: t.discord }} />
   </div>
 </BaseLayout>

@@ -8,7 +8,7 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from './hof';
 import { dbRatingToStars5 } from '../media/rating-utils';
 
-import { TYPE_LABELS, FAV_LABELS } from '../constants/media';
+import { TYPE_LABELS } from '../constants/media';
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -142,7 +142,6 @@ export async function renderLists(el: HTMLElement): Promise<void> {
   const renderDetail = async (listKey: string) => {
     const list = customLists.find(l => l.key === listKey);
     if (!list) { renderGrid(); return; }
-    const isFav = list.is_fav;
 
     // Use SQL JOIN from backend — no manual catalog/library lookups
     let listItems: ListItemFull[] = await getListItemsFull(listKey).catch(() => []);
@@ -175,16 +174,16 @@ export async function renderLists(el: HTMLElement): Promise<void> {
               ${typeLabel ? `<span class="list-item-type">${esc(typeLabel)}</span>` : ''}
               ${ratingDisplay ? `<span class="list-item-rating">${ratingDisplay}</span>` : ''}
             </div>
-            ${!isFav ? `<button class="list-item-remove" data-remove-id="${item.external_id}" title="Quitar">
+            <button class="list-item-remove" data-remove-id="${item.external_id}" title="Quitar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>` : ''}
+            </button>
           </div>
         `;
       }).join('');
 
       // Add-from-library panel (custom lists only)
       const addPanelHtml = (() => {
-        if (!showAddPanel || isFav) return '';
+        if (!showAddPanel) return '';
         const q = searchQuery.toLowerCase();
         const available = items
           .filter(i => !currentIds.has(i.external_id))
@@ -229,7 +228,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
       })();
 
       // Meta header
-      const metaHtml = (!isFav && isEditingMeta) ? `
+      const metaHtml = isEditingMeta ? `
         <div class="list-detail-meta-edit">
           <input type="text" class="list-input list-meta-name-input" value="${escAttr(list.name)}" maxlength="60" placeholder="${escAttr(p.lists_name_ph)}">
           <input type="text" class="list-input list-meta-desc-input" value="${escAttr(list.description ?? '')}" maxlength="200" placeholder="${escAttr(p.lists_desc_ph)}">
@@ -240,8 +239,8 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         </div>
       ` : `
         <div class="list-detail-meta">
-          <h2 class="list-detail-title">${esc(isFav ? (FAV_LABELS[list.key] ?? list.name) : list.name)}</h2>
-          ${(!isFav && list.description) ? `<p class="list-detail-desc">${esc(list.description)}</p>` : ''}
+          <h2 class="list-detail-title">${esc(list.name)}</h2>
+          ${list.description ? `<p class="list-detail-desc">${esc(list.description)}</p>` : ''}
         </div>
       `;
 
@@ -252,22 +251,20 @@ export async function renderLists(el: HTMLElement): Promise<void> {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
               ${p.lists_back}
             </button>
-            ${!isFav ? `
             <div class="list-detail-actions">
               <button class="list-btn list-btn--ghost" id="list-meta-edit">${p.lists_edit}</button>
               <button class="list-btn list-btn--danger" id="list-delete">${p.lists_delete}</button>
-            </div>` : ''}
+            </div>
           </div>
           ${metaHtml}
           ${addPanelHtml}
           <div class="list-detail-content">
             <div class="list-detail-header-row">
               <span class="list-detail-count">${listItems.length} ${p.lists_items}</span>
-              ${!isFav ? `
               <button class="list-btn list-btn--primary" id="list-add-toggle">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 ${p.lists_add_items}
-              </button>` : ''}
+              </button>
             </div>
             ${listItems.length > 0
               ? `<div class="list-items-grid">${listItemsHtml}</div>`
@@ -391,91 +388,89 @@ export async function renderLists(el: HTMLElement): Promise<void> {
         renderGrid();
       });
 
-      if (!isFav) {
-        el.querySelector('#list-meta-edit')?.addEventListener('click', () => {
-          isEditingMeta = true;
-          renderDetailContent();
-        });
-        el.querySelector('#list-meta-cancel')?.addEventListener('click', () => {
-          isEditingMeta = false;
-          renderDetailContent();
-        });
-        el.querySelector('#list-meta-save')?.addEventListener('click', async () => {
-          const nameEl = el.querySelector<HTMLInputElement>('.list-meta-name-input');
-          const descEl = el.querySelector<HTMLInputElement>('.list-meta-desc-input');
-          const name = nameEl?.value.trim();
-          if (!name) { nameEl?.focus(); return; }
-          await updateUserList(list.key, name, descEl?.value.trim() ?? '').catch(err => console.error('Failed to save list metadata:', err));
-          list.name        = name;
-          list.description = descEl?.value.trim() ?? '';
-          isEditingMeta = false;
+      el.querySelector('#list-meta-edit')?.addEventListener('click', () => {
+        isEditingMeta = true;
+        renderDetailContent();
+      });
+      el.querySelector('#list-meta-cancel')?.addEventListener('click', () => {
+        isEditingMeta = false;
+        renderDetailContent();
+      });
+      el.querySelector('#list-meta-save')?.addEventListener('click', async () => {
+        const nameEl = el.querySelector<HTMLInputElement>('.list-meta-name-input');
+        const descEl = el.querySelector<HTMLInputElement>('.list-meta-desc-input');
+        const name = nameEl?.value.trim();
+        if (!name) { nameEl?.focus(); return; }
+        await updateUserList(list.key, name, descEl?.value.trim() ?? '').catch(err => console.error('Failed to save list metadata:', err));
+        list.name        = name;
+        list.description = descEl?.value.trim() ?? '';
+        isEditingMeta = false;
+        renderDetailContent();
+      });
+
+      el.querySelector('#list-delete')?.addEventListener('click', async () => {
+        if (!confirm(`¿Eliminar la lista "${list.name}"?`)) return;
+        await deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err));
+        customLists = customLists.filter(l => l.key !== list.key);
+        activeListKey = null;
+        renderGrid();
+      });
+
+      el.querySelector('#list-add-toggle')?.addEventListener('click', () => {
+        showAddPanel = !showAddPanel;
+        searchQuery  = '';
+        renderDetailContent();
+      });
+      el.querySelector('#list-add-close')?.addEventListener('click', () => {
+        showAddPanel = false;
+        searchQuery  = '';
+        renderDetailContent();
+      });
+
+      (el.querySelector<HTMLInputElement>('.list-add-search'))
+        ?.addEventListener('input', e => {
+          searchQuery = (e.target as HTMLInputElement).value;
           renderDetailContent();
         });
 
-        el.querySelector('#list-delete')?.addEventListener('click', async () => {
-          if (!confirm(`¿Eliminar la lista "${list.name}"?`)) return;
-          await deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err));
-          customLists = customLists.filter(l => l.key !== list.key);
-          activeListKey = null;
-          renderGrid();
-        });
-
-        el.querySelector('#list-add-toggle')?.addEventListener('click', () => {
-          showAddPanel = !showAddPanel;
-          searchQuery  = '';
-          renderDetailContent();
-        });
-        el.querySelector('#list-add-close')?.addEventListener('click', () => {
-          showAddPanel = false;
-          searchQuery  = '';
-          renderDetailContent();
-        });
-
-        (el.querySelector<HTMLInputElement>('.list-add-search'))
-          ?.addEventListener('input', e => {
-            searchQuery = (e.target as HTMLInputElement).value;
-            renderDetailContent();
+      el.querySelectorAll<HTMLElement>('.list-add-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.addId ?? '';
+          if (!id || currentIds.has(id)) return;
+          await addItemToList(list.key, id).catch(err => console.error('Failed to add item to list:', err));
+          // Construct a partial ListItemFull from the pre-fetched data
+          const libEntry = items.find(i => i.external_id === id);
+          const meta     = catalogMap.get(id);
+          listItems.push({
+            external_id: id,
+            position:    listItems.length,
+            library_id:  libEntry?.id ?? null,
+            status:      libEntry?.status ?? null,
+            rating:      libEntry?.rating ?? null,
+            progress:    libEntry?.progress ?? 0,
+            progress_2:  libEntry?.progress_2 ?? 0,
+            is_favorite: (libEntry?.is_favorite ?? 0) !== 0,
+            is_platinum: (libEntry?.is_platinum ?? 0) !== 0,
+            title_main:  meta?.title_main ?? null,
+            cover_url:   meta?.cover_url  ?? null,
+            media_type:  meta?.type       ?? null,
+            format:      meta?.format     ?? null,
           });
-
-        el.querySelectorAll<HTMLElement>('.list-add-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const id = btn.dataset.addId ?? '';
-            if (!id || currentIds.has(id)) return;
-            await addItemToList(list.key, id).catch(err => console.error('Failed to add item to list:', err));
-            // Construct a partial ListItemFull from the pre-fetched data
-            const libEntry = items.find(i => i.external_id === id);
-            const meta     = catalogMap.get(id);
-            listItems.push({
-              external_id: id,
-              position:    listItems.length,
-              library_id:  libEntry?.id ?? null,
-              status:      libEntry?.status ?? null,
-              rating:      libEntry?.rating ?? null,
-              progress:    libEntry?.progress ?? 0,
-              progress_2:  libEntry?.progress_2 ?? 0,
-              is_favorite: (libEntry?.is_favorite ?? 0) !== 0,
-              is_platinum: (libEntry?.is_platinum ?? 0) !== 0,
-              title_main:  meta?.title_main ?? null,
-              cover_url:   meta?.cover_url  ?? null,
-              media_type:  meta?.type       ?? null,
-              format:      meta?.format     ?? null,
-            });
-            list.item_count++;
-            renderDetailContent();
-          });
+          list.item_count++;
+          renderDetailContent();
         });
+      });
 
-        el.querySelectorAll<HTMLElement>('.list-item-remove').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const id = btn.dataset.removeId ?? '';
-            if (!id) return;
-            await removeItemFromList(list.key, id).catch(err => console.error('Failed to remove item from list:', err));
-            listItems = listItems.filter(x => x.external_id !== id);
-            list.item_count = Math.max(0, list.item_count - 1);
-            renderDetailContent();
-          });
+      el.querySelectorAll<HTMLElement>('.list-item-remove').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.removeId ?? '';
+          if (!id) return;
+          await removeItemFromList(list.key, id).catch(err => console.error('Failed to remove item from list:', err));
+          listItems = listItems.filter(x => x.external_id !== id);
+          list.item_count = Math.max(0, list.item_count - 1);
+          renderDetailContent();
         });
-      }
+      });
     };
 
     renderDetailContent();

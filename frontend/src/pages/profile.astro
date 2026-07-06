@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/profile.css';
 import '../styles/pages/media.css';
-import { getLang } from '../i18n/index';
+import { getLang, useTranslations } from '../i18n/index';
 import { ProfileLibraryEditor } from '../components/profile/ProfileLibraryEditor';
 import {
   ICON_PROFILE_OVERVIEW,
@@ -14,6 +14,7 @@ import {
 } from '../lib/shared/icon-strings';
 
 const lang = getLang(Astro.url);
+const t    = useTranslations(lang);
 ---
 
 <BaseLayout title="Perfil — Metadea" lang={lang} activePage="profile">
@@ -38,7 +39,7 @@ const lang = getLang(Astro.url);
 
     <div id="profile-tab-content" class="profile-tab-content"></div>
 
-    <ProfileLibraryEditor client:load />
+    <ProfileLibraryEditor client:load i18n={t.media} />
 
   </main>
 </BaseLayout>

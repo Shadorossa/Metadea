@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { getT } from '../../i18n/client';
+import type { Translations } from '../../i18n/index';
 import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
 
@@ -8,13 +8,14 @@ import { getCachedSaga, saveCachedSaga } from '../../lib/tauri';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
+  i18n: Translations['media'];
   onClose: () => void;
 }
 
 type LoadState = 'loading' | 'done' | 'error';
 
-export function SagaViewerModal({ externalId, onClose }: Props) {
-  const t = getT().media;
+export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
+  const t = i18n;
   const [entries, setEntries] = useState<SagaEntry[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [isClosing, setIsClosing] = useState(false);
