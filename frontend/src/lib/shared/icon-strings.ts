@@ -104,6 +104,7 @@ export const SORT_ICON_SCORE    = stroke(14, '2', INNER.star);
 export const SORT_ICON_DATE     = stroke(14, '2', INNER.calendar);
 export const SORT_ICON_DURATION = stroke(14, '2', INNER.clock);
 export const CALENDAR_ICON      = stroke(14, '2', INNER.calendar);
+export const GROUP_EDITIONS_ICON = stroke(14, '2', INNER.stack);
 
 // ── Stats / profile icons ─────────────────────────────────────────────────────
 

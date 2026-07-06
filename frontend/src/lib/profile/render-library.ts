@@ -2,7 +2,7 @@ import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
-import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION } from '../shared/icon-strings';
+import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -25,6 +25,54 @@ function buildDateHtml(started: string | null | undefined, finished: string | nu
   if (started) parts.push(fmtDate(started));
   if (finished) parts.push(fmtDate(finished));
   return `<span class="library-card-date">${CALENDAR_ICON}${parts.join(' → ')}</span>`;
+}
+
+// Groups library entries that are editions of one another (remakes,
+// remasters, ports, ...) under a single "slot" so they don't each claim a
+// spot in the grid. Two independent signals decide who nests under whom:
+//   1. Explicit link — the base entry's `selected_version`, a CSV of linked
+//      external_ids written by MediaEditorModal's edition switcher when the
+//      user manually flips between tabs and saves.
+//   2. Auto-detected link — the edition's own catalog entry `parent_id`,
+//      cached from IGDB's `parent_game`/`version_parent` the first time the
+//      edition's own media page was visited (see MediaPage.tsx). This is
+//      what makes "Vengeance"-style editions group without the user ever
+//      opening the editor's version switcher.
+// Both signals are resolved into a single child→parent map first so
+// grouping doesn't depend on which order the items happen to sort in.
+// Grouping is scoped to a single status section: an edition tracked under a
+// different status still gets its own card there instead of silently
+// disappearing into a differently-labeled section.
+function groupEditions<T extends { external_id: string; selected_version: string | null }>(
+  sectionItems: T[],
+  catalogMap: Map<string, MediaCatalogEntry>,
+): Array<{ item: T; grouped: T[] }> {
+  const byId = new Map(sectionItems.map(i => [i.external_id, i]));
+  const parentOf = new Map<string, string>();
+
+  for (const item of sectionItems) {
+    const linkedIds = item.selected_version ? item.selected_version.split(',').map(s => s.trim()).filter(Boolean) : [];
+    for (const linkedId of linkedIds) {
+      if (linkedId !== item.external_id && byId.has(linkedId)) parentOf.set(linkedId, item.external_id);
+    }
+  }
+
+  for (const item of sectionItems) {
+    if (parentOf.has(item.external_id)) continue;
+    const catalogParentId = catalogMap.get(item.external_id)?.parent_id;
+    if (catalogParentId && catalogParentId !== item.external_id && byId.has(catalogParentId)) {
+      parentOf.set(item.external_id, catalogParentId);
+    }
+  }
+
+  const out: Array<{ item: T; grouped: T[] }> = [];
+  for (const item of sectionItems) {
+    if (parentOf.has(item.external_id)) continue; // rendered nested under its parent instead
+    const grouped = sectionItems.filter(other => parentOf.get(other.external_id) === item.external_id);
+    out.push({ item, grouped });
+  }
+
+  return out;
 }
 
 export async function renderLibrary(el: HTMLElement): Promise<void> {
@@ -65,6 +113,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   let selectedTypes: string[] = [];
 
   let sortBy = 'date'; // 'rating' | 'date' | 'duration'
+  let groupByEdition = false;
 
   el.innerHTML = `
     <div class="library-layout">
@@ -95,6 +144,13 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
             <button type="button" class="library-status-arrow" id="status-next">&gt;</button>
           </div>
         </div>
+
+        <div class="library-filter-group">
+          <button type="button" id="group-editions-btn" class="library-toggle-btn">
+            ${GROUP_EDITIONS_ICON}
+            <span>${p.library_group_editions}</span>
+          </button>
+        </div>
       </aside>
 
       <div class="library-content">
@@ -120,6 +176,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   const contentEl = el.querySelector<HTMLElement>('.library-content');
   const typeBtns = el.querySelectorAll('.library-type-btn');
   const sortBtns = el.querySelectorAll('.library-sort-btn');
+  const groupEditionsBtn = el.querySelector<HTMLButtonElement>('#group-editions-btn');
 
   const applyFilters = () => {
     if (!contentEl) return;
@@ -182,28 +239,35 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
 
     sectionsListEl.innerHTML = sectionsData
       .filter(sec => sec.items.length > 0)
-      .map(sec => `
+      .map(sec => {
+        const cards = groupByEdition ? groupEditions(sec.items, catalogMap) : sec.items.map(item => ({ item, grouped: [] as Items }));
+
+        return `
         <div class="library-section">
           <h3 class="library-section-title">${sec.title}</h3>
           <div class="library-grid">
-            ${sec.items.map(item => {
-        const meta = catalogMap.get(item.external_id);
-        const title = meta?.title_main ?? item.external_id;
-        const cover = meta?.cover_url ?? '';
-        const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-        const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-        const style = cover ? `style="--cover: url('${cover}')"` : '';
-        const hasEditions = !!item.selected_version;
-        const stackClass = hasEditions ? ' library-card--stacked' : '';
+            ${cards.map(({ item, grouped }) => {
+          const meta = catalogMap.get(item.external_id);
+          const title = meta?.title_main ?? item.external_id;
+          const cover = meta?.cover_url ?? '';
+          const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
+          const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
+          const style = cover ? `style="--cover: url('${cover}')"` : '';
+          const stackClass = grouped.length > 0 ? ' library-card--stacked' : '';
+          const groupedTitles = grouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
+          const badge = grouped.length > 0
+            ? `<span class="library-card-group-badge" title="${p.library_group_editions_hint}: ${groupedTitles.join(', ').replace(/"/g, '&quot;')}">+${grouped.length}</span>`
+            : '';
 
-        return `
+          return `
                 <div class="library-card${stackClass}" data-id="${item.external_id}" ${style}>
                   ${cover ? `<div class="library-card-bg"></div>` : ''}
+                  ${badge}
                   <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
                     ${cover
-            ? `<img src="${cover}" alt="${title}" loading="lazy" />`
-            : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
-          }
+              ? `<img src="${cover}" alt="${title}" loading="lazy" />`
+              : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
+            }
                   </a>
                   <div class="library-card-info">
                     <span class="library-card-title">${title}</span>
@@ -214,10 +278,11 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
                     </div>
                   </div>
                 </div>`;
-      }).join('')}
+        }).join('')}
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
   };
 
   // Event delegation for library card clicks
@@ -262,6 +327,12 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
   btnNext?.addEventListener('click', () => {
     currentStatusIndex = (currentStatusIndex + 1) % STATUS_LIST.length;
     if (statusValEl) statusValEl.textContent = STATUS_LIST[currentStatusIndex].label;
+    applyFilters();
+  });
+
+  groupEditionsBtn?.addEventListener('click', () => {
+    groupByEdition = !groupByEdition;
+    groupEditionsBtn.classList.toggle('active', groupByEdition);
     applyFilters();
   });
 

@@ -208,6 +208,7 @@ export default function MediaPage() {
     saveCatalogEntry({
       id:                    '',
       external_id:           currentId,
+      parent_id:             data.parentGame?.externalId ?? null,
 
       type:                  data.type,
       format:                data.format,

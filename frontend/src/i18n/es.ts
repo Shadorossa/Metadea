@@ -53,6 +53,8 @@ export const es = {
     section_paused: 'En pausa',
     section_dropped: 'Abandonadas',
     library_filters: 'Filtros',
+    library_group_editions: 'Agrupar por entrega',
+    library_group_editions_hint: 'También en tu biblioteca',
     favorites: 'Favoritos',
     empty_favorites: 'Aún no tienes favoritos en esta categoría.',
     favorites_multimedia: 'Multimedia',
