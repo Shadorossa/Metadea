@@ -65,3 +65,33 @@ export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | n
 export async function saveCachedSaga(entries: SagaEntry[]): Promise<void> {
   return tauriRun('save_cached_saga', { entries });
 }
+
+export interface DbMediaRelation {
+  related_media_external_id: string;
+  relation_type: string;
+  type_label: string;
+  title: string;
+  cover?: string | null;
+}
+
+export async function saveMediaRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {
+  return tauriRun('save_media_relations', { mediaExternalId, relations });
+}
+
+export async function getMediaRelations(mediaExternalId: string): Promise<DbMediaRelation[]> {
+  return tauriCmd<DbMediaRelation[]>('get_media_relations', [], { mediaExternalId });
+}
+
+export interface DbMediaAuthor {
+  name: string;
+  image?: string | null;
+  role?: string | null;
+}
+
+export async function saveMediaAuthors(mediaExternalId: string, authors: DbMediaAuthor[]): Promise<void> {
+  return tauriRun('save_media_authors', { mediaExternalId, authors });
+}
+
+export async function getMediaAuthors(mediaExternalId: string): Promise<DbMediaAuthor[]> {
+  return tauriCmd<DbMediaAuthor[]>('get_media_authors', [], { mediaExternalId });
+}

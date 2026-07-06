@@ -627,16 +627,50 @@ export default function MediaPage() {
                 })}
               </div>
             )}
-            {data.stats.length > 0 && (
+            {(data.stats.length > 0 || (data.authors && data.authors.length > 0)) && (
               <>
                 <p className="section-label">{tm.section_data}</p>
-                <div className="media-stats-list">
-                  {data.stats.map((s, i) => (
-                    <div key={i} className="media-stat-item">
-                      <span className="media-stat-label">{s.label}</span>
-                      <span className="media-stat-value">{s.value}</span>
+
+                {data.authors && data.authors.length > 0 && (
+                  <div className="media-authors-box">
+                    <div className="media-authors-list">
+                      {data.authors.map((auth, idx) => (
+                        <div key={idx} className="media-author-pill">
+                          {auth.image ? (
+                            <img src={auth.image} alt={auth.name} className="media-author-avatar" />
+                          ) : (
+                            <div className="media-author-avatar media-author-avatar--placeholder">
+                              {auth.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="media-author-info">
+                            <span className="media-author-name">{auth.name}</span>
+                            {auth.role && <span className="media-author-role">{auth.role}</span>}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="media-stats-list">
+                  {data.stats
+                    .filter(s => {
+                      if (!data.authors || data.authors.length === 0) return true;
+                      const labelLower = s.label.toLowerCase();
+                      const isAuthorStat = labelLower.includes('autor') ||
+                        labelLower.includes('author') ||
+                        labelLower.includes('creator') ||
+                        labelLower.includes('story') ||
+                        labelLower.includes('director');
+                      return !isAuthorStat;
+                    })
+                    .map((s, i) => (
+                      <div key={i} className="media-stat-item">
+                        <span className="media-stat-label">{s.label}</span>
+                        <span className="media-stat-value">{s.value}</span>
+                      </div>
+                    ))}
                 </div>
               </>
             )}

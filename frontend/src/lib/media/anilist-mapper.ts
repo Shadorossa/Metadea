@@ -106,38 +106,44 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
 
   // Staff / Authors
   const staffEdges = raw.staff?.edges || [];
-  const originalCreators = staffEdges.filter(e => e.role === 'Original Creator').map(e => e.node.name.full);
-  const originalStories = staffEdges.filter(e => e.role === 'Original Story').map(e => e.node.name.full);
-  const directors = staffEdges.filter(e => e.role === 'Director').map(e => e.node.name.full);
+  const originalCreators = staffEdges.filter(e => e.role === 'Original Creator').map(e => ({
+    name: e.node.name.full,
+    image: e.node.image?.medium || undefined,
+    role: 'Original Creator'
+  }));
+  const originalStories = staffEdges.filter(e => e.role === 'Original Story').map(e => ({
+    name: e.node.name.full,
+    image: e.node.image?.medium || undefined,
+    role: 'Original Story'
+  }));
+  const directors = staffEdges.filter(e => e.role === 'Director').map(e => ({
+    name: e.node.name.full,
+    image: e.node.image?.medium || undefined,
+    role: 'Director'
+  }));
 
-  let authors: string[] = [];
-  let authorRoleLabel = '';
+  let authors: MediaAuthor[] = [];
   if (resolvedType === 'anime') {
     if (originalCreators.length > 0) {
       authors = originalCreators;
-      authorRoleLabel = 'Original Creator';
     } else if (originalStories.length > 0) {
       authors = originalStories;
-      authorRoleLabel = 'Original Story';
     } else if (directors.length > 0) {
       authors = directors;
-      authorRoleLabel = 'Director';
     }
   } else if (resolvedType === 'manga' || resolvedType === 'lnovel') {
     if (originalCreators.length > 0) {
       authors = originalCreators;
-      authorRoleLabel = 'Original Creator';
     } else if (originalStories.length > 0) {
       authors = originalStories;
-      authorRoleLabel = 'Original Story';
     }
   }
 
   const stats: MediaPageData['stats'] = [];
   if (authors.length > 0) {
     stats.push({
-      label: authorRoleLabel,
-      value: authors.join(', '),
+      label: authors[0].role || 'Author',
+      value: authors.map(a => a.name).join(', '),
     });
   }
 

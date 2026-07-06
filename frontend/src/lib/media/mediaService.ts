@@ -111,11 +111,19 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
           return key ? fetchOpenLibAuthor(key) : null;
         });
 
-    const [work, authorName] = await Promise.all([workPromise, authorPromise]);
+    const [work, authorDetail] = await Promise.all([workPromise, authorPromise]);
     if (!work) return null;
 
-    const authorNames = preloadNames ?? (authorName ? [authorName] : []);
-    return mapOpenLibToMedia(work, authorNames, rawId);
+    let richAuthors: MediaAuthor[] = [];
+    if (authorDetail) {
+      richAuthors.push({
+        name: authorDetail.name,
+        image: authorDetail.image || undefined
+      });
+    } else if (preloadNames) {
+      richAuthors = preloadNames.map(name => ({ name }));
+    }
+    return mapOpenLibToMedia(work, richAuthors, rawId);
   }
 
   return null;
@@ -126,6 +134,8 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 // Missing fields (stats, characters, relations, metaLines) are empty — filled
 // once the full API fetch completes.
 
+import type { MediaAuthor } from './types';
+
 export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
   const base = type.split('_')[0];
   if (base === 'game' || base === 'vnovel') return 'playing';
@@ -135,6 +145,7 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
   const authorList = c.authors_csv ? c.authors_csv.split(',') : [];
+  const authors: MediaAuthor[] = authorList.map(name => ({ name }));
   const stats: MediaStat[] = [];
   if (authorList.length > 0) {
     stats.push({
@@ -175,7 +186,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     relations:     [],
     progressStatus: inferProgressStatus(c.type),
     progressLabel,
-    authors:       authorList.length > 0 ? authorList : undefined,
+    authors:       authors.length > 0 ? authors : undefined,
   };
 }
 
@@ -187,7 +198,30 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   if (cached) return cached;
 
   const data = await fetchMediaDataInternal(rawId);
-  if (data) setCachedMediaData(rawId, data);
+  if (data) {
+    setCachedMediaData(rawId, data);
+    if (data.authors && data.authors.length > 0) {
+      import('../tauri/catalog').then(async ({ saveMediaAuthors }) => {
+        await saveMediaAuthors(rawId, data.authors!).catch(console.error);
+      });
+    }
+    if (data.relations && data.relations.length > 0) {
+      import('../tauri/catalog').then(async ({ saveMediaRelations }) => {
+        const dbRels = data.relations.map(r => {
+          const match = r.url?.match(/id=([^&]+)/);
+          const relId = match ? decodeURIComponent(match[1]) : '';
+          return {
+            related_media_external_id: relId || r.url || '',
+            relation_type: r.typeLabel.toUpperCase(),
+            type_label: r.typeLabel,
+            title: r.title,
+            cover: r.cover || null
+          };
+        }).filter(r => r.related_media_external_id);
+        await saveMediaRelations(rawId, dbRels).catch(console.error);
+      });
+    }
+  }
   return data;
 }
 
@@ -216,10 +250,38 @@ export function fetchMediaDataWithFallback(
   let localData: MediaPageData | null = null;
 
   getCatalogEntry(rawId)
-    .then(catalog => {
+    .then(async catalog => {
       if (catalog && catalog.title_main) {
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
+        
+        try {
+          const { getMediaRelations, getMediaAuthors } = await import('../tauri/catalog');
+          const [dbRels, dbAuthors] = await Promise.all([
+            getMediaRelations(rawId).catch(() => []),
+            getMediaAuthors(rawId).catch(() => [])
+          ]);
+
+          if (dbRels && dbRels.length > 0) {
+            localData.relations = dbRels.map(r => ({
+              typeLabel: r.type_label,
+              title: r.title,
+              cover: r.cover || undefined,
+              url: `/media?id=${r.related_media_external_id}`
+            }));
+          }
+
+          if (dbAuthors && dbAuthors.length > 0) {
+            localData.authors = dbAuthors.map(a => ({
+              name: a.name,
+              image: a.image || undefined,
+              role: a.role || undefined
+            }));
+          }
+        } catch (e) {
+          console.error("Failed to load local media relations or authors", e);
+        }
+
         if (!fullArrived) {
           onPartial(localData);
         }

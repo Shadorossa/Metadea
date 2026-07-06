@@ -30,7 +30,18 @@ impl MetadeaDb {
         let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_author (
             media_external_id TEXT NOT NULL,
             author_name       TEXT NOT NULL,
+            author_image_url  TEXT,
+            role              TEXT,
             PRIMARY KEY (media_external_id, author_name)
+        )", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN author_image_url TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN role TEXT", []);
+        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_relations (
+            media_external_id         TEXT NOT NULL,
+            related_media_external_id TEXT NOT NULL,
+            relation_type             TEXT NOT NULL,
+            type_label                TEXT NOT NULL,
+            PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
         )", []);
         Ok(Self { conn: Mutex::new(conn) })
     }
@@ -147,6 +158,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS media_catalog_external_idx ON media_catalog(ex
 CREATE TABLE IF NOT EXISTS media_author (
     media_external_id TEXT NOT NULL,
     author_name       TEXT NOT NULL,
+    author_image_url  TEXT,
+    role              TEXT,
     PRIMARY KEY (media_external_id, author_name)
 );
 
@@ -165,6 +178,14 @@ CREATE TABLE IF NOT EXISTS saga_relations (
     FOREIGN KEY (saga_id) REFERENCES sagas(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS saga_relations_saga_idx ON saga_relations(saga_id);
+
+CREATE TABLE IF NOT EXISTS media_relations (
+    media_external_id         TEXT NOT NULL,
+    related_media_external_id TEXT NOT NULL,
+    relation_type             TEXT NOT NULL,
+    type_label                TEXT NOT NULL,
+    PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
+);
 
 CREATE TABLE IF NOT EXISTS monthly_history (
     month        TEXT NOT NULL,

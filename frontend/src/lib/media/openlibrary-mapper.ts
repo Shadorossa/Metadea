@@ -1,7 +1,8 @@
 import type { OpenLibWork } from '../search/providers/openlibrary';
 import { openLibCoverUrl } from '../search/providers/openlibrary';
 import { getT } from '../../i18n/client';
-import type { MediaPageData } from './types';
+import type { MediaAuthor, MediaPageData } from './types';
+
 
 function extractDescription(raw: OpenLibWork['description']): string | undefined {
   if (!raw) return undefined;
@@ -11,7 +12,7 @@ function extractDescription(raw: OpenLibWork['description']): string | undefined
 
 export function mapOpenLibToMedia(
   work: OpenLibWork,
-  authorNames: string[],
+  authors: MediaAuthor[],
   externalId: string,
 ): MediaPageData {
   const tm = getT().media;
@@ -24,17 +25,17 @@ export function mapOpenLibToMedia(
   const genreDots = genres.join(' · ') || undefined;
 
   const stats: MediaPageData['stats'] = [];
-  if (authorNames.length) {
+  if (authors.length) {
     stats.push({
-      label: authorNames.length > 1 ? tm.stat_authors : tm.stat_author,
-      value: authorNames.join(', '),
+      label: authors.length > 1 ? tm.stat_authors : tm.stat_author,
+      value: authors.map(a => a.name).join(', '),
     });
   }
   if (work.first_publish_date) {
     stats.push({ label: tm.stat_published, value: work.first_publish_date });
   }
 
-  const metaLines = authorNames.length ? [authorNames.join(', ')] : [];
+  const metaLines = authors.length ? [authors.map(a => a.name).join(', ')] : [];
 
   return {
     externalId,
@@ -56,6 +57,6 @@ export function mapOpenLibToMedia(
     relations:    [],
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
-    authors:        authorNames,
+    authors,
   };
 }

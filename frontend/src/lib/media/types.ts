@@ -20,6 +20,12 @@ export interface MediaRelation {
   url?: string;
 }
 
+export interface MediaAuthor {
+  name: string;
+  image?: string;
+  role?: string;
+}
+
 export interface MediaPageData {
   externalId: string;          // "anime:918", "book:/works/OL12345W"
   type: string;                // "anime" | "manga" | "lnovel" | "book"
@@ -57,6 +63,6 @@ export interface MediaPageData {
   totalCount?: number;
   totalCount_2?: number;
   companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
-  authors?: string[];          // author names (books) — persisted to media_catalog.authors_csv
+  authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table
   hasSaga?: boolean;           // AniList entry has a direct PREQUEL/SEQUEL relation — shows the SagaViewer button
 }

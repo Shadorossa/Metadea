@@ -379,3 +379,173 @@ pub async fn save_cached_saga(
     tx.commit().str_err()?;
     Ok(())
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DbMediaRelation {
+    pub related_media_external_id: String,
+    pub relation_type: String,
+    pub type_label: String,
+    pub title: String,
+    pub cover: Option<String>,
+}
+
+#[tauri::command]
+pub async fn save_media_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+    relations: Vec<DbMediaRelation>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    tx.execute(
+        "DELETE FROM media_relations WHERE media_external_id = ?1",
+        [&media_external_id],
+    )
+    .str_err()?;
+
+    let now = Utc::now().to_rfc3339();
+
+    for rel in relations {
+        tx.execute(
+            "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                &media_external_id,
+                &rel.related_media_external_id,
+                &rel.relation_type,
+                &rel.type_label,
+            ],
+        )
+        .str_err()?;
+
+        let exists_val: i32 = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM media_catalog WHERE external_id = ?1)",
+                [&rel.related_media_external_id],
+                |row| row.get(0),
+            )
+            .str_err()?;
+
+        if exists_val == 0 {
+            let rel_type = rel.related_media_external_id.split(':').next().unwrap_or("anime").to_string();
+            tx.execute(
+                "INSERT INTO media_catalog (
+                    id, external_id, type, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                rusqlite::params![
+                    crate::db::generate_id(),
+                    &rel.related_media_external_id,
+                    &rel_type,
+                    &rel.title,
+                    &rel.cover,
+                    &now,
+                    &now,
+                ],
+            )
+            .str_err()?;
+        }
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_media_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<DbMediaRelation>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
+             FROM media_relations mr
+             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
+             WHERE mr.media_external_id = ?1",
+        )
+        .str_err()?;
+
+    let rows = stmt
+        .query_map([&media_external_id], |row| {
+            Ok(DbMediaRelation {
+                related_media_external_id: row.get(0)?,
+                relation_type: row.get(1)?,
+                type_label: row.get(2)?,
+                title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                cover: row.get(4)?,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(rows)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DbMediaAuthor {
+    pub name: String,
+    pub image: Option<String>,
+    pub role: Option<String>,
+}
+
+#[tauri::command]
+pub async fn save_media_authors(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+    authors: Vec<DbMediaAuthor>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    tx.execute(
+        "DELETE FROM media_author WHERE media_external_id = ?1",
+        [&media_external_id],
+    )
+    .str_err()?;
+
+    for auth in authors {
+        tx.execute(
+            "INSERT OR REPLACE INTO media_author (media_external_id, author_name, author_image_url, role)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                &media_external_id,
+                &auth.name,
+                &auth.image,
+                &auth.role,
+            ],
+        )
+        .str_err()?;
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_media_authors(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<DbMediaAuthor>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT author_name, author_image_url, role FROM media_author WHERE media_external_id = ?1",
+        )
+        .str_err()?;
+
+    let rows = stmt
+        .query_map([&media_external_id], |row| {
+            Ok(DbMediaAuthor {
+                name: row.get(0)?,
+                image: row.get(1)?,
+                role: row.get(2)?,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(rows)
+}
