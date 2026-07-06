@@ -166,6 +166,17 @@ export const en = {
       CANCELLED:        'Cancelled',
       HIATUS:           'Hiatus',
     },
+    tmdb_statuses: {
+      'Rumored':         'Rumored',
+      'Planned':         'Planned',
+      'In Production':   'In Production',
+      'Post Production': 'Post Production',
+      'Released':        'Released',
+      'Canceled':        'Canceled',
+      'Returning Series':'Returning Series',
+      'Ended':           'Ended',
+      'Pilot':           'Pilot',
+    },
     seasons: {
       WINTER: 'Winter', SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall',
     },

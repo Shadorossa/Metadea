@@ -9,7 +9,7 @@ export const API_ENDPOINTS = {
 
   // The Movie Database (TMDB)
   TMDB: 'https://api.themoviedb.org/3',
-  TMDB_IMAGES: 'https://image.tmdb.org/t/p/w300',
+  TMDB_IMAGE: (path: string, size: string = 'w300') => `https://image.tmdb.org/t/p/${size}${path}`,
 
   // Open Library
   OPENLIBRARY: 'https://openlibrary.org',

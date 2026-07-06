@@ -230,6 +230,7 @@ export default function MediaPage() {
       genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
       genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
       platforms_csv:         data.platforms?.join(',') || undefined,
+      companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});

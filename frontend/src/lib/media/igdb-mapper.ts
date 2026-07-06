@@ -202,6 +202,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     releaseDay,
     platforms,
     scoreGlobal,
+    companies: [...new Set([...developers, ...publishers])],
   };
 }
 

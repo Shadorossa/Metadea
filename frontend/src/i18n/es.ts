@@ -166,6 +166,17 @@ export const es = {
       CANCELLED:        'Cancelado',
       HIATUS:           'En hiato',
     },
+    tmdb_statuses: {
+      'Rumored':         'Rumoreado',
+      'Planned':         'Planeado',
+      'In Production':   'En producción',
+      'Post Production': 'Post-producción',
+      'Released':        'Estrenado',
+      'Canceled':        'Cancelado',
+      'Returning Series':'En emisión',
+      'Ended':           'Finalizada',
+      'Pilot':           'Piloto',
+    },
     seasons: {
       WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño',
     },

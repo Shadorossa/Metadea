@@ -37,8 +37,11 @@ export async function renderLists(el: HTMLElement): Promise<void> {
 
   const username = (profile.display_name as string | undefined)?.toLowerCase().replace(/\s+/g, '_') || 'user';
 
+  // Favorites already have their own "Favoritos" profile tab (render-favorites.ts,
+  // driven by LibraryEntry.is_favorite) — the favorite-backed ListInfo rows
+  // returned by getAllUserLists() would just duplicate that here, so they're
+  // filtered out entirely rather than shown a second time under "Listas".
   let customLists: ListInfo[] = allLists.filter(l => !l.is_fav);
-  let favLists: ListInfo[]    = allLists.filter(l => l.is_fav && l.item_count > 0);
   let activeListKey: string | null = null;
   let isCreating = false;
 
@@ -47,7 +50,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
   const renderGrid = () => {
     isCreating = false;
 
-    const buildCard = (list: ListInfo, isFavCard: boolean) => {
+    const buildCard = (list: ListInfo) => {
       const previewMetas = list.preview_ids.map(id => catalogMap.get(id));
       const collageHtml = previewMetas.map(meta => {
         const cover    = meta?.cover_url ?? '';
@@ -57,23 +60,20 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           : `<div class="list-card-collage-img list-card-collage-fallback" style="background:${fallback}"></div>`;
       }).join('');
 
-      const displayName = isFavCard ? (FAV_LABELS[list.key] ?? list.name) : list.name;
-
       return `
-        <div class="list-card${isFavCard ? ' list-card--fav' : ''}" data-list-key="${list.key}">
+        <div class="list-card" data-list-key="${list.key}">
           <div class="list-card-collage${previewMetas.length === 0 ? ' list-card-collage--empty' : ''}">
-            ${collageHtml || `<span class="list-card-empty-icon">${isFavCard ? '★' : '📋'}</span>`}
+            ${collageHtml || `<span class="list-card-empty-icon">📋</span>`}
           </div>
           <div class="list-card-info">
-            <span class="list-card-title">${esc(displayName)}</span>
+            <span class="list-card-title">${esc(list.name)}</span>
             <span class="list-card-count">${list.item_count} ${p.lists_items}</span>
           </div>
         </div>
       `;
     };
 
-    const favGridHtml  = favLists.map(l  => buildCard(l, true)).join('');
-    const customGridHtml = customLists.map(l => buildCard(l, false)).join('');
+    const customGridHtml = customLists.map(l => buildCard(l)).join('');
 
     const createFormHtml = isCreating ? `
       <div class="list-create-form">
@@ -96,12 +96,6 @@ export async function renderLists(el: HTMLElement): Promise<void> {
           </button>
         </div>
         ${createFormHtml}
-        ${favLists.length > 0 ? `
-          <div class="lists-section">
-            <h3 class="lists-section-title">Favoritos</h3>
-            <div class="lists-grid">${favGridHtml}</div>
-          </div>
-        ` : ''}
         ${customLists.length > 0
           ? `<div class="lists-grid">${customGridHtml}</div>`
           : `<div class="lists-empty-state">
@@ -146,8 +140,7 @@ export async function renderLists(el: HTMLElement): Promise<void> {
   // ── Detail view ───────────────────────────────────────────────────────────
 
   const renderDetail = async (listKey: string) => {
-    const allDisplayLists = [...customLists, ...favLists];
-    const list = allDisplayLists.find(l => l.key === listKey);
+    const list = customLists.find(l => l.key === listKey);
     if (!list) { renderGrid(); return; }
     const isFav = list.is_fav;
 

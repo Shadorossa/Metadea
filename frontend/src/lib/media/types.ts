@@ -56,4 +56,5 @@ export interface MediaPageData {
   status?: string;
   totalCount?: number;
   totalCount_2?: number;
+  companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
 }

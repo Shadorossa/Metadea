@@ -18,11 +18,43 @@ interface TmdbPageResponse {
   results?: TmdbMovie[];
 }
 
-function buildPosterUrl(posterPath: string | null): string | null {
-  return posterPath ? `${API_ENDPOINTS.TMDB_IMAGES}${posterPath}` : null;
+export interface TmdbGenre { id: number; name: string }
+export interface TmdbCompany { id: number; name: string }
+
+// Shared fields between /movie/{id} and /tv/{id} detail responses.
+interface TmdbDetailBase {
+  id: number;
+  overview?: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average?: number;
+  status?: string;
+  genres?: TmdbGenre[];
+  production_companies?: TmdbCompany[];
 }
 
-function parseDateParts(dateString?: string): { year: number | null; month: number | null; day: number | null } {
+export interface TmdbMovieDetail extends TmdbDetailBase {
+  title: string;
+  original_title?: string;
+  release_date?: string;
+  runtime?: number | null;
+}
+
+export interface TmdbTvDetail extends TmdbDetailBase {
+  name: string;
+  original_name?: string;
+  first_air_date?: string;
+  last_air_date?: string;
+  number_of_episodes?: number;
+  number_of_seasons?: number;
+  episode_run_time?: number[];
+}
+
+function buildPosterUrl(posterPath: string | null): string | null {
+  return posterPath ? API_ENDPOINTS.TMDB_IMAGE(posterPath) : null;
+}
+
+export function parseDateParts(dateString?: string): { year: number | null; month: number | null; day: number | null } {
   if (!dateString) return { year: null, month: null, day: null };
   // TMDB dates are "YYYY-MM-DD" with no time component — JS parses them as UTC midnight,
   // so local-time methods (getFullYear etc.) can return the previous day in negative offsets.
@@ -52,12 +84,10 @@ function mapTmdbMovieToSearchResult(movie: TmdbMovie, mediaType: MediaType): Sea
   };
 }
 
-async function fetchFromTmdb(
-  endpoint: string,
-  searchQuery: string,
-  mediaType: MediaType,
-  signal: AbortSignal,
-): Promise<SearchResult[]> {
+// TMDB credentials can be a bearer access token, a plain api_key query param,
+// or both (see settings/environment.ts) — resolve them once and let callers
+// build their own query string / headers from the result.
+async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: string } | null> {
   let accessToken = '';
   let apiKey = '';
 
@@ -69,18 +99,32 @@ async function fetchFromTmdb(
     // Not in Tauri or config doesn't exist
   }
 
-  if (!accessToken && !apiKey) return [];
+  if (!accessToken && !apiKey) return null;
+  return { accessToken, apiKey };
+}
 
-  const tmdbLocale = getLangCode() === 'en' ? 'en-US' : 'es-ES';
-  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=${tmdbLocale}`;
+function tmdbLocale(): string {
+  return getLangCode() === 'en' ? 'en-US' : 'es-ES';
+}
+
+async function fetchFromTmdb(
+  endpoint: string,
+  searchQuery: string,
+  mediaType: MediaType,
+  signal: AbortSignal,
+): Promise<SearchResult[]> {
+  const auth = await getTmdbAuth();
+  if (!auth) return [];
+
+  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=${tmdbLocale()}`;
   const headers: Record<string, string> = {};
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  if (auth.accessToken) {
+    headers['Authorization'] = `Bearer ${auth.accessToken}`;
   }
 
-  if (apiKey) {
-    url += `&api_key=${encodeURIComponent(apiKey)}`;
+  if (auth.apiKey) {
+    url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
   }
 
   const data = await fetchJson<TmdbPageResponse>(url, { signal, headers });
@@ -92,3 +136,22 @@ export const searchMovies = (searchQuery: string, signal: AbortSignal) =>
 
 export const searchSeries = (searchQuery: string, signal: AbortSignal) =>
   fetchFromTmdb('search/tv', searchQuery, 'series', signal);
+
+// Full detail fetch for the media page — search results only carry title/
+// cover/date/score, not overview, genres, runtime or production companies.
+export async function fetchTmdbDetail(
+  id: number,
+  mediaType: 'movie' | 'series',
+): Promise<TmdbMovieDetail | TmdbTvDetail | null> {
+  const auth = await getTmdbAuth();
+  if (!auth) return null;
+
+  const path = mediaType === 'movie' ? 'movie' : 'tv';
+  let url = `${API_ENDPOINTS.TMDB}/${path}/${id}?language=${tmdbLocale()}`;
+  const headers: Record<string, string> = {};
+
+  if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;
+  if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+
+  return fetchJson<TmdbMovieDetail | TmdbTvDetail>(url, { headers });
+}

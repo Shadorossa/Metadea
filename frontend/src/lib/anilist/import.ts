@@ -29,6 +29,7 @@ query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
         genres
         source
         status
+        studios(isMain: true) { nodes { name } }
       }
     }
   }
@@ -72,6 +73,7 @@ interface AniListImportMediaItem {
     genres: string[];
     source: string | null;
     status: string | null;
+    studios: { nodes: { name: string }[] } | null;
   };
 }
 
@@ -373,6 +375,10 @@ function buildCatalogEntry(externalId: string, entryType: string, mediaItem: Ani
     status: mediaItem.media?.status ?? null,
     genres_csv: core.join(',') || null,
     genres_tag_csv: tags.join(',') || null,
+    // Studios only apply to anime — see the matching note in anilist-mapper.ts.
+    companies_cache_csv: entryType === 'anime'
+      ? (mediaItem.media?.studios?.nodes.map(n => n.name).join(',') || null)
+      : null,
     created_at: now,
     updated_at: now,
   };

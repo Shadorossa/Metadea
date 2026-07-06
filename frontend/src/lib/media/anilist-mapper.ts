@@ -141,5 +141,8 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     status:       raw.status ?? undefined,
     totalCount:   resolvedType === 'anime' ? (raw.episodes ?? undefined) : (raw.chapters ?? undefined),
     totalCount_2: (resolvedType === 'manga' || resolvedType === 'lnovel') ? (raw.volumes ?? undefined) : undefined,
+    // Studios only apply to anime — AniList's `studios` connection is
+    // effectively unused for manga/light novels (no animation involved).
+    companies:    resolvedType === 'anime' ? raw.studios.nodes.map(n => n.name) : undefined,
   };
 }

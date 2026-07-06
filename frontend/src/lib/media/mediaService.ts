@@ -1,7 +1,9 @@
 import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
+import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
+import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
@@ -89,6 +91,13 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     return data;
   }
 
+  if (type === 'movie' || type === 'series') {
+    const numericId = parseInt(idStr, 10);
+    if (!numericId) return null;
+    const raw = await fetchTmdbDetail(numericId, type);
+    return raw ? mapTmdbToMedia(raw, type, rawId) : null;
+  }
+
   if (type === 'book') {
     const cachedNames   = sessionStorage.getItem(`book_authors:${rawId}`);
     const cachedKey     = sessionStorage.getItem(`book_author_key:${rawId}`);
@@ -148,6 +157,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     format:        c.format        ?? undefined,
     source:        c.source        ?? undefined,
     platforms:     c.platforms_csv ? c.platforms_csv.split(',') : undefined,
+    companies:     c.companies_cache_csv ? c.companies_cache_csv.split(',') : undefined,
     metaLines:     [],
     stats:         [],
     characters:    [],
