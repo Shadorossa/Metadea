@@ -56,5 +56,6 @@ export function mapOpenLibToMedia(
     relations:    [],
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
+    authors:        authorNames,
   };
 }

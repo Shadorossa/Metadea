@@ -6,10 +6,12 @@ import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
+import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus, IconLayers } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
+import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -129,6 +131,7 @@ export default function MediaPage() {
   const [data,               setData]               = useState<MediaPageData | null>(null);
   const [showEditor,         setShowEditor]         = useState(false);
   const [showSaga,           setShowSaga]           = useState(false);
+  const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
@@ -178,6 +181,23 @@ export default function MediaPage() {
         setData(full);
         setPageState('ready');
         setIsFetchingFull(false);
+
+        if (full.characters && full.characters.length > 0) {
+          const seen = new Set<string>();
+          const skeletonChars = full.characters
+            .map(char => ({
+              external_id: char.id || `character:${char.name}`,
+              name: char.name,
+              image_url: char.image || null,
+              relation_type: char.role || null
+            }))
+            .filter(char => {
+              if (seen.has(char.external_id)) return false;
+              seen.add(char.external_id);
+              return true;
+            });
+          saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
+        }
 
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
         // etc.) take a few extra sequential IGDB requests — fetch them after
@@ -233,14 +253,15 @@ export default function MediaPage() {
       genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
       platforms_csv:         data.platforms?.join(',') || undefined,
       companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
+      authors_csv:           data.authors?.join(',') || undefined,
       created_at:            new Date().toISOString(),
       updated_at:            new Date().toISOString(),
     }).catch(() => {});
-  // Re-run when bannerImage changes so partial→full transition saves the banner URL to catalog.
+  // Re-run when bannerImage/authors changes so partial→full transition saves the banner URL and authors to catalog.
   // currentId is included so navigating between two items of the same type (and same
   // transient bannerImage state) still re-fetches the library entry for the new item.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, data?.type, data?.bannerImage]);
+  }, [currentId, data?.type, data?.bannerImage, data?.authors]);
 
   // ── Discord Rich Presence ──────────────────────────────────────────────────
   useEffect(() => {
@@ -369,6 +390,21 @@ export default function MediaPage() {
       {showSaga && (
         <SagaViewerModal externalId={currentId} onClose={() => setShowSaga(false)} />
       )}
+      {showPrEditor && (
+        <PrEditorModal
+          externalId={currentId}
+          onClose={() => setShowPrEditor(false)}
+          onSaved={() => {
+            // Reload page data to reflect saved changes
+            fetchMediaDataWithFallback(
+              currentId,
+              partial => setData(partial),
+              full => setData(full),
+              () => {}
+            );
+          }}
+        />
+      )}
 
       {/* Hero */}
       <div className={`media-hero${data.type === 'game' || data.type === 'vnovel' ? ' media-hero--game' : ''}`}>
@@ -381,9 +417,19 @@ export default function MediaPage() {
           )}
         </div>
 
-        {data.dateBadge && (
-          <div className="media-banner-date-badge">{data.dateBadge}</div>
-        )}
+        <div className="media-banner-badges-container">
+          {data.dateBadge && (
+            <div className="media-banner-date-badge">{data.dateBadge}</div>
+          )}
+          <button
+            type="button"
+            className="media-banner-pr-btn"
+            onClick={() => setShowPrEditor(true)}
+            title="Proponer cambios o añadir datos en GitHub"
+          >
+            <IconPlus />
+          </button>
+        </div>
         {data.developerBadge && (
           <div className="media-banner-developer-badge">{data.developerBadge}</div>
         )}

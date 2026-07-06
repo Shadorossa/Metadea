@@ -27,6 +27,7 @@ export interface MediaCatalogEntry {
   genres_tag_csv?:      string | null;
   platforms_csv?:       string | null;
   companies_cache_csv?: string | null;
+  authors_csv?:         string | null;
   last_synced_at?:      string | null;
   sync_failed_count?:   number | null;
   last_sync_error?:     string | null;

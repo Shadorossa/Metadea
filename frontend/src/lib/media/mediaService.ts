@@ -134,6 +134,17 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 }
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
+  const authorList = c.authors_csv ? c.authors_csv.split(',') : [];
+  const stats: MediaStat[] = [];
+  if (authorList.length > 0) {
+    stats.push({
+      label: authorList.length > 1 ? 'Autores' : 'Autor',
+      value: authorList.join(', '),
+    });
+  }
+
+  const metaLines = c.type === 'book' && authorList.length > 0 ? [authorList.join(', ')] : [];
+
   return {
     externalId:    c.external_id,
     type:          c.type,
@@ -158,12 +169,13 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     source:        c.source        ?? undefined,
     platforms:     c.platforms_csv ? c.platforms_csv.split(',') : undefined,
     companies:     c.companies_cache_csv ? c.companies_cache_csv.split(',') : undefined,
-    metaLines:     [],
-    stats:         [],
+    metaLines,
+    stats,
     characters:    [],
     relations:     [],
     progressStatus: inferProgressStatus(c.type),
     progressLabel,
+    authors:       authorList.length > 0 ? authorList : undefined,
   };
 }
 
@@ -200,42 +212,39 @@ export function fetchMediaDataWithFallback(
   }
 
   let fullArrived = false;
+  let hasLocalData = false;
+  let localData: MediaPageData | null = null;
 
   getCatalogEntry(rawId)
     .then(catalog => {
       if (catalog && catalog.title_main) {
-        const mapped = mapCatalogEntryToPartialData(catalog);
-        onFull(mapped);
-        fullArrived = true;
-        setCachedMediaData(rawId, mapped);
-        return;
+        hasLocalData = true;
+        localData = mapCatalogEntryToPartialData(catalog);
+        if (!fullArrived) {
+          onPartial(localData);
+        }
       }
-
-      if (catalog && !fullArrived) {
-        onPartial(mapCatalogEntryToPartialData(catalog));
-      }
-
-      fetchMediaData(rawId)
-        .then(data => {
-          fullArrived = true;
-          if (data) onFull(data);
-          else onError();
-        })
-        .catch(() => {
-          fullArrived = true;
-          onError();
-        });
     })
-    .catch(() => {
+    .catch(() => {})
+    .finally(() => {
       fetchMediaData(rawId)
         .then(data => {
           fullArrived = true;
-          if (data) onFull(data);
-          else onError();
+          if (data) {
+            onFull(data);
+          } else if (hasLocalData && localData) {
+            onFull(localData);
+          } else {
+            onError();
+          }
         })
         .catch(() => {
           fullArrived = true;
-          onError();
+          if (hasLocalData && localData) {
+            onFull(localData);
+          } else {
+            onError();
+          }
         });
     });
 }

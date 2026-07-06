@@ -645,4 +645,61 @@ h2, h3, .settings-panel-title, .section-label {
   box-shadow: 5px 5px 0px var(--border-color) !important;
 }
 
+.media-banner-pr-btn {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+.media-banner-pr-btn:hover {
+  background-color: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+}
+
+.pr-editor-modal {
+  border: 3px double var(--border-color) !important;
+  border-radius: 0px !important;
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.8) !important;
+}
+
+.pr-editor-header {
+  border-bottom: 2px solid var(--border-color) !important;
+}
+
+.pr-editor-title {
+  font-family: var(--font-title) !important;
+  text-transform: uppercase;
+}
+
+.pr-editor-footer {
+  border-top: 2px solid var(--border-color) !important;
+}
+
+.pr-editor-btn,
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.pr-editor-btn--submit {
+  border: 1px solid var(--accent) !important;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
+}
+
+.pr-editor-btn--submit:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+}
+
+.pr-editor-slots-box {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.pr-editor-slot-pill {
+  border-radius: 0px !important;
+  border: 1px solid var(--accent) !important;
+  background: rgba(var(--accent-rgb, 124, 106, 247), 0.1) !important;
+}
+
 

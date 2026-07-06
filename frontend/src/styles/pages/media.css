@@ -791,12 +791,19 @@
   transform: scale(1.1);
 }
 
-/* Floating date badge on the banner */
-.media-banner-date-badge {
+/* Floating badges container */
+.media-banner-badges-container {
   position: absolute;
   top: 19rem;
   right: 15%;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Floating date badge on the banner */
+.media-banner-date-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -809,6 +816,27 @@
   color: var(--text-main);
   border: 1px solid var(--border-color);
   backdrop-filter: blur(8px);
+}
+
+.media-banner-pr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  background: var(--bg-primary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all var(--anim-fast, 120ms);
+}
+
+.media-banner-pr-btn:hover {
+  color: var(--accent, #7c6af7);
+  border-color: var(--accent, #7c6af7);
+  background: var(--bg-elevated);
 }
 
 .media-banner-developer-badge {
@@ -2154,6 +2182,245 @@
   background: var(--accent, #7c6af7);
   border-color: var(--accent, #7c6af7);
   transform: translateX(-50%) scale(1.05);
+}
+
+/* Collaborative Catalog Editor (PrEditorModal) */
+.pr-editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.pr-editor-modal {
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: pr-editor-in var(--anim-medium, 220ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pr-editor-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pr-editor-modal--loading {
+  height: 200px;
+  justify-content: center;
+  align-items: center;
+}
+
+.pr-editor-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pr-editor-title {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted, #a0a0b8);
+}
+
+.pr-editor-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.pr-editor-alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.pr-editor-alert--error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgb(239, 68, 68);
+  color: rgb(239, 68, 68);
+}
+
+.pr-editor-alert--status {
+  background: rgba(124, 106, 247, 0.1);
+  border: 1px solid var(--accent, #7c6af7);
+  color: var(--accent, #7c6af7);
+}
+
+.pr-editor-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+.pr-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pr-editor-field--full {
+  grid-column: span 2;
+}
+
+.pr-editor-field-row {
+  grid-column: span 2;
+  display: flex;
+  gap: 1rem;
+}
+
+.pr-editor-field--small {
+  flex: 1;
+}
+
+.pr-editor-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #a0a0b8);
+}
+
+.pr-editor-field input[type="text"],
+.pr-editor-field input[type="number"],
+.pr-editor-field textarea {
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  color: var(--text-main, #e3e1db);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm, 4px);
+  transition: all 120ms ease;
+  width: 100%;
+}
+
+.pr-editor-field input:focus,
+.pr-editor-field textarea:focus {
+  border-color: var(--accent, #7c6af7);
+  outline: none;
+  box-shadow: 0 0 8px rgba(124, 106, 247, 0.2);
+}
+
+.pr-editor-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border-color, #2d2a24);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.pr-editor-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pr-editor-btn--cancel {
+  background: transparent;
+  border: 1px solid var(--border-color, #2d2a24);
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-btn--cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pr-editor-btn--submit {
+  background: var(--accent, #7c6af7);
+  border: 1px solid var(--accent, #7c6af7);
+  color: #fff;
+}
+
+.pr-editor-btn--submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 0 12px rgba(124, 106, 247, 0.3);
+}
+
+.pr-editor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* SlotInput Styling for collaborative catalog editor */
+.pr-editor-slots-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm, 4px);
+  min-height: 2.2rem;
+  align-items: center;
+  width: 100%;
+}
+
+.pr-editor-slot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(124, 106, 247, 0.15);
+  border: 1px solid rgba(124, 106, 247, 0.3);
+  color: var(--accent, #7c6af7);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pr-editor-slot-remove {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 120ms;
+}
+
+.pr-editor-slot-remove:hover {
+  opacity: 1;
+}
+
+.pr-editor-slot-input {
+  flex: 1;
+  min-width: 120px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 0.85rem;
 }
 
 

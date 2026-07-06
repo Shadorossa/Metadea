@@ -35,3 +35,14 @@ export async function saveCharacterAppearances(characterExternalId: string, appe
 export async function getCharacterAppearances(characterExternalId: string): Promise<CharacterAppearance[]> {
   return tauriCmd<CharacterAppearance[]>('get_character_appearances', [], { characterExternalId });
 }
+
+export interface SkeletonCharacter {
+  external_id: string;
+  name: string;
+  image_url?: string | null;
+  relation_type?: string | null;
+}
+
+export async function saveCharactersSkeleton(mediaExternalId: string, characters: SkeletonCharacter[]): Promise<void> {
+  return tauriRun('save_characters_skeleton', { mediaExternalId, characters });
+}

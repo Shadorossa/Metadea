@@ -80,6 +80,7 @@ commands.allow = [
   "get_character",
   "set_character_reaction",
   "save_character_appearances",
-  "get_character_appearances"
+  "get_character_appearances",
+  "save_characters_skeleton"
 ]
 

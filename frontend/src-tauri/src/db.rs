@@ -26,6 +26,12 @@ impl MetadeaDb {
     pub fn open(path: &std::path::Path) -> SqlResult<Self> {
         let conn = Connection::open(path)?;
         conn.execute_batch(METADEA_SCHEMA)?;
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
+        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_author (
+            media_external_id TEXT NOT NULL,
+            author_name       TEXT NOT NULL,
+            PRIMARY KEY (media_external_id, author_name)
+        )", []);
         Ok(Self { conn: Mutex::new(conn) })
     }
 }
@@ -129,6 +135,7 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     genres_tag_csv       TEXT DEFAULT '',
     platforms_csv        TEXT DEFAULT '',
     companies_cache_csv  TEXT DEFAULT '',
+    authors_csv          TEXT DEFAULT '',
     last_synced_at       TEXT,
     sync_failed_count    INTEGER DEFAULT 0,
     last_sync_error      TEXT,
@@ -136,6 +143,12 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     updated_at           TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS media_catalog_external_idx ON media_catalog(external_id);
+
+CREATE TABLE IF NOT EXISTS media_author (
+    media_external_id TEXT NOT NULL,
+    author_name       TEXT NOT NULL,
+    PRIMARY KEY (media_external_id, author_name)
+);
 
 CREATE TABLE IF NOT EXISTS sagas (
     id          TEXT PRIMARY KEY,

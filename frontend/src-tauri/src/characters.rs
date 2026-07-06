@@ -142,3 +142,58 @@ pub async fn get_character_appearances(
         .collect();
     Ok(rows)
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SkeletonCharacter {
+    pub external_id: String,
+    pub name: String,
+    pub image_url: Option<String>,
+    pub relation_type: Option<String>,
+}
+
+#[tauri::command]
+pub async fn save_characters_skeleton(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+    characters: Vec<SkeletonCharacter>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    let now = Utc::now().to_rfc3339();
+    let mut seen = std::collections::HashSet::new();
+
+    for char in characters {
+        if !seen.insert(char.external_id.clone()) {
+            continue;
+        }
+
+        tx.execute(
+            "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![
+                crate::db::generate_id(),
+                &char.external_id,
+                &char.name,
+                &char.image_url,
+                None::<String>,
+                &now,
+                &now,
+            ],
+        ).str_err()?;
+
+        tx.execute(
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                &char.external_id,
+                &media_external_id,
+                &char.relation_type,
+                &now,
+            ],
+        ).str_err()?;
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}

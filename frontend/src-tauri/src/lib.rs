@@ -112,6 +112,7 @@ pub fn run() {
             characters::set_character_reaction,
             characters::save_character_appearances,
             characters::get_character_appearances,
+            characters::save_characters_skeleton,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
             user_metadata::remove_user_image,

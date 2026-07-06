@@ -33,6 +33,13 @@ export interface AniListRelationEdge {
   };
 }
 
+export interface AniListStaffEdge {
+  role: string;
+  node: {
+    name: { full: string };
+  };
+}
+
 export interface AniListMediaDetail {
   id: number;
   title: { romaji: string | null; english: string | null; native: string | null };
@@ -57,6 +64,7 @@ export interface AniListMediaDetail {
   studios: { nodes: AniListStudio[] };
   characters: { pageInfo: { hasNextPage: boolean }; edges: AniListCharacterEdge[] };
   relations: { edges: AniListRelationEdge[] };
+  staff: { edges: AniListStaffEdge[] };
 }
 
 const DETAIL_QUERY = `
@@ -82,6 +90,14 @@ const DETAIL_QUERY = `
         edges {
           relationType
           node { id type format title { romaji } coverImage { medium } startDate { year month day } }
+        }
+      }
+      staff(perPage: 25) {
+        edges {
+          role
+          node {
+            name { full }
+          }
         }
       }
     }

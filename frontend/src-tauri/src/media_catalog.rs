@@ -31,6 +31,7 @@ pub struct MediaCatalogEntry {
     pub genres_tag_csv: Option<String>,
     pub platforms_csv: Option<String>,
     pub companies_cache_csv: Option<String>,
+    pub authors_csv: Option<String>,
     pub last_synced_at: Option<String>,
     pub sync_failed_count: Option<i32>,
     pub last_sync_error: Option<String>,
@@ -45,16 +46,16 @@ const SELECT_ALL: &str = "
            time_length, status, score_global, favorites_count,
            ratings_count, total_count, total_count_2, genres_csv,
            genres_tag_csv, platforms_csv, companies_cache_csv,
-           last_synced_at, sync_failed_count, last_sync_error,
+           authors_csv, last_synced_at, sync_failed_count, last_sync_error,
            created_at, updated_at
     FROM media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
     Ok(MediaCatalogEntry {
-        external_id:         row.get(0)?,
-        id:                  row.get(1)?,
+        external_id:         row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+        id:                  row.get::<_, Option<String>>(1)?.unwrap_or_default(),
         parent_id:           row.get(2)?,
-        r#type:              row.get(3)?,
+        r#type:              row.get::<_, Option<String>>(3)?.unwrap_or_default(),
         format:              row.get(4)?,
         source:              row.get(5)?,
         title_main:          row.get(6)?,
@@ -77,11 +78,12 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         genres_tag_csv:      row.get(23)?,
         platforms_csv:       row.get(24)?,
         companies_cache_csv: row.get(25)?,
-        last_synced_at:      row.get(26)?,
-        sync_failed_count:   row.get(27)?,
-        last_sync_error:     row.get(28)?,
-        created_at:          row.get(29)?,
-        updated_at:          row.get(30)?,
+        authors_csv:         row.get(26)?,
+        last_synced_at:      row.get(27)?,
+        sync_failed_count:   row.get(28)?,
+        last_sync_error:     row.get(29)?,
+        created_at:          row.get::<_, Option<String>>(30)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(31)?.unwrap_or_default(),
     })
 }
 
@@ -118,9 +120,9 @@ pub async fn save_catalog_entry(
             time_length, status, score_global, favorites_count,
             ratings_count, total_count, total_count_2, genres_csv,
             genres_tag_csv, platforms_csv, companies_cache_csv,
-            last_synced_at, sync_failed_count, last_sync_error,
+            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
             created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31)",
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32)",
         rusqlite::params![
             &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
             &entry.format, &entry.source,
@@ -132,10 +134,24 @@ pub async fn save_catalog_entry(
             &entry.total_count, &entry.total_count_2,
             &entry.genres_csv, &entry.genres_tag_csv,
             &entry.platforms_csv, &entry.companies_cache_csv,
+            &entry.authors_csv,
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
             &entry.created_at, &entry.updated_at,
         ],
     ).str_err()?;
+
+    if let Some(ref authors) = entry.authors_csv {
+        let _ = conn.execute("DELETE FROM media_author WHERE media_external_id = ?1", [&entry.external_id]);
+        for author in authors.split(',') {
+            let author = author.trim();
+            if !author.is_empty() {
+                let _ = conn.execute(
+                    "INSERT OR IGNORE INTO media_author (media_external_id, author_name) VALUES (?1, ?2)",
+                    rusqlite::params![&entry.external_id, author],
+                );
+            }
+        }
+    }
 
     Ok(entry)
 }

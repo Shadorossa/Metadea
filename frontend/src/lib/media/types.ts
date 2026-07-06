@@ -57,5 +57,6 @@ export interface MediaPageData {
   totalCount?: number;
   totalCount_2?: number;
   companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
+  authors?: string[];          // author names (books) — persisted to media_catalog.authors_csv
   hasSaga?: boolean;           // AniList entry has a direct PREQUEL/SEQUEL relation — shows the SagaViewer button
 }
