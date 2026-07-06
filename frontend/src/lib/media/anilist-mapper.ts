@@ -109,17 +109,20 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const originalCreators = staffEdges.filter(e => e.role === 'Original Creator').map(e => ({
     name: e.node.name.full,
     image: e.node.image?.medium || undefined,
-    role: 'Original Creator'
+    role: 'Original Creator',
+    url: e.node.id ? `https://anilist.co/staff/${e.node.id}` : undefined
   }));
   const originalStories = staffEdges.filter(e => e.role === 'Original Story').map(e => ({
     name: e.node.name.full,
     image: e.node.image?.medium || undefined,
-    role: 'Original Story'
+    role: 'Original Story',
+    url: e.node.id ? `https://anilist.co/staff/${e.node.id}` : undefined
   }));
   const directors = staffEdges.filter(e => e.role === 'Director').map(e => ({
     name: e.node.name.full,
     image: e.node.image?.medium || undefined,
-    role: 'Director'
+    role: 'Director',
+    url: e.node.id ? `https://anilist.co/staff/${e.node.id}` : undefined
   }));
 
   let authors: MediaAuthor[] = [];

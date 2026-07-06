@@ -36,7 +36,9 @@ export interface AniListRelationEdge {
 export interface AniListStaffEdge {
   role: string;
   node: {
+    id: number;
     name: { full: string };
+    image: { medium: string | null } | null;
   };
 }
 
@@ -96,7 +98,9 @@ const DETAIL_QUERY = `
         edges {
           role
           node {
+            id
             name { full }
+            image { medium }
           }
         }
       }

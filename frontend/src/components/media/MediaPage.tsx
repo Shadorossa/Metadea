@@ -644,7 +644,23 @@ export default function MediaPage() {
                             </div>
                           )}
                           <div className="media-author-info">
-                            <span className="media-author-name">{auth.name}</span>
+                            {auth.url ? (
+                              <span
+                                className="media-author-name media-author-name--link"
+                                onClick={() => {
+                                  const tauri = window.__TAURI__;
+                                  if (tauri?.opener?.openUrl) {
+                                    tauri.opener.openUrl(auth.url!);
+                                  } else {
+                                    window.open(auth.url!, '_blank');
+                                  }
+                                }}
+                              >
+                                {auth.name}
+                              </span>
+                            ) : (
+                              <span className="media-author-name">{auth.name}</span>
+                            )}
                             {auth.role && <span className="media-author-role">{auth.role}</span>}
                           </div>
                         </div>

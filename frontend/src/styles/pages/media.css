@@ -2488,6 +2488,16 @@
   line-height: 1.2;
 }
 
+.media-author-name--link {
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.media-author-name--link:hover {
+  text-decoration: underline;
+  color: var(--accent, #7c6af7);
+}
+
 .media-author-role {
   font-size: 0.7rem;
   color: var(--text-muted, #a1a09a);

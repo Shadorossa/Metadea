@@ -21,9 +21,11 @@ export interface MediaRelation {
 }
 
 export interface MediaAuthor {
+  external_id: string;
   name: string;
   image?: string;
   role?: string;
+  url?: string;
 }
 
 export interface MediaPageData {

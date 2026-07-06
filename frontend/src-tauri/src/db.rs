@@ -27,15 +27,22 @@ impl MetadeaDb {
         let conn = Connection::open(path)?;
         conn.execute_batch(METADEA_SCHEMA)?;
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
+        let _ = conn.execute("DROP TABLE IF EXISTS media_author", []);
         let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_author (
-            media_external_id TEXT NOT NULL,
-            author_name       TEXT NOT NULL,
-            author_image_url  TEXT,
-            role              TEXT,
-            PRIMARY KEY (media_external_id, author_name)
+            external_id      TEXT PRIMARY KEY,
+            name             TEXT NOT NULL,
+            author_image_url TEXT,
+            author_url       TEXT,
+            created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
         )", []);
-        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN author_image_url TEXT", []);
-        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN role TEXT", []);
+        let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_by_author (
+            media_external_id  TEXT NOT NULL,
+            author_external_id TEXT NOT NULL,
+            role               TEXT,
+            PRIMARY KEY (media_external_id, author_external_id),
+            FOREIGN KEY (author_external_id) REFERENCES media_author(external_id) ON DELETE CASCADE
+        )", []);
         let _ = conn.execute("CREATE TABLE IF NOT EXISTS media_relations (
             media_external_id         TEXT NOT NULL,
             related_media_external_id TEXT NOT NULL,
@@ -156,11 +163,20 @@ CREATE TABLE IF NOT EXISTS media_catalog (
 CREATE UNIQUE INDEX IF NOT EXISTS media_catalog_external_idx ON media_catalog(external_id);
 
 CREATE TABLE IF NOT EXISTS media_author (
-    media_external_id TEXT NOT NULL,
-    author_name       TEXT NOT NULL,
-    author_image_url  TEXT,
-    role              TEXT,
-    PRIMARY KEY (media_external_id, author_name)
+    external_id      TEXT PRIMARY KEY,
+    name             TEXT NOT NULL,
+    author_image_url TEXT,
+    author_url       TEXT,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS media_by_author (
+    media_external_id  TEXT NOT NULL,
+    author_external_id TEXT NOT NULL,
+    role               TEXT,
+    PRIMARY KEY (media_external_id, author_external_id),
+    FOREIGN KEY (author_external_id) REFERENCES media_author(external_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sagas (

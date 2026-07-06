@@ -118,7 +118,8 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     if (authorDetail) {
       richAuthors.push({
         name: authorDetail.name,
-        image: authorDetail.image || undefined
+        image: authorDetail.image || undefined,
+        url: authorDetail.key ? `https://openlibrary.org/authors/${authorDetail.key}` : undefined
       });
     } else if (preloadNames) {
       richAuthors = preloadNames.map(name => ({ name }));
@@ -145,7 +146,7 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
   const authorList = c.authors_csv ? c.authors_csv.split(',') : [];
-  const authors: MediaAuthor[] = authorList.map(name => ({ name }));
+  const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
   const stats: MediaStat[] = [];
   if (authorList.length > 0) {
     stats.push({
@@ -273,9 +274,11 @@ export function fetchMediaDataWithFallback(
 
           if (dbAuthors && dbAuthors.length > 0) {
             localData.authors = dbAuthors.map(a => ({
+              external_id: a.external_id,
               name: a.name,
               image: a.image || undefined,
-              role: a.role || undefined
+              role: a.role || undefined,
+              url: a.url || undefined
             }));
           }
         } catch (e) {

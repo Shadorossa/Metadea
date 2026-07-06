@@ -485,9 +485,11 @@ pub async fn get_media_relations(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DbMediaAuthor {
+    pub external_id: String,
     pub name: String,
     pub image: Option<String>,
     pub role: Option<String>,
+    pub url: Option<String>,
 }
 
 #[tauri::command]
@@ -500,19 +502,33 @@ pub async fn save_media_authors(
     let tx = conn.transaction().str_err()?;
 
     tx.execute(
-        "DELETE FROM media_author WHERE media_external_id = ?1",
+        "DELETE FROM media_by_author WHERE media_external_id = ?1",
         [&media_external_id],
     )
     .str_err()?;
 
+    let now = Utc::now().to_rfc3339();
+
     for auth in authors {
         tx.execute(
-            "INSERT OR REPLACE INTO media_author (media_external_id, author_name, author_image_url, role)
-             VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![
-                &media_external_id,
+                &auth.external_id,
                 &auth.name,
                 &auth.image,
+                &auth.url,
+                &now,
+            ],
+        )
+        .str_err()?;
+
+        tx.execute(
+            "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
+             VALUES (?1, ?2, ?3)",
+            rusqlite::params![
+                &media_external_id,
+                &auth.external_id,
                 &auth.role,
             ],
         )
@@ -531,16 +547,21 @@ pub async fn get_media_authors(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
-            "SELECT author_name, author_image_url, role FROM media_author WHERE media_external_id = ?1",
+            "SELECT ma.external_id, ma.name, ma.author_image_url, ma.author_url, mba.role
+             FROM media_by_author mba
+             JOIN media_author ma ON ma.external_id = mba.author_external_id
+             WHERE mba.media_external_id = ?1",
         )
         .str_err()?;
 
     let rows = stmt
         .query_map([&media_external_id], |row| {
             Ok(DbMediaAuthor {
-                name: row.get(0)?,
-                image: row.get(1)?,
-                role: row.get(2)?,
+                external_id: row.get(0)?,
+                name: row.get(1)?,
+                image: row.get(2)?,
+                url: row.get(3)?,
+                role: row.get(4)?,
             })
         })
         .str_err()?

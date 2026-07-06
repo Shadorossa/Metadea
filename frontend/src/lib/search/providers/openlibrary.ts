@@ -45,12 +45,12 @@ export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | n
   return fetchJson<OpenLibWork>(`${API_ENDPOINTS.OPENLIBRARY}${workKey}.json`);
 }
 
-export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: string; image?: string } | null> {
+export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: string; image?: string; key: string } | null> {
   const data = await fetchJson<{ name: string; photos?: number[] }>(`${API_ENDPOINTS.OPENLIBRARY}${authorKey}.json`);
   if (!data) return null;
   const photoId = data.photos?.[0];
   const image = photoId ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : undefined;
-  return { name: data.name, image };
+  return { name: data.name, image, key: authorKey };
 }
 
 function mapBook(book: OpenLibraryBook): SearchResult {

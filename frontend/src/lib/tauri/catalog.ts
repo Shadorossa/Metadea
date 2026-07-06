@@ -83,9 +83,11 @@ export async function getMediaRelations(mediaExternalId: string): Promise<DbMedi
 }
 
 export interface DbMediaAuthor {
+  external_id: string;
   name: string;
   image?: string | null;
   role?: string | null;
+  url?: string | null;
 }
 
 export async function saveMediaAuthors(mediaExternalId: string, authors: DbMediaAuthor[]): Promise<void> {
