@@ -1983,6 +1983,10 @@
 .saga-strip-list {
   display: flex;
   flex-direction: row;
+  /* "safe" keeps the start reachable via scroll if there are ever enough
+     items to overflow — plain center can clip the first item off-screen
+     with no way to scroll back to it in that case. */
+  justify-content: safe center;
   overflow-x: auto;
   width: 100%;
   height: 100%;
@@ -2202,7 +2206,7 @@
 
 .pr-editor-modal {
   width: 100%;
-  max-width: 700px;
+  max-width: 760px;
   max-height: 90vh;
   background: var(--bg-primary, #12110f);
   border: 1px solid var(--border-color, #2d2a24);
@@ -2246,7 +2250,7 @@
 }
 
 .pr-editor-body {
-  padding: 1.5rem;
+  padding: 1.75rem 2rem;
   overflow-y: auto;
   flex: 1;
 }
@@ -2270,10 +2274,32 @@
   color: var(--accent, #7c6af7);
 }
 
+/* Sections group related fields with breathing room between them, instead
+   of every field in the form competing for attention in one dense grid. */
+.pr-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pr-editor-section + .pr-editor-section {
+  margin-top: 2rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent, #7c6af7);
+}
+
 .pr-editor-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  gap: 1.5rem 1.75rem;
 }
 
 .pr-editor-field {
@@ -2287,9 +2313,37 @@
 }
 
 .pr-editor-field-row {
-  grid-column: span 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.pr-editor-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.pr-editor-subgroup-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #a0a0b8);
+}
+
+.pr-editor-subgroup-fields {
   display: flex;
   gap: 1rem;
+}
+
+.pr-editor-subgroup-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-color, #2d2a24);
 }
 
 .pr-editor-field--small {
@@ -2421,6 +2475,86 @@
   box-shadow: none !important;
   padding: 0 !important;
   font-size: 0.85rem;
+}
+
+/* Cover URL preview */
+.pr-editor-cover-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pr-editor-cover-preview {
+  flex-shrink: 0;
+  width: 42px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1b1917);
+}
+
+/* Banner URLs — image-preview slots instead of text pills */
+.pr-editor-slots-box--preview {
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.6rem;
+}
+
+.pr-editor-image-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  width: 150px;
+}
+
+.pr-editor-image-slot-media {
+  position: relative;
+}
+
+.pr-editor-image-slot-img {
+  width: 150px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1b1917);
+  display: block;
+}
+
+.pr-editor-image-slot-url {
+  font-size: 0.68rem;
+  color: var(--text-muted, #a0a0b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.pr-editor-image-slot-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 50%;
+  color: var(--text-main, #e3e1db);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0.85;
+  transition: opacity 120ms;
+}
+
+.pr-editor-image-slot-remove:hover {
+  opacity: 1;
 }
 
 /* Rich Media Authors Styling */

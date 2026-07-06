@@ -15,9 +15,19 @@ interface SlotInputProps {
   value: string | null | undefined;
   onChange: (newValue: string | null) => void;
   placeholder?: string;
+  /** Render each item as an image thumbnail (loaded from the item itself as
+   *  a URL) instead of a plain text pill — used for banner URLs, where the
+   *  raw string is meaningless to a reviewer but the image it points to
+   *  isn't. */
+  preview?: boolean;
+  /** Span both grid columns instead of sharing a row with another field —
+   *  only worth it for image-preview lists (thumbnails need the room); plain
+   *  tag lists default to half-width so two of them share a row instead of
+   *  each claiming a full row and stacking the whole form tall. */
+  fullWidth?: boolean;
 }
 
-function SlotInput({ label, value, onChange, placeholder }: SlotInputProps) {
+function SlotInput({ label, value, onChange, placeholder, preview, fullWidth }: SlotInputProps) {
   const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
   const [inputVal, setInputVal] = useState('');
 
@@ -42,14 +52,24 @@ function SlotInput({ label, value, onChange, placeholder }: SlotInputProps) {
   };
 
   return (
-    <div className="pr-editor-field pr-editor-field--full">
+    <div className={`pr-editor-field${fullWidth ? ' pr-editor-field--full' : ''}`}>
       <label>{label}</label>
-      <div className="pr-editor-slots-box">
+      <div className={`pr-editor-slots-box${preview ? ' pr-editor-slots-box--preview' : ''}`}>
         {items.map(item => (
-          <span key={item} className="pr-editor-slot-pill">
-            {item}
-            <button type="button" className="pr-editor-slot-remove" onClick={() => handleRemove(item)}>×</button>
-          </span>
+          preview ? (
+            <div key={item} className="pr-editor-image-slot">
+              <div className="pr-editor-image-slot-media">
+                <img src={item} alt="" className="pr-editor-image-slot-img" />
+                <button type="button" className="pr-editor-image-slot-remove" onClick={() => handleRemove(item)}>×</button>
+              </div>
+              <span className="pr-editor-image-slot-url" title={item}>{item}</span>
+            </div>
+          ) : (
+            <span key={item} className="pr-editor-slot-pill">
+              {item}
+              <button type="button" className="pr-editor-slot-remove" onClick={() => handleRemove(item)}>×</button>
+            </span>
+          )
         ))}
         <input
           type="text"
@@ -268,62 +288,94 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error">{errorMsg}</div>}
           {statusMsg && <div className="pr-editor-alert pr-editor-alert--status">{statusMsg}</div>}
 
-          <div className="pr-editor-form-grid">
-            <div className="pr-editor-field">
-              <label>Main Title</label>
-              <input type="text" value={entry.title_main || ''} onChange={e => handleChange('title_main', e.target.value)} />
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">Titles &amp; Synopsis</span>
+            <div className="pr-editor-form-grid">
+              <div className="pr-editor-field">
+                <label>Main Title</label>
+                <input type="text" value={entry.title_main || ''} onChange={e => handleChange('title_main', e.target.value)} />
+              </div>
+
+              <div className="pr-editor-field">
+                <label>Romaji Title</label>
+                <input type="text" value={entry.title_romaji || ''} onChange={e => handleChange('title_romaji', e.target.value)} />
+              </div>
+
+              <div className="pr-editor-field">
+                <label>Native Title</label>
+                <input type="text" value={entry.title_native || ''} onChange={e => handleChange('title_native', e.target.value)} />
+              </div>
+
+              <div className="pr-editor-field pr-editor-field--full">
+                <label>Synopsis / Description</label>
+                <textarea rows={4} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
+              </div>
             </div>
+          </div>
 
-            <div className="pr-editor-field">
-              <label>Romaji Title</label>
-              <input type="text" value={entry.title_romaji || ''} onChange={e => handleChange('title_romaji', e.target.value)} />
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">Images</span>
+            <div className="pr-editor-form-grid">
+              <div className="pr-editor-field">
+                <label>Cover URL</label>
+                <div className="pr-editor-cover-row">
+                  {entry.cover_url && (
+                    <img src={entry.cover_url} alt="" className="pr-editor-cover-preview" />
+                  )}
+                  <input type="text" value={entry.cover_url || ''} onChange={e => handleChange('cover_url', e.target.value)} />
+                </div>
+              </div>
+
+              <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview fullWidth />
             </div>
+          </div>
 
-            <div className="pr-editor-field">
-              <label>Native Title</label>
-              <input type="text" value={entry.title_native || ''} onChange={e => handleChange('title_native', e.target.value)} />
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">Classification</span>
+            <div className="pr-editor-form-grid">
+              <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} />
+              <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
+              <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} />
+              <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
+              <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
             </div>
+          </div>
 
-            <div className="pr-editor-field pr-editor-field--full">
-              <label>Synopsis / Description</label>
-              <textarea rows={4} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
-            </div>
-
-            <div className="pr-editor-field">
-              <label>Cover URL</label>
-              <input type="text" value={entry.cover_url || ''} onChange={e => handleChange('cover_url', e.target.value)} />
-            </div>
-
-            <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} />
-            <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} />
-            <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
-            <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} />
-            <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
-            <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
-
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">Release &amp; Progress</span>
             <div className="pr-editor-field-row">
-              <div className="pr-editor-field pr-editor-field--small">
-                <label>Year</label>
-                <input type="number" value={entry.release_year || ''} onChange={e => handleChange('release_year', e.target.value ? parseInt(e.target.value, 10) : null)} />
+              <div className="pr-editor-subgroup">
+                <span className="pr-editor-subgroup-label">Release Date</span>
+                <div className="pr-editor-subgroup-fields">
+                  <div className="pr-editor-field pr-editor-field--small">
+                    <label>Year</label>
+                    <input type="number" value={entry.release_year || ''} onChange={e => handleChange('release_year', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                  </div>
+                  <div className="pr-editor-field pr-editor-field--small">
+                    <label>Month</label>
+                    <input type="number" value={entry.release_month || ''} onChange={e => handleChange('release_month', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                  </div>
+                  <div className="pr-editor-field pr-editor-field--small">
+                    <label>Day</label>
+                    <input type="number" value={entry.release_day || ''} onChange={e => handleChange('release_day', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                  </div>
+                </div>
               </div>
-              <div className="pr-editor-field pr-editor-field--small">
-                <label>Month</label>
-                <input type="number" value={entry.release_month || ''} onChange={e => handleChange('release_month', e.target.value ? parseInt(e.target.value, 10) : null)} />
-              </div>
-              <div className="pr-editor-field pr-editor-field--small">
-                <label>Day</label>
-                <input type="number" value={entry.release_day || ''} onChange={e => handleChange('release_day', e.target.value ? parseInt(e.target.value, 10) : null)} />
-              </div>
-            </div>
 
-            <div className="pr-editor-field-row">
-              <div className="pr-editor-field pr-editor-field--small">
-                <label>Total Episodes / Chapters</label>
-                <input type="number" value={entry.total_count || ''} onChange={e => handleChange('total_count', e.target.value ? parseInt(e.target.value, 10) : null)} />
-              </div>
-              <div className="pr-editor-field pr-editor-field--small">
-                <label>Total Seasons / Volumes</label>
-                <input type="number" value={entry.total_count_2 || ''} onChange={e => handleChange('total_count_2', e.target.value ? parseInt(e.target.value, 10) : null)} />
+              <div className="pr-editor-subgroup-divider" />
+
+              <div className="pr-editor-subgroup">
+                <span className="pr-editor-subgroup-label">Totals</span>
+                <div className="pr-editor-subgroup-fields">
+                  <div className="pr-editor-field pr-editor-field--small">
+                    <label>Episodes / Chapters</label>
+                    <input type="number" value={entry.total_count || ''} onChange={e => handleChange('total_count', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                  </div>
+                  <div className="pr-editor-field pr-editor-field--small">
+                    <label>Seasons / Volumes</label>
+                    <input type="number" value={entry.total_count_2 || ''} onChange={e => handleChange('total_count_2', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
