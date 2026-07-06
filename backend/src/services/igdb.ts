@@ -22,6 +22,10 @@ const IGDB_GENRE_VISUAL_NOVEL = 34;
 const IGDB_GENRE_RPG          = 12;
 const IGDB_GENRE_FIGHTING     = 4;
 
+// This IGDB `category` enum is also mapped independently in the Tauri app at
+// frontend/src/lib/media/igdb-mapper.ts (GAME_TYPE_FORMAT) for the local game
+// catalog — same IGDB enum, two apps that can't share a module, so keep both
+// in sync by hand when IGDB's category list changes.
 const IGDB_CATEGORY_LABELS: Record<number, string> = {
   0:  'base_game',
   1:  'dlc',

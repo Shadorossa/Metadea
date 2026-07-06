@@ -45,6 +45,11 @@ interface IgdbDetailGame {
   forks?: IgdbSubGame[];
 }
 
+// IGDB's numeric `game_type`/`category` enum (0 = base game, 8 = remake, 9 =
+// remaster, ...) is also mapped independently in the Cloudflare Worker at
+// backend/src/services/igdb.ts (IGDB_CATEGORY_LABELS) for search results —
+// same IGDB enum, two apps that can't share a module, so keep both in sync
+// by hand when IGDB's category list changes.
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',
   2: 'EXPANSION',

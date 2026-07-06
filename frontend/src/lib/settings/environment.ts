@@ -1,14 +1,10 @@
 import { readEnvConfig, writeEnvConfig, openEnvFolder, readRoutes, writeRoutes, pickFolder } from '../tauri';
+import { CATEGORIES } from '../../components/local/utils/constants';
 
-const LOCAL_ROUTE_CATEGORIES: Array<{ id: string; label: string }> = [
-  { id: 'visual-novel', label: 'Novela visual' },
-  { id: 'anime',        label: 'Anime' },
-  { id: 'manga',        label: 'Manga' },
-  { id: 'light-novel',  label: 'Novela Ligera' },
-  { id: 'books',        label: 'Libros' },
-  { id: 'series',       label: 'Series' },
-  { id: 'movies',       label: 'Películas' },
-];
+// Local folder routes cover every category except 'videojuegos' (games use
+// Steam/local scan instead of a folder route) — reuse the shared category
+// list instead of keeping a second, drifting copy of the same labels.
+const LOCAL_ROUTE_CATEGORIES = CATEGORIES.filter(c => c.id !== 'videojuegos');
 
 export async function initEnvironment(showToast: (msg?: string) => void) {
   const clientIdInput        = document.getElementById('igdb-client-id')         as HTMLInputElement;
