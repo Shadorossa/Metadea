@@ -63,6 +63,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [sagaGroups, setSagaGroups] = useState<Record<string, string>>({});
   const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
+  const [sagaName, setSagaName] = useState('');
 
   // Every other relation type (ADAPTATION, SIDE_STORY, SPIN_OFF, ...) is kept
   // as an untouched pass-through — save_media_relations replaces the *entire*
@@ -151,9 +152,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             // is a one-time reverse-engineering of prior state, distinct from
             // classifySagaChain (which turns already-known sagaRelationTypes/
             // sagaGroups back into a display/relation structure).
-            const [allRelsList, dbGroups] = await Promise.all([
+            const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
               Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
-              invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>))
+              invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>)),
+              invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null)
             ]);
             const relTypesMap: Record<string, SagaRelationType> = {};
             const groupsMap: Record<string, string> = { ...dbGroups };
@@ -179,6 +181,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             }
             setSagaRelationTypes(relTypesMap);
             setSagaGroups(groupsMap);
+            setSagaName(dbSagaName || '');
 
           } catch (err) {
             console.error('Failed to load relations/saga:', err);
@@ -409,7 +412,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           month: null,
           day: null,
         });
-        await saveCachedSaga(chain).catch(err => console.error('Failed to save saga:', err));
+        await saveCachedSaga(chain, sagaName).catch(err => console.error('Failed to save saga:', err));
       }
 
       const bundledDbRelations: DbMediaRelation[] = bundledRelations
@@ -470,6 +473,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         characters,
         media_authors: mediaAuthors,
         saga_groups: sagaGroups,
+        saga_name: sagaName || undefined,
       };
       const changeSummary = buildChangeSummary(resolveMeta);
 
@@ -602,9 +606,19 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               </div>
             </div>
           </div>
-
           <div className="pr-editor-section pr-editor-section--row">
             <div className="pr-editor-subsection pr-editor-subsection--saga">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
+                <label className="pr-editor-subsection-label">Saga Name</label>
+                <input
+                  type="text"
+                  placeholder="Saga Name (e.g. Inazuma Eleven)"
+                  value={sagaName}
+                  onChange={e => setSagaName(e.target.value)}
+                  className="pr-editor-media-card-group-input"
+                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
+                />
+              </div>
               <label className="pr-editor-subsection-label">Saga order</label>
               <div className="pr-editor-media-groups">
                 {sagaGroupEntries.map(group => {

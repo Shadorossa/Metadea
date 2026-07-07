@@ -64,8 +64,8 @@ export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | n
   return tauriCmd<SagaEntry[] | null>('get_cached_saga', null, { externalId });
 }
 
-export async function saveCachedSaga(entries: SagaEntry[]): Promise<void> {
-  return tauriRun('save_cached_saga', { entries });
+export async function saveCachedSaga(entries: SagaEntry[], sagaName = ''): Promise<void> {
+  return tauriRun('save_cached_saga', { entries, sagaName });
 }
 
 export interface DbMediaRelation {

@@ -385,6 +385,7 @@ pub async fn get_cached_saga(
 pub async fn save_cached_saga(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     entries: Vec<SagaEntry>,
+    saga_name: String,
 ) -> Result<(), String> {
     if entries.is_empty() {
         return Ok(());
@@ -404,12 +405,12 @@ pub async fn save_cached_saga(
         .min_by(|a, b| a.external_id.cmp(&b.external_id))
         .expect("entries is non-empty, checked above");
     let saga_id = anchor.external_id.clone();
-    let saga_name = anchor.title.clone();
+    let final_saga_name = if saga_name.is_empty() { anchor.title.clone() } else { saga_name };
 
     // 1. Insert saga
     tx.execute(
         "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
-        rusqlite::params![&saga_id, &saga_name],
+        rusqlite::params![&saga_id, &final_saga_name],
     )
     .str_err()?;
 
@@ -849,6 +850,7 @@ pub struct ProposalBundle {
     pub characters: Vec<crate::characters::SkeletonCharacter>,
     pub media_authors: Vec<DbMediaAuthor>,
     pub saga_groups: Option<std::collections::HashMap<String, String>>,
+    pub saga_name: Option<String>,
 }
 
 pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
@@ -1131,6 +1133,23 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         upsert_saga_groups(&tx, saga_groups)?;
     }
 
+    if let Some(saga_name) = &bundle.saga_name {
+        let saga_id = owners.iter().min().cloned().unwrap_or_else(|| entry.external_id.clone());
+        tx.execute(
+            "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
+            rusqlite::params![&saga_id, saga_name],
+        )
+        .str_err()?;
+
+        for owner in &owners {
+            tx.execute(
+                "INSERT OR REPLACE INTO saga_relations (saga_id, media_external_id) VALUES (?1, ?2)",
+                rusqlite::params![&saga_id, owner],
+            )
+            .str_err()?;
+        }
+    }
+
     tx.commit().str_err()?;
     Ok(())
 }
@@ -1199,4 +1218,21 @@ pub async fn get_media_saga_groups(
         map.insert(row.0, row.1);
     }
     Ok(map)
+}
+
+#[tauri::command]
+pub async fn get_saga_name(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Option<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let name: Option<String> = conn
+        .query_row(
+            "SELECT s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id WHERE sr.media_external_id = ?1",
+            [&media_external_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .str_err()?;
+    Ok(name)
 }

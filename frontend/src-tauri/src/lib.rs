@@ -121,6 +121,7 @@ pub fn run() {
             media_catalog::get_cached_saga,
             media_catalog::save_cached_saga,
             media_catalog::get_transitive_relation_ids,
+            media_catalog::get_saga_name,
             media_catalog::save_media_saga_groups,
             media_catalog::get_media_saga_groups,
             media_catalog::save_media_relations,
