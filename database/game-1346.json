@@ -1,0 +1,187 @@
+{
+  "media_catalog": {
+    "id": "292b0ddcc07a8f13292b0ddcc07a8f13",
+    "external_id": "game:1346",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Xenogears",
+    "title_romaji": null,
+    "title_native": "Xenogears",
+    "synopsis": "Xenogears Blends Authentic RPG Gameplay with Exquisite Hand-Drawn and Computer-Generated Animation in a Grand Science Fiction Tale. An intricate storyline involving many human and non-human characters will prove to captivate audiences of all ages.\n\nPlayers can rotate the amazingly detailed 3D gameplay maps 360 degrees, and have the ability to navigate around the environment by jumping and climbing. In battle, mega-robots can be controlled, adding great variety to play. A new real-time combat system eliminates restrictive menus, using button commands to provide fast-paced, intuitive action. Players can wield dramatic magical spells or engage in real-time polygonal robot vs. robot battles. Combined with dynamic camera angles and intense lighting effects, Xenogears is an experience that won't be forgotten.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobxj4.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar3yr6.jpg",
+    "release_year": 1998,
+    "release_month": 2,
+    "release_day": 11,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.9,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Role-playing (RPG)",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation 3,PlayStation,PlayStation Portable",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Square Product Development Division 3,Square Electronic Arts,Square,Square Enix,Sony Computer Entertainment",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T16:26:25.850Z",
+    "updated_at": "2026-07-07T16:26:25.852550700+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:1346",
+      "related_media_external_id": "game:1227",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenosaga Episode I: Der Wille zur Macht",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2606.jpg"
+    },
+    {
+      "media_external_id": "game:1227",
+      "related_media_external_id": "game:1346",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenogears",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobxj4.jpg"
+    },
+    {
+      "media_external_id": "game:1227",
+      "related_media_external_id": "game:1228",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenosaga Episode II: Jenseits von Gut und Böse",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2607.jpg"
+    },
+    {
+      "media_external_id": "game:1228",
+      "related_media_external_id": "game:1227",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenosaga Episode I: Der Wille zur Macht",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2606.jpg"
+    },
+    {
+      "media_external_id": "game:1228",
+      "related_media_external_id": "game:1229",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenosaga Episode III: Also sprach Zarathustra",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3fe3.jpg"
+    },
+    {
+      "media_external_id": "game:1229",
+      "related_media_external_id": "game:1228",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenosaga Episode II: Jenseits von Gut und Böse",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2607.jpg"
+    },
+    {
+      "media_external_id": "game:1229",
+      "related_media_external_id": "game:2364",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Chronicles",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc8ap.jpg"
+    },
+    {
+      "media_external_id": "game:2364",
+      "related_media_external_id": "game:1229",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenosaga Episode III: Also sprach Zarathustra",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3fe3.jpg"
+    },
+    {
+      "media_external_id": "game:2364",
+      "related_media_external_id": "game:2366",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Chronicles X",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coavor.jpg"
+    },
+    {
+      "media_external_id": "game:2366",
+      "related_media_external_id": "game:2364",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc8ap.jpg"
+    },
+    {
+      "media_external_id": "game:2366",
+      "related_media_external_id": "game:26766",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Chronicles 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r2.jpg"
+    },
+    {
+      "media_external_id": "game:26766",
+      "related_media_external_id": "game:2366",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles X",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coavor.jpg"
+    },
+    {
+      "media_external_id": "game:26766",
+      "related_media_external_id": "game:103340",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Chronicles 2: Torna - The Golden Country",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r1.jpg"
+    },
+    {
+      "media_external_id": "game:103340",
+      "related_media_external_id": "game:26766",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r2.jpg"
+    },
+    {
+      "media_external_id": "game:103340",
+      "related_media_external_id": "game:191411",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Chronicles 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4ocq.jpg"
+    },
+    {
+      "media_external_id": "game:191411",
+      "related_media_external_id": "game:103340",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles 2: Torna - The Golden Country",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob8r1.jpg"
+    },
+    {
+      "media_external_id": "game:191411",
+      "related_media_external_id": "game:405450",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Xenoblade Genesis",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc8ai.jpg"
+    },
+    {
+      "media_external_id": "game:405450",
+      "related_media_external_id": "game:191411",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Xenoblade Chronicles 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4ocq.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Xenoverse"
+}
