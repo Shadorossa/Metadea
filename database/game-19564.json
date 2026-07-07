@@ -1,0 +1,66 @@
+{
+  "media_catalog": {
+    "id": "adf976ce9ae369e7adf976ce9ae369e7",
+    "external_id": "game:19564",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Death Stranding",
+    "title_romaji": null,
+    "title_native": "死亡搁浅",
+    "synopsis": "Death Stranding is an action game set in a post-apocalyptic United States.\n\nPlayers control Sam Porter Bridges, a courier tasked with reconnecting isolated cities via a communication network while delivering essential cargo. The gameplay blends traversal, resource management, and narrative elements, with a focus on social connectivity through asynchronous multiplayer. It is known for its unique mechanics, atmospheric world, and philosophical themes.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksf.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/ar3s0u.webp",
+    "release_year": 2019,
+    "release_month": 11,
+    "release_day": 8,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.5,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Role-playing (RPG),Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation 4,PC (Microsoft Windows)",
+    "shop_links_csv": "epic|https://store.epicgames.com/en-US/p/death-stranding,steam|https://store.steampowered.com/app/1190460,playstation|https://store.playstation.com/en-us/concept/234585",
+    "companies_cache_csv": "Kojima Productions,Sony Interactive Entertainment,505 Games",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T18:39:28.560Z",
+    "updated_at": "2026-07-07T18:39:32.105470200+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:19564",
+      "related_media_external_id": "game:152063",
+      "relation_type": "EXPANDED EDITION",
+      "type_label": "Expanded Edition",
+      "title": "Death Stranding: Director's Cut",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobksg.jpg"
+    },
+    {
+      "media_external_id": "game:19564",
+      "related_media_external_id": "game:228530",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Death Stranding 2: On the Beach",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ipx.jpg"
+    },
+    {
+      "media_external_id": "game:228530",
+      "related_media_external_id": "game:19564",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Death Stranding",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksf.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
