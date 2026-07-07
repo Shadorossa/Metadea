@@ -325,7 +325,6 @@ export function fetchMediaDataWithFallback(
         !catalogEntry.format ||
         !catalogEntry.source ||
         !catalogEntry.synopsis ||
-        !catalogEntry.banners_csv ||
         !catalogEntry.release_year ||
         !catalogEntry.genres_csv ||
         !catalogEntry.companies_cache_csv;
