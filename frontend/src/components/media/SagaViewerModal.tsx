@@ -42,6 +42,59 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
         return;
       }
 
+      // Fallback: build from transitive relations in database!
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { getCatalogEntry } = await import('../../lib/tauri/catalog');
+        const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
+        
+        if (transitiveIds.length > 1) {
+          const entriesData = await Promise.all(
+            transitiveIds.map(async id => {
+              const c = await getCatalogEntry(id).catch(() => null);
+              return { id, entry: c };
+            })
+          );
+          const validEntries = entriesData.filter(x => x.entry !== null) as { id: string; entry: any }[];
+          
+          // Sort chronologically
+          validEntries.sort((a, b) => {
+            const yA = a.entry.release_year ?? Infinity;
+            const yB = b.entry.release_year ?? Infinity;
+            if (yA !== yB) return yA - yB;
+            const mA = a.entry.release_month ?? Infinity;
+            const mB = b.entry.release_month ?? Infinity;
+            if (mA !== mB) return mA - mB;
+            const dA = a.entry.release_day ?? Infinity;
+            const dB = b.entry.release_day ?? Infinity;
+            if (dA !== dB) return dA - dB;
+            return a.id.localeCompare(b.id);
+          });
+
+          const sagaList: SagaEntry[] = validEntries.map(x => ({
+            externalId: x.id,
+            title: x.entry.title_main || x.id,
+            cover: x.entry.cover_url || null,
+            format: x.entry.format || null,
+            mediaType: x.entry.type || 'game',
+            year: x.entry.release_year ?? null,
+            month: x.entry.release_month ?? null,
+            day: x.entry.release_day ?? null,
+          }));
+
+          setEntries(sagaList);
+          setLoadState('done');
+          return;
+        }
+      } catch (err) {
+        console.warn('[Saga] Failed to load transitive relations:', err);
+      }
+
+      if (!externalId.startsWith('anime:') && !externalId.startsWith('manga:')) {
+        setLoadState('error');
+        return;
+      }
+
       try {
         const result = await fetchAniListSaga(numericId);
         if (cancelled) return;

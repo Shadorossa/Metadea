@@ -186,6 +186,11 @@ CREATE TABLE IF NOT EXISTS media_relations (
     PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
 );
 
+CREATE TABLE IF NOT EXISTS media_saga_groups (
+    media_external_id TEXT NOT NULL PRIMARY KEY,
+    group_name        TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS monthly_history (
     month        TEXT NOT NULL,
     external_id  TEXT NOT NULL,

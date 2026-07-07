@@ -21,4 +21,5 @@ export const STORAGE_KEYS = {
   profileAvatarCustom: 'profile_avatar_custom',
   profileBannerCustom: 'profile_banner_custom',
   communityCatalogLastSync: 'community_catalog_last_sync',
+  lastVisitedPath: 'metadea_last_visited_path',
 } as const;

@@ -176,7 +176,21 @@ export default function MediaPage({ i18n }: Props) {
     rollback,
   } = useLibraryEntry(currentId, data?.type);
 
-  // Escuchar cambios de navegación (Astro View Transitions)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const navs = window.performance.getEntriesByType("navigation");
+      if (navs.length > 0 && (navs[0] as any).type === 'reload') {
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const key = sessionStorage.key(i);
+          if (key && (key.startsWith('media_data:') || key.startsWith('cached_saga:'))) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      }
+    }
+  }, []);
+
+  // Escuchar cambios de navegación (Astro View Transitions y Popstate)
   useEffect(() => {
     const updateId = () => {
       const id = new URLSearchParams(window.location.search).get('id') ?? '';
@@ -187,8 +201,10 @@ export default function MediaPage({ i18n }: Props) {
 
     // Eventos de Astro para transiciones de página
     document.addEventListener('astro:page-load', updateId);
+    window.addEventListener('popstate', updateId);
     return () => {
       document.removeEventListener('astro:page-load', updateId);
+      window.removeEventListener('popstate', updateId);
     };
   }, []);
 

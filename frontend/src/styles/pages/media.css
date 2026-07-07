@@ -2318,6 +2318,7 @@
   flex-direction: column;
   gap: 0.35rem;
   cursor: grab;
+  width: 96px;
 }
 
 .pr-editor-media-card:active {
@@ -2398,6 +2399,45 @@
   color: var(--accent, #7c6af7);
   border-radius: 2px;
   cursor: pointer;
+}
+
+.pr-editor-media-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 2rem;
+}
+
+.pr-editor-media-group-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(124, 106, 247, 0.25);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.pr-editor-media-group-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent, #7c6af7);
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.pr-editor-media-group-cards {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pr-editor-media-single-card-wrap {
+  width: 96px;
+  display: flex;
+  flex-direction: column;
 }
 
 .pr-editor-subsection {

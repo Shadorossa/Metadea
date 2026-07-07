@@ -193,8 +193,27 @@ const t = useTranslations(lang);
         }
       }
 
+      // Remember the current path so index.astro's boot redirect can return
+      // here instead of always landing on /home — a full reload (F5, or a
+      // background Rust rebuild restarting `tauri dev`'s webview) re-enters
+      // through / every time, which used to discard whatever page (e.g. a
+      // media detail page) the user was actually on. Called both immediately
+      // (covers hard/full navigations, which don't reliably re-fire
+      // astro:page-load in time — e.g. library card links stop click
+      // propagation to their own card handler, which also blocks the
+      // ClientRouter's delegated listener from soft-navigating) and from the
+      // page-load listener below (covers client-side transitions).
+      function rememberCurrentPath() {
+        if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
+          localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search);
+        }
+      }
+      rememberCurrentPath();
+
       document.addEventListener('astro:page-load', async () => {
         initAuthModal();
+        rememberCurrentPath();
+
         if (!updaterChecked) {
           updaterChecked = true;
           setTimeout(checkAppUpdates, 2000);

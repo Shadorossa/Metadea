@@ -11,15 +11,25 @@
       import { initTauriDatabase, getAuthToken } from '../lib/tauri';
       import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
+      // A full reload always re-enters through this root page (F5 while on
+      // e.g. a media page, or a background `tauri dev` restart after a Rust
+      // rebuild) — return to wherever the user actually was instead of
+      // always bouncing to /home, which used to make an F5 on /media?id=X
+      // feel like it "sent you to profile/home" and lost the page.
+      function destinationAfterLogin(): string {
+        const last = localStorage.getItem(STORAGE_KEYS.lastVisitedPath);
+        return last && last !== '/' ? last : '/home';
+      }
+
       async function boot() {
         try {
           await initTauriDatabase();
           const session = await getAuthToken();
-          window.location.replace(session ? '/home' : '/login');
+          window.location.replace(session ? destinationAfterLogin() : '/login');
         } catch {
           // Fallback navegador sin Tauri
           const token = localStorage.getItem(STORAGE_KEYS.authToken);
-          window.location.replace(token ? '/home' : '/login');
+          window.location.replace(token ? destinationAfterLogin() : '/login');
         }
       }
 

@@ -822,6 +822,7 @@ pub struct ProposalBundle {
     pub media_relations: Vec<ProposalRelation>,
     pub characters: Vec<crate::characters::SkeletonCharacter>,
     pub media_authors: Vec<DbMediaAuthor>,
+    pub saga_groups: Option<std::collections::HashMap<String, String>>,
 }
 
 pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
@@ -1085,6 +1086,80 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         .str_err()?;
     }
 
+    if let Some(saga_groups) = bundle.saga_groups {
+        for (media_id, group_name) in saga_groups {
+            if group_name.is_empty() {
+                tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [&media_id]).str_err()?;
+            } else {
+                tx.execute(
+                    "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
+                    rusqlite::params![&media_id, &group_name],
+                ).str_err()?;
+            }
+        }
+    }
+
     tx.commit().str_err()?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_transitive_relation_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "WITH RECURSIVE saga_graph(id) AS (
+            SELECT ?1
+            UNION
+            SELECT mr.related_media_external_id
+            FROM media_relations mr
+            JOIN saga_graph sg ON sg.id = mr.media_external_id
+            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'SOURCE', 'ADAPTATION', 'EPISODE', 'UPDATE', 'PART_OF')
+        )
+        SELECT id FROM saga_graph"
+    ).str_err()?;
+
+    let rows = stmt.query_map([&media_external_id], |row| row.get::<_, String>(0)).str_err()?;
+    let ids: Vec<String> = rows.filter_map(|r| r.ok()).collect();
+    Ok(ids)
+}
+
+#[tauri::command]
+pub async fn save_media_saga_groups(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    groups: std::collections::HashMap<String, String>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    for (media_id, group_name) in groups {
+        if group_name.is_empty() {
+            tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [&media_id]).str_err()?;
+        } else {
+            tx.execute(
+                "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
+                rusqlite::params![&media_id, &group_name],
+            ).str_err()?;
+        }
+    }
+    tx.commit().str_err()
+}
+
+#[tauri::command]
+pub async fn get_media_saga_groups(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare("SELECT media_external_id, group_name FROM media_saga_groups").str_err()?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    }).str_err()?;
+
+    let mut map = std::collections::HashMap::new();
+    for row in rows.filter_map(|r| r.ok()) {
+        map.insert(row.0, row.1);
+    }
+    Ok(map)
 }

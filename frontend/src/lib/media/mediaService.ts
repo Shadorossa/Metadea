@@ -266,6 +266,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
         cover: r.cover || undefined,
         url: `/media?id=${r.related_media_external_id}`
       }));
+      data.hasSaga = finalRels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL');
     }
 
     if (finalAuthors && finalAuthors.length > 0) {
@@ -329,6 +330,7 @@ export function fetchMediaDataWithFallback(
               cover: r.cover || undefined,
               url: `/media?id=${r.related_media_external_id}`
             }));
+            localData.hasSaga = dbRels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL');
           }
 
           if (dbAuthors && dbAuthors.length > 0) {
