@@ -20,6 +20,7 @@ import {
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
+import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 
 interface BundledRelation {
   external_id: string;
@@ -32,6 +33,37 @@ interface Props {
   externalId: string;
   onClose: () => void;
   onSaved?: () => void;
+}
+
+
+const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
+
+// True when two string records differ after normalizing each value (missing
+// keys fall back through `normalize`), regardless of which record a key is in.
+function recordsDiffer(a: Record<string, string>, b: Record<string, string>, normalize: (v?: string) => string): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) {
+    if (normalize(a[k]) !== normalize(b[k])) return true;
+  }
+  return false;
+}
+
+function ChangedDot({ show, className = 'pr-editor-changed-dot' }: { show: boolean; className?: string }) {
+  return show ? <span className={className} /> : null;
+}
+
+function Field({ label, changed, small, full, children }: {
+  label: string; changed: boolean; small?: boolean; full?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div className={`pr-editor-field${small ? ' pr-editor-field--small' : ''}${full ? ' pr-editor-field--full' : ''}`}>
+      <label>
+        {label}
+        <ChangedDot show={changed} />
+      </label>
+      {children}
+    </div>
+  );
 }
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
@@ -82,135 +114,134 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | null>(null);
 
   useEffect(() => {
-    getCatalogEntry(externalId)
-      .then(res => {
+    const load = async () => {
+      try {
+        const res = await getCatalogEntry(externalId);
         const resolved = res ?? {
           id: '',
           external_id: externalId,
           type: externalId.split(':')[0],
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
         setEntry(resolved);
         setOriginalEntry(resolved);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('Failed to get catalog entry:', err);
         setErrorMsg('Error reading local data');
-      })
-      .finally(() => {
-        (async () => {
-          try {
-            const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
-            const bundled = rels.filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type));
-            const others = rels.filter(r => !ALL_CHAIN_RELATION_TYPES.includes(r.relation_type));
+      }
 
-            const bundledMapped = bundled.map(r => ({
-              external_id: r.related_media_external_id,
-              type: (r.relation_type === 'UPDATE' ? 'update' : 'episode') as BundledRelation['type'],
-              title: r.title,
-              cover: r.cover,
-            }));
-            setBundledRelations(bundledMapped);
-            setOriginalBundledIds(new Set(bundledMapped.map(r => r.external_id)));
-            setOtherRelations(others);
+      try {
+        const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
+        const bundled = rels
+          .filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type))
+          .map(r => ({
+            external_id: r.related_media_external_id,
+            type: (r.relation_type === 'UPDATE' ? 'update' : 'episode') as BundledRelation['type'],
+            title: r.title,
+            cover: r.cover,
+          }));
+        setBundledRelations(bundled);
+        setOriginalBundledIds(new Set(bundled.map(r => r.external_id)));
+        setOtherRelations(rels.filter(r => !ALL_CHAIN_RELATION_TYPES.includes(r.relation_type)));
 
-            const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
-            if (!transitiveIds.includes(externalId)) {
-              transitiveIds.push(externalId);
-            }
+        const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
+        if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
 
-            const entriesData = await Promise.all(
-              transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
-            );
-            const validEntries = entriesData.filter((x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null);
+        const entriesData = await Promise.all(
+          transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
+        );
+        const validEntries = entriesData.filter((x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null);
 
-            const currentEntry = validEntries.find(x => x.id === externalId)?.entry;
-            if (currentEntry) {
-              setEntry(currentEntry);
-              setOriginalEntry(currentEntry);
-            }
+        const currentEntry = validEntries.find(x => x.id === externalId)?.entry;
+        if (currentEntry) {
+          setEntry(currentEntry);
+          setOriginalEntry(currentEntry);
+        }
 
-            validEntries.sort((a, b) => {
-              const yA = a.entry.release_year ?? Infinity, yB = b.entry.release_year ?? Infinity;
-              if (yA !== yB) return yA - yB;
-              const mA = a.entry.release_month ?? Infinity, mB = b.entry.release_month ?? Infinity;
-              if (mA !== mB) return mA - mB;
-              const dA = a.entry.release_day ?? Infinity, dB = b.entry.release_day ?? Infinity;
-              if (dA !== dB) return dA - dB;
-              return a.id.localeCompare(b.id);
-            });
+        const releaseKey = (e: MediaCatalogEntry) =>
+          [e.release_year ?? Infinity, e.release_month ?? Infinity, e.release_day ?? Infinity];
+        validEntries.sort((a, b) => {
+          const ka = releaseKey(a.entry), kb = releaseKey(b.entry);
+          for (let i = 0; i < ka.length; i++) {
+            if (ka[i] !== kb[i]) return ka[i] - kb[i];
+          }
+          return a.id.localeCompare(b.id);
+        });
 
-            const sortedIds = validEntries.map(x => x.id);
-            setSagaOrder(sortedIds);
-            setOriginalSagaOrder(sortedIds);
+        const sortedIds = validEntries.map(x => x.id);
+        setSagaOrder(sortedIds);
+        setOriginalSagaOrder(sortedIds);
 
-            const meta: Record<string, MediaMeta> = {};
-            for (const x of validEntries) {
-              meta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
-            }
-            setSagaMeta(meta);
+        const meta: Record<string, MediaMeta> = {};
+        for (const x of validEntries) {
+          meta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
+        }
+        setSagaMeta(meta);
 
-            // Bootstraps sagaRelationTypes/sagaGroups from whatever SOURCE/
-            // EPISODE/UPDATE/ALTERNATIVE edges already exist in the DB — this
-            // is a one-time reverse-engineering of prior state, distinct from
-            // classifySagaChain (which turns already-known sagaRelationTypes/
-            // sagaGroups back into a display/relation structure).
-            const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
-              Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
-              invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>)),
-              invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null)
-            ]);
-            const relTypesMap: Record<string, SagaRelationType> = {};
-            const groupsMap: Record<string, string> = { ...dbGroups };
-            let nextGroupNum = 1;
+        // Bootstraps sagaRelationTypes/sagaGroups from whatever SOURCE/
+        // EPISODE/UPDATE/ALTERNATIVE edges already exist in the DB — this
+        // is a one-time reverse-engineering of prior state, distinct from
+        // classifySagaChain (which turns already-known sagaRelationTypes/
+        // sagaGroups back into a display/relation structure).
+        const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
+          Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
+          invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>)),
+          invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
+        ]);
+        const relTypesMap: Record<string, SagaRelationType> = {};
+        const groupsMap: Record<string, string> = { ...dbGroups };
+        let nextGroupNum = 1;
 
-            for (let i = 0; i < sortedIds.length; i++) {
-              const ownerId = sortedIds[i];
-              for (const r of allRelsList[i]) {
-                const otherId = r.related_media_external_id;
-                if (r.relation_type === 'ALTERNATIVE') {
-                  if (!groupsMap[ownerId] && !groupsMap[otherId]) {
-                    groupsMap[ownerId] = groupsMap[otherId] = `Group ${nextGroupNum++}`;
-                  } else if (groupsMap[ownerId] && !groupsMap[otherId]) {
-                    groupsMap[otherId] = groupsMap[ownerId];
-                  } else if (!groupsMap[ownerId] && groupsMap[otherId]) {
-                    groupsMap[ownerId] = groupsMap[otherId];
-                  }
-                } else if (r.relation_type === 'SOURCE' || r.relation_type === 'EPISODE' || r.relation_type === 'UPDATE') {
-                  const lower = r.relation_type.toLowerCase();
-                  if (isSagaRelationType(lower)) relTypesMap[otherId] = lower;
-                }
+        for (let i = 0; i < sortedIds.length; i++) {
+          const ownerId = sortedIds[i];
+          for (const r of allRelsList[i]) {
+            const otherId = r.related_media_external_id;
+            if (r.relation_type === 'ALTERNATIVE') {
+              if (!groupsMap[ownerId] && !groupsMap[otherId]) {
+                groupsMap[ownerId] = groupsMap[otherId] = `Group ${nextGroupNum++}`;
+              } else if (groupsMap[ownerId] && !groupsMap[otherId]) {
+                groupsMap[otherId] = groupsMap[ownerId];
+              } else if (!groupsMap[ownerId] && groupsMap[otherId]) {
+                groupsMap[ownerId] = groupsMap[otherId];
+              }
+            } else {
+              const lower = r.relation_type.toLowerCase();
+              if (isSagaRelationType(lower) && lower !== 'main' && lower !== 'alternative') {
+                relTypesMap[otherId] = lower;
               }
             }
-            setSagaRelationTypes(relTypesMap);
-            setOriginalSagaRelationTypes({ ...relTypesMap });
-            setSagaGroups(groupsMap);
-            setOriginalSagaGroups({ ...groupsMap });
-            setSagaName(dbSagaName || '');
-            setOriginalSagaName(dbSagaName || '');
-
-          } catch (err) {
-            console.error('Failed to load relations/saga:', err);
-            setBundledRelations([]);
-            setOtherRelations([]);
-          } finally {
-            setLoading(false);
           }
-        })();
+        }
+        setSagaRelationTypes(relTypesMap);
+        setOriginalSagaRelationTypes({ ...relTypesMap });
+        setSagaGroups(groupsMap);
+        setOriginalSagaGroups({ ...groupsMap });
+        setSagaName(dbSagaName || '');
+        setOriginalSagaName(dbSagaName || '');
+      } catch (err) {
+        console.error('Failed to load relations/saga:', err);
+        setBundledRelations([]);
+        setOtherRelations([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        getMediaCharacters(externalId).then(setCharacters).catch(() => setCharacters([]));
-        getMediaAuthors(externalId).then(setMediaAuthors).catch(() => setMediaAuthors([]));
-      });
+    load();
+    getMediaCharacters(externalId).then(setCharacters).catch(() => setCharacters([]));
+    getMediaAuthors(externalId).then(setMediaAuthors).catch(() => setMediaAuthors([]));
   }, [externalId]);
+
+  // ── Saga handlers ──────────────────────────────────────────────────────────
 
   const addToSaga = (result: ApiSearchResult) => {
     if (!sagaOrder.includes(result.externalId)) setSagaOrder([...sagaOrder, result.externalId]);
     setSagaMeta(prev => ({ ...prev, [result.externalId]: { title: result.titleMain, cover: result.coverUrl } }));
   };
-  const removeFromSaga = (external_id: string) => {
-    if (external_id === externalId) return; // this entry can move, not leave its own saga
-    setSagaOrder(sagaOrder.filter(id => id !== external_id));
+  const removeFromSaga = (id: string) => {
+    if (id === externalId) return; // this entry can move, not leave its own saga
+    setSagaOrder(sagaOrder.filter(x => x !== id));
   };
   const reorderSaga = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= sagaOrder.length || toIndex >= sagaOrder.length) return;
@@ -219,6 +250,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     next.splice(toIndex, 0, moved);
     setSagaOrder(next);
   };
+  const updateSagaRelationType = (id: string, type: SagaRelationType) =>
+    setSagaRelationTypes(prev => ({ ...prev, [id]: type }));
+  const updateSagaGroup = (id: string, group: string) =>
+    setSagaGroups(prev => ({ ...prev, [id]: group }));
 
   // Native HTML5 drag-and-drop is unreliable inside Tauri's webview, so
   // reordering is done with plain pointer events instead: press on a card,
@@ -247,8 +282,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     };
   }, [draggedSagaIndex, sagaOrder]);
 
+  // ── Bundled-in handlers ────────────────────────────────────────────────────
+
   const addBundledRelation = (result: ApiSearchResult) => {
-    if (!bundledRelations.find(r => r.external_id === result.externalId)) {
+    if (!bundledRelations.some(r => r.external_id === result.externalId)) {
       setBundledRelations([...bundledRelations, {
         external_id: result.externalId,
         type: 'episode',
@@ -257,18 +294,42 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       }]);
     }
   };
-
-  const updateBundledRelation = (index: number, patch: Partial<BundledRelation>) => {
-    setBundledRelations(bundledRelations.map((r, i) => i === index ? { ...r, ...patch } : r));
-  };
-
-  const removeBundledRelation = (index: number) => {
-    setBundledRelations(bundledRelations.filter((_, i) => i !== index));
-  };
+  const updateBundledRelationType = (id: string, type: BundledRelation['type']) =>
+    setBundledRelations(prev => prev.map(r => r.external_id === id ? { ...r, type } : r));
+  const removeBundledRelation = (id: string) =>
+    setBundledRelations(prev => prev.filter(r => r.external_id !== id));
 
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
     setEntry({ ...entry, [field]: value === '' ? null : value });
+  };
+
+  // ── Change detection (shared by hasChanges + the PR change summary) ───────
+
+  const isFieldChanged = (field: keyof MediaCatalogEntry) =>
+    !!originalEntry && normField(entry?.[field]) !== normField(originalEntry[field]);
+
+  const getDiff = () => {
+    const originalSagaIds = new Set(originalSagaOrder);
+    return {
+      addedBundled: bundledRelations.filter(r => !originalBundledIds.has(r.external_id)),
+      removedBundledIds: [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id)),
+      addedSaga: sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id)),
+      removedSaga: originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id)),
+      sagaOrderChanged: sagaOrder.join(',') !== originalSagaOrder.join(','),
+      relTypesChanged: recordsDiffer(sagaRelationTypes, originalSagaRelationTypes, v => v || 'main'),
+      groupsChanged: recordsDiffer(sagaGroups, originalSagaGroups, v => (v || '').trim()),
+      sagaNameChanged: sagaName !== originalSagaName,
+    };
+  };
+
+  const hasChanges = () => {
+    if (!entry || !originalEntry) return false;
+    if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
+    const d = getDiff();
+    return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
+      || d.addedSaga.length > 0 || d.removedSaga.length > 0
+      || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
   };
 
   // Human-readable "- " bullet list of everything this proposal adds or
@@ -279,18 +340,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (!entry) return '';
     const lines: string[] = [];
 
-    const DIFF_FIELDS: Array<[keyof MediaCatalogEntry, string]> = [
-      ['title_main', 'Main Title'], ['title_romaji', 'Romaji Title'], ['title_native', 'Native Title'],
-      ['synopsis', 'Synopsis'], ['cover_url', 'Cover URL'], ['banners_csv', 'Banner URLs'],
-      ['release_year', 'Release Year'], ['release_month', 'Release Month'], ['release_day', 'Release Day'],
-      ['total_count', 'Episodes/Chapters'], ['total_count_2', 'Seasons/Volumes'],
-      ['genres_csv', 'Genres'], ['genres_tag_csv', 'Themes/Tags'],
-      ['platforms_csv', 'Platforms'], ['companies_cache_csv', 'Companies/Studios'], ['authors_csv', 'Authors/Staff'],
-    ];
     for (const [field, label] of DIFF_FIELDS) {
+      if (!isFieldChanged(field)) continue;
       const before = originalEntry?.[field] ?? null;
       const after = entry[field] ?? null;
-      if (before === after) continue;
       if (before == null || before === '') lines.push(`- Added ${label}: "${after}"`);
       else if (after == null || after === '') lines.push(`- Removed ${label} (was "${before}")`);
       else lines.push(`- Changed ${label}: "${before}" → "${after}"`);
@@ -301,52 +354,26 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       return displayTitle ? `${displayTitle} (${id})` : id;
     };
 
-    const addedBundled = bundledRelations.filter(r => !originalBundledIds.has(r.external_id));
-    for (const r of addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)} (${r.type})`);
-    const removedBundled = [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id));
-    for (const id of removedBundled) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
+    const d = getDiff();
+    for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)} (${r.type})`);
+    for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
 
-    const originalSagaIds = new Set(originalSagaOrder);
-    const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
-    const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
-    const sagaOrderChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
-
-    const hasRelationTypesChanged = () => {
-      const keys = new Set([...Object.keys(sagaRelationTypes), ...Object.keys(originalSagaRelationTypes)]);
-      for (const k of keys) {
-        if ((sagaRelationTypes[k] || 'main') !== (originalSagaRelationTypes[k] || 'main')) return true;
-      }
-      return false;
-    };
-
-    const hasGroupsChanged = () => {
-      const keys = new Set([...Object.keys(sagaGroups), ...Object.keys(originalSagaGroups)]);
-      for (const k of keys) {
-        if ((sagaGroups[k] || '').trim() !== (originalSagaGroups[k] || '').trim()) return true;
-      }
-      return false;
-    };
-
-    const sagaRelationTypesChanged = hasRelationTypesChanged();
-    const sagaGroupsChanged = hasGroupsChanged();
-    const sagaNameChanged = sagaName !== originalSagaName;
-
-    if (addedSaga.length > 0 || removedSaga.length > 0 || sagaOrderChanged || sagaRelationTypesChanged || sagaGroupsChanged || sagaNameChanged) {
-      if (sagaNameChanged) {
+    if (d.addedSaga.length > 0 || d.removedSaga.length > 0 || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged) {
+      if (d.sagaNameChanged) {
         lines.push(`- Changed Saga Name: "${originalSagaName}" → "${sagaName}"`);
       }
-      for (const id of addedSaga) {
+      for (const id of d.addedSaga) {
         lines.push(`- Added to Saga: ${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`);
       }
-      for (const id of removedSaga) {
+      for (const id of d.removedSaga) {
         lines.push(`- Removed from Saga: ${formatWork(id)}`);
       }
-      if (sagaOrderChanged) {
+      if (d.sagaOrderChanged) {
         const chainLabel = sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ');
-        lines.push(addedSaga.length === 0 && removedSaga.length === 0
+        lines.push(d.addedSaga.length === 0 && d.removedSaga.length === 0
           ? `- Reordered Saga: ${chainLabel}`
           : `- Saga order: ${chainLabel}`);
-      } else if (sagaRelationTypesChanged || sagaGroupsChanged) {
+      } else if (d.relTypesChanged || d.groupsChanged) {
         lines.push(`- Updated Saga relations/groups`);
       }
     }
@@ -413,11 +440,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       // 3. Standalone source/episode/update entries attach to the nearest
       // preceding group (or this entry, if nothing precedes them yet).
-      const REL_TYPE_TO_PAIR: Record<'source' | 'episode' | 'update', [{ relation_type: string; type_label: string }, { relation_type: string; type_label: string }]> = {
-        source:  [{ relation_type: 'SOURCE', type_label: 'Source Material' }, { relation_type: 'ADAPTATION', type_label: 'Adaptation' }],
-        episode: [{ relation_type: 'EPISODE', type_label: 'Episode' }, { relation_type: 'PART_OF', type_label: 'Part of' }],
-        update:  [{ relation_type: 'UPDATE', type_label: 'Update' }, { relation_type: 'PART_OF', type_label: 'Part of' }],
-      };
       let lastGroupMainId = externalId;
       for (const e of classified) {
         if (e.kind === 'group') { lastGroupMainId = e.mainId; continue; }
@@ -538,58 +560,41 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
   if (!entry) return null;
 
-  const isFieldChanged = (field: keyof MediaCatalogEntry) => {
-    if (!originalEntry) return false;
-    const current = entry[field];
-    const original = originalEntry[field];
-    const normCurrent = current === '' || current === undefined ? null : current;
-    const normOriginal = original === '' || original === undefined ? null : original;
-    return normCurrent !== normOriginal;
-  };
+  // ── Render helpers (close over entry/handleChange/isFieldChanged) ─────────
 
-  const hasChanges = () => {
-    if (!entry || !originalEntry) return false;
+  const textField = (field: keyof MediaCatalogEntry, label: string) => (
+    <Field label={label} changed={isFieldChanged(field)}>
+      <input type="text" value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value)} />
+    </Field>
+  );
 
-    // Check catalog fields
-    const DIFF_FIELDS: Array<keyof MediaCatalogEntry> = [
-      'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
-      'release_year', 'release_month', 'release_day', 'total_count', 'total_count_2',
-      'genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'
-    ];
-    for (const field of DIFF_FIELDS) {
-      if (isFieldChanged(field)) return true;
-    }
+  const numberField = (field: keyof MediaCatalogEntry, label: string) => (
+    <Field label={label} changed={isFieldChanged(field)} small>
+      <input type="number" value={(entry[field] as number) || ''}
+        onChange={e => handleChange(field, e.target.value ? parseInt(e.target.value, 10) : null)} />
+    </Field>
+  );
 
-    // Check bundled relations
-    const addedBundled = bundledRelations.filter(r => !originalBundledIds.has(r.external_id));
-    const removedBundled = [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id));
-    if (addedBundled.length > 0 || removedBundled.length > 0) return true;
+  const slotField = (field: keyof MediaCatalogEntry, label: string, opts?: {
+    allowed?: string[]; restrict?: boolean; preview?: boolean; fullWidth?: boolean; dotClass?: string;
+  }) => (
+    <div style={{ position: 'relative' }}>
+      <SlotInput label={label} value={entry[field] as string | undefined} onChange={v => handleChange(field, v)}
+        allowedSuggestions={opts?.allowed} restrictToSuggestions={opts?.restrict}
+        preview={opts?.preview} fullWidth={opts?.fullWidth} />
+      <ChangedDot show={isFieldChanged(field)}
+        className={`pr-editor-changed-dot ${opts?.dotClass ?? 'pr-editor-changed-dot--slot'}`} />
+    </div>
+  );
 
-    // Check saga order
-    const originalSagaIds = new Set(originalSagaOrder);
-    const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
-    const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
-    const sagaOrderChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
-    if (addedSaga.length > 0 || removedSaga.length > 0 || sagaOrderChanged) return true;
-
-    // Check saga name, relation types, and groups
-    if (sagaName !== originalSagaName) return true;
-
-    const keysRels = new Set([...Object.keys(sagaRelationTypes), ...Object.keys(originalSagaRelationTypes)]);
-    for (const k of keysRels) {
-      if ((sagaRelationTypes[k] || 'main') !== (originalSagaRelationTypes[k] || 'main')) return true;
-    }
-
-    const keysGroups = new Set([...Object.keys(sagaGroups), ...Object.keys(originalSagaGroups)]);
-    for (const k of keysGroups) {
-      if ((sagaGroups[k] || '').trim() !== (originalSagaGroups[k] || '').trim()) return true;
-    }
-
-    return false;
-  };
+  const sectionTitle = (title: string, fields: Array<keyof MediaCatalogEntry>) => (
+    <span className="pr-editor-section-title">
+      {title}
+      {fields.some(isFieldChanged) && <span className="pr-editor-section-changed-dot" />}
+    </span>
+  );
 
   const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null }, sagaMeta);
-  const sagaGroupEntries = classifySagaChain(sagaOrder, sagaRelationTypes, sagaGroups);
 
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
@@ -606,78 +611,25 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           {/* Left Column: Titles, Synopsis, Release, Progress */}
           <div className="pr-editor-col pr-editor-col--left">
             <div className="pr-editor-section">
-              <span className="pr-editor-section-title">
-                Titles &amp; Synopsis
-                {['title_main', 'title_romaji', 'title_native', 'synopsis'].some(f => isFieldChanged(f as any)) && (
-                  <span className="pr-editor-section-changed-dot" />
-                )}
-              </span>
+              {sectionTitle('Titles & Synopsis', ['title_main', 'title_romaji', 'title_native', 'synopsis'])}
               <div className="pr-editor-form-grid">
-                <div className="pr-editor-field">
-                  <label>
-                    Main Title
-                    {isFieldChanged('title_main') && <span className="pr-editor-changed-dot" />}
-                  </label>
-                  <input type="text" value={entry.title_main || ''} onChange={e => handleChange('title_main', e.target.value)} />
-                </div>
-
-                <div className="pr-editor-field">
-                  <label>
-                    Romaji Title
-                    {isFieldChanged('title_romaji') && <span className="pr-editor-changed-dot" />}
-                  </label>
-                  <input type="text" value={entry.title_romaji || ''} onChange={e => handleChange('title_romaji', e.target.value)} />
-                </div>
-
-                <div className="pr-editor-field">
-                  <label>
-                    Native Title
-                    {isFieldChanged('title_native') && <span className="pr-editor-changed-dot" />}
-                  </label>
-                  <input type="text" value={entry.title_native || ''} onChange={e => handleChange('title_native', e.target.value)} />
-                </div>
-
-                <div className="pr-editor-field pr-editor-field--full">
-                  <label>
-                    Synopsis / Description
-                    {isFieldChanged('synopsis') && <span className="pr-editor-changed-dot" />}
-                  </label>
+                {textField('title_main', 'Main Title')}
+                {textField('title_romaji', 'Romaji Title')}
+                {textField('title_native', 'Native Title')}
+                <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full>
                   <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
-                </div>
+                </Field>
               </div>
             </div>
 
             <div className="pr-editor-section">
-              <span className="pr-editor-section-title">
-                Release &amp; Progress
-                {['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'].some(f => isFieldChanged(f as any)) && (
-                  <span className="pr-editor-section-changed-dot" />
-                )}
-              </span>
+              {sectionTitle('Release & Progress', ['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'])}
               <div className="pr-editor-field-row">
                 <div className="pr-editor-subgroup">
                   <div className="pr-editor-subgroup-fields">
-                    <div className="pr-editor-field pr-editor-field--small">
-                      <label>
-                        Year
-                        {isFieldChanged('release_year') && <span className="pr-editor-changed-dot" />}
-                      </label>
-                      <input type="number" value={entry.release_year || ''} onChange={e => handleChange('release_year', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                    </div>
-                    <div className="pr-editor-field pr-editor-field--small">
-                      <label>
-                        Month
-                        {isFieldChanged('release_month') && <span className="pr-editor-changed-dot" />}
-                      </label>
-                      <input type="number" value={entry.release_month || ''} onChange={e => handleChange('release_month', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                    </div>
-                    <div className="pr-editor-field pr-editor-field--small">
-                      <label>
-                        Day
-                        {isFieldChanged('release_day') && <span className="pr-editor-changed-dot" />}
-                      </label>
-                      <input type="number" value={entry.release_day || ''} onChange={e => handleChange('release_day', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                    </div>
+                    {numberField('release_year', 'Year')}
+                    {numberField('release_month', 'Month')}
+                    {numberField('release_day', 'Day')}
                   </div>
                 </div>
 
@@ -685,20 +637,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
                 <div className="pr-editor-subgroup">
                   <div className="pr-editor-subgroup-fields">
-                    <div className="pr-editor-field pr-editor-field--small">
-                      <label>
-                        Episodes / Chapters
-                        {isFieldChanged('total_count') && <span className="pr-editor-changed-dot" />}
-                      </label>
-                      <input type="number" value={entry.total_count || ''} onChange={e => handleChange('total_count', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                    </div>
-                    <div className="pr-editor-field pr-editor-field--small">
-                      <label>
-                        Seasons / Volumes
-                        {isFieldChanged('total_count_2') && <span className="pr-editor-changed-dot" />}
-                      </label>
-                      <input type="number" value={entry.total_count_2 || ''} onChange={e => handleChange('total_count_2', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                    </div>
+                    {numberField('total_count', 'Episodes / Chapters')}
+                    {numberField('total_count_2', 'Seasons / Volumes')}
                   </div>
                 </div>
               </div>
@@ -708,17 +648,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           {/* Right Column: Media Assets, Classification, Saga, Collaborators */}
           <div className="pr-editor-col pr-editor-col--right">
             <div className="pr-editor-section">
-              <span className="pr-editor-section-title">
-                Media Assets
-                {['cover_url', 'banners_csv'].some(f => isFieldChanged(f as any)) && (
-                  <span className="pr-editor-section-changed-dot" />
-                )}
-              </span>
+              {sectionTitle('Media Assets', ['cover_url', 'banners_csv'])}
               <div className="pr-editor-assets-box">
                 <div className="pr-editor-field pr-editor-cover-section">
                   <label>
                     Cover URL
-                    {isFieldChanged('cover_url') && <span className="pr-editor-changed-dot" />}
+                    <ChangedDot show={isFieldChanged('cover_url')} />
                   </label>
                   <div className="pr-editor-cover-uploader">
                     <div className="pr-editor-cover-preview-card">
@@ -738,42 +673,19 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 </div>
 
                 <div className="pr-editor-field pr-editor-banner-section">
-                  <div style={{ position: 'relative' }}>
-                    <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview fullWidth />
-                    {isFieldChanged('banners_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--banner" />}
-                  </div>
+                  {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
                 </div>
               </div>
             </div>
 
             <div className="pr-editor-section">
-              <span className="pr-editor-section-title">
-                Classification &amp; Metadata
-                {['genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'].some(f => isFieldChanged(f as any)) && (
-                  <span className="pr-editor-section-changed-dot" />
-                )}
-              </span>
+              {sectionTitle('Classification & Metadata', ['genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'])}
               <div className="pr-editor-classification-grid">
-                <div style={{ position: 'relative' }}>
-                  <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} allowedSuggestions={ALL_GENRES} restrictToSuggestions />
-                  {isFieldChanged('genres_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
-                  {isFieldChanged('genres_tag_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} allowedSuggestions={ALL_PLATFORMS} restrictToSuggestions />
-                  {isFieldChanged('platforms_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
-                  {isFieldChanged('companies_cache_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
-                  {isFieldChanged('authors_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
-                </div>
+                {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
+                {slotField('genres_tag_csv', 'Themes / Tags')}
+                {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
+                {slotField('companies_cache_csv', 'Companies / Studios')}
+                {slotField('authors_csv', 'Authors / Staff')}
               </div>
             </div>
           </div>
@@ -795,10 +707,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 </div>
                 <label className="pr-editor-subsection-label">Saga order</label>
                 <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
-                  {sagaOrder.map(id => {
+                  {sagaOrder.map((id, index) => {
                     const meta = resolveMeta(id);
-                    const index = sagaOrder.indexOf(id);
-                    const relType = sagaRelationTypes[id] || 'main';
                     return (
                       <div
                         key={id}
@@ -825,7 +735,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                           {meta.title || id}
                         </div>
                         <select
-                          value={relType}
+                          value={sagaRelationTypes[id] || 'main'}
                           onChange={e => updateSagaRelationType(id, e.target.value as SagaRelationType)}
                           className="pr-editor-media-card-select"
                         >
@@ -854,8 +764,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '220px', flexShrink: 0 }}>
                 <label className="pr-editor-subsection-label">Bundled In</label>
                 <div className="pr-editor-bundled-list">
-                  {bundledRelations.map((r, i) => (
-                    <div key={i} className="pr-editor-bundled-row">
+                  {bundledRelations.map(r => (
+                    <div key={r.external_id} className="pr-editor-bundled-row">
                       <div className="pr-editor-bundled-card">
                         <div className="pr-editor-bundled-card-cover">
                           {r.cover ? (
@@ -879,7 +789,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                       </div>
                       <select
                         value={r.type}
-                        onChange={e => updateBundledRelationType(r.external_id, e.target.value as 'episode' | 'update')}
+                        onChange={e => updateBundledRelationType(r.external_id, e.target.value as BundledRelation['type'])}
                         className="pr-editor-bundled-select"
                       >
                         <option value="episode">Episode</option>
@@ -898,7 +808,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose} disabled={submitting}>
             Cancel
           </button>
-           <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
             {submitting ? 'Submitting...' : 'Submit Proposal'}
           </button>
         </div>
@@ -906,7 +816,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       {searchPopupMode === 'saga' && (
         <MediaSearchPopup
-          onSelect={result => addToSaga(result)}
+          onSelect={addToSaga}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={sagaOrder}
           closeOnSelect={false}
@@ -915,7 +825,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       {searchPopupMode === 'bundled' && (
         <MediaSearchPopup
-          onSelect={result => addBundledRelation(result)}
+          onSelect={addBundledRelation}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
         />
