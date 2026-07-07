@@ -69,6 +69,11 @@ export async function saveCachedSaga(entries: SagaEntry[]): Promise<void> {
 }
 
 export interface DbMediaRelation {
+  /** Owning media for this relation — only meaningful inside a collaborative-
+   *  catalog PR bundle (a saga PR can carry relations for more than one
+   *  media); absent for plain save/getMediaRelations calls, which are
+   *  already scoped to one media_external_id via their own parameter. */
+  media_external_id?: string;
   related_media_external_id: string;
   relation_type: string;
   type_label: string;

@@ -153,7 +153,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             // sagaGroups back into a display/relation structure).
             const [allRelsList, dbGroups] = await Promise.all([
               Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
-              invoke<Record<string, string>>('get_media_saga_groups').catch(() => ({} as Record<string, string>))
+              invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>))
             ]);
             const relTypesMap: Record<string, SagaRelationType> = {};
             const groupsMap: Record<string, string> = { ...dbGroups };

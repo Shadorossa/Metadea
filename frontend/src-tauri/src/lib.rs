@@ -34,7 +34,13 @@ pub fn run() {
                 .expect("failed to open metadea.db");
             db::seed_fav_lists(&metadea_db);
 
-            // Sync/import the local JSON proposals on startup so metadea.db reflects all database/*.json files.
+            // Dev-only: imports database/*.json proposal files sitting next to
+            // the repo checkout, so a developer's own local db reflects them
+            // without waiting for scripts/build-database.js + sync_community_catalog.
+            // A real installed build never has a database/ folder next to its
+            // exe, so this would be a same-cost, always-false directory check
+            // on every launch for actual users — gated out of release builds entirely.
+            #[cfg(debug_assertions)]
             if let Err(e) = media_catalog::sync_local_proposals(&metadea_db) {
                 eprintln!("Failed to sync local proposals: {}", e);
             }
@@ -46,8 +52,9 @@ pub fn run() {
 
             #[cfg(debug_assertions)]
             {
-                let window = app.get_webview_window("main").unwrap();
-                window.open_devtools();
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                }
             }
             Ok(())
         })

@@ -162,7 +162,11 @@ static TWITCH_TOKEN: Mutex<Option<TwitchToken>> = Mutex::new(None);
 
 async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String, String> {
     {
-        let cache = TWITCH_TOKEN.lock().unwrap();
+        // Recovers the guard even if the mutex was poisoned by a panic
+        // elsewhere while holding it — there's no broken invariant here
+        // (just an Option<TwitchToken> plain value), so it's safe to keep
+        // using it rather than propagate the poisoning as a hard crash.
+        let cache = TWITCH_TOKEN.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(ref t) = *cache {
             if t.expires > Instant::now() + Duration::from_secs(60) {
                 return Ok(t.access_token.clone());
@@ -199,7 +203,7 @@ async fn get_twitch_token(client_id: &str, client_secret: &str) -> Result<String
 
     let token = resp.access_token.clone();
     let expires = Instant::now() + Duration::from_secs(resp.expires_in);
-    *TWITCH_TOKEN.lock().unwrap() = Some(TwitchToken {
+    *TWITCH_TOKEN.lock().unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(TwitchToken {
         access_token: resp.access_token,
         expires,
     });

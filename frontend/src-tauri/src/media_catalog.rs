@@ -38,6 +38,41 @@ fn existing_catalog_ids(
     Ok(found)
 }
 
+// The "type" half of a raw external_id (e.g. "anime:12345" -> "anime"),
+// used to fill in the `type` column of a stub media_catalog row created
+// for a relation target we haven't cataloged yet. split_once (not
+// split().next(), which always yields at least one item and made the
+// "anime" fallback unreachable) so a colon-less id actually falls back to
+// "anime" instead of using the whole id string as the type. Shared by
+// save_media_relations / save_author_profile_and_relations /
+// import_proposal_bundle, which used to each carry their own copy.
+fn infer_type_from_id(external_id: &str) -> String {
+    external_id
+        .split_once(':')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or("anime")
+        .to_string()
+}
+
+// Shared by save_media_saga_groups and import_proposal_bundle's bundle.saga_groups
+// handling — both used to carry their own copy of this exact upsert-or-delete loop.
+fn upsert_saga_groups(
+    tx: &rusqlite::Transaction,
+    groups: &std::collections::HashMap<String, String>,
+) -> Result<(), String> {
+    for (media_id, group_name) in groups {
+        if group_name.is_empty() {
+            tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [media_id]).str_err()?;
+        } else {
+            tx.execute(
+                "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
+                rusqlite::params![media_id, group_name],
+            ).str_err()?;
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[derive(Default)]
 pub struct MediaCatalogEntry {
@@ -419,8 +454,15 @@ pub async fn save_cached_saga(
     Ok(())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct DbMediaRelation {
+    /// Owning media for this relation — absent for save_media_relations/
+    /// get_media_relations calls (the media_external_id is already the
+    /// function's own parameter there), present when this row travels inside
+    /// a ProposalBundle, which can carry relations for more than one media
+    /// (a saga PR touches every entry in the chain, not just one).
+    pub media_external_id: Option<String>,
     pub related_media_external_id: String,
     pub relation_type: String,
     pub type_label: String,
@@ -462,15 +504,7 @@ pub async fn save_media_relations(
         .str_err()?;
 
         if !existing_ids.contains(&rel.related_media_external_id) {
-            // split_once (not split().next(), which always yields at least
-            // one item and made the "anime" fallback unreachable) so a
-            // colon-less id actually falls back to "anime" instead of using
-            // the whole id string as the type.
-            let rel_type = rel.related_media_external_id
-                .split_once(':')
-                .map(|(prefix, _)| prefix)
-                .unwrap_or("anime")
-                .to_string();
+            let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
                 "INSERT INTO media_catalog (
                     id, external_id, type, title_main, cover_url, created_at, updated_at
@@ -511,6 +545,7 @@ pub async fn get_media_relations(
     let rows = stmt
         .query_map([&media_external_id], |row| {
             Ok(DbMediaRelation {
+                media_external_id: None, // this query is already scoped to one media_external_id param
                 related_media_external_id: row.get(0)?,
                 relation_type: row.get(1)?,
                 type_label: row.get(2)?,
@@ -671,11 +706,7 @@ pub async fn save_author_profile_and_relations(
         .str_err()?;
 
         if !existing_ids.contains(&rel.media_external_id) {
-            let rel_type = rel.media_external_id
-                .split_once(':')
-                .map(|(prefix, _)| prefix)
-                .unwrap_or("anime")
-                .to_string();
+            let rel_type = infer_type_from_id(&rel.media_external_id);
             tx.execute(
                 "INSERT INTO media_catalog (id, external_id, type, title_main, cover_url, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -809,20 +840,12 @@ pub async fn sync_community_catalog(
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
-pub struct ProposalRelation {
-    pub media_external_id: Option<String>,
-    pub related_media_external_id: String,
-    pub relation_type: String,
-    pub type_label: String,
-    pub title: String,
-    pub cover: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Default)]
-#[serde(default)]
 pub struct ProposalBundle {
     pub media_catalog: MediaCatalogEntry,
-    pub media_relations: Vec<ProposalRelation>,
+    // DbMediaRelation already carries an optional media_external_id (see its
+    // definition above) — no need for a near-identical ProposalRelation
+    // struct that only differed by that one field.
+    pub media_relations: Vec<DbMediaRelation>,
     pub characters: Vec<crate::characters::SkeletonCharacter>,
     pub media_authors: Vec<DbMediaAuthor>,
     pub saga_groups: Option<std::collections::HashMap<String, String>>,
@@ -969,25 +992,35 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         .str_err()?;
     }
 
-    // 2. Save media_relations
-    let mut all_involved_ids = std::collections::HashSet::new();
-    all_involved_ids.insert(entry.external_id.clone());
-    for rel in &bundle.media_relations {
-        if let Some(ref pid) = rel.media_external_id {
-            all_involved_ids.insert(pid.clone());
+    // 2. Save media_relations. Owners are the distinct media_external_id
+    // each row is tagged for (defaulting to this entry's own id when
+    // untagged) — only *their* existing relations get cleared before
+    // re-inserting the bundle's rows for them, in one statement instead of
+    // the previous O(owners × targets) DELETE-per-pair. Scoping the DELETE
+    // to owners also fixes a correctness bug: the old pairwise delete wiped
+    // *any* existing relation between two ids merely mentioned here, even
+    // if a different, unrelated PR had contributed it and this bundle never
+    // touches that owner at all.
+    let owners: Vec<String> = {
+        let mut set = std::collections::HashSet::new();
+        for rel in &bundle.media_relations {
+            set.insert(rel.media_external_id.clone().unwrap_or_else(|| entry.external_id.clone()));
         }
-        all_involved_ids.insert(rel.related_media_external_id.clone());
+        set.into_iter().collect()
+    };
+
+    if !owners.is_empty() {
+        let placeholders = owners.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let sql = format!("DELETE FROM media_relations WHERE media_external_id IN ({})", placeholders);
+        tx.execute(&sql, rusqlite::params_from_iter(owners.iter())).str_err()?;
     }
 
-    for id in &all_involved_ids {
-        for other_id in &all_involved_ids {
-            tx.execute(
-                "DELETE FROM media_relations WHERE media_external_id = ?1 AND related_media_external_id = ?2",
-                [id, other_id],
-            )
-            .str_err()?;
-        }
-    }
+    // One batch existence check instead of a per-row query (was the same N+1
+    // existing_catalog_ids was written to fix elsewhere in this file) — kept
+    // mutable so a related id appearing more than once in the same bundle
+    // still only gets its stub catalog row inserted once.
+    let related_ids: Vec<String> = bundle.media_relations.iter().map(|r| r.related_media_external_id.clone()).collect();
+    let mut known_ids = existing_catalog_ids(&tx, &related_ids)?;
 
     for rel in &bundle.media_relations {
         let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);
@@ -1003,20 +1036,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         )
         .str_err()?;
 
-        let rel_exists: i64 = tx
-            .query_row(
-                "SELECT COUNT(*) FROM media_catalog WHERE external_id = ?1",
-                [&rel.related_media_external_id],
-                |row| row.get(0),
-            )
-            .str_err()?;
-
-        if rel_exists == 0 {
-            let rel_type = rel.related_media_external_id
-                .split_once(':')
-                .map(|(prefix, _)| prefix)
-                .unwrap_or("anime")
-                .to_string();
+        if !known_ids.contains(&rel.related_media_external_id) {
+            let rel_type = infer_type_from_id(&rel.related_media_external_id);
 
             tx.execute(
                 "INSERT INTO media_catalog (
@@ -1033,6 +1054,7 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 ],
             )
             .str_err()?;
+            known_ids.insert(rel.related_media_external_id.clone());
         }
     }
 
@@ -1045,13 +1067,14 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
 
     for char in &bundle.characters {
         tx.execute(
-            "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &char.external_id,
                 &char.name,
                 &char.image_url,
+                None::<String>,
                 &now,
                 &now,
             ],
@@ -1104,17 +1127,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         .str_err()?;
     }
 
-    if let Some(saga_groups) = bundle.saga_groups {
-        for (media_id, group_name) in saga_groups {
-            if group_name.is_empty() {
-                tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [&media_id]).str_err()?;
-            } else {
-                tx.execute(
-                    "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
-                    rusqlite::params![&media_id, &group_name],
-                ).str_err()?;
-            }
-        }
+    if let Some(saga_groups) = &bundle.saga_groups {
+        upsert_saga_groups(&tx, saga_groups)?;
     }
 
     tx.commit().str_err()?;
@@ -1151,31 +1165,36 @@ pub async fn save_media_saga_groups(
 ) -> Result<(), String> {
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
-
-    for (media_id, group_name) in groups {
-        if group_name.is_empty() {
-            tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [&media_id]).str_err()?;
-        } else {
-            tx.execute(
-                "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
-                rusqlite::params![&media_id, &group_name],
-            ).str_err()?;
-        }
-    }
+    upsert_saga_groups(&tx, &groups)?;
     tx.commit().str_err()
 }
 
 #[tauri::command]
+// Scoped to the ids the caller actually cares about (the saga chain's
+// transitive relation ids) rather than the whole table — media_saga_groups
+// has no natural upper bound as the catalog grows, and every entry only
+// ever needs the handful of groups belonging to its own saga.
 pub async fn get_media_saga_groups(
     state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_ids: Vec<String>,
 ) -> Result<std::collections::HashMap<String, String>, String> {
+    let mut map = std::collections::HashMap::new();
+    if media_external_ids.is_empty() {
+        return Ok(map);
+    }
+
     let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn.prepare("SELECT media_external_id, group_name FROM media_saga_groups").str_err()?;
-    let rows = stmt.query_map([], |row| {
+    let placeholders = media_external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT media_external_id, group_name FROM media_saga_groups WHERE media_external_id IN ({})",
+        placeholders
+    );
+    let mut stmt = conn.prepare(&sql).str_err()?;
+    let params = rusqlite::params_from_iter(media_external_ids.iter());
+    let rows = stmt.query_map(params, |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     }).str_err()?;
 
-    let mut map = std::collections::HashMap::new();
     for row in rows.filter_map(|r| r.ok()) {
         map.insert(row.0, row.1);
     }
