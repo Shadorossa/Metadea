@@ -1,0 +1,37 @@
+name: 'Update Community Database'
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'database/**.json'
+      - 'scripts/build-database.js'
+
+jobs:
+  build-database:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build database.db from database/*.json
+        run: node --experimental-sqlite scripts/build-database.js
+
+      - name: Commit updated database.db
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add database.db
+          if git diff --cached --quiet; then
+            echo "No changes to database.db"
+          else
+            git commit -m "chore: Update community database.db"
+            git push
+          fi

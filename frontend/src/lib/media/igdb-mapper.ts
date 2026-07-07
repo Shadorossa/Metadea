@@ -1,4 +1,5 @@
 import { igdbImageUrl } from '../tauri';
+import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
@@ -9,6 +10,14 @@ export interface IgdbSubGame {
   name: string;
   cover?: { image_id: string };
   first_release_date?: number;
+  /** Own-genre VN classification computed backend-side (see igdb.rs's
+   *  detect_vn) — a related title (remake, DLC, base game, ...) can be a
+   *  visual novel even when the game being viewed isn't, or vice versa, so
+   *  the relation's external_id prefix can't just inherit the current page's
+   *  type. Without this, every relation used to get hardcoded to "game:",
+   *  which created duplicate catalog stubs of the same title under both
+   *  "game:" and "vnovel:" prefixes. */
+  is_vn?: boolean;
 }
 
 interface IgdbDetailGame {
@@ -147,7 +156,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
         typeLabel: label,
         title: cleanEditionTitle(sg.name),
         cover,
-        url: `/media?id=game:${sg.id}`,
+        url: `/media?id=${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`,
       });
     }
   };
@@ -156,7 +165,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const parentGame = parentSub
     ? {
         title: parentSub.name,
-        externalId: `game:${parentSub.id}`,
+        externalId: `${parentSub.is_vn ? 'vnovel' : 'game'}:${parentSub.id}`,
         cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
       }
     : undefined;
@@ -212,11 +221,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
+  const tm = getT().media;
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => ({
-    typeLabel: 'Base Game',
+    typeLabel: tm.relations.PARENT,
     title: cleanEditionTitle(sg.name),
     cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
-    url: `/media?id=game:${sg.id}`,
+    url: `/media?id=${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`,
   }));
   return { ...data, relations: [...baseRelations, ...data.relations] };
 }
@@ -232,23 +242,25 @@ interface RelationGraphNode {
   name: string;
   cover?: { image_id: string };
   via: string;
+  is_vn?: boolean;
 }
-
-const VIA_LABELS: Record<string, string> = {
-  remakes: 'Remake',
-  remasters: 'Remaster',
-  dlcs: 'DLC',
-  expansions: 'Expansion',
-  standalone_expansions: 'Standalone',
-  expanded_games: 'Expanded Edition',
-  ports: 'Port',
-  forks: 'Fork',
-  parent_game: 'Base Game',
-  relation: 'Related',
-};
 
 export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {
   if (!nodes.length) return data;
+
+  const tm = getT().media;
+  const VIA_LABELS: Record<string, string> = {
+    remakes: 'Remake',
+    remasters: 'Remaster',
+    dlcs: 'DLC',
+    expansions: 'Expansion',
+    standalone_expansions: 'Standalone',
+    expanded_games: 'Expanded Edition',
+    ports: 'Port',
+    forks: 'Fork',
+    parent_game: tm.relations.PARENT,
+    relation: 'Related',
+  };
 
   const seen = new Set<string>([data.externalId]);
   if (data.parentGame) seen.add(data.parentGame.externalId);
@@ -273,7 +285,7 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
   const extra: MediaRelation[] = [];
   for (const group of byVia.values()) {
     for (const n of dedupeEditionVariants(group)) {
-      const externalId = `game:${n.id}`;
+      const externalId = `${n.is_vn ? 'vnovel' : 'game'}:${n.id}`;
       if (seen.has(externalId)) continue;
       seen.add(externalId);
       extra.push({

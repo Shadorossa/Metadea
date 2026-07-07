@@ -1,13 +1,107 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
+import {
+  getCatalogEntry, saveCatalogEntry,
+  getCachedSaga, saveCachedSaga,
+  getMediaRelations, saveMediaRelations,
+  searchCatalog,
+  getAllCatalogEntries,
+} from '../../lib/tauri/catalog';
+import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
+import type { SagaEntry } from '../../lib/anilist/saga';
+
+const BUNDLE_RELATION_TYPES = ['EPISODE', 'UPDATE'];
+
+interface BundledRelation {
+  external_id: string;
+  type: 'episode' | 'update';
+}
+
+interface SagaEntry_UI {
+  external_id: string;
+}
 
 interface Props {
   externalId: string;
   onClose: () => void;
   onSaved?: () => void;
+}
+
+interface SearchResult {
+  external_id: string;
+  title_main: string | null;
+  cover_url: string | null;
+}
+
+function MediaSearchPopup({ onSelect, onClose }: { onSelect: (external_id: string) => void; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    setIsLoading(true);
+
+    // First try local catalog
+    searchCatalog(query)
+      .then(entries => {
+        const localResults: SearchResult[] = entries.map(e => ({
+          external_id: e.external_id,
+          title_main: e.title_main,
+          cover_url: e.cover_url
+        }));
+        setResults(localResults.slice(0, 30));
+      })
+      .catch(() => setResults([]))
+      .finally(() => setIsLoading(false));
+  }, [query]);
+
+  return (
+    <div className="pr-editor-search-popup" onClick={onClose}>
+      <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
+        <input
+          type="text"
+          placeholder="Search by title or ID (e.g. anime:12345)..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          autoFocus
+          className="pr-editor-search-input"
+        />
+        <div className="pr-editor-search-results pr-editor-search-results--grid">
+          {isLoading && <div className="pr-editor-search-loading">Searching...</div>}
+          {!isLoading && results.length === 0 && query && (
+            <div className="pr-editor-search-empty">No results</div>
+          )}
+          <div className="pr-editor-search-grid">
+            {results.map(r => (
+              <button
+                key={r.external_id}
+                type="button"
+                className="pr-editor-search-result-card"
+                onClick={() => {
+                  onSelect(r.external_id);
+                  onClose();
+                }}
+              >
+                {r.cover_url && (
+                  <img src={r.cover_url} alt="" className="pr-editor-search-result-cover" />
+                )}
+                <div className="pr-editor-search-result-info">
+                  <div className="pr-editor-search-result-id">{r.external_id}</div>
+                  <div className="pr-editor-search-result-title">{r.title_main || '—'}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface SlotInputProps {
@@ -90,6 +184,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [entry, setEntry] = useState<MediaCatalogEntry | null>(null);
+  const [sagaEntries, setSagaEntries] = useState<SagaEntry_UI[]>([]);
+  const [bundledRelations, setBundledRelations] = useState<BundledRelation[]>([]);
+  const [otherRelations, setOtherRelations] = useState<DbMediaRelation[]>([]);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | null>(null);
 
   useEffect(() => {
     getCatalogEntry(externalId)
@@ -111,7 +209,53 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         setErrorMsg('Error reading local data');
       })
       .finally(() => setLoading(false));
+
+    getCachedSaga(externalId)
+      .then(saga => {
+        const ids = (saga || []).map(s => ({ external_id: s.externalId })).filter(s => s.external_id !== externalId);
+        setSagaEntries(ids);
+      })
+      .catch(() => setSagaEntries([]));
+
+    getMediaRelations(externalId)
+      .then(rels => {
+        const bundled = (rels || []).filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type));
+        const others = (rels || []).filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type));
+        setBundledRelations(bundled.map(r => ({
+          external_id: r.related_media_external_id,
+          type: r.relation_type === 'UPDATE' ? 'update' : 'episode',
+        })));
+        setOtherRelations(others);
+      })
+      .catch(() => {
+        setBundledRelations([]);
+        setOtherRelations([]);
+      });
   }, [externalId]);
+
+  const addSagaEntry = (external_id: string) => {
+    if (!sagaEntries.find(s => s.external_id === external_id)) {
+      setSagaEntries([...sagaEntries, { external_id }]);
+    }
+  };
+
+  const removeSagaEntry = (external_id: string) => {
+    setSagaEntries(sagaEntries.filter(s => s.external_id !== external_id));
+  };
+
+  const addBundledRelation = (external_id: string) => {
+    if (!bundledRelations.find(r => r.external_id === external_id)) {
+      setBundledRelations([...bundledRelations, { external_id, type: 'episode' }]);
+    }
+  };
+
+  const updateBundledRelation = (index: number, patch: Partial<BundledRelation>) => {
+    setBundledRelations(bundledRelations.map((r, i) => i === index ? { ...r, ...patch } : r));
+  };
+
+  const removeBundledRelation = (index: number) => {
+    setBundledRelations(bundledRelations.filter((_, i) => i !== index));
+  };
 
   const handleChange = (field: keyof MediaCatalogEntry, value: any) => {
     if (!entry) return;
@@ -134,6 +278,46 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       }
 
       await saveCatalogEntry(entry);
+
+      const sagaIds = sagaEntries.map(s => s.external_id).filter(id => id !== externalId);
+      if (sagaIds.length > 0) {
+        const sagaEntries: SagaEntry[] = [
+          {
+            externalId,
+            title: entry.title_main || externalId,
+            cover: entry.cover_url || null,
+            format: entry.format || null,
+            mediaType: entry.type,
+            year: entry.release_year ?? null,
+            month: entry.release_month ?? null,
+            day: entry.release_day ?? null,
+          },
+          ...sagaIds.map(id => ({
+            externalId: id,
+            title: id,
+            cover: null,
+            format: null,
+            mediaType: id.split(':')[0] || 'anime',
+            year: null,
+            month: null,
+            day: null,
+          })),
+        ];
+        await saveCachedSaga(sagaEntries).catch(err => console.error('Failed to save saga:', err));
+      }
+
+      const bundledDbRelations: DbMediaRelation[] = bundledRelations
+        .filter(r => r.external_id.trim())
+        .map(r => ({
+          related_media_external_id: r.external_id.trim(),
+          relation_type: r.type.toUpperCase(),
+          type_label: r.type === 'update' ? 'Update' : 'Episode',
+          title: r.external_id.trim(),
+          cover: null,
+        }));
+      await saveMediaRelations(externalId, [...otherRelations, ...bundledDbRelations])
+        .catch(err => console.error('Failed to save relations:', err));
+
       if (onSaved) onSaved();
 
       setStatusMsg('Fetching GitHub profile...');
@@ -315,8 +499,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">Images</span>
-            <div className="pr-editor-form-grid">
-              <div className="pr-editor-field">
+            <div className="pr-editor-field-row">
+              <div className="pr-editor-field pr-editor-field--fixed">
                 <label>Cover URL</label>
                 <div className="pr-editor-cover-row">
                   {entry.cover_url && (
@@ -326,7 +510,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 </div>
               </div>
 
-              <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview fullWidth />
+              <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview />
             </div>
           </div>
 
@@ -379,6 +563,42 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               </div>
             </div>
           </div>
+
+          <div className="pr-editor-section pr-editor-section--row">
+            <div className="pr-editor-subsection">
+              <label className="pr-editor-subsection-label">Saga</label>
+              <div className="pr-editor-tag-list">
+                {sagaEntries.map(s => (
+                  <span key={s.external_id} className="pr-editor-tag">
+                    {s.external_id}
+                    <button type="button" className="pr-editor-tag-remove" onClick={() => removeSagaEntry(s.external_id)}>×</button>
+                  </span>
+                ))}
+              </div>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add</button>
+            </div>
+
+            <div className="pr-editor-subsection">
+              <label className="pr-editor-subsection-label">Bundled In</label>
+              <div className="pr-editor-tag-list">
+                {bundledRelations.map((r, i) => (
+                  <span key={i} className="pr-editor-tag pr-editor-tag--with-type">
+                    {r.external_id}
+                    <select
+                      value={r.type}
+                      onChange={e => updateBundledRelation(i, { type: e.target.value as BundledRelation['type'] })}
+                      className="pr-editor-tag-type"
+                    >
+                      <option value="episode">Episode</option>
+                      <option value="update">Update</option>
+                    </select>
+                    <button type="button" className="pr-editor-tag-remove" onClick={() => removeBundledRelation(i)}>×</button>
+                  </span>
+                ))}
+              </div>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
+            </div>
+          </div>
         </div>
 
         <div className="pr-editor-footer">
@@ -390,6 +610,20 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           </button>
         </div>
       </div>
+
+      {searchPopupMode === 'saga' && (
+        <MediaSearchPopup
+          onSelect={id => addSagaEntry(id)}
+          onClose={() => setSearchPopupMode(null)}
+        />
+      )}
+
+      {searchPopupMode === 'bundled' && (
+        <MediaSearchPopup
+          onSelect={id => addBundledRelation(id)}
+          onClose={() => setSearchPopupMode(null)}
+        />
+      )}
     </div>,
     document.body
   );

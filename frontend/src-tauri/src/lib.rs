@@ -112,6 +112,7 @@ pub fn run() {
             media_catalog::save_media_authors,
             media_catalog::get_media_authors,
             media_catalog::save_author_profile_and_relations,
+            media_catalog::sync_community_catalog,
             characters::save_character,
             characters::get_character,
             characters::set_character_reaction,

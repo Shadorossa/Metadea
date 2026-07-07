@@ -122,6 +122,8 @@ const t = useTranslations(lang);
     </dialog>
 
     <script>
+      import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+
       // Auth modal — runs on first load and after each View Transitions swap
       function initAuthModal() {
         const modal     = document.getElementById('auth-modal') as HTMLDialogElement | null;
@@ -148,6 +150,26 @@ const t = useTranslations(lang);
       }
       
       let updaterChecked = false;
+      let communityCatalogSynced = false;
+      const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
+
+      async function syncCommunityCatalog() {
+        if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
+        if (!navigator.onLine) return;
+        try {
+          const lastSync = localStorage.getItem(STORAGE_KEYS.communityCatalogLastSync);
+          if (lastSync && Date.now() - parseInt(lastSync, 10) < COMMUNITY_CATALOG_SYNC_INTERVAL_MS) return;
+
+          const { syncCommunityCatalog: sync } = await import(/* @vite-ignore */ '../lib/tauri');
+          const imported = await sync();
+          localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
+          if (imported > 0) {
+            console.info(`[CommunityCatalog] Imported ${imported} new entries from the shared catalog.`);
+          }
+        } catch (error) {
+          console.warn('[CommunityCatalog] Sync failed:', error);
+        }
+      }
 
       async function checkAppUpdates() {
         if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
@@ -176,6 +198,10 @@ const t = useTranslations(lang);
         if (!updaterChecked) {
           updaterChecked = true;
           setTimeout(checkAppUpdates, 2000);
+        }
+        if (!communityCatalogSynced) {
+          communityCatalogSynced = true;
+          setTimeout(syncCommunityCatalog, 3000);
         }
 
         // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord

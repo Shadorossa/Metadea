@@ -2,7 +2,14 @@ use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use tauri::Manager;
 use crate::db::ToStringErr;
+
+// Raw GitHub URL for the repo's shared community catalog — rebuilt by
+// .github/workflows/update-database.yml (scripts/build-database.js) from
+// every database/*.json a merged collaborative-catalog PR has added, so this
+// always reflects main without the app needing GitHub API auth to read it.
+const COMMUNITY_DB_URL: &str = "https://raw.githubusercontent.com/Shadorossa/Metadea/main/database.db";
 
 // Batch existence check used by save_cached_saga / save_media_relations /
 // save_author_profile_and_relations — each used to run one
@@ -674,4 +681,82 @@ pub async fn save_author_profile_and_relations(
 
     tx.commit().str_err()?;
     Ok(())
+}
+
+// Downloads the repo's shared community catalog (built from merged
+// collaborative-catalog PRs) and merges its rows into the local media_catalog.
+// Uses INSERT OR IGNORE via ATTACH DATABASE so it only fills in ids the user
+// doesn't already have locally — never overwrites a user's own library data,
+// local edits, or anything fetched live from an API.
+#[tauri::command]
+pub async fn sync_community_catalog(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<i64, String> {
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(COMMUNITY_DB_URL)
+        .send()
+        .await
+        .str_err()?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));
+    }
+    let bytes = resp.bytes().await.str_err()?;
+
+    let cache_dir = app_handle.path().app_cache_dir().str_err()?;
+    std::fs::create_dir_all(&cache_dir).str_err()?;
+    let temp_path = cache_dir.join("community_catalog_tmp.db");
+    std::fs::write(&temp_path, &bytes).str_err()?;
+    let temp_path_str = temp_path.to_string_lossy().to_string();
+
+    let imported = (|| -> Result<i64, String> {
+        let conn = state.conn.lock().str_err()?;
+
+        let before: i64 = conn
+            .query_row("SELECT COUNT(*) FROM media_catalog", [], |r| r.get(0))
+            .str_err()?;
+
+        conn.execute("ATTACH DATABASE ?1 AS community", rusqlite::params![temp_path_str])
+            .str_err()?;
+        // Column list is explicit (not `SELECT *`) on purpose: DBs upgraded
+        // via the `ALTER TABLE ... ADD COLUMN authors_csv` migration in
+        // db.rs have authors_csv as their *last* physical column, while a
+        // fresh DB (this downloaded community one included) has it inline
+        // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
+        // would silently shift every column after the mismatch into the
+        // wrong field.
+        let insert_result = conn.execute(
+            "INSERT OR IGNORE INTO media_catalog (
+                id, external_id, parent_id, type, format, source,
+                title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                release_year, release_month, release_day, time_length, status, score_global,
+                favorites_count, ratings_count, total_count, total_count_2,
+                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+             )
+             SELECT
+                id, external_id, parent_id, type, format, source,
+                title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                release_year, release_month, release_day, time_length, status, score_global,
+                favorites_count, ratings_count, total_count, total_count_2,
+                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+             FROM community.media_catalog",
+            [],
+        );
+        conn.execute("DETACH DATABASE community", []).str_err()?;
+        insert_result.str_err()?;
+
+        let after: i64 = conn
+            .query_row("SELECT COUNT(*) FROM media_catalog", [], |r| r.get(0))
+            .str_err()?;
+
+        Ok(after - before)
+    })();
+
+    let _ = std::fs::remove_file(&temp_path);
+
+    imported
 }

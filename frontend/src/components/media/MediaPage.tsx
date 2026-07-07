@@ -140,6 +140,30 @@ export default function MediaPage({ i18n }: Props) {
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  // The title is forced to a single line (no wrap) — for long titles that'd
+  // otherwise overflow past the viewport edge, shrink the font size in 1px
+  // steps until it actually fits its column instead of just clipping.
+  useEffect(() => {
+    const el = titleRef.current;
+    const parent = el?.parentElement;
+    if (!el || !parent) return;
+
+    const MIN_FONT_PX = 13;
+    const fit = () => {
+      el.style.fontSize = '';
+      let fontSize = parseFloat(getComputedStyle(el).fontSize);
+      while (el.scrollWidth > parent.clientWidth && fontSize > MIN_FONT_PX) {
+        fontSize -= 1;
+        el.style.fontSize = `${fontSize}px`;
+      }
+    };
+
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, [data?.titleMain]);
 
   const {
     entry: libEntry,
@@ -446,7 +470,7 @@ export default function MediaPage({ i18n }: Props) {
         <div className="media-hero-body">
           {/* Izquierda: títulos */}
           <div className="media-hero-left">
-            <h1 className="media-title-main">{data.titleMain}</h1>
+            <h1 className="media-title-main" ref={titleRef}>{data.titleMain}</h1>
             {data.titleNative  && <p className="media-title-native">{data.titleNative}</p>}
             {data.titleEnglish && <p className="media-title-english">{data.titleEnglish}</p>}
           </div>

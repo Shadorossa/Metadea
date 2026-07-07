@@ -97,3 +97,11 @@ export async function saveMediaAuthors(mediaExternalId: string, authors: DbMedia
 export async function getMediaAuthors(mediaExternalId: string): Promise<DbMediaAuthor[]> {
   return tauriCmd<DbMediaAuthor[]>('get_media_authors', [], { mediaExternalId });
 }
+
+// Downloads the repo's shared community catalog (built from merged
+// collaborative-catalog PRs) and merges rows the user doesn't already have
+// into their local media_catalog. Returns how many new rows were imported.
+export async function syncCommunityCatalog(): Promise<number> {
+  if (!isTauri()) return 0;
+  return invoke<number>('sync_community_catalog');
+}

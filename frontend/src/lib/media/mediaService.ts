@@ -8,6 +8,7 @@ import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSub
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
+import { formatDateParts } from './mapper-utils';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -144,7 +145,7 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 }
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
-  const authorList = c.authors_csv ? c.authors_csv.split(',') : [];
+  const authorList = c.authors_csv ? c.authors_csv.split(',').filter(Boolean) : [];
   const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
   const stats: MediaStat[] = [];
   if (authorList.length > 0) {
@@ -154,7 +155,30 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     });
   }
 
-  const metaLines = c.type === 'book' && authorList.length > 0 ? [authorList.join(', ')] : [];
+  const companies = c.companies_cache_csv ? c.companies_cache_csv.split(',').filter(Boolean) : [];
+  const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
+  const isGameType = c.type === 'game' || c.type === 'vnovel';
+
+  // Mirrors each API mapper's own metaLines convention (igdb-mapper: platforms
+  // then publisher; anilist-mapper: studios then format/episode count) so the
+  // catalog-only render (no live API call — see fetchMediaDataWithFallback)
+  // doesn't lose this info once catalog data is the final answer instead of
+  // just a placeholder while the API call is in flight.
+  const metaLines: string[] = [];
+  if (c.type === 'book') {
+    if (authorList.length > 0) metaLines.push(authorList.join(', '));
+  } else if (isGameType) {
+    if (platforms.length > 0) metaLines.push(platforms.join(' · '));
+    if (companies.length > 0) metaLines.push(companies.join(', '));
+  } else {
+    if (companies.length > 0) metaLines.push(companies.join(', '));
+    const quickBits: string[] = [];
+    if (c.format) quickBits.push(c.format);
+    if (c.total_count) quickBits.push(`${c.total_count} ${c.type === 'anime' ? 'ep' : 'cap'}`);
+    if (quickBits.length > 0) metaLines.push(quickBits.join(' · '));
+  }
+
+  const dateBadge = formatDateParts({ year: c.release_year, month: c.release_month, day: c.release_day }) || undefined;
 
   return {
     externalId:    c.external_id,
@@ -168,6 +192,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     description:   c.synopsis     ?? undefined,
     genreDots:     c.genres_csv     ? c.genres_csv.split(',').join(' · ')     : undefined,
     genreTagDots:  c.genres_tag_csv ? c.genres_tag_csv.split(',').join(' · ') : undefined,
+    dateBadge,
     totalCount:    c.total_count   ?? undefined,
     totalCount_2:  c.total_count_2 ?? undefined,
     scoreGlobal:   c.score_global  ?? undefined,
@@ -178,8 +203,8 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     status:        c.status        ?? undefined,
     format:        c.format        ?? undefined,
     source:        c.source        ?? undefined,
-    platforms:     c.platforms_csv ? c.platforms_csv.split(',') : undefined,
-    companies:     c.companies_cache_csv ? c.companies_cache_csv.split(',') : undefined,
+    platforms:     platforms.length > 0 ? platforms : undefined,
+    companies:     companies.length > 0 ? companies : undefined,
     metaLines,
     stats,
     characters:    [],
@@ -254,7 +279,7 @@ export function fetchMediaDataWithFallback(
       if (catalog && catalog.title_main) {
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
-        
+
         try {
           const { getMediaRelations, getMediaAuthors } = await import('../tauri/catalog');
           const [dbRels, dbAuthors] = await Promise.all([
@@ -291,6 +316,18 @@ export function fetchMediaDataWithFallback(
     })
     .catch(() => {})
     .finally(() => {
+      // A catalog entry with a non-empty `source` was written by a real API
+      // detail fetch (or a collaborative-catalog PR import) rather than the
+      // thin stub `save_media_relations`/`save_cached_saga` create for ids
+      // they've only ever seen as someone else's relation — it already has
+      // everything the API would return, so skip the live request entirely
+      // instead of re-fetching data we already have on disk.
+      if (hasLocalData && localData && localData.source) {
+        fullArrived = true;
+        onFull(localData);
+        return;
+      }
+
       fetchMediaData(rawId)
         .then(data => {
           fullArrived = true;

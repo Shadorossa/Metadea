@@ -20,4 +20,5 @@ export const STORAGE_KEYS = {
   userJourney: 'user_journey',
   profileAvatarCustom: 'profile_avatar_custom',
   profileBannerCustom: 'profile_banner_custom',
+  communityCatalogLastSync: 'community_catalog_last_sync',
 } as const;

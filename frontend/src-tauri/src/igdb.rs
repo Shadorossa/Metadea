@@ -1065,19 +1065,19 @@ pub async fn igdb_get_game_detail(
          genres.name,involved_companies.company.name,\
          involved_companies.developer,involved_companies.publisher,platforms.name,\
          alternative_names.name,alternative_names.comment,game_type,\
-         parent_game.id,parent_game.name,parent_game.cover.image_id,parent_game.first_release_date,\
-         version_parent.id,version_parent.name,version_parent.cover.image_id,version_parent.first_release_date,\
+         parent_game.id,parent_game.name,parent_game.cover.image_id,parent_game.first_release_date,parent_game.genres.id,\
+         version_parent.id,version_parent.name,version_parent.cover.image_id,version_parent.first_release_date,version_parent.genres.id,\
          artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,\
          screenshots.image_id,screenshots.width,screenshots.height,\
          external_games.category,external_games.url,\
-         remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,\
-         remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,\
-         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,\
-         expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,\
-         standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,\
-         expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,\
-         ports.id,ports.name,ports.cover.image_id,ports.first_release_date,\
-         forks.id,forks.name,forks.cover.image_id,forks.first_release_date; \
+         remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,remakes.genres.id,\
+         remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,remasters.genres.id,\
+         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,dlcs.genres.id,\
+         expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,expansions.genres.id,\
+         standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,standalone_expansions.genres.id,\
+         expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,expanded_games.genres.id,\
+         ports.id,ports.name,ports.cover.image_id,ports.first_release_date,ports.genres.id,\
+         forks.id,forks.name,forks.cover.image_id,forks.first_release_date,forks.genres.id; \
          where id = {}; limit 1;",
         igdb_id
     );
@@ -1096,6 +1096,40 @@ pub async fn igdb_get_game_detail(
 
     if let Some(links) = build_store_links(&game["external_games"]) {
         game["store_links"] = serde_json::Value::Array(links);
+    }
+
+    // Related sub-games (remakes, dlcs, ...) are their own titles and can be
+    // visual novels even when the current game isn't (or vice versa) — tag
+    // each one with is_vn from its own genres so the frontend can route it
+    // to /media?id=vnovel:X instead of always assuming id=game:X, which used
+    // to create duplicate catalog stubs of the same title under both prefixes.
+    const REL_ARRAYS: &[&str] = &[
+        "remakes", "remasters", "dlcs", "expansions",
+        "standalone_expansions", "expanded_games", "ports", "forks",
+    ];
+    if let Some(obj) = game.as_object_mut() {
+        for key in REL_ARRAYS {
+            if let Some(arr) = obj.get_mut(*key).and_then(|v| v.as_array_mut()) {
+                for node in arr.iter_mut() {
+                    let is_vn = detect_vn(node);
+                    if let Some(node_obj) = node.as_object_mut() {
+                        node_obj.insert("is_vn".to_string(), serde_json::Value::Bool(is_vn));
+                        node_obj.remove("genres");
+                    }
+                }
+            }
+        }
+        for key in &["parent_game", "version_parent"] {
+            if let Some(node) = obj.get(*key).cloned() {
+                if !node.is_null() {
+                    let is_vn = detect_vn(&node);
+                    if let Some(node_obj) = obj.get_mut(*key).and_then(|v| v.as_object_mut()) {
+                        node_obj.insert("is_vn".to_string(), serde_json::Value::Bool(is_vn));
+                        node_obj.remove("genres");
+                    }
+                }
+            }
+        }
     }
 
     // These were only needed to derive banner_image_id/store_links above —
@@ -1124,11 +1158,21 @@ pub async fn igdb_get_base_games(
     let client = get_http_client();
 
     let base_query = format!(
-        "fields id,name,cover.image_id,first_release_date; where remakes = {}; limit 5;",
+        "fields id,name,cover.image_id,first_release_date,genres.id; where remakes = {}; limit 5;",
         igdb_id
     );
 
-    igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &base_query).await
+    let mut results = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &base_query).await?;
+    if let Some(arr) = results.as_array_mut() {
+        for node in arr.iter_mut() {
+            let is_vn = detect_vn(node);
+            if let Some(node_obj) = node.as_object_mut() {
+                node_obj.insert("is_vn".to_string(), serde_json::Value::Bool(is_vn));
+                node_obj.remove("genres");
+            }
+        }
+    }
+    Ok(results)
 }
 
 // Walks the forward edition/version relation graph (remakes, remasters,
@@ -1170,7 +1214,7 @@ pub async fn igdb_get_relation_graph(
         }
         let ids_csv = frontier.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",");
         let query = format!(
-            "fields id,name,cover.image_id,first_release_date,\
+            "fields id,name,cover.image_id,first_release_date,genres.id,\
              parent_game.id,\
              remakes.id,remasters.id,dlcs.id,expansions.id,\
              standalone_expansions.id,expanded_games.id,ports.id,forks.id; \
@@ -1190,14 +1234,17 @@ pub async fn igdb_get_relation_graph(
             };
 
             if id != root_id {
+                let is_vn = detect_vn(item);
                 let mut out = item.clone();
                 if let Some(obj) = out.as_object_mut() {
                     let via = visited.get(&id).cloned().unwrap_or_else(|| "relation".to_string());
                     obj.insert("via".to_string(), serde_json::Value::String(via));
+                    obj.insert("is_vn".to_string(), serde_json::Value::Bool(is_vn));
                     for f in REL_FIELDS {
                         obj.remove(*f);
                     }
                     obj.remove("parent_game");
+                    obj.remove("genres");
                 }
                 collected.push(out);
             }
