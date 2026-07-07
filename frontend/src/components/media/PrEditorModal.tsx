@@ -570,7 +570,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             <span className="pr-editor-section-title">Release &amp; Progress</span>
             <div className="pr-editor-field-row">
               <div className="pr-editor-subgroup">
-                <span className="pr-editor-subgroup-label">Release Date</span>
                 <div className="pr-editor-subgroup-fields">
                   <div className="pr-editor-field pr-editor-field--small">
                     <label>Year</label>
@@ -590,7 +589,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               <div className="pr-editor-subgroup-divider" />
 
               <div className="pr-editor-subgroup">
-                <span className="pr-editor-subgroup-label">Totals</span>
                 <div className="pr-editor-subgroup-fields">
                   <div className="pr-editor-field pr-editor-field--small">
                     <label>Episodes / Chapters</label>
