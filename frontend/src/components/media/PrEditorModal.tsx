@@ -63,8 +63,11 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   // the nearest preceding group instead (see classifySagaChain).
   const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [sagaGroups, setSagaGroups] = useState<Record<string, string>>({});
+  const [originalSagaRelationTypes, setOriginalSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
+  const [originalSagaGroups, setOriginalSagaGroups] = useState<Record<string, string>>({});
   const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
   const [sagaName, setSagaName] = useState('');
+  const [originalSagaName, setOriginalSagaName] = useState('');
 
   // Every other relation type (ADAPTATION, SIDE_STORY, SPIN_OFF, ...) is kept
   // as an untouched pass-through — save_media_relations replaces the *entire*
@@ -181,8 +184,11 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               }
             }
             setSagaRelationTypes(relTypesMap);
+            setOriginalSagaRelationTypes({ ...relTypesMap });
             setSagaGroups(groupsMap);
+            setOriginalSagaGroups({ ...groupsMap });
             setSagaName(dbSagaName || '');
+            setOriginalSagaName(dbSagaName || '');
 
           } catch (err) {
             console.error('Failed to load relations/saga:', err);
@@ -302,18 +308,47 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
     const originalSagaIds = new Set(originalSagaOrder);
     const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
-    for (const id of addedSaga) {
-      lines.push(`- Added to Saga: ${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`);
-    }
     const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
-    for (const id of removedSaga) lines.push(`- Removed from Saga: ${formatWork(id)}`);
+    const sagaOrderChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
 
-    const sagaChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
-    if (sagaOrder.length > 1) {
-      const chainLabel = sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ');
-      lines.push(addedSaga.length === 0 && removedSaga.length === 0 && sagaChanged
-        ? `- Reordered Saga: ${chainLabel}`
-        : `- Saga order: ${chainLabel}`);
+    const hasRelationTypesChanged = () => {
+      const keys = new Set([...Object.keys(sagaRelationTypes), ...Object.keys(originalSagaRelationTypes)]);
+      for (const k of keys) {
+        if ((sagaRelationTypes[k] || 'main') !== (originalSagaRelationTypes[k] || 'main')) return true;
+      }
+      return false;
+    };
+
+    const hasGroupsChanged = () => {
+      const keys = new Set([...Object.keys(sagaGroups), ...Object.keys(originalSagaGroups)]);
+      for (const k of keys) {
+        if ((sagaGroups[k] || '').trim() !== (originalSagaGroups[k] || '').trim()) return true;
+      }
+      return false;
+    };
+
+    const sagaRelationTypesChanged = hasRelationTypesChanged();
+    const sagaGroupsChanged = hasGroupsChanged();
+    const sagaNameChanged = sagaName !== originalSagaName;
+
+    if (addedSaga.length > 0 || removedSaga.length > 0 || sagaOrderChanged || sagaRelationTypesChanged || sagaGroupsChanged || sagaNameChanged) {
+      if (sagaNameChanged) {
+        lines.push(`- Changed Saga Name: "${originalSagaName}" → "${sagaName}"`);
+      }
+      for (const id of addedSaga) {
+        lines.push(`- Added to Saga: ${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`);
+      }
+      for (const id of removedSaga) {
+        lines.push(`- Removed from Saga: ${formatWork(id)}`);
+      }
+      if (sagaOrderChanged) {
+        const chainLabel = sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ');
+        lines.push(addedSaga.length === 0 && removedSaga.length === 0
+          ? `- Reordered Saga: ${chainLabel}`
+          : `- Saga order: ${chainLabel}`);
+      } else if (sagaRelationTypesChanged || sagaGroupsChanged) {
+        lines.push(`- Updated Saga relations/groups`);
+      }
     }
 
     if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
