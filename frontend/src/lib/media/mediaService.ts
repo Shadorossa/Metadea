@@ -224,28 +224,61 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 
   const data = await fetchMediaDataInternal(rawId);
   if (data) {
+    const { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors } = await import('../tauri/catalog');
+    
+    // Load existing database relations and authors first
+    const [dbRels, dbAuthors] = await Promise.all([
+      getMediaRelations(rawId).catch(() => []),
+      getMediaAuthors(rawId).catch(() => [])
+    ]);
+
+    // Only save API relations if we don't have any in the DB
+    if (dbRels.length === 0 && data.relations && data.relations.length > 0) {
+      const dbRelsToSave = data.relations.map(r => {
+        const match = r.url?.match(/id=([^&]+)/);
+        const relId = match ? decodeURIComponent(match[1]) : '';
+        return {
+          related_media_external_id: relId || r.url || '',
+          relation_type: r.typeLabel.toUpperCase(),
+          type_label: r.typeLabel,
+          title: r.title,
+          cover: r.cover || null
+        };
+      }).filter(r => r.related_media_external_id);
+      await saveMediaRelations(rawId, dbRelsToSave).catch(console.error);
+    }
+
+    // Only save API authors if we don't have any in the DB
+    if (dbAuthors.length === 0 && data.authors && data.authors.length > 0) {
+      await saveMediaAuthors(rawId, data.authors!).catch(console.error);
+    }
+
+    // Reload from database to ensure local curated relations/authors are used in the final UI data object!
+    const [finalRels, finalAuthors] = await Promise.all([
+      getMediaRelations(rawId).catch(() => []),
+      getMediaAuthors(rawId).catch(() => [])
+    ]);
+
+    if (finalRels && finalRels.length > 0) {
+      data.relations = finalRels.map(r => ({
+        typeLabel: r.type_label,
+        title: r.title,
+        cover: r.cover || undefined,
+        url: `/media?id=${r.related_media_external_id}`
+      }));
+    }
+
+    if (finalAuthors && finalAuthors.length > 0) {
+      data.authors = finalAuthors.map(a => ({
+        external_id: a.external_id,
+        name: a.name,
+        image: a.image || undefined,
+        role: a.role || undefined,
+        url: `/author?id=${a.external_id}`
+      }));
+    }
+
     setCachedMediaData(rawId, data);
-    if (data.authors && data.authors.length > 0) {
-      import('../tauri/catalog').then(async ({ saveMediaAuthors }) => {
-        await saveMediaAuthors(rawId, data.authors!).catch(console.error);
-      });
-    }
-    if (data.relations && data.relations.length > 0) {
-      import('../tauri/catalog').then(async ({ saveMediaRelations }) => {
-        const dbRels = data.relations.map(r => {
-          const match = r.url?.match(/id=([^&]+)/);
-          const relId = match ? decodeURIComponent(match[1]) : '';
-          return {
-            related_media_external_id: relId || r.url || '',
-            relation_type: r.typeLabel.toUpperCase(),
-            type_label: r.typeLabel,
-            title: r.title,
-            cover: r.cover || null
-          };
-        }).filter(r => r.related_media_external_id);
-        await saveMediaRelations(rawId, dbRels).catch(console.error);
-      });
-    }
   }
   return data;
 }
