@@ -187,7 +187,8 @@ pub async fn get_media_characters(
     Ok(rows)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct SkeletonCharacter {
     pub external_id: String,
     pub name: String,

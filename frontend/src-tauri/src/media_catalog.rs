@@ -39,6 +39,7 @@ fn existing_catalog_ids(
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Default)]
 pub struct MediaCatalogEntry {
     pub id: String,
     pub external_id: String,
@@ -521,7 +522,8 @@ pub async fn get_media_relations(
     Ok(rows)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct DbMediaAuthor {
     pub external_id: String,
     pub name: String,
@@ -802,7 +804,8 @@ pub async fn sync_community_catalog(
     imported
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ProposalRelation {
     pub media_external_id: Option<String>,
     pub related_media_external_id: String,
@@ -812,7 +815,8 @@ pub struct ProposalRelation {
     pub cover: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ProposalBundle {
     pub media_catalog: MediaCatalogEntry,
     pub media_relations: Vec<ProposalRelation>,
@@ -838,9 +842,21 @@ pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
         if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                if let Ok(bundle) = serde_json::from_str::<ProposalBundle>(&content) {
-                    let _ = import_proposal_bundle(db, bundle);
+            match std::fs::read_to_string(&path) {
+                Ok(content) => {
+                    match serde_json::from_str::<ProposalBundle>(&content) {
+                        Ok(bundle) => {
+                            if let Err(e) = import_proposal_bundle(db, bundle) {
+                                eprintln!("Failed to import bundle {:?}: {}", path, e);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to deserialize bundle {:?}: {}", path, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to read proposal file {:?}: {}", path, e);
                 }
             }
         }
