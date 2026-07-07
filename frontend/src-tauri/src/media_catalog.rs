@@ -965,11 +965,24 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
     }
 
     // 2. Save media_relations
-    tx.execute(
-        "DELETE FROM media_relations WHERE media_external_id = ?1",
-        [&entry.external_id],
-    )
-    .str_err()?;
+    let mut all_involved_ids = std::collections::HashSet::new();
+    all_involved_ids.insert(entry.external_id.clone());
+    for rel in &bundle.media_relations {
+        if let Some(ref pid) = rel.media_external_id {
+            all_involved_ids.insert(pid.clone());
+        }
+        all_involved_ids.insert(rel.related_media_external_id.clone());
+    }
+
+    for id in &all_involved_ids {
+        for other_id in &all_involved_ids {
+            tx.execute(
+                "DELETE FROM media_relations WHERE media_external_id = ?1 AND related_media_external_id = ?2",
+                [id, other_id],
+            )
+            .str_err()?;
+        }
+    }
 
     for rel in &bundle.media_relations {
         let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);
