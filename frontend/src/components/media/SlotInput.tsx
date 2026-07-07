@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export interface SlotInputProps {
   label: string;
@@ -15,23 +15,85 @@ export interface SlotInputProps {
    *  tag lists default to half-width so two of them share a row instead of
    *  each claiming a full row and stacking the whole form tall. */
   fullWidth?: boolean;
+  /** Allowed autocomplete values */
+  allowedSuggestions?: string[];
+  /** Force the input to select only from allowed suggestions */
+  restrictToSuggestions?: boolean;
 }
 
 /** A comma-separated tag/pill editor — type, press Enter or comma to add,
  *  Backspace on an empty input to pop the last tag, click × to remove one. */
-export function SlotInput({ label, value, onChange, placeholder, preview, fullWidth }: SlotInputProps) {
+export function SlotInput({
+  label, value, onChange, placeholder, preview, fullWidth,
+  allowedSuggestions, restrictToSuggestions
+}: SlotInputProps) {
   const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
   const [inputVal, setInputVal] = useState('');
+  const [activeSugIndex, setActiveSugIndex] = useState(0);
+  const [showSug, setShowSug] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filteredSug = allowedSuggestions
+    ? allowedSuggestions.filter(
+        s =>
+          s.toLowerCase().includes(inputVal.toLowerCase()) &&
+          !items.includes(s)
+      )
+    : [];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSug(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const addTag = (val: string) => {
+    const trimmed = val.trim();
+    if (!trimmed) return;
+    if (restrictToSuggestions && allowedSuggestions) {
+      // Find exact case-insensitive match from allowed suggestions
+      const match = allowedSuggestions.find(s => s.toLowerCase() === trimmed.toLowerCase());
+      if (!match) return;
+      if (!items.includes(match)) {
+        onChange([...items, match].join(','));
+      }
+    } else {
+      if (!items.includes(trimmed)) {
+        onChange([...items, trimmed].join(','));
+      }
+    }
+    setInputVal('');
+    setShowSug(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const val = inputVal.trim();
-      if (val && !items.includes(val)) {
-        const next = [...items, val].join(',');
-        onChange(next);
+      if (!showSug) {
+        setShowSug(true);
+        setActiveSugIndex(0);
+      } else {
+        setActiveSugIndex(prev => (prev + 1) % Math.max(1, filteredSug.length));
       }
-      setInputVal('');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (showSug) {
+        setActiveSugIndex(prev => (prev - 1 + filteredSug.length) % Math.max(1, filteredSug.length));
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowSug(false);
+    } else if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      if (showSug && filteredSug.length > 0) {
+        addTag(filteredSug[activeSugIndex]);
+      } else {
+        addTag(inputVal);
+      }
     } else if (e.key === 'Backspace' && !inputVal && items.length > 0) {
       const next = items.slice(0, -1).join(',');
       onChange(next || null);
@@ -44,7 +106,7 @@ export function SlotInput({ label, value, onChange, placeholder, preview, fullWi
   };
 
   return (
-    <div className={`pr-editor-field${fullWidth ? ' pr-editor-field--full' : ''}`}>
+    <div className={`pr-editor-field${fullWidth ? ' pr-editor-field--full' : ''}`} ref={containerRef} style={{ position: 'relative' }}>
       <label>{label}</label>
       <div className={`pr-editor-slots-box${preview ? ' pr-editor-slots-box--preview' : ''}`}>
         {items.map(item => (
@@ -68,10 +130,31 @@ export function SlotInput({ label, value, onChange, placeholder, preview, fullWi
           className="pr-editor-slot-input"
           placeholder={placeholder || 'Press Enter or comma to add...'}
           value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
+          onChange={e => {
+            setInputVal(e.target.value);
+            setActiveSugIndex(0);
+            setShowSug(true);
+          }}
+          onFocus={() => {
+            if (allowedSuggestions) setShowSug(true);
+          }}
           onKeyDown={handleKeyDown}
         />
       </div>
+
+      {showSug && filteredSug.length > 0 && (
+        <div className="pr-editor-suggestions-dropdown">
+          {filteredSug.map((sug, idx) => (
+            <div
+              key={sug}
+              className={`pr-editor-suggestion-item${idx === activeSugIndex ? ' pr-editor-suggestion-item--active' : ''}`}
+              onClick={() => addTag(sug)}
+            >
+              {sug}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

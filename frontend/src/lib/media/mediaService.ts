@@ -407,6 +407,9 @@ export function fetchMediaDataWithFallback(
         .then(data => {
           fullArrived = true;
           if (data) {
+            if (!data.bannerImage && localData?.bannerImage) {
+              data.bannerImage = localData.bannerImage;
+            }
             onFull(data);
           } else if (hasLocalData && localData) {
             onFull(localData);

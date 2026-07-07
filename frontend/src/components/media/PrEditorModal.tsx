@@ -19,6 +19,7 @@ import {
 } from '../../lib/media/sagaTypes';
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 
 interface BundledRelation {
   external_id: string;
@@ -562,9 +563,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">Classification</span>
             <div className="pr-editor-form-grid">
-              <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} />
+              <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} allowedSuggestions={ALL_GENRES} restrictToSuggestions />
               <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
-              <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} />
+              <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} allowedSuggestions={ALL_PLATFORMS} restrictToSuggestions />
               <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
               <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
             </div>
