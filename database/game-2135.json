@@ -11,7 +11,7 @@
     "title_native": null,
     "synopsis": "The witching hour strikes again. Brimming with intricate battles that take place in, on and all over epic set pieces, Bayonetta 2 finds our sassy heroine battling angels and demons in unearthly beautiful HD. You’re bound to love how it feels to string together combos with unimaginable weapons and to summon demons using Bayonetta’s Umbran Weave in this frantic stylized action game.",
     "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9e9.jpg",
-    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/rzlwq0ocxdnubr0mpuyk.webp,https://images.igdb.com/igdb/image/upload/t_720p/zw8acobiw81iwvpstq0t.webp",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/rzlwq0ocxdnubr0mpuyk.webp,https://images.igdb.com/igdb/image/upload/t_720p/zw8acobiw81iwvpstq0t.webp,https://images.igdb.com/igdb/image/upload/t_720p/egaeoqdmwqgssdkbk7xl.webp",
     "release_year": 2014,
     "release_month": 9,
     "release_day": 20,
@@ -24,7 +24,7 @@
     "total_count_2": null,
     "genres_csv": "Shooter,Hack and Slash,Adventure",
     "genres_tag_csv": null,
-    "platforms_csv": "Wii U",
+    "platforms_csv": "Wii U,Nintendo Switch",
     "shop_links_csv": null,
     "companies_cache_csv": "PlatinumGames,Nintendo",
     "authors_csv": null,
@@ -32,7 +32,7 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T17:59:11.117Z",
-    "updated_at": "2026-07-07T17:59:11.119802400+00:00"
+    "updated_at": "2026-07-07T18:11:53.683360900+00:00"
   },
   "media_relations": [
     {
@@ -41,7 +41,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Bayonetta",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8nf4.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8nf4.jpg"
     },
     {
       "media_external_id": "game:2135",
@@ -49,7 +49,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Bayonetta 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4z2i.jpg"
     },
     {
       "media_external_id": "game:2136",
@@ -73,7 +73,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Bayonetta Origins: Cereza and the Lost Demon",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5vch.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5vch.jpg"
     },
     {
       "media_external_id": "game:228528",
@@ -81,10 +81,11 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Bayonetta 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4z2i.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {}
+  "saga_groups": {},
+  "saga_name": "Bayonetta 2"
 }
