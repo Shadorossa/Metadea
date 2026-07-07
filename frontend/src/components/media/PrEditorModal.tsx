@@ -547,6 +547,47 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     return normCurrent !== normOriginal;
   };
 
+  const hasChanges = () => {
+    if (!entry || !originalEntry) return false;
+
+    // Check catalog fields
+    const DIFF_FIELDS: Array<keyof MediaCatalogEntry> = [
+      'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
+      'release_year', 'release_month', 'release_day', 'total_count', 'total_count_2',
+      'genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'
+    ];
+    for (const field of DIFF_FIELDS) {
+      if (isFieldChanged(field)) return true;
+    }
+
+    // Check bundled relations
+    const addedBundled = bundledRelations.filter(r => !originalBundledIds.has(r.external_id));
+    const removedBundled = [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id));
+    if (addedBundled.length > 0 || removedBundled.length > 0) return true;
+
+    // Check saga order
+    const originalSagaIds = new Set(originalSagaOrder);
+    const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
+    const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
+    const sagaOrderChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
+    if (addedSaga.length > 0 || removedSaga.length > 0 || sagaOrderChanged) return true;
+
+    // Check saga name, relation types, and groups
+    if (sagaName !== originalSagaName) return true;
+
+    const keysRels = new Set([...Object.keys(sagaRelationTypes), ...Object.keys(originalSagaRelationTypes)]);
+    for (const k of keysRels) {
+      if ((sagaRelationTypes[k] || 'main') !== (originalSagaRelationTypes[k] || 'main')) return true;
+    }
+
+    const keysGroups = new Set([...Object.keys(sagaGroups), ...Object.keys(originalSagaGroups)]);
+    for (const k of keysGroups) {
+      if ((sagaGroups[k] || '').trim() !== (originalSagaGroups[k] || '').trim()) return true;
+    }
+
+    return false;
+  };
+
   const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null }, sagaMeta);
   const sagaGroupEntries = classifySagaChain(sagaOrder, sagaRelationTypes, sagaGroups);
 
@@ -857,7 +898,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose} disabled={submitting}>
             Cancel
           </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting}>
+           <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
             {submitting ? 'Submitting...' : 'Submit Proposal'}
           </button>
         </div>
