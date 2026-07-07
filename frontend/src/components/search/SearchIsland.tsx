@@ -305,9 +305,18 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
         {sortedResults.length > 0 && (
           <div className="results-grid animate-fade-in">
-            {sortedResults.map(result => (
-              <MediaCard key={result.externalId} result={result} />
-            ))}
+            {(() => {
+              const seen = new Set();
+              return sortedResults
+                .filter(result => {
+                  if (seen.has(result.externalId)) return false;
+                  seen.add(result.externalId);
+                  return true;
+                })
+                .map(result => (
+                  <MediaCard key={result.externalId} result={result} />
+                ));
+            })()}
           </div>
         )}
       </div>
