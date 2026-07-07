@@ -154,22 +154,31 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             <div className="pr-editor-search-empty">No results</div>
           )}
           <div className="pr-editor-search-grid">
-            {filteredResults.map(r => (
-              <button
-                key={r.externalId}
-                type="button"
-                className="pr-editor-search-result-card"
-                onClick={() => handleSelect(r)}
-              >
-                {r.coverUrl && (
-                  <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
-                )}
-                <div className="pr-editor-search-result-info">
-                  <div className="pr-editor-search-result-id">{r.externalId}</div>
-                  <div className="pr-editor-search-result-title">{r.titleMain || '—'}</div>
-                </div>
-              </button>
-            ))}
+             {(() => {
+               const seen = new Set();
+               return filteredResults
+                 .filter(r => {
+                   if (seen.has(r.externalId)) return false;
+                   seen.add(r.externalId);
+                   return true;
+                 })
+                 .map(r => (
+                   <button
+                     key={r.externalId}
+                     type="button"
+                     className="pr-editor-search-result-card"
+                     onClick={() => handleSelect(r)}
+                   >
+                     {r.coverUrl && (
+                       <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
+                     )}
+                     <div className="pr-editor-search-result-info">
+                       <div className="pr-editor-search-result-id">{r.externalId}</div>
+                       <div className="pr-editor-search-result-title">{r.titleMain || '—'}</div>
+                     </div>
+                   </button>
+                 ));
+             })()}
           </div>
         </div>
       </div>
