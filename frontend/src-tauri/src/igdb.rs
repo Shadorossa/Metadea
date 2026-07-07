@@ -1007,7 +1007,7 @@ pub async fn igdb_search(
             &token,
             IGDB_API_GAMES,
             &format!(
-                "fields id,name,cover.image_id,rating,first_release_date,\
+                "fields id,name,cover.image_id,rating,first_release_date,status,\
                  genres.id,genres.name,category,game_type,\
                  version_parent.id,version_parent.genres.id,\
                  parent_game.id,parent_game.genres.id; \
@@ -1021,6 +1021,11 @@ pub async fn igdb_search(
         let count = items.len();
 
         for item in items {
+            // Cancelled status is 6 in IGDB API
+            if item["status"].as_i64() == Some(6) {
+                continue;
+            }
+
             let category = get_game_category(&item);
             if !matches!(category, 0 | 4 | 8 | 14) {
                 continue;
