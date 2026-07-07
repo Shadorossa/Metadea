@@ -66,6 +66,8 @@ pub struct MediaCatalogEntry {
     pub genres_csv: Option<String>,
     pub genres_tag_csv: Option<String>,
     pub platforms_csv: Option<String>,
+    /// CSV of "platform|url" pairs — IGDB's store links (Steam, GOG, ...) for this game.
+    pub shop_links_csv: Option<String>,
     pub companies_cache_csv: Option<String>,
     pub authors_csv: Option<String>,
     pub last_synced_at: Option<String>,
@@ -81,7 +83,7 @@ const SELECT_ALL: &str = "
            banners_csv, release_year, release_month, release_day,
            time_length, status, score_global, favorites_count,
            ratings_count, total_count, total_count_2, genres_csv,
-           genres_tag_csv, platforms_csv, companies_cache_csv,
+           genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
            created_at, updated_at
     FROM media_catalog";
@@ -113,13 +115,14 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         genres_csv:          row.get(22)?,
         genres_tag_csv:      row.get(23)?,
         platforms_csv:       row.get(24)?,
-        companies_cache_csv: row.get(25)?,
-        authors_csv:         row.get(26)?,
-        last_synced_at:      row.get(27)?,
-        sync_failed_count:   row.get(28)?,
-        last_sync_error:     row.get(29)?,
-        created_at:          row.get::<_, Option<String>>(30)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(31)?.unwrap_or_default(),
+        shop_links_csv:      row.get(25)?,
+        companies_cache_csv: row.get(26)?,
+        authors_csv:         row.get(27)?,
+        last_synced_at:      row.get(28)?,
+        sync_failed_count:   row.get(29)?,
+        last_sync_error:     row.get(30)?,
+        created_at:          row.get::<_, Option<String>>(31)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(32)?.unwrap_or_default(),
     })
 }
 
@@ -155,10 +158,10 @@ pub async fn save_catalog_entry(
             banners_csv, release_year, release_month, release_day,
             time_length, status, score_global, favorites_count,
             ratings_count, total_count, total_count_2, genres_csv,
-            genres_tag_csv, platforms_csv, companies_cache_csv,
+            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
             authors_csv, last_synced_at, sync_failed_count, last_sync_error,
             created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32)",
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33)",
         rusqlite::params![
             &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
             &entry.format, &entry.source,
@@ -169,7 +172,7 @@ pub async fn save_catalog_entry(
             &entry.favorites_count, &entry.ratings_count,
             &entry.total_count, &entry.total_count_2,
             &entry.genres_csv, &entry.genres_tag_csv,
-            &entry.platforms_csv, &entry.companies_cache_csv,
+            &entry.platforms_csv, &entry.shop_links_csv, &entry.companies_cache_csv,
             &entry.authors_csv,
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
             &entry.created_at, &entry.updated_at,
@@ -736,7 +739,7 @@ pub async fn sync_community_catalog(
                     title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
                     release_year, release_month, release_day, time_length, status, score_global,
                     favorites_count, ratings_count, total_count, total_count_2,
-                    genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                    genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
                     last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
                  )
                  SELECT
@@ -744,7 +747,7 @@ pub async fn sync_community_catalog(
                     title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
                     release_year, release_month, release_day, time_length, status, score_global,
                     favorites_count, ratings_count, total_count, total_count_2,
-                    genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                    genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
                     last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
                  FROM community.media_catalog",
                 [],
@@ -888,8 +891,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 id, external_id, parent_id, type, format, source, title_main, title_romaji, title_native,
                 synopsis, cover_url, banners_csv, release_year, release_month, release_day, time_length,
                 status, score_global, favorites_count, ratings_count, total_count, total_count_2,
-                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29)",
+                genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv, created_at, updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &entry.external_id,
@@ -916,6 +919,7 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 &entry.genres_csv,
                 &entry.genres_tag_csv,
                 &entry.platforms_csv,
+                &entry.shop_links_csv,
                 &entry.companies_cache_csv,
                 &entry.authors_csv,
                 &entry.created_at,
@@ -929,8 +933,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 parent_id = ?1, type = ?2, format = ?3, source = ?4, title_main = ?5, title_romaji = ?6, title_native = ?7,
                 synopsis = ?8, cover_url = ?9, banners_csv = ?10, release_year = ?11, release_month = ?12, release_day = ?13, time_length = ?14,
                 status = ?15, score_global = ?16, favorites_count = ?17, ratings_count = ?18, total_count = ?19, total_count_2 = ?20,
-                genres_csv = ?21, genres_tag_csv = ?22, platforms_csv = ?23, companies_cache_csv = ?24, authors_csv = ?25, updated_at = ?26
-             WHERE external_id = ?27",
+                genres_csv = ?21, genres_tag_csv = ?22, platforms_csv = ?23, shop_links_csv = ?24, companies_cache_csv = ?25, authors_csv = ?26, updated_at = ?27
+             WHERE external_id = ?28",
             rusqlite::params![
                 &entry.parent_id,
                 &entry.r#type,
@@ -955,6 +959,7 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 &entry.genres_csv,
                 &entry.genres_tag_csv,
                 &entry.platforms_csv,
+                &entry.shop_links_csv,
                 &entry.companies_cache_csv,
                 &entry.authors_csv,
                 &entry.updated_at,

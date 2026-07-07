@@ -26,6 +26,8 @@ export interface MediaCatalogEntry {
   genres_csv?:          string | null;
   genres_tag_csv?:      string | null;
   platforms_csv?:       string | null;
+  /** CSV of "platform|url" pairs — IGDB's store links (Steam, GOG, ...) for this game. */
+  shop_links_csv?:      string | null;
   companies_cache_csv?: string | null;
   authors_csv?:         string | null;
   last_synced_at?:      string | null;

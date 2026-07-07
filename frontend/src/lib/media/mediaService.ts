@@ -159,6 +159,14 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
   const isGameType = c.type === 'game' || c.type === 'vnovel';
 
+  // "platform|url" pairs — see MediaPage.tsx's catalog-sync payload.
+  const storeLinks = c.shop_links_csv
+    ? c.shop_links_csv.split(',').filter(Boolean).map(pair => {
+        const [platform, url] = pair.split('|');
+        return { platform: platform || '', url: url || '' };
+      }).filter(l => l.url)
+    : undefined;
+
   // Mirrors each API mapper's own metaLines convention (igdb-mapper: platforms
   // then publisher; anilist-mapper: studios then format/episode count) so the
   // catalog-only render (no live API call — see fetchMediaDataWithFallback)
@@ -205,6 +213,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     source:        c.source        ?? undefined,
     platforms:     platforms.length > 0 ? platforms : undefined,
     companies:     companies.length > 0 ? companies : undefined,
+    storeLinks,
     metaLines,
     stats,
     characters:    [],

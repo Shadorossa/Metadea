@@ -55,6 +55,7 @@ CREATE TABLE media_catalog (
     genres_csv           TEXT DEFAULT '',
     genres_tag_csv       TEXT DEFAULT '',
     platforms_csv        TEXT DEFAULT '',
+    shop_links_csv       TEXT DEFAULT '',
     companies_cache_csv  TEXT DEFAULT '',
     authors_csv          TEXT DEFAULT '',
     last_synced_at       TEXT,
@@ -112,7 +113,7 @@ const CATALOG_COLUMNS = [
   'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
   'release_year', 'release_month', 'release_day', 'time_length', 'status', 'score_global',
   'favorites_count', 'ratings_count', 'total_count', 'total_count_2',
-  'genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv',
+  'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv', 'companies_cache_csv', 'authors_csv',
   'last_synced_at', 'sync_failed_count', 'last_sync_error', 'created_at', 'updated_at',
 ];
 

@@ -3,23 +3,22 @@ import { createPortal } from 'react-dom';
 import { invoke } from '@tauri-apps/api/core';
 import {
   getCatalogEntry, saveCatalogEntry,
-  getCachedSaga, saveCachedSaga,
+  saveCachedSaga,
   getMediaRelations, saveMediaRelations,
   getMediaAuthors,
 } from '../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, type MediaCharacter } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
-import { search, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
-
-const BUNDLE_RELATION_TYPES = ['EPISODE', 'UPDATE'];
-const SAGA_RELATION_TYPES = ['PREQUEL', 'SEQUEL'];
-
-// Every media type an API search can plausibly return — a saga/bundled-in
-// relation isn't guaranteed to share the current entry's own type (e.g. a
-// vnovel's saga can include a movie adaptation), so all of them are queried
-// in parallel rather than restricting to the entry's own type.
-const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book'];
+import type { SearchResult as ApiSearchResult } from '../../lib/search';
+import { MediaSearchPopup } from './MediaSearchPopup';
+import { SlotInput } from './SlotInput';
+import {
+  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, SAGA_RELATION_TYPE_OPTIONS,
+  isSagaRelationType, type SagaRelationType,
+} from '../../lib/media/sagaTypes';
+import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
+import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 
 interface BundledRelation {
   external_id: string;
@@ -32,235 +31,6 @@ interface Props {
   externalId: string;
   onClose: () => void;
   onSaved?: () => void;
-}
-
-// Ensures the id picked from a live API search is backed by a local catalog
-// row — this is what makes external_id the same canonical value across every
-// user's install (it's the API's own numeric id, not something invented
-// locally). Only creates a thin skeleton when nothing exists yet: this must
-// never overwrite a richer, already-cataloged row (save_catalog_entry is a
-// full INSERT OR REPLACE, so writing a thin stub over an existing rich row
-// would wipe its genres/synopsis/platforms/etc. back to null).
-async function ensureSkeletonCatalogEntry(result: ApiSearchResult): Promise<void> {
-  const existing = await getCatalogEntry(result.externalId).catch(() => null);
-  if (existing) return;
-
-  const now = new Date().toISOString();
-  await saveCatalogEntry({
-    id: '',
-    external_id: result.externalId,
-    type: result.type,
-    format: result.format || null,
-    source: result.source,
-    title_main: result.titleMain,
-    title_romaji: result.titleRomaji,
-    title_native: result.titleNative,
-    cover_url: result.coverUrl,
-    release_year: result.releaseYear,
-    release_month: result.releaseMonth,
-    release_day: result.releaseDay,
-    score_global: result.scoreGlobal,
-    created_at: now,
-    updated_at: now,
-  }).catch(err => console.error('Failed to save skeleton catalog entry:', err));
-}
-
-type SearchSort = 'relevance' | 'title_asc' | 'year_desc' | 'year_asc' | 'score_desc';
-
-const SORT_FNS: Record<SearchSort, (a: ApiSearchResult, b: ApiSearchResult) => number> = {
-  relevance: () => 0,
-  title_asc: (a, b) => (a.titleMain || '').localeCompare(b.titleMain || ''),
-  year_desc: (a, b) => (b.releaseYear ?? -Infinity) - (a.releaseYear ?? -Infinity),
-  year_asc: (a, b) => (a.releaseYear ?? Infinity) - (b.releaseYear ?? Infinity),
-  score_desc: (a, b) => (b.scoreGlobal ?? -Infinity) - (a.scoreGlobal ?? -Infinity),
-};
-
-function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true }: { onSelect: (result: ApiSearchResult) => void; onClose: () => void; excludeIds?: string[]; closeOnSelect?: boolean }) {
-  const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
-  const [sortBy, setSortBy] = useState<SearchSort>('relevance');
-  const [results, setResults] = useState<ApiSearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const typesToQuery = typeFilter === 'all' ? SEARCHABLE_TYPES : [typeFilter];
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      setIsLoading(true);
-      Promise.all(typesToQuery.map(t => search(query, t, controller.signal).catch(() => [])))
-        .then(perType => {
-          if (controller.signal.aborted) return;
-          setResults(perType.flat().slice(0, 60));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setIsLoading(false);
-        });
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, typeFilter]);
-
-  const handleSelect = async (result: ApiSearchResult) => {
-    if (closeOnSelect) {
-      onClose();
-    } else {
-      setQuery(''); // clear the search box so the next pick starts fresh, popup stays open
-    }
-    await ensureSkeletonCatalogEntry(result);
-    onSelect(result);
-  };
-
-  const sortedResults = [...results].sort(SORT_FNS[sortBy]);
-  const filteredResults = sortedResults.filter(r => !excludeIds.includes(r.externalId));
-
-  return (
-    <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
-      <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-search-controls">
-          <input
-            type="text"
-            placeholder="Search titles across AniList, IGDB, TMDB, OpenLibrary..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            autoFocus
-            className="pr-editor-search-input"
-          />
-          <select
-            className="pr-editor-search-select"
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value as MediaType | 'all')}
-          >
-            <option value="all">All types</option>
-            <option value="anime">Anime</option>
-            <option value="manga">Manga</option>
-            <option value="lnovel">Light Novel</option>
-            <option value="game">Game</option>
-            <option value="vnovel">Visual Novel</option>
-            <option value="movie">Movie</option>
-            <option value="series">Series</option>
-            <option value="book">Book</option>
-          </select>
-          <select
-            className="pr-editor-search-select"
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as SearchSort)}
-          >
-            <option value="relevance">Relevance</option>
-            <option value="title_asc">Title A-Z</option>
-            <option value="year_desc">Newest first</option>
-            <option value="year_asc">Oldest first</option>
-            <option value="score_desc">Highest score</option>
-          </select>
-        </div>
-        <div className="pr-editor-search-results pr-editor-search-results--grid">
-          {isLoading && <div className="pr-editor-search-loading">Searching...</div>}
-          {!isLoading && filteredResults.length === 0 && query && (
-            <div className="pr-editor-search-empty">No results</div>
-          )}
-          <div className="pr-editor-search-grid">
-            {filteredResults.map(r => (
-              <button
-                key={r.externalId}
-                type="button"
-                className="pr-editor-search-result-card"
-                onClick={() => handleSelect(r)}
-              >
-                {r.coverUrl && (
-                  <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
-                )}
-                <div className="pr-editor-search-result-info">
-                  <div className="pr-editor-search-result-id">{r.externalId}</div>
-                  <div className="pr-editor-search-result-title">{r.titleMain || '—'}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface SlotInputProps {
-  label: string;
-  value: string | null | undefined;
-  onChange: (newValue: string | null) => void;
-  placeholder?: string;
-  /** Render each item as an image thumbnail (loaded from the item itself as
-   *  a URL) instead of a plain text pill — used for banner URLs, where the
-   *  raw string is meaningless to a reviewer but the image it points to
-   *  isn't. */
-  preview?: boolean;
-  /** Span both grid columns instead of sharing a row with another field —
-   *  only worth it for image-preview lists (thumbnails need the room); plain
-   *  tag lists default to half-width so two of them share a row instead of
-   *  each claiming a full row and stacking the whole form tall. */
-  fullWidth?: boolean;
-}
-
-function SlotInput({ label, value, onChange, placeholder, preview, fullWidth }: SlotInputProps) {
-  const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
-  const [inputVal, setInputVal] = useState('');
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const val = inputVal.trim();
-      if (val && !items.includes(val)) {
-        const next = [...items, val].join(',');
-        onChange(next);
-      }
-      setInputVal('');
-    } else if (e.key === 'Backspace' && !inputVal && items.length > 0) {
-      const next = items.slice(0, -1).join(',');
-      onChange(next || null);
-    }
-  };
-
-  const handleRemove = (itemToRemove: string) => {
-    const next = items.filter(i => i !== itemToRemove).join(',');
-    onChange(next || null);
-  };
-
-  return (
-    <div className={`pr-editor-field${fullWidth ? ' pr-editor-field--full' : ''}`}>
-      <label>{label}</label>
-      <div className={`pr-editor-slots-box${preview ? ' pr-editor-slots-box--preview' : ''}`}>
-        {items.map(item => (
-          preview ? (
-            <div key={item} className="pr-editor-image-slot">
-              <div className="pr-editor-image-slot-media">
-                <img src={item} alt="" className="pr-editor-image-slot-img" />
-                <button type="button" className="pr-editor-image-slot-remove" onClick={() => handleRemove(item)}>×</button>
-              </div>
-              <span className="pr-editor-image-slot-url" title={item}>{item}</span>
-            </div>
-          ) : (
-            <span key={item} className="pr-editor-slot-pill">
-              {item}
-              <button type="button" className="pr-editor-slot-remove" onClick={() => handleRemove(item)}>×</button>
-            </span>
-          )
-        ))}
-        <input
-          type="text"
-          className="pr-editor-slot-input"
-          placeholder={placeholder || 'Press Enter or comma to add...'}
-          value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </div>
-    </div>
-  );
 }
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
@@ -285,8 +55,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   // entry, so tags can show a thumbnail instead of a bare id — populated
   // either from the existing relation rows (which already join title/cover
   // from media_catalog) or from the live API search result the user picked.
-  const [sagaMeta, setSagaMeta] = useState<Record<string, { title: string | null; cover: string | null }>>({});
-  const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, 'main' | 'alternative' | 'source' | 'episode' | 'update'>>({});
+  const [sagaMeta, setSagaMeta] = useState<Record<string, MediaMeta>>({});
+  // 'main'/'alternative' ids can share a free-text Concept Group name
+  // (sagaGroups) to collapse into one saga-timeline step (e.g. a console
+  // remaster + its PC original); 'source'/'episode'/'update' ids attach to
+  // the nearest preceding group instead (see classifySagaChain).
+  const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [sagaGroups, setSagaGroups] = useState<Record<string, string>>({});
   const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
 
@@ -324,11 +98,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           try {
             const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
             const bundled = rels.filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type));
-            const others = rels.filter(r =>
-              !BUNDLE_RELATION_TYPES.includes(r.relation_type) &&
-              !SAGA_RELATION_TYPES.includes(r.relation_type) &&
-              !['ALTERNATIVE', 'SOURCE', 'EPISODE', 'UPDATE'].includes(r.relation_type)
-            );
+            const others = rels.filter(r => !ALL_CHAIN_RELATION_TYPES.includes(r.relation_type));
 
             const bundledMapped = bundled.map(r => ({
               external_id: r.related_media_external_id,
@@ -341,35 +111,27 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             setOtherRelations(others);
 
             const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
-            
             if (!transitiveIds.includes(externalId)) {
               transitiveIds.push(externalId);
             }
 
             const entriesData = await Promise.all(
-              transitiveIds.map(async id => {
-                const c = await getCatalogEntry(id).catch(() => null);
-                return { id, entry: c };
-              })
+              transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
             );
+            const validEntries = entriesData.filter((x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null);
 
-            const validEntries = entriesData.filter(x => x.entry !== null) as { id: string; entry: MediaCatalogEntry }[];
-            
             const currentEntry = validEntries.find(x => x.id === externalId)?.entry;
             if (currentEntry) {
               setEntry(currentEntry);
               setOriginalEntry(currentEntry);
             }
-            
+
             validEntries.sort((a, b) => {
-              const yA = a.entry.release_year ?? Infinity;
-              const yB = b.entry.release_year ?? Infinity;
+              const yA = a.entry.release_year ?? Infinity, yB = b.entry.release_year ?? Infinity;
               if (yA !== yB) return yA - yB;
-              const mA = a.entry.release_month ?? Infinity;
-              const mB = b.entry.release_month ?? Infinity;
+              const mA = a.entry.release_month ?? Infinity, mB = b.entry.release_month ?? Infinity;
               if (mA !== mB) return mA - mB;
-              const dA = a.entry.release_day ?? Infinity;
-              const dB = b.entry.release_day ?? Infinity;
+              const dA = a.entry.release_day ?? Infinity, dB = b.entry.release_day ?? Infinity;
               if (dA !== dB) return dA - dB;
               return a.id.localeCompare(b.id);
             });
@@ -378,37 +140,40 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             setSagaOrder(sortedIds);
             setOriginalSagaOrder(sortedIds);
 
-            const meta: Record<string, { title: string | null; cover: string | null }> = {};
+            const meta: Record<string, MediaMeta> = {};
             for (const x of validEntries) {
               meta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
             }
             setSagaMeta(meta);
 
+            // Bootstraps sagaRelationTypes/sagaGroups from whatever SOURCE/
+            // EPISODE/UPDATE/ALTERNATIVE edges already exist in the DB — this
+            // is a one-time reverse-engineering of prior state, distinct from
+            // classifySagaChain (which turns already-known sagaRelationTypes/
+            // sagaGroups back into a display/relation structure).
             const [allRelsList, dbGroups] = await Promise.all([
               Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
               invoke<Record<string, string>>('get_media_saga_groups').catch(() => ({} as Record<string, string>))
             ]);
-            const relTypesMap: Record<string, 'main' | 'alternative' | 'source' | 'episode' | 'update'> = {};
+            const relTypesMap: Record<string, SagaRelationType> = {};
             const groupsMap: Record<string, string> = { ...dbGroups };
             let nextGroupNum = 1;
 
             for (let i = 0; i < sortedIds.length; i++) {
-              const id = sortedIds[i];
-              const relList = allRelsList[i];
-              for (const r of relList) {
+              const ownerId = sortedIds[i];
+              for (const r of allRelsList[i]) {
                 const otherId = r.related_media_external_id;
                 if (r.relation_type === 'ALTERNATIVE') {
-                  if (!groupsMap[id] && !groupsMap[otherId]) {
-                    const newGroupName = `Group ${nextGroupNum++}`;
-                    groupsMap[id] = newGroupName;
-                    groupsMap[otherId] = newGroupName;
-                  } else if (groupsMap[id] && !groupsMap[otherId]) {
-                    groupsMap[otherId] = groupsMap[id];
-                  } else if (!groupsMap[id] && groupsMap[otherId]) {
-                    groupsMap[id] = groupsMap[otherId];
+                  if (!groupsMap[ownerId] && !groupsMap[otherId]) {
+                    groupsMap[ownerId] = groupsMap[otherId] = `Group ${nextGroupNum++}`;
+                  } else if (groupsMap[ownerId] && !groupsMap[otherId]) {
+                    groupsMap[otherId] = groupsMap[ownerId];
+                  } else if (!groupsMap[ownerId] && groupsMap[otherId]) {
+                    groupsMap[ownerId] = groupsMap[otherId];
                   }
-                } else if (['SOURCE', 'EPISODE', 'UPDATE'].includes(r.relation_type)) {
-                  relTypesMap[otherId] = r.relation_type.toLowerCase() as any;
+                } else if (r.relation_type === 'SOURCE' || r.relation_type === 'EPISODE' || r.relation_type === 'UPDATE') {
+                  const lower = r.relation_type.toLowerCase();
+                  if (isSagaRelationType(lower)) relTypesMap[otherId] = lower;
                 }
               }
             }
@@ -491,19 +256,16 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     setBundledRelations(bundledRelations.filter((_, i) => i !== index));
   };
 
-  const handleChange = (field: keyof MediaCatalogEntry, value: any) => {
+  const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
-    setEntry({
-      ...entry,
-      [field]: value === '' ? null : value
-    });
+    setEntry({ ...entry, [field]: value === '' ? null : value });
   };
 
   // Human-readable "- " bullet list of everything this proposal adds or
   // changes, used as the PR body — diffs catalog fields against the entry as
   // it was when the modal opened, plus set-differences for the relation
   // buckets this editor manages (bundled-in, saga order).
-  const buildChangeSummary = (): string => {
+  const buildChangeSummary = (resolveMeta: (id: string) => MediaMeta): string => {
     if (!entry) return '';
     const lines: string[] = [];
 
@@ -525,7 +287,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     }
 
     const formatWork = (id: string, title?: string | null): string => {
-      const displayTitle = title || (id === externalId ? entry?.title_main : null) || sagaMeta[id]?.title || null;
+      const displayTitle = title || resolveMeta(id).title;
       return displayTitle ? `${displayTitle} (${id})` : id;
     };
 
@@ -537,15 +299,17 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     const originalSagaIds = new Set(originalSagaOrder);
     const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
     for (const id of addedSaga) {
-      const type = sagaRelationTypes[id] || 'main';
-      lines.push(`- Added to Saga: ${formatWork(id)} [type: ${type}]`);
+      lines.push(`- Added to Saga: ${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`);
     }
     const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
     for (const id of removedSaga) lines.push(`- Removed from Saga: ${formatWork(id)}`);
-    if (addedSaga.length === 0 && removedSaga.length === 0 && sagaOrder.join(',') !== originalSagaOrder.join(',') && sagaOrder.length > 1) {
-      lines.push(`- Reordered Saga: ${sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ')}`);
-    } else if (sagaOrder.length > 1) {
-      lines.push(`- Saga order: ${sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ')}`);
+
+    const sagaChanged = sagaOrder.join(',') !== originalSagaOrder.join(',');
+    if (sagaOrder.length > 1) {
+      const chainLabel = sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ');
+      lines.push(addedSaga.length === 0 && removedSaga.length === 0 && sagaChanged
+        ? `- Reordered Saga: ${chainLabel}`
+        : `- Saga order: ${chainLabel}`);
     }
 
     if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
@@ -558,172 +322,68 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (!entry) return;
     setSubmitting(true);
     setErrorMsg('');
-    setStatusMsg('Checking GitHub token...');
 
     try {
-      const token = await invoke<string | null>('get_github_token').catch(() => null);
-      if (!token) {
-        throw new Error('Please log in with GitHub in Metadea Settings to submit proposals.');
-      }
-
       await saveCatalogEntry(entry);
 
-      // Resolves display metadata (title/cover) for any id in the chain —
-      // this entry's own fields for itself, otherwise whatever the search
-      // result (or the pre-existing relation row) gave us.
-      const getMeta = (id: string): { title: string | null; cover: string | null } =>
-        id === externalId
-          ? { title: entry.title_main || externalId, cover: entry.cover_url || null }
-          : sagaMeta[id] ?? { title: id, cover: null };
+      const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
 
       // sagaOrder is the whole saga's chronological order (this entry
-      // included) — walked pairwise so every adjacent pair produces a SEQUEL
-      // edge (earlier → later) and a PREQUEL edge (later → earlier). That's
-      // what automates prequel/sequel for *every* entry in the saga, not just
-      // the one currently open in the editor.
+      // included) — classifySagaChain clusters it into groups (main/
+      // alternative ids sharing a Concept Group name) and standalone source/
+      // episode/update entries. Walked pairwise, every adjacent *group*
+      // produces a SEQUEL edge (earlier → later) and a PREQUEL edge (later →
+      // earlier) — for every id in the chain, not just the one currently
+      // open in the editor.
       const fullChain = sagaOrder;
+      const classified = classifySagaChain(fullChain, sagaRelationTypes, sagaGroups);
+      const groups = classified.filter(e => e.kind === 'group');
+
       type TaggedRelation = DbMediaRelation & { media_external_id: string };
       const chainRelations: TaggedRelation[] = [];
 
-      interface InstallmentGroup {
-        mainId: string;
-        allIds: string[];
-      }
-      const groups: InstallmentGroup[] = [];
-      const renderedGroups = new Set<string>();
-      const nonGroupRelations: { id: string; mainId: string; type: 'source' | 'episode' | 'update' }[] = [];
+      const addReciprocalPair = (
+        aId: string, bId: string,
+        aToB: { relation_type: string; type_label: string },
+        bToA: { relation_type: string; type_label: string },
+      ) => {
+        chainRelations.push({ media_external_id: aId, related_media_external_id: bId, ...aToB, title: resolveMeta(bId).title || bId, cover: resolveMeta(bId).cover });
+        chainRelations.push({ media_external_id: bId, related_media_external_id: aId, ...bToA, title: resolveMeta(aId).title || aId, cover: resolveMeta(aId).cover });
+      };
 
-      for (const id of fullChain) {
-        const relType = sagaRelationTypes[id] || 'main';
-        if (relType === 'main' || relType === 'alternative') {
-          const rawGroupId = sagaGroups[id];
-          const groupId = rawGroupId ? rawGroupId.trim().toLowerCase() : '';
-          if (groupId) {
-            if (!renderedGroups.has(groupId)) {
-              const groupIds = fullChain.filter(x => sagaGroups[x] && sagaGroups[x].trim().toLowerCase() === groupId);
-              groups.push({
-                mainId: groupIds[0],
-                allIds: groupIds
-              });
-              renderedGroups.add(groupId);
-            }
-          } else {
-            groups.push({
-              mainId: id,
-              allIds: [id]
-            });
-          }
-        } else {
-          const activeMainId = groups.length > 0 ? groups[groups.length - 1].mainId : externalId;
-          nonGroupRelations.push({ id, mainId: activeMainId, type: relType });
-        }
-      }
-
-      // 1. Generate Prequel/Sequel between adjacent groups
+      // 1. Prequel/Sequel between adjacent groups
       for (let g = 0; g < groups.length - 1; g++) {
-        const prevGroup = groups[g];
-        const nextGroup = groups[g + 1];
-        for (const prevId of prevGroup.allIds) {
-          for (const nextId of nextGroup.allIds) {
-            chainRelations.push({
-              media_external_id: prevId,
-              related_media_external_id: nextId,
-              relation_type: 'SEQUEL',
-              type_label: 'Sequel',
-              title: getMeta(nextId).title || nextId,
-              cover: getMeta(nextId).cover,
-            });
-            chainRelations.push({
-              media_external_id: nextId,
-              related_media_external_id: prevId,
-              relation_type: 'PREQUEL',
-              type_label: 'Prequel',
-              title: getMeta(prevId).title || prevId,
-              cover: getMeta(prevId).cover,
-            });
+        for (const prevId of groups[g].ids) {
+          for (const nextId of groups[g + 1].ids) {
+            addReciprocalPair(prevId, nextId,
+              { relation_type: 'SEQUEL', type_label: 'Sequel' },
+              { relation_type: 'PREQUEL', type_label: 'Prequel' });
           }
         }
       }
 
-      // 2. Generate Alternative relations within each group
+      // 2. Alternative relations within each group
       for (const group of groups) {
-        const mainId = group.mainId;
-        for (const altId of group.allIds) {
-          if (altId !== mainId) {
-            chainRelations.push({
-              media_external_id: mainId,
-              related_media_external_id: altId,
-              relation_type: 'ALTERNATIVE',
-              type_label: 'Alternative Version',
-              title: getMeta(altId).title || altId,
-              cover: getMeta(altId).cover,
-            });
-            chainRelations.push({
-              media_external_id: altId,
-              related_media_external_id: mainId,
-              relation_type: 'ALTERNATIVE',
-              type_label: 'Alternative Version',
-              title: getMeta(mainId).title || mainId,
-              cover: getMeta(mainId).cover,
-            });
-          }
+        for (const altId of group.ids) {
+          if (altId === group.mainId) continue;
+          addReciprocalPair(group.mainId, altId,
+            { relation_type: 'ALTERNATIVE', type_label: 'Alternative Version' },
+            { relation_type: 'ALTERNATIVE', type_label: 'Alternative Version' });
         }
       }
 
-      // 3. Generate Non-Group relations (source, episode, update)
-      for (const rel of nonGroupRelations) {
-        if (rel.type === 'source') {
-          chainRelations.push({
-            media_external_id: rel.mainId,
-            related_media_external_id: rel.id,
-            relation_type: 'SOURCE',
-            type_label: 'Source Material',
-            title: getMeta(rel.id).title || rel.id,
-            cover: getMeta(rel.id).cover,
-          });
-          chainRelations.push({
-            media_external_id: rel.id,
-            related_media_external_id: rel.mainId,
-            relation_type: 'ADAPTATION',
-            type_label: 'Adaptation',
-            title: getMeta(rel.mainId).title || rel.mainId,
-            cover: getMeta(rel.mainId).cover,
-          });
-        } else if (rel.type === 'episode') {
-          chainRelations.push({
-            media_external_id: rel.mainId,
-            related_media_external_id: rel.id,
-            relation_type: 'EPISODE',
-            type_label: 'Episode',
-            title: getMeta(rel.id).title || rel.id,
-            cover: getMeta(rel.id).cover,
-          });
-          chainRelations.push({
-            media_external_id: rel.id,
-            related_media_external_id: rel.mainId,
-            relation_type: 'PART_OF',
-            type_label: 'Part of',
-            title: getMeta(rel.mainId).title || rel.mainId,
-            cover: getMeta(rel.mainId).cover,
-          });
-        } else if (rel.type === 'update') {
-          chainRelations.push({
-            media_external_id: rel.mainId,
-            related_media_external_id: rel.id,
-            relation_type: 'UPDATE',
-            type_label: 'Update',
-            title: getMeta(rel.id).title || rel.id,
-            cover: getMeta(rel.id).cover,
-          });
-          chainRelations.push({
-            media_external_id: rel.id,
-            related_media_external_id: rel.mainId,
-            relation_type: 'PART_OF',
-            type_label: 'Part of',
-            title: getMeta(rel.mainId).title || rel.mainId,
-            cover: getMeta(rel.mainId).cover,
-          });
-        }
+      // 3. Standalone source/episode/update entries attach to the nearest
+      // preceding group (or this entry, if nothing precedes them yet).
+      const REL_TYPE_TO_PAIR: Record<'source' | 'episode' | 'update', [{ relation_type: string; type_label: string }, { relation_type: string; type_label: string }]> = {
+        source:  [{ relation_type: 'SOURCE', type_label: 'Source Material' }, { relation_type: 'ADAPTATION', type_label: 'Adaptation' }],
+        episode: [{ relation_type: 'EPISODE', type_label: 'Episode' }, { relation_type: 'PART_OF', type_label: 'Part of' }],
+        update:  [{ relation_type: 'UPDATE', type_label: 'Update' }, { relation_type: 'PART_OF', type_label: 'Part of' }],
+      };
+      let lastGroupMainId = externalId;
+      for (const e of classified) {
+        if (e.kind === 'group') { lastGroupMainId = e.mainId; continue; }
+        const [mainToItem, itemToMain] = REL_TYPE_TO_PAIR[e.kind];
+        addReciprocalPair(lastGroupMainId, e.mainId, mainToItem, itemToMain);
       }
 
       // Local SagaViewer cache (separate feature/table from media_relations
@@ -741,8 +401,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           day: entry.release_day ?? null,
         } : {
           externalId: id,
-          title: getMeta(id).title || id,
-          cover: getMeta(id).cover,
+          title: resolveMeta(id).title || id,
+          cover: resolveMeta(id).cover,
           format: null,
           mediaType: id.split(':')[0] || 'anime',
           year: null,
@@ -774,16 +434,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       // Every other entry in the chain also needs its own new prequel/sequel
       // edge written locally — fetch its existing relations first so this
-      // only replaces the specific PREQUEL/SEQUEL edges pointing at something
-      // inside this chain, keeping everything else (including any prequel/
-      // sequel to media outside this chain) untouched.
+      // only replaces the specific chain-managed edges pointing at something
+      // inside this chain, keeping everything else (including any relation
+      // to media outside this chain) untouched.
       const otherChainIds = [...new Set(fullChain.filter(id => id !== externalId))];
       for (const otherId of otherChainIds) {
         try {
           const existing = await getMediaRelations(otherId);
-          const chainTypes = ['PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'SOURCE', 'ADAPTATION', 'EPISODE', 'UPDATE', 'PART_OF'];
           const kept = (existing || []).filter(r =>
-            !(chainTypes.includes(r.relation_type) && fullChain.includes(r.related_media_external_id))
+            !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && fullChain.includes(r.related_media_external_id))
           );
           const newRows = chainRelations.filter(r => r.media_external_id === otherId);
           await saveMediaRelations(otherId, [...kept, ...newRows]);
@@ -794,19 +453,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       if (onSaved) onSaved();
 
-      setStatusMsg('Fetching GitHub profile...');
-      const user = await invoke<any>('get_github_user_profile', { token });
-      const username = user.login;
-
       // The PR touches more than the flat catalog row — it's a bundle so a
       // single collaborative-catalog file can also carry the entry's
       // characters, authors, and relations (bundled-in episodes/updates plus
-      // the whole saga chain's prequel/sequel edges — tagged per-media since
-      // the chain spans more than just this entry) into the shared community
-      // database (see scripts/build-database.js, which fans each field out
-      // into its own table by that tag instead of assuming everything
-      // belongs to this file's own entry).
-      const bundle = {
+      // the whole saga chain's edges — tagged per-media since the chain spans
+      // more than just this entry) into the shared community database (see
+      // scripts/build-database.js, which fans each field out into its own
+      // table by that tag instead of assuming everything belongs to this
+      // file's own entry).
+      const bundle: ProposalBundle = {
         media_catalog: entry,
         media_relations: [
           ...currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
@@ -816,144 +471,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         media_authors: mediaAuthors,
         saga_groups: sagaGroups,
       };
-      const changeSummary = buildChangeSummary();
+      const changeSummary = buildChangeSummary(resolveMeta);
 
-      const jsonContent = JSON.stringify(bundle, null, 2);
-      const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
-      const repoOwner = 'Shadorossa';
-      const repoName = 'Metadea';
-      const filePath = `database/${externalId.replace(':', '-')}.json`;
-      const branchName = `proposal-${externalId.replace(':', '-')}-${username}`;
+      const prUrl = await submitCollaborativeProposal(externalId, bundle, changeSummary, setStatusMsg);
+      if (prUrl) openUrlInBrowser(prUrl);
 
-      const isOwner = username.toLowerCase() === repoOwner.toLowerCase();
-      let targetRepoOwner = repoOwner;
-
-      if (!isOwner) {
-        setStatusMsg('Creating repository fork...');
-        const forkRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/forks`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-        if (!forkRes.ok && forkRes.status !== 202) {
-          throw new Error('Failed to create repository fork on GitHub.');
-        }
-        targetRepoOwner = username;
-        setStatusMsg('Waiting for GitHub to prepare the fork (3s)...');
-        await new Promise(r => setTimeout(r, 3000));
-      }
-
-      setStatusMsg('Getting main branch references...');
-      const mainBranchRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/git/ref/heads/main`, {
-        headers: { 'Authorization': `token ${token}` }
-      });
-      if (!mainBranchRes.ok) {
-        throw new Error('Failed to obtain main branch reference.');
-      }
-      const mainBranchData = await mainBranchRes.json();
-      const mainSha = mainBranchData.object.sha;
-
-      setStatusMsg('Creating proposal branch...');
-      const createBranchRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${repoName}/git/refs`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ref: `refs/heads/${branchName}`,
-          sha: mainSha
-        })
-      });
-
-      if (!createBranchRes.ok && createBranchRes.status !== 422) {
-        throw new Error('Failed to create proposal branch.');
-      }
-
-      let fileSha: string | undefined;
-      const fileCheckRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${repoName}/contents/${filePath}?ref=${branchName}`, {
-        headers: { 'Authorization': `token ${token}` }
-      });
-      if (fileCheckRes.ok) {
-        const fileCheckData = await fileCheckRes.json();
-        fileSha = fileCheckData.sha;
-      }
-
-      setStatusMsg('Uploading data to GitHub...');
-      const commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${repoName}/contents/${filePath}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: `Update catalog entry for ${entry.title_main || externalId}`,
-          content: base64Content,
-          branch: branchName,
-          sha: fileSha
-        })
-      });
-
-      if (!commitRes.ok) {
-        throw new Error('Failed to commit JSON file to GitHub.');
-      }
-
-      // Always open a PR (even for the repo owner — a same-repo branch→main
-      // PR works fine on GitHub) so the flow is consistent: every submission
-      // ends with a real PR the app can open in the browser, prepared with a
-      // dash-bulleted list of exactly what changed.
-      setStatusMsg('Opening Pull Request...');
-      const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for **${entry.title_main || externalId}** (\`${externalId}\`).\n\n### Changes\n${changeSummary}`;
-      const prRes = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/pulls`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: `[Proposal] Catalog data for ${entry.title_main || externalId}`,
-          head: isOwner ? branchName : `${username}:${branchName}`,
-          base: 'main',
-          body: prBody,
-        })
-      });
-
-      let prUrl: string | null = null;
-      if (!prRes.ok) {
-        const prData = await prRes.json();
-        if (prData.errors?.[0]?.message?.includes('A pull request already exists')) {
-          setStatusMsg('Proposal uploaded! An active Pull Request already exists.');
-          const existingRes = await fetch(
-            `https://api.github.com/repos/${repoOwner}/${repoName}/pulls?head=${isOwner ? repoOwner : username}:${branchName}&state=open`,
-            { headers: { 'Authorization': `token ${token}` } }
-          );
-          if (existingRes.ok) {
-            const existing = await existingRes.json();
-            prUrl = existing?.[0]?.html_url ?? null;
-          }
-        } else {
-          throw new Error('Failed to open Pull Request.');
-        }
-      } else {
-        setStatusMsg('Proposal submitted successfully!');
-        const prData = await prRes.json();
-        prUrl = prData.html_url ?? null;
-      }
-
-      if (prUrl) {
-        const tauri = (window as any).__TAURI__;
-        if (tauri?.opener?.openUrl) {
-          tauri.opener.openUrl(prUrl);
-        } else {
-          window.open(prUrl, '_blank');
-        }
-      }
-
-      setTimeout(() => {
-        onClose();
-      }, 1500);
+      setTimeout(() => onClose(), 1500);
 
     } catch (err: any) {
       console.error(err);
@@ -974,6 +497,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   }
 
   if (!entry) return null;
+
+  const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null }, sagaMeta);
+  const sagaGroupEntries = classifySagaChain(sagaOrder, sagaRelationTypes, sagaGroups);
 
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
@@ -1083,135 +609,76 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             <div className="pr-editor-subsection pr-editor-subsection--saga">
               <label className="pr-editor-subsection-label">Saga order</label>
               <div className="pr-editor-media-groups">
-                {(() => {
-                  const groups: { mainId: string; mainTitle: string; items: { id: string; index: number; meta: any }[] }[] = [];
-                  const renderedGroups = new Set<string>();
-
-                  for (let i = 0; i < sagaOrder.length; i++) {
-                    const id = sagaOrder[i];
-                    const meta = id === externalId
-                      ? { title: entry.title_main, cover: entry.cover_url }
-                      : sagaMeta[id] ?? { title: null, cover: null };
+                {sagaGroupEntries.map(group => {
+                  const cardContent = group.ids.map(id => {
+                    const meta = resolveMeta(id);
+                    const index = sagaOrder.indexOf(id);
                     const relType = sagaRelationTypes[id] || 'main';
-
-                    if (relType === 'main' || relType === 'alternative') {
-                      const rawGroupId = sagaGroups[id];
-                      const groupId = rawGroupId ? rawGroupId.trim().toLowerCase() : '';
-                      if (groupId) {
-                        if (!renderedGroups.has(groupId)) {
-                          const groupItems: { id: string; index: number; meta: any }[] = [];
-                          for (let j = 0; j < sagaOrder.length; j++) {
-                            const xId = sagaOrder[j];
-                            const xRelType = sagaRelationTypes[xId] || 'main';
-                            if (sagaGroups[xId] && sagaGroups[xId].trim().toLowerCase() === groupId && (xRelType === 'main' || xRelType === 'alternative')) {
-                              const xMeta = xId === externalId
-                                ? { title: entry.title_main, cover: entry.cover_url }
-                                : sagaMeta[xId] ?? { title: null, cover: null };
-                              groupItems.push({ id: xId, index: j, meta: xMeta });
-                            }
-                          }
-                          if (groupItems.length > 0) {
-                            groups.push({
-                              mainId: groupItems[0].id,
-                              mainTitle: rawGroupId.trim(),
-                              items: groupItems
-                            });
-                          }
-                          renderedGroups.add(groupId);
-                        }
-                      } else {
-                        groups.push({
-                          mainId: id,
-                          mainTitle: meta.title || id,
-                          items: [{ id, index: i, meta }]
-                        });
-                      }
-                    } else {
-                      groups.push({
-                        mainId: id,
-                        mainTitle: `${relType.toUpperCase()}: ${meta.title || id}`,
-                        items: [{ id, index: i, meta }]
-                      });
-                    }
-                  }
-
-                  return groups.map(g => {
-                    const cardContent = g.items.map(({ id, index, meta }) => {
-                      const relType = sagaRelationTypes[id] || 'main';
-                      return (
-                        <div
-                          key={id}
-                          data-saga-index={index}
-                          className={`pr-editor-media-card${id === externalId ? ' pr-editor-media-card--current' : ''}${draggedSagaIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-                          onPointerDown={() => setDraggedSagaIndex(index)}
-                        >
-                          <div className="pr-editor-media-card-cover">
-                            {meta.cover
-                              ? <img src={meta.cover} alt="" draggable={false} />
-                              : <div className="pr-editor-media-card-placeholder" />}
-                            {id !== externalId && (
-                              <button
-                                type="button"
-                                className="pr-editor-media-card-remove"
-                                onPointerDown={e => e.stopPropagation()}
-                                onClick={() => removeFromSaga(id)}
-                              >×</button>
-                            )}
-                          </div>
-                          <span className="pr-editor-media-card-title" title={id}>
-                            {meta.title || id}{id === externalId ? ' (this entry)' : ''}
-                          </span>
-                          <select
-                            className="pr-editor-media-card-select"
-                            value={sagaRelationTypes[id] || 'main'}
-                            onPointerDown={e => e.stopPropagation()}
-                            onChange={e => {
-                              const val = e.target.value as any;
-                              setSagaRelationTypes(prev => ({ ...prev, [id]: val }));
-                            }}
-                          >
-                            <option value="main">Main</option>
-                            <option value="alternative">Alternative</option>
-                            <option value="source">Source Material</option>
-                            <option value="episode">Episode</option>
-                            <option value="update">Update</option>
-                          </select>
-                          {(relType === 'main' || relType === 'alternative') && (
-                            <input
-                              type="text"
-                              className="pr-editor-media-card-select"
-                              style={{ marginTop: '0.15rem', padding: '0.15rem 0.25rem' }}
-                              placeholder="Concept Group"
-                              value={sagaGroups[id] || ''}
+                    return (
+                      <div
+                        key={id}
+                        data-saga-index={index}
+                        className={`pr-editor-media-card${id === externalId ? ' pr-editor-media-card--current' : ''}${draggedSagaIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
+                        onPointerDown={() => setDraggedSagaIndex(index)}
+                      >
+                        <div className="pr-editor-media-card-cover">
+                          {meta.cover
+                            ? <img src={meta.cover} alt="" draggable={false} />
+                            : <div className="pr-editor-media-card-placeholder" />}
+                          {id !== externalId && (
+                            <button
+                              type="button"
+                              className="pr-editor-media-card-remove"
                               onPointerDown={e => e.stopPropagation()}
-                              onChange={e => {
-                                const val = e.target.value;
-                                setSagaGroups(prev => ({ ...prev, [id]: val }));
-                              }}
-                            />
+                              onClick={() => removeFromSaga(id)}
+                            >×</button>
                           )}
                         </div>
-                      );
-                    });
-
-                    if (g.items.length > 1) {
-                      return (
-                        <div key={g.mainId} className="pr-editor-media-group-container">
-                          <span className="pr-editor-media-group-title">Group Concept: {g.mainTitle}</span>
-                          <div className="pr-editor-media-group-cards">
-                            {cardContent}
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <div key={g.mainId} className="pr-editor-media-single-card-wrap">
-                          {cardContent}
-                        </div>
-                      );
-                    }
+                        <span className="pr-editor-media-card-title" title={id}>
+                          {meta.title || id}{id === externalId ? ' (this entry)' : ''}
+                        </span>
+                        <select
+                          className="pr-editor-media-card-select"
+                          value={relType}
+                          onPointerDown={e => e.stopPropagation()}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (isSagaRelationType(val)) setSagaRelationTypes(prev => ({ ...prev, [id]: val }));
+                          }}
+                        >
+                          {SAGA_RELATION_TYPE_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        {(relType === 'main' || relType === 'alternative') && (
+                          <input
+                            type="text"
+                            className="pr-editor-media-card-group-input"
+                            placeholder="Concept Group"
+                            value={sagaGroups[id] || ''}
+                            onPointerDown={e => e.stopPropagation()}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setSagaGroups(prev => ({ ...prev, [id]: val }));
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
                   });
-                })()}
+
+                  if (group.ids.length > 1) {
+                    return (
+                      <div key={group.mainId} className="pr-editor-media-group-container">
+                        <span className="pr-editor-media-group-title">Group Concept: {sagaGroups[group.mainId]?.trim() || resolveMeta(group.mainId).title || group.mainId}</span>
+                        <div className="pr-editor-media-group-cards">{cardContent}</div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={group.mainId} className="pr-editor-media-single-card-wrap">{cardContent}</div>
+                  );
+                })}
               </div>
               <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
             </div>
@@ -1256,7 +723,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       {searchPopupMode === 'saga' && (
         <MediaSearchPopup
-          onSelect={id => addToSaga(id)}
+          onSelect={result => addToSaga(result)}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={sagaOrder}
           closeOnSelect={false}
@@ -1265,7 +732,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       {searchPopupMode === 'bundled' && (
         <MediaSearchPopup
-          onSelect={id => addBundledRelation(id)}
+          onSelect={result => addBundledRelation(result)}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
         />

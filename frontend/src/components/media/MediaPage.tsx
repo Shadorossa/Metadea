@@ -296,6 +296,9 @@ export default function MediaPage({ i18n }: Props) {
       genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
       genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
       platforms_csv:         data.platforms?.join(',') || undefined,
+      // "platform|url" pairs — IGDB store links (Steam, GOG, ...). Neither
+      // token can contain a comma so a flat CSV join/split round-trips safely.
+      shop_links_csv:        data.storeLinks?.length ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',') : undefined,
       companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
       // Names only, same convention as companies_cache_csv — this is a flat
       // display cache for the instant partial-load path (mapCatalogEntryToPartialData),

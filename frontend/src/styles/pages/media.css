@@ -2401,6 +2401,21 @@
   cursor: pointer;
 }
 
+.pr-editor-media-card-group-input {
+  width: 100%;
+  font-size: 0.65rem;
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.25rem;
+  border: 1px solid rgba(124, 106, 247, 0.4);
+  background: transparent;
+  color: var(--accent, #7c6af7);
+  border-radius: 2px;
+}
+
+.pr-editor-media-card-group-input::placeholder {
+  color: var(--text-dim, #6b6b7d);
+}
+
 .pr-editor-media-groups {
   display: flex;
   flex-wrap: wrap;

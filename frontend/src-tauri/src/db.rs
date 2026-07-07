@@ -32,6 +32,10 @@ impl MetadeaDb {
         // drop them here, that previously wiped every saved author profile on
         // every app launch.
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
+        // Upgrade path for DBs created before shop_links_csv existed — same
+        // idempotent-ALTER pattern as authors_csv above (fresh DBs already
+        // get it inline via METADEA_SCHEMA's CREATE TABLE text).
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN shop_links_csv TEXT DEFAULT ''", []);
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(Self { conn: Mutex::new(conn) })
     }
@@ -135,6 +139,7 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     genres_csv           TEXT DEFAULT '',
     genres_tag_csv       TEXT DEFAULT '',
     platforms_csv        TEXT DEFAULT '',
+    shop_links_csv       TEXT DEFAULT '',
     companies_cache_csv  TEXT DEFAULT '',
     authors_csv          TEXT DEFAULT '',
     last_synced_at       TEXT,
