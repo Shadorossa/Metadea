@@ -19,7 +19,7 @@ export function formatDateParts(
 ): string {
   if (!d?.year) return '';
   if (!d.month) return String(d.year);
-  const { monthStyle = 'short', requireDay = false } = opts;
+  const { monthStyle = 'long', requireDay = false } = opts;
   const date = new Date(d.year, d.month - 1, d.day ?? 1);
   return date.toLocaleDateString(getLangCode(), {
     year: 'numeric',

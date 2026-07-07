@@ -273,10 +273,12 @@ export function fetchMediaDataWithFallback(
   let fullArrived = false;
   let hasLocalData = false;
   let localData: MediaPageData | null = null;
+  let catalogEntry: MediaCatalogEntry | null = null;
 
   getCatalogEntry(rawId)
     .then(async catalog => {
       if (catalog && catalog.title_main) {
+        catalogEntry = catalog;
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
 
@@ -316,13 +318,19 @@ export function fetchMediaDataWithFallback(
     })
     .catch(() => {})
     .finally(() => {
-      // A catalog entry with a non-empty `source` was written by a real API
-      // detail fetch (or a collaborative-catalog PR import) rather than the
-      // thin stub `save_media_relations`/`save_cached_saga` create for ids
-      // they've only ever seen as someone else's relation — it already has
-      // everything the API would return, so skip the live request entirely
-      // instead of re-fetching data we already have on disk.
-      if (hasLocalData && localData && localData.source) {
+      // If the catalog entry is a thin skeleton or missing basic columns
+      // (like synopsis, source, format, release date, genres, or companies),
+      // we do not skip the live API fetch — we fetch from the network to enrich it.
+      const isSkeleton = !catalogEntry ||
+        !catalogEntry.format ||
+        !catalogEntry.source ||
+        !catalogEntry.synopsis ||
+        !catalogEntry.banners_csv ||
+        !catalogEntry.release_year ||
+        !catalogEntry.genres_csv ||
+        !catalogEntry.companies_cache_csv;
+
+      if (hasLocalData && localData && !isSkeleton) {
         fullArrived = true;
         onFull(localData);
         return;
