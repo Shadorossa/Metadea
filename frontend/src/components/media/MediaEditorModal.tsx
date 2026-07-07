@@ -572,8 +572,8 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     [data.type, t],
   );
 
-  // Editions/versions this entry could be linked to (base game + expansions/
-  // remakes/etc. from the IGDB relation list) grouped by relation type.
+  // Editions/versions this entry could be linked to (base game + expanded editions
+  // from the IGDB relation list) grouped by relation type.
   const editionGroups = useMemo(() => {
     if (data.type !== 'game') return [] as { label: string; options: { externalId: string; label: string; cover?: string }[] }[];
 
@@ -584,11 +584,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     }
 
     for (const rel of (data.relations || [])) {
-      if (
-        rel.typeLabel === 'Standalone' ||
-        rel.typeLabel === 'Expansion' ||
-        rel.typeLabel === 'DLC'
-      ) continue;
+      if (rel.typeLabel !== 'Expanded Edition' && rel.typeLabel !== 'Remaster') continue;
       const match = rel.url?.match(/id=([^&]+)/);
       const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
       if (relExternalId) {

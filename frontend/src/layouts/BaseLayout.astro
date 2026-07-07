@@ -204,15 +204,26 @@ const t = useTranslations(lang);
       // ClientRouter's delegated listener from soft-navigating) and from the
       // page-load listener below (covers client-side transitions).
       function rememberCurrentPath() {
-        if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
-          localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search);
+        const pathname = window.location.pathname;
+        const search = window.location.search;
+        const hash = window.location.hash;
+        const fullPath = pathname + search + hash;
+
+        // Don't save root or login pages
+        if (pathname === '/' || pathname === '/login') {
+          localStorage.removeItem(STORAGE_KEYS.lastVisitedPath);
+          return;
         }
+
+        // Always save the current path
+        localStorage.setItem(STORAGE_KEYS.lastVisitedPath, fullPath);
       }
       rememberCurrentPath();
 
       document.addEventListener('astro:page-load', async () => {
         initAuthModal();
-        rememberCurrentPath();
+        // Ensure we save immediately after page load to prevent stale paths
+        setTimeout(rememberCurrentPath, 0);
 
         if (!updaterChecked) {
           updaterChecked = true;

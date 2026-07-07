@@ -2,12 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
+      "name": "frontend-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["run", "tauri:dev"],
       "cwd": "frontend",
-      "port": 4321,
-      "autoPort": true
+      "port": 5173
     }
   ]
 }
