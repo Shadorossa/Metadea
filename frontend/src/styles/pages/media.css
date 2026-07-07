@@ -1921,10 +1921,12 @@
 
 .saga-overlay {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
   background: rgba(0, 0, 0, 0.85) !important;
   backdrop-filter: blur(10px);
+  padding: 0 !important;
 }
 
 .saga-strip-container {
