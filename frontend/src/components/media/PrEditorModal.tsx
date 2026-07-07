@@ -454,20 +454,25 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       else lines.push(`- Changed ${label}: "${before}" → "${after}"`);
     }
 
+    const formatWork = (id: string, title?: string | null): string => {
+      const displayTitle = title || (id === externalId ? entry?.title_main : null) || sagaMeta[id]?.title || null;
+      return displayTitle ? `${displayTitle} (${id})` : id;
+    };
+
     const addedBundled = bundledRelations.filter(r => !originalBundledIds.has(r.external_id));
-    for (const r of addedBundled) lines.push(`- Added Bundled In: ${r.external_id} (${r.type})`);
+    for (const r of addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)} (${r.type})`);
     const removedBundled = [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id));
-    for (const id of removedBundled) lines.push(`- Removed Bundled In: ${id}`);
+    for (const id of removedBundled) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
 
     const originalSagaIds = new Set(originalSagaOrder);
     const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
-    for (const id of addedSaga) lines.push(`- Added to Saga: ${id}`);
+    for (const id of addedSaga) lines.push(`- Added to Saga: ${formatWork(id)}`);
     const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
-    for (const id of removedSaga) lines.push(`- Removed from Saga: ${id}`);
+    for (const id of removedSaga) lines.push(`- Removed from Saga: ${formatWork(id)}`);
     if (addedSaga.length === 0 && removedSaga.length === 0 && sagaOrder.join(',') !== originalSagaOrder.join(',') && sagaOrder.length > 1) {
-      lines.push(`- Reordered Saga: ${sagaOrder.join(' → ')}`);
+      lines.push(`- Reordered Saga: ${sagaOrder.map(id => formatWork(id)).join(' → ')}`);
     } else if (sagaOrder.length > 1) {
-      lines.push(`- Saga order: ${sagaOrder.join(' → ')}`);
+      lines.push(`- Saga order: ${sagaOrder.map(id => formatWork(id)).join(' → ')}`);
     }
 
     if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
