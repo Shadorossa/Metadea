@@ -75,7 +75,7 @@ const SORT_FNS: Record<SearchSort, (a: ApiSearchResult, b: ApiSearchResult) => n
   score_desc: (a, b) => (b.scoreGlobal ?? -Infinity) - (a.scoreGlobal ?? -Infinity),
 };
 
-function MediaSearchPopup({ onSelect, onClose }: { onSelect: (result: ApiSearchResult) => void; onClose: () => void }) {
+function MediaSearchPopup({ onSelect, onClose, excludeIds = [] }: { onSelect: (result: ApiSearchResult) => void; onClose: () => void; excludeIds?: string[] }) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
@@ -115,6 +115,7 @@ function MediaSearchPopup({ onSelect, onClose }: { onSelect: (result: ApiSearchR
   };
 
   const sortedResults = [...results].sort(SORT_FNS[sortBy]);
+  const filteredResults = sortedResults.filter(r => !excludeIds.includes(r.externalId));
 
   return (
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
@@ -157,11 +158,11 @@ function MediaSearchPopup({ onSelect, onClose }: { onSelect: (result: ApiSearchR
         </div>
         <div className="pr-editor-search-results pr-editor-search-results--grid">
           {isLoading && <div className="pr-editor-search-loading">Searching...</div>}
-          {!isLoading && sortedResults.length === 0 && query && (
+          {!isLoading && filteredResults.length === 0 && query && (
             <div className="pr-editor-search-empty">No results</div>
           )}
           <div className="pr-editor-search-grid">
-            {sortedResults.map(r => (
+            {filteredResults.map(r => (
               <button
                 key={r.externalId}
                 type="button"
@@ -960,6 +961,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         <MediaSearchPopup
           onSelect={id => addToSaga(id)}
           onClose={() => setSearchPopupMode(null)}
+          excludeIds={sagaOrder}
         />
       )}
 
@@ -967,6 +969,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         <MediaSearchPopup
           onSelect={id => addBundledRelation(id)}
           onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
         />
       )}
     </div>,
