@@ -146,6 +146,48 @@ pub async fn get_character_appearances(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct MediaCharacter {
+    pub external_id: String,
+    pub name: String,
+    pub image_url: Option<String>,
+    pub relation_type: Option<String>,
+}
+
+// Reverse of get_character_appearances (which is keyed by character) — used
+// by PrEditorModal to carry a media's already-cached characters along into a
+// collaborative-catalog PR bundle instead of losing them (the editor itself
+// has no character-editing UI; this just republishes what was already synced
+// locally from the API).
+#[tauri::command]
+pub async fn get_media_characters(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<MediaCharacter>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT c.external_id, c.name, c.image_url, ca.relation_type
+             FROM character_appearances ca
+             JOIN characters c ON c.external_id = ca.character_external_id
+             WHERE ca.media_external_id = ?1",
+        )
+        .str_err()?;
+    let rows = stmt
+        .query_map([&media_external_id], |row| {
+            Ok(MediaCharacter {
+                external_id: row.get(0)?,
+                name: row.get(1)?,
+                image_url: row.get(2)?,
+                relation_type: row.get(3)?,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SkeletonCharacter {
     pub external_id: String,
     pub name: String,

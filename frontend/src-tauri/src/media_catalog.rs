@@ -720,34 +720,75 @@ pub async fn sync_community_catalog(
 
         conn.execute("ATTACH DATABASE ?1 AS community", rusqlite::params![temp_path_str])
             .str_err()?;
-        // Column list is explicit (not `SELECT *`) on purpose: DBs upgraded
-        // via the `ALTER TABLE ... ADD COLUMN authors_csv` migration in
-        // db.rs have authors_csv as their *last* physical column, while a
-        // fresh DB (this downloaded community one included) has it inline
-        // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
-        // would silently shift every column after the mismatch into the
-        // wrong field.
-        let insert_result = conn.execute(
-            "INSERT OR IGNORE INTO media_catalog (
-                id, external_id, parent_id, type, format, source,
-                title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                release_year, release_month, release_day, time_length, status, score_global,
-                favorites_count, ratings_count, total_count, total_count_2,
-                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
-                last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
-             )
-             SELECT
-                id, external_id, parent_id, type, format, source,
-                title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                release_year, release_month, release_day, time_length, status, score_global,
-                favorites_count, ratings_count, total_count, total_count_2,
-                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
-                last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
-             FROM community.media_catalog",
-            [],
-        );
+        let merge_result = (|| -> Result<(), String> {
+            // Column list is explicit (not `SELECT *`) on purpose: DBs upgraded
+            // via the `ALTER TABLE ... ADD COLUMN authors_csv` migration in
+            // db.rs have authors_csv as their *last* physical column, while a
+            // fresh DB (this downloaded community one included) has it inline
+            // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
+            // would silently shift every column after the mismatch into the
+            // wrong field.
+            conn.execute(
+                "INSERT OR IGNORE INTO media_catalog (
+                    id, external_id, parent_id, type, format, source,
+                    title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                    release_year, release_month, release_day, time_length, status, score_global,
+                    favorites_count, ratings_count, total_count, total_count_2,
+                    genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                    last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+                 )
+                 SELECT
+                    id, external_id, parent_id, type, format, source,
+                    title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                    release_year, release_month, release_day, time_length, status, score_global,
+                    favorites_count, ratings_count, total_count, total_count_2,
+                    genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv,
+                    last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+                 FROM community.media_catalog",
+                [],
+            ).str_err()?;
+
+            // Characters a PR carried over from the entry's already-cached
+            // appearances (see PrEditorModal's bundle export) — merge both
+            // the character rows and their media links the same "fill gaps
+            // only" way.
+            conn.execute(
+                "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
+                 SELECT id, external_id, name, image_url, reaction, created_at, updated_at FROM community.characters",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
+                 SELECT character_external_id, media_external_id, relation_type, added_at FROM community.character_appearances",
+                [],
+            ).str_err()?;
+
+            // Relations (bundled-in episodes/updates, saga-derived prequel/
+            // sequel, and any other relation a PR carried over) — same
+            // fill-gaps merge, keyed by the table's own composite PK so this
+            // never overwrites a relation the user's own API sync produced.
+            conn.execute(
+                "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 SELECT media_external_id, related_media_external_id, relation_type, type_label FROM community.media_relations",
+                [],
+            ).str_err()?;
+
+            // Authors carried over the same "fill gaps only" way.
+            conn.execute(
+                "INSERT OR IGNORE INTO media_author (external_id, name, author_image_url, author_url, created_at, updated_at)
+                 SELECT external_id, name, author_image_url, author_url, created_at, updated_at FROM community.media_author",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "INSERT OR IGNORE INTO media_by_author (media_external_id, author_external_id, role)
+                 SELECT media_external_id, author_external_id, role FROM community.media_by_author",
+                [],
+            ).str_err()?;
+
+            Ok(())
+        })();
         conn.execute("DETACH DATABASE community", []).str_err()?;
-        insert_result.str_err()?;
+        merge_result?;
 
         let after: i64 = conn
             .query_row("SELECT COUNT(*) FROM media_catalog", [], |r| r.get(0))

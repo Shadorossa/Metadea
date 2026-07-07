@@ -4,7 +4,13 @@
 // Run by .github/workflows/update-database.yml on every push to main that
 // touches database/**; the desktop app downloads the resulting file (see
 // media_catalog.rs's sync_community_catalog) and merges rows it doesn't
-// already have locally into its own media_catalog table.
+// already have locally into its own tables.
+//
+// Each database/*.json is a *bundle*, not a bare media_catalog row:
+//   { media_catalog: {...}, media_relations: [...], characters: [...], media_authors: [...] }
+// media_relations already includes both "Bundled In" (EPISODE/UPDATE) and
+// saga-derived PREQUEL/SEQUEL entries — PrEditorModal resolves those before
+// writing the file, so this script only has to fan them out into tables.
 //
 // node:sqlite is experimental — run with `node --experimental-sqlite`.
 
@@ -17,9 +23,12 @@ const REPO_ROOT = path.join(__dirname, '..');
 const DATABASE_DIR = path.join(REPO_ROOT, 'database');
 const DB_PATH = path.join(REPO_ROOT, 'database.db');
 
-// Column order mirrors media_catalog's CREATE TABLE in frontend/src-tauri/src/db.rs
-// (authors_csv inline, not appended) — keep both in sync by hand.
-const CREATE_TABLE_SQL = `
+// Table shapes mirror frontend/src-tauri/src/db.rs's METADEA_SCHEMA — keep
+// both in sync by hand. media_catalog's column order matches the *fresh*
+// CREATE TABLE text (authors_csv inline); the app's merge query addresses
+// columns by name specifically so it doesn't care that some existing local
+// DBs have authors_csv appended last after an ALTER TABLE migration.
+const CREATE_TABLES_SQL = `
 CREATE TABLE media_catalog (
     id                   TEXT PRIMARY KEY,
     external_id          TEXT UNIQUE NOT NULL,
@@ -54,9 +63,51 @@ CREATE TABLE media_catalog (
     created_at           TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at           TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE characters (
+    id          TEXT PRIMARY KEY,
+    external_id TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL DEFAULT '',
+    image_url   TEXT,
+    reaction    TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE character_appearances (
+    character_external_id TEXT NOT NULL,
+    media_external_id     TEXT NOT NULL,
+    relation_type         TEXT,
+    added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (character_external_id, media_external_id)
+);
+
+CREATE TABLE media_relations (
+    media_external_id         TEXT NOT NULL,
+    related_media_external_id TEXT NOT NULL,
+    relation_type              TEXT NOT NULL,
+    type_label                 TEXT NOT NULL,
+    PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
+);
+
+CREATE TABLE media_author (
+    external_id      TEXT PRIMARY KEY,
+    name             TEXT NOT NULL,
+    author_image_url TEXT,
+    author_url       TEXT,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE media_by_author (
+    media_external_id  TEXT NOT NULL,
+    author_external_id TEXT NOT NULL,
+    role               TEXT,
+    PRIMARY KEY (media_external_id, author_external_id)
+);
 `;
 
-const COLUMNS = [
+const CATALOG_COLUMNS = [
   'id', 'external_id', 'parent_id', 'type', 'format', 'source',
   'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
   'release_year', 'release_month', 'release_day', 'time_length', 'status', 'score_global',
@@ -65,55 +116,96 @@ const COLUMNS = [
   'last_synced_at', 'sync_failed_count', 'last_sync_error', 'created_at', 'updated_at',
 ];
 
-function readEntries() {
+function readBundles() {
   if (!fs.existsSync(DATABASE_DIR)) {
     console.log(`No ${DATABASE_DIR} directory found — nothing to build.`);
     return [];
   }
   const files = fs.readdirSync(DATABASE_DIR).filter(f => f.endsWith('.json'));
-  const entries = [];
+  const bundles = [];
   for (const file of files) {
     try {
       const raw = fs.readFileSync(path.join(DATABASE_DIR, file), 'utf-8');
-      const entry = JSON.parse(raw);
-      if (!entry.external_id) {
-        console.warn(`Skipping ${file}: missing external_id`);
+      const bundle = JSON.parse(raw);
+      if (!bundle.media_catalog?.external_id) {
+        console.warn(`Skipping ${file}: missing media_catalog.external_id`);
         continue;
       }
-      entries.push(entry);
+      bundles.push(bundle);
     } catch (e) {
       console.warn(`Skipping ${file}: ${e.message}`);
     }
   }
-  return entries;
+  return bundles;
 }
 
-function buildDatabase(entries) {
+function buildDatabase(bundles) {
   if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
   const db = new DatabaseSync(DB_PATH);
-  db.exec(CREATE_TABLE_SQL);
-
-  const placeholders = COLUMNS.map(() => '?').join(', ');
-  const stmt = db.prepare(`INSERT OR REPLACE INTO media_catalog (${COLUMNS.join(', ')}) VALUES (${placeholders})`);
+  db.exec(CREATE_TABLES_SQL);
 
   const now = new Date().toISOString();
-  let count = 0;
-  for (const entry of entries) {
-    const row = COLUMNS.map(col => {
+
+  const catalogPlaceholders = CATALOG_COLUMNS.map(() => '?').join(', ');
+  const catalogStmt = db.prepare(`INSERT OR REPLACE INTO media_catalog (${CATALOG_COLUMNS.join(', ')}) VALUES (${catalogPlaceholders})`);
+
+  const characterStmt = db.prepare(
+    'INSERT OR REPLACE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  );
+  const appearanceStmt = db.prepare(
+    'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at) VALUES (?, ?, ?, ?)'
+  );
+  const relationStmt = db.prepare(
+    'INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
+  );
+  const authorStmt = db.prepare(
+    'INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  const byAuthorStmt = db.prepare(
+    'INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role) VALUES (?, ?, ?)'
+  );
+
+  let catalogCount = 0;
+  for (const bundle of bundles) {
+    const entry = bundle.media_catalog;
+    const externalId = entry.external_id;
+
+    const row = CATALOG_COLUMNS.map(col => {
       if (col === 'id') return entry.id || crypto.randomUUID();
       if (col === 'created_at') return entry.created_at || now;
       if (col === 'updated_at') return entry.updated_at || now;
       const v = entry[col];
       return v === undefined ? null : v;
     });
-    stmt.run(...row);
-    count++;
+    catalogStmt.run(...row);
+    catalogCount++;
+
+    for (const rel of bundle.media_relations || []) {
+      if (!rel.related_media_external_id || !rel.relation_type) continue;
+      // media_external_id is explicit per row (not assumed to be this file's
+      // own entry) — a saga PR carries prequel/sequel edges for every entry
+      // in the chain, not just the one this file's media_catalog describes.
+      const owner = rel.media_external_id || externalId;
+      relationStmt.run(owner, rel.related_media_external_id, rel.relation_type, rel.type_label || rel.relation_type);
+    }
+
+    for (const char of bundle.characters || []) {
+      if (!char.external_id) continue;
+      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', char.image_url ?? null, null, now, now);
+      appearanceStmt.run(char.external_id, externalId, char.relation_type ?? null, now);
+    }
+
+    for (const author of bundle.media_authors || []) {
+      if (!author.external_id) continue;
+      authorStmt.run(author.external_id, author.name || '', author.image ?? null, author.url ?? null, now, now);
+      byAuthorStmt.run(externalId, author.external_id, author.role ?? null);
+    }
   }
 
   db.close();
-  return count;
+  return catalogCount;
 }
 
-const entries = readEntries();
-const count = buildDatabase(entries);
-console.log(`Built ${DB_PATH} with ${count} entries from ${entries.length} source files.`);
+const bundles = readBundles();
+const count = buildDatabase(bundles);
+console.log(`Built ${DB_PATH} with ${count} entries from ${bundles.length} source files.`);

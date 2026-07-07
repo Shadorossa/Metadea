@@ -46,3 +46,17 @@ export interface SkeletonCharacter {
 export async function saveCharactersSkeleton(mediaExternalId: string, characters: SkeletonCharacter[]): Promise<void> {
   return tauriRun('save_characters_skeleton', { mediaExternalId, characters });
 }
+
+export interface MediaCharacter {
+  external_id: string;
+  name: string;
+  image_url?: string | null;
+  relation_type?: string | null;
+}
+
+// Reverse of getCharacterAppearances — all characters already cached locally
+// for a given media, used to carry them along into a collaborative-catalog
+// PR bundle (see PrEditorModal) instead of losing them.
+export async function getMediaCharacters(mediaExternalId: string): Promise<MediaCharacter[]> {
+  return tauriCmd<MediaCharacter[]>('get_media_characters', [], { mediaExternalId });
+}
