@@ -43,3 +43,37 @@ export function normalizeScore100(raw: number | undefined | null): number | unde
 export function lookupLabel(dict: Record<string, string>, key: string | null | undefined, fallback: string): string {
   return (key ? dict[key] : undefined) ?? fallback;
 }
+
+/** Parse external_id (e.g. "anime:123", "game_igdb:456") into type and numeric ID. */
+export function parseExternalId(externalId: string): { type: string; id: number } {
+  const colonIdx = externalId.indexOf(':');
+  const type = externalId.slice(0, colonIdx).split('_')[0];
+  const id = parseInt(externalId.slice(colonIdx + 1), 10);
+  return { type, id };
+}
+
+/** Extract just the numeric ID from external_id. */
+export function extractNumericId(externalId: string): number {
+  const colonIdx = externalId.indexOf(':');
+  return parseInt(externalId.slice(colonIdx + 1), 10);
+}
+
+/** Create a sort key for release date (year, month, day) for use in comparisons.
+ *  Returns [year, month, day] with Infinity for missing values to sort unknowns last. */
+export function getReleaseDateKey(item: { release_year?: number | null; release_month?: number | null; release_day?: number | null }): [number, number, number] {
+  return [
+    item.release_year ?? Infinity,
+    item.release_month ?? Infinity,
+    item.release_day ?? Infinity,
+  ];
+}
+
+/** Compare two items by their release dates (year, month, day, then by ID as tiebreaker). */
+export function compareByReleaseDate<T extends { release_year?: number | null; release_month?: number | null; release_day?: number | null; id?: string }>(a: T, b: T): number {
+  const keyA = getReleaseDateKey(a);
+  const keyB = getReleaseDateKey(b);
+  if (keyA[0] !== keyB[0]) return keyA[0] - keyB[0];
+  if (keyA[1] !== keyB[1]) return keyA[1] - keyB[1];
+  if (keyA[2] !== keyB[2]) return keyA[2] - keyB[2];
+  return (a.id || '').localeCompare(b.id || '');
+}

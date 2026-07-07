@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
+import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 
 import { getCachedSaga, saveCachedSaga } from '../../lib/tauri';
 
@@ -58,18 +59,10 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           const validEntries = entriesData.filter(x => x.entry !== null) as { id: string; entry: any }[];
           
           // Sort chronologically
-          validEntries.sort((a, b) => {
-            const yA = a.entry.release_year ?? Infinity;
-            const yB = b.entry.release_year ?? Infinity;
-            if (yA !== yB) return yA - yB;
-            const mA = a.entry.release_month ?? Infinity;
-            const mB = b.entry.release_month ?? Infinity;
-            if (mA !== mB) return mA - mB;
-            const dA = a.entry.release_day ?? Infinity;
-            const dB = b.entry.release_day ?? Infinity;
-            if (dA !== dB) return dA - dB;
-            return a.id.localeCompare(b.id);
-          });
+          validEntries.sort((a, b) => compareByReleaseDate(
+            { ...a.entry, id: a.id },
+            { ...b.entry, id: b.id }
+          ));
 
           const sagaList: SagaEntry[] = validEntries.map(x => ({
             externalId: x.id,

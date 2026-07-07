@@ -21,6 +21,7 @@ import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
+import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
 
 interface BundledRelation {
   external_id: string;
@@ -159,15 +160,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           setOriginalEntry(currentEntry);
         }
 
-        const releaseKey = (e: MediaCatalogEntry) =>
-          [e.release_year ?? Infinity, e.release_month ?? Infinity, e.release_day ?? Infinity];
-        validEntries.sort((a, b) => {
-          const ka = releaseKey(a.entry), kb = releaseKey(b.entry);
-          for (let i = 0; i < ka.length; i++) {
-            if (ka[i] !== kb[i]) return ka[i] - kb[i];
-          }
-          return a.id.localeCompare(b.id);
-        });
+        validEntries.sort((a, b) => compareByReleaseDate(
+          { ...a.entry, id: a.id },
+          { ...b.entry, id: b.id }
+        ));
 
         const sortedIds = validEntries.map(x => x.id);
         setSagaOrder(sortedIds);
