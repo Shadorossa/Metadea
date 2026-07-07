@@ -1,0 +1,173 @@
+{
+  "media_catalog": {
+    "id": "f5a1977dfa747eb7f5a1977dfa747eb7",
+    "external_id": "game:375",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Metal Gear Solid",
+    "title_romaji": null,
+    "title_native": "特攻神諜",
+    "synopsis": "Metal Gear Solid is a stealth game created by Hideo Kojima which follows the MSX2 video games Metal Gear and Metal Gear 2: Solid Snake. Despite a transition to 3D, Metal Gear Solid's gameplay remains similar to his predecessors. The game utilizes a traditional top-down view and the player must navigate the protagonist Solid Snake through the game's areas without being detected. Detection will set off an alarm which draws armed enemies to his location. Conversations with Snake's allies and cutscenes are used extensively to advance the plot and gain more insight into it. Metal Gear Solid is regarded as one of the greatest and most important video games of all time, and helped popularize the stealth genre and in-engine cinematic cutscenes.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpak.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/scj0ve.jpg",
+    "release_year": 1998,
+    "release_month": 9,
+    "release_day": 3,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.5,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Tactical,Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation 3,PlayStation,PlayStation Portable",
+    "companies_cache_csv": "Konami Computer Entertainment Japan,Konami",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T14:46:01.534Z",
+    "updated_at": "2026-07-07T14:46:02.964284800+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:18683",
+      "relation_type": "STANDALONE",
+      "type_label": "Standalone",
+      "title": "Metal Gear Solid: VR Missions",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2s8n.jpg",
+      "media_external_id": "game:375"
+    },
+    {
+      "related_media_external_id": "game:4006",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Metal Gear Solid: The Twin Snakes",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v8c.jpg",
+      "media_external_id": "game:375"
+    },
+    {
+      "related_media_external_id": "game:41037",
+      "relation_type": "EXPANDED EDITION",
+      "type_label": "Expanded Edition",
+      "title": "Metal Gear Solid: Integral",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobpal.jpg",
+      "media_external_id": "game:375"
+    },
+    {
+      "media_external_id": "game:375",
+      "related_media_external_id": "game:376",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid 2: Sons of Liberty",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
+    },
+    {
+      "media_external_id": "game:376",
+      "related_media_external_id": "game:375",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpak.jpg"
+    },
+    {
+      "media_external_id": "game:376",
+      "related_media_external_id": "game:379",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid 3: Snake Eater",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
+    },
+    {
+      "media_external_id": "game:379",
+      "related_media_external_id": "game:376",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid 2: Sons of Liberty",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
+    },
+    {
+      "media_external_id": "game:379",
+      "related_media_external_id": "game:380",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid 4: Guns of the Patriots",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
+    },
+    {
+      "media_external_id": "game:380",
+      "related_media_external_id": "game:379",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid 3: Snake Eater",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
+    },
+    {
+      "media_external_id": "game:380",
+      "related_media_external_id": "game:382",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid: Peace Walker",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coawb5.jpg"
+    },
+    {
+      "media_external_id": "game:382",
+      "related_media_external_id": "game:380",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid 4: Guns of the Patriots",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
+    },
+    {
+      "media_external_id": "game:382",
+      "related_media_external_id": "game:5328",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid V: Ground Zeroes",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v88.jpg"
+    },
+    {
+      "media_external_id": "game:5328",
+      "related_media_external_id": "game:382",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid: Peace Walker",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coawb5.jpg"
+    },
+    {
+      "media_external_id": "game:5328",
+      "related_media_external_id": "game:1985",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid V: The Phantom Pain",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v85.jpg"
+    },
+    {
+      "media_external_id": "game:1985",
+      "related_media_external_id": "game:5328",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear Solid V: Ground Zeroes",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v88.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:134112": "GOGX",
+    "game:9685": "IEGO",
+    "game:47673": "IEGO",
+    "game:9693": "GOCS",
+    "game:47835": "IE2",
+    "game:47675": "IE3",
+    "game:47674": "IE3",
+    "game:62739": "GOGX",
+    "game:47676": "IE3",
+    "game:47716": "IE2",
+    "game:23220": "GOCS"
+  }
+}
