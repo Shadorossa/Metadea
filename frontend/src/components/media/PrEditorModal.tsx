@@ -282,6 +282,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   // either from the existing relation rows (which already join title/cover
   // from media_catalog) or from the live API search result the user picked.
   const [sagaMeta, setSagaMeta] = useState<Record<string, { title: string | null; cover: string | null }>>({});
+  const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, 'main' | 'alternative' | 'source' | 'episode' | 'update'>>({});
   const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
 
   // Every other relation type (ADAPTATION, SIDE_STORY, SPIN_OFF, ...) is kept
@@ -317,11 +318,18 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
     getMediaRelations(externalId)
       .then(rels => {
-        const bundled = (rels || []).filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type));
-        const prequels = (rels || []).filter(r => r.relation_type === 'PREQUEL');
-        const sequels = (rels || []).filter(r => r.relation_type === 'SEQUEL');
-        const others = (rels || []).filter(r =>
-          !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !SAGA_RELATION_TYPES.includes(r.relation_type)
+        const relsList = rels || [];
+        const bundled = relsList.filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type));
+        const prequels = relsList.filter(r => r.relation_type === 'PREQUEL');
+        const sequels = relsList.filter(r => r.relation_type === 'SEQUEL');
+
+        const chainTypes = ['ALTERNATIVE', 'SOURCE', 'EPISODE', 'UPDATE'];
+        const chainRels = relsList.filter(r => chainTypes.includes(r.relation_type));
+
+        const others = relsList.filter(r =>
+          !BUNDLE_RELATION_TYPES.includes(r.relation_type) &&
+          !SAGA_RELATION_TYPES.includes(r.relation_type) &&
+          !chainTypes.includes(r.relation_type)
         );
 
         const bundledMapped = bundled.map(r => ({
@@ -333,18 +341,28 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         setBundledRelations(bundledMapped);
         setOriginalBundledIds(new Set(bundledMapped.map(r => r.external_id)));
 
-        // Rebuild a starting chain from whatever prequel/sequel edges this
-        // entry already has: prequels before it, this entry, then sequels.
-        // Purely a starting point — the user can freely reorder/add/remove
-        // from here, it's not assumed to be the "correct" direction.
+        const initialRelationTypes: Record<string, 'main' | 'alternative' | 'source' | 'episode' | 'update'> = {};
+        const chainRelIds: string[] = [];
+        for (const r of chainRels) {
+          const type = r.relation_type.toLowerCase() as 'alternative' | 'source' | 'episode' | 'update';
+          initialRelationTypes[r.related_media_external_id] = type;
+          chainRelIds.push(r.related_media_external_id);
+        }
+        setSagaRelationTypes(initialRelationTypes);
+
         const prequelIds = prequels.map(r => r.related_media_external_id);
         const sequelIds = sequels.map(r => r.related_media_external_id);
-        const initialChain = [...prequelIds, externalId, ...sequelIds];
+        const initialChain = [
+          ...prequelIds,
+          externalId,
+          ...sequelIds,
+          ...chainRelIds.filter(id => !prequelIds.includes(id) && id !== externalId && !sequelIds.includes(id))
+        ];
         setSagaOrder(initialChain);
         setOriginalSagaOrder(initialChain);
 
         const meta: Record<string, { title: string | null; cover: string | null }> = {};
-        for (const r of [...prequels, ...sequels]) {
+        for (const r of [...prequels, ...sequels, ...chainRels]) {
           meta[r.related_media_external_id] = { title: r.title, cover: r.cover ?? null };
         }
         setSagaMeta(meta);
@@ -467,13 +485,16 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
     const originalSagaIds = new Set(originalSagaOrder);
     const addedSaga = sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id));
-    for (const id of addedSaga) lines.push(`- Added to Saga: ${formatWork(id)}`);
+    for (const id of addedSaga) {
+      const type = sagaRelationTypes[id] || 'main';
+      lines.push(`- Added to Saga: ${formatWork(id)} [type: ${type}]`);
+    }
     const removedSaga = originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id));
     for (const id of removedSaga) lines.push(`- Removed from Saga: ${formatWork(id)}`);
     if (addedSaga.length === 0 && removedSaga.length === 0 && sagaOrder.join(',') !== originalSagaOrder.join(',') && sagaOrder.length > 1) {
-      lines.push(`- Reordered Saga: ${sagaOrder.map(id => formatWork(id)).join(' → ')}`);
+      lines.push(`- Reordered Saga: ${sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ')}`);
     } else if (sagaOrder.length > 1) {
-      lines.push(`- Saga order: ${sagaOrder.map(id => formatWork(id)).join(' → ')}`);
+      lines.push(`- Saga order: ${sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ')}`);
     }
 
     if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
@@ -512,25 +533,131 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       const fullChain = sagaOrder;
       type TaggedRelation = DbMediaRelation & { media_external_id: string };
       const chainRelations: TaggedRelation[] = [];
-      for (let i = 0; i < fullChain.length - 1; i++) {
-        const before = fullChain[i];
-        const after = fullChain[i + 1];
-        chainRelations.push({
-          media_external_id: before,
-          related_media_external_id: after,
-          relation_type: 'SEQUEL',
-          type_label: 'Sequel',
-          title: getMeta(after).title || after,
-          cover: getMeta(after).cover,
-        });
-        chainRelations.push({
-          media_external_id: after,
-          related_media_external_id: before,
-          relation_type: 'PREQUEL',
-          type_label: 'Prequel',
-          title: getMeta(before).title || before,
-          cover: getMeta(before).cover,
-        });
+
+      interface InstallmentGroup {
+        mainId: string;
+        allIds: string[];
+      }
+      const groups: InstallmentGroup[] = [];
+      const nonGroupRelations: { id: string; mainId: string; type: 'source' | 'episode' | 'update' }[] = [];
+
+      for (const id of fullChain) {
+        const relType = sagaRelationTypes[id] || 'main';
+        if (relType === 'main' || groups.length === 0) {
+          groups.push({ mainId: id, allIds: [id] });
+        } else if (relType === 'alternative') {
+          groups[groups.length - 1].allIds.push(id);
+        } else {
+          const activeMainId = groups[groups.length - 1].mainId;
+          nonGroupRelations.push({ id, mainId: activeMainId, type: relType });
+        }
+      }
+
+      // 1. Generate Prequel/Sequel between adjacent groups
+      for (let g = 0; g < groups.length - 1; g++) {
+        const prevGroup = groups[g];
+        const nextGroup = groups[g + 1];
+        for (const prevId of prevGroup.allIds) {
+          for (const nextId of nextGroup.allIds) {
+            chainRelations.push({
+              media_external_id: prevId,
+              related_media_external_id: nextId,
+              relation_type: 'SEQUEL',
+              type_label: 'Sequel',
+              title: getMeta(nextId).title || nextId,
+              cover: getMeta(nextId).cover,
+            });
+            chainRelations.push({
+              media_external_id: nextId,
+              related_media_external_id: prevId,
+              relation_type: 'PREQUEL',
+              type_label: 'Prequel',
+              title: getMeta(prevId).title || prevId,
+              cover: getMeta(prevId).cover,
+            });
+          }
+        }
+      }
+
+      // 2. Generate Alternative relations within each group
+      for (const group of groups) {
+        const mainId = group.mainId;
+        for (const altId of group.allIds) {
+          if (altId !== mainId) {
+            chainRelations.push({
+              media_external_id: mainId,
+              related_media_external_id: altId,
+              relation_type: 'ALTERNATIVE',
+              type_label: 'Alternative Version',
+              title: getMeta(altId).title || altId,
+              cover: getMeta(altId).cover,
+            });
+            chainRelations.push({
+              media_external_id: altId,
+              related_media_external_id: mainId,
+              relation_type: 'ALTERNATIVE',
+              type_label: 'Alternative Version',
+              title: getMeta(mainId).title || mainId,
+              cover: getMeta(mainId).cover,
+            });
+          }
+        }
+      }
+
+      // 3. Generate Non-Group relations (source, episode, update)
+      for (const rel of nonGroupRelations) {
+        if (rel.type === 'source') {
+          chainRelations.push({
+            media_external_id: rel.mainId,
+            related_media_external_id: rel.id,
+            relation_type: 'SOURCE',
+            type_label: 'Source Material',
+            title: getMeta(rel.id).title || rel.id,
+            cover: getMeta(rel.id).cover,
+          });
+          chainRelations.push({
+            media_external_id: rel.id,
+            related_media_external_id: rel.mainId,
+            relation_type: 'ADAPTATION',
+            type_label: 'Adaptation',
+            title: getMeta(rel.mainId).title || rel.mainId,
+            cover: getMeta(rel.mainId).cover,
+          });
+        } else if (rel.type === 'episode') {
+          chainRelations.push({
+            media_external_id: rel.mainId,
+            related_media_external_id: rel.id,
+            relation_type: 'EPISODE',
+            type_label: 'Episode',
+            title: getMeta(rel.id).title || rel.id,
+            cover: getMeta(rel.id).cover,
+          });
+          chainRelations.push({
+            media_external_id: rel.id,
+            related_media_external_id: rel.mainId,
+            relation_type: 'PART_OF',
+            type_label: 'Part of',
+            title: getMeta(rel.mainId).title || rel.mainId,
+            cover: getMeta(rel.mainId).cover,
+          });
+        } else if (rel.type === 'update') {
+          chainRelations.push({
+            media_external_id: rel.mainId,
+            related_media_external_id: rel.id,
+            relation_type: 'UPDATE',
+            type_label: 'Update',
+            title: getMeta(rel.id).title || rel.id,
+            cover: getMeta(rel.id).cover,
+          });
+          chainRelations.push({
+            media_external_id: rel.id,
+            related_media_external_id: rel.mainId,
+            relation_type: 'PART_OF',
+            type_label: 'Part of',
+            title: getMeta(rel.mainId).title || rel.mainId,
+            cover: getMeta(rel.mainId).cover,
+          });
+        }
       }
 
       // Local SagaViewer cache (separate feature/table from media_relations
@@ -585,8 +712,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       for (const otherId of otherChainIds) {
         try {
           const existing = await getMediaRelations(otherId);
+          const chainTypes = ['PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'SOURCE', 'ADAPTATION', 'EPISODE', 'UPDATE', 'PART_OF'];
           const kept = (existing || []).filter(r =>
-            !(SAGA_RELATION_TYPES.includes(r.relation_type) && fullChain.includes(r.related_media_external_id))
+            !(chainTypes.includes(r.relation_type) && fullChain.includes(r.related_media_external_id))
           );
           const newRows = chainRelations.filter(r => r.media_external_id === otherId);
           await saveMediaRelations(otherId, [...kept, ...newRows]);
@@ -912,6 +1040,21 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                       <span className="pr-editor-media-card-title" title={id}>
                         {meta.title || id}{id === externalId ? ' (this entry)' : ''}
                       </span>
+                      <select
+                        className="pr-editor-media-card-select"
+                        value={sagaRelationTypes[id] || 'main'}
+                        onPointerDown={e => e.stopPropagation()}
+                        onChange={e => {
+                          const val = e.target.value as any;
+                          setSagaRelationTypes(prev => ({ ...prev, [id]: val }));
+                        }}
+                      >
+                        <option value="main">Main</option>
+                        <option value="alternative">Alternative</option>
+                        <option value="source">Source Material</option>
+                        <option value="episode">Episode</option>
+                        <option value="update">Update</option>
+                      </select>
                     </div>
                   );
                 })}
