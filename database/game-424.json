@@ -1,0 +1,195 @@
+{
+  "media_catalog": {
+    "id": "b0d215f94dcf84f7b0d215f94dcf84f7",
+    "external_id": "game:424",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Resident Evil",
+    "title_romaji": null,
+    "title_native": "生化危机",
+    "synopsis": "Resident Evil is a survival horror classic in which a group of special forces agents, known as S.T.A.R.S, struggle against hordes of zombies and various other mutants in a mysterious mansion as they try to uncover the truth behind the terrifying infection. The gameplay environment consists of polygonal 3D characters placed over pre-rendered 2D backgrounds. As such, the game relies on pre-determined camera angles for a view of the action instead of a real-time camera like most games. The game is credited for coining the phrase \"survival horror\" and popularizing the genre.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co20bp.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/sciaez.jpg",
+    "release_year": 1996,
+    "release_month": 3,
+    "release_day": 22,
+    "time_length": null,
+    "status": null,
+    "score_global": 7.8,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Puzzle,Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Capcom Planning Room 2,Virgin Interactive Entertainment,Capcom",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T19:33:01.369Z",
+    "updated_at": "2026-07-07T19:33:01.370975600+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:424",
+      "related_media_external_id": "game:20456",
+      "relation_type": "EXPANDED EDITION",
+      "type_label": "Expanded Edition",
+      "title": "Resident Evil: Deadly Silence",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co20cb.jpg"
+    },
+    {
+      "media_external_id": "game:424",
+      "related_media_external_id": "game:23377",
+      "relation_type": "EXPANDED EDITION",
+      "type_label": "Expanded Edition",
+      "title": "Resident Evil: Director's Cut",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2w3m.jpg"
+    },
+    {
+      "media_external_id": "game:424",
+      "related_media_external_id": "game:24869",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Resident Evil",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vz8.jpg"
+    },
+    {
+      "media_external_id": "game:424",
+      "related_media_external_id": "game:880",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vz0.jpg"
+    },
+    {
+      "media_external_id": "game:880",
+      "related_media_external_id": "game:424",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co20bp.jpg"
+    },
+    {
+      "media_external_id": "game:880",
+      "related_media_external_id": "game:966",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 3: Nemesis",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vvb.jpg"
+    },
+    {
+      "media_external_id": "game:966",
+      "related_media_external_id": "game:880",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vz0.jpg"
+    },
+    {
+      "media_external_id": "game:966",
+      "related_media_external_id": "game:974",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2wk8.jpg"
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:966",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 3: Nemesis",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vvb.jpg"
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:847",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 5",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtgs.jpg"
+    },
+    {
+      "media_external_id": "game:847",
+      "related_media_external_id": "game:974",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2wk8.jpg"
+    },
+    {
+      "media_external_id": "game:847",
+      "related_media_external_id": "game:1082",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 6",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobgod.jpg"
+    },
+    {
+      "media_external_id": "game:1082",
+      "related_media_external_id": "game:847",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 5",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtgs.jpg"
+    },
+    {
+      "media_external_id": "game:1082",
+      "related_media_external_id": "game:19562",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil 7: Biohazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtwh.jpg"
+    },
+    {
+      "media_external_id": "game:19562",
+      "related_media_external_id": "game:1082",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 6",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobgod.jpg"
+    },
+    {
+      "media_external_id": "game:19562",
+      "related_media_external_id": "game:55163",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil Village",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coab9q.jpg"
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:19562",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 7: Biohazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtwh.jpg"
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:347668",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil Requiem",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobmj0.jpg"
+    },
+    {
+      "media_external_id": "game:347668",
+      "related_media_external_id": "game:55163",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil Village",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coab9q.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Resident evil"
+}
