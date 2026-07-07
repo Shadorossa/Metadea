@@ -1094,9 +1094,54 @@ pub async fn igdb_get_game_detail(
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
 
-    if let Some(links) = build_store_links(&game["external_games"]) {
-        game["store_links"] = serde_json::Value::Array(links);
+    let mut store_links = build_store_links(&game["external_games"]);
+
+    // Some ports (e.g. a console release of a PC game) carry storefront
+    // links the base entry doesn't — if this game has none of its own,
+    // check its ports before giving up. Batched into one follow-up request
+    // rather than one per port.
+    if store_links.is_none() {
+        if let Some(port_ids) = game["ports"].as_array().map(|ports| {
+            ports.iter().filter_map(|p| p["id"].as_u64()).collect::<Vec<_>>()
+        }) {
+            if !port_ids.is_empty() {
+                let ids_csv = port_ids.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",");
+                let ports_query = format!(
+                    "fields id,external_games.category,external_games.url; where id = ({}); limit {};",
+                    ids_csv, port_ids.len()
+                );
+                if let Ok(port_results) = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &ports_query).await {
+                    if let Some(port_arr) = port_results.as_array() {
+                        let mut merged: Vec<serde_json::Value> = Vec::new();
+                        let mut seen_urls = std::collections::HashSet::new();
+                        for port in port_arr {
+                            if let Some(links) = build_store_links(&port["external_games"]) {
+                                for link in links {
+                                    if let Some(url) = link["url"].as_str() {
+                                        if seen_urls.insert(url.to_string()) {
+                                            merged.push(link);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if !merged.is_empty() {
+                            store_links = Some(merged);
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    // Explicitly null (not just an absent field) once both the game itself
+    // and its ports have been checked — lets the frontend persist "we looked,
+    // there really are none" to shop_links_csv instead of leaving it
+    // ambiguous with "never checked".
+    game["store_links"] = match store_links {
+        Some(links) => serde_json::Value::Array(links),
+        None => serde_json::Value::Null,
+    };
 
     // Related sub-games (remakes, dlcs, ...) are their own titles and can be
     // visual novels even when the current game isn't (or vice versa) — tag

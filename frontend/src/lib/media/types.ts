@@ -45,7 +45,9 @@ export interface MediaPageData {
   metaLines: string[];         // líneas del panel derecho (estudio, formato, etc.)
   dateBadge?: string;          // overlay sobre el banner con fechas
   developerBadge?: string;     // overlay sobre el banner con el desarrollador (juegos)
-  storeLinks?: { platform: string; url: string }[]; // links a tiendas (juegos)
+  // links a tiendas (juegos) — undefined: no aplica/no comprobado; null: se
+  // comprobó el juego y sus ports y no hay ninguno; array: los enlaces encontrados
+  storeLinks?: { platform: string; url: string }[] | null;
   description?: string;
   stats: MediaStat[];
   characters: MediaCharacter[];

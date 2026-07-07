@@ -298,7 +298,15 @@ export default function MediaPage({ i18n }: Props) {
       platforms_csv:         data.platforms?.join(',') || undefined,
       // "platform|url" pairs — IGDB store links (Steam, GOG, ...). Neither
       // token can contain a comma so a flat CSV join/split round-trips safely.
-      shop_links_csv:        data.storeLinks?.length ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',') : undefined,
+      // data.storeLinks is null once the backend has checked this game *and*
+      // its ports and found nothing — persisted as an explicit NULL rather
+      // than left untouched, so "confirmed no links" is distinguishable from
+      // "never checked" (undefined, non-game media types).
+      shop_links_csv:        data.storeLinks === null
+        ? null
+        : data.storeLinks?.length
+          ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
+          : undefined,
       companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
       // Names only, same convention as companies_cache_csv — this is a flat
       // display cache for the instant partial-load path (mapCatalogEntryToPartialData),

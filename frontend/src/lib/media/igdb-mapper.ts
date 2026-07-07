@@ -39,7 +39,7 @@ interface IgdbDetailGame {
   }[];
   platforms?: { id: number; name: string }[];
   alternative_names?: { name: string; comment?: string }[];
-  store_links?: { platform: string; url: string }[];
+  store_links?: { platform: string; url: string }[] | null;
   parent_game?: IgdbSubGame;
   version_parent?: IgdbSubGame;
 
@@ -74,8 +74,8 @@ const GAME_TYPE_FORMAT: Record<number, string> = {
   14: 'UPDATE',
 };
 
-function dedupeStoreLinks(links: { platform: string; url: string }[] | undefined) {
-  if (!links) return links;
+function dedupeStoreLinks(links: { platform: string; url: string }[] | null | undefined) {
+  if (!links) return links; // preserves null ("checked, none found") vs undefined ("not applicable")
   const seenPlatforms = new Set<string>();
   return links.filter(l => {
     if (!l.platform || !l.url) return false;
