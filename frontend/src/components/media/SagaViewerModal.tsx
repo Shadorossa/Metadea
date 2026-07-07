@@ -5,7 +5,7 @@ import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 
-import { getCachedSaga, saveCachedSaga } from '../../lib/tauri';
+import { getCachedSaga, saveCachedSaga, getSagaName } from '../../lib/tauri';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -18,6 +18,7 @@ type LoadState = 'loading' | 'done' | 'error';
 export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const t = i18n;
   const [entries, setEntries] = useState<SagaEntry[]>([]);
+  const [sagaTitle, setSagaTitle] = useState<string>('');
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [isClosing, setIsClosing] = useState(false);
 
@@ -40,6 +41,13 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
       if (cached && cached.length > 0) {
         setEntries(cached);
         setLoadState('done');
+        // Load custom saga name if available
+        try {
+          const customName = await getSagaName(externalId);
+          if (customName) setSagaTitle(customName);
+        } catch (err) {
+          console.warn('[Saga] Failed to load custom saga name:', err);
+        }
         return;
       }
 
@@ -77,6 +85,13 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
           setEntries(sagaList);
           setLoadState('done');
+          // Load custom saga name if available
+          try {
+            const customName = await getSagaName(externalId);
+            if (customName) setSagaTitle(customName);
+          } catch (err) {
+            console.warn('[Saga] Failed to load custom saga name:', err);
+          }
           return;
         }
       } catch (err) {
@@ -95,6 +110,13 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
         if (result.length > 0) {
           setEntries(result);
           setLoadState('done');
+          // Load custom saga name if available
+          try {
+            const customName = await getSagaName(externalId);
+            if (customName) setSagaTitle(customName);
+          } catch (err) {
+            console.warn('[Saga] Failed to load custom saga name:', err);
+          }
           saveCachedSaga(result).catch(err => {
             console.warn('[Saga] Failed to save to cache:', err);
           });
@@ -124,7 +146,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
         <div className="saga-strip-header">
           <span className="saga-strip-subtitle">{t.saga_title}</span>
           <span className="saga-strip-divider">·</span>
-          <span className="saga-strip-title">{firstEntry?.title}</span>
+          <span className="saga-strip-title">{sagaTitle || firstEntry?.title}</span>
         </div>
 
         <div className="saga-strip-body">

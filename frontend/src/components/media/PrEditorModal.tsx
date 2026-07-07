@@ -595,14 +595,21 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
       <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header">
-          <span className="pr-editor-title">Edit Collaborative Catalog Entry</span>
-          <span className="pr-editor-subtitle">ID: {externalId}</span>
+        <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+            <span className="pr-editor-title">Edit Collaborative Catalog Entry</span>
+            <span className="pr-editor-subtitle">ID: {externalId}</span>
+          </div>
+          {statusMsg && (
+            <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
+              <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span>{statusMsg}</span>
+            </div>
+          )}
         </div>
 
         <div className="pr-editor-body pr-editor-body--grid">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
-          {statusMsg && <div className="pr-editor-alert pr-editor-alert--status pr-editor-field--full">{statusMsg}</div>}
 
           {/* Left Column: Titles, Synopsis, Release, Progress */}
           <div className="pr-editor-col pr-editor-col--left">

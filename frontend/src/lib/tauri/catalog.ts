@@ -68,6 +68,10 @@ export async function saveCachedSaga(entries: SagaEntry[], sagaName = ''): Promi
   return tauriRun('save_cached_saga', { entries, sagaName });
 }
 
+export async function getSagaName(externalId: string): Promise<string> {
+  return tauriCmd<string>('get_saga_name', '', { externalId });
+}
+
 export interface DbMediaRelation {
   /** Owning media for this relation — only meaningful inside a collaborative-
    *  catalog PR bundle (a saga PR can carry relations for more than one
