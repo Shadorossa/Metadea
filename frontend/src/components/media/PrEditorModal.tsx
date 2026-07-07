@@ -503,6 +503,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
   if (!entry) return null;
 
+  const isFieldChanged = (field: keyof MediaCatalogEntry) => {
+    if (!originalEntry) return false;
+    const current = entry[field];
+    const original = originalEntry[field];
+    const normCurrent = current === '' || current === undefined ? null : current;
+    const normOriginal = original === '' || original === undefined ? null : original;
+    return normCurrent !== normOriginal;
+  };
+
   const resolveMeta = createMetaResolver(externalId, { title: entry.title_main ?? null, cover: entry.cover_url ?? null }, sagaMeta);
   const sagaGroupEntries = classifySagaChain(sagaOrder, sagaRelationTypes, sagaGroups);
 
@@ -514,116 +523,203 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           <span className="pr-editor-subtitle">ID: {externalId}</span>
         </div>
 
-        <div className="pr-editor-body">
-          {errorMsg && <div className="pr-editor-alert pr-editor-alert--error">{errorMsg}</div>}
-          {statusMsg && <div className="pr-editor-alert pr-editor-alert--status">{statusMsg}</div>}
+        <div className="pr-editor-body pr-editor-body--grid">
+          {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
+          {statusMsg && <div className="pr-editor-alert pr-editor-alert--status pr-editor-field--full">{statusMsg}</div>}
 
-          <div className="pr-editor-section">
-            <span className="pr-editor-section-title">Titles &amp; Synopsis</span>
-            <div className="pr-editor-form-grid">
-              <div className="pr-editor-field">
-                <label>Main Title</label>
-                <input type="text" value={entry.title_main || ''} onChange={e => handleChange('title_main', e.target.value)} />
-              </div>
-
-              <div className="pr-editor-field">
-                <label>Romaji Title</label>
-                <input type="text" value={entry.title_romaji || ''} onChange={e => handleChange('title_romaji', e.target.value)} />
-              </div>
-
-              <div className="pr-editor-field">
-                <label>Native Title</label>
-                <input type="text" value={entry.title_native || ''} onChange={e => handleChange('title_native', e.target.value)} />
-              </div>
-
-              <div className="pr-editor-field pr-editor-field--full">
-                <label>Synopsis / Description</label>
-                <textarea rows={4} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          <div className="pr-editor-section">
-            <span className="pr-editor-section-title">Images</span>
-            <div className="pr-editor-field-row">
-              <div className="pr-editor-field pr-editor-field--fixed">
-                <label>Cover URL</label>
-                <div className="pr-editor-cover-row">
-                  {entry.cover_url && (
-                    <img src={entry.cover_url} alt="" className="pr-editor-cover-preview" />
-                  )}
-                  <input type="text" value={entry.cover_url || ''} onChange={e => handleChange('cover_url', e.target.value)} />
+          {/* Left Column: Titles, Synopsis, Release, Progress */}
+          <div className="pr-editor-col pr-editor-col--left">
+            <div className="pr-editor-section">
+              <span className="pr-editor-section-title">
+                Titles &amp; Synopsis
+                {['title_main', 'title_romaji', 'title_native', 'synopsis'].some(f => isFieldChanged(f as any)) && (
+                  <span className="pr-editor-section-changed-dot" />
+                )}
+              </span>
+              <div className="pr-editor-form-grid">
+                <div className="pr-editor-field">
+                  <label>
+                    Main Title
+                    {isFieldChanged('title_main') && <span className="pr-editor-changed-dot" />}
+                  </label>
+                  <input type="text" value={entry.title_main || ''} onChange={e => handleChange('title_main', e.target.value)} />
                 </div>
-              </div>
 
-              <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview />
-            </div>
-          </div>
-
-          <div className="pr-editor-section">
-            <span className="pr-editor-section-title">Classification</span>
-            <div className="pr-editor-form-grid">
-              <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} allowedSuggestions={ALL_GENRES} restrictToSuggestions />
-              <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
-              <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} allowedSuggestions={ALL_PLATFORMS} restrictToSuggestions />
-              <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
-              <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
-            </div>
-          </div>
-
-          <div className="pr-editor-section">
-            <span className="pr-editor-section-title">Release &amp; Progress</span>
-            <div className="pr-editor-field-row">
-              <div className="pr-editor-subgroup">
-                <div className="pr-editor-subgroup-fields">
-                  <div className="pr-editor-field pr-editor-field--small">
-                    <label>Year</label>
-                    <input type="number" value={entry.release_year || ''} onChange={e => handleChange('release_year', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                  </div>
-                  <div className="pr-editor-field pr-editor-field--small">
-                    <label>Month</label>
-                    <input type="number" value={entry.release_month || ''} onChange={e => handleChange('release_month', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                  </div>
-                  <div className="pr-editor-field pr-editor-field--small">
-                    <label>Day</label>
-                    <input type="number" value={entry.release_day || ''} onChange={e => handleChange('release_day', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                  </div>
+                <div className="pr-editor-field">
+                  <label>
+                    Romaji Title
+                    {isFieldChanged('title_romaji') && <span className="pr-editor-changed-dot" />}
+                  </label>
+                  <input type="text" value={entry.title_romaji || ''} onChange={e => handleChange('title_romaji', e.target.value)} />
                 </div>
-              </div>
 
-              <div className="pr-editor-subgroup-divider" />
+                <div className="pr-editor-field">
+                  <label>
+                    Native Title
+                    {isFieldChanged('title_native') && <span className="pr-editor-changed-dot" />}
+                  </label>
+                  <input type="text" value={entry.title_native || ''} onChange={e => handleChange('title_native', e.target.value)} />
+                </div>
 
-              <div className="pr-editor-subgroup">
-                <div className="pr-editor-subgroup-fields">
-                  <div className="pr-editor-field pr-editor-field--small">
-                    <label>Episodes / Chapters</label>
-                    <input type="number" value={entry.total_count || ''} onChange={e => handleChange('total_count', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                  </div>
-                  <div className="pr-editor-field pr-editor-field--small">
-                    <label>Seasons / Volumes</label>
-                    <input type="number" value={entry.total_count_2 || ''} onChange={e => handleChange('total_count_2', e.target.value ? parseInt(e.target.value, 10) : null)} />
-                  </div>
+                <div className="pr-editor-field pr-editor-field--full">
+                  <label>
+                    Synopsis / Description
+                    {isFieldChanged('synopsis') && <span className="pr-editor-changed-dot" />}
+                  </label>
+                  <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
                 </div>
               </div>
             </div>
-          </div>
-          <div className="pr-editor-section pr-editor-section--row">
-            <div className="pr-editor-subsection pr-editor-subsection--saga">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
-                <label className="pr-editor-subsection-label">Saga Name</label>
-                <input
-                  type="text"
-                  placeholder="Saga Name (e.g. Inazuma Eleven)"
-                  value={sagaName}
-                  onChange={e => setSagaName(e.target.value)}
-                  className="pr-editor-media-card-group-input"
-                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
-                />
+
+            <div className="pr-editor-section">
+              <span className="pr-editor-section-title">
+                Release &amp; Progress
+                {['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'].some(f => isFieldChanged(f as any)) && (
+                  <span className="pr-editor-section-changed-dot" />
+                )}
+              </span>
+              <div className="pr-editor-field-row">
+                <div className="pr-editor-subgroup">
+                  <div className="pr-editor-subgroup-fields">
+                    <div className="pr-editor-field pr-editor-field--small">
+                      <label>
+                        Year
+                        {isFieldChanged('release_year') && <span className="pr-editor-changed-dot" />}
+                      </label>
+                      <input type="number" value={entry.release_year || ''} onChange={e => handleChange('release_year', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                    </div>
+                    <div className="pr-editor-field pr-editor-field--small">
+                      <label>
+                        Month
+                        {isFieldChanged('release_month') && <span className="pr-editor-changed-dot" />}
+                      </label>
+                      <input type="number" value={entry.release_month || ''} onChange={e => handleChange('release_month', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                    </div>
+                    <div className="pr-editor-field pr-editor-field--small">
+                      <label>
+                        Day
+                        {isFieldChanged('release_day') && <span className="pr-editor-changed-dot" />}
+                      </label>
+                      <input type="number" value={entry.release_day || ''} onChange={e => handleChange('release_day', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pr-editor-subgroup-divider" />
+
+                <div className="pr-editor-subgroup">
+                  <div className="pr-editor-subgroup-fields">
+                    <div className="pr-editor-field pr-editor-field--small">
+                      <label>
+                        Episodes / Chapters
+                        {isFieldChanged('total_count') && <span className="pr-editor-changed-dot" />}
+                      </label>
+                      <input type="number" value={entry.total_count || ''} onChange={e => handleChange('total_count', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                    </div>
+                    <div className="pr-editor-field pr-editor-field--small">
+                      <label>
+                        Seasons / Volumes
+                        {isFieldChanged('total_count_2') && <span className="pr-editor-changed-dot" />}
+                      </label>
+                      <input type="number" value={entry.total_count_2 || ''} onChange={e => handleChange('total_count_2', e.target.value ? parseInt(e.target.value, 10) : null)} />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <label className="pr-editor-subsection-label">Saga order</label>
-              <div className="pr-editor-media-groups">
-                {sagaGroupEntries.map(group => {
-                  const cardContent = group.ids.map(id => {
+            </div>
+          </div>
+
+          {/* Right Column: Media Assets, Classification, Saga, Collaborators */}
+          <div className="pr-editor-col pr-editor-col--right">
+            <div className="pr-editor-section">
+              <span className="pr-editor-section-title">
+                Media Assets
+                {['cover_url', 'banners_csv'].some(f => isFieldChanged(f as any)) && (
+                  <span className="pr-editor-section-changed-dot" />
+                )}
+              </span>
+              <div className="pr-editor-assets-box">
+                <div className="pr-editor-field pr-editor-cover-section">
+                  <label>
+                    Cover URL
+                    {isFieldChanged('cover_url') && <span className="pr-editor-changed-dot" />}
+                  </label>
+                  <div className="pr-editor-cover-uploader">
+                    <div className="pr-editor-cover-preview-card">
+                      {entry.cover_url ? (
+                        <img src={entry.cover_url} alt="" />
+                      ) : (
+                        <span className="pr-editor-cover-placeholder">No Cover</span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Paste cover image URL..."
+                      value={entry.cover_url || ''}
+                      onChange={e => handleChange('cover_url', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="pr-editor-field pr-editor-banner-section">
+                  <div style={{ position: 'relative' }}>
+                    <SlotInput label="Banner URLs" value={entry.banners_csv} onChange={v => handleChange('banners_csv', v)} preview fullWidth />
+                    {isFieldChanged('banners_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--banner" />}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pr-editor-section">
+              <span className="pr-editor-section-title">
+                Classification &amp; Metadata
+                {['genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'].some(f => isFieldChanged(f as any)) && (
+                  <span className="pr-editor-section-changed-dot" />
+                )}
+              </span>
+              <div className="pr-editor-classification-grid">
+                <div style={{ position: 'relative' }}>
+                  <SlotInput label="Genres" value={entry.genres_csv} onChange={v => handleChange('genres_csv', v)} allowedSuggestions={ALL_GENRES} restrictToSuggestions />
+                  {isFieldChanged('genres_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <SlotInput label="Themes / Tags" value={entry.genres_tag_csv} onChange={v => handleChange('genres_tag_csv', v)} />
+                  {isFieldChanged('genres_tag_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <SlotInput label="Platforms" value={entry.platforms_csv} onChange={v => handleChange('platforms_csv', v)} allowedSuggestions={ALL_PLATFORMS} restrictToSuggestions />
+                  {isFieldChanged('platforms_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <SlotInput label="Companies / Studios" value={entry.companies_cache_csv} onChange={v => handleChange('companies_cache_csv', v)} />
+                  {isFieldChanged('companies_cache_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <SlotInput label="Authors / Staff" value={entry.authors_csv} onChange={v => handleChange('authors_csv', v)} />
+                  {isFieldChanged('authors_csv') && <span className="pr-editor-changed-dot pr-editor-changed-dot--slot" />}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 3: Saga & Bundled */}
+          <div className="pr-editor-col pr-editor-col--saga">
+            <div className="pr-editor-section pr-editor-section--row">
+              <div className="pr-editor-subsection pr-editor-subsection--saga">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
+                  <label className="pr-editor-subsection-label">Saga Name</label>
+                  <input
+                    type="text"
+                    placeholder="Saga Name (e.g. Inazuma Eleven)"
+                    value={sagaName}
+                    onChange={e => setSagaName(e.target.value)}
+                    className="pr-editor-media-card-group-input"
+                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
+                  />
+                </div>
+                <label className="pr-editor-subsection-label">Saga order</label>
+                <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
+                  {sagaOrder.map(id => {
                     const meta = resolveMeta(id);
                     const index = sagaOrder.indexOf(id);
                     const relType = sagaRelationTypes[id] || 'main';
@@ -644,82 +740,80 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                               className="pr-editor-media-card-remove"
                               onPointerDown={e => e.stopPropagation()}
                               onClick={() => removeFromSaga(id)}
-                            >×</button>
+                            >
+                              ×
+                            </button>
                           )}
                         </div>
-                        <span className="pr-editor-media-card-title" title={id}>
-                          {meta.title || id}{id === externalId ? ' (this entry)' : ''}
-                        </span>
+                        <div className="pr-editor-media-card-title" title={meta.title || id}>
+                          {meta.title || id}
+                        </div>
                         <select
-                          className="pr-editor-media-card-select"
                           value={relType}
-                          onPointerDown={e => e.stopPropagation()}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (isSagaRelationType(val)) setSagaRelationTypes(prev => ({ ...prev, [id]: val }));
-                          }}
+                          onChange={e => updateSagaRelationType(id, e.target.value as SagaRelationType)}
+                          className="pr-editor-media-card-select"
                         >
                           {SAGA_RELATION_TYPE_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
                           ))}
                         </select>
-                        {(relType === 'main' || relType === 'alternative') && (
-                          <input
-                            type="text"
-                            className="pr-editor-media-card-group-input"
-                            placeholder="Concept Group"
-                            value={sagaGroups[id] || ''}
-                            onPointerDown={e => e.stopPropagation()}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setSagaGroups(prev => ({ ...prev, [id]: val }));
-                            }}
-                          />
-                        )}
+                        <input
+                          type="text"
+                          placeholder="Concept Group..."
+                          value={sagaGroups[id] || ''}
+                          onChange={e => updateSagaGroup(id, e.target.value)}
+                          className="pr-editor-media-card-group-input"
+                        />
                       </div>
                     );
-                  });
-
-                  if (group.ids.length > 1) {
-                    return (
-                      <div key={group.mainId} className="pr-editor-media-group-container">
-                        <span className="pr-editor-media-group-title">Group Concept: {sagaGroups[group.mainId]?.trim() || resolveMeta(group.mainId).title || group.mainId}</span>
-                        <div className="pr-editor-media-group-cards">{cardContent}</div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={group.mainId} className="pr-editor-media-single-card-wrap">{cardContent}</div>
-                  );
-                })}
+                  })}
+                </div>
+                <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
               </div>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
-            </div>
 
-            <div className="pr-editor-subsection">
-              <label className="pr-editor-subsection-label">Bundled In</label>
-              <div className="pr-editor-media-grid">
-                {bundledRelations.map((r, i) => (
-                  <div key={i} className="pr-editor-media-card">
-                    <div className="pr-editor-media-card-cover">
-                      {r.cover
-                        ? <img src={r.cover} alt="" draggable={false} />
-                        : <div className="pr-editor-media-card-placeholder" />}
-                      <button type="button" className="pr-editor-media-card-remove" onClick={() => removeBundledRelation(i)}>×</button>
+              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
+
+              <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '220px', flexShrink: 0 }}>
+                <label className="pr-editor-subsection-label">Bundled In</label>
+                <div className="pr-editor-bundled-list">
+                  {bundledRelations.map((r, i) => (
+                    <div key={i} className="pr-editor-bundled-row">
+                      <div className="pr-editor-bundled-card">
+                        <div className="pr-editor-bundled-card-cover">
+                          {r.cover ? (
+                            <img src={r.cover} alt="" />
+                          ) : (
+                            <div className="pr-editor-bundled-card-placeholder" />
+                          )}
+                          <button
+                            type="button"
+                            className="pr-editor-bundled-card-remove"
+                            onClick={() => removeBundledRelation(r.external_id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="pr-editor-bundled-card-info">
+                          <span className="pr-editor-bundled-card-title" title={r.title || r.external_id}>
+                            {r.title || r.external_id}
+                          </span>
+                        </div>
+                      </div>
+                      <select
+                        value={r.type}
+                        onChange={e => updateBundledRelationType(r.external_id, e.target.value as 'episode' | 'update')}
+                        className="pr-editor-bundled-select"
+                      >
+                        <option value="episode">Episode</option>
+                        <option value="update">Update</option>
+                      </select>
                     </div>
-                    <span className="pr-editor-media-card-title" title={r.external_id}>{r.title || r.external_id}</span>
-                    <select
-                      value={r.type}
-                      onChange={e => updateBundledRelation(i, { type: e.target.value as BundledRelation['type'] })}
-                      className="pr-editor-media-card-select"
-                    >
-                      <option value="episode">Episode</option>
-                      <option value="update">Update</option>
-                    </select>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
               </div>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
             </div>
           </div>
         </div>
