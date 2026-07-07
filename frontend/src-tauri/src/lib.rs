@@ -33,6 +33,12 @@ pub fn run() {
             let metadea_db = db::MetadeaDb::open(&data_dir.join("metadea.db"))
                 .expect("failed to open metadea.db");
             db::seed_fav_lists(&metadea_db);
+
+            // Sync/import the local JSON proposals on startup so metadea.db reflects all database/*.json files.
+            if let Err(e) = media_catalog::sync_local_proposals(&metadea_db) {
+                eprintln!("Failed to sync local proposals: {}", e);
+            }
+
             app.manage(metadea_db);
             let discord = discord::DiscordState::new();
             discord.start_background();

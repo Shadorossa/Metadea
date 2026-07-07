@@ -801,3 +801,274 @@ pub async fn sync_community_catalog(
 
     imported
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProposalRelation {
+    pub media_external_id: Option<String>,
+    pub related_media_external_id: String,
+    pub relation_type: String,
+    pub type_label: String,
+    pub title: String,
+    pub cover: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProposalBundle {
+    pub media_catalog: MediaCatalogEntry,
+    pub media_relations: Vec<ProposalRelation>,
+    pub characters: Vec<crate::characters::SkeletonCharacter>,
+    pub media_authors: Vec<DbMediaAuthor>,
+}
+
+pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
+    let db_path = std::env::current_dir().unwrap_or_default();
+    let mut database_dir = db_path.join("database");
+    if !database_dir.exists() {
+        if let Some(parent) = std::env::current_dir().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())) {
+            database_dir = parent.join("database");
+        }
+    }
+
+    if !database_dir.exists() {
+        return Ok(());
+    }
+
+    let entries = std::fs::read_dir(database_dir).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(bundle) = serde_json::from_str::<ProposalBundle>(&content) {
+                    let _ = import_proposal_bundle(db, bundle);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle) -> Result<(), String> {
+    let mut conn = db.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    let now = Utc::now().to_rfc3339();
+
+    // 1. Save media_catalog
+    let entry = bundle.media_catalog;
+    let exists_val: i64 = tx
+        .query_row(
+            "SELECT COUNT(*) FROM media_catalog WHERE external_id = ?1",
+            [&entry.external_id],
+            |row| row.get(0),
+        )
+        .str_err()?;
+
+    if exists_val == 0 {
+        tx.execute(
+            "INSERT INTO media_catalog (
+                id, external_id, parent_id, type, format, source, title_main, title_romaji, title_native,
+                synopsis, cover_url, banners_csv, release_year, release_month, release_day, time_length,
+                status, score_global, favorites_count, ratings_count, total_count, total_count_2,
+                genres_csv, genres_tag_csv, platforms_csv, companies_cache_csv, authors_csv, created_at, updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29)",
+            rusqlite::params![
+                crate::db::generate_id(),
+                &entry.external_id,
+                &entry.parent_id,
+                &entry.r#type,
+                &entry.format,
+                &entry.source,
+                &entry.title_main,
+                &entry.title_romaji,
+                &entry.title_native,
+                &entry.synopsis,
+                &entry.cover_url,
+                &entry.banners_csv,
+                &entry.release_year,
+                &entry.release_month,
+                &entry.release_day,
+                &entry.time_length,
+                &entry.status,
+                &entry.score_global,
+                &entry.favorites_count,
+                &entry.ratings_count,
+                &entry.total_count,
+                &entry.total_count_2,
+                &entry.genres_csv,
+                &entry.genres_tag_csv,
+                &entry.platforms_csv,
+                &entry.companies_cache_csv,
+                &entry.authors_csv,
+                &entry.created_at,
+                &entry.updated_at,
+            ],
+        )
+        .str_err()?;
+    } else {
+        tx.execute(
+            "UPDATE media_catalog SET
+                parent_id = ?1, type = ?2, format = ?3, source = ?4, title_main = ?5, title_romaji = ?6, title_native = ?7,
+                synopsis = ?8, cover_url = ?9, banners_csv = ?10, release_year = ?11, release_month = ?12, release_day = ?13, time_length = ?14,
+                status = ?15, score_global = ?16, favorites_count = ?17, ratings_count = ?18, total_count = ?19, total_count_2 = ?20,
+                genres_csv = ?21, genres_tag_csv = ?22, platforms_csv = ?23, companies_cache_csv = ?24, authors_csv = ?25, updated_at = ?26
+             WHERE external_id = ?27",
+            rusqlite::params![
+                &entry.parent_id,
+                &entry.r#type,
+                &entry.format,
+                &entry.source,
+                &entry.title_main,
+                &entry.title_romaji,
+                &entry.title_native,
+                &entry.synopsis,
+                &entry.cover_url,
+                &entry.banners_csv,
+                &entry.release_year,
+                &entry.release_month,
+                &entry.release_day,
+                &entry.time_length,
+                &entry.status,
+                &entry.score_global,
+                &entry.favorites_count,
+                &entry.ratings_count,
+                &entry.total_count,
+                &entry.total_count_2,
+                &entry.genres_csv,
+                &entry.genres_tag_csv,
+                &entry.platforms_csv,
+                &entry.companies_cache_csv,
+                &entry.authors_csv,
+                &entry.updated_at,
+                &entry.external_id,
+            ],
+        )
+        .str_err()?;
+    }
+
+    // 2. Save media_relations
+    tx.execute(
+        "DELETE FROM media_relations WHERE media_external_id = ?1",
+        [&entry.external_id],
+    )
+    .str_err()?;
+
+    for rel in &bundle.media_relations {
+        let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);
+        tx.execute(
+            "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                parent_id,
+                &rel.related_media_external_id,
+                &rel.relation_type,
+                &rel.type_label,
+            ],
+        )
+        .str_err()?;
+
+        let rel_exists: i64 = tx
+            .query_row(
+                "SELECT COUNT(*) FROM media_catalog WHERE external_id = ?1",
+                [&rel.related_media_external_id],
+                |row| row.get(0),
+            )
+            .str_err()?;
+
+        if rel_exists == 0 {
+            let rel_type = rel.related_media_external_id
+                .split_once(':')
+                .map(|(prefix, _)| prefix)
+                .unwrap_or("anime")
+                .to_string();
+
+            tx.execute(
+                "INSERT INTO media_catalog (
+                    id, external_id, type, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                rusqlite::params![
+                    crate::db::generate_id(),
+                    &rel.related_media_external_id,
+                    &rel_type,
+                    &rel.title,
+                    &rel.cover,
+                    &now,
+                    &now,
+                ],
+            )
+            .str_err()?;
+        }
+    }
+
+    // 3. Save characters
+    tx.execute(
+        "DELETE FROM character_appearances WHERE media_external_id = ?1",
+        [&entry.external_id],
+    )
+    .str_err()?;
+
+    for char in &bundle.characters {
+        tx.execute(
+            "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                crate::db::generate_id(),
+                &char.external_id,
+                &char.name,
+                &char.image_url,
+                &now,
+                &now,
+            ],
+        )
+        .str_err()?;
+
+        tx.execute(
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
+             VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                &char.external_id,
+                &entry.external_id,
+                &char.relation_type,
+                &now,
+            ],
+        )
+        .str_err()?;
+    }
+
+    // 4. Save authors
+    tx.execute(
+        "DELETE FROM media_by_author WHERE media_external_id = ?1",
+        [&entry.external_id],
+    )
+    .str_err()?;
+
+    for auth in &bundle.media_authors {
+        tx.execute(
+            "INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![
+                &auth.external_id,
+                &auth.name,
+                &auth.image,
+                &auth.url,
+                &now,
+            ],
+        )
+        .str_err()?;
+
+        tx.execute(
+            "INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role)
+             VALUES (?1, ?2, ?3)",
+            rusqlite::params![
+                &entry.external_id,
+                &auth.external_id,
+                &auth.role,
+            ],
+        )
+        .str_err()?;
+    }
+
+    tx.commit().str_err()?;
+    Ok(())
+}
