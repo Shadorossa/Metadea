@@ -260,7 +260,19 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     ]);
 
     if (finalRels && finalRels.length > 0) {
-      data.relations = finalRels.map(r => ({
+      const relationOrder: Record<string, number> = {
+        'PREQUEL': 1,
+        'SEQUEL': 2,
+        'ALTERNATIVE': 3
+      };
+      const sortedRels = [...finalRels].sort((a, b) => {
+        const priorityA = relationOrder[a.relation_type] ?? 4;
+        const priorityB = relationOrder[b.relation_type] ?? 4;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return a.title.localeCompare(b.title);
+      });
+
+      data.relations = sortedRels.map(r => ({
         typeLabel: r.type_label,
         title: r.title,
         cover: r.cover || undefined,
@@ -324,7 +336,19 @@ export function fetchMediaDataWithFallback(
           ]);
 
           if (dbRels && dbRels.length > 0) {
-            localData.relations = dbRels.map(r => ({
+            const relationOrder: Record<string, number> = {
+              'PREQUEL': 1,
+              'SEQUEL': 2,
+              'ALTERNATIVE': 3
+            };
+            const sortedRels = [...dbRels].sort((a, b) => {
+              const priorityA = relationOrder[a.relation_type] ?? 4;
+              const priorityB = relationOrder[b.relation_type] ?? 4;
+              if (priorityA !== priorityB) return priorityA - priorityB;
+              return a.title.localeCompare(b.title);
+            });
+
+            localData.relations = sortedRels.map(r => ({
               typeLabel: r.type_label,
               title: r.title,
               cover: r.cover || undefined,
