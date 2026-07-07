@@ -594,7 +594,10 @@ export default function MediaPage({ i18n }: Props) {
         <div className="media-col-synopsis">
           {data.description && (
             <>
-              <p className="section-label">{tm.section_synopsis}</p>
+              <div className="media-section-header-row">
+                <p className="section-label">{tm.section_synopsis}</p>
+                <div className="media-section-header-line" />
+              </div>
               <div
                 className="media-description-text"
                 dangerouslySetInnerHTML={{ __html: data.description }}
@@ -607,7 +610,47 @@ export default function MediaPage({ i18n }: Props) {
         <div className="media-col-related">
           {data.relations.length > 0 && (
             <>
-              <p className="section-label">{tm.section_related}</p>
+              <div className="media-section-header-row">
+                <p className="section-label">{tm.section_related}</p>
+                <div className="media-section-header-line" />
+                {data.storeLinks && data.storeLinks.length > 0 && (
+                  <div className="media-store-links-inline">
+                    {data.storeLinks.map((link) => {
+                      const platformLower = link.platform.toLowerCase();
+                      const logoMap: Record<string, string> = {
+                        'steam': 'steam_logo.png',
+                        'epic': 'epic_logo.png',
+                        'gog': 'gog_logo.png',
+                        'playstation': 'playstation_logo.png',
+                        'xbox': 'xbox_logo.png',
+                        'nintendo': 'nintendo_logo.png',
+                        'ea': 'EA_logo.png'
+                      };
+                      const logoFile = logoMap[platformLower] || 'steam_logo.png';
+                      const logoUrl = `/platforms/${logoFile}`;
+
+                      return (
+                        <button
+                          key={link.platform}
+                          type="button"
+                          className="media-store-link"
+                          title={link.platform}
+                          onClick={() => {
+                            const tauri = window.__TAURI__;
+                            if (tauri?.opener?.openUrl) {
+                              tauri.opener.openUrl(link.url);
+                            } else {
+                              window.open(link.url, '_blank');
+                            }
+                          }}
+                        >
+                          <img src={logoUrl} alt={link.platform} className="media-store-icon" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <div className="media-relations-grid">
                 {data.relations
                   .slice((relationPage - 1) * 12, relationPage * 12)
@@ -648,48 +691,14 @@ export default function MediaPage({ i18n }: Props) {
         </div>
 
         {/* Datos */}
-        {(data.stats.length > 0 || (data.storeLinks && data.storeLinks.length > 0)) && (
+        {(data.stats.length > 0 || (data.authors && data.authors.length > 0)) && (
           <div className="media-col-stats">
-            {data.storeLinks && data.storeLinks.length > 0 && (
-              <div className="media-store-links">
-                {data.storeLinks.map((link, i) => {
-                  const platformLower = link.platform.toLowerCase();
-                  const logoMap: Record<string, string> = {
-                    'steam': 'steam_logo.png',
-                    'epic': 'epic_logo.png',
-                    'gog': 'gog_logo.png',
-                    'playstation': 'playstation_logo.png',
-                    'xbox': 'xbox_logo.png',
-                    'nintendo': 'nintendo_logo.png',
-                    'ea': 'EA_logo.png'
-                  };
-                  const logoFile = logoMap[platformLower] || 'steam_logo.png';
-                  const logoUrl = `/platforms/${logoFile}`;
-
-                  return (
-                    <button
-                      key={link.platform}
-                      type="button"
-                      className="media-store-link"
-                      title={link.platform}
-                      onClick={() => {
-                        const tauri = window.__TAURI__;
-                        if (tauri?.opener?.openUrl) {
-                          tauri.opener.openUrl(link.url);
-                        } else {
-                          window.open(link.url, '_blank');
-                        }
-                      }}
-                    >
-                      <img src={logoUrl} alt={link.platform} className="media-store-icon" />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
             {(data.stats.length > 0 || (data.authors && data.authors.length > 0)) && (
               <>
-                <p className="section-label">{tm.section_data}</p>
+                <div className="media-section-header-row">
+                  <p className="section-label">{tm.section_data}</p>
+                  <div className="media-section-header-line" />
+                </div>
 
                 {data.authors && data.authors.length > 0 && (
                   <div className="media-authors-box">
@@ -761,7 +770,10 @@ export default function MediaPage({ i18n }: Props) {
       {/* Personajes */}
       {data.characters.length > 0 && (
         <div className="media-chars-section">
-          <p className="section-label">{tm.section_characters}</p>
+          <div className="media-section-header-row">
+            <p className="section-label">{tm.section_characters}</p>
+            <div className="media-section-header-line" />
+          </div>
           <div className="media-chars-grid">
             {data.characters.slice(0, displayedCharacters).map((c, i) => (
               <div key={i} className="media-char-card">
