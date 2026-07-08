@@ -12,23 +12,39 @@ import '../../styles/pages/login.css';
 
     <script>
       import { storeAuthToken } from '../../lib/tauri';
+      import { API_URL } from '../../lib/config';
 
-      const params   = new URLSearchParams(window.location.search);
-      const token    = params.get('token');
-      const username = params.get('username') ?? '';
-      const error    = params.get('error');
+      const params = new URLSearchParams(window.location.search);
+      const code   = params.get('code');
+      const error  = params.get('error');
 
       const status = document.getElementById('status')!;
+
+      // The redirect only ever carries a one-time exchange code, never the
+      // session JWT itself (see backend/src/routes/auth.ts's
+      // exchangeAuthCode) — the actual token only appears in this POST's
+      // JSON response, never in a URL that could end up in browser history,
+      // server logs, or a Referer header.
+      async function redeemCode() {
+        const res = await fetch(`${API_URL}/api/auth/exchange`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || 'Exchange failed');
+        return res.json();
+      }
 
       if (error) {
         status.textContent = `Error: ${decodeURIComponent(error)}`;
         setTimeout(() => { window.location.replace('/login'); }, 2000);
-      } else if (token) {
-        storeAuthToken(decodeURIComponent(token), username)
+      } else if (code) {
+        redeemCode()
+          .then(({ token, username }) => storeAuthToken(token, username ?? ''))
           .then(() => { window.location.replace('/home'); })
           .catch((err) => {
             status.textContent = `Error guardando sesión: ${err?.message ?? String(err)}`;
-            console.error('[callback] storeAuthToken failed:', err);
+            console.error('[callback] auth exchange failed:', err);
             setTimeout(() => { window.location.replace('/login'); }, 3000);
           });
       } else {

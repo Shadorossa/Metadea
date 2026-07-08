@@ -11,9 +11,12 @@ export interface CloudflareEnv {
   APP_URL:              string;
 }
 
+// userId is deliberately not part of this request body — it's derived from
+// the verified JWT (see middleware/auth.ts's requireAuth), never trusted from
+// the client, so a caller can't read/overwrite another user's library by
+// guessing their id.
 export interface LibrarySyncRequest {
-  userId: string;
-  items:  LibraryItemInput[];
+  items: LibraryItemInput[];
 }
 
 export interface LibraryItemInput {

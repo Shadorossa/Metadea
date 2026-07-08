@@ -2,7 +2,7 @@ import { Router } from "itty-router";
 import { handleCors, jsonResponse } from "./middleware/cors";
 import { syncLibrary } from "./routes/library";
 import { searchGamesRoute } from "./routes/search";
-import { googleAuthRedirect, googleAuthCallback, getMe } from "./routes/auth";
+import { googleAuthRedirect, googleAuthCallback, exchangeAuthCode, getMe } from "./routes/auth";
 import type { CloudflareEnv } from "./types";
 
 const router = Router<{ Bindings: CloudflareEnv }>();
@@ -16,6 +16,7 @@ router.get("/api/health", () =>
 // Auth
 router.get("/api/auth/google",          (req, env) => googleAuthRedirect(req, env as CloudflareEnv));
 router.get("/api/auth/google/callback", (req, env) => googleAuthCallback(req, env as CloudflareEnv));
+router.post("/api/auth/exchange",       (req, env) => exchangeAuthCode(req, env as CloudflareEnv));
 router.get("/api/auth/me",              (req, env) => getMe(req, env as CloudflareEnv));
 
 // Search
