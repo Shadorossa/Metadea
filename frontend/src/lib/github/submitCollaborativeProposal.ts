@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
 import type { MediaCharacter } from '../tauri/characters';
+import type { GitHubUserProfile } from '../settings/github';
 
 const REPO_OWNER = 'Shadorossa';
 const REPO_NAME = 'Metadea';
@@ -34,7 +35,7 @@ export async function submitCollaborativeProposal(
   }
 
   onStatus('Fetching GitHub profile...');
-  const user = await invoke<any>('get_github_user_profile', { token });
+  const user = await invoke<GitHubUserProfile>('get_github_user_profile', { token });
   const username = user.login;
 
   const jsonContent = JSON.stringify(bundle, null, 2);
@@ -159,7 +160,7 @@ export async function submitCollaborativeProposal(
 }
 
 export function openUrlInBrowser(url: string): void {
-  const tauri = (window as any).__TAURI__;
+  const tauri = window.__TAURI__;
   if (tauri?.opener?.openUrl) {
     tauri.opener.openUrl(url);
   } else {

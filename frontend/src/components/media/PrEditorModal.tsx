@@ -612,9 +612,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       setTimeout(() => onClose(), 1500);
 
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || 'Error communicating with GitHub API');
+      setErrorMsg(err instanceof Error ? err.message : 'Error communicating with GitHub API');
     } finally {
       setSubmitting(false);
     }

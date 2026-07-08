@@ -4,7 +4,7 @@ import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame } from './igdb-mapper';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
@@ -430,7 +430,7 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   if (!graphNodes.length) return null;
 
   const gameType = currentData.format === 'EXPANDED_GAME' ? 10 : undefined;
-  const merged = mergeRelationGraph(currentData, graphNodes as any, gameType);
+  const merged = mergeRelationGraph(currentData, graphNodes as RelationGraphNode[], gameType);
   if (merged.relations.length === currentData.relations.length) return null; // nothing new
 
   patchCachedRelations(rawId, merged.relations);

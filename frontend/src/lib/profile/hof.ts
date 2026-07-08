@@ -1,6 +1,6 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
-import type { getAllLibraryEntries } from '../tauri';
+import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
 import { buildStarHtml } from '../media/rating-utils';
 import { ICON_CROWN, ICON_PERSON } from '../shared/icon-strings';
 
@@ -22,10 +22,10 @@ function getRatingHtml(rating: number | null | undefined): string {
   return buildStarHtml(rating ?? 0, 'hof-card-rating', 'display:flex;gap:2px;align-items:center;color:currentColor;');
 }
 
-export function buildHofHtml(items: Items, catalogMap: Map<string, any>, p: P): string {
-  const top10 = [...items].slice(0, 10);
+export function buildHofHtml(items: Items, catalogMap: Map<string, MediaCatalogEntry>, p: P): string {
+  const top10: (Items[number] | null)[] = [...items].slice(0, 10);
 
-  while (top10.length < 10) top10.push(null as any);
+  while (top10.length < 10) top10.push(null);
 
   const workCards = top10.map((item, i) => {
     if (!item) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;

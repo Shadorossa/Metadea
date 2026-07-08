@@ -16,7 +16,7 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
     throw new Error('Tauri not available');
   }
   const tauri = window.__TAURI__;
-  if (tauri?.core?.invoke) return tauri.core.invoke(cmd, args);
+  if (tauri?.core?.invoke) return tauri.core.invoke<T>(cmd, args);
   const { invoke: tauriInvoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
   return tauriInvoke<T>(cmd, args);
 }

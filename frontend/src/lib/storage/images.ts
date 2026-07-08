@@ -13,7 +13,7 @@ const isTauri = () =>
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const tauri = window.__TAURI__;
   if (tauri?.core?.invoke) {
-    return tauri.core.invoke(cmd, args);
+    return tauri.core.invoke<T>(cmd, args);
   }
   const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
   return invoke<T>(cmd, args);

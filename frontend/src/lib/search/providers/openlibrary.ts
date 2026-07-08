@@ -129,25 +129,37 @@ export async function searchComics(searchQuery: string, signal: AbortSignal): Pr
   return docs.filter(isComicBook).map(b => mapBook(b, 'comic'));
 }
 
+interface OpenLibWorkEntry {
+  title: string;
+  key: string;
+  covers?: number[];
+}
+
+// Raw shape of GET /authors/{key}.json — everything OpenLibAuthorDetail
+// carries except `works`, which comes from the separate works.json request.
+interface OpenLibAuthorDetailRaw {
+  name: string;
+  birth_date?: string;
+  death_date?: string;
+  bio?: string | { type: string; value: string };
+  photos?: number[];
+}
+
 export interface OpenLibAuthorDetail {
   name: string;
   birth_date?: string;
   death_date?: string;
   bio?: string | { type: string; value: string };
   photos?: number[];
-  works: {
-    title: string;
-    key: string;
-    covers?: number[];
-  }[];
+  works: OpenLibWorkEntry[];
 }
 
 export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<OpenLibAuthorDetail | null> {
   // The works list doesn't depend on the author detail response — fetch both
   // at once instead of awaiting them one after another.
   const [detail, worksRes] = await Promise.all([
-    fetchJson<any>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`),
-    fetchJson<{ entries?: any[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`),
+    fetchJson<OpenLibAuthorDetailRaw>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`),
+    fetchJson<{ entries?: OpenLibWorkEntry[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`),
   ]);
   if (!detail) return null;
   const works = (worksRes?.entries || []).map(entry => ({

@@ -238,7 +238,7 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
 // a remaster, still surfaces here even though it's 2-3 hops away from the
 // game currently being viewed, not a direct IGDB relation.
 
-interface RelationGraphNode {
+export interface RelationGraphNode {
   id: number;
   name: string;
   cover?: { image_id: string };

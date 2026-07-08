@@ -6,6 +6,7 @@ import { IconX } from '../local/ui/icons';
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 
 import { getCachedSaga, saveCachedSaga, getSagaName } from '../../lib/tauri';
+import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -64,7 +65,9 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
               return { id, entry: c };
             })
           );
-          const validEntries = entriesData.filter(x => x.entry !== null) as { id: string; entry: any }[];
+          const validEntries = entriesData.filter(
+            (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
+          );
           
           // Sort chronologically
           validEntries.sort((a, b) => compareByReleaseDate(

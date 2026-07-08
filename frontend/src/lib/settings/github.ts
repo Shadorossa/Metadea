@@ -7,6 +7,23 @@ import { byId } from '../shared/dom';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 
+export interface GitHubUserProfile {
+  login: string;
+  avatar_url?: string;
+}
+
+interface GitHubDeviceCodeResponse {
+  device_code: string;
+  user_code: string;
+  interval?: number;
+}
+
+interface GitHubDeviceTokenResponse {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+}
+
 export function initGitHubAuth() {
   const t = getT().settings;
   const githubLoginBtn = byId<HTMLButtonElement>('github-login-btn');
@@ -17,10 +34,10 @@ export function initGitHubAuth() {
   const githubCancelDeviceBtn = document.getElementById('github-cancel-device-btn');
 
   const GITHUB_CLIENT_ID = 'Ov23liifxqfIDxkzVfH3'; // Shadorossa's Client ID for Metadea
-  let pollInterval: any = null;
+  let pollInterval: ReturnType<typeof setTimeout> | null = null;
 
   async function fetchGitHubUser(token: string) {
-    return invoke<any>('get_github_user_profile', { token });
+    return invoke<GitHubUserProfile>('get_github_user_profile', { token });
   }
 
   const statusEls = { loginBtn: githubLoginBtn, statusEl: githubUserStatus, avatarEl: githubAvatarContainer };
@@ -69,7 +86,7 @@ export function initGitHubAuth() {
       setAuthButtonBusy(githubLoginBtn, t.github_starting);
 
       try {
-        const data = await invoke<any>('request_github_device_code', { clientId: GITHUB_CLIENT_ID });
+        const data = await invoke<GitHubDeviceCodeResponse>('request_github_device_code', { clientId: GITHUB_CLIENT_ID });
 
         if (githubDeviceCodeBox) githubDeviceCodeBox.textContent = data.user_code;
         showModal(githubDeviceModal);
@@ -81,7 +98,7 @@ export function initGitHubAuth() {
 
         async function poll() {
           try {
-            const tokenData = await invoke<any>('request_github_device_token', {
+            const tokenData = await invoke<GitHubDeviceTokenResponse>('request_github_device_token', {
               clientId: GITHUB_CLIENT_ID,
               deviceCode: data.device_code
             });

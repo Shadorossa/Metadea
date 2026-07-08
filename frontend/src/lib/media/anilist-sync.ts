@@ -12,6 +12,31 @@ export function isAniListType(type: string): type is AniListSyncType {
 
 type FuzzyDate = { year: number; month: number; day: number } | null;
 
+// Matches GET_ENTRY_QUERY's selection set below.
+interface AniListMediaListEntry {
+  id: number;
+  status: string | null;
+  score: number | null;
+  progress: number | null;
+  progressVolumes: number | null;
+  startedAt: FuzzyDate;
+  completedAt: FuzzyDate;
+  notes: string | null;
+}
+
+// Variables sent to SAVE_MUTATION — mirrors AniListMediaListEntry minus `id`,
+// plus `mediaId` (the mutation's own required argument).
+interface AniListSyncVariables {
+  mediaId: number;
+  status: string | null;
+  score: number | null;
+  progress: number | null;
+  progressVolumes: number | null;
+  startedAt: FuzzyDate;
+  completedAt: FuzzyDate;
+  notes: string | null;
+}
+
 function parseFuzzyDate(iso: string | null | undefined): FuzzyDate {
   if (!iso) return null;
   const [y, m, d] = iso.split('-').map(Number);
@@ -95,9 +120,9 @@ function fuzzyDateToString(fd: { year: number; month: number; day: number } | nu
   return `${fd.year}-${String(fd.month).padStart(2, '0')}-${String(fd.day).padStart(2, '0')}`;
 }
 
-async function getAniListEntry(mediaId: number, token: string): Promise<Record<string, any> | null> {
+async function getAniListEntry(mediaId: number, token: string): Promise<AniListMediaListEntry | null> {
   try {
-    const { ok, result } = await graphqlPost<{ MediaList: any }>(
+    const { ok, result } = await graphqlPost<{ MediaList: AniListMediaListEntry }>(
       API_ENDPOINTS.ANILIST, GET_ENTRY_QUERY, { mediaId }, { token },
     );
     if (!ok) return null;
@@ -107,7 +132,7 @@ async function getAniListEntry(mediaId: number, token: string): Promise<Record<s
   }
 }
 
-function hasChanges(current: Record<string, any> | null, incoming: Record<string, unknown>): boolean {
+function hasChanges(current: AniListMediaListEntry | null, incoming: AniListSyncVariables): boolean {
   if (!current) return true; // New entry
 
   // Compare each field
@@ -115,8 +140,8 @@ function hasChanges(current: Record<string, any> | null, incoming: Record<string
   if (current.score !== (incoming.score ?? 0)) return true;
   if (current.progress !== (incoming.progress ?? 0)) return true;
   if (current.progressVolumes !== (incoming.progressVolumes ?? 0)) return true;
-  if (fuzzyDateToString(current.startedAt) !== (incoming.startedAt ? fuzzyDateToString(incoming.startedAt as any) : '')) return true;
-  if (fuzzyDateToString(current.completedAt) !== (incoming.completedAt ? fuzzyDateToString(incoming.completedAt as any) : '')) return true;
+  if (fuzzyDateToString(current.startedAt) !== fuzzyDateToString(incoming.startedAt)) return true;
+  if (fuzzyDateToString(current.completedAt) !== fuzzyDateToString(incoming.completedAt)) return true;
   if ((current.notes ?? '').trim() !== (incoming.notes ?? '')) return true;
 
   return false; // No changes
@@ -133,7 +158,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
 
   const anilistStatus = APP_TO_ANILIST_STATUS[params.status] ?? null;
 
-  const rawVars: Record<string, unknown> = {
+  const rawVars: AniListSyncVariables = {
     mediaId,
     status:          anilistStatus,
     score:           params.rating > 0 ? params.rating : null,

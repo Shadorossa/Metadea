@@ -184,7 +184,9 @@ export async function importFromAniList(
       }
 
       const entryType = mapMediaType(mediaItem.media?.type ?? 'ANIME', mediaItem.media?.format);
-      const entry = {
+      const entry: LibraryEntry = {
+        id: '',
+        user_id: 'local',
         external_id: externalId,
         type: entryType,
         status: ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning',
@@ -200,9 +202,11 @@ export async function importFromAniList(
         is_platinum: 0,
         tags: [],
         minutes_spent: 0,
+        selected_platform: null,
+        selected_version: null,
       };
 
-      await saveLibraryEntry(entry as any).catch(console.error);
+      await saveLibraryEntry(entry).catch(console.error);
 
       if (!catalogMap.has(externalId)) {
         await saveCatalogEntry(buildCatalogEntry(externalId, entryType, mediaItem)).catch(console.error);
@@ -290,7 +294,9 @@ export async function syncFromAniList(
         }
       } else {
         const entryType = mapMediaType(mediaType, format);
-        const entry = {
+        const entry: LibraryEntry = {
+          id: '',
+          user_id: 'local',
           external_id: importId,
           type: entryType,
           status: newStatus,
@@ -306,8 +312,10 @@ export async function syncFromAniList(
           is_platinum: 0,
           tags: [],
           minutes_spent: 0,
+          selected_platform: null,
+          selected_version: null,
         };
-        await saveLibraryEntry(entry as any).catch(console.error);
+        await saveLibraryEntry(entry).catch(console.error);
         if (!catalogMap.has(importId)) {
           await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem)).catch(console.error);
         }

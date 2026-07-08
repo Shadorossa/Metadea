@@ -179,8 +179,8 @@ export default function MediaPage({ i18n }: Props) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const navs = window.performance.getEntriesByType("navigation");
-      if (navs.length > 0 && (navs[0] as any).type === 'reload') {
+      const navs = window.performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+      if (navs.length > 0 && navs[0].type === 'reload') {
         for (let i = sessionStorage.length - 1; i >= 0; i--) {
           const key = sessionStorage.key(i);
           if (key && (key.startsWith('media_data:') || key.startsWith('cached_saga:'))) {
