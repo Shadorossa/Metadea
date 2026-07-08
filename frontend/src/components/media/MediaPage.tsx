@@ -335,7 +335,7 @@ export default function MediaPage({ i18n }: Props) {
     const detailsText =
       baseType === 'anime' || baseType === 'movie' || baseType === 'series'
         ? t.discord.watching_details
-        : baseType === 'manga' || baseType === 'novel' || baseType === 'book'
+        : baseType === 'manga' || baseType === 'novel' || baseType === 'book' || baseType === 'comic'
         ? t.discord.reading_details
         : baseType === 'game' || baseType === 'vnovel'
         ? t.discord.playing_details

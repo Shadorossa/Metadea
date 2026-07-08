@@ -14,6 +14,7 @@ export function mapOpenLibToMedia(
   work: OpenLibWork,
   authors: MediaAuthor[],
   externalId: string,
+  mediaType: 'book' | 'comic' = 'book',
 ): MediaPageData {
   const tm = getT().media;
 
@@ -39,7 +40,7 @@ export function mapOpenLibToMedia(
 
   return {
     externalId,
-    type: 'book',
+    type: mediaType,
     titleMain:    work.title,
     titleNative:  undefined,
     titleEnglish: undefined,

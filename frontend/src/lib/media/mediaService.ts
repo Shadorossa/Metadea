@@ -8,9 +8,33 @@ import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSub
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
-import { formatDateParts } from './mapper-utils';
+import type { DbMediaRelation } from '../tauri/catalog';
+import { formatDateParts, parseExternalId } from './mapper-utils';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
+
+// Sequel/prequel first, then same-group alternates, everything else after —
+// shared by every place that turns saved DB relations back into the page's
+// Related section (first full fetch, catalog-first partial render).
+const RELATION_SORT_PRIORITY: Record<string, number> = { PREQUEL: 1, SEQUEL: 2, ALTERNATIVE: 3 };
+
+function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPageData['relations']; hasSaga: boolean } {
+  const sorted = [...rels].sort((a, b) => {
+    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 4;
+    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 4;
+    if (priorityA !== priorityB) return priorityA - priorityB;
+    return a.title.localeCompare(b.title);
+  });
+  return {
+    relations: sorted.map(r => ({
+      typeLabel: r.type_label,
+      title: r.title,
+      cover: r.cover || undefined,
+      url: `/media?id=${r.related_media_external_id}`,
+    })),
+    hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
+  };
+}
 
 const CACHE_PREFIX   = 'media_cache_v3:';
 const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 min
@@ -56,19 +80,15 @@ function patchCachedRelations(rawId: string, relations: MediaPageData['relations
 async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
   if (!rawId) return null;
 
-  const firstColon = rawId.indexOf(':');
-  const type  = rawId.slice(0, firstColon).split('_')[0];
-  const idStr = rawId.slice(firstColon + 1);
+  const { type, id: numericId } = parseExternalId(rawId);
 
   if (ANILIST_TYPES.includes(type)) {
-    const numericId = parseInt(idStr, 10);
     if (!numericId) return null;
     const raw = await fetchAniListDetail(numericId);
     return raw ? mapAniListToMedia(raw, type) : null;
   }
 
   if (IGDB_TYPES.includes(type)) {
-    const numericId = parseInt(idStr, 10);
     if (!numericId) return null;
 
     // Single request: banner image and store links ride along as Game
@@ -93,13 +113,13 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   }
 
   if (type === 'movie' || type === 'series') {
-    const numericId = parseInt(idStr, 10);
     if (!numericId) return null;
     const raw = await fetchTmdbDetail(numericId, type);
     return raw ? mapTmdbToMedia(raw, type, rawId) : null;
   }
 
-  if (type === 'book') {
+  if (type === 'book' || type === 'comic') {
+    const idStr = rawId.slice(rawId.indexOf(':') + 1);
     const cachedNames   = sessionStorage.getItem(`book_authors:${rawId}`);
     const cachedKey     = sessionStorage.getItem(`book_author_key:${rawId}`);
     const preloadNames: string[] | null = cachedNames ? JSON.parse(cachedNames) : null;
@@ -126,7 +146,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     } else if (preloadNames) {
       richAuthors = preloadNames.map(name => ({ external_id: `author:${name}`, name }));
     }
-    return mapOpenLibToMedia(work, richAuthors, rawId);
+    return mapOpenLibToMedia(work, richAuthors, rawId, type);
   }
 
   return null;
@@ -173,7 +193,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   // doesn't lose this info once catalog data is the final answer instead of
   // just a placeholder while the API call is in flight.
   const metaLines: string[] = [];
-  if (c.type === 'book') {
+  if (c.type === 'book' || c.type === 'comic') {
     if (authorList.length > 0) metaLines.push(authorList.join(', '));
   } else if (isGameType) {
     if (platforms.length > 0) metaLines.push(platforms.join(' · '));
@@ -269,25 +289,9 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     ]);
 
     if (finalRels && finalRels.length > 0) {
-      const relationOrder: Record<string, number> = {
-        'PREQUEL': 1,
-        'SEQUEL': 2,
-        'ALTERNATIVE': 3
-      };
-      const sortedRels = [...finalRels].sort((a, b) => {
-        const priorityA = relationOrder[a.relation_type] ?? 4;
-        const priorityB = relationOrder[b.relation_type] ?? 4;
-        if (priorityA !== priorityB) return priorityA - priorityB;
-        return a.title.localeCompare(b.title);
-      });
-
-      data.relations = sortedRels.map(r => ({
-        typeLabel: r.type_label,
-        title: r.title,
-        cover: r.cover || undefined,
-        url: `/media?id=${r.related_media_external_id}`
-      }));
-      data.hasSaga = finalRels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL');
+      const { relations, hasSaga } = sortRelationsForDisplay(finalRels);
+      data.relations = relations;
+      data.hasSaga = hasSaga;
     }
 
     if (finalAuthors && finalAuthors.length > 0) {
@@ -345,25 +349,9 @@ export function fetchMediaDataWithFallback(
           ]);
 
           if (dbRels && dbRels.length > 0) {
-            const relationOrder: Record<string, number> = {
-              'PREQUEL': 1,
-              'SEQUEL': 2,
-              'ALTERNATIVE': 3
-            };
-            const sortedRels = [...dbRels].sort((a, b) => {
-              const priorityA = relationOrder[a.relation_type] ?? 4;
-              const priorityB = relationOrder[b.relation_type] ?? 4;
-              if (priorityA !== priorityB) return priorityA - priorityB;
-              return a.title.localeCompare(b.title);
-            });
-
-            localData.relations = sortedRels.map(r => ({
-              typeLabel: r.type_label,
-              title: r.title,
-              cover: r.cover || undefined,
-              url: `/media?id=${r.related_media_external_id}`
-            }));
-            localData.hasSaga = dbRels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL');
+            const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
+            localData.relations = relations;
+            localData.hasSaga = hasSaga;
           }
 
           if (dbAuthors && dbAuthors.length > 0) {
@@ -434,10 +422,8 @@ export function fetchMediaDataWithFallback(
 // walk never blocks the initial render — call setData with the result and
 // patchCachedRelations() to keep the sessionStorage cache in sync.
 export async function fetchExtraRelations(rawId: string, currentData: MediaPageData): Promise<MediaPageData['relations'] | null> {
-  const type = rawId.slice(0, rawId.indexOf(':')).split('_')[0];
+  const { type, id: numericId } = parseExternalId(rawId);
   if (!IGDB_TYPES.includes(type)) return null;
-
-  const numericId = parseInt(rawId.slice(rawId.indexOf(':') + 1), 10);
   if (!numericId) return null;
 
   const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);

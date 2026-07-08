@@ -120,6 +120,7 @@ export const es = {
       movie:  'Películas',
       series: 'Series',
       book:   'Libros',
+      comic:  'Comics',
       character:   'Personajes',
     },
     placeholder: 'Busca {type}...',

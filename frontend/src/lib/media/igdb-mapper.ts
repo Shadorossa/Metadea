@@ -94,6 +94,7 @@ function findAltName(
 }
 
 export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageData {
+  const tm = getT().media;
   const genres = game.genres?.map(g => g.name) ?? [];
   const developers = game.involved_companies?.filter(c => c.developer && c.company).map(c => c.company!.name) ?? [];
   const publishers = game.involved_companies?.filter(c => c.publisher && c.company).map(c => c.company!.name) ?? [];
@@ -139,7 +140,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const scoreGlobal = normalizeScore100(game.total_rating ?? game.rating);
 
   const stats: { label: string; value: string }[] = [];
-  if (scoreGlobal) stats.push({ label: 'Puntuación', value: scoreGlobal.toFixed(1) + ' / 10' });
+  if (scoreGlobal) stats.push({ label: tm.stat_score, value: scoreGlobal.toFixed(1) + ' / 10' });
 
   const metaLines: string[] = [];
   if (platforms.length) metaLines.push(platforms.join(' · '));
@@ -201,7 +202,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     relations,
     parentGame,
     progressStatus: 'playing',
-    progressLabel: 'Jugando',
+    progressLabel: getT().profile.status_playing,
     storeLinks: dedupeStoreLinks(game.store_links),
     // Catalog fields
     format,

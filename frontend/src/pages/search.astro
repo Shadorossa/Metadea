@@ -9,7 +9,7 @@ const t    = useTranslations(lang);
 
 import type { MediaType } from '../lib/search/index';
 
-const VALID_MEDIA_TYPES: MediaType[] = ['all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'user'];
+const VALID_MEDIA_TYPES: MediaType[] = ['all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'user'];
 
 const q             = Astro.url.searchParams.get('q') ?? '';
 const rawType       = Astro.url.searchParams.get('type') ?? 'all';

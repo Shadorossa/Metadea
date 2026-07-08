@@ -10,6 +10,7 @@ interface OpenLibraryBook {
   ratings_average?: number;
   author_name?: string[];
   author_key?: string[];
+  subject?: string[];
 }
 
 interface OpenLibrarySearchResponse {
@@ -67,10 +68,18 @@ export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: str
   return { name: data.name, image, key: authorKey };
 }
 
-function mapBook(book: OpenLibraryBook): SearchResult {
+// Comics aren't a distinct type in OpenLibrary's own schema — they're just
+// books tagged with a subject like "Comic books, strips", "Cartoons and
+// comics", or plain "comic". Any subject containing "comic" (case-insensitive)
+// routes the work to the Comics tab instead of Books.
+function isComicBook(book: OpenLibraryBook): boolean {
+  return (book.subject ?? []).some(s => s.toLowerCase().includes('comic'));
+}
+
+function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResult {
   return {
-    externalId:   `book:${bookIdFromWorkKey(book.key)}`,
-    type:         'book',
+    externalId:   `${mediaType}:${bookIdFromWorkKey(book.key)}`,
+    type:         mediaType,
     format:       '',
     source:       'openlibrary',
     titleMain:    book.title,
@@ -86,10 +95,10 @@ function mapBook(book: OpenLibraryBook): SearchResult {
   };
 }
 
-export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const fields = 'key,title,cover_i,first_publish_year,ratings_average,author_name,author_key';
+async function searchOpenLibraryDocs(searchQuery: string, signal: AbortSignal): Promise<OpenLibraryBook[]> {
+  const fields = 'key,title,cover_i,first_publish_year,ratings_average,author_name,author_key,subject';
   const PAGE = 100;
-  const results: SearchResult[] = [];
+  const docs: OpenLibraryBook[] = [];
   let offset = 0;
   let total = Infinity;
 
@@ -100,14 +109,24 @@ export async function searchBooks(searchQuery: string, signal: AbortSignal): Pro
 
     if (total === Infinity) total = data.numFound ?? 0;
 
-    const docs = data.docs ?? [];
-    results.push(...docs.map(mapBook));
+    const page = data.docs ?? [];
+    docs.push(...page);
 
-    if (docs.length < PAGE) break;
+    if (page.length < PAGE) break;
     offset += PAGE;
   }
 
-  return results;
+  return docs;
+}
+
+export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
+  const docs = await searchOpenLibraryDocs(searchQuery, signal);
+  return docs.filter(b => !isComicBook(b)).map(b => mapBook(b, 'book'));
+}
+
+export async function searchComics(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
+  const docs = await searchOpenLibraryDocs(searchQuery, signal);
+  return docs.filter(isComicBook).map(b => mapBook(b, 'comic'));
 }
 
 export interface OpenLibAuthorDetail {

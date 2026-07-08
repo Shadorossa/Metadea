@@ -7,18 +7,18 @@ export const IGDB_TYPES = ['game', 'vnovel'] as const;
 export type IgdbMediaType = typeof IGDB_TYPES[number];
 
 export const ALL_MEDIA_TYPES = [
-  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'character',
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'character',
 ] as const;
 export type CoreMediaType = typeof ALL_MEDIA_TYPES[number];
 
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [
-  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'character',
+  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'character',
 ] as const;
 
 // Types that have a dedicated detail page
 export const DETAIL_SUPPORTED_TYPES = [
-  'anime', 'manga', 'lnovel', 'book', 'game', 'vnovel', 'movie', 'series', 'character',
+  'anime', 'manga', 'lnovel', 'book', 'comic', 'game', 'vnovel', 'movie', 'series', 'character',
 ] as const;
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ export const TYPE_LABELS: Record<string, string> = {
   series: 'Series',
   movie:  'Movie',
   book:   'Book',
+  comic:  'Comic',
 };
 
 // media_catalog.format values for games (see GAME_TYPE_FORMAT in igdb-mapper.ts)
@@ -73,6 +74,7 @@ export const TYPE_GRADIENTS: Record<string, string> = {
   series: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
   movie:  'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
   book:   'linear-gradient(135deg, #6b7280 0%, #374151 100%)',
+  comic:  'linear-gradient(135deg, #f97316 0%, #c2410c 100%)',
 };
 
 // ─── AniList formats ──────────────────────────────────────────────────────────

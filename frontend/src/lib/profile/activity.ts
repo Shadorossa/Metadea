@@ -113,7 +113,7 @@ export async function buildActivityHtml(catalogMap: Map<string, MediaCatalogEntr
       if (mType === 'anime' || mType === 'series') {
         const tmpl = isSingle ? (j.watched_episode || 'Watched episode {end} of {media}') : (j.watched_episodes || 'Watched episodes {start}-{end} of {media}');
         text = interpolate(tmpl, { media: mediaNameBold, start, end });
-      } else if (mType === 'manga' || mType === 'lnovel' || mType === 'book') {
+      } else if (mType === 'manga' || mType === 'lnovel' || mType === 'book' || mType === 'comic') {
         const tmpl = isSingle ? (j.read_chapter || 'Read chapter {end} of {media}') : (j.read_chapters || 'Read chapters {start}-{end} of {media}');
         text = interpolate(tmpl, { media: mediaNameBold, start, end });
       } else {

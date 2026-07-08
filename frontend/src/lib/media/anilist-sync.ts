@@ -1,6 +1,8 @@
 import { ANILIST_TYPES, APP_TO_ANILIST_STATUS } from '../constants/media';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
+import { isTauri, invoke } from '../tauri/core';
+import { extractNumericId } from './mapper-utils';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
@@ -17,19 +19,9 @@ function parseFuzzyDate(iso: string | null | undefined): FuzzyDate {
   return { year: y, month: m || 1, day: d || 1 };
 }
 
-function extractAniListId(externalId: string): number | null {
-  const parts = externalId.split(':');
-  const id = parseInt(parts[1] ?? '', 10);
-  return isNaN(id) ? null : id;
-}
-
 async function getToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  const tauri = window.__TAURI__;
-  if (!tauri) return null;
+  if (!isTauri()) return null;
   try {
-    if (tauri.core?.invoke) return await tauri.core.invoke('get_anilist_token');
-    const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
     return await invoke<string | null>('get_anilist_token');
   } catch {
     return null;
@@ -136,7 +128,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   const token = await getToken();
   if (!token) return { ok: false, error: 'No AniList token' };
 
-  const mediaId = extractAniListId(params.externalId);
+  const mediaId = extractNumericId(params.externalId);
   if (!mediaId) return { ok: false, error: 'Invalid AniList ID' };
 
   const anilistStatus = APP_TO_ANILIST_STATUS[params.status] ?? null;

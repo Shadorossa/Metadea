@@ -12,6 +12,7 @@ const INNER: Record<string, string> = {
   series:    `<rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2l-5 5-5-5"/>`,
   movie:     `<rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/>`,
   book:      `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
+  comic:     `<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/>`,
   character: `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
 
   // Status icons (overview cards variant — flat/minimal)
@@ -59,7 +60,7 @@ function fill(size: number, inner: string): string {
 
 // ── Media type icons ──────────────────────────────────────────────────────────
 
-const MEDIA_TYPES = ['game', 'anime', 'manga', 'lnovel', 'vnovel', 'series', 'movie', 'book'] as const;
+const MEDIA_TYPES = ['game', 'anime', 'manga', 'lnovel', 'vnovel', 'series', 'movie', 'book', 'comic'] as const;
 
 export function getBaseMediaType(type: string): string {
   // Extract base type from formats like "anime_tv", "manga_ongoing", etc.

@@ -6,7 +6,7 @@ import { search, type MediaType, type SearchResult as ApiSearchResult } from '..
 // relation isn't guaranteed to share the current entry's own type (e.g. a
 // vnovel's saga can include a movie adaptation), so all of them are queried
 // in parallel rather than restricting to the entry's own type.
-const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book'];
+const SEARCHABLE_TYPES: MediaType[] = ['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic'];
 
 type SearchSort = 'relevance' | 'title_asc' | 'year_desc' | 'year_asc' | 'score_desc';
 
@@ -135,6 +135,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             <option value="movie">Movie</option>
             <option value="series">Series</option>
             <option value="book">Book</option>
+            <option value="comic">Comic</option>
           </select>
           <select
             className="pr-editor-search-select"

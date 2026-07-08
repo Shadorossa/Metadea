@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { search, type MediaType, type SearchResult } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
-import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconCharacter } from '../local/ui/icons';
+import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 
 type SearchTranslations = Translations['search'];
@@ -19,6 +19,7 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
   movie:     <IconMovie />,
   series:    <IconSeries />,
   book:      <IconBook />,
+  comic:     <IconComic />,
   character: <IconCharacter />,
 };
 

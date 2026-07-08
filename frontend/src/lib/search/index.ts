@@ -1,11 +1,11 @@
 import { searchAniList, searchAniListCharacters } from './providers/anilist';
 import { searchGames }                 from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
-import { searchBooks }                 from './providers/openlibrary';
+import { searchBooks, searchComics }   from './providers/openlibrary';
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
-  | 'vnovel'  | 'movie' | 'series' | 'book' | 'character';
+  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'character';
 
 /**
  * Subset of media_catalog columns available from search APIs.
@@ -56,6 +56,7 @@ export async function search(
     case 'movie':     return searchMovies(searchQuery, signal);
     case 'series':    return searchSeries(searchQuery, signal);
     case 'book':      return searchBooks(searchQuery, signal);
+    case 'comic':     return searchComics(searchQuery, signal);
     case 'character': return searchAniListCharacters(searchQuery, signal);
     // 'all': pendiente de integrar
     default:          return [];

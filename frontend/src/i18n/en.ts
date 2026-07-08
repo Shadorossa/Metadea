@@ -120,6 +120,7 @@ export const en = {
       movie:  'Movies',
       series: 'Series',
       book:   'Books',
+      comic:  'Comics',
       character:   'Characters',
     },
     placeholder: 'Search {type}...',

@@ -1,9 +1,8 @@
 import { API_URL } from '../../config';
-import { igdbSearch, igdbImageUrl } from '../../tauri';
+import { igdbSearch, igdbImageUrl, isTauri } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
 import { cleanEditionTitle } from '../../media/title-utils';
-
-const isTauri = () => typeof window !== 'undefined' && '__TAURI__' in window;
+import { unixToDateParts } from '../../media/mapper-utils';
 
 export async function searchGames(
   searchQuery: string,
@@ -34,9 +33,7 @@ async function searchGamesLocal(
   }
 
   return results.map(g => {
-    const year = g.first_release_date
-      ? new Date(g.first_release_date * 1000).getFullYear()
-      : null;
+    const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
 
     const coverUrl = g.cover?.image_id
       ? igdbImageUrl(g.cover.image_id, 'cover_big')
@@ -51,13 +48,9 @@ async function searchGamesLocal(
       titleRomaji:  null,
       titleNative:  null,
       coverUrl,
-      releaseYear:  year,
-      releaseMonth: g.first_release_date
-        ? new Date(g.first_release_date * 1000).getMonth() + 1
-        : null,
-      releaseDay:   g.first_release_date
-        ? new Date(g.first_release_date * 1000).getDate()
-        : null,
+      releaseYear:  dateParts?.year ?? null,
+      releaseMonth: dateParts?.month ?? null,
+      releaseDay:   dateParts?.day ?? null,
       scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
     };
   });

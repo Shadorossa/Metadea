@@ -117,6 +117,10 @@ export function IconBook(p: SvgProps) {
   return <Svg {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></Svg>;
 }
 
+export function IconComic(p: SvgProps) {
+  return <Svg {...p}><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></Svg>;
+}
+
 export function IconCharacter(p: SvgProps) {
   return <Svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Svg>;
 }
