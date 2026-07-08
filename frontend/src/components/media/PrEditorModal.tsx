@@ -14,7 +14,7 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
-  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, SAGA_RELATION_TYPE_OPTIONS,
+  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, SAGA_RELATION_TYPE_OPTIONS, EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
@@ -67,6 +67,20 @@ function Field({ label, changed, small, full, children }: {
   );
 }
 
+// Relation type labels (Spanish) — matches i18n/es.ts relations dict
+// REL_ADAPTATION / REL_ALTERNATIVE are namespaced (see EDITABLE_RELATION_OPTIONS
+// in sagaTypes.ts) to avoid colliding with the saga-chain's own ADAPTATION /
+// ALTERNATIVE relation_type strings, which the backend's transitive-chain walk
+// would otherwise sweep into the Saga order the next time the editor loads.
+const RELATION_TYPE_LABELS: Record<string, string> = {
+  REL_ADAPTATION: 'Adaptación',
+  SPIN_OFF: 'Spin-off',
+  REL_ALTERNATIVE: 'Alternativa',
+  PARENT: 'Fuente',
+  SIDE_STORY: 'Side Story',
+  SUMMARY: 'Resumen',
+};
+
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +91,17 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
   const [bundledRelations, setBundledRelations] = useState<BundledRelation[]>([]);
   const [originalBundledIds, setOriginalBundledIds] = useState<Set<string>>(new Set());
+
+  // Editable relations: ADAPTATION, SPIN_OFF, ALTERNATIVE, etc (not saga-managed)
+  interface EditableRelation {
+    related_media_external_id: string;
+    relation_type: string;
+    type_label: string;
+    title?: string | null;
+    cover?: string | null;
+  }
+  const [editableRelations, setEditableRelations] = useState<EditableRelation[]>([]);
+  const [originalEditableRelationIds, setOriginalEditableRelationIds] = useState<Set<string>>(new Set());
 
   // Saga — one single ordered chain (chronological order), including this
   // entry itself. Every adjacent pair in this order gets a SEQUEL edge
@@ -102,17 +127,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [sagaName, setSagaName] = useState('');
   const [originalSagaName, setOriginalSagaName] = useState('');
 
-  // Every other relation type (ADAPTATION, SIDE_STORY, SPIN_OFF, ...) is kept
-  // as an untouched pass-through — save_media_relations replaces the *entire*
-  // relation set for this media_external_id in one shot, so anything not
-  // resurfaced here (e.g. from an AniList auto-sync) would otherwise be wiped
-  // the moment this form saves.
-  const [otherRelations, setOtherRelations] = useState<DbMediaRelation[]>([]);
 
   const [characters, setCharacters] = useState<MediaCharacter[]>([]);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'relations' | null>(null);
+  const [selectedRelationType, setSelectedRelationType] = useState<string>('REL_ADAPTATION');
 
   useEffect(() => {
     const load = async () => {
@@ -134,6 +154,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
       try {
         const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
+
+        // Separate bundled relations (EPISODE, UPDATE)
         const bundled = rels
           .filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type))
           .map(r => ({
@@ -144,10 +166,27 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           }));
         setBundledRelations(bundled);
         setOriginalBundledIds(new Set(bundled.map(r => r.external_id)));
-        setOtherRelations(rels.filter(r => !ALL_CHAIN_RELATION_TYPES.includes(r.relation_type)));
 
         const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
         if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
+        const sagaMemberIds = new Set(transitiveIds);
+
+        // Everything that isn't Bundled In and doesn't target a saga-chain
+        // member shows up here — every existing relation the entry already
+        // had (ADAPTATION, SPIN_OFF, ALTERNATIVE outside the saga, CHARACTER,
+        // OTHER, ...), not just a fixed whitelist. Anything targeting a saga
+        // member is re-derived by the saga chain builder on save instead.
+        const editable = rels
+          .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !sagaMemberIds.has(r.related_media_external_id))
+          .map(r => ({
+            related_media_external_id: r.related_media_external_id,
+            relation_type: r.relation_type,
+            type_label: r.type_label || r.relation_type,
+            title: r.title,
+            cover: r.cover,
+          }));
+        setEditableRelations(editable);
+        setOriginalEditableRelationIds(new Set(editable.map(r => r.related_media_external_id)));
 
         const entriesData = await Promise.all(
           transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
@@ -218,7 +257,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       } catch (err) {
         console.error('Failed to load relations/saga:', err);
         setBundledRelations([]);
-        setOtherRelations([]);
+        setEditableRelations([]);
       } finally {
         setLoading(false);
       }
@@ -295,6 +334,26 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const removeBundledRelation = (id: string) =>
     setBundledRelations(prev => prev.filter(r => r.external_id !== id));
 
+  // ── Editable relation handlers ────────────────────────────────────────────
+
+  const addEditableRelation = (result: ApiSearchResult) => {
+    if (!editableRelations.some(r => r.related_media_external_id === result.externalId)) {
+      setEditableRelations([...editableRelations, {
+        related_media_external_id: result.externalId,
+        relation_type: selectedRelationType,
+        type_label: RELATION_TYPE_LABELS[selectedRelationType] || selectedRelationType,
+        title: result.titleMain,
+        cover: result.coverUrl,
+      }]);
+    }
+  };
+  const updateEditableRelationType = (id: string, relationType: string) =>
+    setEditableRelations(prev => prev.map(r => r.related_media_external_id === id
+      ? { ...r, relation_type: relationType, type_label: RELATION_TYPE_LABELS[relationType] || relationType }
+      : r));
+  const removeEditableRelation = (id: string) =>
+    setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));
+
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
     setEntry({ ...entry, [field]: value === '' ? null : value });
@@ -310,6 +369,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     return {
       addedBundled: bundledRelations.filter(r => !originalBundledIds.has(r.external_id)),
       removedBundledIds: [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id)),
+      addedEditableRelations: editableRelations.filter(r => !originalEditableRelationIds.has(r.related_media_external_id)),
+      removedEditableRelationIds: [...originalEditableRelationIds].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
       addedSaga: sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id)),
       removedSaga: originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id)),
       sagaOrderChanged: sagaOrder.join(',') !== originalSagaOrder.join(','),
@@ -324,6 +385,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
+      || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0
       || d.addedSaga.length > 0 || d.removedSaga.length > 0
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
   };
@@ -353,6 +415,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     const d = getDiff();
     for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)} (${r.type})`);
     for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
+    for (const r of d.addedEditableRelations) lines.push(`- Added Relation: ${formatWork(r.related_media_external_id, r.title)} (${r.type_label})`);
+    for (const id of d.removedEditableRelationIds) lines.push(`- Removed Relation: ${formatWork(id)}`);
 
     if (d.addedSaga.length > 0 || d.removedSaga.length > 0 || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged) {
       if (d.sagaNameChanged) {
@@ -479,10 +543,22 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           cover: r.cover ?? null,
         }));
 
-      // Current entry: otherRelations (untouched pass-through) + Bundled In +
-      // its own slice of the chain-derived edges.
+      const editableDbRelations: DbMediaRelation[] = editableRelations
+        .filter(r => r.related_media_external_id.trim())
+        .map(r => ({
+          related_media_external_id: r.related_media_external_id.trim(),
+          relation_type: r.relation_type,
+          type_label: r.type_label,
+          title: r.title || r.related_media_external_id.trim(),
+          cover: r.cover ?? null,
+        }));
+
+      // Current entry: Editable Relations + Bundled In + its own slice of the
+      // chain-derived edges. Editable Relations already carries every
+      // pre-existing relation that isn't part of the saga chain, so nothing
+      // else needs to pass through untouched.
       const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
-      const currentFinalRelations: DbMediaRelation[] = [...otherRelations, ...bundledDbRelations, ...currentChainRows];
+      const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...currentChainRows];
       await saveMediaRelations(externalId, currentFinalRelations)
         .catch(err => console.error('Failed to save relations:', err));
 
@@ -764,6 +840,67 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
+              <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
+                <label className="pr-editor-subsection-label">Relations</label>
+                <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
+                  {editableRelations.map(r => (
+                    <div key={r.related_media_external_id} className="pr-editor-media-card">
+                      <div className="pr-editor-media-card-cover">
+                        {r.cover
+                          ? <img src={r.cover} alt="" />
+                          : <div className="pr-editor-media-card-placeholder" />}
+                        <button
+                          type="button"
+                          className="pr-editor-media-card-remove"
+                          onClick={() => removeEditableRelation(r.related_media_external_id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
+                        {r.title || r.related_media_external_id}
+                      </div>
+                      <select
+                        value={r.relation_type}
+                        onChange={e => updateEditableRelationType(r.related_media_external_id, e.target.value)}
+                        className="pr-editor-media-card-select"
+                        style={{ fontSize: '0.7rem' }}
+                      >
+                        {/* Pre-existing relations can carry a type outside the
+                            curated add-new list (CHARACTER, OTHER, ...) — keep
+                            it selectable so the dropdown doesn't silently
+                            snap to a different value on first render. */}
+                        {!EDITABLE_RELATION_OPTIONS.includes(r.relation_type) && (
+                          <option value={r.relation_type}>{r.type_label}</option>
+                        )}
+                        {EDITABLE_RELATION_OPTIONS.map(type => (
+                          <option key={type} value={type}>
+                            {RELATION_TYPE_LABELS[type] || type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <select
+                    value={selectedRelationType}
+                    onChange={e => setSelectedRelationType(e.target.value)}
+                    className="pr-editor-media-card-select"
+                    style={{ fontSize: '0.7rem' }}
+                  >
+                    {EDITABLE_RELATION_OPTIONS.map(type => (
+                      <option key={type} value={type}>
+                        {RELATION_TYPE_LABELS[type] || type}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
+                </div>
+              </div>
+
+              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
+
               <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '220px', flexShrink: 0 }}>
                 <label className="pr-editor-subsection-label">Bundled In</label>
                 <div className="pr-editor-bundled-list">
@@ -831,6 +968,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           onSelect={addBundledRelation}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
+        />
+      )}
+
+      {searchPopupMode === 'relations' && (
+        <MediaSearchPopup
+          onSelect={addEditableRelation}
+          onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...editableRelations.map(r => r.related_media_external_id)]}
+          closeOnSelect={false}
         />
       )}
     </div>,

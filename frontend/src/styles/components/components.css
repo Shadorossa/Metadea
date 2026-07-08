@@ -255,6 +255,25 @@
   margin: 0 0 0.75rem;
 }
 
+/* Clickable variant — two labels sharing one header row toggle which subset
+   of a list is shown (e.g. Related / Recommended on the media page). */
+.section-label--tab {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.section-label--tab:hover {
+  color: var(--text);
+}
+
+.section-label--tab.active {
+  color: var(--accent);
+}
+
 /* ── Placeholder pages ───────────────────────────────────────────────────── */
 .placeholder-page {
   display: flex;

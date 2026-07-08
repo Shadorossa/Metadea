@@ -24,6 +24,22 @@ export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label:
   { value: 'update', label: 'Update' },
 ];
 
+/** Relation types offered when attaching a *new* relation in the PR editor.
+ *  'ADAPTATION' and 'ALTERNATIVE' are deliberately namespaced as
+ *  'REL_ADAPTATION' / 'REL_ALTERNATIVE' — the plain names are also the
+ *  relation_type strings the saga-chain feature writes for its own
+ *  source/adaptation pair and same-group alternates, and the backend's
+ *  transitive-chain walk (get_transitive_relation_ids) matches on those
+ *  exact strings. Reusing them here would make a plain "this is an
+ *  adaptation of X" relation silently get swept into the Saga chain the
+ *  next time the editor reloads. The other options don't collide, so they
+ *  keep their plain names. Pre-existing relations of any other type are
+ *  still shown and stay editable; this list only curates what's offered for
+ *  new additions. */
+export const EDITABLE_RELATION_OPTIONS: string[] = [
+  'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY',
+];
+
 export function isSagaRelationType(value: string): value is SagaRelationType {
   return SAGA_RELATION_TYPE_OPTIONS.some(o => o.value === value);
 }

@@ -146,6 +146,7 @@ export const es = {
     section_characters: 'Personajes',
     stat_format:    'Formato',
     stat_episodes:  'Episodios',
+    stat_seasons:   'Temporadas',
     stat_chapters:  'Capítulos',
     stat_volumes:   'Volúmenes',
     stat_duration:  'Duración',
@@ -189,7 +190,7 @@ export const es = {
       SEQUEL: 'Secuela', PREQUEL: 'Precuela', SIDE_STORY: 'Historia paralela',
       ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Fuente',
       SUMMARY: 'Resumen', SPIN_OFF: 'Spin-off', OTHER: 'Otro',
-      CHARACTER: 'Personaje', CONTAINS: 'Contiene',
+      CHARACTER: 'Personaje', CONTAINS: 'Contiene', RECOMMENDATION: 'Recomendado',
     },
     sources: {
       MANGA: 'Manga', LIGHT_NOVEL: 'Novela ligera', VISUAL_NOVEL: 'Novela visual',

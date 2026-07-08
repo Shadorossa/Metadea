@@ -780,6 +780,13 @@
   background: rgba(255, 255, 255, 0.85) !important; /* Pure white line with slight opacity */
 }
 
+/* Short segment between two labels sharing one header row (e.g. "Related"
+   ---- "Recommended" --------------) instead of the usual single label + line. */
+.media-section-header-line--short {
+  flex: none;
+  width: 2rem;
+}
+
 .media-store-links-inline {
   display: flex;
   align-items: center;

@@ -137,6 +137,7 @@ export default function MediaPage({ i18n }: Props) {
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended'>('related');
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +216,8 @@ export default function MediaPage({ i18n }: Props) {
     setPageState('loading');
     setData(null);
     setIsFetchingFull(true);
+    setRelationPage(1);
+    setRelationsTab('related');
 
     let cancelled = false;
 
@@ -420,6 +423,12 @@ export default function MediaPage({ i18n }: Props) {
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
+  const relatedRelations = data.relations.filter(r => r.typeLabel !== tm.relations.RECOMMENDATION);
+  const recommendedRelations = data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION);
+  const hasRecommendedRelations = recommendedRelations.length > 0;
+  const visibleRelations = hasRecommendedRelations
+    ? (relationsTab === 'recommended' ? recommendedRelations : relatedRelations)
+    : relatedRelations;
 
   return (
     <>
@@ -611,8 +620,36 @@ export default function MediaPage({ i18n }: Props) {
           {data.relations.length > 0 && (
             <>
               <div className="media-section-header-row">
-                <p className="section-label">{tm.section_related}</p>
-                <div className="media-section-header-line" />
+                {/* TMDB recommendations ride in the same list as real
+                    relations (saga/adaptation/etc) — when both are present,
+                    each label becomes a tab switching which subset the grid
+                    below shows, instead of mixing recommendations into
+                    "Related". */}
+                {hasRecommendedRelations ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`section-label section-label--tab${relationsTab === 'related' ? ' active' : ''}`}
+                      onClick={() => { setRelationsTab('related'); setRelationPage(1); }}
+                    >
+                      {tm.section_related}
+                    </button>
+                    <div className="media-section-header-line media-section-header-line--short" />
+                    <button
+                      type="button"
+                      className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
+                      onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
+                    >
+                      {tm.relations.RECOMMENDATION}
+                    </button>
+                    <div className="media-section-header-line" />
+                  </>
+                ) : (
+                  <>
+                    <p className="section-label">{tm.section_related}</p>
+                    <div className="media-section-header-line" />
+                  </>
+                )}
                 {data.storeLinks && data.storeLinks.length > 0 && (
                   <div className="media-store-links-inline">
                     {data.storeLinks.map((link) => {
@@ -652,7 +689,7 @@ export default function MediaPage({ i18n }: Props) {
                 )}
               </div>
               <div className="media-relations-grid">
-                {data.relations
+                {visibleRelations
                   .slice((relationPage - 1) * 12, relationPage * 12)
                   .map((r, i) => (
                     <a key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} href={r.url ?? '#'} className="media-relation-card">
@@ -672,9 +709,9 @@ export default function MediaPage({ i18n }: Props) {
                     </a>
                   ))}
               </div>
-              {data.relations.length > 12 && (
+              {visibleRelations.length > 12 && (
                 <div className="media-pagination">
-                  {Array.from({ length: Math.ceil(data.relations.length / 12) }).map((_, i) => (
+                  {Array.from({ length: Math.ceil(visibleRelations.length / 12) }).map((_, i) => (
                     <button
                       key={i + 1}
                       type="button"

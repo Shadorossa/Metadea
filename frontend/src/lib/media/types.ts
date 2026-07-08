@@ -30,7 +30,7 @@ export interface MediaAuthor {
 }
 
 export interface MediaPageData {
-  externalId: string;          // "anime:918", "book:/works/OL12345W"
+  externalId: string;          // "anime:918", "book:OL12345W"
   type: string;                // "anime" | "manga" | "lnovel" | "book"
   titleMain: string;
   titleNative?: string;

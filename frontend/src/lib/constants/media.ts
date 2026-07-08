@@ -18,7 +18,7 @@ export const SEARCH_TAB_TYPES = [
 
 // Types that have a dedicated detail page
 export const DETAIL_SUPPORTED_TYPES = [
-  'anime', 'manga', 'lnovel', 'book', 'game', 'vnovel', 'character',
+  'anime', 'manga', 'lnovel', 'book', 'game', 'vnovel', 'movie', 'series', 'character',
 ] as const;
 
 // ─── Labels ───────────────────────────────────────────────────────────────────

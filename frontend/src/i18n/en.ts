@@ -146,6 +146,7 @@ export const en = {
     section_characters: 'Characters',
     stat_format:    'Format',
     stat_episodes:  'Episodes',
+    stat_seasons:   'Seasons',
     stat_chapters:  'Chapters',
     stat_volumes:   'Volumes',
     stat_duration:  'Duration',
@@ -189,7 +190,7 @@ export const en = {
       SEQUEL: 'Sequel', PREQUEL: 'Prequel', SIDE_STORY: 'Side story',
       ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source',
       SUMMARY: 'Summary', SPIN_OFF: 'Spin-off', OTHER: 'Other',
-      CHARACTER: 'Character', CONTAINS: 'Contains',
+      CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
     },
     sources: {
       MANGA: 'Manga', LIGHT_NOVEL: 'Light novel', VISUAL_NOVEL: 'Visual novel',

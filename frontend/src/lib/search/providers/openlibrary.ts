@@ -39,10 +39,24 @@ export function openLibCoverUrl(coverId: number, size: 'S' | 'M' | 'L' = 'L'): s
   return `${API_ENDPOINTS.OPENLIBRARY_COVERS}/${coverId}-${size}.jpg`;
 }
 
+// OpenLibrary work keys arrive as "/works/OL12345W" — stripped down to just
+// "OL12345W" for our own "book:<id>" external_id, matching the short-id
+// convention every other provider's external_id already follows.
+export function bookIdFromWorkKey(workKey: string): string {
+  return workKey.replace(/^\/works\//, '');
+}
+
+// Reverses bookIdFromWorkKey — also accepts an already-full key so it's safe
+// to call on either a freshly-shortened id or one saved before this format
+// change.
+export function workKeyFromBookId(bookId: string): string {
+  return bookId.startsWith('/works/') ? bookId : `/works/${bookId}`;
+}
+
 // ── Detail fetchers ───────────────────────────────────────────────────────────
 
 export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | null> {
-  return fetchJson<OpenLibWork>(`${API_ENDPOINTS.OPENLIBRARY}${workKey}.json`);
+  return fetchJson<OpenLibWork>(`${API_ENDPOINTS.OPENLIBRARY}${workKeyFromBookId(workKey)}.json`);
 }
 
 export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: string; image?: string; key: string } | null> {
@@ -55,7 +69,7 @@ export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: str
 
 function mapBook(book: OpenLibraryBook): SearchResult {
   return {
-    externalId:   `book:${book.key}`,
+    externalId:   `book:${bookIdFromWorkKey(book.key)}`,
     type:         'book',
     format:       '',
     source:       'openlibrary',

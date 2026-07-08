@@ -21,6 +21,37 @@ interface TmdbPageResponse {
 export interface TmdbGenre { id: number; name: string }
 export interface TmdbCompany { id: number; name: string }
 
+export interface TmdbCastMember {
+  id: number;
+  name: string;
+  character?: string;
+  profile_path: string | null;
+  order?: number;
+}
+
+export interface TmdbCrewMember {
+  id: number;
+  name: string;
+  job?: string;
+  department?: string;
+  profile_path: string | null;
+}
+
+export interface TmdbCredits {
+  cast?: TmdbCastMember[];
+  crew?: TmdbCrewMember[];
+}
+
+export interface TmdbCreator {
+  id: number;
+  name: string;
+  profile_path: string | null;
+}
+
+export interface TmdbRecommendations {
+  results?: TmdbMovie[];
+}
+
 // Shared fields between /movie/{id} and /tv/{id} detail responses.
 interface TmdbDetailBase {
   id: number;
@@ -31,6 +62,9 @@ interface TmdbDetailBase {
   status?: string;
   genres?: TmdbGenre[];
   production_companies?: TmdbCompany[];
+  // Populated via append_to_response=credits,recommendations on the detail fetch.
+  credits?: TmdbCredits;
+  recommendations?: TmdbRecommendations;
 }
 
 export interface TmdbMovieDetail extends TmdbDetailBase {
@@ -48,6 +82,7 @@ export interface TmdbTvDetail extends TmdbDetailBase {
   number_of_episodes?: number;
   number_of_seasons?: number;
   episode_run_time?: number[];
+  created_by?: TmdbCreator[];
 }
 
 function buildPosterUrl(posterPath: string | null): string | null {
@@ -147,7 +182,9 @@ export async function fetchTmdbDetail(
   if (!auth) return null;
 
   const path = mediaType === 'movie' ? 'movie' : 'tv';
-  let url = `${API_ENDPOINTS.TMDB}/${path}/${id}?language=${tmdbLocale()}`;
+  // append_to_response rides cast/crew (credits) and similar titles
+  // (recommendations) along on the same request instead of two more round-trips.
+  let url = `${API_ENDPOINTS.TMDB}/${path}/${id}?language=${tmdbLocale()}&append_to_response=credits,recommendations`;
   const headers: Record<string, string> = {};
 
   if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;

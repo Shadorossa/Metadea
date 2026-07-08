@@ -1,10 +1,15 @@
 import type { TmdbMovieDetail, TmdbTvDetail } from '../search/providers/tmdb';
 import { parseDateParts } from '../search/providers/tmdb';
-import type { MediaPageData, MediaStat } from './types';
+import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuthor } from './types';
 import { unifyGenres } from './genre-unifier';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { formatDateParts, lookupLabel } from './mapper-utils';
+
+// TMDB doesn't rank cast by relevance beyond its own `order` field — capping
+// avoids dumping a 100+ name cast list onto a page that has no pagination for
+// the Characters grid (only a "load more" that reveals 12 at a time).
+const CAST_LIMIT = 25;
 
 const STATUS_CLASS: Record<string, string> = {
   'Returning Series': 'media-badge--status-airing',
@@ -58,12 +63,51 @@ export function mapTmdbToMedia(
   if (scoreGlobal) stats.push({ label: tm.stat_score, value: `${scoreGlobal.toFixed(1)} / 10` });
   if (isTv) {
     if (raw.number_of_episodes) stats.push({ label: tm.stat_episodes, value: String(raw.number_of_episodes) });
+    if (raw.number_of_seasons) stats.push({ label: tm.stat_seasons, value: String(raw.number_of_seasons) });
   } else if (timeLength) {
     stats.push({ label: tm.stat_duration, value: `${timeLength} min` });
   }
   if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
 
   const metaLines = [companies.join(', '), dateBadge ?? ''].filter(Boolean);
+
+  const characters: MediaCharacter[] = (raw.credits?.cast ?? [])
+    .slice(0, CAST_LIMIT)
+    .map(c => ({
+      id: `person:${c.id}`,
+      name: c.name,
+      image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
+      role: c.character || undefined,
+    }));
+
+  // "Similar/recommended" titles double as this media's Related section —
+  // TMDB has no prequel/sequel graph of its own to draw from instead.
+  const relations: MediaRelation[] = (raw.recommendations?.results ?? [])
+    .filter(r => r.poster_path)
+    .map(r => ({
+      typeLabel: lookupLabel(tm.relations, 'RECOMMENDATION', tm.relations.OTHER),
+      title: r.title ?? r.name ?? '',
+      cover: r.poster_path ? API_ENDPOINTS.TMDB_IMAGE(r.poster_path, 'w300') : undefined,
+      url: `/media?id=${mediaType}:${r.id}`,
+    }));
+
+  // Series credit their showrunner(s) directly on the TV detail response
+  // (created_by); movies only surface it buried in the crew credits list.
+  const authors: MediaAuthor[] = isTv
+    ? (raw.created_by ?? []).map(c => ({
+        external_id: `person:${c.id}`,
+        name: c.name,
+        image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
+        role: 'Creator',
+      }))
+    : (raw.credits?.crew ?? [])
+        .filter(m => m.job === 'Director')
+        .map(m => ({
+          external_id: `person:${m.id}`,
+          name: m.name,
+          image: m.profile_path ? API_ENDPOINTS.TMDB_IMAGE(m.profile_path, 'w185') : undefined,
+          role: 'Director',
+        }));
 
   return {
     externalId: rawId,
@@ -81,8 +125,9 @@ export function mapTmdbToMedia(
     dateBadge,
     description: raw.overview || undefined,
     stats,
-    characters: [],
-    relations: [],
+    characters,
+    relations,
+    authors,
     progressStatus: 'watching',
     progressLabel: getT().profile.status_watching,
     // Catalog metadata

@@ -79,7 +79,7 @@ const lang = getLang(Astro.url);
 <script>
   import { invoke } from '@tauri-apps/api/core';
   import { fetchAniListStaffDetail } from '../lib/search/providers/anilist';
-  import { fetchOpenLibAuthorFullDetail } from '../lib/search/providers/openlibrary';
+  import { fetchOpenLibAuthorFullDetail, bookIdFromWorkKey } from '../lib/search/providers/openlibrary';
 
   async function loadAuthorData() {
     const loadingEl = document.getElementById('author-loading')!;
@@ -252,7 +252,7 @@ const lang = getLang(Astro.url);
                 : `<div class="author-work-placeholder">${title}</div>`;
 
               return `
-                <a href="/media?id=book:${work.key}" class="author-work-card">
+                <a href="/media?id=book:${bookIdFromWorkKey(work.key)}" class="author-work-card">
                   <div class="author-work-cover-wrap">
                     ${coverImg}
                   </div>
@@ -273,7 +273,7 @@ const lang = getLang(Astro.url);
           url: `/author?id=${externalId}`
         };
         const dbRelations = works.map(work => ({
-          media_external_id: `book:${work.key}`,
+          media_external_id: `book:${bookIdFromWorkKey(work.key)}`,
           role: 'AUTHOR',
           title: work.title,
           cover: work.covers && work.covers.length > 0
