@@ -1,5 +1,6 @@
 import type { IRequest } from "itty-router";
 import { jsonResponse, jsonError } from "../middleware/cors";
+import { requireAuth } from "../middleware/auth";
 import { validateExternalId } from "../services/validation";
 import { getTursoClient, saveLibraryItem } from "../services/database";
 import type { CloudflareEnv, LibrarySyncRequest, SyncResponse } from "../types";
@@ -11,12 +12,12 @@ export async function syncLibrary(
   env: CloudflareEnv
 ): Promise<Response> {
   try {
-    const body = (await request.json()) as LibrarySyncRequest;
-    const { userId, items } = body;
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    const userId = auth.userId;
 
-    if (!userId || typeof userId !== "string" || userId.trim().length === 0) {
-      return jsonError("Missing or invalid userId", 400);
-    }
+    const body = (await request.json()) as LibrarySyncRequest;
+    const { items } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
       return jsonError("Empty items array", 400);
