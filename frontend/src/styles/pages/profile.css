@@ -3080,8 +3080,8 @@
 .fav-img-editor-viewport {
   position: relative;
   width: 100%;
+  max-width: 300px;
   aspect-ratio: 3 / 4;
-  max-height: 320px;
   margin: 0 auto;
   border-radius: var(--radius-sm);
   overflow: hidden;

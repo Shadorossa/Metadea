@@ -7,8 +7,12 @@ import { saveFavoriteCustomImage, deleteFavoriteCustomImage, type FavoriteCustom
 // render-favorites.ts use the exact same formula (no separate crop math to
 // keep in sync).
 
-const MIN_ZOOM = 100;
-const MAX_ZOOM = 400;
+// Fallback bounds while the image's natural size hasn't loaded yet.
+const DEFAULT_MIN_ZOOM = 100;
+const DEFAULT_MAX_ZOOM = 400;
+
+// Same as the .fav-card / .fav-img-editor-viewport aspect-ratio (3 / 4).
+const VIEWPORT_ASPECT = 3 / 4;
 
 export type EditorResult =
   | { action: 'saved'; image: FavoriteCustomImage }
@@ -21,10 +25,11 @@ export function openFavoriteImageEditor(
   existing: FavoriteCustomImage | undefined,
 ): Promise<EditorResult> {
   return new Promise(resolve => {
-    let bgSize = existing?.bg_size ?? 100;
+    let bgSize = existing?.bg_size ?? DEFAULT_MIN_ZOOM;
     let posX = existing?.pos_x ?? 50;
     let posY = existing?.pos_y ?? 50;
     let imageUrl = existing?.image_url || fallbackImageUrl;
+    let hasCustomBgSize = existing?.bg_size != null;
 
     const overlay = document.createElement('div');
     overlay.className = 'fav-img-editor-overlay';
@@ -38,7 +43,7 @@ export function openFavoriteImageEditor(
         </div>
         <label class="fav-img-editor-zoom-label">
           Zoom
-          <input type="range" class="fav-img-editor-zoom" min="${MIN_ZOOM}" max="${MAX_ZOOM}" value="${bgSize}" />
+          <input type="range" class="fav-img-editor-zoom" min="${DEFAULT_MIN_ZOOM}" max="${DEFAULT_MAX_ZOOM}" value="${bgSize}" />
         </label>
         <div class="fav-img-editor-actions">
           <button type="button" class="list-btn list-btn--ghost" id="fav-img-editor-reset">Quitar imagen personalizada</button>
@@ -73,13 +78,54 @@ export function openFavoriteImageEditor(
     };
     applyPreview();
 
+    // Recomputes the zoom range from the image's own natural resolution so:
+    //  - the minimum always fully covers the 3:4 frame (same crop math as
+    //    the real card's `object-fit: cover`, no gaps at rest), and
+    //  - the maximum never scales the image past its native pixel size,
+    //    which is what produces soft/jagged ("dientes de sierra") edges.
+    let loadToken = 0;
+    const recomputeZoomBounds = (url: string) => {
+      const token = ++loadToken;
+      const probe = new Image();
+      probe.onload = () => {
+        if (token !== loadToken) return; // a newer URL loaded meanwhile
+        const naturalW = probe.naturalWidth || 0;
+        const naturalH = probe.naturalHeight || 0;
+        if (!naturalW || !naturalH) return;
+
+        const rect = viewport.getBoundingClientRect();
+        const viewportW = rect.width || 300;
+        const imgAspect = naturalW / naturalH;
+
+        // background-size: X% sets displayed width to X% of the container
+        // and scales height to preserve the image's own aspect ratio, so
+        // covering the frame vertically needs X% >= (Hc/Wc) * imgAspect.
+        const coverPercent = Math.round(Math.max(100, (1 / VIEWPORT_ASPECT) * imgAspect * 100));
+        const nativePercent = Math.round((naturalW / viewportW) * 100);
+        const newMin = coverPercent;
+        const newMax = Math.max(newMin, Math.min(DEFAULT_MAX_ZOOM, nativePercent));
+
+        zoomSlider.min = String(newMin);
+        zoomSlider.max = String(newMax);
+        if (!hasCustomBgSize) bgSize = newMin;
+        bgSize = Math.min(Math.max(bgSize, newMin), newMax);
+        zoomSlider.value = String(bgSize);
+        applyPreview();
+      };
+      probe.src = url;
+    };
+    recomputeZoomBounds(imageUrl);
+
     urlInput.addEventListener('input', () => {
       imageUrl = urlInput.value.trim();
+      hasCustomBgSize = false;
       applyPreview();
+      if (imageUrl) recomputeZoomBounds(imageUrl);
     });
 
     zoomSlider.addEventListener('input', () => {
       bgSize = Number(zoomSlider.value);
+      hasCustomBgSize = true;
       applyPreview();
     });
 
