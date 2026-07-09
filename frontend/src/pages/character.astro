@@ -203,11 +203,18 @@ const lang = getLang(Astro.url);
         avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
       }
 
-      // Nombres alternativos
+      // Nombres alternativos (incluye los marcados como spoiler por AniList,
+      // ocultos tras la clase .spoiler hasta que el usuario pase el ratón).
       const altNamesContainer = document.getElementById('char-alt-names')!;
-      if (character.name.alternative && character.name.alternative.length > 0) {
-        altNamesContainer.innerHTML = character.name.alternative
-          .map((alt: string) => `<span class="character-alt-name-tag">${alt}</span>`)
+      const altNames = [
+        ...(character.name.alternative ?? []).map((alt: string) => ({ text: alt, spoiler: false })),
+        ...(character.name.alternativeSpoiler ?? []).map((alt: string) => ({ text: alt, spoiler: true })),
+      ];
+      if (altNames.length > 0) {
+        altNamesContainer.innerHTML = altNames
+          .map(({ text, spoiler }) => spoiler
+            ? `<span class="character-alt-name-tag"><span class="spoiler">${text}</span></span>`
+            : `<span class="character-alt-name-tag">${text}</span>`)
           .join('');
         altNamesContainer.style.display = 'flex';
       } else {
@@ -481,9 +488,8 @@ const lang = getLang(Astro.url);
       if (contentEl) {
         contentEl.setAttribute('data-char-key', charKey);
       }
-      const aliasesCsv = character.name.alternative && character.name.alternative.length > 0
-        ? character.name.alternative.join(',')
-        : null;
+      const allAliases = [...(character.name.alternative ?? []), ...(character.name.alternativeSpoiler ?? [])];
+      const aliasesCsv = allAliases.length > 0 ? allAliases.join(',') : null;
 
       await saveCharacter(
         charKey,

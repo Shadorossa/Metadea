@@ -27,6 +27,7 @@ export function CharacterPrEditorModal() {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [currentId, setCurrentId] = useState('');
+  const [loadNonce, setLoadNonce] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
@@ -57,6 +58,7 @@ export function CharacterPrEditorModal() {
       setCurrentId(externalId);
       setIsOpen(true);
       setLoading(true);
+      setLoadNonce(n => n + 1);
     };
 
     return () => {
@@ -92,7 +94,7 @@ export function CharacterPrEditorModal() {
       }
     };
     loadCharacter();
-  }, [isOpen, currentId]);
+  }, [isOpen, currentId, loadNonce]);
 
   const isFieldChanged = (current: string, original: string | null | undefined) =>
     current !== (original || '');
@@ -173,8 +175,8 @@ export function CharacterPrEditorModal() {
 
   if (loading) {
     return createPortal(
-      <div className="pr-editor-overlay">
-        <div className="pr-editor-modal pr-editor-modal--loading">
+      <div className="pr-editor-overlay" onClick={handleClose}>
+        <div className="pr-editor-modal pr-editor-modal--loading" onClick={e => e.stopPropagation()}>
           <div className="spinner" />
         </div>
       </div>,
