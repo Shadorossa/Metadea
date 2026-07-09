@@ -116,10 +116,24 @@ const lang = getLang(Astro.url);
 
     </div>
 
-    <!-- PR Editor Modal -->
-    <CharacterPrEditorModal client:load />
+  </div>
+
+  <!-- Simple Character Editor Modal -->
+  <div id="character-editor-modal" class="character-editor-overlay" style="display: none;" onclick="closeCharacterEditor(event)">
+    <div class="character-editor-modal" onclick="event.stopPropagation()">
+      <div class="character-editor-header">
+        <h2>Editar Personaje</h2>
+        <button class="character-editor-close" onclick="closeCharacterEditor()">✕</button>
+      </div>
+      <div class="character-editor-content">
+        <p style="color: var(--text-main); margin-bottom: 1rem;">Abriendo editor...</p>
+        <div id="character-editor-container"></div>
+      </div>
+    </div>
   </div>
 </BaseLayout>
+
+<CharacterPrEditorModal client:load />
 
 <script>
   // Global function to handle edit button click
@@ -135,18 +149,25 @@ const lang = getLang(Astro.url);
       return;
     }
 
-    // Try to open the editor
-    if (window.openCharacterEditor) {
-      console.log('Opening editor for:', charKey);
-      window.openCharacterEditor(charKey);
-    } else {
-      console.error('openCharacterEditor not available yet');
-      // Retry after a short delay
-      setTimeout(() => {
-        if (window.openCharacterEditor) {
-          window.openCharacterEditor(charKey);
-        }
-      }, 500);
+    console.log('Opening editor for:', charKey);
+    const modal = document.getElementById('character-editor-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.setAttribute('data-char-key', charKey);
+
+      // Try to use React component if available
+      if (window.openCharacterEditor) {
+        window.openCharacterEditor(charKey);
+      }
+    }
+  };
+
+  // Function to close the character editor modal
+  window.closeCharacterEditor = function(event) {
+    if (event && event.target !== this) return;
+    const modal = document.getElementById('character-editor-modal');
+    if (modal) {
+      modal.style.display = 'none';
     }
   };
 
