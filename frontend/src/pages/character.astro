@@ -123,10 +123,17 @@ const lang = getLang(Astro.url);
   } from '../lib/tauri';
 
   async function loadCharacterData() {
-    const loadingEl = document.getElementById('character-loading')!;
-    const errorEl = document.getElementById('character-error')!;
-    const errorTextEl = document.getElementById('character-error-text')!;
-    const contentEl = document.getElementById('character-content')!;
+    // This listener is registered once and never removed (see astro:page-load
+    // below), but that event fires on every SPA navigation, not just to this
+    // page — once the user has visited a character page even once, every
+    // future navigation anywhere else re-fires this handler against a DOM
+    // that no longer has these elements. Bail out silently instead of
+    // crashing on the resulting null.
+    const loadingEl = document.getElementById('character-loading');
+    const errorEl = document.getElementById('character-error');
+    const errorTextEl = document.getElementById('character-error-text');
+    const contentEl = document.getElementById('character-content');
+    if (!loadingEl || !errorEl || !errorTextEl || !contentEl) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const idParam = urlParams.get('id') ?? '';
