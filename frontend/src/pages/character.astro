@@ -117,11 +117,9 @@ const lang = getLang(Astro.url);
     </div>
 
     <!-- PR Editor Modal -->
-    <div id="char-pr-editor-root"></div>
+    <CharacterPrEditorModal client:load />
   </div>
 </BaseLayout>
-
-<CharacterPrEditorModal client:load />
 
 <script>
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
