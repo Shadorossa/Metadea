@@ -176,17 +176,23 @@ pub async fn get_list_items_full(
     list_key: String,
 ) -> Result<Vec<ListItemFull>, String> {
     let conn = state.conn.lock().str_err()?;
-    // Single SQL JOIN — everything is in metadea.db
+    // Single SQL JOIN — everything is in metadea.db. Characters never have a
+    // media_catalog row (that table is media only — see save_character), so
+    // their title/cover are resolved from the characters table instead via
+    // COALESCE; media_type/format stay null for them either way since
+    // "character" isn't a media type.
     let mut stmt = conn.prepare(
         "SELECT
             li.external_id, li.position,
             ul.id, ul.status, ul.rating,
             COALESCE(ul.progress, 0.0), COALESCE(ul.progress_2, 0.0),
             COALESCE(ul.is_favorite, 0), COALESCE(ul.is_platinum, 0),
-            mc.title_main, mc.cover_url, mc.type, mc.format
+            COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url),
+            mc.type, mc.format
          FROM user_list_items li
          LEFT JOIN user_library ul ON ul.external_id = li.external_id
          LEFT JOIN media_catalog mc ON mc.external_id = li.external_id
+         LEFT JOIN characters c ON c.external_id = li.external_id
          WHERE li.list_key = ?1
          ORDER BY li.position"
     ).str_err()?;

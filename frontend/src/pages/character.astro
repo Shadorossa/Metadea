@@ -114,7 +114,6 @@ const lang = getLang(Astro.url);
 <script>
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
   import {
-    saveCatalogEntry,
     readUserFavorites,
     writeUserFavorites,
     saveCharacter,
@@ -419,17 +418,10 @@ const lang = getLang(Astro.url);
       }
 
       // ── PERSIST CHARACTER + APPEARANCES IN metadea.db ───────────────────
+      // Characters live only in the characters table, never in media_catalog
+      // (that table is for anime/manga/games/etc, not the people/characters
+      // appearing in them).
       const charKey = `character:${characterId}`;
-
-      await saveCatalogEntry({
-        id: '',
-        external_id: charKey,
-        type: 'character',
-        title_main: character.name.full,
-        cover_url: character.image?.large || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }).catch(console.error);
 
       await saveCharacter(charKey, character.name.full, character.image?.large || null).catch(console.error);
 

@@ -24,6 +24,13 @@ export async function getCharacter(externalId: string): Promise<CharacterEntry |
   return tauriCmd<CharacterEntry | null>('get_character', null, { externalId });
 }
 
+// Bulk fetch for UI that needs every cached character's name/cover without a
+// per-id round trip (e.g. the profile Favorites tab) — characters live only
+// in this table, never in media_catalog.
+export async function getAllCharacters(): Promise<CharacterEntry[]> {
+  return tauriCmd<CharacterEntry[]>('get_all_characters', []);
+}
+
 export async function setCharacterReaction(externalId: string, reaction: string | null): Promise<void> {
   return tauriRun('set_character_reaction', { externalId, reaction });
 }

@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries, readUserFavorites, writeUserFavorites } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, readUserFavorites, writeUserFavorites } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
 import { dbRatingToStars5 } from '../media/rating-utils';
@@ -23,6 +23,10 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   const catalogMap = new Map<string, MediaCatalogEntry>(
     catalogEntries.map(e => [e.external_id, e])
   );
+  // Characters are never in media_catalog — resolved separately from their
+  // own table instead.
+  const characterEntries = await getAllCharacters().catch(() => []);
+  const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
 
   /* ── Load & Synchronize user_favorite.json ─────────────────────────────── */
   let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
@@ -89,9 +93,12 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
     const catItems = cat.getItems();
 
     const gridHtml = catItems.map((item, idx) => {
-      const meta = catalogMap.get(item.external_id);
-      const title = meta?.title_main ?? item.external_id;
-      const cover = meta?.cover_url ?? '';
+      const title = item.type === 'character'
+        ? (characterMap.get(item.external_id)?.name ?? item.external_id)
+        : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
+      const cover = item.type === 'character'
+        ? (characterMap.get(item.external_id)?.image_url ?? '')
+        : (catalogMap.get(item.external_id)?.cover_url ?? '');
       const mediaUrl = item.type === 'character'
         ? `/character?id=${item.external_id.replace('character:', '')}`
         : `/media?id=${encodeURIComponent(item.external_id)}`;

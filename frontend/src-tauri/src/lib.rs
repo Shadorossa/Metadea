@@ -132,6 +132,7 @@ pub fn run() {
             media_catalog::sync_community_catalog,
             characters::save_character,
             characters::get_character,
+            characters::get_all_characters,
             characters::set_character_reaction,
             characters::save_character_appearances,
             characters::get_character_appearances,

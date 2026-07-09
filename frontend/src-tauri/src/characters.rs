@@ -83,6 +83,25 @@ pub async fn get_character(
     .str_err()
 }
 
+// Bulk fetch for local-only UI that needs every cached character's name/cover
+// without a per-id round trip — e.g. the profile Favorites tab, which used to
+// resolve character title/cover via a media_catalog row that shouldn't have
+// existed for a character in the first place (see save_character in
+// character.astro instead of a duplicate media_catalog entry).
+#[tauri::command]
+pub async fn get_all_characters(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<CharacterEntry>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(SELECT_CHARACTER).str_err()?;
+    let rows = stmt
+        .query_map([], row_to_character)
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
 #[tauri::command]
 pub async fn set_character_reaction(
     state: tauri::State<'_, crate::db::MetadeaDb>,
