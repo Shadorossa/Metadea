@@ -4,8 +4,8 @@ import { getCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 
 interface Props {
-  externalId: string;
-  onClose: () => void;
+  externalId?: string;
+  onClose?: () => void;
   onSaved?: () => void;
 }
 
@@ -29,8 +29,10 @@ function Field({ label, changed, full, children }: {
   );
 }
 
-export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) {
-  const [loading, setLoading] = useState(true);
+export function CharacterPrEditorModal({ externalId: initialId, onClose: onCloseProp, onSaved }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentId, setCurrentId] = useState(initialId || '');
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -43,10 +45,30 @@ export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) 
   const [biography, setBiography] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
+  const handleClose = () => {
+    setIsOpen(false);
+    onCloseProp?.();
+  };
+
   useEffect(() => {
+    const handleOpenEditor = (e: CustomEvent) => {
+      const id = e.detail?.externalId;
+      if (id) {
+        setCurrentId(id);
+        setIsOpen(true);
+        setLoading(true);
+      }
+    };
+    window.addEventListener('open-character-editor', handleOpenEditor as EventListener);
+    return () => window.removeEventListener('open-character-editor', handleOpenEditor as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || !currentId) return;
+
     const loadCharacter = async () => {
       try {
-        const data = await getCharacter(externalId);
+        const data = await getCharacter(currentId);
         if (!data) {
           setErrorMsg('Personaje no encontrado');
           return;
@@ -66,7 +88,7 @@ export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) 
       }
     };
     loadCharacter();
-  }, [externalId]);
+  }, [isOpen, currentId]);
 
   const hasChanged = () => {
     if (!originalCharacter) return false;
@@ -124,13 +146,13 @@ export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) 
       };
 
       const changeSummary = `- ${buildChangeSummary()}`;
-      const prUrl = await submitCollaborativeProposal(externalId, bundle, changeSummary, setStatusMsg);
+      const prUrl = await submitCollaborativeProposal(currentId, bundle, changeSummary, setStatusMsg);
 
       if (prUrl) {
         setStatusMsg('¡Pull Request creado exitosamente!');
         await new Promise(r => setTimeout(r, 1500));
         await openUrlInBrowser(prUrl);
-        onClose();
+        handleClose();
         onSaved?.();
       }
     } catch (err: any) {
@@ -141,14 +163,14 @@ export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) 
     }
   };
 
-  if (!document.body) return null;
+  if (!document.body || !isOpen) return null;
 
   return createPortal(
-    <div className="pr-editor-overlay" onClick={onClose}>
+    <div className="pr-editor-overlay" onClick={handleClose}>
       <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header">
           <h2>Editar Personaje</h2>
-          <button className="pr-editor-close-btn" onClick={onClose}>✕</button>
+          <button className="pr-editor-close-btn" onClick={handleClose}>✕</button>
         </div>
 
         {loading && (
@@ -231,7 +253,7 @@ export function CharacterPrEditorModal({ externalId, onClose, onSaved }: Props) 
             <div className="pr-editor-actions">
               <button
                 className="pr-editor-btn pr-editor-btn--secondary"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={submitting}
               >
                 Cancelar
