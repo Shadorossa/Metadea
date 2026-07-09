@@ -16,7 +16,7 @@ const lang = getLang(Astro.url);
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Volver a la búsqueda
       </a>
-      <button class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje">
+      <button class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje" onclick="handleEditClick()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
         </svg>
@@ -36,7 +36,7 @@ const lang = getLang(Astro.url);
     </div>
 
     <!-- Contenido del Personaje (Grid de 2 Columnas) -->
-    <div id="character-content" class="character-detail-layout" style="display: none;">
+    <div id="character-content" class="character-detail-layout" style="display: none;" data-char-key="">
       
       <!-- Columna Izquierda: Sidebar -->
       <div class="character-sidebar-col">
@@ -122,6 +122,34 @@ const lang = getLang(Astro.url);
 </BaseLayout>
 
 <script>
+  // Global function to handle edit button click
+  window.handleEditClick = function() {
+    const charKeyEl = document.querySelector('[data-char-key]');
+    if (!charKeyEl) {
+      console.error('Character key not found');
+      return;
+    }
+    const charKey = charKeyEl.getAttribute('data-char-key');
+    if (!charKey) {
+      console.error('Character key is empty');
+      return;
+    }
+
+    // Try to open the editor
+    if (window.openCharacterEditor) {
+      console.log('Opening editor for:', charKey);
+      window.openCharacterEditor(charKey);
+    } else {
+      console.error('openCharacterEditor not available yet');
+      // Retry after a short delay
+      setTimeout(() => {
+        if (window.openCharacterEditor) {
+          window.openCharacterEditor(charKey);
+        }
+      }, 500);
+    }
+  };
+
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
   import {
     readUserFavorites,
@@ -456,6 +484,12 @@ const lang = getLang(Astro.url);
       // (that table is for anime/manga/games/etc, not the people/characters
       // appearing in them).
       const charKey = `character:${characterId}`;
+
+      // Store charKey in data attribute for edit button
+      const contentEl = document.getElementById('character-content');
+      if (contentEl) {
+        contentEl.setAttribute('data-char-key', charKey);
+      }
       const aliasesCsv = character.name.alternative && character.name.alternative.length > 0
         ? character.name.alternative.join(',')
         : null;
@@ -475,21 +509,6 @@ const lang = getLang(Astro.url);
           relation_type: edge.relationType ?? null,
         }));
         await saveCharacterAppearances(charKey, appearances).catch(console.error);
-      }
-
-      // ── EDIT BUTTON ──────────────────────────────────────────────────────
-      const editBtnHeader = document.getElementById('char-edit-btn-header');
-      if (editBtnHeader) {
-        editBtnHeader.addEventListener('click', (e) => {
-          e.preventDefault();
-          if ((window as any).openCharacterEditor) {
-            (window as any).openCharacterEditor(charKey);
-          } else {
-            console.warn('openCharacterEditor function not available');
-          }
-        });
-      } else {
-        console.warn('Edit button not found');
       }
 
       // ── FAVORITE + REACTION BUTTONS ──────────────────────────────────────
