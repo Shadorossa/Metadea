@@ -9,6 +9,10 @@
 
 .back-btn-wrap {
   margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .back-btn-link {

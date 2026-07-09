@@ -10,12 +10,18 @@ const lang = getLang(Astro.url);
 <BaseLayout title="Detalle de Personaje — Metadea" lang={lang} activePage="search">
   <div class="character-page-container">
     
-    <!-- Botón Volver -->
+    <!-- Botón Volver + Editar -->
     <div class="back-btn-wrap">
       <a href="/search?type=character" class="btn btn--sm btn--secondary back-btn-link">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Volver a la búsqueda
       </a>
+      <button class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+        Editar
+      </button>
     </div>
 
     <!-- Estado de Carga -->
@@ -39,14 +45,8 @@ const lang = getLang(Astro.url);
           <!-- Rellenado dinámicamente por JS -->
         </div>
 
-        <!-- Favorito + Reacciones + Editar -->
+        <!-- Favorito + Reacciones -->
         <div class="character-action-row" id="char-action-row">
-          <button class="char-action-btn" id="char-edit-btn" data-action="edit" title="Editar datos">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-            </svg>
-            <span>Editar</span>
-          </button>
           <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title="Favorito">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -480,9 +480,9 @@ const lang = getLang(Astro.url);
       }
 
       // ── EDIT BUTTON ──────────────────────────────────────────────────────
-      const editBtn = document.getElementById('char-edit-btn');
-      if (editBtn) {
-        editBtn.addEventListener('click', () => {
+      const editBtnHeader = document.getElementById('char-edit-btn-header');
+      if (editBtnHeader) {
+        editBtnHeader.addEventListener('click', () => {
           window.dispatchEvent(new CustomEvent('open-character-editor', {
             detail: { externalId: charKey }
           }));
