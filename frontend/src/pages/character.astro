@@ -480,11 +480,15 @@ const lang = getLang(Astro.url);
       // ── EDIT BUTTON ──────────────────────────────────────────────────────
       const editBtnHeader = document.getElementById('char-edit-btn-header');
       if (editBtnHeader) {
-        editBtnHeader.addEventListener('click', () => {
+        editBtnHeader.addEventListener('click', (e) => {
+          e.preventDefault();
+          console.log('Edit button clicked, dispatching event with id:', charKey);
           window.dispatchEvent(new CustomEvent('open-character-editor', {
             detail: { externalId: charKey }
           }));
         });
+      } else {
+        console.warn('Edit button not found');
       }
 
       // ── FAVORITE + REACTION BUTTONS ──────────────────────────────────────
