@@ -1369,6 +1369,47 @@
   border-color: var(--color-planning);
 }
 
+/* Icon toolbar (edit-image + crown) top-right of a favorite card */
+.fav-card-icons {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.fav-edit-image-btn {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fav-card:hover .fav-edit-image-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fav-edit-image-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fav-cover--custom {
+  background-repeat: no-repeat;
+}
+
 /* Reorder movement arrow styles */
 .fav-arrow-btn {
   background: rgba(0, 0, 0, 0.85);
@@ -2992,6 +3033,112 @@
 
 @media (max-width: 900px) {
   .stats-advanced-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Favorite custom-image editor ────────────────────────────────────────── */
+
+.fav-img-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.fav-img-editor-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.fav-img-editor-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.fav-img-editor-url {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main);
+  font-size: 0.82rem;
+}
+
+.fav-img-editor-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 320px;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: grab;
+  touch-action: none;
+}
+
+.fav-img-editor-viewport.dragging {
+  cursor: grabbing;
+}
+
+.fav-img-editor-preview {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.fav-img-editor-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.fav-img-editor-zoom-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.fav-img-editor-zoom {
+  width: 100%;
+}
+
+.fav-img-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fav-img-editor-actions-right {
+  display: flex;
+  gap: 0.5rem;
 }
 
 @media (max-width: 768px) {

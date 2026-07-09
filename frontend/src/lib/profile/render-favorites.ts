@@ -1,8 +1,9 @@
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, readUserFavorites, writeUserFavorites } from '../tauri';
-import type { MediaCatalogEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites } from '../tauri';
+import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
 import { getT } from '../../i18n/client';
 import { dbRatingToStars5 } from '../media/rating-utils';
 import { typeIconMap } from '../shared/icon-strings';
+import { openFavoriteImageEditor } from './favorite-image-editor';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -30,6 +31,11 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
     return [];
   });
   const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
+
+  // Local-only cover overrides — only ever read/written here, never leaves
+  // this machine.
+  const customImages = await getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]);
+  const customImageMap = new Map(customImages.map(c => [c.external_id, c]));
 
   /* ── Load & Synchronize user_favorite.json ─────────────────────────────── */
   let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
@@ -99,9 +105,10 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const title = item.type === 'character'
         ? (characterMap.get(item.external_id)?.name ?? item.external_id)
         : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
-      const cover = item.type === 'character'
+      const rawCover = item.type === 'character'
         ? (characterMap.get(item.external_id)?.image_url ?? '')
         : (catalogMap.get(item.external_id)?.cover_url ?? '');
+      const customImg = customImageMap.get(item.external_id);
       const mediaUrl = item.type === 'character'
         ? `/character?id=${item.external_id.replace('character:', '')}`
         : `/media?id=${encodeURIComponent(item.external_id)}`;
@@ -115,15 +122,23 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           <a class="fav-card-link" href="${mediaUrl}"></a>
           <div class="fav-badge">#${idx + 1}</div>
 
-          <!-- Crown button overlay -->
-          ${activeCatKey !== 'multimedia' && item.type !== 'character' ? `
-            <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia" style="position: absolute; top: 10px; right: 10px; z-index: 10;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
+          <div class="fav-card-icons">
+            <!-- Custom-image editor trigger (hover-only, see .fav-edit-image-btn CSS) -->
+            <button class="fav-edit-image-btn" data-id="${item.external_id}" title="Editar imagen">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </button>
-          ` : ''}
+            <!-- Crown button overlay -->
+            ${activeCatKey !== 'multimedia' && item.type !== 'character' ? `
+              <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
+              </button>
+            ` : ''}
+          </div>
 
-          ${cover
-          ? `<img class="fav-cover" src="${cover}" alt="${title}" loading="lazy" />`
+          ${customImg
+          ? `<div class="fav-cover fav-cover--custom" style="background-image:url('${customImg.image_url}');background-size:${customImg.bg_size}%;background-position:${customImg.pos_x}% ${customImg.pos_y}%;"></div>`
+          : rawCover
+          ? `<img class="fav-cover" src="${rawCover}" alt="${title}" loading="lazy" />`
           : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
         }
           <div class="fav-overlay">
@@ -200,6 +215,30 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           favData.multimedia.push(id);
         }
         await writeUserFavorites(favData);
+        renderContent();
+      });
+    });
+
+    // Hook custom-image editor trigger buttons
+    el.querySelectorAll('.fav-edit-image-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const id = (btn as HTMLElement).dataset.id || '';
+        if (!id) return;
+
+        const item = catItems.find(i => i.external_id === id);
+        const rawCover = item?.type === 'character'
+          ? (characterMap.get(id)?.image_url ?? '')
+          : (catalogMap.get(id)?.cover_url ?? '');
+
+        const result = await openFavoriteImageEditor(id, rawCover, customImageMap.get(id));
+        if (result.action === 'cancelled') return;
+        if (result.action === 'saved') {
+          customImageMap.set(id, result.image);
+        } else {
+          customImageMap.delete(id);
+        }
         renderContent();
       });
     });

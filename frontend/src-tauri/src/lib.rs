@@ -1,6 +1,7 @@
 mod auth;
 mod characters;
 mod db;
+mod favorite_images;
 mod folders;
 mod github;
 mod anilist;
@@ -138,6 +139,10 @@ pub fn run() {
             characters::get_character_appearances,
             characters::save_characters_skeleton,
             characters::get_media_characters,
+            favorite_images::save_favorite_custom_image,
+            favorite_images::get_favorite_custom_image,
+            favorite_images::get_all_favorite_custom_images,
+            favorite_images::delete_favorite_custom_image,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
             user_metadata::remove_user_image,

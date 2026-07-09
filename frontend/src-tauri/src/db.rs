@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS app_env (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Local-only cover override, used exclusively by the profile Favorites tab
+-- (never synced/shared) — lets a user re-crop/zoom whatever cover a
+-- favorited media or character already has without touching the real
+-- media_catalog/characters cover_url. bg_size/pos_x/pos_y map directly to
+-- CSS background-size/background-position percentages, so the editor's
+-- live preview and the final card render use the exact same formula.
+CREATE TABLE IF NOT EXISTS favorite_custom_images (
+    external_id TEXT PRIMARY KEY,
+    image_url   TEXT NOT NULL,
+    bg_size     REAL NOT NULL DEFAULT 100,
+    pos_x       REAL NOT NULL DEFAULT 50,
+    pos_y       REAL NOT NULL DEFAULT 50,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS characters (
     id           TEXT PRIMARY KEY,
     external_id  TEXT UNIQUE NOT NULL,
