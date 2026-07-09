@@ -1308,8 +1308,14 @@
 /* Favorites Grid & Cards */
 .fav-grid {
   display: grid;
-  /* Centered cover cards supporting 10 columns per row on desktop */
-  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  /* Centered cover cards supporting 10 columns per row on desktop.
+     auto-fit (not auto-fill) matters here: with fewer than ~10 items,
+     auto-fill still creates the extra empty tracks the container has
+     room for and they keep their share of the 1fr width — invisible,
+     but shifting the visible cards left of true center. auto-fit
+     collapses those empty tracks to 0 so the real cards' 1fr tracks
+     absorb the leftover space instead, keeping the row centered. */
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   justify-content: center;
   gap: 1rem;
   width: 100%;
