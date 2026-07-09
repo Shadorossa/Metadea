@@ -1309,13 +1309,20 @@
 .fav-grid {
   display: grid;
   /* Centered cover cards supporting 10 columns per row on desktop.
-     auto-fit (not auto-fill) matters here: with fewer than ~10 items,
-     auto-fill still creates the extra empty tracks the container has
-     room for and they keep their share of the 1fr width — invisible,
-     but shifting the visible cards left of true center. auto-fit
-     collapses those empty tracks to 0 so the real cards' 1fr tracks
-     absorb the leftover space instead, keeping the row centered. */
-  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+     Two things matter here together:
+      - auto-fit (not auto-fill): auto-fill still creates the extra
+        empty tracks the container has room for, and they keep their
+        share of the row's width — invisible, but shifting the
+        visible cards left of true center. auto-fit collapses those
+        empty tracks to 0 instead.
+      - a capped track max (150px, not 1fr): without a cap, auto-fit
+        lets the few *populated* tracks swallow all the width the
+        collapsed empty ones freed up — with a single favorite, that
+        one card would stretch to fill the entire row. Capping the
+        max keeps every card the same size regardless of how many
+        there are; justify-content: center takes care of centering
+        whatever total width that leaves. */
+  grid-template-columns: repeat(auto-fit, minmax(135px, 150px));
   justify-content: center;
   gap: 1rem;
   width: 100%;
