@@ -429,8 +429,18 @@ const lang = getLang(Astro.url);
       // (that table is for anime/manga/games/etc, not the people/characters
       // appearing in them).
       const charKey = `character:${characterId}`;
+      const aliasesCsv = character.name.alternative && character.name.alternative.length > 0
+        ? character.name.alternative.join(',')
+        : null;
 
-      await saveCharacter(charKey, character.name.full, character.image?.large || null).catch(console.error);
+      await saveCharacter(
+        charKey,
+        character.name.full,
+        character.image?.large || null,
+        character.name.native || null,
+        aliasesCsv,
+        character.description || null,
+      ).catch(console.error);
 
       if (sortedEdges.length > 0) {
         const appearances = sortedEdges.map((edge: any) => ({

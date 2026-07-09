@@ -25,7 +25,10 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   );
   // Characters are never in media_catalog — resolved separately from their
   // own table instead.
-  const characterEntries = await getAllCharacters().catch(() => []);
+  const characterEntries = await getAllCharacters().catch(err => {
+    console.error('[Favorites] Failed to load characters — is the Tauri backend rebuilt?', err);
+    return [];
+  });
   const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
 
   /* ── Load & Synchronize user_favorite.json ─────────────────────────────── */

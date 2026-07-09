@@ -1,13 +1,17 @@
 import { isTauri, invoke, tauriCmd, tauriRun } from './core';
 
 export interface CharacterEntry {
-  id:          string;
-  external_id: string;
-  name:        string;
-  image_url?:  string | null;
-  reaction?:   string | null;
-  created_at:  string;
-  updated_at:  string;
+  id:           string;
+  external_id:  string;
+  name:         string;
+  name_native?: string | null;
+  /** Comma-separated alternative names (AniList's name.alternative list). */
+  aliases_csv?: string | null;
+  biography?:   string | null;
+  image_url?:   string | null;
+  reaction?:    string | null;
+  created_at:   string;
+  updated_at:   string;
 }
 
 export interface CharacterAppearance {
@@ -15,9 +19,16 @@ export interface CharacterAppearance {
   relation_type?:     string | null;
 }
 
-export async function saveCharacter(externalId: string, name: string, imageUrl?: string | null): Promise<CharacterEntry> {
+export async function saveCharacter(
+  externalId: string,
+  name: string,
+  imageUrl?: string | null,
+  nameNative?: string | null,
+  aliasesCsv?: string | null,
+  biography?: string | null,
+): Promise<CharacterEntry> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<CharacterEntry>('save_character', { externalId, name, imageUrl });
+  return invoke<CharacterEntry>('save_character', { externalId, name, imageUrl, nameNative, aliasesCsv, biography });
 }
 
 export async function getCharacter(externalId: string): Promise<CharacterEntry | null> {

@@ -36,6 +36,11 @@ impl MetadeaDb {
         // idempotent-ALTER pattern as authors_csv above (fresh DBs already
         // get it inline via METADEA_SCHEMA's CREATE TABLE text).
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN shop_links_csv TEXT DEFAULT ''", []);
+        // Upgrade path for DBs created before these three columns existed on
+        // characters — same idempotent-ALTER pattern as above.
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN name_native TEXT", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN aliases_csv TEXT DEFAULT ''", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN biography TEXT", []);
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(Self { conn: Mutex::new(conn) })
     }
@@ -67,13 +72,16 @@ CREATE TABLE IF NOT EXISTS app_env (
 );
 
 CREATE TABLE IF NOT EXISTS characters (
-    id          TEXT PRIMARY KEY,
-    external_id TEXT UNIQUE NOT NULL,
-    name        TEXT NOT NULL DEFAULT '',
-    image_url   TEXT,
-    reaction    TEXT,
-    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+    id           TEXT PRIMARY KEY,
+    external_id  TEXT UNIQUE NOT NULL,
+    name         TEXT NOT NULL DEFAULT '',
+    name_native  TEXT,
+    aliases_csv  TEXT DEFAULT '',
+    biography    TEXT,
+    image_url    TEXT,
+    reaction     TEXT,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS characters_external_idx ON characters(external_id);
 
