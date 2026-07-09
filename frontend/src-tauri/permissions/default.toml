@@ -87,9 +87,11 @@ commands.allow = [
   "reorder_list_items",
   "save_character",
   "get_character",
+  "get_all_characters",
   "set_character_reaction",
   "save_character_appearances",
   "get_character_appearances",
-  "save_characters_skeleton"
+  "save_characters_skeleton",
+  "get_media_characters"
 ]
 
