@@ -30,6 +30,7 @@ function Field({ label, changed, full, children }: {
 }
 
 export function CharacterPrEditorModal({ externalId: initialId, onClose: onCloseProp, onSaved }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [currentId, setCurrentId] = useState(initialId || '');
   const [loading, setLoading] = useState(false);
@@ -44,6 +45,10 @@ export function CharacterPrEditorModal({ externalId: initialId, onClose: onClose
   const [aliases, setAliases] = useState('');
   const [biography, setBiography] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -163,7 +168,7 @@ export function CharacterPrEditorModal({ externalId: initialId, onClose: onClose
     }
   };
 
-  if (!document.body || !isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div className="pr-editor-overlay" onClick={handleClose}>
