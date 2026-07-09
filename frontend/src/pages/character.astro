@@ -197,19 +197,32 @@ const lang = getLang(Astro.url);
         const label = el.textContent.trim().replace(/:$/, '').trim();
         if (label.length > 30 || label.length < 2) continue;
 
-        // Buscar el valor en los nodos hermanos siguientes
+        // Buscar el valor en los nodos hermanos siguientes. Un valor puede
+        // venir partido en varios fragmentos — texto plano seguido de un
+        // spoiler de AniList (<span class="markdown_spoiler">, lo que
+        // "~!texto!~" se convierte al pedir description(asHtml: true)) — así
+        // que no paramos en el primer fragmento de texto encontrado, solo al
+        // toparnos con un límite real de bloque (otra etiqueta, o un <br>
+        // una vez ya hay contenido acumulado).
         let nextNode = el.nextSibling;
         let valueParts: string[] = [];
 
         while (nextNode) {
           if (nextNode.nodeType === Node.TEXT_NODE) {
             const txt = nextNode.textContent?.trim();
-            if (txt) {
-              valueParts.push(txt);
-              break; // Encontrado el bloque de texto
-            }
+            if (txt) valueParts.push(txt);
           } else if (nextNode.nodeName === 'BR') {
-            // Seguir buscando tras saltos de línea
+            // <b>Label:</b><br>Value — seguimos buscando tras el primer salto
+            // de línea, pero un <br> después de ya tener contenido marca el
+            // final de esta línea de stat.
+            if (valueParts.length > 0) {
+              nextNode = nextNode.nextSibling;
+              break;
+            }
+          } else if (nextNode instanceof Element && nextNode.classList.contains('markdown_spoiler')) {
+            // Conserva el span de spoiler tal cual (no solo su texto) para
+            // que siga ocultándose visualmente en el valor del stat.
+            valueParts.push((nextNode as HTMLElement).outerHTML);
           } else {
             // Si nos topamos con otra etiqueta (ej. <b> u otro bloque), paramos
             break;

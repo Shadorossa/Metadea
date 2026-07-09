@@ -349,8 +349,10 @@
   text-align: center;
 }
 
-/* Spoilers */
-.spoiler, .markdown-spoiler {
+/* Spoilers — AniList's description(asHtml: true) converts "~!text!~" into
+   <span class="markdown_spoiler"> (underscore) itself; .spoiler/.markdown-spoiler
+   are kept for any HTML built locally instead of coming straight from AniList. */
+.spoiler, .markdown-spoiler, .markdown_spoiler {
   background: #3f3f46;
   color: transparent !important;
   cursor: pointer;
@@ -359,7 +361,7 @@
   border-radius: 4px;
 }
 
-.spoiler:hover, .markdown-spoiler:hover {
+.spoiler:hover, .markdown-spoiler:hover, .markdown_spoiler:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-main) !important;
 }
