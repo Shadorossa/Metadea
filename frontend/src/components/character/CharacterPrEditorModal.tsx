@@ -181,111 +181,107 @@ export function CharacterPrEditorModal({ externalId: initialId, onClose: onClose
 
   if (!mounted || !isOpen) return null;
 
+  const container = document.getElementById('character-editor-container');
+  if (!container) return null;
+
   return createPortal(
-    <div className="pr-editor-overlay" onClick={handleClose}>
-      <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header">
-          <h2>Editar Personaje</h2>
-          <button className="pr-editor-close-btn" onClick={handleClose}>✕</button>
+    <>
+      {loading && (
+        <div className="pr-editor-loading">
+          <p>Cargando personaje...</p>
         </div>
+      )}
 
-        {loading && (
-          <div className="pr-editor-loading">
-            <p>Cargando personaje...</p>
-          </div>
-        )}
+      {!loading && errorMsg && (
+        <div className="pr-editor-error">
+          <p>{errorMsg}</p>
+        </div>
+      )}
 
-        {!loading && errorMsg && (
-          <div className="pr-editor-error">
-            <p>{errorMsg}</p>
-          </div>
-        )}
+      {!loading && character && (
+        <div className="pr-editor-content">
+          <div className="pr-editor-section">
+            <div className="pr-editor-form">
+              <Field label="Nombre" changed={name !== (originalCharacter?.name || '')}>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="pr-editor-input"
+                />
+              </Field>
 
-        {!loading && character && (
-          <div className="pr-editor-content">
-            <div className="pr-editor-section">
-              <div className="pr-editor-form">
-                <Field label="Nombre" changed={name !== (originalCharacter?.name || '')}>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    className="pr-editor-input"
-                  />
-                </Field>
+              <Field label="Nombre Nativo" changed={nameNative !== (originalCharacter?.name_native || '')}>
+                <input
+                  type="text"
+                  value={nameNative}
+                  onChange={e => setNameNative(e.target.value)}
+                  className="pr-editor-input"
+                  placeholder="(Opcional)"
+                />
+              </Field>
 
-                <Field label="Nombre Nativo" changed={nameNative !== (originalCharacter?.name_native || '')}>
-                  <input
-                    type="text"
-                    value={nameNative}
-                    onChange={e => setNameNative(e.target.value)}
-                    className="pr-editor-input"
-                    placeholder="(Opcional)"
-                  />
-                </Field>
+              <Field label="Aliases" changed={aliases !== (originalCharacter?.aliases_csv || '')}>
+                <textarea
+                  value={aliases}
+                  onChange={e => setAliases(e.target.value)}
+                  className="pr-editor-textarea pr-editor-textarea--sm"
+                  placeholder="Nombres alternativos separados por comas (Opcional)"
+                />
+              </Field>
 
-                <Field label="Aliases" changed={aliases !== (originalCharacter?.aliases_csv || '')}>
-                  <textarea
-                    value={aliases}
-                    onChange={e => setAliases(e.target.value)}
-                    className="pr-editor-textarea pr-editor-textarea--sm"
-                    placeholder="Nombres alternativos separados por comas (Opcional)"
-                  />
-                </Field>
+              <Field label="Biografía" changed={biography !== (originalCharacter?.biography || '')} full>
+                <textarea
+                  value={biography}
+                  onChange={e => setBiography(e.target.value)}
+                  className="pr-editor-textarea"
+                  placeholder="Descripción del personaje (Opcional)"
+                />
+              </Field>
 
-                <Field label="Biografía" changed={biography !== (originalCharacter?.biography || '')} full>
-                  <textarea
-                    value={biography}
-                    onChange={e => setBiography(e.target.value)}
-                    className="pr-editor-textarea"
-                    placeholder="Descripción del personaje (Opcional)"
-                  />
-                </Field>
+              <Field label="URL de Imagen" changed={imageUrl !== (originalCharacter?.image_url || '')}>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  className="pr-editor-input"
+                  placeholder="https://... (Opcional)"
+                />
+              </Field>
 
-                <Field label="URL de Imagen" changed={imageUrl !== (originalCharacter?.image_url || '')}>
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={e => setImageUrl(e.target.value)}
-                    className="pr-editor-input"
-                    placeholder="https://... (Opcional)"
-                  />
-                </Field>
-
-                {imageUrl && (
-                  <div className="pr-editor-image-preview">
-                    <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {statusMsg && (
-              <div className="pr-editor-status">
-                <p>{statusMsg}</p>
-              </div>
-            )}
-
-            <div className="pr-editor-actions">
-              <button
-                className="pr-editor-btn pr-editor-btn--secondary"
-                onClick={handleClose}
-                disabled={submitting}
-              >
-                Cancelar
-              </button>
-              <button
-                className="pr-editor-btn pr-editor-btn--primary"
-                onClick={handleSubmit}
-                disabled={submitting || !hasChanged()}
-              >
-                {submitting ? 'Enviando...' : 'Crear Pull Request'}
-              </button>
+              {imageUrl && (
+                <div className="pr-editor-image-preview">
+                  <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
-    </div>,
-    document.body
+
+          {statusMsg && (
+            <div className="pr-editor-status">
+              <p>{statusMsg}</p>
+            </div>
+          )}
+
+          <div className="pr-editor-actions">
+            <button
+              className="pr-editor-btn pr-editor-btn--secondary"
+              onClick={handleClose}
+              disabled={submitting}
+            >
+              Cancelar
+            </button>
+            <button
+              className="pr-editor-btn pr-editor-btn--primary"
+              onClick={handleSubmit}
+              disabled={submitting || !hasChanged()}
+            >
+              {submitting ? 'Enviando...' : 'Crear Pull Request'}
+            </button>
+          </div>
+        </div>
+      )}
+    </>,
+    container
   );
 }

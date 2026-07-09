@@ -2,11 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend-dev",
+      "name": "metadea",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "tauri:dev"],
+      "runtimeArgs": ["run", "dev"],
       "cwd": "frontend",
-      "port": 5173
+      "port": 4321
     }
   ]
 }
