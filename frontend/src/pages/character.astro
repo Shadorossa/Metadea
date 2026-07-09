@@ -482,10 +482,11 @@ const lang = getLang(Astro.url);
       if (editBtnHeader) {
         editBtnHeader.addEventListener('click', (e) => {
           e.preventDefault();
-          console.log('Edit button clicked, dispatching event with id:', charKey);
-          window.dispatchEvent(new CustomEvent('open-character-editor', {
-            detail: { externalId: charKey }
-          }));
+          if ((window as any).openCharacterEditor) {
+            (window as any).openCharacterEditor(charKey);
+          } else {
+            console.warn('openCharacterEditor function not available');
+          }
         });
       } else {
         console.warn('Edit button not found');

@@ -65,7 +65,18 @@ export function CharacterPrEditorModal({ externalId: initialId, onClose: onClose
       }
     };
     window.addEventListener('open-character-editor', handleOpenEditor as EventListener);
-    return () => window.removeEventListener('open-character-editor', handleOpenEditor as EventListener);
+
+    // Also expose a global function for direct access
+    (window as any).openCharacterEditor = (externalId: string) => {
+      setCurrentId(externalId);
+      setIsOpen(true);
+      setLoading(true);
+    };
+
+    return () => {
+      window.removeEventListener('open-character-editor', handleOpenEditor as EventListener);
+      delete (window as any).openCharacterEditor;
+    };
   }, []);
 
   useEffect(() => {
