@@ -739,6 +739,14 @@ const version = pkg.version;
   }
 
   document.addEventListener("astro:page-load", async () => {
+    // This listener is registered once and never removed, but astro:page-load
+    // fires on every SPA navigation, not just to this page — once /settings
+    // has been visited once, every future navigation anywhere else re-ran
+    // this handler, including the unconditional redirect-to-/login below if
+    // the session check ever failed. Bail out if we're not actually on
+    // /settings (see the same fix on profile.astro/character.astro).
+    if (!document.querySelector('.settings-page')) return;
+
     const session = await getAuthToken().catch(() => null);
     if (!session?.token) {
       window.location.replace("/login");
