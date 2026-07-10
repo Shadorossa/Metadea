@@ -980,8 +980,16 @@ pub async fn file_to_data_url(file_path: String) -> Result<String, String> {
 }
 
 // Games releasing in [start_unix, end_unix] — single request, used by the
-// Home calendar's "General" view. Reuses the same category/DLC filter as
-// igdb_search so sequels/ports/DLC don't crowd out base-game releases.
+// Home calendar's "General" view. Uses a broader category allowlist than
+// igdb_search's is_non_game (which is tuned for "is this the same game as
+// my library entry" matching): a release calendar should also surface
+// DLC/expansions, remasters, expanded editions and ports actually shipping
+// that month, not just brand-new main games — those are real "this comes
+// out this month" events players look for.
+const CALENDAR_ALLOWED_CATEGORIES: &[u64] = &[0, 1, 2, 4, 8, 9, 10, 11, 14];
+// main_game, dlc_addon, expansion, standalone_expansion, remake, remaster,
+// expanded_game, port, update
+
 #[tauri::command]
 pub async fn igdb_upcoming_releases(
     app_handle: tauri::AppHandle,
@@ -1003,7 +1011,7 @@ pub async fn igdb_upcoming_releases(
             "fields id,name,cover.image_id,first_release_date,category,game_type,\
              version_parent.id,version_title; \
              where first_release_date >= {} & first_release_date <= {}; \
-             sort first_release_date asc; limit 200;",
+             sort first_release_date asc; limit 500;",
             start_unix, end_unix
         ),
     )
@@ -1014,7 +1022,7 @@ pub async fn igdb_upcoming_releases(
         .cloned()
         .unwrap_or_default()
         .into_iter()
-        .filter(|g| !is_non_game(g))
+        .filter(|g| CALENDAR_ALLOWED_CATEGORIES.contains(&get_game_category(g)))
         // Same edition-dedup rule as igdb_search: a main_game (0) with a
         // version_parent/version_title is itself a special edition of some
         // base entry, not a standalone release.

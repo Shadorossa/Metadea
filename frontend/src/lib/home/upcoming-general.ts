@@ -28,6 +28,14 @@ function tmdbDateStr(d: Date): string {
 }
 
 // ── AniList: anime + manga/light novels in a single POST via aliases ───────
+// Two very different kinds of anime "release" both need covering here:
+// brand-new premieres (queried by Media.startDate, animeQ/mangaQ below) and
+// individual episodes of shows already airing (queried by AiringSchedule,
+// airQ1..N) — startDate alone only ever caught the former, which is why
+// ongoing/continuing anime never showed up at all. AiringSchedule has no
+// per-media cap in range, so AIRING_PAGES pages (sorted soonest-first) are
+// pulled in the same POST via more aliases — still one HTTP request, just a
+// bigger one — trading full-month completeness for solid near-term coverage.
 
 interface AniListUpcomingMedia {
   id: number;
@@ -38,59 +46,121 @@ interface AniListUpcomingMedia {
   startDate: { year: number | null; month: number | null; day: number | null };
 }
 
-const UPCOMING_QUERY = `
-  query Upcoming($start: FuzzyDateInt, $end: FuzzyDateInt, $isAdult: Boolean) {
-    animeQ: Page(page: 1, perPage: 50) {
-      media(type: ANIME, startDate_greater: $start, startDate_lesser: $end, sort: START_DATE, isAdult: $isAdult) {
-        id type format
-        title { romaji english }
-        coverImage { large }
-        startDate { year month day }
+interface AniListAiringEntry {
+  airingAt: number; // unix seconds
+  episode: number;
+  media: {
+    id: number;
+    isAdult: boolean;
+    title: { romaji: string | null; english: string | null };
+    coverImage: { large: string | null } | null;
+  };
+}
+
+const AIRING_PAGES = 6; // 6 × 50 = 300 nearest-upcoming episodes
+
+function buildUpcomingQuery(): string {
+  const airingAliases = Array.from({ length: AIRING_PAGES }, (_, i) => `
+    airQ${i + 1}: Page(page: ${i + 1}, perPage: 50) {
+      airingSchedules(airingAt_greater: $airStart, airingAt_lesser: $airEnd, sort: TIME) {
+        airingAt episode
+        media { id isAdult title { romaji english } coverImage { large } }
       }
     }
-    mangaQ: Page(page: 1, perPage: 50) {
-      media(type: MANGA, startDate_greater: $start, startDate_lesser: $end, sort: START_DATE, isAdult: $isAdult) {
-        id type format
-        title { romaji english }
-        coverImage { large }
-        startDate { year month day }
+  `).join('\n');
+
+  return `
+    query Upcoming($start: FuzzyDateInt, $end: FuzzyDateInt, $airStart: Int, $airEnd: Int, $isAdult: Boolean) {
+      animeQ: Page(page: 1, perPage: 50) {
+        media(type: ANIME, startDate_greater: $start, startDate_lesser: $end, sort: START_DATE, isAdult: $isAdult) {
+          id type format
+          title { romaji english }
+          coverImage { large }
+          startDate { year month day }
+        }
       }
+      mangaQ: Page(page: 1, perPage: 50) {
+        media(type: MANGA, startDate_greater: $start, startDate_lesser: $end, sort: START_DATE, isAdult: $isAdult) {
+          id type format
+          title { romaji english }
+          coverImage { large }
+          startDate { year month day }
+        }
+      }
+      ${airingAliases}
     }
-  }
-`;
+  `;
+}
+
+const UPCOMING_QUERY = buildUpcomingQuery();
 
 async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
-  // _greater/_lesser are exclusive, so shift the bounds out by a day to keep
-  // this inclusive of both "today" and the last day of the month.
+  // _greater/_lesser are exclusive, so shift the bounds out by a day/second
+  // to keep this inclusive of both "today" and the last day of the month.
   const start = fuzzyDateInt(new Date(rangeStart.getTime() - 86400000));
   const end = fuzzyDateInt(new Date(rangeEnd.getTime() + 86400000));
-  const isAdult = isAdultContentEnabled() ? null : false;
+  const airStart = Math.floor(rangeStart.getTime() / 1000) - 1;
+  const airEnd = Math.floor(rangeEnd.getTime() / 1000) + 86400;
+  const showAdult = isAdultContentEnabled();
+  const isAdult = showAdult ? null : false;
 
-  const { ok, result } = await graphqlPost<{
-    animeQ?: { media: AniListUpcomingMedia[] };
-    mangaQ?: { media: AniListUpcomingMedia[] };
-  }>(API_ENDPOINTS.ANILIST, UPCOMING_QUERY, { start, end, isAdult }).catch(() => ({ ok: false, status: 0, result: null }));
+  type AiringPage = { airingSchedules: AniListAiringEntry[] };
+  const variables: Record<string, unknown> = { start, end, airStart, airEnd, isAdult };
+
+  const { ok, result } = await graphqlPost<
+    { animeQ?: { media: AniListUpcomingMedia[] }; mangaQ?: { media: AniListUpcomingMedia[] } }
+    & Record<`airQ${number}`, AiringPage | undefined>
+  >(API_ENDPOINTS.ANILIST, UPCOMING_QUERY, variables).catch(() => ({ ok: false, status: 0, result: null }));
 
   if (!ok || !result?.data) {
     console.error('[calendar] AniList upcoming query failed', result?.errors ?? result);
     return [];
   }
 
-  const all = [...(result.data.animeQ?.media ?? []), ...(result.data.mangaQ?.media ?? [])];
-  return all
-    .filter(m => m.startDate.year && m.startDate.month && m.startDate.day)
-    .map(m => {
-      const type = m.type === 'ANIME' ? 'anime' : m.format === 'NOVEL' ? 'lnovel' : 'manga';
-      const { year, month, day } = m.startDate as { year: number; month: number; day: number };
-      return {
+  const data = result.data;
+  const premieres = [...(data.animeQ?.media ?? []), ...(data.mangaQ?.media ?? [])];
+
+  const seen = new Set<string>();
+  const releases: UpcomingRelease[] = [];
+
+  for (const m of premieres) {
+    if (!m.startDate.year || !m.startDate.month || !m.startDate.day) continue;
+    const type = m.type === 'ANIME' ? 'anime' : m.format === 'NOVEL' ? 'lnovel' : 'manga';
+    const { year, month, day } = m.startDate as { year: number; month: number; day: number };
+    const key = `${type}:${m.id}:${year}-${month}-${day}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    releases.push({
+      day, month, year,
+      releaseDate: new Date(year, month - 1, day),
+      title: m.title.romaji || m.title.english || `#${m.id}`,
+      type,
+      cover: m.coverImage?.large || '',
+      externalId: `${type}:${m.id}`,
+    });
+  }
+
+  for (let i = 1; i <= AIRING_PAGES; i++) {
+    const entries = data[`airQ${i}`]?.airingSchedules ?? [];
+    for (const entry of entries) {
+      if (!showAdult && entry.media.isAdult) continue;
+      const d = new Date(entry.airingAt * 1000);
+      const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
+      const key = `anime:${entry.media.id}:${year}-${month}-${day}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      releases.push({
         day, month, year,
         releaseDate: new Date(year, month - 1, day),
-        title: m.title.romaji || m.title.english || `#${m.id}`,
-        type,
-        cover: m.coverImage?.large || '',
-        externalId: `${type}:${m.id}`,
-      };
-    });
+        title: entry.media.title.romaji || entry.media.title.english || `#${entry.media.id}`,
+        type: 'anime',
+        cover: entry.media.coverImage?.large || '',
+        externalId: `anime:${entry.media.id}`,
+      });
+    }
+  }
+
+  return releases;
 }
 
 // ── TMDB: movies + series, two REST discover calls ──────────────────────────
