@@ -153,10 +153,20 @@ export interface ScoreBucket {
 
 export function computeScoreDistribution(ratedItems: Items, system: RatingSystem): ScoreBucket[] {
   if (system === '5-star') {
-    const buckets = [1, 2, 3, 4, 5];
+    // Stars are logged in half-star increments (RatingInput's StarRating —
+    // DB value v*2-1 or v*2 for v in 1..5, i.e. DB 1,2,3,...,10 = stars
+    // 0.5,1,1.5,...,5) — so the distribution needs 10 buckets, not 5, or
+    // every half-star rating would get rounded into a whole-star bucket.
+    // Rounds to the nearest half-star rather than requiring an exact match,
+    // so a rating logged under a different system (e.g. a 7.3 from 10-dec)
+    // still lands in a sensible bucket instead of being dropped entirely.
+    const buckets = Array.from({ length: 10 }, (_, i) => (i + 1) / 2);
     return buckets.map(star => ({
       label: `${star}★`,
-      count: ratedItems.filter(i => Math.min(5, Math.max(1, Math.round(dbRatingToStars5(i.rating ?? 0)))) === star).length,
+      count: ratedItems.filter(i => {
+        const rounded = Math.min(5, Math.max(0.5, Math.round(dbRatingToStars5(i.rating ?? 0) * 2) / 2));
+        return rounded === star;
+      }).length,
     }));
   }
 
