@@ -21,6 +21,7 @@ export interface IgdbGame {
   first_release_date?:  number; // unix timestamp
   rating?:              number;
   rating_count?:        number;
+  hypes?:               number; // pre-release "anticipation" follow count — used as a popularity proxy
 }
 
 export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {

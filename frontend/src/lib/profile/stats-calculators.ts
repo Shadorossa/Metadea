@@ -223,6 +223,11 @@ export interface UpcomingRelease {
   type: string;
   cover: string;
   externalId: string;
+  // Only set for the Home calendar's "General" (API-driven) view — each
+  // source's own popularity metric (AniList follower count, TMDB popularity
+  // score, IGDB hype count), used to order same-day releases. Absent for
+  // "Para ti" (the user's own library) since it isn't meaningful there.
+  popularity?: number;
 }
 
 export function computeUpcomingPlanningReleases(

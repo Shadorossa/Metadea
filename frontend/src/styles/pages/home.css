@@ -78,6 +78,42 @@
   border-color: var(--accent-border);
 }
 
+/* Per-medium filter tabs (Todos / Anime / Película / ...) — only rendered
+   when the current release list actually spans more than one medium. */
+.home-calendar-type-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-calendar-type-tabs:empty {
+  margin-bottom: 0;
+}
+
+.home-calendar-type-tab {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
+}
+
+.home-calendar-type-tab:hover {
+  color: var(--text-main);
+  border-color: var(--accent-border);
+}
+
+.home-calendar-type-tab.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
 /* Calendar styling — grid only, no side list. Each day with releases shows
    them in a popover on hover instead. */
 .calendar-grid {

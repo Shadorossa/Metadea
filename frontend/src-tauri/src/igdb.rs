@@ -1009,7 +1009,7 @@ pub async fn igdb_upcoming_releases(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date,category,game_type,\
-             version_parent.id,version_title; \
+             version_parent.id,version_title,hypes; \
              where first_release_date >= {} & first_release_date <= {}; \
              sort first_release_date asc; limit 500;",
             start_unix, end_unix

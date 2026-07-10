@@ -138,6 +138,7 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
   const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
 
   let mode: CalendarMode = 'mine';
+  let typeFilter: string | null = null; // null = "Todos" (mixed)
   let mineReleases: UpcomingRelease[] | null = null;
   let generalReleases: UpcomingRelease[] | null = null;
 
@@ -151,10 +152,31 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
     return generalReleases;
   }
 
-  async function renderGrid(gridEl: HTMLElement) {
+  function renderTypeTabs(tabsEl: HTMLElement, releases: UpcomingRelease[]) {
+    const present = new Set(releases.map(r => r.type));
+    // Keep TYPE_LABELS' order rather than first-seen order, so tabs don't
+    // jump around when switching between "Para ti"/"General".
+    const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
+
+    if (orderedTypes.length < 2) {
+      tabsEl.innerHTML = '';
+      return;
+    }
+
+    tabsEl.innerHTML = `
+      <button type="button" class="home-calendar-type-tab ${!typeFilter ? 'active' : ''}" data-type="">Todos</button>
+      ${orderedTypes.map(ty => `
+        <button type="button" class="home-calendar-type-tab ${typeFilter === ty ? 'active' : ''}" data-type="${ty}">${TYPE_LABELS[ty] || ty}</button>
+      `).join('')}
+    `;
+  }
+
+  async function renderAll(gridEl: HTMLElement, tabsEl: HTMLElement) {
     gridEl.innerHTML = `<p class="stats-calendar-empty">Cargando...</p>`;
     const releases = mode === 'mine' ? getMineReleases() : await getGeneralReleases();
-    gridEl.innerHTML = buildCalendarGridHtml(releases, now, currentYear, currentMonth);
+    renderTypeTabs(tabsEl, releases);
+    const filtered = typeFilter ? releases.filter(r => r.type === typeFilter) : releases;
+    gridEl.innerHTML = buildCalendarGridHtml(filtered, now, currentYear, currentMonth);
   }
 
   el.innerHTML = `
@@ -167,22 +189,34 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
         <button type="button" class="home-calendar-toggle-btn active" data-mode="mine">Para ti</button>
         <button type="button" class="home-calendar-toggle-btn" data-mode="general">General</button>
       </div>
+      <div class="home-calendar-type-tabs"></div>
       <div class="home-calendar-grid-mount"></div>
     </div>
   `;
 
   const gridEl = el.querySelector<HTMLElement>('.home-calendar-grid-mount')!;
-  await renderGrid(gridEl);
+  const tabsEl = el.querySelector<HTMLElement>('.home-calendar-type-tabs')!;
+  await renderAll(gridEl, tabsEl);
 
   el.querySelectorAll<HTMLButtonElement>('.home-calendar-toggle-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const newMode = btn.dataset.mode as CalendarMode;
       if (newMode === mode) return;
       mode = newMode;
+      typeFilter = null; // available types differ per mode — reset rather than keep a stale filter
       el.querySelectorAll('.home-calendar-toggle-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      await renderGrid(gridEl);
+      await renderAll(gridEl, tabsEl);
     });
+  });
+
+  tabsEl.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('.home-calendar-type-tab') as HTMLButtonElement | null;
+    if (!btn) return;
+    const newType = btn.dataset.type || null;
+    if (newType === typeFilter) return;
+    typeFilter = newType;
+    await renderAll(gridEl, tabsEl);
   });
 
   // Click (not hover) opens a day's release popover — hover was lost the
