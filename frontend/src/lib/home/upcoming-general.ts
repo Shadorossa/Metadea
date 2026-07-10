@@ -17,8 +17,14 @@ function fuzzyDateInt(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 
+// toISOString() converts to UTC first, which shifts a local midnight Date
+// back a day for any timezone ahead of UTC (e.g. CEST, UTC+2) — build the
+// "YYYY-MM-DD" string from local date components instead.
 function tmdbDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // ── AniList: anime + manga/light novels in a single POST via aliases ───────
@@ -33,7 +39,7 @@ interface AniListUpcomingMedia {
 }
 
 const UPCOMING_QUERY = `
-  query Upcoming($start: Int, $end: Int, $isAdult: Boolean) {
+  query Upcoming($start: FuzzyDateInt, $end: FuzzyDateInt, $isAdult: Boolean) {
     animeQ: Page(page: 1, perPage: 50) {
       media(type: ANIME, startDate_greater: $start, startDate_lesser: $end, sort: START_DATE, isAdult: $isAdult) {
         id type format
@@ -65,7 +71,10 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
     mangaQ?: { media: AniListUpcomingMedia[] };
   }>(API_ENDPOINTS.ANILIST, UPCOMING_QUERY, { start, end, isAdult }).catch(() => ({ ok: false, status: 0, result: null }));
 
-  if (!ok || !result?.data) return [];
+  if (!ok || !result?.data) {
+    console.error('[calendar] AniList upcoming query failed', result?.errors ?? result);
+    return [];
+  }
 
   const all = [...(result.data.animeQ?.media ?? []), ...(result.data.mangaQ?.media ?? [])];
   return all
@@ -96,7 +105,10 @@ interface TmdbDiscoverItem {
 
 async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
   const auth = await getTmdbAuth();
-  if (!auth) return [];
+  if (!auth) {
+    console.warn('[calendar] TMDB not configured (no api_key/access_token in Settings > Entorno) — skipping movies/series');
+    return [];
+  }
 
   const startStr = tmdbDateStr(rangeStart);
   const endStr = tmdbDateStr(rangeEnd);
@@ -138,7 +150,10 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
 async function fetchIgdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
   const startUnix = Math.floor(rangeStart.getTime() / 1000);
   const endUnix = Math.floor(rangeEnd.getTime() / 1000) + 86399; // through end of last day
-  const games = await igdbUpcomingReleases(startUnix, endUnix).catch(() => []);
+  const games = await igdbUpcomingReleases(startUnix, endUnix).catch(e => {
+    console.warn('[calendar] IGDB not configured or request failed (Settings > Entorno) — skipping games', e);
+    return [];
+  });
 
   return games.flatMap(g => {
     if (!g.first_release_date) return [];
@@ -158,9 +173,9 @@ async function fetchIgdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
 // of "today" and midnight of the last day of the current month respectively.
 export async function fetchGeneralUpcomingReleases(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
   const [anilist, tmdb, igdb] = await Promise.all([
-    fetchAniListUpcoming(rangeStart, rangeEnd).catch(() => []),
-    fetchTmdbUpcoming(rangeStart, rangeEnd).catch(() => []),
-    fetchIgdbUpcoming(rangeStart, rangeEnd).catch(() => []),
+    fetchAniListUpcoming(rangeStart, rangeEnd).catch(e => { console.error('[calendar] AniList upcoming failed', e); return []; }),
+    fetchTmdbUpcoming(rangeStart, rangeEnd).catch(e => { console.error('[calendar] TMDB upcoming failed', e); return []; }),
+    fetchIgdbUpcoming(rangeStart, rangeEnd).catch(e => { console.error('[calendar] IGDB upcoming failed', e); return []; }),
   ]);
 
   return [...anilist, ...tmdb, ...igdb].sort((a, b) => a.releaseDate.getTime() - b.releaseDate.getTime());
