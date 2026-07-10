@@ -995,11 +995,25 @@ const CALENDAR_ALLOWED_CATEGORIES: &[u64] = &[0, 1, 2, 4, 8, 9, 10, 11, 14];
 // first half of the month (indie/mobile titles releasing daily) could fill
 // the entire cap before the query ever reached later dates — reported as
 // "no games after the 14th". Each chunk gets its own request + its own
-// slice of the limit, same fix as AniList's CHUNKS for ongoing anime.
+// slice of the limit. Same "split the range into N chunks" pattern as
+// upcoming-general.ts's CHUNKS on the AniList side (not shared code — one's
+// a GraphQL alias set, this is plain concurrent REST calls — but check that
+// file too if this partitioning approach needs to change).
 // igdb_query already retries on 429 with backoff, so firing this many
 // concurrent requests is safe even if it briefly exceeds IGDB's ~4 req/s.
 const IGDB_DATE_CHUNKS: i64 = 8;
 const IGDB_CHUNK_LIMIT: u32 = 200; // 8 × 200 = 1600 games/month capacity
+
+fn is_calendar_release(g: &serde_json::Value) -> bool {
+    let category = get_game_category(g);
+    if !CALENDAR_ALLOWED_CATEGORIES.contains(&category) {
+        return false;
+    }
+    // Same edition-dedup rule as igdb_search: a main_game (0) with a
+    // version_parent/version_title is itself a special edition of some
+    // base entry, not a standalone release.
+    category != 0 || (g["version_parent"].is_null() && g["version_title"].is_null())
+}
 
 #[tauri::command]
 pub async fn igdb_upcoming_releases(
@@ -1015,39 +1029,32 @@ pub async fn igdb_upcoming_releases(
 
     let span = (end_unix - start_unix).max(1);
     let chunk_size = span / IGDB_DATE_CHUNKS;
-    let bodies: Vec<String> = (0..IGDB_DATE_CHUNKS)
-        .map(|i| {
-            let chunk_start = start_unix + i * chunk_size;
-            let chunk_end = if i == IGDB_DATE_CHUNKS - 1 { end_unix } else { chunk_start + chunk_size };
-            format!(
+    let queries = (0..IGDB_DATE_CHUNKS).map(|i| {
+        let chunk_start = start_unix + i * chunk_size;
+        let chunk_end = if i == IGDB_DATE_CHUNKS - 1 { end_unix } else { chunk_start + chunk_size };
+        let client_id = client_id.clone();
+        let token = token.clone();
+        async move {
+            let body = format!(
                 "fields id,name,cover.image_id,first_release_date,category,game_type,\
                  version_parent.id,version_title,hypes; \
                  where first_release_date >= {} & first_release_date <= {}; \
                  sort first_release_date asc; limit {};",
                 chunk_start, chunk_end, IGDB_CHUNK_LIMIT
-            )
-        })
-        .collect();
+            );
+            igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &body).await
+        }
+    });
 
-    let queries = bodies.iter().map(|body| igdb_query(&client, &client_id, &token, IGDB_API_GAMES, body));
     let chunk_results = futures::future::join_all(queries).await;
     let mut raw_games: Vec<serde_json::Value> = Vec::new();
     for chunk in chunk_results {
-        if let Ok(v) = chunk {
-            if let Some(arr) = v.as_array() {
-                raw_games.extend(arr.iter().cloned());
-            }
+        if let Ok(serde_json::Value::Array(arr)) = chunk {
+            raw_games.extend(arr);
         }
     }
 
-    let games: Vec<serde_json::Value> = raw_games
-        .into_iter()
-        .filter(|g| CALENDAR_ALLOWED_CATEGORIES.contains(&get_game_category(g)))
-        // Same edition-dedup rule as igdb_search: a main_game (0) with a
-        // version_parent/version_title is itself a special edition of some
-        // base entry, not a standalone release.
-        .filter(|g| get_game_category(g) != 0 || (g["version_parent"].is_null() && g["version_title"].is_null()))
-        .collect();
+    let games: Vec<serde_json::Value> = raw_games.into_iter().filter(is_calendar_release).collect();
 
     Ok(serde_json::Value::Array(games))
 }

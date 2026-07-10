@@ -6,6 +6,7 @@ import {
   computeUpcomingPlanningReleases,
   computeCalendarMonth,
   type UpcomingRelease,
+  type CalendarDay,
 } from '../profile/stats-calculators';
 import { fetchGeneralUpcomingReleases } from './upcoming-general';
 
@@ -64,18 +65,21 @@ function popoverBodyHtml(releases: UpcomingRelease[]): string {
   return pagesHtml + pagerHtml;
 }
 
-function popoverTypeTabsHtml(releases: UpcomingRelease[]): string {
+// Shared by both the page-level "Para ti"/"General" tab row and each day
+// popover's own per-day filter — same "Todos" + one button per medium
+// present shape, just a different active state source and CSS class.
+function buildTypeTabsHtml(releases: UpcomingRelease[], activeType: string | null, tabClass: string): string {
   const present = new Set(releases.map(r => r.type));
+  // Keep TYPE_LABELS' order rather than first-seen order, so tabs don't
+  // jump around as the underlying release list changes.
   const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
   if (orderedTypes.length < 2) return '';
 
   return `
-    <div class="calendar-popover-type-tabs">
-      <button type="button" class="calendar-popover-type-tab active" data-type="">Todos</button>
-      ${orderedTypes.map(ty => `
-        <button type="button" class="calendar-popover-type-tab" data-type="${ty}">${TYPE_LABELS[ty] || ty}</button>
-      `).join('')}
-    </div>
+    <button type="button" class="${tabClass} ${!activeType ? 'active' : ''}" data-type="">Todos</button>
+    ${orderedTypes.map(ty => `
+      <button type="button" class="${tabClass} ${activeType === ty ? 'active' : ''}" data-type="${ty}">${TYPE_LABELS[ty] || ty}</button>
+    `).join('')}
   `;
 }
 
@@ -85,16 +89,15 @@ function popoverTypeTabsHtml(releases: UpcomingRelease[]): string {
 // horizontal row it used to be as a single-column list. Beyond 2 rows
 // (8 releases) the rest are paginated instead of growing the popover
 // indefinitely. A per-day type filter sits above the grid when the day
-// mixes more than one medium — the full release list rides along in
-// data-releases so the filter can re-slice client-side without re-fetching.
+// mixes more than one medium — re-filtering looks the day's releases back
+// up from dayReleasesByDay (keyed by day-of-month) rather than serializing
+// them through the DOM.
 function dayPopoverHtml(releases: UpcomingRelease[]): string {
   if (releases.length === 0) return '';
 
-  const encoded = encodeURIComponent(JSON.stringify(releases.map(r => ({ ...r, releaseDate: undefined }))));
-
   return `
-    <div class="calendar-day-popover" data-releases="${encoded}">
-      ${popoverTypeTabsHtml(releases)}
+    <div class="calendar-day-popover">
+      ${buildTypeTabsHtml(releases, null, 'calendar-popover-type-tab')}
       <div class="calendar-popover-body">
         ${popoverBodyHtml(releases)}
       </div>
@@ -102,9 +105,7 @@ function dayPopoverHtml(releases: UpcomingRelease[]): string {
   `;
 }
 
-function buildCalendarGridHtml(releases: UpcomingRelease[], now: Date, currentYear: number, currentMonth: number): string {
-  const { days: calendarDays, startOffset } = computeCalendarMonth(releases, now, currentYear, currentMonth);
-
+function buildCalendarGridHtml(calendarDays: CalendarDay[], startOffset: number): string {
   const dayHeaders = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
   const calendarHeaderHtml = dayHeaders.map(h => `<div class="calendar-day-header">${h}</div>`).join('');
 
@@ -171,46 +172,33 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
   const startOfMonth = new Date(currentYear, currentMonth, 1);
   const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
 
-  let mode: CalendarMode = 'mine';
-  let typeFilter: string | null = null; // null = "Todos" (mixed)
-  let mineReleases: UpcomingRelease[] | null = null;
+  // Cheap and synchronous (just filters data already in memory) — computed
+  // once up front, unlike generalReleases below which is worth lazily
+  // fetching/caching since it's a real network round-trip.
+  const mineReleases = computeUpcomingPlanningReleases(items, catalogMap, startOfMonth);
   let generalReleases: UpcomingRelease[] | null = null;
-
-  function getMineReleases(): UpcomingRelease[] {
-    if (!mineReleases) mineReleases = computeUpcomingPlanningReleases(items, catalogMap, startOfMonth);
-    return mineReleases;
-  }
 
   async function getGeneralReleases(): Promise<UpcomingRelease[]> {
     if (!generalReleases) generalReleases = await fetchGeneralUpcomingReleases(startOfMonth, endOfMonth);
     return generalReleases;
   }
 
-  function renderTypeTabs(tabsEl: HTMLElement, releases: UpcomingRelease[]) {
-    const present = new Set(releases.map(r => r.type));
-    // Keep TYPE_LABELS' order rather than first-seen order, so tabs don't
-    // jump around when switching between "Para ti"/"General".
-    const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
-
-    if (orderedTypes.length < 2) {
-      tabsEl.innerHTML = '';
-      return;
-    }
-
-    tabsEl.innerHTML = `
-      <button type="button" class="home-calendar-type-tab ${!typeFilter ? 'active' : ''}" data-type="">Todos</button>
-      ${orderedTypes.map(ty => `
-        <button type="button" class="home-calendar-type-tab ${typeFilter === ty ? 'active' : ''}" data-type="${ty}">${TYPE_LABELS[ty] || ty}</button>
-      `).join('')}
-    `;
-  }
+  let mode: CalendarMode = 'mine';
+  let typeFilter: string | null = null; // null = "Todos" (mixed)
+  // Keyed by day-of-month for the currently-rendered grid, so the popover's
+  // per-day type filter can look a day's full release list back up instead
+  // of round-tripping it through a JSON-encoded DOM attribute.
+  let dayReleasesByDay = new Map<number, UpcomingRelease[]>();
 
   async function renderAll(gridEl: HTMLElement, tabsEl: HTMLElement) {
     gridEl.innerHTML = `<p class="stats-calendar-empty">Cargando...</p>`;
-    const releases = mode === 'mine' ? getMineReleases() : await getGeneralReleases();
-    renderTypeTabs(tabsEl, releases);
+    const releases = mode === 'mine' ? mineReleases : await getGeneralReleases();
+    tabsEl.innerHTML = buildTypeTabsHtml(releases, typeFilter, 'home-calendar-type-tab');
+
     const filtered = typeFilter ? releases.filter(r => r.type === typeFilter) : releases;
-    gridEl.innerHTML = buildCalendarGridHtml(filtered, now, currentYear, currentMonth);
+    const { days: calendarDays, startOffset } = computeCalendarMonth(filtered, now, currentYear, currentMonth);
+    dayReleasesByDay = new Map(calendarDays.map(d => [d.day, d.releases]));
+    gridEl.innerHTML = buildCalendarGridHtml(calendarDays, startOffset);
   }
 
   el.innerHTML = `
@@ -282,15 +270,16 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
     }
 
     // Per-day type filter inside the popover — re-slices that day's own
-    // full release list (carried in data-releases) without touching the
-    // outer "Para ti"/"General" fetch or the main calendar-wide filter.
+    // full release list without touching the outer "Para ti"/"General"
+    // fetch or the main calendar-wide filter.
     const typeTab = target.closest('.calendar-popover-type-tab') as HTMLButtonElement | null;
     if (typeTab) {
-      const popover = typeTab.closest('.calendar-day-popover') as HTMLElement;
-      const dayReleases = JSON.parse(decodeURIComponent(popover.dataset.releases || '[]')) as UpcomingRelease[];
+      const dayCell = typeTab.closest('.calendar-day') as HTMLElement;
+      const dayReleases = dayReleasesByDay.get(Number(dayCell.dataset.day)) ?? [];
       const selectedType = typeTab.dataset.type || null;
       const filtered = selectedType ? dayReleases.filter(r => r.type === selectedType) : dayReleases;
 
+      const popover = typeTab.closest('.calendar-day-popover')!;
       popover.querySelectorAll('.calendar-popover-type-tab').forEach(b => b.classList.remove('active'));
       typeTab.classList.add('active');
 

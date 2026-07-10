@@ -15,8 +15,8 @@
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost, fetchJson } from '../api/client';
 import { isAdultContentEnabled } from '../settings/preferences';
-import { getTmdbAuth, buildPosterUrl, tmdbLocale } from '../search/providers/tmdb';
-import { igdbUpcomingReleases } from '../tauri/igdb';
+import { getTmdbAuth, buildPosterUrl, tmdbLocale, parseDateParts } from '../search/providers/tmdb';
+import { igdbUpcomingReleases, igdbImageUrl } from '../tauri/igdb';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import type { UpcomingRelease } from '../profile/stats-calculators';
 
@@ -69,6 +69,12 @@ interface AniListAiringEntry {
   };
 }
 
+// Same "split the range into N equal chunks, query each independently"
+// pattern as IGDB_DATE_CHUNKS in frontend/src-tauri/src/igdb.rs (a date-sorted
+// query with one cap starves whichever days don't fit before the cap is hit).
+// The two aren't shared code — one's a GraphQL alias set, the other fires
+// plain concurrent REST calls — but if this partitioning approach ever needs
+// to change (e.g. an off-by-one at chunk boundaries), check that file too.
 const CHUNKS = 6; // ~5 days each for a 30-day month, 50/chunk = 300 total
 
 function buildUpcomingQuery(): string {
@@ -138,24 +144,19 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
   const premieres = [...(data.animeQ?.media ?? []), ...(data.mangaQ?.media ?? [])];
   const showAdult = isAdultContentEnabled();
 
-  // Keyed by title (type:id) only, not by date — each work should appear on
-  // the calendar exactly once, not once per episode. Premieres are added
-  // first (their startDate is the real release date), then chunks in
-  // chronological order (0=earliest) with each chunk's own entries already
-  // TIME-ascending, so "first occurrence wins" naturally lands on the
-  // earliest qualifying date within the month for anything not already
-  // claimed by a premiere.
-  const seen = new Set<string>();
-  const releases: UpcomingRelease[] = [];
+  // Each work should appear on the calendar exactly once, not once per
+  // episode. Collect every candidate first, then sort by date and keep only
+  // the earliest occurrence per (type, id) — correct regardless of chunk
+  // iteration order or whichever sort clause the query happens to use,
+  // rather than relying on "chunks are walked earliest-first and are
+  // themselves TIME-ascending" holding true forever.
+  const candidates: UpcomingRelease[] = [];
 
   for (const m of premieres) {
     if (!m.startDate.year || !m.startDate.month || !m.startDate.day) continue;
     const type = m.type === 'ANIME' ? 'anime' : m.format === 'NOVEL' ? 'lnovel' : 'manga';
-    const key = `${type}:${m.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
     const { year, month, day } = m.startDate as { year: number; month: number; day: number };
-    releases.push({
+    candidates.push({
       day, month, year,
       releaseDate: new Date(year, month - 1, day),
       title: m.title.romaji || m.title.english || `#${m.id}`,
@@ -170,14 +171,10 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
     const entries = data[`chunkQ${i}`]?.airingSchedules ?? [];
     for (const entry of entries) {
       if (!showAdult && entry.media.isAdult) continue;
-      const key = `anime:${entry.media.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
       const d = new Date(entry.airingAt * 1000);
-      const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
-      releases.push({
-        day, month, year,
-        releaseDate: new Date(year, month - 1, day),
+      candidates.push({
+        day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear(),
+        releaseDate: d,
         title: entry.media.title.romaji || entry.media.title.english || `#${entry.media.id}`,
         type: 'anime',
         cover: entry.media.coverImage?.large || '',
@@ -185,6 +182,15 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
         popularity: entry.media.popularity ?? 0,
       });
     }
+  }
+
+  candidates.sort((a, b) => a.releaseDate.getTime() - b.releaseDate.getTime());
+  const seen = new Set<string>();
+  const releases: UpcomingRelease[] = [];
+  for (const c of candidates) {
+    if (seen.has(c.externalId)) continue;
+    seen.add(c.externalId);
+    releases.push(c);
   }
 
   return releases;
@@ -221,16 +227,23 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
   };
   const headers: Record<string, string> = auth.accessToken ? { Authorization: `Bearer ${auth.accessToken}` } : {};
 
-  // TMDB's discover endpoint has a fixed page size (20) — fetch a few pages
-  // per kind so a busy month isn't clipped to only the 20 most popular.
-  const PAGES = 3;
+  // TMDB's discover endpoint has a fixed page size (20) — fetch up to a few
+  // pages per kind so a busy month isn't clipped to only the 20 most
+  // popular, but stop as soon as total_pages says there's nothing more
+  // (a quiet month shouldn't fire 3 requests per kind for 5 results).
+  const MAX_PAGES = 3;
   async function fetchKind(kind: 'movie' | 'tv', dateField: string): Promise<TmdbDiscoverItem[]> {
-    const pages = await Promise.all(
-      Array.from({ length: PAGES }, (_, i) =>
-        fetchJson<{ results?: TmdbDiscoverItem[] }>(buildUrl(kind, dateField, i + 1), { headers })
+    const first = await fetchJson<{ results?: TmdbDiscoverItem[]; total_pages?: number }>(buildUrl(kind, dateField, 1), { headers });
+    const results = first?.results ?? [];
+    const remainingPages = Math.min(first?.total_pages ?? 1, MAX_PAGES) - 1;
+    if (remainingPages <= 0) return results;
+
+    const rest = await Promise.all(
+      Array.from({ length: remainingPages }, (_, i) =>
+        fetchJson<{ results?: TmdbDiscoverItem[] }>(buildUrl(kind, dateField, i + 2), { headers })
       ),
     );
-    return pages.flatMap(p => p?.results ?? []);
+    return [...results, ...rest.flatMap(p => p?.results ?? [])];
   }
 
   const [movies, series] = await Promise.all([
@@ -240,9 +253,7 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
 
   const map = (items: TmdbDiscoverItem[], type: 'movie' | 'series'): UpcomingRelease[] =>
     items.flatMap(item => {
-      const dateStr = item.release_date || item.first_air_date;
-      if (!dateStr) return [];
-      const [year, month, day] = dateStr.split('-').map(Number);
+      const { year, month, day } = parseDateParts(item.release_date || item.first_air_date);
       if (!year || !month || !day) return [];
       return [{
         day, month, year,
@@ -276,7 +287,7 @@ async function fetchIgdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
       releaseDate: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
       title: g.name,
       type: 'game',
-      cover: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : '',
+      cover: g.cover?.image_id ? igdbImageUrl(g.cover.image_id, 'cover_big') : '',
       externalId: `game:${g.id}`,
       popularity: g.hypes ?? 0,
     }];
@@ -299,12 +310,14 @@ async function fetchGeneralUpcomingReleasesUncached(rangeStart: Date, rangeEnd: 
 // day reuses the last fetch instead of re-hitting all three APIs. Not tied
 // to any particular rangeStart/rangeEnd — it caches by month, independent of
 // how "today" shifts the query boundaries.
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+// Kept short on purpose: this is a nice-to-have perf cache, not
+// correctness-critical data, and a manually-maintained CACHE_VERSION bump
+// (below) is easy to forget the next time the query logic changes — a
+// 1-hour TTL means any such staleness self-heals quickly on its own instead
+// of depending on remembering to bump the version.
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-// Bump whenever the query range/logic changes meaningfully (e.g. the fix
-// that extended coverage to earlier-this-month releases) — otherwise a
-// cache written by older code sits well within CACHE_TTL_MS and keeps
-// serving results that don't reflect the new behavior until it expires.
+// Bump only for changes urgent enough not to wait out CACHE_TTL_MS.
 const CACHE_VERSION = 5;
 
 interface SerializedRelease extends Omit<UpcomingRelease, 'releaseDate'> {

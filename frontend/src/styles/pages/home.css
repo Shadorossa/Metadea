@@ -102,27 +102,35 @@
   border-left: none;
 }
 
-.home-calendar-type-tab {
-  padding: 0.25rem 0.65rem;
+/* Base pill-tab look shared with .calendar-popover-type-tab (the per-day
+   filter inside each popover) — only size differs between the two. */
+.home-calendar-type-tab,
+.calendar-popover-type-tab {
   border-radius: 999px;
   border: 1px solid var(--border-color);
   background: transparent;
   color: var(--text-dim);
-  font-size: 0.65rem;
   font-weight: 600;
   cursor: pointer;
   transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
 }
 
-.home-calendar-type-tab:hover {
+.home-calendar-type-tab:hover,
+.calendar-popover-type-tab:hover {
   color: var(--text-main);
   border-color: var(--accent-border);
 }
 
-.home-calendar-type-tab.active {
+.home-calendar-type-tab.active,
+.calendar-popover-type-tab.active {
   color: var(--accent);
   background: var(--accent-soft);
   border-color: var(--accent-border);
+}
+
+.home-calendar-type-tab {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.65rem;
 }
 
 /* Calendar styling — grid only, no side list. Each day with releases shows
@@ -262,25 +270,7 @@
 
 .calendar-popover-type-tab {
   padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-dim);
   font-size: 0.6rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
-}
-
-.calendar-popover-type-tab:hover {
-  color: var(--text-main);
-  border-color: var(--accent-border);
-}
-
-.calendar-popover-type-tab.active {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
 }
 
 .calendar-popover-page {
@@ -317,8 +307,6 @@
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
-  position: relative;
-  z-index: 61;
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
