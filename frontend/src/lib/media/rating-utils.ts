@@ -1,11 +1,28 @@
 import { STAR_PATH } from './constants';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { getUserInfo } from '../tauri';
 
 export type RatingSystem = '5-star' | '10-dec' | '10' | '3-emoji';
 
 export function getActiveRatingSystem(): RatingSystem {
   if (typeof window === 'undefined') return '5-star';
   return (localStorage.getItem(STORAGE_KEYS.ratingSystem) as RatingSystem) || '5-star';
+}
+
+// DB (user_profile.rating_system) is the source of truth; localStorage is a
+// fast read cache. It only gets refreshed from the DB when the Settings page
+// runs — any other page (profile stats, library, reviews) that only calls
+// getActiveRatingSystem() can read a stale or never-set cache, e.g. on a
+// fresh session/device where Settings was never opened. Call this once
+// before reading the active system on those pages.
+export async function syncActiveRatingSystem(): Promise<RatingSystem> {
+  if (typeof window === 'undefined') return '5-star';
+  const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
+  const system = (info.rating_system as RatingSystem)
+    || (localStorage.getItem(STORAGE_KEYS.ratingSystem) as RatingSystem)
+    || '5-star';
+  localStorage.setItem(STORAGE_KEYS.ratingSystem, system);
+  return system;
 }
 
 export function dbRatingToStars5(rating: number): number {

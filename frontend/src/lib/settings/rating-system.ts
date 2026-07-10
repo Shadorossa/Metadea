@@ -1,5 +1,6 @@
-import { saveUserInfo, getUserInfo } from '../tauri';
+import { saveUserInfo } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { syncActiveRatingSystem } from '../media/rating-utils';
 
 // DB is the source of truth; localStorage is kept as a fast read cache for
 // other pages that need the active rating system without an IPC round-trip.
@@ -7,11 +8,7 @@ export async function initRatingSystem(showToast: (msg?: string) => void) {
   const btns = document.querySelectorAll<HTMLButtonElement>('.rating-system-btn');
   if (!btns.length) return;
 
-  const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
-  const activeSystem = (info.rating_system as string)
-    || localStorage.getItem(STORAGE_KEYS.ratingSystem)
-    || '5-star';
-  localStorage.setItem(STORAGE_KEYS.ratingSystem, activeSystem);
+  const activeSystem = await syncActiveRatingSystem();
 
   btns.forEach(btn => {
     if (btn.dataset.value === activeSystem) btn.classList.add('active');

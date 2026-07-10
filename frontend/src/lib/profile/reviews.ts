@@ -1,7 +1,7 @@
 import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
-import { getActiveRatingSystem, formatRatingHtml, dbRatingToStars5 } from '../media/rating-utils';
+import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, dbRatingToStars5 } from '../media/rating-utils';
 import { typeIconMap } from '../shared/icon-strings';
 import { HOF_GRADIENTS } from './hof';
 
@@ -26,6 +26,9 @@ export async function renderReviews(el: HTMLElement): Promise<void> {
     getAllLibraryEntries().catch(() => []),
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
   ]);
+  // Refreshes the localStorage cache read by render()'s getActiveRatingSystem()
+  // below — see syncActiveRatingSystem's own doc.
+  await syncActiveRatingSystem();
 
   const catalogMap = new Map<string, MediaCatalogEntry>(
     catalogEntries.map(e => [e.external_id, e])

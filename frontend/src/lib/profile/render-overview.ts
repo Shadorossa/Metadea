@@ -5,7 +5,7 @@ import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners } from './hof';
 import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
-import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
+import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
 import { getNonEditionItems, getEditionItems, getItemMinutes } from './stats-calculators';
 
@@ -60,7 +60,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       totalMinutes += getItemMinutes(item, catalogMap);
     }
 
-    const system = getActiveRatingSystem();
+    const system = await syncActiveRatingSystem();
     const avgRatingStr = ratedCount > 0
       ? formatAverageScore(totalRating / ratedCount, system)
       : '0.0';

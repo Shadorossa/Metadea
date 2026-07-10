@@ -1,7 +1,7 @@
 import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
-import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
+import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
 import { getItemMinutes } from './stats-calculators';
@@ -82,6 +82,9 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     getAllLibraryEntries().catch(() => []),
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
   ]);
+  // Refreshes the localStorage cache read by buildRatingHtml's
+  // getActiveRatingSystem() below — see syncActiveRatingSystem's own doc.
+  await syncActiveRatingSystem();
 
   // Unlike the stats dashboard, the library grid itself shows every logged
   // entry — including version logs — so they stay browsable/editable even
