@@ -3,9 +3,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import '../styles/pages/character.css';
 import '../styles/pages/media.css';
-import { getLang } from '../i18n/index';
+import { getLang, useTranslations } from '../i18n/index';
 
 const lang = getLang(Astro.url);
+const translations = useTranslations(lang);
 ---
 
 <BaseLayout title="Detalle de Personaje — Metadea" lang={lang} activePage="search">
@@ -152,6 +153,14 @@ const lang = getLang(Astro.url);
   } from '../lib/tauri';
 
   async function loadCharacterData() {
+    // Initialize role labels from current language
+    const lang = window.location.pathname.startsWith('/en') ? 'en' : 'es';
+    window.ROLE_LABELS = {
+      MAIN: lang === 'en' ? 'Main' : 'Principal',
+      SUPPORTING: lang === 'en' ? 'Supporting' : 'Secundario',
+      BACKGROUND: 'Background',
+    };
+
     // This listener is registered once and never removed (see astro:page-load
     // below), but that event fires on every SPA navigation, not just to this
     // page — once the user has visited a character page even once, every
@@ -410,19 +419,11 @@ const lang = getLang(Astro.url);
 
         appearancesGrid.innerHTML = slice
           .map((edge: any) => {
-            const coverHtml = edge.node.coverImage?.large 
+            const coverHtml = edge.node.coverImage?.large
               ? `<img src="${edge.node.coverImage.large}" alt="${edge.node.title.userPreferred}" class="character-appearance-cover-img" loading="lazy" />`
               : `<div class="character-appearance-cover-placeholder">Sin portada</div>`;
-            
-            // AniList's CharacterRole has three values, not two — BACKGROUND
-            // was previously collapsing into "Secundario" alongside
-            // SUPPORTING, losing the distinction entirely.
-            const roleLabel = edge.characterRole
-              ? (edge.characterRole === 'MAIN' ? lang.character.role_main
-                : edge.characterRole === 'SUPPORTING' ? lang.character.role_supporting
-                : edge.characterRole === 'BACKGROUND' ? lang.character.role_background
-                : edge.characterRole)
-              : '';
+
+            const roleLabel = edge.characterRole ? (window.ROLE_LABELS[edge.characterRole] ?? edge.characterRole) : '';
             const roleBadgeHtml = roleLabel
               ? `<div class="character-appearance-role-badge">${roleLabel}</div>`
               : '';
@@ -463,6 +464,14 @@ const lang = getLang(Astro.url);
           renderMediaPage();
         });
         ro.observe(appearancesGrid);
+        // Fallback: call renderMediaPage immediately in case ResizeObserver doesn't fire
+        setTimeout(() => {
+          const width = appearancesGrid.offsetWidth;
+          if (width && appearancesGrid.innerHTML === '') {
+            itemsPerPage = computeItemsPerPage(width);
+            renderMediaPage();
+          }
+        }, 100);
         document.addEventListener('astro:before-swap', () => ro.disconnect(), { once: true });
 
         btnPrev.addEventListener('click', () => {
