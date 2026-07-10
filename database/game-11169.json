@@ -1,0 +1,83 @@
+{
+  "media_catalog": {
+    "id": "c53385bd2b5aeb6bc53385bd2b5aeb6b",
+    "external_id": "game:11169",
+    "parent_id": "game:427",
+    "type": "game",
+    "format": "REMAKE",
+    "source": "igdb",
+    "title_main": "Final Fantasy VII Remake",
+    "title_romaji": null,
+    "title_native": "最终幻想VII 重制版",
+    "synopsis": "A modern reimagining of one of the most iconic games of all time, Final Fantasy VII Remake harnesses the very latest technology to recreate and expand Square Enix's legendary RPG adventure for the current generation. Set in a post-industrial fantasy world that has fallen under the control of the shadowy Shinra Electric Power Company, take on the role of Cloud Strife - a mercenary and former member of Shinra's elite Soldier unit - and team up with anti-Shinra organization Avalanche as they step-up their resistance.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/ar6pr.webp",
+    "release_year": 2020,
+    "release_month": 4,
+    "release_day": 10,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.9,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Role-playing (RPG),Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "Xbox Series X|S,PlayStation 4,Nintendo Switch 2,PC (Microsoft Windows),PlayStation 5",
+    "shop_links_csv": "playstation|https://store.playstation.com/en-us/concept/228744",
+    "companies_cache_csv": "Square Enix Creative Business Unit I,Square Enix",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-10T19:57:29.216578900+00:00",
+    "updated_at": "2026-07-10T19:57:39.981924800+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:144037",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Final Fantasy VII Remake: Episode Intermission",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9kc.jpg",
+      "media_external_id": "game:11169"
+    },
+    {
+      "media_external_id": "game:11169",
+      "related_media_external_id": "game:133236",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Final Fantasy VII Rebirth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9k6.jpg"
+    },
+    {
+      "media_external_id": "game:133236",
+      "related_media_external_id": "game:11169",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Final Fantasy VII Remake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobcwt.jpg"
+    },
+    {
+      "media_external_id": "game:133236",
+      "related_media_external_id": "game:404721",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Final Fantasy VII Revelation",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cocbgb.jpg"
+    },
+    {
+      "media_external_id": "game:404721",
+      "related_media_external_id": "game:133236",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Final Fantasy VII Rebirth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9k6.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Final Fantasy VII"
+}
