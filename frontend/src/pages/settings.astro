@@ -861,14 +861,22 @@ const version = pkg.version;
   }
 
   function setupHelpModals() {
-    document.querySelectorAll(".settings-help-btn, .env-help-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
+    const allBtns = document.querySelectorAll("button[data-help]");
+    console.log("Setting up help modals, found", allBtns.length, "buttons with data-help");
+
+    allBtns.forEach((btn) => {
+      btn.addEventListener("click", function(e) {
+        console.log("Help button clicked!");
         e.preventDefault();
         e.stopPropagation();
-        const helpType = (btn as HTMLElement).getAttribute("data-help");
-        const modalId = `${helpType}-help-modal`;
+        const helpType = this.getAttribute("data-help");
+        const modalId = helpType + "-help-modal";
         const modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove("hidden");
+        console.log("Looking for modal:", modalId, "Found:", modal ? "yes" : "no");
+        if (modal) {
+          modal.classList.remove("hidden");
+          console.log("Modal opened");
+        }
       });
     });
 
