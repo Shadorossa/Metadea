@@ -1,5 +1,6 @@
 import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
-import { isInProgressStatus } from '../constants/media';
+import { isInProgressStatus, TYPE_LABELS } from '../constants/media';
+import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -96,9 +97,16 @@ export interface TypeBreakdownEntry {
   hours: number;
 }
 
+// Every media type is always represented in the breakdown, even with zero
+// logged works, so the "time by category" block always shows the full
+// two-column list instead of only whichever types happen to be in the library.
 export function computeTypeBreakdown(items: Items, catalogMap: Map<string, MediaCatalogEntry>): TypeBreakdownEntry[] {
   const nonEditionItems = getNonEditionItems(items);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
+
+  for (const type of Object.keys(TYPE_LABELS)) {
+    byTypeMap.set(type, { count: 0, minutes: 0 });
+  }
 
   for (const item of nonEditionItems) {
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
@@ -133,23 +141,44 @@ export function computeTopGenres(items: Items, catalogMap: Map<string, MediaCata
   return Object.entries(genreCount).sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
 
-// ── Score distribution (DB scale 0-10, 5 buckets) ───────────────────────────
+// ── Score distribution (bucketed per the active rating system) ─────────────
+// Ratings are always stored on the DB's 0-10 scale, but the buckets shown to
+// the user need to match whichever display system they picked — 1-5 stars,
+// 1-10 (integer or decimal), or the 3 emoji moods — not the raw DB scale.
 
 export interface ScoreBucket {
   label: string;
   count: number;
 }
 
-const SCORE_BUCKETS = [
-  { label: '1–2', min: 1, max: 2.99 }, { label: '3–4', min: 3, max: 4.99 },
-  { label: '5–6', min: 5, max: 6.99 }, { label: '7–8', min: 7, max: 8.99 },
-  { label: '9–10', min: 9, max: 10 },
-];
+export function computeScoreDistribution(ratedItems: Items, system: RatingSystem): ScoreBucket[] {
+  if (system === '5-star') {
+    const buckets = [1, 2, 3, 4, 5];
+    return buckets.map(star => ({
+      label: `${star}★`,
+      count: ratedItems.filter(i => Math.min(5, Math.max(1, Math.round(dbRatingToStars5(i.rating ?? 0)))) === star).length,
+    }));
+  }
 
-export function computeScoreDistribution(ratedItems: Items): ScoreBucket[] {
-  return SCORE_BUCKETS.map(b => ({
-    label: b.label,
-    count: ratedItems.filter(i => (i.rating ?? 0) >= b.min && (i.rating ?? 0) <= b.max).length,
+  if (system === '3-emoji') {
+    const moods: { key: 'sad' | 'neutral' | 'happy'; emoji: string }[] = [
+      { key: 'sad', emoji: '😞' }, { key: 'neutral', emoji: '😐' }, { key: 'happy', emoji: '😊' },
+    ];
+    return moods.map(({ key, emoji }) => ({
+      label: emoji,
+      count: ratedItems.filter(i => {
+        const rating = i.rating ?? 0;
+        const mood = rating <= 3.5 ? 'sad' : rating > 7 ? 'happy' : 'neutral';
+        return mood === key;
+      }).length,
+    }));
+  }
+
+  // '10-dec' and '10': whole-number buckets 1 through 10
+  const buckets = Array.from({ length: 10 }, (_, i) => i + 1);
+  return buckets.map(n => ({
+    label: String(n),
+    count: ratedItems.filter(i => Math.min(10, Math.max(1, Math.round(i.rating ?? 0))) === n).length,
   }));
 }
 

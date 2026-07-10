@@ -139,7 +139,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   const topGenres = computeTopGenres(items, catalogMap);
   const maxGenreCount = topGenres.length > 0 ? topGenres[0][1] : 1;
 
-  const scoreDist = computeScoreDistribution(ratedItems);
+  const scoreDist = computeScoreDistribution(ratedItems, system);
   const maxScoreCount = Math.max(...scoreDist.map(s => s.count), 1);
 
   const yearEntries = computeCompletedByYear(items, currentYear);

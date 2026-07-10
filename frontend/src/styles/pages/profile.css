@@ -1996,12 +1996,21 @@
   margin-top: 0.25rem;
 }
 
-/* Time-by-category bars (inside stats-main-pair) */
+/* Time-by-category bars (inside stats-main-pair) — always shows every media
+   type (see computeTypeBreakdown), laid out in two columns so the full list
+   fits without an overly tall single column. */
 .stats-time-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 1.5rem;
+  row-gap: 0.85rem;
   margin-top: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .stats-time-bars {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .stats-time-row {
