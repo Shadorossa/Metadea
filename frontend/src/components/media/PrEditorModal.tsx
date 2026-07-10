@@ -80,6 +80,7 @@ const RELATION_TYPE_LABELS: Record<string, string> = {
   SIDE_STORY: 'Side Story',
   SUMMARY: 'Resumen',
   REMASTER: 'Remaster',
+  EXPANDED_GAME: 'Edición extendida',
 };
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
