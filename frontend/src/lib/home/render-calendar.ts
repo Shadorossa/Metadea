@@ -22,21 +22,50 @@ function releaseThumbHtml(r: UpcomingRelease): string {
     : `<div class="calendar-popover-cover calendar-popover-cover--empty"></div>`;
 }
 
+const POPOVER_PAGE_SIZE = 8; // 4 columns × 2 rows
+
+function popoverItemHtml(r: UpcomingRelease): string {
+  return `
+    <a class="calendar-popover-item" href="/media?id=${encodeURIComponent(r.externalId)}" title="${escAttr(r.title)}">
+      ${releaseThumbHtml(r)}
+      <p class="calendar-popover-title">${r.title}</p>
+      <p class="calendar-popover-meta">${TYPE_LABELS[r.type] || r.type}</p>
+    </a>
+  `;
+}
+
 // Each release is a link straight to its media page — clicking a cover
 // navigates there. Laid out as a 4-column grid (see .calendar-day-popover),
 // so this stays a vertical card (cover on top, title below) rather than the
-// horizontal row it used to be as a single-column list.
+// horizontal row it used to be as a single-column list. Beyond 2 rows
+// (8 releases) the rest are paginated instead of growing the popover
+// indefinitely — see the pager click handling in renderReleaseCalendar.
 function dayPopoverHtml(releases: UpcomingRelease[]): string {
   if (releases.length === 0) return '';
+
+  const pages: UpcomingRelease[][] = [];
+  for (let i = 0; i < releases.length; i += POPOVER_PAGE_SIZE) {
+    pages.push(releases.slice(i, i + POPOVER_PAGE_SIZE));
+  }
+
+  const pagesHtml = pages.map((pageReleases, idx) => `
+    <div class="calendar-popover-page ${idx === 0 ? 'active' : ''}">
+      ${pageReleases.map(popoverItemHtml).join('')}
+    </div>
+  `).join('');
+
+  const pagerHtml = pages.length > 1 ? `
+    <div class="calendar-popover-pager">
+      <button type="button" class="calendar-popover-pager-btn" data-dir="-1" disabled>‹</button>
+      <span class="calendar-popover-pager-label">1 / ${pages.length}</span>
+      <button type="button" class="calendar-popover-pager-btn" data-dir="1">›</button>
+    </div>
+  ` : '';
+
   return `
-    <div class="calendar-day-popover" onclick="event.stopPropagation()">
-      ${releases.map(r => `
-        <a class="calendar-popover-item" href="/media?id=${encodeURIComponent(r.externalId)}" title="${escAttr(r.title)}">
-          ${releaseThumbHtml(r)}
-          <p class="calendar-popover-title">${r.title}</p>
-          <p class="calendar-popover-meta">${TYPE_LABELS[r.type] || r.type}</p>
-        </a>
-      `).join('')}
+    <div class="calendar-day-popover">
+      ${pagesHtml}
+      ${pagerHtml}
     </div>
   `;
 }
@@ -160,12 +189,32 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
   // moment the page scrolled since the cursor stops being over the cell,
   // which made the list disappear while trying to scroll up to read it.
   // Delegated on the document so it keeps working across grid re-renders
-  // (mode switch) and also closes the popover on any outside click. Clicks
-  // inside an open popover (dayPopoverHtml's stopPropagation) never reach
-  // here at all — that's what lets a cover's <a> navigate normally instead
-  // of being treated as "click the day cell again to close it".
+  // (mode switch) and also closes the popover on any outside click.
   function handleDocumentClick(e: MouseEvent) {
     const target = e.target as HTMLElement;
+
+    const pagerBtn = target.closest('.calendar-popover-pager-btn') as HTMLButtonElement | null;
+    if (pagerBtn) {
+      const popover = pagerBtn.closest('.calendar-day-popover')!;
+      const pages = Array.from(popover.querySelectorAll<HTMLElement>('.calendar-popover-page'));
+      const activeIdx = pages.findIndex(pg => pg.classList.contains('active'));
+      const nextIdx = Math.max(0, Math.min(pages.length - 1, activeIdx + Number(pagerBtn.dataset.dir)));
+      if (nextIdx !== activeIdx) {
+        pages[activeIdx]?.classList.remove('active');
+        pages[nextIdx]?.classList.add('active');
+      }
+      const label = popover.querySelector('.calendar-popover-pager-label');
+      if (label) label.textContent = `${nextIdx + 1} / ${pages.length}`;
+      const [prevBtn, nextBtn] = popover.querySelectorAll<HTMLButtonElement>('.calendar-popover-pager-btn');
+      prevBtn.disabled = nextIdx === 0;
+      nextBtn.disabled = nextIdx === pages.length - 1;
+      return; // don't also toggle the day cell open/closed
+    }
+
+    // A release link inside the popover: let it navigate, don't re-toggle
+    // the day cell it happens to be nested in.
+    if (target.closest('.calendar-popover-item')) return;
+
     const dayCell = target.closest('.calendar-day.has-releases') as HTMLElement | null;
     const openDays = gridEl.querySelectorAll('.calendar-day.open');
     if (dayCell) {

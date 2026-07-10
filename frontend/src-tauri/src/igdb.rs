@@ -1001,8 +1001,8 @@ pub async fn igdb_upcoming_releases(
         IGDB_API_GAMES,
         &format!(
             "fields id,name,cover.image_id,first_release_date,category,game_type,\
-             version_parent.id,parent_game.id; \
-             where first_release_date >= {} & first_release_date <= {} & cover != null; \
+             version_parent.id,version_title; \
+             where first_release_date >= {} & first_release_date <= {}; \
              sort first_release_date asc; limit 200;",
             start_unix, end_unix
         ),
@@ -1015,7 +1015,10 @@ pub async fn igdb_upcoming_releases(
         .unwrap_or_default()
         .into_iter()
         .filter(|g| !is_non_game(g))
-        .filter(|g| get_game_category(g) != 0 || (g["version_parent"].is_null() && g["parent_game"].is_null()))
+        // Same edition-dedup rule as igdb_search: a main_game (0) with a
+        // version_parent/version_title is itself a special edition of some
+        // base entry, not a standalone release.
+        .filter(|g| get_game_category(g) != 0 || (g["version_parent"].is_null() && g["version_title"].is_null()))
         .collect();
 
     Ok(serde_json::Value::Array(games))

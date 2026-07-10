@@ -175,8 +175,10 @@
 
 /* Click-to-open popover listing the day's releases (not hover — hover state
    is lost as soon as the page scrolls, since the cursor stops being over the
-   cell, which made the list vanish while scrolling up to read it). 4-column
-   grid of cover cards, click a cover to go straight to its media page. */
+   cell, which made the list vanish while scrolling up to read it). Each
+   page is its own 4-column grid of cover cards (2 rows = 8 releases); beyond
+   that the pager below switches which page is .active instead of growing
+   the popover indefinitely or scrolling. */
 .calendar-day-popover {
   display: none;
   position: absolute;
@@ -184,20 +186,68 @@
   left: 50%;
   transform: translateX(-50%);
   width: 300px;
-  /* No max-height/overflow — every release should be visible without
-     scrolling, the popover just grows as tall as it needs to. */
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 0.6rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   z-index: 30;
-  grid-template-columns: repeat(4, 1fr);
+  flex-direction: column;
   gap: 0.5rem;
 }
 
 .calendar-day.open .calendar-day-popover {
+  display: flex;
+}
+
+.calendar-popover-page {
+  display: none;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.calendar-popover-page.active {
   display: grid;
+}
+
+.calendar-popover-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.calendar-popover-pager-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--anim-fast), border-color var(--anim-fast);
+}
+
+.calendar-popover-pager-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.calendar-popover-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.calendar-popover-pager-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
 }
 
 .calendar-popover-item {
