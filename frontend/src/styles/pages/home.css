@@ -184,8 +184,8 @@
   left: 50%;
   transform: translateX(-50%);
   width: 300px;
-  max-height: 320px;
-  overflow-y: auto;
+  /* No max-height/overflow — every release should be visible without
+     scrolling, the popover just grows as tall as it needs to. */
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -206,9 +206,15 @@
   gap: 0.25rem;
   text-decoration: none;
   cursor: pointer;
+  /* Grid items default to min-width: auto, which lets an unbreakable
+     image/title force its track wider than its 1fr share — that's what
+     was making covers render at inconsistent sizes and the popover grow a
+     horizontal scrollbar. min-width: 0 makes all 4 columns stay equal. */
+  min-width: 0;
 }
 
 .calendar-popover-cover {
+  display: block;
   width: 100%;
   aspect-ratio: 2 / 3;
   object-fit: cover;
@@ -235,6 +241,8 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .calendar-popover-meta {

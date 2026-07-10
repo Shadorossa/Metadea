@@ -115,21 +115,33 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
   const endStr = tmdbDateStr(rangeEnd);
   const locale = tmdbLocale();
 
-  const buildUrl = (kind: 'movie' | 'tv', dateField: string) => {
+  const buildUrl = (kind: 'movie' | 'tv', dateField: string, page: number) => {
     let url = `${API_ENDPOINTS.TMDB}/discover/${kind}?${dateField}.gte=${startStr}&${dateField}.lte=${endStr}` +
-      `&sort_by=${dateField}.asc&language=${locale}&page=1`;
+      `&sort_by=${dateField}.asc&language=${locale}&page=${page}`;
     if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
     return url;
   };
   const headers: Record<string, string> = auth.accessToken ? { Authorization: `Bearer ${auth.accessToken}` } : {};
 
+  // TMDB's discover endpoint has a fixed page size (20) — fetch a few pages
+  // per kind so a busy month isn't clipped to only the first 20 movies/series.
+  const PAGES = 3;
+  async function fetchKind(kind: 'movie' | 'tv', dateField: string): Promise<TmdbDiscoverItem[]> {
+    const pages = await Promise.all(
+      Array.from({ length: PAGES }, (_, i) =>
+        fetchJson<{ results?: TmdbDiscoverItem[]; total_pages?: number }>(buildUrl(kind, dateField, i + 1), { headers })
+      ),
+    );
+    return pages.flatMap(p => p?.results ?? []);
+  }
+
   const [movies, series] = await Promise.all([
-    fetchJson<{ results?: TmdbDiscoverItem[] }>(buildUrl('movie', 'primary_release_date'), { headers }),
-    fetchJson<{ results?: TmdbDiscoverItem[] }>(buildUrl('tv', 'first_air_date'), { headers }),
+    fetchKind('movie', 'primary_release_date'),
+    fetchKind('tv', 'first_air_date'),
   ]);
 
-  const map = (items: TmdbDiscoverItem[] | undefined, type: 'movie' | 'series'): UpcomingRelease[] =>
-    (items ?? []).flatMap(item => {
+  const map = (items: TmdbDiscoverItem[], type: 'movie' | 'series'): UpcomingRelease[] =>
+    items.flatMap(item => {
       const dateStr = item.release_date || item.first_air_date;
       if (!dateStr) return [];
       const [year, month, day] = dateStr.split('-').map(Number);
@@ -144,7 +156,7 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
       }];
     });
 
-  return [...map(movies?.results, 'movie'), ...map(series?.results, 'series')];
+  return [...map(movies, 'movie'), ...map(series, 'series')];
 }
 
 // ── IGDB: games, one request ─────────────────────────────────────────────────
