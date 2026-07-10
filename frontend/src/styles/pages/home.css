@@ -1,0 +1,191 @@
+/* ── Home page ────────────────────────────────────────────────────────────── */
+
+.home-calendar-section {
+  width: 100%;
+  max-width: 720px;
+  margin: 1.5rem auto 0;
+}
+
+/* Generic card wrapper — same look as profile's .stats-block-custom, kept as
+   its own copy since the release calendar moved out of the profile page and
+   this page doesn't otherwise need profile.css. */
+.home-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-sizing: border-box;
+}
+
+.home-card-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Calendar card layout */
+.stats-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stats-calendar-month {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.stats-calendar-layout {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 700px) {
+  .stats-calendar-layout {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+}
+
+.stats-calendar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.stats-calendar-empty {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 1.5rem 0;
+  margin: 0;
+}
+
+/* Calendar styling */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 0.75rem;
+}
+
+.calendar-day-header {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  padding-bottom: 0.25rem;
+}
+
+.calendar-day {
+  aspect-ratio: 1.2;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.calendar-day:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--accent);
+}
+
+.calendar-day.has-cover {
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.calendar-day.has-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  transition: opacity 0.15s ease;
+  z-index: 1;
+}
+
+.calendar-day.has-cover:hover::before {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.calendar-day.has-cover .calendar-day-num {
+  z-index: 2;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 1), 0 2px 8px rgba(0, 0, 0, 1);
+  color: #fff !important;
+}
+
+.calendar-day.other-month {
+  opacity: 0.2;
+}
+
+.calendar-day-num {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.calendar-day.today {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb, 139, 92, 246), 0.1);
+}
+
+.calendar-day-event-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  align-self: center;
+  box-shadow: 0 0 4px var(--accent);
+}
+
+.calendar-release-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.calendar-release-img {
+  width: 32px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.calendar-release-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendar-release-title {
+  font-weight: 700;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-release-meta {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}

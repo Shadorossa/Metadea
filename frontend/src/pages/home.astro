@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages/home.css';
 import { getLang, useTranslations } from '../i18n/index';
 import { API_URL } from '../lib/config';
 
@@ -24,11 +25,14 @@ const t    = useTranslations(lang);
         Vincular con Google
       </a>
     </div>
+
+    <div id="home-calendar" class="home-calendar-section"></div>
   </main>
 
   <script>
     import { getAuthToken } from '../lib/tauri';
     import { API_URL } from '../lib/config';
+    import { renderReleaseCalendar } from '../lib/home/render-calendar';
 
     async function checkSession() {
       const session = await getAuthToken();
@@ -47,6 +51,9 @@ const t    = useTranslations(lang);
       });
 
       checkSession();
+
+      const calendarEl = document.getElementById('home-calendar');
+      if (calendarEl) renderReleaseCalendar(calendarEl).catch(console.error);
     });
   </script>
 </BaseLayout>
