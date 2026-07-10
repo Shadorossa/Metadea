@@ -4,27 +4,27 @@
     "external_id": "game:134",
     "parent_id": null,
     "type": "game",
-    "format": "GAME",
+    "format": "REMASTER",
     "source": "igdb",
     "title_main": "Devil May Cry",
     "title_romaji": null,
-    "title_native": "鬼泣",
-    "synopsis": "Originally intended to be the fourth installment in the Resident Evil series, Devil May Cry is an action-adventure game that introduced a host of new elements to the gaming community. Chief among them is the Stylish Rank, which grades the player's performance in combat. The game is split into Missions, which are individually scored according to various factors, such as Orbs gathered and damage taken. Additionally, Devil May Cry did away with the pre-rendered backgrounds of prior Resident Evil games in order to allow for a dynamic camera system.",
-    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ck7.jpg",
-    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/idfagxomlljgi8tzyma1.jpg",
-    "release_year": 2001,
-    "release_month": 8,
-    "release_day": 23,
+    "title_native": null,
+    "synopsis": "An HD remaster of Devil May Cry, first made available in \"Devil May Cry HD Collection.\"\n\nIn the first installment of the Devil May Cry series, the player controls Dante as he faces off against the resurrected Demon Emperor, Mundus. The game introduces Dante's abilities, like Devil Trigger which transforms him into a demon, swordplay, gun-slinging, and stylish combos, all of which have become a staple of the series.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co5tkk.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar23jc.jpg",
+    "release_year": 2012,
+    "release_month": 3,
+    "release_day": 22,
     "time_length": null,
     "status": null,
-    "score_global": 8.3,
+    "score_global": 7.5,
     "favorites_count": null,
     "ratings_count": null,
     "total_count": null,
     "total_count_2": null,
     "genres_csv": "Hack and Slash,Adventure",
     "genres_tag_csv": null,
-    "platforms_csv": "PlayStation 2",
+    "platforms_csv": "PlayStation 3,PlayStation 4,PC (Microsoft Windows),Xbox 360,Xbox One,Nintendo Switch",
     "shop_links_csv": null,
     "companies_cache_csv": "Capcom Production Studio 4,Capcom",
     "authors_csv": null,
@@ -32,16 +32,16 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T19:30:14.375Z",
-    "updated_at": "2026-07-07T19:30:14.377782300+00:00"
+    "updated_at": "2026-07-10T21:52:55.806513200+00:00"
   },
   "media_relations": [
     {
-      "media_external_id": "game:134",
       "related_media_external_id": "game:222654",
       "relation_type": "REMASTER",
       "type_label": "Remaster",
       "title": "Devil May Cry",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5tkk.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5tkk.jpg",
+      "media_external_id": "game:134"
     },
     {
       "media_external_id": "game:134",
@@ -49,7 +49,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Devil May Cry 3: Dante's Awakening",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1u6u.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6u.jpg"
     },
     {
       "media_external_id": "game:136",
@@ -57,7 +57,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Devil May Cry",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ck7.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5tkk.jpg"
     },
     {
       "media_external_id": "game:136",
@@ -65,7 +65,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Devil May Cry 4",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1u6n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
     },
     {
       "media_external_id": "game:112",
@@ -73,7 +73,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Devil May Cry 3: Dante's Awakening",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1u6u.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6u.jpg"
     },
     {
       "media_external_id": "game:112",
@@ -89,10 +89,11 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Devil May Cry 4",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1u6n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {}
+  "saga_groups": {},
+  "saga_name": "Devil May Cry 4"
 }
