@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { getCharacter, type CharacterEntry } from '../../lib/tauri/characters';
+import {
+  getCharacter, saveCharacter, getCharacterAppearances, saveCharacterAppearances,
+  type CharacterEntry, type CharacterAppearance,
+} from '../../lib/tauri/characters';
+import { getCatalogEntry } from '../../lib/tauri/catalog';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { openImageCropModal } from '../../lib/shared/image-crop-modal';
+import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
+import { MediaSearchPopup } from '../media/MediaSearchPopup';
+import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
 const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
+
+const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
+const RELATION_TYPE_LABELS: Record<string, string> = {
+  MAIN: 'Principal',
+  SUPPORTING: 'Secundario',
+  BACKGROUND: 'Antecedente',
+};
+
+interface AppearanceRow {
+  media_external_id: string;
+  relation_type: string | null;
+  title: string;
+  cover: string | null;
+}
+
+const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>
+  `${a.media_external_id}::${a.relation_type ?? ''}`;
 
 function ChangedDot({ show }: { show: boolean }) {
   return show ? <span className="pr-editor-changed-dot" /> : null;
@@ -38,8 +63,21 @@ export function CharacterPrEditorModal() {
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
   const [aliases, setAliases] = useState('');
-  const [biography, setBiography] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+
+  // Biography is split into structured "characteristics" (bold-label lines
+  // like "Height: 170 cm") and the remaining free-text — see
+  // lib/character/biography-parser.ts. Both get reassembled into a single
+  // biography string on save, since that's the only column the DB has.
+  const [characteristics, setCharacteristics] = useState<ParsedCharacteristic[]>([]);
+  const [cleanBiography, setCleanBiography] = useState('');
+  const [originalCharacteristics, setOriginalCharacteristics] = useState<ParsedCharacteristic[]>([]);
+  const [originalCleanBiography, setOriginalCleanBiography] = useState('');
+
+  const [appearances, setAppearances] = useState<AppearanceRow[]>([]);
+  const [originalAppearances, setOriginalAppearances] = useState<AppearanceRow[]>([]);
+  const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
+  const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -51,6 +89,7 @@ export function CharacterPrEditorModal() {
     setOriginalCharacter(null);
     setErrorMsg('');
     setStatusMsg('');
+    setAppearanceSearchOpen(false);
   };
 
   useEffect(() => {
@@ -84,8 +123,26 @@ export function CharacterPrEditorModal() {
         setName(data.name || '');
         setNameNative(data.name_native || '');
         setAliases(data.aliases_csv || '');
-        setBiography(data.biography || '');
         setImageUrl(data.image_url || '');
+
+        const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
+        setCharacteristics(parsedStats);
+        setCleanBiography(parsedBio);
+        setOriginalCharacteristics(parsedStats);
+        setOriginalCleanBiography(parsedBio);
+
+        const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
+        const resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
+          const entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+          return {
+            media_external_id: a.media_external_id,
+            relation_type: a.relation_type ?? null,
+            title: entry?.title_main || a.media_external_id,
+            cover: entry?.cover_url ?? null,
+          };
+        }));
+        setAppearances(resolved);
+        setOriginalAppearances(resolved);
       } catch (err) {
         console.error('Failed to load character:', err);
         setErrorMsg('Error al cargar el personaje');
@@ -99,14 +156,27 @@ export function CharacterPrEditorModal() {
   const isFieldChanged = (current: string, original: string | null | undefined) =>
     current !== (original || '');
 
+  const characteristicsChanged = () =>
+    JSON.stringify(characteristics) !== JSON.stringify(originalCharacteristics);
+
+  const appearancesChanged = () => {
+    const a = new Set(appearances.map(appearanceKey));
+    const b = new Set(originalAppearances.map(appearanceKey));
+    if (a.size !== b.size) return true;
+    for (const k of a) if (!b.has(k)) return true;
+    return false;
+  };
+
   const hasChanged = () => {
     if (!originalCharacter) return false;
     return (
       isFieldChanged(name, originalCharacter.name) ||
       isFieldChanged(nameNative, originalCharacter.name_native) ||
       isFieldChanged(aliases, originalCharacter.aliases_csv) ||
-      isFieldChanged(biography, originalCharacter.biography) ||
-      isFieldChanged(imageUrl, originalCharacter.image_url)
+      isFieldChanged(imageUrl, originalCharacter.image_url) ||
+      isFieldChanged(cleanBiography, originalCleanBiography) ||
+      characteristicsChanged() ||
+      appearancesChanged()
     );
   };
 
@@ -116,10 +186,41 @@ export function CharacterPrEditorModal() {
       if (isFieldChanged(name, originalCharacter.name)) changes.push(`Nombre: ${name}`);
       if (isFieldChanged(nameNative, originalCharacter.name_native)) changes.push(`Nombre nativo: ${nameNative || '(vacío)'}`);
       if (isFieldChanged(aliases, originalCharacter.aliases_csv)) changes.push(`Aliases: ${aliases || '(vacío)'}`);
-      if (isFieldChanged(biography, originalCharacter.biography)) changes.push(`Biografía: ${biography ? 'Actualizada' : '(vacío)'}`);
       if (isFieldChanged(imageUrl, originalCharacter.image_url)) changes.push(`Imagen: ${imageUrl || '(vacío)'}`);
+      if (isFieldChanged(cleanBiography, originalCleanBiography)) changes.push('Biografía: Actualizada');
+      if (characteristicsChanged()) changes.push(`Características: ${characteristics.length} campo(s)`);
+      if (appearancesChanged()) changes.push(`Apariciones: ${appearances.length} obra(s)`);
     }
     return changes.length > 0 ? changes.join('\n- ') : 'Sin cambios detectados';
+  };
+
+  const addCharacteristic = () => setCharacteristics([...characteristics, { label: '', value: '' }]);
+  const removeCharacteristic = (idx: number) => setCharacteristics(characteristics.filter((_, i) => i !== idx));
+  const updateCharacteristic = (idx: number, field: 'label' | 'value', value: string) =>
+    setCharacteristics(characteristics.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+
+  const removeAppearance = (mediaExternalId: string) =>
+    setAppearances(appearances.filter(a => a.media_external_id !== mediaExternalId));
+  const updateAppearanceRelationType = (mediaExternalId: string, relationType: string) =>
+    setAppearances(appearances.map(a => a.media_external_id === mediaExternalId ? { ...a, relation_type: relationType } : a));
+  const addAppearance = (result: ApiSearchResult) => {
+    if (appearances.some(a => a.media_external_id === result.externalId)) return;
+    setAppearances([...appearances, {
+      media_external_id: result.externalId,
+      relation_type: appearanceRelationType,
+      title: result.titleMain || result.externalId,
+      cover: result.coverUrl,
+    }]);
+  };
+
+  const handleChangePhoto = async () => {
+    const result = await openImageCropModal({
+      title: 'Foto del personaje',
+      initialUrl: imageUrl,
+      aspectRatio: 3 / 4,
+      saveLabel: 'Usar esta imagen',
+    });
+    if (result.action === 'saved') setImageUrl(result.imageUrl);
   };
 
   const handleSubmit = async () => {
@@ -130,20 +231,38 @@ export function CharacterPrEditorModal() {
 
     setSubmitting(true);
     setErrorMsg('');
-    setStatusMsg('Preparando propuesta...');
+    setStatusMsg('Guardando localmente...');
 
     try {
+      const reassembledBiography = buildBiographyHtml(characteristics, cleanBiography);
+
       const updatedCharacter: CharacterEntry = {
         ...originalCharacter,
         name,
         name_native: normField(nameNative) as string | null | undefined,
         aliases_csv: normField(aliases) as string | null | undefined,
-        biography: normField(biography) as string | null | undefined,
+        biography: normField(reassembledBiography) as string | null | undefined,
         image_url: normField(imageUrl) as string | null | undefined,
       };
 
+      // Persist locally first (same pattern as the media PrEditorModal) so
+      // the edit sticks for this user immediately, independent of whether
+      // the collaborative PR below succeeds.
+      await saveCharacter(
+        currentId, updatedCharacter.name, updatedCharacter.image_url,
+        updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.biography,
+      );
+      if (appearancesChanged()) {
+        await saveCharacterAppearances(currentId, appearances.map(a => ({
+          media_external_id: a.media_external_id,
+          relation_type: a.relation_type,
+        })));
+      }
+
+      setStatusMsg('Preparando propuesta...');
+
       const bundle: ProposalBundle = {
-        media_catalog: {} as any,
+        media_catalog: {} as any, // Characters don't need media_catalog
         media_relations: [],
         characters: [{
           external_id: updatedCharacter.external_id,
@@ -205,6 +324,25 @@ export function CharacterPrEditorModal() {
         <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
+          {/* ── Foto ────────────────────────────────────────────────── */}
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">
+              Foto
+              {isFieldChanged(imageUrl, originalCharacter?.image_url) && <span className="pr-editor-section-changed-dot" />}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.6rem' }}>
+              <div className="pr-editor-cover-preview-card" style={{ width: '90px', aspectRatio: '3 / 4', flexShrink: 0 }}>
+                {imageUrl
+                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
+                  : <span className="pr-editor-cover-placeholder">Sin imagen</span>}
+              </div>
+              <button type="button" className="pr-editor-add-btn" onClick={handleChangePhoto}>
+                Cambiar imagen…
+              </button>
+            </div>
+          </div>
+
+          {/* ── Datos básicos ───────────────────────────────────────── */}
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
               <Field label="Nombre" changed={isFieldChanged(name, originalCharacter?.name)}>
@@ -215,23 +353,105 @@ export function CharacterPrEditorModal() {
                 <input type="text" value={nameNative} onChange={e => setNameNative(e.target.value)} placeholder="(Opcional)" />
               </Field>
 
-              <Field label="Aliases" changed={isFieldChanged(aliases, originalCharacter?.aliases_csv)}>
+              <Field label="Aliases" changed={isFieldChanged(aliases, originalCharacter?.aliases_csv)} full>
                 <input type="text" value={aliases} onChange={e => setAliases(e.target.value)} placeholder="Nombres alternativos separados por comas (Opcional)" />
               </Field>
+            </div>
+          </div>
 
-              <Field label="URL de Imagen" changed={isFieldChanged(imageUrl, originalCharacter?.image_url)}>
-                <input type="text" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://... (Opcional)" />
-              </Field>
-
-              <Field label="Biografía" changed={isFieldChanged(biography, originalCharacter?.biography)} full>
-                <textarea rows={6} value={biography} onChange={e => setBiography(e.target.value)} placeholder="Descripción del personaje (Opcional)" />
-              </Field>
-
-              {imageUrl && (
-                <div className="pr-editor-cover-preview-card pr-editor-field--full" style={{ maxWidth: '160px' }}>
-                  <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
+          {/* ── Características (género, edad, altura...) ──────────── */}
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">
+              Características
+              {characteristicsChanged() && <span className="pr-editor-section-changed-dot" />}
+            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem' }}>
+              {characteristics.map((c, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={c.label}
+                    onChange={e => updateCharacteristic(idx, 'label', e.target.value)}
+                    placeholder="Etiqueta (ej. Altura)"
+                    style={{ flex: '0 0 40%' }}
+                  />
+                  <input
+                    type="text"
+                    value={c.value}
+                    onChange={e => updateCharacteristic(idx, 'value', e.target.value)}
+                    placeholder="Valor (ej. 170 cm)"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="pr-editor-media-card-remove"
+                    style={{ position: 'static' }}
+                    onClick={() => removeCharacteristic(idx)}
+                  >
+                    ×
+                  </button>
                 </div>
-              )}
+              ))}
+              <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic}>+ Añadir característica</button>
+            </div>
+          </div>
+
+          {/* ── Biografía ────────────────────────────────────────────── */}
+          <div className="pr-editor-section">
+            <div className="pr-editor-form-grid">
+              <Field label="Biografía" changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
+                <textarea rows={6} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder="Descripción del personaje (Opcional)" />
+              </Field>
+            </div>
+          </div>
+
+          {/* ── Apariciones ──────────────────────────────────────────── */}
+          <div className="pr-editor-section">
+            <span className="pr-editor-section-title">
+              Apariciones en Obras
+              {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
+            </span>
+            <div className="pr-editor-media-group-cards" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
+              {appearances.map(a => (
+                <div key={a.media_external_id} className="pr-editor-media-card">
+                  <div className="pr-editor-media-card-cover">
+                    {a.cover
+                      ? <img src={a.cover} alt="" />
+                      : <div className="pr-editor-media-card-placeholder" />}
+                    <button
+                      type="button"
+                      className="pr-editor-media-card-remove"
+                      onClick={() => removeAppearance(a.media_external_id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="pr-editor-media-card-title" title={a.title}>{a.title}</div>
+                  <select
+                    value={a.relation_type ?? 'SUPPORTING'}
+                    onChange={e => updateAppearanceRelationType(a.media_external_id, e.target.value)}
+                    className="pr-editor-media-card-select"
+                    style={{ fontSize: '0.7rem' }}
+                  >
+                    {RELATION_TYPE_OPTIONS.map(type => (
+                      <option key={type} value={type}>{RELATION_TYPE_LABELS[type] || type}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <select
+                value={appearanceRelationType}
+                onChange={e => setAppearanceRelationType(e.target.value)}
+                className="pr-editor-media-card-select"
+                style={{ fontSize: '0.7rem' }}
+              >
+                {RELATION_TYPE_OPTIONS.map(type => (
+                  <option key={type} value={type}>{RELATION_TYPE_LABELS[type] || type}</option>
+                ))}
+              </select>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>+ Añadir aparición</button>
             </div>
           </div>
         </div>
@@ -245,6 +465,15 @@ export function CharacterPrEditorModal() {
           </button>
         </div>
       </div>
+
+      {appearanceSearchOpen && (
+        <MediaSearchPopup
+          onSelect={addAppearance}
+          onClose={() => setAppearanceSearchOpen(false)}
+          excludeIds={appearances.map(a => a.media_external_id)}
+          closeOnSelect={false}
+        />
+      )}
     </div>,
     document.body
   );
