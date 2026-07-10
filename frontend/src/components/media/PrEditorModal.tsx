@@ -17,7 +17,7 @@ import {
   BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, SAGA_RELATION_TYPE_OPTIONS, EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
-import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
+import { classifySagaChain, createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
@@ -207,8 +207,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         ));
 
         const sortedIds = validEntries.map(x => x.id);
-        setSagaOrder(sortedIds);
-        setOriginalSagaOrder(sortedIds);
 
         const meta: Record<string, MediaMeta> = {};
         for (const x of validEntries) {
@@ -226,6 +224,14 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>)),
           invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
         ]);
+        // Reconstructs the manually-saved order (if any) from SEQUEL edges
+        // among allRelsList instead of trusting release-date order alone —
+        // otherwise a drag-reorder+submit looked saved but silently reverted
+        // to release-date order the next time the editor was reopened.
+        const reconstructedOrder = reconstructSagaOrder(sortedIds, allRelsList);
+        setSagaOrder(reconstructedOrder);
+        setOriginalSagaOrder(reconstructedOrder);
+
         const relTypesMap: Record<string, SagaRelationType> = {};
         const groupsMap: Record<string, string> = { ...dbGroups };
         let nextGroupNum = 1;
