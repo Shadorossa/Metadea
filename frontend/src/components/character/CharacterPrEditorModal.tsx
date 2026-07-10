@@ -34,12 +34,12 @@ function TagsInput({ tags, onChange, placeholder }: { tags: string[], onChange: 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', minHeight: '32px', alignContent: 'flex-start' }}>
+    <div className="tags-input-container">
+      <div className="tags-input-wrapper">
         {tags.map((tag, idx) => (
-          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', backgroundColor: '#e0e0e0', borderRadius: '4px', fontSize: '14px' }}>
+          <div key={idx} className="tags-input-tag">
             {tag}
-            <button type="button" onClick={() => removeTag(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '16px', lineHeight: '1' }}>×</button>
+            <button type="button" onClick={() => removeTag(idx)} className="tags-input-tag-remove">×</button>
           </div>
         ))}
         <input
@@ -48,7 +48,7 @@ function TagsInput({ tags, onChange, placeholder }: { tags: string[], onChange: 
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? placeholder : ''}
-          style={{ flex: 1, minWidth: '100px', border: 'none', outline: 'none', fontSize: '14px', padding: '4px 0' }}
+          className="tags-input-field"
         />
       </div>
     </div>
