@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   getCharacter, saveCharacter, getCharacterAppearances, saveCharacterAppearances,
@@ -93,6 +93,21 @@ function Field({ label, changed, full, children }: {
   );
 }
 
+interface CachedCharacterData {
+  character: CharacterEntry;
+  originalCharacter: CharacterEntry;
+  name: string;
+  nameNative: string;
+  aliases: string[];
+  imageUrl: string;
+  characteristics: ParsedCharacteristic[];
+  cleanBiography: string;
+  originalCharacteristics: ParsedCharacteristic[];
+  originalCleanBiography: string;
+  appearances: AppearanceRow[];
+  originalAppearances: AppearanceRow[];
+}
+
 export function CharacterPrEditorModal() {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -104,6 +119,9 @@ export function CharacterPrEditorModal() {
   const [errorMsg, setErrorMsg] = useState('');
   const [character, setCharacter] = useState<CharacterEntry | null>(null);
   const [originalCharacter, setOriginalCharacter] = useState<CharacterEntry | null>(null);
+
+  // Cache for character data to avoid reloading from API
+  const characterCacheRef = useRef<Record<string, CachedCharacterData>>({});
 
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
@@ -156,6 +174,26 @@ export function CharacterPrEditorModal() {
 
     const loadCharacter = async () => {
       try {
+        // Check if we have cached data
+        const cached = characterCacheRef.current[currentId];
+        if (cached) {
+          // Use cached data
+          setCharacter(cached.character);
+          setOriginalCharacter(cached.originalCharacter);
+          setName(cached.name);
+          setNameNative(cached.nameNative);
+          setAliases(cached.aliases);
+          setImageUrl(cached.imageUrl);
+          setCharacteristics(cached.characteristics);
+          setCleanBiography(cached.cleanBiography);
+          setOriginalCharacteristics(cached.originalCharacteristics);
+          setOriginalCleanBiography(cached.originalCleanBiography);
+          setAppearances(cached.appearances);
+          setOriginalAppearances(cached.originalAppearances);
+          setLoading(false);
+          return;
+        }
+
         const now = new Date().toISOString();
 
         // Parse external_id to get AniList character ID
@@ -300,6 +338,22 @@ export function CharacterPrEditorModal() {
         }));
         setAppearances(resolved);
         setOriginalAppearances(resolved);
+
+        // Cache the loaded data
+        characterCacheRef.current[currentId] = {
+          character: data,
+          originalCharacter: data,
+          name: data.name || '',
+          nameNative: data.name_native || '',
+          aliases: (data.aliases_csv || '').split(',').map(a => a.trim()).filter(a => a),
+          imageUrl: data.image_url || '',
+          characteristics: allCharacteristics,
+          cleanBiography: parsedBio,
+          originalCharacteristics: allCharacteristics,
+          originalCleanBiography: parsedBio,
+          appearances: resolved,
+          originalAppearances: resolved,
+        };
       } catch (err) {
         console.error('Failed to load character:', err);
         setErrorMsg('Error al cargar el personaje');
@@ -436,6 +490,8 @@ export function CharacterPrEditorModal() {
       if (prUrl) {
         setStatusMsg('¡Pull Request creado exitosamente!');
         await new Promise(r => setTimeout(r, 1500));
+        // Clear cache for this character so next edit loads fresh data
+        delete characterCacheRef.current[currentId];
         await openUrlInBrowser(prUrl);
         handleClose();
       }
