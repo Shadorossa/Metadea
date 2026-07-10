@@ -216,6 +216,7 @@ export const en = {
       add_tag:   'Add tag…',
       favorite:  'Favorite',
       platinum:  'Platinum',
+      import_from_anilist: 'Import data from your AniList profile',
       save:        'Save',
       saving:      'Saving…',
       saved_toast: 'Changes saved!',

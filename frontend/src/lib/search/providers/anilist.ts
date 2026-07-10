@@ -129,10 +129,16 @@ async function anilistPost<T>(query: string, variables: Record<string, unknown>)
 
 interface PagedEdges<E> { pageInfo: { hasNextPage: boolean; total?: number | null }; edges: E[]; }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Fetches every page after the first (already-fetched) one for a paginated
-// AniList edge list. `total` (from PageInfo) tells us upfront how many pages
-// exist, so when it's present every remaining page is fetched concurrently
-// instead of waiting for page N to know whether page N+1 exists at all.
+// AniList edge list. Pages are walked one at a time (with a short pause in
+// between) instead of firing all of them concurrently — a single hover
+// prefetch used to blow through AniList's rate limit by itself on media
+// with a large cast (dozens of parallel character-page requests), which then
+// 429'd every other AniList call for a while, including unrelated ones like
+// the media editor's "import from AniList" button. Sequential fetching still
+// retrieves every page, just spread out instead of bursted.
 async function fetchRemainingEdges<E>(
   firstPage: PagedEdges<E>,
   perPage: number,
@@ -141,23 +147,17 @@ async function fetchRemainingEdges<E>(
   if (!firstPage.pageInfo.hasNextPage) return [];
 
   const total = firstPage.pageInfo.total;
-  if (total) {
-    const totalPages = Math.ceil(total / perPage);
-    const pages = await Promise.all(
-      Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) => fetchPage(i + 2)),
-    );
-    return pages.filter((p): p is NonNullable<typeof p> => p !== null).flatMap(p => p.edges);
-  }
+  const totalPages = total ? Math.ceil(total / perPage) : Infinity;
 
-  // Defensive fallback if AniList ever omits `total` — walk page by page.
   const extra: E[] = [];
   let page = 2;
-  while (true) {
+  while (page <= totalPages) {
     const next = await fetchPage(page);
     if (!next) break;
     extra.push(...next.edges);
     if (!next.pageInfo.hasNextPage) break;
     page++;
+    if (page <= totalPages) await delay(150);
   }
   return extra;
 }

@@ -77,7 +77,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   }));
 
   const relations: MediaRelation[] = raw.relations.edges
-    .filter(e => e.relationType !== 'CHARACTER' && e.node.coverImage?.medium)
+    .filter(e => e.relationType !== 'CHARACTER' && e.node.type !== 'MUSIC' && e.node.coverImage?.medium)
     .sort((a, b) => {
       const typePriority = (RELATION_PRIORITY[a.relationType] ?? 99) - (RELATION_PRIORITY[b.relationType] ?? 99);
       if (typePriority !== 0) return typePriority;

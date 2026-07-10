@@ -515,6 +515,29 @@
   cursor: help;
 }
 
+.library-card-tag-badges {
+  position: absolute;
+  top: 0;
+  left: 0.5rem;
+  z-index: 3;
+  display: flex;
+  gap: 0.15rem;
+}
+
+.library-card-tag-badge {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 1.15rem;
+  padding: 0.15rem 0 0.3rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  cursor: help;
+}
+
 .library-card-type svg {
   width: 20px;
   height: 20px;

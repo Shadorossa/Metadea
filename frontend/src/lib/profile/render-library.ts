@@ -20,6 +20,26 @@ function buildRatingHtml(rating: number | null | undefined): string {
   return formatRatingHtml(rating, getActiveRatingSystem(), 'library-card-rating');
 }
 
+// Matches a single leading emoji (plus an optional variation selector) at the
+// very start of a tag string — e.g. "🎨Arte" → emoji "🎨", name "Arte". Tags
+// are free text (see MediaEditorModal's tag input), so only tags the user
+// actually prefixed with an emoji get a bookmark; plain-text tags are skipped.
+const TAG_EMOJI_RE = /^(\p{Extended_Pictographic}️?)(.*)$/u;
+
+function buildTagBadgesHtml(tags: string[] | null | undefined): string {
+  if (!tags || tags.length === 0) return '';
+  return tags
+    .map(tag => {
+      const match = TAG_EMOJI_RE.exec(tag.trim());
+      if (!match) return '';
+      const [, emoji, name] = match;
+      const label = name.trim() || tag.trim();
+      return `<span class="library-card-tag-badge" title="${label.replace(/"/g, '&quot;')}">${emoji}</span>`;
+    })
+    .filter(Boolean)
+    .join('');
+}
+
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
   if (!started && !finished) return '';
   const parts: string[] = [];
@@ -262,11 +282,13 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           const badge = grouped.length > 0
             ? `<span class="library-card-group-badge" title="${p.library_group_editions_hint}: ${groupedTitles.join(', ').replace(/"/g, '&quot;')}">+${grouped.length}</span>`
             : '';
+          const tagBadges = buildTagBadgesHtml(item.tags);
 
           return `
                 <div class="library-card${stackClass}" data-id="${item.external_id}" ${style}>
                   ${cover ? `<div class="library-card-bg"></div>` : ''}
                   ${badge}
+                  ${tagBadges ? `<div class="library-card-tag-badges">${tagBadges}</div>` : ''}
                   <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
                     ${cover
               ? `<img src="${cover}" alt="${title}" loading="lazy" />`

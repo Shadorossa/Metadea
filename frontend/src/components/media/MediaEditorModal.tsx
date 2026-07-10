@@ -4,12 +4,12 @@ import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
-import { syncToAniList, isAniListType } from '../../lib/media/anilist-sync';
+import { syncToAniList, fetchAniListLogData, isAniListType } from '../../lib/media/anilist-sync';
 import type { Translations } from '../../i18n/index';
 import {
   IconStatusPlanning, IconStatusInProgress, IconStatusCompleted,
   IconStatusPaused, IconStatusDropped,
-  IconHeart, IconPlatinum, IconCheck, IconAlertCircle,
+  IconHeart, IconPlatinum, IconCheck, IconAlertCircle, IconDownload,
 } from '../local/ui/icons';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -72,6 +72,8 @@ interface UiState {
   tagInput:      string;
   anilistStatus: AniListStatus;
   anilistError:  string | null;
+  anilistImportStatus: AniListStatus;
+  anilistImportError:  string | null;
 }
 
 type UiAction =
@@ -79,7 +81,8 @@ type UiAction =
   | { type: 'SET_SAVING';    value: boolean }
   | { type: 'SET_CLOSING' }
   | { type: 'SET_TAG_INPUT'; value: string }
-  | { type: 'SET_ANILIST';   status: AniListStatus; error?: string };
+  | { type: 'SET_ANILIST';   status: AniListStatus; error?: string }
+  | { type: 'SET_ANILIST_IMPORT'; status: AniListStatus; error?: string };
 
 // ── Reducers ──────────────────────────────────────────────────────────────────
 
@@ -228,6 +231,7 @@ function uiReducer(state: UiState, action: UiAction): UiState {
     case 'SET_CLOSING':   return { ...state, isClosing: true };
     case 'SET_TAG_INPUT': return { ...state, tagInput: action.value };
     case 'SET_ANILIST':   return { ...state, anilistStatus: action.status, anilistError: action.error ?? null };
+    case 'SET_ANILIST_IMPORT': return { ...state, anilistImportStatus: action.status, anilistImportError: action.error ?? null };
     default: return state;
   }
 }
@@ -319,6 +323,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // If we already have the entry from the caller, skip loading state entirely
     loading: !initialEntry, saving: false, isClosing: false,
     tagInput: '', anilistStatus: 'idle', anilistError: null,
+    anilistImportStatus: 'idle', anilistImportError: null,
   });
 
   // The single source of truth for whatever log tab is currently active —
@@ -411,6 +416,22 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     const newKey = entry.selectedMonthKey === targetKey ? null : targetKey;
     dispatchEntry({ type: 'SET_MONTH', externalId, key: newKey, year: entry.selectedYear });
   }, [externalId, entry.selectedYear, entry.selectedMonthKey]);
+
+  const handleImportFromAniList = useCallback(async () => {
+    dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'syncing' });
+    const result = await fetchAniListLogData(externalId, data.type);
+    if (!result.ok || !result.data) {
+      dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'error', error: result.error });
+      return;
+    }
+    const { status, rating, progress, progressVolumes, startedAt, finishedAt, notes } = result.data;
+    dispatchEntry({
+      type: 'UPDATE_LOG',
+      updates: { status, rating, progress, progressCount2: progressVolumes, startedAt, finishedAt, notes },
+    });
+    dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'ok' });
+    setTimeout(() => dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'idle' }), 3000);
+  }, [externalId, data.type]);
 
   const handleSave = useCallback(async () => {
     dispatchUi({ type: 'SET_SAVING', value: true });
@@ -711,6 +732,15 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 onClick={() => dispatchEntry({ type: 'UPDATE_LOG', updates: { isPlatinum: !activeLog.isPlatinum } })}
                 title={te.platinum}>
                 <IconPlatinum filled={activeLog.isPlatinum} size={18} />
+              </button>
+            )}
+            {isAniListType(data.type) && (
+              <button type="button"
+                className={`me-header-icon-btn${ui.anilistImportStatus === 'error' ? ' me-header-icon-btn--error' : ''}${ui.anilistImportStatus === 'syncing' ? ' me-header-icon-btn--spinning' : ''}`}
+                onClick={handleImportFromAniList}
+                disabled={ui.anilistImportStatus === 'syncing'}
+                title={ui.anilistImportStatus === 'error' ? (ui.anilistImportError ?? 'AniList error') : te.import_from_anilist}>
+                {ui.anilistImportStatus === 'ok' ? <IconCheck size={16} strokeWidth={2.5} /> : <IconDownload />}
               </button>
             )}
           </div>

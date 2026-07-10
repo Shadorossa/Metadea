@@ -326,11 +326,28 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
+// Hover-intent delay before prefetching a card's detail data — quickly
+// scanning across many results used to fire a prefetch (and for anime/manga
+// with a large cast, a burst of AniList character-page requests) per card,
+// which could exhaust AniList's rate limit before the user even opened one.
+// Cancelled on mouse-leave, so a card the user actually pauses on still
+// prefetches exactly as before.
+const HOVER_PREFETCH_DELAY_MS = 300;
+
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleMouseEnter() {
-    if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
+    if (!hasDetail || result.type === 'character') return;
+    hoverTimer.current = setTimeout(() => prefetchMediaData(result.externalId), HOVER_PREFETCH_DELAY_MS);
+  }
+
+  function handleMouseLeave() {
+    if (hoverTimer.current) {
+      clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
   }
 
   async function handleClick() {
@@ -356,6 +373,7 @@ function MediaCard({ result }: { result: SearchResult }) {
       className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       role={hasDetail ? 'button' : undefined}
       tabIndex={hasDetail ? 0 : undefined}
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}

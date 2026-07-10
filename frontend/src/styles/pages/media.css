@@ -1431,6 +1431,13 @@
   width: 16px;
   height: 16px;
 }
+.me-header-icon-btn--spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+.me-header-icon-btn--error {
+  border-color: color-mix(in srgb, #ef4444 55%, transparent);
+  color: #ef4444;
+}
 
 .me-header-right {
   display: flex;
