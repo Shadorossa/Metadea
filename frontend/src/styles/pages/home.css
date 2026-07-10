@@ -217,6 +217,8 @@
   gap: 0.75rem;
   padding-top: 0.4rem;
   border-top: 1px solid var(--border-color);
+  position: relative;
+  z-index: 61; /* above the bottom nav bar (navbar.css, z-index: 50) */
 }
 
 .calendar-popover-pager-btn {
@@ -232,6 +234,8 @@
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+  z-index: 61;
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
