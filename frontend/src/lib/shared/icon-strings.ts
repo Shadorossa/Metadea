@@ -40,6 +40,7 @@ const INNER: Record<string, string> = {
   chevron_right:         `<polyline points="9 18 15 12 9 6"/>`,
   rating_faces:          `<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>`,
   github:                `<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>`,
+  help_circle:           `<circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/>`,
   import_download:       `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
 
   // Profile page
@@ -130,6 +131,7 @@ export const ICON_CHEVRON_LEFT         = stroke(16, '2.5', INNER.chevron_left);
 export const ICON_CHEVRON_RIGHT        = stroke(16, '2.5', INNER.chevron_right);
 export const ICON_RATING_FACES         = stroke(18, '2', INNER.rating_faces);
 export const ICON_GITHUB               = stroke(18, '2', INNER.github);
+export const ICON_HELP_CIRCLE          = stroke(16, '2', INNER.help_circle);
 export const ICON_IMPORT_DOWNLOAD      = stroke(14, '2', INNER.import_download);
 
 // ── Profile page tab icons ──────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import {
   ICON_CHEVRON_RIGHT,
   ICON_RATING_FACES,
   ICON_GITHUB,
+  ICON_HELP_CIRCLE,
   ICON_IMPORT_DOWNLOAD,
 } from "../lib/shared/icon-strings";
 
@@ -489,8 +490,13 @@ const version = pkg.version;
                   <div id="github-avatar-container" class="settings-auth-avatar">
                     <Fragment set:html={ICON_GITHUB} />
                   </div>
-                  <div>
-                    <span class="settings-auth-name">GitHub</span>
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="settings-auth-name">GitHub</span>
+                      <button class="settings-help-btn" data-help="github" title="¿Qué es GitHub?" style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <Fragment set:html={ICON_HELP_CIRCLE} />
+                      </button>
+                    </div>
                     <span id="github-user-status" class="settings-auth-status"
                       >No conectado</span
                     >
@@ -507,8 +513,13 @@ const version = pkg.version;
                   <div id="anilist-avatar-container" class="settings-auth-avatar">
                     <img src="/API/Anilist_logo.png" style="width: 18px; height: 18px;" />
                   </div>
-                  <div>
-                    <span class="settings-auth-name">AniList</span>
+                  <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span class="settings-auth-name">AniList</span>
+                      <button class="settings-help-btn" data-help="anilist" title="¿Qué es AniList?" style="width: 20px; height: 20px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <Fragment set:html={ICON_HELP_CIRCLE} />
+                      </button>
+                    </div>
                     <span id="anilist-user-status" class="settings-auth-status"
                       >No conectado</span
                     >
@@ -666,6 +677,45 @@ const version = pkg.version;
                 >
               </div>
             </div>
+
+            <!-- Help modals -->
+            <div id="github-help-modal" class="settings-help-modal hidden">
+              <div class="settings-help-modal-overlay"></div>
+              <div class="settings-help-modal-content">
+                <div class="settings-help-modal-header">
+                  <h3>¿Qué es GitHub?</h3>
+                  <button class="settings-help-modal-close" data-modal="github-help-modal">&times;</button>
+                </div>
+                <div class="settings-help-modal-body">
+                  <p><strong>GitHub</strong> es una plataforma de control de versiones que permite colaborar en proyectos de código.</p>
+                  <p>En Metadea, se usa para:</p>
+                  <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+                    <li><strong>Contribuir cambios:</strong> Proponer ediciones a los datos de animes, mangas y personajes de forma colaborativa</li>
+                    <li><strong>Ver historial:</strong> Revisar todas las contribuciones y cambios realizados al proyecto</li>
+                    <li><strong>Colaboración segura:</strong> Los cambios se revisan antes de aplicarse, manteniendo la calidad de los datos</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div id="anilist-help-modal" class="settings-help-modal hidden">
+              <div class="settings-help-modal-overlay"></div>
+              <div class="settings-help-modal-content">
+                <div class="settings-help-modal-header">
+                  <h3>¿Qué es AniList?</h3>
+                  <button class="settings-help-modal-close" data-modal="anilist-help-modal">&times;</button>
+                </div>
+                <div class="settings-help-modal-body">
+                  <p><strong>AniList</strong> es una base de datos comunitaria de animes, mangas y personajes muy popular en internet.</p>
+                  <p>En Metadea, se usa para:</p>
+                  <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+                    <li><strong>Datos de animes y mangas:</strong> Sincronizar información como títulos, géneros, sinopsis y fechas</li>
+                    <li><strong>Datos de personajes:</strong> Cargar información detallada de personajes, sus apareamientos y características</li>
+                    <li><strong>Sincronizar biblioteca:</strong> Importar tu lista personal de animes y mangas desde AniList</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -780,5 +830,30 @@ const version = pkg.version;
       (document.querySelector(".app-curr-ver") as HTMLElement | null)?.dataset.version || "0.1.9";
     initUpdater(defaultVersion);
     initSettingsTabs();
+
+    // Help modal handlers
+    document.querySelectorAll(".settings-help-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = (e.target as HTMLElement).closest(".settings-help-btn");
+        const modalId = target?.getAttribute("data-help") === "github" ? "github-help-modal" : "anilist-help-modal";
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove("hidden");
+      });
+    });
+
+    document.querySelectorAll(".settings-help-modal-close").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
+        if (modal) modal.classList.add("hidden");
+      });
+    });
+
+    document.querySelectorAll(".settings-help-modal-overlay").forEach(overlay => {
+      overlay.addEventListener("click", (e) => {
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
+        if (modal) modal.classList.add("hidden");
+      });
+    });
   });
 </script>
