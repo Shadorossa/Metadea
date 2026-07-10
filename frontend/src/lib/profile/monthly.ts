@@ -52,13 +52,41 @@ export function buildMonthlyHistoryHtml(
   });
 
   return `<div class="monthly-history">
-    <div class="mh-zigzag">
-      <div class="mh-row-top">
-        ${topRow.join('')}
-      </div>
-      <div class="mh-row-bottom">
-        ${bottomRow.join('')}
+    <button type="button" class="mh-arrow mh-arrow-left" aria-label="Anterior" disabled>‹</button>
+    <div class="mh-scroll">
+      <div class="mh-zigzag">
+        <div class="mh-row-top">
+          ${topRow.join('')}
+        </div>
+        <div class="mh-row-bottom">
+          ${bottomRow.join('')}
+        </div>
       </div>
     </div>
+    <button type="button" class="mh-arrow mh-arrow-right" aria-label="Siguiente">›</button>
   </div>`;
+}
+
+// Left/right arrows scroll .mh-scroll instead of the row overflowing its
+// column and visually bleeding into the Recent Activity sidebar next to it
+// (the row has no wrap and used to just grow as wide as the month count
+// needed). Disables whichever arrow is at its end of the scroll range.
+export function initMonthlyHistoryListeners(container: HTMLElement): void {
+  const scrollEl = container.querySelector<HTMLElement>('.mh-scroll');
+  const leftBtn = container.querySelector<HTMLButtonElement>('.mh-arrow-left');
+  const rightBtn = container.querySelector<HTMLButtonElement>('.mh-arrow-right');
+  if (!scrollEl || !leftBtn || !rightBtn) return;
+
+  const SCROLL_STEP = 300;
+
+  function updateArrows() {
+    if (!scrollEl) return;
+    leftBtn!.disabled = scrollEl.scrollLeft <= 0;
+    rightBtn!.disabled = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+  }
+
+  leftBtn.addEventListener('click', () => scrollEl.scrollBy({ left: -SCROLL_STEP, behavior: 'smooth' }));
+  rightBtn.addEventListener('click', () => scrollEl.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' }));
+  scrollEl.addEventListener('scroll', updateArrows);
+  updateArrows();
 }

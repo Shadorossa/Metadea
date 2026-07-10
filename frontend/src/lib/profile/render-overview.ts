@@ -3,7 +3,7 @@ import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners } from './hof';
-import { buildMonthlyHistoryHtml } from './monthly';
+import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
@@ -133,6 +133,8 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
     initHofListeners(el);
     initActivityListeners(el, catalogMap, p);
+    const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
+    if (monthlyHistoryEl) initMonthlyHistoryListeners(monthlyHistoryEl);
   } catch (error) {
     console.error("renderOverview failed:", error);
     const message = error instanceof Error ? error.message : String(error);
