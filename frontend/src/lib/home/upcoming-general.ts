@@ -268,11 +268,18 @@ async function fetchGeneralUpcomingReleasesUncached(rangeStart: Date, rangeEnd: 
 // how "today" shifts the query boundaries.
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+// Bump whenever the query range/logic changes meaningfully (e.g. the fix
+// that extended coverage to earlier-this-month releases) — otherwise a
+// cache written by older code sits well within CACHE_TTL_MS and keeps
+// serving results that don't reflect the new behavior until it expires.
+const CACHE_VERSION = 2;
+
 interface SerializedRelease extends Omit<UpcomingRelease, 'releaseDate'> {
   releaseDate: string; // ISO — Date doesn't survive JSON.stringify/parse as-is
 }
 
 interface CacheEntry {
+  version: number;
   savedAt: number;
   monthKey: string;
   releases: SerializedRelease[];
@@ -287,6 +294,7 @@ function readCache(monthKey: string): UpcomingRelease[] | null {
     const raw = localStorage.getItem(STORAGE_KEYS.homeCalendarGeneralCache);
     if (!raw) return null;
     const entry = JSON.parse(raw) as CacheEntry;
+    if (entry.version !== CACHE_VERSION) return null;
     if (entry.monthKey !== monthKey) return null;
     if (Date.now() - entry.savedAt > CACHE_TTL_MS) return null;
     return entry.releases.map(r => ({ ...r, releaseDate: new Date(r.releaseDate) }));
@@ -298,6 +306,7 @@ function readCache(monthKey: string): UpcomingRelease[] | null {
 function writeCache(monthKey: string, releases: UpcomingRelease[]): void {
   try {
     const entry: CacheEntry = {
+      version: CACHE_VERSION,
       savedAt: Date.now(),
       monthKey,
       releases: releases.map(r => ({ ...r, releaseDate: r.releaseDate.toISOString() })),
