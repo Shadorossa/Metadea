@@ -85,7 +85,7 @@ export interface TmdbTvDetail extends TmdbDetailBase {
   created_by?: TmdbCreator[];
 }
 
-function buildPosterUrl(posterPath: string | null): string | null {
+export function buildPosterUrl(posterPath: string | null): string | null {
   return posterPath ? API_ENDPOINTS.TMDB_IMAGE(posterPath) : null;
 }
 
@@ -122,7 +122,7 @@ function mapTmdbMovieToSearchResult(movie: TmdbMovie, mediaType: MediaType): Sea
 // TMDB credentials can be a bearer access token, a plain api_key query param,
 // or both (see settings/environment.ts) — resolve them once and let callers
 // build their own query string / headers from the result.
-async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: string } | null> {
+export async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: string } | null> {
   let accessToken = '';
   let apiKey = '';
 
@@ -138,7 +138,7 @@ async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: string } | 
   return { accessToken, apiKey };
 }
 
-function tmdbLocale(): string {
+export function tmdbLocale(): string {
   return getLangCode() === 'en' ? 'en-US' : 'es-ES';
 }
 

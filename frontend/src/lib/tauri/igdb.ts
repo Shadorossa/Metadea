@@ -31,6 +31,13 @@ export async function igdbSearch(query: string, isVisualNovel = false): Promise<
   return invoke<IgdbGame[]>('igdb_search', { query, isVisualNovel });
 }
 
+// Games releasing between the two unix timestamps — single request. Silently
+// returns [] if IGDB isn't configured or the call fails (tauriCmd fallback),
+// so the Home calendar's "General" view can call this unconditionally.
+export async function igdbUpcomingReleases(startUnix: number, endUnix: number): Promise<IgdbGame[]> {
+  return tauriCmd<IgdbGame[]>('igdb_upcoming_releases', [], { startUnix, endUnix });
+}
+
 export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, unknown> | null> {
   return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
 }

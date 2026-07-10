@@ -979,6 +979,48 @@ pub async fn file_to_data_url(file_path: String) -> Result<String, String> {
     ))
 }
 
+// Games releasing in [start_unix, end_unix] — single request, used by the
+// Home calendar's "General" view. Reuses the same category/DLC filter as
+// igdb_search so sequels/ports/DLC don't crowd out base-game releases.
+#[tauri::command]
+pub async fn igdb_upcoming_releases(
+    app_handle: tauri::AppHandle,
+    start_unix: i64,
+    end_unix: i64,
+) -> Result<serde_json::Value, String> {
+    let cfg = load_env_config(&app_handle)?;
+    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let client = get_http_client();
+
+    let results = igdb_query(
+        &client,
+        &client_id,
+        &token,
+        IGDB_API_GAMES,
+        &format!(
+            "fields id,name,cover.image_id,first_release_date,category,game_type,\
+             version_parent.id,parent_game.id; \
+             where first_release_date >= {} & first_release_date <= {} & cover != null; \
+             sort first_release_date asc; limit 200;",
+            start_unix, end_unix
+        ),
+    )
+    .await?;
+
+    let games: Vec<serde_json::Value> = results
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|g| !is_non_game(g))
+        .filter(|g| get_game_category(g) != 0 || (g["version_parent"].is_null() && g["parent_game"].is_null()))
+        .collect();
+
+    Ok(serde_json::Value::Array(games))
+}
+
 #[tauri::command]
 pub async fn igdb_search(
     app_handle: tauri::AppHandle,

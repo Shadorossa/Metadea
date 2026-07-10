@@ -86,6 +86,7 @@ pub fn run() {
             igdb::read_env_config,
             igdb::write_env_config,
             igdb::igdb_search,
+            igdb::igdb_upcoming_releases,
             igdb::igdb_get_game_detail,
             igdb::igdb_get_base_games,
             igdb::igdb_get_relation_graph,
