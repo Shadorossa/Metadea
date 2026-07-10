@@ -222,6 +222,7 @@ export interface UpcomingRelease {
   title: string;
   type: string;
   cover: string;
+  externalId: string;
 }
 
 export function computeUpcomingPlanningReleases(
@@ -247,6 +248,7 @@ export function computeUpcomingPlanningReleases(
             title: entry.title_main || entry.external_id,
             type: entry.type,
             cover: entry.cover_url || '',
+            externalId: item.external_id,
           };
         }
       }

@@ -122,8 +122,12 @@
   overflow: hidden;
 }
 
-.calendar-day.has-cover:hover {
+.calendar-day.has-cover.open {
   overflow: visible;
+}
+
+.calendar-day.has-releases {
+  cursor: pointer;
 }
 
 .calendar-day.has-cover::before {
@@ -169,61 +173,68 @@
   box-shadow: 0 0 4px var(--accent);
 }
 
-/* Hover popover listing the day's releases */
+/* Click-to-open popover listing the day's releases (not hover — hover state
+   is lost as soon as the page scrolls, since the cursor stops being over the
+   cell, which made the list vanish while scrolling up to read it). 4-column
+   grid of cover cards, click a cover to go straight to its media page. */
 .calendar-day-popover {
   display: none;
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  width: 220px;
-  max-height: 260px;
+  width: 300px;
+  max-height: 320px;
   overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 0.5rem;
+  padding: 0.6rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   z-index: 30;
-  flex-direction: column;
-  gap: 0.4rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
 }
 
-.calendar-day.has-releases:hover .calendar-day-popover {
-  display: flex;
+.calendar-day.open .calendar-day-popover {
+  display: grid;
 }
 
 .calendar-popover-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .calendar-popover-cover {
-  width: 28px;
-  height: 38px;
+  width: 100%;
+  aspect-ratio: 2 / 3;
   object-fit: cover;
-  border-radius: 2px;
-  flex-shrink: 0;
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.05);
+  transition: transform var(--anim-fast);
+}
+
+.calendar-popover-item:hover .calendar-popover-cover {
+  transform: scale(1.04);
 }
 
 .calendar-popover-cover--empty {
   display: block;
 }
 
-.calendar-popover-info {
-  min-width: 0;
-}
-
 .calendar-popover-title {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-main);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .calendar-popover-meta {

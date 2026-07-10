@@ -88,6 +88,7 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
         title: m.title.romaji || m.title.english || `#${m.id}`,
         type,
         cover: m.coverImage?.large || '',
+        externalId: `${type}:${m.id}`,
       };
     });
 }
@@ -139,6 +140,7 @@ async function fetchTmdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
         title: item.title || item.name || `#${item.id}`,
         type,
         cover: buildPosterUrl(item.poster_path) || '',
+        externalId: `${type}:${item.id}`,
       }];
     });
 
@@ -164,6 +166,7 @@ async function fetchIgdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
       title: g.name,
       type: 'game',
       cover: g.cover?.image_id ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${g.cover.image_id}.jpg` : '',
+      externalId: `game:${g.id}`,
     }];
   });
 }
