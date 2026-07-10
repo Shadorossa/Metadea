@@ -336,7 +336,12 @@ export interface AniListCharacterDetail {
   bloodType: string | null;
   media: {
     edges: Array<{
-      relationType: string;
+      // Character's role in that specific work (MAIN/SUPPORTING/BACKGROUND).
+      // Not to be confused with Media.relations' `relationType` (a different
+      // connection, for media-to-media relations) — Character.media's own
+      // field is `characterRole`; querying `relationType` here just returns
+      // null for every edge.
+      characterRole: string;
       node: {
         id: number;
         title: {
@@ -388,7 +393,7 @@ const DETAIL_CHARACTER_QUERY = `
           total
         }
         edges {
-          relationType
+          characterRole
           node {
             id
             title {

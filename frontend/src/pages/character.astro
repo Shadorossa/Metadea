@@ -376,8 +376,8 @@ const lang = getLang(Astro.url);
       const rawEdges = character.media?.edges || [];
 
       // ORDENACIÓN: Primero obras MAIN, luego el resto (ambas ordenadas cronológicamente)
-      const mainMedia = rawEdges.filter((edge: any) => edge.relationType === 'MAIN');
-      const otherMedia = rawEdges.filter((edge: any) => edge.relationType !== 'MAIN');
+      const mainMedia = rawEdges.filter((edge: any) => edge.characterRole === 'MAIN');
+      const otherMedia = rawEdges.filter((edge: any) => edge.characterRole !== 'MAIN');
       const sortedEdges = [...mainMedia, ...otherMedia];
 
       let currentPage = 1;
@@ -414,8 +414,16 @@ const lang = getLang(Astro.url);
               ? `<img src="${edge.node.coverImage.large}" alt="${edge.node.title.userPreferred}" class="character-appearance-cover-img" loading="lazy" />`
               : `<div class="character-appearance-cover-placeholder">Sin portada</div>`;
             
-            const roleBadgeHtml = edge.relationType 
-              ? `<div class="character-appearance-role-badge">${edge.relationType === 'MAIN' ? 'Principal' : 'Secundario'}</div>`
+            // AniList's CharacterRole has three values, not two — BACKGROUND
+            // was previously collapsing into "Secundario" alongside
+            // SUPPORTING, losing the distinction entirely.
+            const ROLE_LABELS: Record<string, string> = {
+              MAIN: 'Principal',
+              SUPPORTING: 'Secundario',
+              BACKGROUND: 'Antecedente',
+            };
+            const roleBadgeHtml = edge.characterRole
+              ? `<div class="character-appearance-role-badge">${ROLE_LABELS[edge.characterRole] ?? edge.characterRole}</div>`
               : '';
 
             return `
@@ -503,7 +511,7 @@ const lang = getLang(Astro.url);
       if (sortedEdges.length > 0) {
         const appearances = sortedEdges.map((edge: any) => ({
           media_external_id: `${edge.node.type.toLowerCase()}:${edge.node.id}`,
-          relation_type: edge.relationType ?? null,
+          relation_type: edge.characterRole ?? null,
         }));
         await saveCharacterAppearances(charKey, appearances).catch(console.error);
       }

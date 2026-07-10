@@ -411,7 +411,7 @@ export function CharacterPrEditorModal() {
               Apariciones en Obras
               {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
-            <div className="pr-editor-media-group-cards" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
+            <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
               {appearances.map(a => (
                 <div key={a.media_external_id} className="pr-editor-media-card">
                   <div className="pr-editor-media-card-cover">

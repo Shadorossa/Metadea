@@ -2631,6 +2631,13 @@
   width: 100%;
 }
 
+/* Wider variant for sections that span the modal's full body width instead
+   of sharing the narrow 3-column layout (e.g. character editor's
+   Apariciones) — same card, more columns since there's room for them. */
+.pr-editor-media-group-cards--wide {
+  grid-template-columns: repeat(9, 1fr);
+}
+
 .pr-editor-media-single-card-wrap {
   width: 96px;
   display: flex;
