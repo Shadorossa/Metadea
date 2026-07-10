@@ -337,4 +337,9 @@ export const es = {
     pool_unclassified:  'Sin clasificar ({count})',
     items_count:        '{count} obras',
   },
+  character: {
+    role_main:        'Principal',
+    role_supporting:  'Secundario',
+    role_background:  'Background',
+  },
 } as const;

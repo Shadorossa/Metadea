@@ -417,13 +417,14 @@ const lang = getLang(Astro.url);
             // AniList's CharacterRole has three values, not two — BACKGROUND
             // was previously collapsing into "Secundario" alongside
             // SUPPORTING, losing the distinction entirely.
-            const ROLE_LABELS: Record<string, string> = {
-              MAIN: 'Principal',
-              SUPPORTING: 'Secundario',
-              BACKGROUND: 'Antecedente',
-            };
-            const roleBadgeHtml = edge.characterRole
-              ? `<div class="character-appearance-role-badge">${ROLE_LABELS[edge.characterRole] ?? edge.characterRole}</div>`
+            const roleLabel = edge.characterRole
+              ? (edge.characterRole === 'MAIN' ? lang.character.role_main
+                : edge.characterRole === 'SUPPORTING' ? lang.character.role_supporting
+                : edge.characterRole === 'BACKGROUND' ? lang.character.role_background
+                : edge.characterRole)
+              : '';
+            const roleBadgeHtml = roleLabel
+              ? `<div class="character-appearance-role-badge">${roleLabel}</div>`
               : '';
 
             return `

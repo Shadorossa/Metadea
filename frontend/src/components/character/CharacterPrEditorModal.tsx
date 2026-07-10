@@ -11,14 +11,18 @@ import { openImageCropModal } from '../../lib/shared/image-crop-modal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
+import { getT } from '../../i18n/client';
 
 const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
 
 const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
-const RELATION_TYPE_LABELS: Record<string, string> = {
-  MAIN: 'Principal',
-  SUPPORTING: 'Secundario',
-  BACKGROUND: 'Antecedente',
+const getRelationTypeLabels = () => {
+  const t = getT();
+  return {
+    MAIN: t.character.role_main,
+    SUPPORTING: t.character.role_supporting,
+    BACKGROUND: t.character.role_background,
+  };
 };
 
 interface AppearanceRow {
@@ -462,7 +466,7 @@ export function CharacterPrEditorModal() {
                     style={{ fontSize: '0.7rem' }}
                   >
                     {RELATION_TYPE_OPTIONS.map(type => (
-                      <option key={type} value={type}>{RELATION_TYPE_LABELS[type] || type}</option>
+                      <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
                     ))}
                   </select>
                 </div>
@@ -476,7 +480,7 @@ export function CharacterPrEditorModal() {
                 style={{ fontSize: '0.7rem' }}
               >
                 {RELATION_TYPE_OPTIONS.map(type => (
-                  <option key={type} value={type}>{RELATION_TYPE_LABELS[type] || type}</option>
+                  <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
                 ))}
               </select>
               <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>+ Añadir aparición</button>

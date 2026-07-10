@@ -337,4 +337,9 @@ export const en = {
     pool_unclassified:  'Unclassified ({count})',
     items_count:        '{count} works',
   },
+  character: {
+    role_main:        'Main',
+    role_supporting:  'Supporting',
+    role_background:  'Background',
+  },
 } as const;
