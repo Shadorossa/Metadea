@@ -138,16 +138,23 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
   const premieres = [...(data.animeQ?.media ?? []), ...(data.mangaQ?.media ?? [])];
   const showAdult = isAdultContentEnabled();
 
+  // Keyed by title (type:id) only, not by date — each work should appear on
+  // the calendar exactly once, not once per episode. Premieres are added
+  // first (their startDate is the real release date), then chunks in
+  // chronological order (0=earliest) with each chunk's own entries already
+  // TIME-ascending, so "first occurrence wins" naturally lands on the
+  // earliest qualifying date within the month for anything not already
+  // claimed by a premiere.
   const seen = new Set<string>();
   const releases: UpcomingRelease[] = [];
 
   for (const m of premieres) {
     if (!m.startDate.year || !m.startDate.month || !m.startDate.day) continue;
     const type = m.type === 'ANIME' ? 'anime' : m.format === 'NOVEL' ? 'lnovel' : 'manga';
-    const { year, month, day } = m.startDate as { year: number; month: number; day: number };
-    const key = `${type}:${m.id}:${year}-${month}-${day}`;
+    const key = `${type}:${m.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const { year, month, day } = m.startDate as { year: number; month: number; day: number };
     releases.push({
       day, month, year,
       releaseDate: new Date(year, month - 1, day),
@@ -163,11 +170,11 @@ async function fetchAniListUpcoming(rangeStart: Date, rangeEnd: Date): Promise<U
     const entries = data[`chunkQ${i}`]?.airingSchedules ?? [];
     for (const entry of entries) {
       if (!showAdult && entry.media.isAdult) continue;
-      const d = new Date(entry.airingAt * 1000);
-      const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
-      const key = `anime:${entry.media.id}:${year}-${month}-${day}`;
+      const key = `anime:${entry.media.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
+      const d = new Date(entry.airingAt * 1000);
+      const year = d.getFullYear(), month = d.getMonth() + 1, day = d.getDate();
       releases.push({
         day, month, year,
         releaseDate: new Date(year, month - 1, day),
@@ -298,7 +305,7 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 // that extended coverage to earlier-this-month releases) — otherwise a
 // cache written by older code sits well within CACHE_TTL_MS and keeps
 // serving results that don't reflect the new behavior until it expires.
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 interface SerializedRelease extends Omit<UpcomingRelease, 'releaseDate'> {
   releaseDate: string; // ISO — Date doesn't survive JSON.stringify/parse as-is
