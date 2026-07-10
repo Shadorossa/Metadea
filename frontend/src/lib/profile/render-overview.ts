@@ -7,7 +7,7 @@ import { buildMonthlyHistoryHtml } from './monthly';
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { getActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
-import { getNonEditionItems, getEditionItems } from './stats-calculators';
+import { getNonEditionItems, getEditionItems, getItemMinutes } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -57,7 +57,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     // Hours played DO include version-log time — each logged version is a
     // real playthrough, so its minutes still count toward total time spent.
     for (const item of items) {
-      if (item.minutes_spent) totalMinutes += item.minutes_spent;
+      totalMinutes += getItemMinutes(item, catalogMap);
     }
 
     const system = getActiveRatingSystem();

@@ -49,10 +49,27 @@ export function getEditionItems(items: Items): Items {
   return items.filter(item => childIds.has(item.external_id));
 }
 
-export function computeOverviewAggregate(items: Items): OverviewAggregate {
+// media_catalog.time_length is the runtime in minutes of one unit of the
+// work — one episode for anime/series, the whole thing for a movie. Anime/
+// series log "progress" as episode count (see getProgressConfig in
+// MediaEditorModal), so minutes_spent on those entries is a flat
+// progress*60 that ignores real episode length entirely. Recompute from the
+// catalog here instead of trusting the stored value, so both new and
+// already-imported/logged entries get correct hours without a migration.
+const DEFAULT_EPISODE_MINUTES = 24;
+
+export function getItemMinutes(item: Items[number], catalogMap: Map<string, MediaCatalogEntry>): number {
+  if (item.type === 'anime' || item.type === 'series') {
+    const perEpisodeMinutes = catalogMap.get(item.external_id)?.time_length || DEFAULT_EPISODE_MINUTES;
+    return item.progress * perEpisodeMinutes;
+  }
+  return item.minutes_spent || 0;
+}
+
+export function computeOverviewAggregate(items: Items, catalogMap: Map<string, MediaCatalogEntry>): OverviewAggregate {
   const nonEditionItems = getNonEditionItems(items);
   const totalWorks = nonEditionItems.length;
-  const totalMinutes = items.reduce((acc, item) => acc + (item.minutes_spent || 0), 0);
+  const totalMinutes = items.reduce((acc, item) => acc + getItemMinutes(item, catalogMap), 0);
   const totalHours = totalMinutes / 60;
 
   const ratedItems = nonEditionItems.filter(item => item.rating != null && item.rating > 0);
@@ -79,10 +96,10 @@ export interface TypeBreakdownEntry {
   hours: number;
 }
 
-export function computeTypeBreakdown(items: Items): TypeBreakdownEntry[] {
+export function computeTypeBreakdown(items: Items, catalogMap: Map<string, MediaCatalogEntry>): TypeBreakdownEntry[] {
   const nonEditionItems = getNonEditionItems(items);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
-  
+
   for (const item of nonEditionItems) {
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
     val.count++;
@@ -91,7 +108,7 @@ export function computeTypeBreakdown(items: Items): TypeBreakdownEntry[] {
 
   for (const item of items) {
     const val = byTypeMap.get(item.type) || { count: 0, minutes: 0 };
-    val.minutes += (item.minutes_spent || 0);
+    val.minutes += getItemMinutes(item, catalogMap);
     byTypeMap.set(item.type, val);
   }
 

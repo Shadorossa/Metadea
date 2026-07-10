@@ -4,6 +4,7 @@ import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
+import { getItemMinutes } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -212,7 +213,7 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
         if (sortBy === 'rating') {
           return (b.rating ?? 0) - (a.rating ?? 0);
         } else if (sortBy === 'duration') {
-          return (b.minutes_spent ?? 0) - (a.minutes_spent ?? 0);
+          return getItemMinutes(b, catalogMap) - getItemMinutes(a, catalogMap);
         } else {
           const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
           const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;

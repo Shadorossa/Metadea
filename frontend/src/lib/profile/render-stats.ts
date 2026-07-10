@@ -54,10 +54,18 @@ export async function renderStats(el: HTMLElement): Promise<void> {
     return;
   }
 
-  const { totalWorks, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning } =
-    computeOverviewAggregate(items);
+  // Fetched early so hours math below can look up per-episode/movie runtime
+  // (media_catalog.time_length) for anime/series instead of trusting the
+  // flat progress*60 stored on minutes_spent.
+  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+  const catalogMap = new Map<string, MediaCatalogEntry>(
+    catalogEntries.map(e => [e.external_id, e])
+  );
 
-  const byType = computeTypeBreakdown(items);
+  const { totalWorks, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning } =
+    computeOverviewAggregate(items, catalogMap);
+
+  const byType = computeTypeBreakdown(items, catalogMap);
 
   const statusList = [
     { label: p.section_completed, value: completed, color: 'completed', icon: STATUS_ICONS_14.completed },
@@ -71,12 +79,6 @@ export async function renderStats(el: HTMLElement): Promise<void> {
   const avgScoreStr = avgScore > 0
     ? formatAverageScore(avgScore, system) + averageScoreSuffix(system)
     : '—';
-
-  // Scan catalog releases for planning items that haven't released yet
-  const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
-  const catalogMap = new Map<string, MediaCatalogEntry>(
-    catalogEntries.map(e => [e.external_id, e])
-  );
 
   const now = new Date();
   const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // midnight today
