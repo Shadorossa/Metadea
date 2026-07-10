@@ -82,6 +82,20 @@ body {
   pointer-events: none;
 }
 
+/* Astro's ClientRouter gives this element view-transition-name="page-content"
+   (see BaseLayout.astro), which per spec makes it establish its own stacking
+   context. Without an explicit z-index here, that context sits at the same
+   implicit level as <Footer> (its sibling, position: static) — and since
+   Footer comes later in the DOM, it paints over page content regardless of
+   how high a z-index anything *inside* page-content declares (e.g. the Home
+   calendar's release popover). Giving it a z-index above the footer's
+   (auto≈0) but below the fixed navbar's (50) fixes that without touching
+   either of those. */
+#page-content {
+  position: relative;
+  z-index: 1;
+}
+
 
 
 /* ── Page transitions (View Transitions API) ─────────────────────────────── */
