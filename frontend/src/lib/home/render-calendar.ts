@@ -34,14 +34,13 @@ function popoverItemHtml(r: UpcomingRelease): string {
   `;
 }
 
-// Each release is a link straight to its media page — clicking a cover
-// navigates there. Laid out as a 4-column grid (see .calendar-day-popover),
-// so this stays a vertical card (cover on top, title below) rather than the
-// horizontal row it used to be as a single-column list. Beyond 2 rows
-// (8 releases) the rest are paginated instead of growing the popover
-// indefinitely — see the pager click handling in renderReleaseCalendar.
-function dayPopoverHtml(releases: UpcomingRelease[]): string {
-  if (releases.length === 0) return '';
+// Rebuildable body (pages + pager) for a given (already-filtered) release
+// list — shared by the initial render and by the popover's own type-tab
+// click handler, which re-slices the day's full list without re-fetching.
+function popoverBodyHtml(releases: UpcomingRelease[]): string {
+  if (releases.length === 0) {
+    return `<p class="stats-calendar-empty" style="padding: 0.75rem 0;">Nada de este tipo este día.</p>`;
+  }
 
   const pages: UpcomingRelease[][] = [];
   for (let i = 0; i < releases.length; i += POPOVER_PAGE_SIZE) {
@@ -62,10 +61,43 @@ function dayPopoverHtml(releases: UpcomingRelease[]): string {
     </div>
   ` : '';
 
+  return pagesHtml + pagerHtml;
+}
+
+function popoverTypeTabsHtml(releases: UpcomingRelease[]): string {
+  const present = new Set(releases.map(r => r.type));
+  const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
+  if (orderedTypes.length < 2) return '';
+
   return `
-    <div class="calendar-day-popover">
-      ${pagesHtml}
-      ${pagerHtml}
+    <div class="calendar-popover-type-tabs">
+      <button type="button" class="calendar-popover-type-tab active" data-type="">Todos</button>
+      ${orderedTypes.map(ty => `
+        <button type="button" class="calendar-popover-type-tab" data-type="${ty}">${TYPE_LABELS[ty] || ty}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
+// Each release is a link straight to its media page — clicking a cover
+// navigates there. Laid out as a 4-column grid (see .calendar-day-popover),
+// so this stays a vertical card (cover on top, title below) rather than the
+// horizontal row it used to be as a single-column list. Beyond 2 rows
+// (8 releases) the rest are paginated instead of growing the popover
+// indefinitely. A per-day type filter sits above the grid when the day
+// mixes more than one medium — the full release list rides along in
+// data-releases so the filter can re-slice client-side without re-fetching.
+function dayPopoverHtml(releases: UpcomingRelease[]): string {
+  if (releases.length === 0) return '';
+
+  const encoded = encodeURIComponent(JSON.stringify(releases.map(r => ({ ...r, releaseDate: undefined }))));
+
+  return `
+    <div class="calendar-day-popover" data-releases="${encoded}">
+      ${popoverTypeTabsHtml(releases)}
+      <div class="calendar-popover-body">
+        ${popoverBodyHtml(releases)}
+      </div>
     </div>
   `;
 }
@@ -134,7 +166,9 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-indexed
   const currentMonthName = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-  const todayDate = new Date(currentYear, currentMonth, now.getDate());
+  // Covers the whole current month, not just today onward — a release
+  // calendar should show what already came out earlier this month too.
+  const startOfMonth = new Date(currentYear, currentMonth, 1);
   const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
 
   let mode: CalendarMode = 'mine';
@@ -143,12 +177,12 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
   let generalReleases: UpcomingRelease[] | null = null;
 
   function getMineReleases(): UpcomingRelease[] {
-    if (!mineReleases) mineReleases = computeUpcomingPlanningReleases(items, catalogMap, todayDate);
+    if (!mineReleases) mineReleases = computeUpcomingPlanningReleases(items, catalogMap, startOfMonth);
     return mineReleases;
   }
 
   async function getGeneralReleases(): Promise<UpcomingRelease[]> {
-    if (!generalReleases) generalReleases = await fetchGeneralUpcomingReleases(todayDate, endOfMonth);
+    if (!generalReleases) generalReleases = await fetchGeneralUpcomingReleases(startOfMonth, endOfMonth);
     return generalReleases;
   }
 
@@ -243,6 +277,24 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
       prevBtn.disabled = nextIdx === 0;
       nextBtn.disabled = nextIdx === pages.length - 1;
       return; // don't also toggle the day cell open/closed
+    }
+
+    // Per-day type filter inside the popover — re-slices that day's own
+    // full release list (carried in data-releases) without touching the
+    // outer "Para ti"/"General" fetch or the main calendar-wide filter.
+    const typeTab = target.closest('.calendar-popover-type-tab') as HTMLButtonElement | null;
+    if (typeTab) {
+      const popover = typeTab.closest('.calendar-day-popover') as HTMLElement;
+      const dayReleases = JSON.parse(decodeURIComponent(popover.dataset.releases || '[]')) as UpcomingRelease[];
+      const selectedType = typeTab.dataset.type || null;
+      const filtered = selectedType ? dayReleases.filter(r => r.type === selectedType) : dayReleases;
+
+      popover.querySelectorAll('.calendar-popover-type-tab').forEach(b => b.classList.remove('active'));
+      typeTab.classList.add('active');
+
+      const body = popover.querySelector('.calendar-popover-body')!;
+      body.innerHTML = popoverBodyHtml(filtered);
+      return;
     }
 
     // A release link inside the popover: let it navigate, don't re-toggle

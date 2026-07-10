@@ -14,6 +14,7 @@ import { graphqlPost, fetchJson } from '../api/client';
 import { isAdultContentEnabled } from '../settings/preferences';
 import { getTmdbAuth, buildPosterUrl, tmdbLocale } from '../search/providers/tmdb';
 import { igdbUpcomingReleases } from '../tauri/igdb';
+import { STORAGE_KEYS } from '../shared/storage-keys';
 import type { UpcomingRelease } from '../profile/stats-calculators';
 
 function fuzzyDateInt(d: Date): number {
@@ -249,14 +250,7 @@ async function fetchIgdbUpcoming(rangeStart: Date, rangeEnd: Date): Promise<Upco
   });
 }
 
-// Fetches every source in parallel — one request per source — and merges
-// the results. Sorted by each source's own popularity metric (descending)
-// rather than by date, so within a day the most notable release leads; the
-// day-bucketing itself (computeCalendarMonth) only cares about date, so this
-// ordering carries through to what shows first in each day's popover.
-// rangeStart/rangeEnd should be midnight of "today" and midnight of the
-// last day of the current month respectively.
-export async function fetchGeneralUpcomingReleases(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
+async function fetchGeneralUpcomingReleasesUncached(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
   const [anilist, tmdb, igdb] = await Promise.all([
     fetchAniListUpcoming(rangeStart, rangeEnd).catch(e => { console.error('[calendar] AniList upcoming failed', e); return []; }),
     fetchTmdbUpcoming(rangeStart, rangeEnd).catch(e => { console.error('[calendar] TMDB upcoming failed', e); return []; }),
@@ -264,4 +258,71 @@ export async function fetchGeneralUpcomingReleases(rangeStart: Date, rangeEnd: D
   ]);
 
   return [...anilist, ...tmdb, ...igdb].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+}
+
+// ── localStorage cache ───────────────────────────────────────────────────────
+// Keyed per calendar month so switching months (or a fresh install) doesn't
+// see stale data, but reopening Home or a full page reload within the same
+// day reuses the last fetch instead of re-hitting all three APIs. Not tied
+// to any particular rangeStart/rangeEnd — it caches by month, independent of
+// how "today" shifts the query boundaries.
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+interface SerializedRelease extends Omit<UpcomingRelease, 'releaseDate'> {
+  releaseDate: string; // ISO — Date doesn't survive JSON.stringify/parse as-is
+}
+
+interface CacheEntry {
+  savedAt: number;
+  monthKey: string;
+  releases: SerializedRelease[];
+}
+
+function monthKeyFor(rangeStart: Date): string {
+  return `${rangeStart.getFullYear()}-${rangeStart.getMonth() + 1}`;
+}
+
+function readCache(monthKey: string): UpcomingRelease[] | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.homeCalendarGeneralCache);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as CacheEntry;
+    if (entry.monthKey !== monthKey) return null;
+    if (Date.now() - entry.savedAt > CACHE_TTL_MS) return null;
+    return entry.releases.map(r => ({ ...r, releaseDate: new Date(r.releaseDate) }));
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(monthKey: string, releases: UpcomingRelease[]): void {
+  try {
+    const entry: CacheEntry = {
+      savedAt: Date.now(),
+      monthKey,
+      releases: releases.map(r => ({ ...r, releaseDate: r.releaseDate.toISOString() })),
+    };
+    localStorage.setItem(STORAGE_KEYS.homeCalendarGeneralCache, JSON.stringify(entry));
+  } catch {
+    // Storage full/unavailable — cache is a pure optimization, safe to skip.
+  }
+}
+
+// Fetches every source in parallel — one request per source — and merges
+// the results. Sorted by each source's own popularity metric (descending)
+// rather than by date, so within a day the most notable release leads; the
+// day-bucketing itself (computeCalendarMonth) only cares about date, so this
+// ordering carries through to what shows first in each day's popover.
+// Result is cached in localStorage per calendar month (see CACHE_TTL_MS)
+// so revisiting Home or reloading the page doesn't refetch every time.
+// rangeStart/rangeEnd should be midnight of the 1st and the last day of the
+// current month respectively.
+export async function fetchGeneralUpcomingReleases(rangeStart: Date, rangeEnd: Date): Promise<UpcomingRelease[]> {
+  const monthKey = monthKeyFor(rangeStart);
+  const cached = readCache(monthKey);
+  if (cached) return cached;
+
+  const releases = await fetchGeneralUpcomingReleasesUncached(rangeStart, rangeEnd);
+  writeCache(monthKey, releases);
+  return releases;
 }

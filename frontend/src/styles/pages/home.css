@@ -236,6 +236,42 @@
   display: flex;
 }
 
+/* Per-day type filter — only rendered when that day itself mixes more than
+   one medium. Sits above .calendar-popover-body so it reads as "filtering
+   the works right below it" regardless of where the popover lands on the
+   grid (unlike the calendar-wide tabs above the whole month, which can be
+   scrolled out of view while a popover near the bottom is open). */
+.calendar-popover-type-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-popover-type-tab {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
+}
+
+.calendar-popover-type-tab:hover {
+  color: var(--text-main);
+  border-color: var(--accent-border);
+}
+
+.calendar-popover-type-tab.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
 .calendar-popover-page {
   display: none;
   grid-template-columns: repeat(4, 1fr);

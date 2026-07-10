@@ -233,7 +233,7 @@ export interface UpcomingRelease {
 export function computeUpcomingPlanningReleases(
   items: Items,
   catalogMap: Map<string, MediaCatalogEntry>,
-  todayDate: Date,
+  minDate: Date, // lower bound; pass the 1st of the month to include earlier-this-month releases, not just today onward
 ): UpcomingRelease[] {
   const releases = getNonEditionItems(items)
     .filter(item => item.status === 'planning')
@@ -247,7 +247,7 @@ export function computeUpcomingPlanningReleases(
 
       if (year && month) {
         const releaseDate = new Date(year, month - 1, day);
-        if (releaseDate >= todayDate) {
+        if (releaseDate >= minDate) {
           return {
             day, month, year, releaseDate,
             title: entry.title_main || entry.external_id,
