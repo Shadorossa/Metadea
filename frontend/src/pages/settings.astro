@@ -860,6 +860,40 @@ const version = pkg.version;
     setTimeout(() => el.classList.remove("visible"), 2000);
   }
 
+  function setupHelpModals() {
+    document.querySelectorAll(".settings-help-btn, .env-help-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const helpType = (btn as HTMLElement).getAttribute("data-help");
+        const modalId = `${helpType}-help-modal`;
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove("hidden");
+      });
+    });
+
+    document.querySelectorAll(".settings-help-modal-close").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
+        if (modal) modal.classList.add("hidden");
+      });
+    });
+
+    document.querySelectorAll(".settings-help-modal-overlay").forEach(overlay => {
+      overlay.addEventListener("click", (e) => {
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
+        if (modal) modal.classList.add("hidden");
+      });
+    });
+  }
+
+  // Setup help modals on initial page load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupHelpModals);
+  } else {
+    setupHelpModals();
+  }
+
   document.addEventListener("astro:page-load", async () => {
     // This listener is registered once and never removed, but astro:page-load
     // fires on every SPA navigation, not just to this page — once /settings
@@ -903,30 +937,7 @@ const version = pkg.version;
     initUpdater(defaultVersion);
     initSettingsTabs();
 
-    // Help modal handlers (connections + environment)
-    document.querySelectorAll(".settings-help-btn, .env-help-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const helpType = (btn as HTMLElement).getAttribute("data-help");
-        const modalId = `${helpType}-help-modal`;
-        const modal = document.getElementById(modalId);
-        if (modal) modal.classList.remove("hidden");
-      });
-    });
-
-    document.querySelectorAll(".settings-help-modal-close").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
-        if (modal) modal.classList.add("hidden");
-      });
-    });
-
-    document.querySelectorAll(".settings-help-modal-overlay").forEach(overlay => {
-      overlay.addEventListener("click", (e) => {
-        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
-        if (modal) modal.classList.add("hidden");
-      });
-    });
+    // Re-setup help modals on SPA navigation
+    setupHelpModals();
   });
 </script>
