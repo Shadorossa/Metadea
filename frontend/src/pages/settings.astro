@@ -869,24 +869,24 @@ const version = pkg.version;
         e.stopPropagation();
         const helpType = this.getAttribute("data-help");
         const modalId = helpType + "-help-modal";
-        const modal = document.getElementById(modalId);
+        const modal = document.getElementById(modalId) as HTMLElement | null;
         if (modal) {
-          modal.classList.remove("hidden");
+          modal.style.display = "flex";
         }
       });
     });
 
     document.querySelectorAll(".settings-help-modal-close").forEach(btn => {
       btn.addEventListener("click", (e) => {
-        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
-        if (modal) modal.classList.add("hidden");
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal") as HTMLElement | null;
+        if (modal) modal.style.display = "none";
       });
     });
 
     document.querySelectorAll(".settings-help-modal-overlay").forEach(overlay => {
       overlay.addEventListener("click", (e) => {
-        const modal = (e.target as HTMLElement).closest(".settings-help-modal");
-        if (modal) modal.classList.add("hidden");
+        const modal = (e.target as HTMLElement).closest(".settings-help-modal") as HTMLElement | null;
+        if (modal) modal.style.display = "none";
       });
     });
   }
