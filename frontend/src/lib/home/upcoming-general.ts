@@ -305,7 +305,7 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 // that extended coverage to earlier-this-month releases) — otherwise a
 // cache written by older code sits well within CACHE_TTL_MS and keeps
 // serving results that don't reflect the new behavior until it expires.
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 
 interface SerializedRelease extends Omit<UpcomingRelease, 'releaseDate'> {
   releaseDate: string; // ISO — Date doesn't survive JSON.stringify/parse as-is

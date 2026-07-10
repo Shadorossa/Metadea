@@ -996,7 +996,10 @@ const CALENDAR_ALLOWED_CATEGORIES: &[u64] = &[0, 1, 2, 4, 8, 9, 10, 11, 14];
 // the entire cap before the query ever reached later dates — reported as
 // "no games after the 14th". Each chunk gets its own request + its own
 // slice of the limit, same fix as AniList's CHUNKS for ongoing anime.
-const IGDB_DATE_CHUNKS: i64 = 4;
+// igdb_query already retries on 429 with backoff, so firing this many
+// concurrent requests is safe even if it briefly exceeds IGDB's ~4 req/s.
+const IGDB_DATE_CHUNKS: i64 = 8;
+const IGDB_CHUNK_LIMIT: u32 = 200; // 8 × 200 = 1600 games/month capacity
 
 #[tauri::command]
 pub async fn igdb_upcoming_releases(
@@ -1020,8 +1023,8 @@ pub async fn igdb_upcoming_releases(
                 "fields id,name,cover.image_id,first_release_date,category,game_type,\
                  version_parent.id,version_title,hypes; \
                  where first_release_date >= {} & first_release_date <= {}; \
-                 sort first_release_date asc; limit 150;",
-                chunk_start, chunk_end
+                 sort first_release_date asc; limit {};",
+                chunk_start, chunk_end, IGDB_CHUNK_LIMIT
             )
         })
         .collect();
