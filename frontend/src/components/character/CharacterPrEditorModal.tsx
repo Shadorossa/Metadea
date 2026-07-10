@@ -15,6 +15,46 @@ import { getT } from '../../i18n/client';
 
 const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
 
+function TagsInput({ tags, onChange, placeholder }: { tags: string[], onChange: (tags: string[]) => void, placeholder: string }) {
+  const [input, setInput] = useState('');
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === ',' || e.key === 'Enter') {
+      e.preventDefault();
+      const trimmed = input.trim();
+      if (trimmed && !tags.includes(trimmed)) {
+        onChange([...tags, trimmed]);
+        setInput('');
+      }
+    }
+  };
+
+  const removeTag = (idx: number) => {
+    onChange(tags.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', minHeight: '32px', alignContent: 'flex-start' }}>
+        {tags.map((tag, idx) => (
+          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', backgroundColor: '#e0e0e0', borderRadius: '4px', fontSize: '14px' }}>
+            {tag}
+            <button type="button" onClick={() => removeTag(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', fontSize: '16px', lineHeight: '1' }}>×</button>
+          </div>
+        ))}
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={tags.length === 0 ? placeholder : ''}
+          style={{ flex: 1, minWidth: '100px', border: 'none', outline: 'none', fontSize: '14px', padding: '4px 0' }}
+        />
+      </div>
+    </div>
+  );
+}
+
 const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
 const getRelationTypeLabels = () => {
   const t = getT();
@@ -67,7 +107,8 @@ export function CharacterPrEditorModal() {
 
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
-  const [aliases, setAliases] = useState('');
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [aliasesInput, setAliasesInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
   // Biography is split into structured "characteristics" (bold-label lines
@@ -153,7 +194,8 @@ export function CharacterPrEditorModal() {
         setOriginalCharacter(data);
         setName(data.name || '');
         setNameNative(data.name_native || '');
-        setAliases(data.aliases_csv || '');
+        setAliases((data.aliases_csv || '').split(',').map(a => a.trim()).filter(a => a));
+        setAliasesInput('');
         setImageUrl(data.image_url || '');
 
         const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
@@ -287,7 +329,7 @@ export function CharacterPrEditorModal() {
     return (
       isFieldChanged(name, originalCharacter.name) ||
       isFieldChanged(nameNative, originalCharacter.name_native) ||
-      isFieldChanged(aliases, originalCharacter.aliases_csv) ||
+      aliases.join(',') !== (originalCharacter?.aliases_csv || '') ||
       isFieldChanged(imageUrl, originalCharacter.image_url) ||
       isFieldChanged(cleanBiography, originalCleanBiography) ||
       characteristicsChanged() ||
@@ -300,7 +342,7 @@ export function CharacterPrEditorModal() {
     if (originalCharacter) {
       if (isFieldChanged(name, originalCharacter.name)) changes.push(`Nombre: ${name}`);
       if (isFieldChanged(nameNative, originalCharacter.name_native)) changes.push(`Nombre nativo: ${nameNative || '(vacío)'}`);
-      if (isFieldChanged(aliases, originalCharacter.aliases_csv)) changes.push(`Aliases: ${aliases || '(vacío)'}`);
+      if (aliases.join(',') !== (originalCharacter?.aliases_csv || '')) changes.push(`Aliases: ${aliases.length ? aliases.join(', ') : '(vacío)'}`);
       if (isFieldChanged(imageUrl, originalCharacter.image_url)) changes.push(`Imagen: ${imageUrl || '(vacío)'}`);
       if (isFieldChanged(cleanBiography, originalCleanBiography)) changes.push('Biografía: Actualizada');
       if (characteristicsChanged()) changes.push(`Características: ${characteristics.length} campo(s)`);
@@ -355,7 +397,7 @@ export function CharacterPrEditorModal() {
         ...originalCharacter,
         name,
         name_native: normField(nameNative) as string | null | undefined,
-        aliases_csv: normField(aliases) as string | null | undefined,
+        aliases_csv: normField(aliases.join(',')) as string | null | undefined,
         biography: normField(reassembledBiography) as string | null | undefined,
         image_url: normField(imageUrl) as string | null | undefined,
       };
@@ -468,8 +510,8 @@ export function CharacterPrEditorModal() {
                 <input type="text" value={nameNative} onChange={e => setNameNative(e.target.value)} placeholder="(Opcional)" />
               </Field>
 
-              <Field label="Aliases" changed={isFieldChanged(aliases, originalCharacter?.aliases_csv)} full>
-                <input type="text" value={aliases} onChange={e => setAliases(e.target.value)} placeholder="Nombres alternativos separados por comas (Opcional)" />
+              <Field label="Aliases" changed={aliases.join(',') !== (originalCharacter?.aliases_csv || '')} full>
+                <TagsInput tags={aliases} onChange={setAliases} placeholder="Escribe alias y presiona coma o Enter (Opcional)" />
               </Field>
             </div>
           </div>
