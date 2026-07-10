@@ -1,0 +1,91 @@
+{
+  "media_catalog": {
+    "id": "9aff9b90515d8ca79aff9b90515d8ca7",
+    "external_id": "game:136",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Devil May Cry 3: Dante's Awakening",
+    "title_romaji": null,
+    "title_native": "鬼泣3：但丁觉醒",
+    "synopsis": "Devil May Cry 3: Dante's Awakening is a prequel to the first Devil May Cry. The game plays very differently from its predecessors, as it puts much more emphasis on style rather than simple demon slaying. As such, combat is much more intense and faster than before. An all-new Style system that allows you to select your fighting style has also been incorporated.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6u.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/paqa7rfjxaizdhqvhkqh.webp",
+    "release_year": 2005,
+    "release_month": 2,
+    "release_day": 17,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.2,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Hack and Slash,Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation 2",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Capcom Production Studio 1,Capcom",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T19:30:29.340Z",
+    "updated_at": "2026-07-10T21:23:44.968554300+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:136",
+      "related_media_external_id": "game:134",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Devil May Cry",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ck7.jpg"
+    },
+    {
+      "media_external_id": "game:136",
+      "related_media_external_id": "game:112",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Devil May Cry 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
+    },
+    {
+      "media_external_id": "game:134",
+      "related_media_external_id": "game:136",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Devil May Cry 3: Dante's Awakening",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6u.jpg"
+    },
+    {
+      "media_external_id": "game:112",
+      "related_media_external_id": "game:136",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Devil May Cry 3: Dante's Awakening",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6u.jpg"
+    },
+    {
+      "media_external_id": "game:112",
+      "related_media_external_id": "game:76253",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Devil May Cry 5",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1rb4.jpg"
+    },
+    {
+      "media_external_id": "game:76253",
+      "related_media_external_id": "game:112",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Devil May Cry 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Devil May Cry 4"
+}
