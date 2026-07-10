@@ -41,6 +41,9 @@ impl MetadeaDb {
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN name_native TEXT", []);
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN aliases_csv TEXT DEFAULT ''", []);
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN biography TEXT", []);
+        // Upgrade path for DBs created before rating_system existed on
+        // user_profile — same idempotent-ALTER pattern as above.
+        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN rating_system TEXT NOT NULL DEFAULT '5-star'", []);
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(Self { conn: Mutex::new(conn) })
     }
