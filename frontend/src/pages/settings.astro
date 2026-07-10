@@ -307,7 +307,7 @@ const version = pkg.version;
             <div class="env-services-grid">
               <!-- IGDB -->
               <div class="env-service-block">
-                <div class="env-service-header">
+                <div class="env-service-header" style="position: relative;">
                   <a
                     href="https://dev.twitch.tv/"
                     target="_blank"
@@ -320,6 +320,9 @@ const version = pkg.version;
                       alt="IGDB"
                     />
                   </a>
+                  <button class="env-help-btn" data-help="igdb" title="¿Cómo obtener las claves de IGDB?" style="position: absolute; top: 0; right: 0;">
+                    <Fragment set:html={ICON_HELP_CIRCLE} />
+                  </button>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
@@ -352,7 +355,7 @@ const version = pkg.version;
 
               <!-- TMDB -->
               <div class="env-service-block">
-                <div class="env-service-header">
+                <div class="env-service-header" style="position: relative;">
                   <a
                     href="https://www.themoviedb.org/settings/api"
                     target="_blank"
@@ -365,6 +368,9 @@ const version = pkg.version;
                       alt="TMDB"
                     />
                   </a>
+                  <button class="env-help-btn" data-help="tmdb" title="¿Cómo obtener las claves de TMDB?" style="position: absolute; top: 0; right: 0;">
+                    <Fragment set:html={ICON_HELP_CIRCLE} />
+                  </button>
                 </div>
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
@@ -398,7 +404,7 @@ const version = pkg.version;
               <div class="env-service-block">
                 <div class="env-fields env-fields--row">
                   <div class="env-field">
-                    <div class="env-service-header env-service-header--compact">
+                    <div class="env-service-header env-service-header--compact" style="position: relative;">
                       <a
                         href="https://steamcommunity.com/dev/apikey"
                         target="_blank"
@@ -411,6 +417,9 @@ const version = pkg.version;
                           alt="Steam"
                         />
                       </a>
+                      <button class="env-help-btn" data-help="steam" title="¿Cómo obtener la clave de Steam?" style="position: absolute; top: 0; right: 0;">
+                        <Fragment set:html={ICON_HELP_CIRCLE} />
+                      </button>
                     </div>
                     <label class="env-label" for="steam-api-key"
                       >{t.settings.env_steam_api_key}</label
@@ -716,6 +725,72 @@ const version = pkg.version;
                 </div>
               </div>
             </div>
+
+            <div id="igdb-help-modal" class="settings-help-modal hidden">
+              <div class="settings-help-modal-overlay"></div>
+              <div class="settings-help-modal-content">
+                <div class="settings-help-modal-header">
+                  <h3>¿Cómo obtener claves de IGDB?</h3>
+                  <button class="settings-help-modal-close" data-modal="igdb-help-modal">&times;</button>
+                </div>
+                <div class="settings-help-modal-body">
+                  <p><strong>IGDB</strong> es una base de datos de videojuegos. Para obtener tus claves:</p>
+                  <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+                    <li>Necesitas una <strong>cuenta de Twitch</strong> (es gratuita)</li>
+                    <li>Ve a <a href="https://dev.twitch.tv/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">dev.twitch.tv</a></li>
+                    <li>Inicia sesión con tu cuenta de Twitch</li>
+                    <li>Crea una aplicación nueva (Applications → Create New Application)</li>
+                    <li>Obtén tu <strong>Client ID</strong> y <strong>Client Secret</strong></li>
+                    <li>Pega ambas claves en los campos correspondientes</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <div id="tmdb-help-modal" class="settings-help-modal hidden">
+              <div class="settings-help-modal-overlay"></div>
+              <div class="settings-help-modal-content">
+                <div class="settings-help-modal-header">
+                  <h3>¿Cómo obtener claves de TMDB?</h3>
+                  <button class="settings-help-modal-close" data-modal="tmdb-help-modal">&times;</button>
+                </div>
+                <div class="settings-help-modal-body">
+                  <p><strong>TMDB</strong> (The Movie Database) es una base de datos de películas y series. Para obtener tus claves:</p>
+                  <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+                    <li>Crea una <strong>cuenta gratuita</strong> en <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">themoviedb.org</a></li>
+                    <li>Verifica tu correo electrónico</li>
+                    <li>Ve a <strong>Settings → API</strong> en tu perfil</li>
+                    <li>Solicita una <strong>API Key</strong> (requiere aceptar términos)</li>
+                    <li>También necesitarás un <strong>Access Token (v4 auth)</strong></li>
+                    <li>Pega ambas claves en los campos correspondientes</li>
+                  </ol>
+                  <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">Nota: Ambos campos son necesarios para acceso completo a TMDB</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="steam-help-modal" class="settings-help-modal hidden">
+              <div class="settings-help-modal-overlay"></div>
+              <div class="settings-help-modal-content">
+                <div class="settings-help-modal-header">
+                  <h3>¿Cómo obtener clave de Steam?</h3>
+                  <button class="settings-help-modal-close" data-modal="steam-help-modal">&times;</button>
+                </div>
+                <div class="settings-help-modal-body">
+                  <p><strong>Steam</strong> es la plataforma de distribución de videojuegos de Valve. Para obtener tu clave API:</p>
+                  <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+                    <li>Necesitas una <strong>cuenta de Steam</strong> con historial de compras</li>
+                    <li>Ve a <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">steamcommunity.com/dev/apikey</a></li>
+                    <li>Inicia sesión si es necesario</li>
+                    <li>Introduce un <strong>nombre de dominio</strong> (puede ser localhost para desarrollo local)</li>
+                    <li>Lee y acepta el acuerdo de licencia</li>
+                    <li>Se generará tu <strong>API Key</strong> automáticamente</li>
+                    <li>Copia la clave y pégala en el campo de abajo</li>
+                  </ol>
+                  <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">⚠️ No compartas tu API Key con otros; es personal y única para tu cuenta</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -831,12 +906,13 @@ const version = pkg.version;
     initUpdater(defaultVersion);
     initSettingsTabs();
 
-    // Help modal handlers
-    document.querySelectorAll(".settings-help-btn").forEach(btn => {
+    // Help modal handlers (connections + environment)
+    document.querySelectorAll(".settings-help-btn, .env-help-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        const target = (e.target as HTMLElement).closest(".settings-help-btn");
-        const modalId = target?.getAttribute("data-help") === "github" ? "github-help-modal" : "anilist-help-modal";
+        const target = (e.target as HTMLElement).closest(".settings-help-btn, .env-help-btn");
+        const helpType = target?.getAttribute("data-help");
+        const modalId = `${helpType}-help-modal`;
         const modal = document.getElementById(modalId);
         if (modal) modal.classList.remove("hidden");
       });
