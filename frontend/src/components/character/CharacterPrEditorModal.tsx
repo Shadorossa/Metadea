@@ -5,7 +5,7 @@ import {
   type CharacterEntry, type CharacterAppearance,
 } from '../../lib/tauri/characters';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import { fetchAniListDetail } from '../../lib/search/providers/anilist';
+import { fetchAniListCharacterDetail, fetchAniListDetail } from '../../lib/search/providers/anilist';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../../lib/shared/image-crop-modal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
@@ -116,13 +116,39 @@ export function CharacterPrEditorModal() {
     const loadCharacter = async () => {
       try {
         const now = new Date().toISOString();
-        const data: CharacterEntry = (await getCharacter(currentId)) ?? {
+
+        // Parse external_id to get AniList character ID
+        const [, charId] = currentId.split(':');
+        const anilistCharId = parseInt(charId, 10);
+
+        // Fetch from AniList for fresh biography (includes appearances list)
+        let anilistDetail = null;
+        if (anilistCharId) {
+          try {
+            anilistDetail = await fetchAniListCharacterDetail(anilistCharId);
+          } catch (err) {
+            console.error('Failed to fetch from AniList:', err);
+          }
+        }
+
+        // Load from local DB as fallback
+        const localData: CharacterEntry = (await getCharacter(currentId)) ?? {
           id: '',
           external_id: currentId,
           name: '',
           created_at: now,
           updated_at: now,
         };
+
+        // Use AniList data if available, otherwise local
+        const data = anilistDetail ? {
+          ...localData,
+          name: anilistDetail.name.full || localData.name,
+          name_native: anilistDetail.name.native || localData.name_native,
+          biography: anilistDetail.description || localData.biography,
+          image_url: anilistDetail.image?.large || localData.image_url,
+        } : localData;
+
         setCharacter(data);
         setOriginalCharacter(data);
         setName(data.name || '');
@@ -136,33 +162,67 @@ export function CharacterPrEditorModal() {
         setOriginalCharacteristics(parsedStats);
         setOriginalCleanBiography(parsedBio);
 
+        // Load appearances from local DB
         const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
+
+        // Batch catalog lookups to minimize requests
+        const missingIds = new Set<string>();
+        for (const a of rawAppearances) {
+          const cached = await getCatalogEntry(a.media_external_id).catch(() => null);
+          if (!cached) missingIds.add(a.media_external_id);
+        }
+
+        // Fetch AniList details only for missing ones (batched from anilistDetail.media if available)
+        const anilistMediaCache: Record<string, { title: string; cover: string | null }> = {};
+        if (anilistDetail?.media?.edges) {
+          for (const edge of anilistDetail.media.edges) {
+            const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+            anilistMediaCache[extId] = {
+              title: edge.node.title.userPreferred || `${edge.node.type}:${edge.node.id}`,
+              cover: edge.node.coverImage?.large || null,
+            };
+          }
+        }
+
         const resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
           let entry = await getCatalogEntry(a.media_external_id).catch(() => null);
 
-          // If not in local DB, try AniList for a skeleton (title + cover only)
+          // Try cache first, then AniList as fallback
           if (!entry) {
-            try {
-              const [type, id] = a.media_external_id.split(':');
-              const anilistId = parseInt(id, 10);
-              if (type && anilistId) {
-                const detail = await fetchAniListDetail(anilistId);
-                if (detail) {
-                  const skeleton = {
-                    id: '',
-                    external_id: a.media_external_id,
-                    type: type.toUpperCase(),
-                    title_main: detail.title.english || detail.title.romaji || detail.title.native || a.media_external_id,
-                    cover_url: detail.coverImage?.large || null,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                  };
-                  await saveCatalogEntry(skeleton).catch(() => {});
-                  entry = skeleton;
+            if (anilistMediaCache[a.media_external_id]) {
+              const cached = anilistMediaCache[a.media_external_id];
+              entry = {
+                id: '',
+                external_id: a.media_external_id,
+                type: a.media_external_id.split(':')[0].toUpperCase(),
+                title_main: cached.title,
+                cover_url: cached.cover,
+                created_at: now,
+                updated_at: now,
+              };
+              await saveCatalogEntry(entry).catch(() => {});
+            } else {
+              try {
+                const [type, id] = a.media_external_id.split(':');
+                const anilistId = parseInt(id, 10);
+                if (type && anilistId) {
+                  const detail = await fetchAniListDetail(anilistId);
+                  if (detail) {
+                    entry = {
+                      id: '',
+                      external_id: a.media_external_id,
+                      type: type.toUpperCase(),
+                      title_main: detail.title.english || detail.title.romaji || detail.title.native || a.media_external_id,
+                      cover_url: detail.coverImage?.large || null,
+                      created_at: now,
+                      updated_at: now,
+                    };
+                    await saveCatalogEntry(entry).catch(() => {});
+                  }
                 }
+              } catch (err) {
+                console.error(`Failed to fetch AniList detail for ${a.media_external_id}:`, err);
               }
-            } catch (err) {
-              console.error(`Failed to fetch AniList detail for ${a.media_external_id}:`, err);
             }
           }
 
