@@ -7,6 +7,7 @@ import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from './monthly'
 import { buildActivityHtml, initActivityListeners } from './activity';
 import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
+import { ICON_MH_MEDIA, ICON_MH_CHARACTER } from '../shared/icon-strings';
 import { getNonEditionItems, getEditionItems, getItemMinutes } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -117,11 +118,22 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const bottomHtml = `
     <div class="profile-bottom-grid">
       <div class="profile-bottom-col">
-        <p class="profile-section-label">${p.monthly_history}</p>
+        <div class="profile-section-header">
+          <p class="profile-section-label">${p.monthly_history}</p>
+          <div class="mh-view-toggle">
+            <button type="button" class="mh-view-btn active" data-view="media" title="Obras">${ICON_MH_MEDIA}</button>
+            <span class="mh-view-toggle-divider"></span>
+            <button type="button" class="mh-view-btn" data-view="character" title="Personajes (próximamente)" disabled>${ICON_MH_CHARACTER}</button>
+          </div>
+          <div class="profile-section-line"></div>
+        </div>
         ${buildMonthlyHistoryHtml(monthlyHistory, items, catalogMap)}
       </div>
       <div class="profile-bottom-col">
-        <p class="profile-section-label">${p.recent_activity}</p>
+        <div class="profile-section-header">
+          <p class="profile-section-label">${p.recent_activity}</p>
+          <div class="profile-section-line"></div>
+        </div>
         ${await buildActivityHtml(catalogMap, p)}
       </div>
     </div>`;

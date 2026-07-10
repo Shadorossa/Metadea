@@ -115,6 +115,10 @@ export const ICON_CLOCK  = stroke(18, '2', INNER.clock);
 export const ICON_STAR   = stroke(18, '2', INNER.star);
 export const ICON_CHART  = stroke(18, '2', INNER.chart);
 
+// Monthly history's "obras" / "personaje" view toggle
+export const ICON_MH_MEDIA     = stroke(14, '2', INNER.stack);
+export const ICON_MH_CHARACTER = stroke(14, '2', INNER.character);
+
 // ── HOF icons ─────────────────────────────────────────────────────────────────
 
 export const ICON_CROWN  = fill(16, INNER.crown);
