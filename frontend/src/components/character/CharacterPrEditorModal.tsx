@@ -157,9 +157,32 @@ export function CharacterPrEditorModal() {
         setImageUrl(data.image_url || '');
 
         const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
-        setCharacteristics(parsedStats);
+
+        // Add structured fields from AniList as characteristics if not already in parsed stats
+        const addedLabels = new Set(parsedStats.map(c => c.label.toLowerCase()));
+        const allCharacteristics = [...parsedStats];
+
+        if (anilistDetail?.gender && !addedLabels.has('gender') && !addedLabels.has('género')) {
+          allCharacteristics.push({ label: 'Gender', value: anilistDetail.gender });
+        }
+        if (anilistDetail?.age && !addedLabels.has('age') && !addedLabels.has('edad')) {
+          allCharacteristics.push({ label: 'Age', value: String(anilistDetail.age) });
+        }
+        if (anilistDetail?.bloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('tipo de sangre') && !addedLabels.has('grupo sanguíneo')) {
+          allCharacteristics.push({ label: 'Blood Type', value: anilistDetail.bloodType });
+        }
+        if (anilistDetail?.dateOfBirth && (anilistDetail.dateOfBirth.day || anilistDetail.dateOfBirth.month)) {
+          if (!addedLabels.has('birthday') && !addedLabels.has('cumpleaños')) {
+            const day = anilistDetail.dateOfBirth.day ?? '?';
+            const month = anilistDetail.dateOfBirth.month ?? '?';
+            const year = anilistDetail.dateOfBirth.year ? `/${anilistDetail.dateOfBirth.year}` : '';
+            allCharacteristics.push({ label: 'Birthday', value: `${day}/${month}${year}` });
+          }
+        }
+
+        setCharacteristics(allCharacteristics);
         setCleanBiography(parsedBio);
-        setOriginalCharacteristics(parsedStats);
+        setOriginalCharacteristics(allCharacteristics);
         setOriginalCleanBiography(parsedBio);
 
         // Load appearances from local DB
