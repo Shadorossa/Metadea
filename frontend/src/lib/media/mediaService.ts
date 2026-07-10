@@ -64,8 +64,10 @@ function setCachedMediaData(rawId: string, data: MediaPageData): void {
 
 // Patches just the relations field of an already-cached entry (used once the
 // background transitive-relations fetch resolves), keeping its original
-// timestamp so the TTL isn't reset.
-function patchCachedRelations(rawId: string, relations: MediaPageData['relations']): void {
+// timestamp so the TTL isn't reset. Exported so callers can gate the write
+// behind their own "is this fetch still relevant" check — see the comment
+// on fetchExtraRelations below for why this can't safely happen internally.
+export function patchCachedRelations(rawId: string, relations: MediaPageData['relations']): void {
   try {
     const raw = sessionStorage.getItem(`${CACHE_PREFIX}${rawId}`);
     if (!raw) return;
@@ -419,8 +421,19 @@ export function fetchMediaDataWithFallback(
 // Background enrichment: walks the transitive IGDB relation graph (up to a
 // few sequential requests) and returns the merged relations list. Meant to
 // be called *after* the page already has full data, so the slow multi-hop
-// walk never blocks the initial render — call setData with the result and
-// patchCachedRelations() to keep the sessionStorage cache in sync.
+// walk never blocks the initial render.
+//
+// Deliberately does NOT call patchCachedRelations() itself: this is a
+// multi-request round trip, so by the time it resolves the user may have
+// already navigated to a different page (possibly one whose external_id
+// happens to be `rawId` here, e.g. a parent game). Writing to the cache
+// unconditionally used to let a stale response computed from *this* call's
+// currentData land in a different, now-current page's cache entry —
+// corrupting it with relations that don't belong to it (reported as a
+// title showing itself, or the wrong title, as its own prequel/sequel).
+// Callers must call patchCachedRelations() themselves, gated behind
+// whatever "is this fetch still relevant" check they already use for
+// setData (see MediaPage.tsx's `cancelled` flag).
 export async function fetchExtraRelations(rawId: string, currentData: MediaPageData): Promise<MediaPageData['relations'] | null> {
   const { type, id: numericId } = parseExternalId(rawId);
   if (!IGDB_TYPES.includes(type)) return null;
@@ -433,6 +446,5 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   const merged = mergeRelationGraph(currentData, graphNodes as RelationGraphNode[], gameType);
   if (merged.relations.length === currentData.relations.length) return null; // nothing new
 
-  patchCachedRelations(rawId, merged.relations);
   return merged.relations;
 }

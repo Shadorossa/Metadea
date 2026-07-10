@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, patchCachedRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -251,7 +251,14 @@ export default function MediaPage({ i18n }: Props) {
         // the page is already showing instead of delaying first render.
         const targetRelationsId = full.parentGame?.externalId || currentId;
         fetchExtraRelations(targetRelationsId, full).then(relations => {
+          // `cancelled` covers "the user has since navigated away from this
+          // page load" — skip the cache write too in that case, or a stale
+          // response computed from *this* page's data could land in
+          // whichever page's cache entry `targetRelationsId` now refers to
+          // (a parent game's page, if the user navigated there), corrupting
+          // it with relations that don't belong to it.
           if (cancelled || !relations) return;
+          patchCachedRelations(targetRelationsId, relations);
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
         });
       },
