@@ -4,6 +4,7 @@ import { getT } from '../../i18n/client';
 import { dbRatingToStars5 } from '../media/rating-utils';
 import { typeIconMap } from '../shared/icon-strings';
 import { openFavoriteImageEditor } from './favorite-image-editor';
+import { ALL_MEDIA_TYPES } from '../constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -41,7 +42,10 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
   let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
   let modified = false;
 
-  const favKeys = ['multimedia', 'anime', 'manga', 'game', 'vnovel', 'lnovel', 'series', 'movie', 'book', 'character'];
+  // 'multimedia' is a synthetic aggregate bucket (not a real media type) on
+  // top of every type in ALL_MEDIA_TYPES — kept as one source of truth so a
+  // new media type doesn't silently leave favData[type] undefined here again.
+  const favKeys = ['multimedia', ...ALL_MEDIA_TYPES];
   for (const k of favKeys) {
     if (!favData[k]) {
       favData[k] = [];
