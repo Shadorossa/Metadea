@@ -219,11 +219,13 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
         <h3 class="home-card-title">${p.stats_calendar}</h3>
         <span class="stats-calendar-month">${currentMonthName}</span>
       </div>
-      <div class="home-calendar-toggle">
-        <button type="button" class="home-calendar-toggle-btn active" data-mode="mine">Para ti</button>
-        <button type="button" class="home-calendar-toggle-btn" data-mode="general">General</button>
+      <div class="home-calendar-controls">
+        <div class="home-calendar-toggle">
+          <button type="button" class="home-calendar-toggle-btn active" data-mode="mine">Para ti</button>
+          <button type="button" class="home-calendar-toggle-btn" data-mode="general">General</button>
+        </div>
+        <div class="home-calendar-type-tabs"></div>
       </div>
-      <div class="home-calendar-type-tabs"></div>
       <div class="home-calendar-grid-mount"></div>
     </div>
   `;
