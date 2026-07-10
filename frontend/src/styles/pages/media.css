@@ -2635,7 +2635,7 @@
    of sharing the narrow 3-column layout (e.g. character editor's
    Apariciones) — same card, more columns since there's room for them. */
 .pr-editor-media-group-cards--wide {
-  grid-template-columns: repeat(9, 1fr);
+  grid-template-columns: repeat(12, 1fr);
 }
 
 .pr-editor-media-single-card-wrap {

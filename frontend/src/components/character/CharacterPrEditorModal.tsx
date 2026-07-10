@@ -4,7 +4,8 @@ import {
   getCharacter, saveCharacter, getCharacterAppearances, saveCharacterAppearances,
   type CharacterEntry, type CharacterAppearance,
 } from '../../lib/tauri/characters';
-import { getCatalogEntry } from '../../lib/tauri/catalog';
+import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
+import { fetchAniListDetail } from '../../lib/search/providers/anilist';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../../lib/shared/image-crop-modal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
@@ -133,7 +134,34 @@ export function CharacterPrEditorModal() {
 
         const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
         const resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
-          const entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+          let entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+
+          // If not in local DB, try AniList for a skeleton (title + cover only)
+          if (!entry) {
+            try {
+              const [type, id] = a.media_external_id.split(':');
+              const anilistId = parseInt(id, 10);
+              if (type && anilistId) {
+                const detail = await fetchAniListDetail(anilistId);
+                if (detail) {
+                  const skeleton = {
+                    id: '',
+                    external_id: a.media_external_id,
+                    type: type.toUpperCase(),
+                    title_main: detail.title.english || detail.title.romaji || detail.title.native || a.media_external_id,
+                    cover_url: detail.coverImage?.large || null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  };
+                  await saveCatalogEntry(skeleton).catch(() => {});
+                  entry = skeleton;
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch AniList detail for ${a.media_external_id}:`, err);
+            }
+          }
+
           return {
             media_external_id: a.media_external_id,
             relation_type: a.relation_type ?? null,
