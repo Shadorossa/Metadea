@@ -730,10 +730,31 @@
   overflow-y: hidden;
   scroll-behavior: smooth;
   scrollbar-width: none;
+  --mh-fade: 40px;
+  /* Both edges fade by default; .at-start/.at-end (toggled in monthly.ts
+     alongside the arrows' disabled state) drop whichever side's fade would
+     otherwise imply there's more to scroll when there isn't. */
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--mh-fade), black calc(100% - var(--mh-fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, black var(--mh-fade), black calc(100% - var(--mh-fade)), transparent);
 }
 
 .mh-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.mh-scroll.at-start {
+  -webkit-mask-image: linear-gradient(to right, black, black calc(100% - var(--mh-fade)), transparent);
+  mask-image: linear-gradient(to right, black, black calc(100% - var(--mh-fade)), transparent);
+}
+
+.mh-scroll.at-end {
+  -webkit-mask-image: linear-gradient(to right, transparent, black var(--mh-fade), black);
+  mask-image: linear-gradient(to right, transparent, black var(--mh-fade), black);
+}
+
+.mh-scroll.at-start.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .mh-arrow {

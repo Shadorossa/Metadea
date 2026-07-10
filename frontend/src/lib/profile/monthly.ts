@@ -70,7 +70,9 @@ export function buildMonthlyHistoryHtml(
 // Left/right arrows scroll .mh-scroll instead of the row overflowing its
 // column and visually bleeding into the Recent Activity sidebar next to it
 // (the row has no wrap and used to just grow as wide as the month count
-// needed). Disables whichever arrow is at its end of the scroll range.
+// needed). Disables whichever arrow is at its end of the scroll range, and
+// toggles the matching edge fade (see .at-start/.at-end in profile.css) so
+// the fade never implies there's more to scroll on a side where there isn't.
 export function initMonthlyHistoryListeners(container: HTMLElement): void {
   const scrollEl = container.querySelector<HTMLElement>('.mh-scroll');
   const leftBtn = container.querySelector<HTMLButtonElement>('.mh-arrow-left');
@@ -81,8 +83,12 @@ export function initMonthlyHistoryListeners(container: HTMLElement): void {
 
   function updateArrows() {
     if (!scrollEl) return;
-    leftBtn!.disabled = scrollEl.scrollLeft <= 0;
-    rightBtn!.disabled = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+    const atStart = scrollEl.scrollLeft <= 0;
+    const atEnd = scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+    leftBtn!.disabled = atStart;
+    rightBtn!.disabled = atEnd;
+    scrollEl.classList.toggle('at-start', atStart);
+    scrollEl.classList.toggle('at-end', atEnd);
   }
 
   leftBtn.addEventListener('click', () => scrollEl.scrollBy({ left: -SCROLL_STEP, behavior: 'smooth' }));
