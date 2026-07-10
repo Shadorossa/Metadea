@@ -1,47 +1,47 @@
 {
   "media_catalog": {
-    "id": "a28152e2b1b97a0ba28152e2b1b97a0b",
-    "external_id": "game:134",
+    "id": "984e372ceb37ccf7984e372ceb37ccf7",
+    "external_id": "game:76253",
     "parent_id": null,
     "type": "game",
-    "format": "REMASTER",
+    "format": "GAME",
     "source": "igdb",
-    "title_main": "Devil May Cry",
+    "title_main": "Devil May Cry 5",
     "title_romaji": null,
-    "title_native": null,
-    "synopsis": "An HD remaster of Devil May Cry, first made available in \"Devil May Cry HD Collection.\"\n\nIn the first installment of the Devil May Cry series, the player controls Dante as he faces off against the resurrected Demon Emperor, Mundus. The game introduces Dante's abilities, like Devil Trigger which transforms him into a demon, swordplay, gun-slinging, and stylish combos, all of which have become a staple of the series.",
-    "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ck7.webp",
-    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/tlu15tputwtpbfqbqgy2.webp",
-    "release_year": 2012,
+    "title_native": "惡魔獵人5",
+    "synopsis": "Devil May Cry 5 is a brand-new entry in the legendary over-the-top action series Devil May Cry. The game features three playable characters, each with a radically different stylish combat play style as they take on the city overrun with demons. Developed with Capcom’s in-house proprietary RE engine, the series continues to achieve new heights in fidelity with graphics that utilize photorealistic character designs and stunning lighting and environmental effects.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co1rb4.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/gszwggqaia6o7zntd9gu.jpg",
+    "release_year": 2019,
     "release_month": 3,
-    "release_day": 22,
+    "release_day": 8,
     "time_length": null,
     "status": null,
-    "score_global": 7.5,
+    "score_global": 8.6,
     "favorites_count": null,
     "ratings_count": null,
     "total_count": null,
     "total_count_2": null,
     "genres_csv": "Hack and Slash,Adventure",
     "genres_tag_csv": null,
-    "platforms_csv": "PlayStation 3,PlayStation 4,PC (Microsoft Windows),Xbox 360,Xbox One,Nintendo Switch",
-    "shop_links_csv": null,
-    "companies_cache_csv": "Capcom Production Studio 4,Capcom",
+    "platforms_csv": "PlayStation 4,Nintendo Switch 2,PC (Microsoft Windows),Xbox One",
+    "shop_links_csv": "steam|https://store.steampowered.com/app/601150",
+    "companies_cache_csv": "Capcom Development Division 1,Capcom",
     "authors_csv": null,
     "last_synced_at": null,
     "sync_failed_count": null,
     "last_sync_error": null,
-    "created_at": "2026-07-07T19:30:14.375Z",
-    "updated_at": "2026-07-10T22:03:27.365640600+00:00"
+    "created_at": "2026-07-10T21:51:17.023Z",
+    "updated_at": "2026-07-10T21:53:43.226962600+00:00"
   },
   "media_relations": [
     {
-      "related_media_external_id": "game:222654",
-      "relation_type": "REMASTER",
-      "type_label": "Remaster",
-      "title": "Devil May Cry",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5tkk.jpg",
-      "media_external_id": "game:134"
+      "media_external_id": "game:76253",
+      "related_media_external_id": "game:112",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Devil May Cry 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
     },
     {
       "media_external_id": "game:134",
@@ -57,7 +57,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Devil May Cry",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ck7.webp"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ck7.jpg"
     },
     {
       "media_external_id": "game:136",
@@ -82,14 +82,6 @@
       "type_label": "Sequel",
       "title": "Devil May Cry 5",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1rb4.jpg"
-    },
-    {
-      "media_external_id": "game:76253",
-      "related_media_external_id": "game:112",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Devil May Cry 4",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1u6n.jpg"
     }
   ],
   "characters": [],
