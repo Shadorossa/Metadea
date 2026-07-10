@@ -22,6 +22,10 @@ pub struct CharacterEntry {
 pub struct CharacterAppearance {
     pub media_external_id: String,
     pub relation_type: Option<String>,
+    /// The role/character name an actor plays in this media (TMDB movies/
+    /// series) — distinct from relation_type, which holds anime relation
+    /// kinds (MAIN/SUPPORTING) for AniList characters.
+    pub character_name: Option<String>,
 }
 
 const SELECT_CHARACTER: &str =
@@ -143,9 +147,9 @@ pub async fn save_character_appearances(
     let now = Utc::now().to_rfc3339();
     for a in appearances {
         tx.execute(
-            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
-             VALUES (?1, ?2, ?3, ?4)",
-            rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &now],
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &a.character_name, &now],
         ).str_err()?;
     }
     tx.commit().str_err()?;
@@ -159,13 +163,14 @@ pub async fn get_character_appearances(
 ) -> Result<Vec<CharacterAppearance>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
-        .prepare("SELECT media_external_id, relation_type FROM character_appearances WHERE character_external_id = ?1")
+        .prepare("SELECT media_external_id, relation_type, character_name FROM character_appearances WHERE character_external_id = ?1")
         .str_err()?;
     let rows = stmt
         .query_map([&character_external_id], |row| {
             Ok(CharacterAppearance {
                 media_external_id: row.get(0)?,
                 relation_type: row.get(1)?,
+                character_name: row.get(2)?,
             })
         })
         .str_err()?
@@ -180,6 +185,7 @@ pub struct MediaCharacter {
     pub name: String,
     pub image_url: Option<String>,
     pub relation_type: Option<String>,
+    pub character_name: Option<String>,
 }
 
 // Reverse of get_character_appearances (which is keyed by character) — used
@@ -195,7 +201,7 @@ pub async fn get_media_characters(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
-            "SELECT c.external_id, c.name, c.image_url, ca.relation_type
+            "SELECT c.external_id, c.name, c.image_url, ca.relation_type, ca.character_name
              FROM character_appearances ca
              JOIN characters c ON c.external_id = ca.character_external_id
              WHERE ca.media_external_id = ?1",
@@ -208,6 +214,7 @@ pub async fn get_media_characters(
                 name: row.get(1)?,
                 image_url: row.get(2)?,
                 relation_type: row.get(3)?,
+                character_name: row.get(4)?,
             })
         })
         .str_err()?
@@ -223,6 +230,7 @@ pub struct SkeletonCharacter {
     pub name: String,
     pub image_url: Option<String>,
     pub relation_type: Option<String>,
+    pub character_name: Option<String>,
 }
 
 #[tauri::command]
@@ -257,12 +265,13 @@ pub async fn save_characters_skeleton(
         ).str_err()?;
 
         tx.execute(
-            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
-             VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![
                 &char.external_id,
                 &media_external_id,
                 &char.relation_type,
+                &char.character_name,
                 &now,
             ],
         ).str_err()?;

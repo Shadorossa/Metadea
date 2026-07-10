@@ -245,7 +245,6 @@ function getProgressConfig(type: string, tm: Translations['media']): { label: st
   else if (type === 'anime' || type === 'series')      label = tm.progress_episodes;
   else if (type === 'manga' || type === 'light-novel') label = tm.progress_chapters;
   else if (type === 'books')                           label = tm.progress_percent;
-  else if (type === 'movies')                          label = null;
   else                                                 label = tm.editor.progress;
 
   const label2 =

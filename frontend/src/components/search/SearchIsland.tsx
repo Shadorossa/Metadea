@@ -4,6 +4,7 @@ import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
+import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 
 type SearchTranslations = Translations['search'];
 
@@ -371,7 +372,7 @@ function MediaCard({ result }: { result: SearchResult }) {
           <div className="card-media-placeholder" />
         )}
         {result.scoreGlobal !== null && (
-          <div className="card-rating-badge">{result.scoreGlobal.toFixed(1)}</div>
+          <div className="card-rating-badge">{formatAverageScore(result.scoreGlobal, getActiveRatingSystem())}</div>
         )}
       </div>
       <p className="card-title">{result.titleMain}</p>

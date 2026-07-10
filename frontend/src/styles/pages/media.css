@@ -1271,12 +1271,14 @@
 
 .me-header-field-input--number {
   width: 60px;
+  order: 1;
 }
 
 .me-header-field-max {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 600;
+  order: 2;
 }
 
 .me-header-field-label {

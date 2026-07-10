@@ -230,13 +230,19 @@ export default function MediaPage({ i18n }: Props) {
         setIsFetchingFull(false);
 
         if (full.characters && full.characters.length > 0) {
+          // char.role is overloaded per source: TMDB (movie/series) puts the
+          // actual character name played there, while AniList (anime/manga/
+          // etc.) puts the MAIN/SUPPORTING relation kind — they need to land
+          // in different DB columns instead of both piling into relation_type.
+          const isCastRole = full.type === 'movie' || full.type === 'series';
           const seen = new Set<string>();
           const skeletonChars = full.characters
             .map(char => ({
               external_id: char.id || `character:${char.name}`,
               name: char.name,
               image_url: char.image || null,
-              relation_type: char.role || null
+              relation_type: isCastRole ? null : (char.role || null),
+              character_name: isCastRole ? (char.role || null) : null,
             }))
             .filter(char => {
               if (seen.has(char.external_id)) return false;

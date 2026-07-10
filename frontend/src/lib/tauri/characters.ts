@@ -17,6 +17,7 @@ export interface CharacterEntry {
 export interface CharacterAppearance {
   media_external_id: string;
   relation_type?:     string | null;
+  character_name?:    string | null;
 }
 
 export async function saveCharacter(
@@ -59,6 +60,7 @@ export interface SkeletonCharacter {
   name: string;
   image_url?: string | null;
   relation_type?: string | null;
+  character_name?: string | null;
 }
 
 export async function saveCharactersSkeleton(mediaExternalId: string, characters: SkeletonCharacter[]): Promise<void> {
@@ -70,6 +72,7 @@ export interface MediaCharacter {
   name: string;
   image_url?: string | null;
   relation_type?: string | null;
+  character_name?: string | null;
 }
 
 // Reverse of getCharacterAppearances — all characters already cached locally

@@ -138,7 +138,7 @@ export function mapTmdbToMedia(
     scoreGlobal,
     timeLength,
     status: raw.status ?? undefined,
-    totalCount: isTv ? raw.number_of_episodes ?? undefined : undefined,
+    totalCount: isTv ? raw.number_of_episodes ?? undefined : 1,
     totalCount_2: isTv ? raw.number_of_seasons ?? undefined : undefined,
     companies,
   };

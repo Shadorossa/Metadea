@@ -44,6 +44,11 @@ impl MetadeaDb {
         // Upgrade path for DBs created before rating_system existed on
         // user_profile — same idempotent-ALTER pattern as above.
         let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN rating_system TEXT NOT NULL DEFAULT '5-star'", []);
+        // Upgrade path for DBs created before character_appearances had a
+        // dedicated column for the character an actor plays (TMDB movies/
+        // series) — previously overloaded into relation_type, which also
+        // holds anime relation kinds (MAIN/SUPPORTING) for AniList characters.
+        let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN character_name TEXT", []);
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         Ok(Self { conn: Mutex::new(conn) })
     }
@@ -107,6 +112,7 @@ CREATE TABLE IF NOT EXISTS character_appearances (
     character_external_id TEXT NOT NULL,
     media_external_id     TEXT NOT NULL,
     relation_type         TEXT,
+    character_name        TEXT,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
 );
