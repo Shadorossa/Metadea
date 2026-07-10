@@ -79,6 +79,7 @@ const RELATION_TYPE_LABELS: Record<string, string> = {
   PARENT: 'Fuente',
   SIDE_STORY: 'Side Story',
   SUMMARY: 'Resumen',
+  REMASTER: 'Remaster',
 };
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {

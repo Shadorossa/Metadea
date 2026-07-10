@@ -37,7 +37,7 @@ export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label:
  *  still shown and stay editable; this list only curates what's offered for
  *  new additions. */
 export const EDITABLE_RELATION_OPTIONS: string[] = [
-  'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY',
+  'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY', 'REMASTER',
 ];
 
 export function isSagaRelationType(value: string): value is SagaRelationType {
