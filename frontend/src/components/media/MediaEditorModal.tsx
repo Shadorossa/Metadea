@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect, useCallback, useMemo, useState } from 'react';
+import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry } from '../../lib/tauri';
@@ -133,67 +133,6 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
       const current = state.logs[id] || createDefaultLog();
       return { ...state, logs: { ...state.logs, [id]: { ...current, ...action.updates } } };
     }
-    case 'SET_STATUS': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, status: action.value } } };
-    }
-    case 'SET_RATING': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, rating: action.value } } };
-    }
-    case 'SET_PROGRESS': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, progress: action.value } } };
-    }
-    case 'SET_PROGRESS2': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, progressCount2: action.value } } };
-    }
-    case 'SET_NOTES': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, notes: action.value } } };
-    }
-    case 'SET_STARTED': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, startedAt: action.value } } };
-    }
-    case 'SET_FINISHED': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, finishedAt: action.value } } };
-    }
-    case 'TOGGLE_FAVORITE': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, isFavorite: !current.isFavorite } } };
-    }
-    case 'TOGGLE_PLATINUM': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, isPlatinum: !current.isPlatinum } } };
-    }
-    case 'ADD_TAG': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      if (current.tags.includes(action.tag)) return state;
-      return { ...state, logs: { ...state.logs, [id]: { ...current, tags: [...current.tags, action.tag] } } };
-    }
-    case 'REMOVE_TAG': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, tags: current.tags.filter(t => t !== action.tag) } } };
-    }
-    case 'SET_PLATFORM': {
-      const id = state.activeLogId;
-      const current = state.logs[id] || createDefaultLog();
-      return { ...state, logs: { ...state.logs, [id]: { ...current, platform: action.value } } };
-    }
     case 'SET_VERSION': {
       // Only updates the base's own link list — SWITCH_LOG (always dispatched
       // right after this by the caller) handles which tab becomes active.
@@ -276,6 +215,13 @@ function createEmptyVersionEntry(versionId: string): LibraryEntry {
     is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
     selected_platform: null, selected_version: null, started_at: null, finished_at: null,
   };
+}
+
+// Relation cards link to another media page via "/media?id=<externalId>" —
+// pull that id back out to look up/link the related game's own log.
+function extractExternalIdFromRelationUrl(url: string | null | undefined): string | undefined {
+  const match = url?.match(/id=([^&]+)/);
+  return match ? decodeURIComponent(match[1]) : undefined;
 }
 
 // Log tab labels show only what's after the title's colon (e.g. "Trails in
@@ -369,40 +315,41 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   useEffect(() => {
     const loadAllVersions = async (bId: string) => {
       try {
-        // 1. Cargar el juego base
+        // 1. Load the base game
         const baseEntry = await getLibraryEntry(bId);
         if (baseEntry) {
           dispatchEntry({ type: 'LOAD_LOG', id: bId, entry: baseEntry });
         }
 
-        // 2. Reunir candidatos de ids relacionados (remakes, remasters, etc.) para buscar logs guardados
+        // 2. Gather related-id candidates (remakes, remasters, etc.) to look up saved logs for
         const candidates = new Set<string>();
         if (data.parentGame) {
           candidates.add(data.parentGame.externalId);
         }
         for (const rel of (data.relations || [])) {
-          const match = rel.url?.match(/id=([^&]+)/);
-          const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
+          const relExternalId = extractExternalIdFromRelationUrl(rel.url);
           if (relExternalId && relExternalId !== bId) {
             candidates.add(relExternalId);
           }
         }
 
-        // 3. Cargar logs existentes para los candidatos
-        for (const candId of candidates) {
+        // 3. Load existing logs for the candidates — in parallel, not one
+        // Tauri IPC round-trip at a time.
+        await Promise.all([...candidates].map(async candId => {
           const ev = await getLibraryEntry(candId);
           if (ev) {
             dispatchEntry({ type: 'LOAD_LOG', id: candId, entry: ev });
           }
-        }
+        }));
 
-        // 4. Si el juego base tiene versiones enlazadas explícitamente en selected_version
-        // que no se cargaron como existentes, inicializarlas vacías
+        // 4. If the base game has versions explicitly linked via
+        // selected_version that weren't already loaded as candidates,
+        // initialize them empty — also in parallel.
         if (baseEntry && baseEntry.selected_version) {
-          for (const versionId of baseEntry.selected_version.split(',')) {
+          await Promise.all(baseEntry.selected_version.split(',').filter(Boolean).map(async versionId => {
             const ev = await getLibraryEntry(versionId);
             dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
-          }
+          }));
         }
       } catch (err) {
         console.error('Failed to load base and versions', err);
@@ -425,10 +372,24 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       .catch(() => {});
   }, [externalId, data.parentGame, data.type, data.relations]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dynamically load newly selected edition
+  // Kept in sync every render so the effect below can check "is this id
+  // already loaded" without listing entry.logs as a dependency — that would
+  // re-run the effect (and refetch every linked version over IPC) on every
+  // single log edit, not just when a new version gets linked.
+  const logsRef = useRef(entry.logs);
+  logsRef.current = entry.logs;
+
+  // Dynamically load newly selected edition. The tab-switch click handler
+  // already seeds a synchronous LOAD_LOG for the version it just linked, so
+  // this only needs to fetch ids that aren't in entry.logs yet — refetching
+  // every already-loaded version on each edit to `selectedVersion` (its
+  // whole CSV string changes identity whenever one more id is appended) was
+  // a redundant Tauri IPC round-trip per tab switch, and the perceptible
+  // source of "tarda un pelín" lag reported after the earlier flicker fix.
   useEffect(() => {
     if (!baseSelectedVersion) return;
-    for (const versionId of baseSelectedVersion.split(',')) {
+    for (const versionId of baseSelectedVersion.split(',').filter(Boolean)) {
+      if (logsRef.current[versionId]) continue;
       getLibraryEntry(versionId)
         .then(ev => dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) }));
     }
@@ -627,8 +588,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
     for (const rel of (data.relations || [])) {
       if (rel.typeLabel !== 'Expanded Edition' && rel.typeLabel !== 'Remaster') continue;
-      const match = rel.url?.match(/id=([^&]+)/);
-      const relExternalId = match ? decodeURIComponent(match[1]) : undefined;
+      const relExternalId = extractExternalIdFromRelationUrl(rel.url);
       if (relExternalId) {
         const groupLabel = rel.typeLabel || 'Others';
         if (!groupsMap[groupLabel]) {
@@ -885,6 +845,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                                   if (!currentVersions.includes(ed.externalId)) {
                                     const nextVersions = [...currentVersions, ed.externalId].join(',');
                                     dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                                  }
+                                  // Seed an empty log synchronously so the tab's
+                                  // first render already matches whatever the
+                                  // async fetch below will settle on (real saved
+                                  // entry or the same empty shape) — without
+                                  // this, activeLog falls back to
+                                  // createDefaultLog() for one render, then gets
+                                  // swapped for libraryEntryToLog(createEmptyVersionEntry(...))
+                                  // once the effect resolves, and those two
+                                  // "empty" shapes differ enough to flash visibly.
+                                  if (!entry.logs[ed.externalId]) {
+                                    dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
                                   }
                                   dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
                                 }}
