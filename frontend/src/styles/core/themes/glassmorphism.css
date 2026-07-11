@@ -22,7 +22,7 @@ html[data-theme="glassmorphism"], [data-theme="glassmorphism"] {
   --radius-xl: 24px !important;
 }
 
-body {
+body[data-theme="glassmorphism"], html[data-theme="glassmorphism"] body {
   font-family: 'Outfit', 'Segoe UI', -apple-system, sans-serif !important;
   background-color: var(--bg-primary);
 }
@@ -40,7 +40,7 @@ body {
   100% { transform: translate(0, 0) scale(1.1); }
 }
 
-#app-bg {
+[data-theme="glassmorphism"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
@@ -49,8 +49,8 @@ body {
 }
 
 /* Cosmic blurred orbs */
-#app-bg::before,
-#app-bg::after {
+[data-theme="glassmorphism"] #app-bg::before,
+[data-theme="glassmorphism"] #app-bg::after {
   content: "";
   position: absolute;
   border-radius: 50%;
@@ -58,7 +58,7 @@ body {
   pointer-events: none;
 }
 
-#app-bg::before {
+[data-theme="glassmorphism"] #app-bg::before {
   top: -10%;
   left: 10%;
   width: 50vw;
@@ -67,7 +67,7 @@ body {
   animation: glass-drift 20s ease-in-out infinite;
 }
 
-#app-bg::after {
+[data-theme="glassmorphism"] #app-bg::after {
   bottom: -15%;
   right: 10%;
   width: 60vw;
@@ -78,23 +78,23 @@ body {
 
 /* ── Glassmorphism UI Panels & Elements ──────────────────────────────────── */
 
-.btn,
-.settings-tab,
-.google-btn,
-.input-dark,
-.search-input,
-.search-action-btn,
-.search-tab,
-.card-media-base,
-.media-relation-card,
-.media-char-card,
-.media-banner-date-badge,
-.media-library-widget-box,
-.status-dropdown-trigger,
-.status-dropdown-tray,
-.hof-container,
-.hof-card,
-.auth-modal-box {
+[data-theme="glassmorphism"] .btn,
+[data-theme="glassmorphism"] .settings-tab,
+[data-theme="glassmorphism"] .google-btn,
+[data-theme="glassmorphism"] .input-dark,
+[data-theme="glassmorphism"] .search-input,
+[data-theme="glassmorphism"] .search-action-btn,
+[data-theme="glassmorphism"] .search-tab,
+[data-theme="glassmorphism"] .card-media-base,
+[data-theme="glassmorphism"] .media-relation-card,
+[data-theme="glassmorphism"] .media-char-card,
+[data-theme="glassmorphism"] .media-banner-date-badge,
+[data-theme="glassmorphism"] .media-library-widget-box,
+[data-theme="glassmorphism"] .status-dropdown-trigger,
+[data-theme="glassmorphism"] .status-dropdown-tray,
+[data-theme="glassmorphism"] .hof-container,
+[data-theme="glassmorphism"] .hof-card,
+[data-theme="glassmorphism"] .auth-modal-box {
   backdrop-filter: blur(14px) saturate(180%) !important;
   background-color: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -104,67 +104,64 @@ body {
 }
 
 /* Hover glow states */
-.btn:hover,
-.settings-tab:hover,
-.search-tab:hover,
-.card-media-base:hover,
-.media-relation-card:hover,
-.media-char-card:hover {
+[data-theme="glassmorphism"] .btn:hover,
+[data-theme="glassmorphism"] .settings-tab:hover,
+[data-theme="glassmorphism"] .search-tab:hover,
+[data-theme="glassmorphism"] .card-media-base:hover,
+[data-theme="glassmorphism"] .media-relation-card:hover,
+[data-theme="glassmorphism"] .media-char-card:hover {
   background-color: rgba(255, 255, 255, 0.09) !important;
   border-color: rgba(255, 255, 255, 0.18) !important;
   box-shadow: 0 12px 40px 0 rgba(147, 51, 234, 0.15), inset 0 0 12px rgba(255, 255, 255, 0.05) !important;
-  transform: translateY(-2px) !important;
 }
 
-/* Active Glassmorphism elements */
-.settings-tab.active,
-.theme-card.active .theme-card-preview,
-.hof-btn--active,
-.search-tab.active,
-.search-input:focus,
-.input-dark:focus {
-  background-color: rgba(217, 70, 239, 0.12) !important;
+/* Active states: pink glow */
+[data-theme="glassmorphism"] .settings-tab.active,
+[data-theme="glassmorphism"] .theme-card.active .theme-card-preview,
+[data-theme="glassmorphism"] .hof-btn--active,
+[data-theme="glassmorphism"] .search-tab.active,
+[data-theme="glassmorphism"] .search-input:focus,
+[data-theme="glassmorphism"] .input-dark:focus {
   border-color: var(--accent) !important;
-  box-shadow: 0 8px 32px 0 rgba(217, 70, 239, 0.2) !important;
+  box-shadow: 0 0 15px rgba(217, 70, 239, 0.35), inset 0 0 8px rgba(217, 70, 239, 0.1) !important;
+  background-color: rgba(217, 70, 239, 0.06) !important;
 }
 
-/* Radius fixes for sub-elements */
-.card-media-base, .library-card-thumb, .fav-cover {
-  border-radius: var(--radius-md) !important;
+[data-theme="glassmorphism"] .media-card:hover,
+[data-theme="glassmorphism"] .media-relation-card:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(217, 70, 239, 0.4) !important;
+  box-shadow: 0 8px 32px 0 rgba(147, 51, 234, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Divider underlines with glow */
-h2, h3, .settings-panel-title, .section-label {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+[data-theme="glassmorphism"] h2, 
+[data-theme="glassmorphism"] h3, 
+[data-theme="glassmorphism"] .settings-panel-title, 
+[data-theme="glassmorphism"] .section-label {
   color: var(--text-main) !important;
-  padding-bottom: 8px;
-  letter-spacing: 0.03em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-/* Soft badges */
-.card-rating-badge,
-.theme-card-check,
-.media-char-role,
-.media-relation-type {
-  border-radius: var(--radius-sm) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: var(--text-main) !important;
+[data-theme="glassmorphism"] .card-rating-badge,
+[data-theme="glassmorphism"] .theme-card-check,
+[data-theme="glassmorphism"] .media-char-role,
+[data-theme="glassmorphism"] .media-relation-type {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #fff !important;
   backdrop-filter: blur(8px) !important;
 }
 
-/* Smooth glass scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Custom scrollbars */
+[data-theme="glassmorphism"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-radius: 99px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+[data-theme="glassmorphism"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent) !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
 }

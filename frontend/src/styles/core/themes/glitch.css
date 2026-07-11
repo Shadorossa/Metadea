@@ -42,7 +42,7 @@ body[data-theme="glitch"], html[data-theme="glitch"] body {
   100% { text-shadow: 1px 0 0 red, -1px 0 0 blue; }
 }
 
-#app-bg {
+[data-theme="glitch"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

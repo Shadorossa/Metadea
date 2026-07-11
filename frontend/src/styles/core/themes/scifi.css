@@ -29,7 +29,7 @@ body[data-theme="scifi"], html[data-theme="scifi"] body {
 
 /* ── HUD Telemetry Grid ────────────────────────────── */
 
-#app-bg {
+[data-theme="scifi"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

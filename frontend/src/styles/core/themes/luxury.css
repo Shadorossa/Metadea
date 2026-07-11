@@ -30,7 +30,7 @@ body[data-theme="luxury"], html[data-theme="luxury"] body {
 
 /* ── Royal Gold Ambient Backdrop ────────────────────────────── */
 
-#app-bg {
+[data-theme="luxury"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

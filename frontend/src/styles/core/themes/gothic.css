@@ -29,7 +29,7 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
 
 /* ── Gothic Cathedral Mist Backdrop ────────────────────────────── */
 
-#app-bg {
+[data-theme="gothic"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

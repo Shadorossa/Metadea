@@ -29,7 +29,7 @@ body[data-theme="blueprint"], html[data-theme="blueprint"] body {
 
 /* ── Technical Grid Backdrop ────────────────────────────── */
 
-#app-bg {
+[data-theme="blueprint"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;

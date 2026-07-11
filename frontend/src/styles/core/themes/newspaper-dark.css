@@ -2,7 +2,7 @@ html[data-theme="newspaper-dark"], [data-theme="newspaper-dark"] {
   --bg-primary:  #12110f;
   --bg-elevated: #1c1a17;
   --bg-card:     #282521;
-  --bg-card-rgb: 40, 37, 33;
+  --bg-card-rgb: 40 37 33;
 
   --text-main: #f5f2eb;
   --text-muted: #9c8f80;
@@ -10,7 +10,7 @@ html[data-theme="newspaper-dark"], [data-theme="newspaper-dark"] {
 
   --border-color: #4a4237;
 
-  --accent: #a69a7d; /* Muted golden accent from Metamedia Newspaper Dark */
+  --accent: #a69a7d; /* Muted golden accent */
   --accent-rgb: 166 154 125;
   --accent-soft: rgba(166, 154, 125, 0.08);
   --accent-border: #4a4237;
@@ -22,30 +22,35 @@ html[data-theme="newspaper-dark"], [data-theme="newspaper-dark"] {
   --radius-xl: 0px;
 }
 
-body {
+body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
 
-/* ── Newspaper editorial specific shape overrides ────────────────────────── */
+/* Backdrop */
+[data-theme="newspaper-dark"] #app-bg {
+  background: #121110;
+  background-image: radial-gradient(rgba(230, 223, 211, 0.02) 1px, transparent 0);
+  background-size: 20px 20px;
+}
 
 /* Double borders to simulate vintage print advertisements/sections */
-.btn,
-.google-btn, 
-.input-dark,
-.theme-card-preview,
-.avatar-preview-wrap,
-.banner-drop-zone,
-.card-media-base,
-.hof-btn,
-.hof-container,
-.hof-card,
-.search-input,
-.search-action-btn,
-.search-sort-btn,
-.media-banner-date-badge,
-.media-library-widget-box,
-.status-dropdown-trigger,
-.status-dropdown-tray {
+[data-theme="newspaper-dark"] .btn,
+[data-theme="newspaper-dark"] .google-btn, 
+[data-theme="newspaper-dark"] .input-dark,
+[data-theme="newspaper-dark"] .theme-card-preview,
+[data-theme="newspaper-dark"] .avatar-preview-wrap,
+[data-theme="newspaper-dark"] .banner-drop-zone,
+[data-theme="newspaper-dark"] .card-media-base,
+[data-theme="newspaper-dark"] .hof-btn,
+[data-theme="newspaper-dark"] .hof-container,
+[data-theme="newspaper-dark"] .hof-card,
+[data-theme="newspaper-dark"] .search-input,
+[data-theme="newspaper-dark"] .search-action-btn,
+[data-theme="newspaper-dark"] .search-sort-btn,
+[data-theme="newspaper-dark"] .media-banner-date-badge,
+[data-theme="newspaper-dark"] .media-library-widget-box,
+[data-theme="newspaper-dark"] .status-dropdown-trigger,
+[data-theme="newspaper-dark"] .status-dropdown-tray {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -54,25 +59,24 @@ body {
   transition: all 0.2s ease !important;
 }
 
-/* Hover/Active states simulate vintage ink press highlight (inverted or solid dark borders) */
-.btn:hover,
-.google-btn:hover,
-.hof-btn:hover,
-.search-tab:hover {
+/* Hover/Active states simulate vintage ink press highlight */
+[data-theme="newspaper-dark"] .btn:hover,
+[data-theme="newspaper-dark"] .google-btn:hover,
+[data-theme="newspaper-dark"] .hof-btn:hover,
+[data-theme="newspaper-dark"] .search-tab:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
 }
 
-.theme-card.active .theme-card-preview,
-.hof-btn--active {
+[data-theme="newspaper-dark"] .theme-card.active .theme-card-preview,
+[data-theme="newspaper-dark"] .hof-btn--active {
   border: 3px double var(--accent) !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
 }
 
-/* Newspaper specific settings tabs overrides: NO square border */
-.settings-tab {
+[data-theme="newspaper-dark"] .settings-tab {
   border: none !important;
   border-radius: 0px !important;
   box-shadow: none !important;
@@ -82,630 +86,65 @@ body {
   color: var(--text-muted) !important;
 }
 
-.settings-tab:hover {
+[data-theme="newspaper-dark"] .settings-tab:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border: none !important;
 }
 
-.settings-tab.active {
+[data-theme="newspaper-dark"] .settings-tab.active {
   border: none !important;
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
   text-decoration: underline !important;
 }
 
-.search-tab.active {
+[data-theme="newspaper-dark"] .search-tab.active {
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
 }
 
-.input-dark:focus,
-.search-input:focus {
+[data-theme="newspaper-dark"] .input-dark:focus,
+[data-theme="newspaper-dark"] .search-input:focus {
   border-color: var(--text-main) !important;
   background: var(--bg-elevated) !important;
 }
 
-.search-tab {
-  margin-right: 4px;
-}
-
 /* Header underlines looking like newspaper section dividers */
-h2, h3, .settings-panel-title, .section-label {
+[data-theme="newspaper-dark"] h2, 
+[data-theme="newspaper-dark"] h3, 
+[data-theme="newspaper-dark"] .settings-panel-title, 
+[data-theme="newspaper-dark"] .section-label {
   border-bottom: 2px solid var(--text-main) !important;
   font-style: italic;
   padding-bottom: 4px;
 }
 
-#app-bg {
-  background: #121110;
-  background-image: radial-gradient(rgba(230, 223, 211, 0.02) 1px, transparent 0);
-  background-size: 20px 20px;
-}
-
 /* Check badges style */
-.card-rating-badge,
-.theme-card-check {
+[data-theme="newspaper-dark"] .card-rating-badge,
+[data-theme="newspaper-dark"] .theme-card-check {
   border-radius: 0px !important;
   border: 1px solid var(--text-main) !important;
   background: var(--bg-primary) !important;
 }
 
-.auth-modal-box {
+[data-theme="newspaper-dark"] .auth-modal-box {
   border-radius: 0px !important;
   border: 6px double var(--text-main) !important;
 }
 
-.tray-status-btn {
-  border-radius: 0px !important;
-}
-
 /* Role and relation type badges */
-.media-char-role,
-.media-relation-type {
+[data-theme="newspaper-dark"] .media-char-role,
+[data-theme="newspaper-dark"] .media-relation-type {
   border-radius: 0px !important;
   border: 1px dashed var(--border-color) !important;
   background: transparent !important;
   color: var(--text-muted) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  text-transform: uppercase !important;
 }
 
-/* Star rating color overrides to match Metamedia Newspaper Dark (golden stars) */
-#media-rating-stars .page-star-fill svg,
-.star-filled-wrap svg,
-.star-preview-full svg,
-.star-preview-half svg {
-  color: var(--accent) !important;
-}
-
-.star-empty {
-  color: rgba(255, 255, 255, 0.2) !important;
-  opacity: 1 !important;
-}
-
-/* Library card stars in newspaper theme - white with currentColor */
-.library-card-rating {
-  color: #f5f2eb !important;
-}
-
-/* Library card dates - better visibility */
-.library-card-date {
-  color: #f5f2eb !important;
-  opacity: 1 !important;
-}
-
-/* Status colors override to match Metamedia Newspaper Dark muted palette */
-.tray-status-btn.active[data-status="planning"],
-.status-dropdown-trigger.text-planning {
-  color: #a69a7d !important;
-}
-.tray-status-btn.active[data-status="watching"],
-.tray-status-btn.active[data-status="reading"],
-.status-dropdown-trigger.text-watching,
-.status-dropdown-trigger.text-reading {
-  color: #c94a4a !important;
-}
-.tray-status-btn.active[data-status="completed"],
-.status-dropdown-trigger.text-completed {
-  color: #8da67d !important;
-}
-.tray-status-btn.active[data-status="paused"],
-.status-dropdown-trigger.text-paused {
-  color: #7da2a6 !important;
-}
-.tray-status-btn.active[data-status="dropped"],
-.status-dropdown-trigger.text-dropped {
-  color: #9c8f80 !important;
-}
-
-/* ── Media Page Overrides for Newspaper Dark ────────────────────────────── */
-
-.media-cover-img {
-  filter: grayscale(0.35) sepia(0.15) !important;
-}
-
-.media-relation-thumb img {
-  filter: none !important;
-}
-
-.media-char-thumb img {
-  filter: none !important;
-}
-
-.media-char-card-overlay, 
-.media-relation-card-overlay {
-  background: none !important;
-}
-
-.media-relation-bg-layer img {
-  filter: none !important;
-  opacity: 0.12 !important;
-}
-
-.media-char-bg-layer img {
-  filter: none !important;
-  opacity: 0.12 !important;
-}
-
-.media-char-name,
-.media-relation-title {
-  color: var(--text-main) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.media-genres-dots {
-  color: var(--text-muted) !important;
-}
-
-.media-studios-label,
-.media-cover-meta {
-  color: var(--text-dim) !important;
-}
-
-.media-title-main {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-weight: 800 !important;
-  color: var(--text-main) !important;
-}
-
-.media-title-native {
-  color: var(--text-muted) !important;
-}
-
-.media-title-english {
-  color: var(--text-dim) !important;
-}
-
-.media-stat-label {
-  color: var(--text-muted) !important;
-}
-
-.media-stat-value {
-  color: var(--text-main) !important;
-}
-
-.media-stat-item {
-  border-bottom: 1px solid var(--border-color) !important;
-}
-
-.media-stat-item:first-child {
-  border-top: 1px solid var(--border-color) !important;
-}
-
-.media-description-text {
-  color: var(--text-muted) !important;
-}
-
-.media-description-text strong, 
-.media-description-text b {
-  color: var(--text-main) !important;
-}
-
-/* Related items and Characters Cards Style */
-.media-relation-card,
-.media-char-card {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-  background-color: var(--bg-card) !important;
-}
-
-.media-relation-card:hover,
-.media-char-card:hover {
-  transform: translate(-3px, -3px) !important;
-  box-shadow: 6px 6px 0px var(--border-color) !important;
-  border: 3px double var(--accent) !important;
-  background-color: var(--bg-elevated) !important;
-}
-
-.media-relation-thumb,
-.media-char-thumb {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-.media-cover-wrap {
-  box-shadow: 5px 5px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.media-cover-wrap:hover {
-  transform: translate(-3px, -3px) !important;
-  box-shadow: 8px 8px 0px var(--border-color) !important;
-}
-
-.media-library-widget-box {
-  background: var(--bg-elevated) !important;
-  box-shadow: 4px 4px 0px var(--border-color) !important;
-}
-
-.status-dropdown-trigger {
-  border-radius: 0px !important;
-}
-
-.status-dropdown-tray {
-  border-radius: 0px !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-}
-
-.media-pagination-page {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background-color: var(--bg-elevated) !important;
-  color: var(--text-muted) !important;
-  box-shadow: 2px 2px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.media-pagination-page:hover {
-  background-color: var(--bg-card) !important;
-  color: var(--accent) !important;
-  transform: translate(-1px, -1px) !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-}
-
-.media-pagination-page.active {
-  background-color: var(--accent) !important;
-  color: #12110f !important;
-  border-color: var(--border-color) !important;
-}
-
-.media-load-more-btn {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  background-color: var(--bg-elevated) !important;
-  color: var(--text-main) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.media-load-more-btn:hover {
-  background: var(--text-main) !important;
-  color: var(--bg-primary) !important;
+[data-theme="newspaper-dark"] .media-card:hover,
+[data-theme="newspaper-dark"] .media-relation-card:hover {
   border-color: var(--text-main) !important;
-  transform: translate(-2px, -2px) !important;
-  box-shadow: 5px 5px 0px var(--border-color) !important;
+  transform: translateY(-2px) !important;
 }
-
-/* ── Library Page Overrides for Newspaper Dark ──────────────────────────── */
-
-.library-card {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  background-color: var(--bg-card) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.library-card:hover {
-  transform: translate(-3px, -3px) !important;
-  box-shadow: 6px 6px 0px var(--border-color) !important;
-  border: 3px double var(--accent) !important;
-  background-color: var(--bg-elevated) !important;
-}
-
-.library-card-thumb {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: none !important;
-}
-
-.library-card-thumb img {
-  filter: grayscale(0.35) sepia(0.15) !important;
-}
-
-.library-card-title {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-weight: 700 !important;
-  color: var(--text-main) !important;
-}
-
-.library-card-date {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-muted) !important;
-}
-
-.library-card-type svg {
-  color: var(--text-dim) !important;
-}
-
-.library-filter-input,
-.library-status-cycler,
-.library-type-btn {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.library-type-btn.active {
-  border-color: var(--accent) !important;
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
-}
-
-.library-status-arrow {
-  color: var(--accent) !important;
-}
-
-/* ── Favorites Page Overrides for Newspaper Dark ────────────────────────── */
-
-
-
-.fav-card {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  background-color: var(--bg-card) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.fav-card:hover {
-  transform: translate(-3px, -3px) !important;
-  box-shadow: 6px 6px 0px var(--border-color) !important;
-  border: 3px double var(--accent) !important;
-  background-color: var(--bg-elevated) !important;
-}
-
-.fav-cover {
-  filter: grayscale(0.35) sepia(0.15) !important;
-}
-
-.fav-badge {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background-color: var(--bg-primary) !important;
-  color: var(--text-main) !important;
-}
-
-.fav-title {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-weight: 700 !important;
-  color: var(--text-main) !important;
-}
-
-.fav-meta {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-muted) !important;
-}
-
-.fav-meta-type svg {
-  color: var(--text-dim) !important;
-}
-
-.rating-system-btn {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  box-shadow: 2px 2px 0px var(--border-color) !important;
-  background-color: var(--bg-card) !important;
-}
-
-.rating-system-btn:hover {
-  border-color: var(--accent) !important;
-}
-
-.rating-system-btn.active {
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  background-color: var(--bg-elevated) !important;
-}
-
-/* ── Statistics overrides ────────────────────────────────────────────────── */
-.stats-card, .stats-days-row, .stats-block, .stats-type-card {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  background-color: var(--bg-card) !important;
-}
-
-.stats-card-value, .stats-day-value, .stats-type-count {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-weight: 900 !important;
-}
-
-.stats-block-title, .stats-card-label, .stats-day-label, .stats-type-label {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.rating-config-select {
-  border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
-  box-shadow: 2px 2px 0px var(--border-color) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-/* ── Saga overrides for Newspaper Dark ───────────────────────────────────── */
-.media-saga-btn {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background-color: var(--bg-elevated) !important;
-  color: var(--text-main) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  box-shadow: 2px 2px 0px var(--border-color) !important;
-  transition: all 0.2s ease !important;
-}
-
-.media-saga-btn:hover {
-  background-color: var(--bg-card) !important;
-  color: var(--accent) !important;
-  transform: translate(-1px, -1px) !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-}
-
-.saga-strip-container {
-  border-radius: 0px !important;
-  border-top: 3px double var(--border-color) !important;
-  border-bottom: 3px double var(--border-color) !important;
-  background-color: #12110f !important;
-  box-shadow: none !important;
-}
-
-.saga-strip-header {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.saga-strip-subtitle {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-muted) !important;
-}
-
-.saga-strip-title {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-main) !important;
-  font-weight: 800 !important;
-}
-
-.saga-strip-item {
-  border-radius: 0px !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.saga-strip-item-bg img {
-  filter: grayscale(0.8) sepia(0.2) blur(3px) !important;
-  opacity: 0.1 !important;
-}
-
-.saga-strip-item:hover .saga-strip-item-bg img {
-  opacity: 0.2 !important;
-  filter: grayscale(0.8) sepia(0.2) blur(1px) !important;
-}
-
-.saga-strip-item-overlay {
-  background: linear-gradient(to bottom, #12110f 0%, rgba(18, 17, 15, 0.3) 25%, rgba(18, 17, 15, 0.3) 75%, #12110f 100%) !important;
-}
-
-.saga-strip-item-cover {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  filter: grayscale(0.35) sepia(0.15) !important;
-  background: var(--bg-elevated) !important;
-}
-
-.saga-strip-item:hover .saga-strip-item-cover {
-  transform: translateY(-5px) !important;
-  box-shadow: 5px 5px 0px var(--border-color) !important;
-}
-
-.saga-strip-item-title {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-weight: bold !important;
-  color: var(--text-main) !important;
-}
-
-.saga-strip-item-badge {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background-color: var(--bg-primary) !important;
-  color: var(--text-main) !important;
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-}
-
-.saga-strip-item-year {
-  font-family: 'Georgia', 'Times New Roman', serif !important;
-  color: var(--text-muted) !important;
-}
-
-.saga-strip-item--current .saga-strip-item-cover {
-  border: 2px solid var(--accent) !important;
-  box-shadow: 4px 4px 0px var(--accent) !important;
-}
-
-.saga-strip-item--current:hover .saga-strip-item-cover {
-  transform: none !important;
-}
-
-.saga-strip-item-current-indicator {
-  border-radius: 0px !important;
-  width: 6px;
-  height: 6px;
-  background-color: var(--accent) !important;
-  box-shadow: none !important;
-}
-
-.saga-strip-close {
-  background-color: #12110f !important;
-  border: 3px double var(--border-color) !important;
-  border-radius: 0px !important;
-  box-shadow: 3px 3px 0px var(--border-color) !important;
-  color: var(--text-main) !important;
-}
-
-.saga-strip-close:hover {
-  background-color: var(--text-main) !important;
-  color: var(--bg-primary) !important;
-  border-color: var(--text-main) !important;
-  transform: translateX(-50%) translate(-2px, -2px) !important;
-  box-shadow: 5px 5px 0px var(--border-color) !important;
-}
-
-.media-banner-pr-btn {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-}
-.media-banner-pr-btn:hover {
-  background-color: var(--bg-elevated) !important;
-  color: var(--accent) !important;
-}
-
-.pr-editor-modal {
-  border: 3px double var(--border-color) !important;
-  border-radius: 0px !important;
-  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.8) !important;
-}
-
-.pr-editor-header {
-  border-bottom: 2px solid var(--border-color) !important;
-}
-
-.pr-editor-title {
-  font-family: var(--font-title) !important;
-  text-transform: uppercase;
-}
-
-.pr-editor-footer {
-  border-top: 2px solid var(--border-color) !important;
-}
-
-.pr-editor-btn,
-.pr-editor-field input[type="text"],
-.pr-editor-field input[type="number"],
-.pr-editor-field textarea {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-.pr-editor-btn--submit {
-  border: 1px solid var(--accent) !important;
-  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.5);
-}
-
-.pr-editor-btn--submit:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
-}
-
-.pr-editor-slots-box {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-.pr-editor-slot-pill {
-  border-radius: 0px !important;
-  border: 1px solid var(--accent) !important;
-  background: rgba(var(--accent-rgb, 124, 106, 247), 0.1) !important;
-}
-
-.media-author-avatar {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  filter: sepia(0.3) grayscale(0.2) !important;
-}
-
-

@@ -1,8 +1,9 @@
-:root {
+html[data-theme="nebula"], [data-theme="nebula"], html:not([data-theme]) {
   --bg-primary: #07070e;
 }
 
-#app-bg {
+[data-theme="nebula"] #app-bg,
+html:not([data-theme]) #app-bg {
   background:
     radial-gradient(ellipse 60% 50% at 50% -8%, rgba(120, 70, 210, 0.22) 0%, transparent 65%),
     radial-gradient(ellipse 35% 30% at 88% 92%, rgba(90, 40, 170, 0.12) 0%, transparent 60%);

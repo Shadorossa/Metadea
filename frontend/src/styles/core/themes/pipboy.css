@@ -22,7 +22,7 @@ html[data-theme="pipboy"], [data-theme="pipboy"] {
   --radius-xl: 0px;
 }
 
-body {
+body[data-theme="pipboy"], html[data-theme="pipboy"] body {
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;
   letter-spacing: 0.04em;
   background-color: var(--bg-primary);
@@ -35,7 +35,7 @@ body {
   100% { transform: translateY(100vh); }
 }
 
-#app-bg {
+[data-theme="pipboy"] #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
@@ -50,7 +50,7 @@ body {
 }
 
 /* Scanlines and flicker overlay */
-#app-bg::before {
+[data-theme="pipboy"] #app-bg::before {
   content: " ";
   display: block;
   position: absolute;
@@ -62,7 +62,7 @@ body {
 }
 
 /* Fast scrolling horizontal scanline beam */
-#app-bg::after {
+[data-theme="pipboy"] #app-bg::after {
   content: "";
   position: absolute;
   left: 0;
@@ -75,7 +75,7 @@ body {
 }
 
 /* CRT screen border mask and tint */
-body::after {
+html[data-theme="pipboy"]::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -87,14 +87,14 @@ body::after {
 /* ── UI Element Overrides ────────────────────────────────────────────────── */
 
 /* Pip-boy terminal style buttons and inputs */
-.btn,
-.settings-tab,
-.google-btn,
-.search-input,
-.search-action-btn,
-.search-tab,
-.media-banner-date-badge,
-.status-dropdown-trigger {
+[data-theme="pipboy"] .btn,
+[data-theme="pipboy"] .settings-tab,
+[data-theme="pipboy"] .google-btn,
+[data-theme="pipboy"] .search-input,
+[data-theme="pipboy"] .search-action-btn,
+[data-theme="pipboy"] .search-tab,
+[data-theme="pipboy"] .media-banner-date-badge,
+[data-theme="pipboy"] .status-dropdown-trigger {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   background-color: transparent !important;
@@ -104,10 +104,10 @@ body::after {
   font-weight: 700 !important;
 }
 
-.btn:hover,
-.settings-tab:hover,
-.search-tab:hover,
-.search-action-btn:hover {
+[data-theme="pipboy"] .btn:hover,
+[data-theme="pipboy"] .settings-tab:hover,
+[data-theme="pipboy"] .search-tab:hover,
+[data-theme="pipboy"] .search-action-btn:hover {
   background-color: var(--accent-soft) !important;
   color: var(--text-main) !important;
   border-color: var(--text-main) !important;
@@ -115,12 +115,12 @@ body::after {
 }
 
 /* Selected/Active Terminal Tab */
-.settings-tab.active,
-.theme-card.active .theme-card-preview,
-.hof-btn--active,
-.search-tab.active,
-.search-input:focus,
-.input-dark:focus {
+[data-theme="pipboy"] .settings-tab.active,
+[data-theme="pipboy"] .theme-card.active .theme-card-preview,
+[data-theme="pipboy"] .hof-btn--active,
+[data-theme="pipboy"] .search-tab.active,
+[data-theme="pipboy"] .search-input:focus,
+[data-theme="pipboy"] .input-dark:focus {
   border: 2px solid var(--accent) !important;
   background-color: rgba(29, 255, 115, 0.12) !important;
   color: var(--text-main) !important;
@@ -128,12 +128,12 @@ body::after {
 }
 
 /* Media Cards: look like retro wireframes / terminal readout blocks */
-.card-media-base,
-.media-relation-card,
-.media-char-card,
-.media-library-widget-box,
-.status-dropdown-tray,
-.hof-card {
+[data-theme="pipboy"] .card-media-base,
+[data-theme="pipboy"] .media-relation-card,
+[data-theme="pipboy"] .media-char-card,
+[data-theme="pipboy"] .media-library-widget-box,
+[data-theme="pipboy"] .status-dropdown-tray,
+[data-theme="pipboy"] .hof-card {
   border-radius: 0px !important;
   border: 1px dashed var(--border-color) !important;
   background-color: var(--bg-card) !important;
@@ -141,18 +141,19 @@ body::after {
   box-shadow: none !important;
 }
 
-.card-media-base:hover,
-.media-relation-card:hover,
-.media-char-card:hover {
+[data-theme="pipboy"] .card-media-base:hover,
+[data-theme="pipboy"] .media-relation-card:hover,
+[data-theme="pipboy"] .media-char-card:hover {
   border: 1px solid var(--accent) !important;
   background-color: var(--bg-elevated) !important;
   box-shadow: 0 0 10px rgba(29, 255, 115, 0.2) !important;
 }
 
-
-
 /* Typography Terminal dividers */
-h2, h3, .settings-panel-title, .section-label {
+[data-theme="pipboy"] h2, 
+[data-theme="pipboy"] h3, 
+[data-theme="pipboy"] .settings-panel-title, 
+[data-theme="pipboy"] .section-label {
   border-bottom: 2px dashed var(--border-color) !important;
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;
   color: var(--text-main) !important;
@@ -160,10 +161,10 @@ h2, h3, .settings-panel-title, .section-label {
 }
 
 /* Badges phosphor style */
-.card-rating-badge,
-.theme-card-check,
-.media-char-role,
-.media-relation-type {
+[data-theme="pipboy"] .card-rating-badge,
+[data-theme="pipboy"] .theme-card-check,
+[data-theme="pipboy"] .media-char-role,
+[data-theme="pipboy"] .media-relation-type {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
   background: var(--bg-primary) !important;
@@ -172,17 +173,17 @@ h2, h3, .settings-panel-title, .section-label {
 }
 
 /* Custom terminal scrollbars */
-::-webkit-scrollbar {
+[data-theme="pipboy"] ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-::-webkit-scrollbar-track {
+[data-theme="pipboy"] ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
-::-webkit-scrollbar-thumb {
+[data-theme="pipboy"] ::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border: 2px solid var(--bg-primary);
 }
-::-webkit-scrollbar-thumb:hover {
+[data-theme="pipboy"] ::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
