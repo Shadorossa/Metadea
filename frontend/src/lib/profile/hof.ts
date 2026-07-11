@@ -1,6 +1,6 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
-import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
+import type { getAllLibraryEntries, MediaCatalogEntry, CharacterEntry } from '../tauri';
 import { buildStarHtml } from '../media/rating-utils';
 import { ICON_CROWN, ICON_PERSON } from '../shared/icon-strings';
 
@@ -22,7 +22,13 @@ function getRatingHtml(rating: number | null | undefined): string {
   return buildStarHtml(rating ?? 0, 'hof-card-rating', 'display:flex;gap:2px;align-items:center;color:currentColor;');
 }
 
-export function buildHofHtml(items: Items, catalogMap: Map<string, MediaCatalogEntry>, p: P): string {
+export function buildHofHtml(
+  items: Items,
+  catalogMap: Map<string, MediaCatalogEntry>,
+  p: P,
+  charFavIds: string[] = [],
+  characterMap: Map<string, CharacterEntry> = new Map(),
+): string {
   const top10: (Items[number] | null)[] = [...items].slice(0, 10);
 
   while (top10.length < 10) top10.push(null);
@@ -51,9 +57,30 @@ export function buildHofHtml(items: Items, catalogMap: Map<string, MediaCatalogE
     </div>`;
   }).join('');
 
-  const charCards = Array.from({ length: 10 }, (_, i) =>
-    `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`
-  ).join('');
+  // Top 10 favorite characters — sourced from the Favorites tab's
+  // "character" bucket (already user-ordered via drag reorder there), not a
+  // separate ranking of its own.
+  const top10Chars: (CharacterEntry | null)[] = charFavIds
+    .slice(0, 10)
+    .map(id => characterMap.get(id) ?? null);
+  while (top10Chars.length < 10) top10Chars.push(null);
+
+  const charCards = top10Chars.map((char, i) => {
+    if (!char) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;
+
+    const style = char.image_url
+      ? `background-image: url('${char.image_url}'); background-size: cover; background-position: center;`
+      : `background: linear-gradient(160deg, #374151, #1f2937);`;
+
+    return `<div class="hof-card" style="${style}">
+      <div class="hof-card-overlay"></div>
+      <span class="hof-card-rank">#${i + 1}</span>
+      <div class="hof-card-label">${char.name}</div>
+      <div class="hof-card-content">
+        <span class="hof-card-id">${char.name}</span>
+      </div>
+    </div>`;
+  }).join('');
 
   return `
     <div class="hof-wrapper">

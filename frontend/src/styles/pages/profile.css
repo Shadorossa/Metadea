@@ -789,6 +789,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  /* Grid items default to min-width: auto, which honors their content's
+     min-content size — the month row's `width: max-content` zigzag could
+     still force this column (and therefore the whole grid) wider than its
+     2fr share, shoving Actividad Reciente to the right, even though
+     .mh-scroll's own min-width: 0 lets it scroll internally. */
+  min-width: 0;
 }
 
 /* ── Monthly History ──────────────────────────────────────────────────────── */

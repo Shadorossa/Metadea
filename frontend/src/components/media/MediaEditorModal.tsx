@@ -49,7 +49,6 @@ interface LogState {
 // being duplicated onto this type — a single source of truth per log.
 interface EntryState {
   monthlyHistory:   Record<string, string[]>;
-  selectedMonthKey: string | null;
   selectedYear:     number;
   activeLogId:      string;
   logs:             Record<string, LogState>;
@@ -61,7 +60,7 @@ type EntryAction =
   | { type: 'UPDATE_LOG';   updates: Partial<LogState> }
   | { type: 'SET_VERSION';  value: string; baseId: string }
   | { type: 'LOAD_HISTORY'; history: Record<string, string[]>; foundKey: string | null }
-  | { type: 'SET_MONTH';    externalId: string; key: string | null; year: number }
+  | { type: 'SET_MONTH';    ids: string[]; primaryId: string; key: string | null; year: number }
   | { type: 'SET_YEAR';     delta: 1 | -1 };
 
 // UI state: loading flags, tag input, anilist feedback
@@ -97,7 +96,7 @@ function createDefaultLog(status = ''): LogState {
 }
 
 const entryInit: EntryState = {
-  monthlyHistory: {}, selectedMonthKey: null,
+  monthlyHistory: {},
   selectedYear: new Date().getFullYear(),
   activeLogId: '',
   logs: {},
@@ -203,22 +202,30 @@ function entryReducer(state: EntryState, action: EntryAction): EntryState {
     }
     case 'LOAD_HISTORY': {
       const year = action.foundKey ? Number(action.foundKey.split('-')[0]) : state.selectedYear;
-      return { ...state, monthlyHistory: action.history, selectedMonthKey: action.foundKey, selectedYear: year };
+      return { ...state, monthlyHistory: action.history, selectedYear: year };
     }
     case 'SET_YEAR':
       return { ...state, selectedYear: state.selectedYear + action.delta };
     case 'SET_MONTH': {
-      const { externalId, key: newKey, year } = action;
+      // `ids` is every external_id that represents this same game (base +
+      // every known edition/version) — clearing *all* of them, not just
+      // whichever id happens to be open right now, is what makes toggling a
+      // month off actually work when it was set from a different edition's
+      // tab than the one currently active (previously the base and each
+      // edition were treated as unrelated games, so a month assigned via one
+      // could never be removed from another's view).
+      const { ids, primaryId, key: newKey, year } = action;
+      const idSet = new Set(ids);
       const next = { ...state.monthlyHistory };
       for (const k of Object.keys(next)) {
-        next[k] = next[k].filter(id => id !== externalId);
+        next[k] = next[k].filter(id => !idSet.has(id));
         if (next[k].length === 0) delete next[k];
       }
       if (newKey) {
         if (!next[newKey]) next[newKey] = [];
-        if (!next[newKey].includes(externalId)) next[newKey].push(externalId);
+        if (!next[newKey].includes(primaryId)) next[newKey].push(primaryId);
       }
-      return { ...state, monthlyHistory: next, selectedMonthKey: newKey, selectedYear: year };
+      return { ...state, monthlyHistory: next, selectedYear: year };
     }
     default: return state;
   }
@@ -430,12 +437,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     dispatchUi({ type: 'SET_CLOSING' });
     setTimeout(onClose, 180);
   }, [onClose]);
-
-  const handleMonthClick = useCallback((monthIndex: number) => {
-    const targetKey = `${entry.selectedYear}-${String(monthIndex).padStart(2, '0')}`;
-    const newKey = entry.selectedMonthKey === targetKey ? null : targetKey;
-    dispatchEntry({ type: 'SET_MONTH', externalId, key: newKey, year: entry.selectedYear });
-  }, [externalId, entry.selectedYear, entry.selectedMonthKey]);
 
   const handleImportFromAniList = useCallback(async () => {
     dispatchUi({ type: 'SET_ANILIST_IMPORT', status: 'syncing' });
@@ -657,6 +658,32 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     return list;
   }, [editionGroups, baseId, data.parentGame, externalId, data.titleMain, data.cover]);
 
+  // Every id that represents "this same game" for monthly-history purposes —
+  // the base game, whichever edition's page is currently open, and every
+  // other known sibling edition. A month assigned from any one of these
+  // must be recognized (and removable) from all the others.
+  const sameGameIds = useMemo(
+    () => new Set([baseId, externalId, ...allAvailableEditions.map(e => e.externalId)]),
+    [baseId, externalId, allAvailableEditions],
+  );
+
+  // Derived instead of stored: recomputing from monthlyHistory + sameGameIds
+  // on every render means it self-corrects once allAvailableEditions loads
+  // (async, slightly after mount), instead of freezing on whatever the
+  // initial exact-externalId-only search found.
+  const selectedMonthKey = useMemo(() => {
+    for (const [key, ids] of Object.entries(entry.monthlyHistory)) {
+      if (ids.some(id => sameGameIds.has(id))) return key;
+    }
+    return null;
+  }, [entry.monthlyHistory, sameGameIds]);
+
+  const handleMonthClick = useCallback((monthIndex: number) => {
+    const targetKey = `${entry.selectedYear}-${String(monthIndex).padStart(2, '0')}`;
+    const newKey = selectedMonthKey === targetKey ? null : targetKey;
+    dispatchEntry({ type: 'SET_MONTH', ids: [...sameGameIds], primaryId: baseId, key: newKey, year: entry.selectedYear });
+  }, [sameGameIds, baseId, entry.selectedYear, selectedMonthKey]);
+
   // Header cover/title follow whichever log tab is active — the base game's
   // own title/cover, the current version's, or another linked edition's.
   const activeLogDisplay = useMemo(() => {
@@ -866,15 +893,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     {te.months.map((mName, idx) => {
                       const mNumber = idx + 1;
                       const key = `${entry.selectedYear}-${String(mNumber).padStart(2, '0')}`;
-                      const isSelected = entry.selectedMonthKey === key;
-                      // Only 1 media per month across the whole library — a
-                      // month already claimed by a *different* entry is
-                      // blocked here instead of letting SET_MONTH silently
-                      // pile more than one id into the same slot. The
-                      // currently-viewed entry can still freely toggle its
-                      // own month on/off (its own id doesn't count as taken).
-                      const takenBy = (entry.monthlyHistory[key] ?? []).find(id => id !== externalId);
-                      const occupantId = takenBy ?? (isSelected ? externalId : undefined);
+                      const isSelected = selectedMonthKey === key;
+                      // Only 1 game per month across the whole library — a
+                      // month already claimed by a genuinely *different* game
+                      // is blocked here instead of letting SET_MONTH silently
+                      // pile more than one id into the same slot. Any id that
+                      // belongs to *this* game (base or any known edition)
+                      // never counts as taken, so the month stays freely
+                      // toggleable regardless of which edition tab set it.
+                      const monthIds = entry.monthlyHistory[key] ?? [];
+                      const takenBy = monthIds.find(id => !sameGameIds.has(id));
+                      const occupantId = takenBy ?? monthIds.find(id => sameGameIds.has(id));
                       const occupant = occupantId ? monthMediaInfo[occupantId] : undefined;
                       return (
                         <button key={key} type="button"

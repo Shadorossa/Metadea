@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries, readMonthlyHistory, readUserFavorites } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, readMonthlyHistory, readUserFavorites } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
@@ -142,7 +142,13 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const multimediaIds = favData.multimedia || [];
     const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
 
-    el.innerHTML = buildHofHtml(hofItems, catalogMap, p) + statsHtml + bottomHtml;
+    // Characters are never in media_catalog — resolved separately from their
+    // own table, same as the Favorites tab.
+    const characterEntries = await getAllCharacters().catch(() => []);
+    const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
+    const charFavIds = favData.character || [];
+
+    el.innerHTML = buildHofHtml(hofItems, catalogMap, p, charFavIds, characterMap) + statsHtml + bottomHtml;
     initHofListeners(el);
     initActivityListeners(el, catalogMap, p);
     const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
