@@ -21,7 +21,53 @@ const t    = useTranslations(lang);
   <main class="profile-page">
 
     <div class="profile-banner">
-      <div class="profile-banner-content" id="banner-content"></div>
+      <div class="profile-banner-content" id="banner-content">
+        <script is:inline>
+          (function() {
+            var fontFiles = {
+              inter: 'inter/Inter-VariableFont_opsz,wght.woff2',
+              roboto: 'roboto/Roboto-VariableFont_wdth,wght.woff2',
+              montserrat: 'montserrat/Montserrat-VariableFont_wght.woff2',
+              raleway: 'raleway/Raleway-VariableFont_wght.woff2',
+              syne: 'syne/Syne-VariableFont_wght.woff2',
+              sourcesanspro: 'sourcesanspro/SourceSans3-VariableFont_wght.woff2',
+              lora: 'lora/Lora-VariableFont_wght.woff2',
+              playfairdisplay: 'playfairdisplay/PlayfairDisplay-VariableFont_wght.woff2',
+              alegreya: 'alegreya/Alegreya-VariableFont_wght.woff2',
+              fraunces: 'fraunces/Fraunces-VariableFont_SOFT,WONK,opsz,wght.woff2',
+              librebaskerville: 'librebaskerville/LibreBaskerville-Bold.woff2',
+              inconsolata: 'inconsolata/Inconsolata-VariableFont_wdth,wght.woff2'
+            };
+            var bannerCache = localStorage.getItem('profile_banner_cache');
+            var avatarCache = localStorage.getItem('profile_avatar_cache');
+            var fontCache = localStorage.getItem('profile_font_cache') || 'inter';
+            var nameCache = localStorage.getItem('auth_username') || localStorage.getItem('profile_username_cache') || '';
+            
+            var fontFile = fontFiles[fontCache];
+            if (fontFile) {
+              var s = document.createElement('style');
+              s.textContent = '@font-face { font-family: "profile-font"; src: url("/fonts/' + fontFile + '") format("woff2"); font-display: block; }';
+              document.head.appendChild(s);
+            }
+
+            if (bannerCache) {
+              var banner = document.querySelector('.profile-banner');
+              if (banner) {
+                banner.style.backgroundImage = "url('" + bannerCache + "')";
+                banner.style.backgroundSize = 'cover';
+                banner.style.backgroundPosition = 'center';
+                banner.classList.add('has-custom-bg');
+              }
+            }
+            if (nameCache) {
+              var avatarHtml = avatarCache
+                ? '<img class="profile-avatar" src="' + avatarCache + '" alt="' + nameCache + '" referrerpolicy="no-referrer">'
+                : '<div class="profile-avatar-placeholder">' + (nameCache[0] || '?').toUpperCase() + '</div>';
+              document.write(avatarHtml + '<h1 class="profile-username-large" style="font-family: \'profile-font\', sans-serif;">' + nameCache + '</h1>');
+            }
+          })();
+        </script>
+      </div>
     </div>
 
     <div class="profile-tabs-divider">
@@ -35,9 +81,21 @@ const t    = useTranslations(lang);
       <button class="profile-tab" data-tab="stats" title="Estadísticas" set:html={ICON_PROFILE_STATS}></button>
       <button class="profile-tab" data-tab="reviews" title="Reseñas" set:html={ICON_PROFILE_REVIEWS}></button>
       <button class="profile-tab" data-tab="lists" title="Listas" set:html={ICON_PROFILE_LISTS}></button>
+      <script is:inline>
+        (function() {
+          var hash = window.location.hash.replace('#', '');
+          var tabs = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists'];
+          if (hash && tabs.indexOf(hash) !== -1) {
+            var buttons = document.querySelectorAll('.profile-tab');
+            buttons.forEach(function(btn) {
+              btn.classList.toggle('active', btn.dataset.tab === hash);
+            });
+          }
+        })();
+      </script>
     </nav>
 
-    <div id="profile-tab-content" class="profile-tab-content"></div>
+    <div id="profile-tab-content" class="profile-tab-content" style="opacity: 0; transition: opacity 0.12s ease;"></div>
 
     <ProfileLibraryEditor client:load i18n={t.media} />
 
@@ -93,29 +151,14 @@ const t    = useTranslations(lang);
     else if (tab === 'lists')     await renderLists(content);
 
     content.classList.remove('switching');
+    content.style.opacity = '1';
   }
 
   async function init() {
-    // This listener is registered once and never removed (see astro:page-load
-    // below), but that event fires on every SPA navigation, not just to this
-    // page — once the user has visited /profile even once, every future
-    // navigation anywhere else re-ran this handler, and switchTab()
-    // unconditionally does history.replaceState(..., '/profile...'),
-    // silently rewriting the URL/history entry out from under whatever page
-    // was actually showing. That corrupted BaseLayout's "remember current
-    // path" cache, which is why an F5 on a completely different page (media,
-    // character, ...) could bounce back to the profile/library instead.
+    // Bail out if profile tab content is not present
     if (!document.getElementById('profile-tab-content')) return;
 
-    // BaseLayout's rememberCurrentPath() is supposed to keep this in sync on
-    // every navigation, but it depends on the astro:page-load listener
-    // actually firing before an F5 — e.g. clicking a library card stops
-    // click propagation to avoid double-triggering its own handler, which
-    // also happens to swallow the ClientRouter's delegated soft-nav
-    // dispatch, so the path never gets re-saved. Since this init() only
-    // ever runs when /profile is genuinely showing (guard above), saving it
-    // here directly makes /profile "solid": reloading while on it can never
-    // bounce back to a stale cached page from before you navigated here.
+    // Immediately cache profile path to make reloads solid
     localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search + window.location.hash);
 
     const session = await getAuthToken().catch(() => null);
@@ -133,11 +176,22 @@ const t    = useTranslations(lang);
       bannerEl.style.backgroundSize = 'cover';
       bannerEl.style.backgroundPosition = 'center';
       bannerEl.classList.add('has-custom-bg');
+      localStorage.setItem('profile_banner_cache', customBanner);
+    } else {
+      localStorage.removeItem('profile_banner_cache');
     }
 
     // Custom avatar takes priority over Google avatar
     const customAvatar = await getImage(STORAGE_KEYS.profileAvatarCustom);
     const avatarSrc = customAvatar || avatar;
+    if (avatarSrc) {
+      localStorage.setItem('profile_avatar_cache', avatarSrc);
+    } else {
+      localStorage.removeItem('profile_avatar_cache');
+    }
+    if (username) {
+      localStorage.setItem('profile_username_cache', username);
+    }
 
     const bannerContent = document.getElementById('banner-content');
     if (bannerContent) {
@@ -148,6 +202,7 @@ const t    = useTranslations(lang);
       const { getUserInfo } = await import('../lib/tauri');
       const userInfo = await getUserInfo();
       const fontId = (userInfo.profile_font as string | undefined) ?? 'inter';
+      localStorage.setItem('profile_font_cache', fontId);
       const fontSrc = getFontFile(fontId);
       if (fontSrc) {
         const s = document.createElement('style');
@@ -155,7 +210,11 @@ const t    = useTranslations(lang);
         document.head.appendChild(s);
       }
 
-      bannerContent.innerHTML = `${avatarHtml}<h1 class="profile-username-large" style="font-family: 'profile-font', sans-serif;">${username}</h1>`;
+      const newHTML = `${avatarHtml}<h1 class="profile-username-large" style="font-family: 'profile-font', sans-serif;">${username}</h1>`;
+      const norm = (h) => h.replace(/\s+/g, ' ').replace(/'/g, '"').trim();
+      if (norm(bannerContent.innerHTML) !== norm(newHTML)) {
+        bannerContent.innerHTML = newHTML;
+      }
     }
 
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
