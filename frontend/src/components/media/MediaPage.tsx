@@ -369,12 +369,7 @@ export default function MediaPage({ i18n }: Props) {
     }
 
 
-    updateDiscordPresence(
-      detailsText,      // Línea 1: "Detalles del juego:"
-      data.titleMain,   // Línea 2: Título de la obra
-      'metadea',        // Tu logotipo de Metadea subido a Art Assets
-      'Metadea',
-    ).catch(() => {});
+    updateDiscordPresence(detailsText, data.titleMain).catch(() => {});
 
     // Al desmontar (salir de la ficha), restablecemos el estado por defecto
     return () => {

@@ -108,28 +108,23 @@ fn apply_activity(
 
 // -- Comandos Tauri -------------------------------------------------------------
 
-/// Actualiza la presencia con cover dinámico (large) y el logo de Metadea (small)
+// Update Discord Rich Presence details and status state
 #[tauri::command]
 pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
     details: String,
     state: String,
-    _large_image_url: Option<String>,
-    _large_image_text: Option<String>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     ensure_connected(&mut guard)?;
     
-    let cover_url = "metadea";
-    let cover_txt = "Metadea";
     let client = guard.as_mut().ok_or("no client")?;
-
     let ok = apply_activity(
         client, 
         &details, 
         &state, 
-        cover_url, 
-        cover_txt, 
+        "metadea", 
+        "Metadea", 
         "", 
         ""
     );
