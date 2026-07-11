@@ -25,13 +25,14 @@
     "genres_csv": "Role-playing (RPG),Sports,Adventure",
     "genres_tag_csv": null,
     "platforms_csv": "Nintendo 3DS,Nintendo DS",
-    "companies_cache_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": "LEVEL-5,Nintendo",
     "authors_csv": null,
     "last_synced_at": null,
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-05T16:22:49.138Z",
-    "updated_at": "2026-07-07T11:54:27.337762500+00:00"
+    "updated_at": "2026-07-11T12:12:51.067704500+00:00"
   },
   "media_relations": [
     {
@@ -40,7 +41,39 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Inazuma Eleven 2: Blizzard",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47676",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:47716",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:22688",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2ukm.jpg"
     },
     {
       "media_external_id": "game:22688",
@@ -48,7 +81,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Inazuma Eleven 2: Firestorm",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407m.jpg"
     },
     {
       "media_external_id": "game:47835",
@@ -56,23 +89,39 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Inazuma Eleven",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2ukm.jpg"
-    },
-    {
-      "media_external_id": "game:47835",
-      "related_media_external_id": "game:47716",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Inazuma Eleven 2: Blizzard",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2ukm.jpg"
     },
     {
       "media_external_id": "game:47716",
-      "related_media_external_id": "game:47835",
+      "related_media_external_id": "game:47676",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47716",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
-      "title": "Inazuma Eleven 2: Firestorm",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47675",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47716",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407n.jpg"
     },
     {
       "media_external_id": "game:47716",
@@ -81,8 +130,96 @@
       "type_label": "Sequel",
       "title": "Inazuma Eleven 3: Team Ogre Attacks!",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47676",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47675",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47674",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47835",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47716",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47675",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47676",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47674",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407s.jpg"
     }
   ],
   "characters": [],
-  "media_authors": []
+  "media_authors": [],
+  "saga_groups": {
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:47674": "IE3",
+    "game:47675": "IE3",
+    "game:47676": "IE3"
+  },
+  "saga_name": "Inazuma Eleven Go Galaxy: Supernova"
 }
