@@ -1,5 +1,5 @@
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, readMonthlyHistory, readUserFavorites } from '../tauri';
-import type { MediaCatalogEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readMonthlyHistory, readUserFavorites } from '../tauri';
+import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { buildHofHtml, initHofListeners } from './hof';
@@ -148,7 +148,12 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
     const charFavIds = favData.character || [];
 
-    el.innerHTML = buildHofHtml(hofItems, catalogMap, p, charFavIds, characterMap) + statsHtml + bottomHtml;
+    // Local-only cover overrides set via the Favorites tab's image editor —
+    // the Hall of Fame shows the same customized crop, not the raw cover.
+    const customImages = await getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]);
+    const customImageMap = new Map(customImages.map(c => [c.external_id, c]));
+
+    el.innerHTML = buildHofHtml(hofItems, catalogMap, p, charFavIds, characterMap, customImageMap) + statsHtml + bottomHtml;
     initHofListeners(el);
     initActivityListeners(el, catalogMap, p);
     const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
