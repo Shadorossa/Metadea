@@ -104,7 +104,10 @@ pub fn delete_github_token(
 
 #[tauri::command]
 pub async fn request_github_device_code(client_id: String) -> Result<DeviceCodeResponse, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
     let res = client
         .post(GITHUB_OAUTH_DEVICE_CODE)
         .header("Accept", "application/json")
@@ -123,7 +126,10 @@ pub async fn request_github_device_token(
     client_id: String,
     device_code: String,
 ) -> Result<TokenResponse, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
     let res = client
         .post(GITHUB_OAUTH_ACCESS_TOKEN)
         .header("Accept", "application/json")
@@ -143,7 +149,10 @@ pub async fn request_github_device_token(
 
 #[tauri::command]
 pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
     let res = client
         .get(&format!("{}/user", GITHUB_API))
         .header("Authorization", format!("token {}", token))

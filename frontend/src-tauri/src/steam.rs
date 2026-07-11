@@ -29,8 +29,13 @@ pub async fn download_achievements(
         Some(id) => id,
         None => return,
     };
-
-    let client = reqwest::Client::new();
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return,
+    };
 
     // Always fetch current player progress
     let progress_url = format!(
@@ -255,7 +260,10 @@ pub async fn steam_get_owned_games(
         api_key, steam_id
     );
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
     let resp = client.get(&url).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Steam API error (HTTP {})", resp.status()));
@@ -283,7 +291,10 @@ pub async fn steam_get_player_achievements(
     let steam_id = detect_steam_user_id().ok_or("Could not detect Steam user ID")?;
     let language = lang.unwrap_or_else(|| "spanish".to_string());
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
 
     // Fetch player progress (achieved status + unlock times)
     let progress_url = format!(

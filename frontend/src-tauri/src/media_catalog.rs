@@ -765,7 +765,10 @@ pub async fn sync_community_catalog(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<i64, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .str_err()?;
     let resp = client
         .get(COMMUNITY_DB_URL)
         .send()

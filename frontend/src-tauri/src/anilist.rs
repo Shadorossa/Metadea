@@ -81,7 +81,10 @@ pub fn delete_anilist_token(
 
 #[tauri::command]
 pub async fn get_anilist_user_profile(token: String) -> Result<Value, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .str_err()?;
     let query = r#"query { Viewer { name avatar { large } } }"#;
     let res = client
         .post(ANILIST_API)
