@@ -1,0 +1,200 @@
+{
+  "media_catalog": {
+    "id": "4378a1e52b9e35734378a1e52b9e3573",
+    "external_id": "anime:136192",
+    "parent_id": null,
+    "type": "anime",
+    "format": "MOVIE",
+    "source": "anilist",
+    "title_main": "Fruits Basket: prelude",
+    "title_romaji": "Fruits Basket -prelude-",
+    "title_native": "フルーツバスケット -prelude-",
+    "synopsis": "<p>Before there was Tooru and Kyou – there was Katsuya and Kyouko. Discover the turbulent beginning of Tooru’s mom’s dark past, and the man who breathed new hope into her. Watch the evolution of their love story and the birth of the Honda family, as this chapter completes the full adaptation of the heartwarming <i>Fruits Basket</i> story. <br><br><br />\n<span class=\"media-description-source\">&nbsp;&nbsp;—&nbsp;Source: Crunchyroll</span></p>",
+    "cover_url": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx136192-hxeNRzBHizBZ.jpg",
+    "banners_csv": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/136192-laocRSlhO6dc.jpg",
+    "release_year": 2022,
+    "release_month": 2,
+    "release_day": 18,
+    "time_length": 88,
+    "status": "FINISHED",
+    "score_global": 8.2,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": 1,
+    "total_count_2": null,
+    "genres_csv": "Drama,Romance",
+    "genres_tag_csv": null,
+    "platforms_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": "TMS Entertainment",
+    "authors_csv": "Natsuki Takaya",
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-11T12:27:36.935365100+00:00",
+    "updated_at": "2026-07-11T12:27:58.006635400+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:136192",
+      "related_media_external_id": "anime:124194",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fruits Basket: The Final",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx124194-TJlqMMR7BGn9.jpg"
+    },
+    {
+      "media_external_id": "anime:105334",
+      "related_media_external_id": "anime:111762",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fruits Basket: 2nd Season",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx111762-C8TNf5uRlVNQ.jpg"
+    },
+    {
+      "media_external_id": "anime:111762",
+      "related_media_external_id": "anime:105334",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fruits Basket: 1st Season",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx105334-AZwEdMu4KFtV.jpg"
+    },
+    {
+      "media_external_id": "anime:111762",
+      "related_media_external_id": "anime:124194",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fruits Basket: The Final",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx124194-TJlqMMR7BGn9.jpg"
+    },
+    {
+      "media_external_id": "anime:124194",
+      "related_media_external_id": "anime:111762",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fruits Basket: 2nd Season",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx111762-C8TNf5uRlVNQ.jpg"
+    },
+    {
+      "media_external_id": "anime:124194",
+      "related_media_external_id": "anime:136192",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fruits Basket: prelude",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx136192-hxeNRzBHizBZ.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:9754",
+      "name": "Kyouko Honda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b9754-PGxNeo2JwGx9.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:9230",
+      "name": "Katsuya Honda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b9230-eDjLFbK5JASM.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:207",
+      "name": "Tooru Honda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b207-RQ4EUdTD0K62.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:209",
+      "name": "Kyou Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b209-NOAbiLvJt1QA.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:206",
+      "name": "Shigure Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b206-4HokrxTIqu7L.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:208",
+      "name": "Yuki Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b208-5TmAqqh82wNe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:367",
+      "name": "Momiji Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b367-Jc6wMVpL76Ib.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:369",
+      "name": "Hatsuharu Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b369-NDFi2A2BzqO6.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:374",
+      "name": "Akito Souma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b374-8BT4gMd8xyl5.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:376",
+      "name": "Saki Hanajima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b376-gDdhShL8BIVg.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:235701",
+      "name": "Kyou no Haha",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b235701-sVjvY4m9v2bo.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:243715",
+      "name": "Tooru no Sofu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b243715-TBu327HRHZD2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:275037",
+      "name": "Kyouko no Haha",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:275038",
+      "name": "Kyouko no Chichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/default.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "staff:96873",
+      "name": "Natsuki Takaya",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/medium/1873.jpg",
+      "role": "Original Creator",
+      "url": "/author?id=staff:96873"
+    }
+  ],
+  "saga_groups": {
+    "anime:120": "Group 1",
+    "anime:105334": "Group 1"
+  }
+}
