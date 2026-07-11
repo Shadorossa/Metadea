@@ -228,6 +228,8 @@ export default function MediaPage({ i18n }: Props) {
           titleMain: skeletonTitle,
           cover: skeletonCover || undefined,
           bannerColor: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+          metaLines: [],
+          stats: [],
           characters: [],
           relations: [],
         } as unknown as MediaPageData);
@@ -689,15 +691,15 @@ export default function MediaPage({ i18n }: Props) {
                 {data.genreTagDots && <span className="media-genres-tags">{data.genreTagDots}</span>}
               </div>
             )}
-            {data.metaLines[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
-            {data.metaLines[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
-            {data.metaLines[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
+            {data.metaLines?.[0] && <p className="media-studios-label">{data.metaLines[0]}</p>}
+            {data.metaLines?.[1] && <p className="media-cover-meta">{data.metaLines[1]}</p>}
+            {data.metaLines?.[2] && <p className="media-cover-meta">{data.metaLines[2]}</p>}
           </div>
         </div>
       </div>
 
       {/* Body: 3 columnas */}
-      <div className={`media-body${data.stats.length === 0 ? ' media-body--no-stats' : ''}`}>
+      <div className={`media-body${(data.stats ?? []).length === 0 ? ' media-body--no-stats' : ''}`}>
 
         {/* Sinopsis */}
         <div className="media-col-synopsis">
