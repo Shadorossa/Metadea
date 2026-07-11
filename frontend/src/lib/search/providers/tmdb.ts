@@ -12,6 +12,18 @@ interface TmdbMovie {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+  genre_ids?: number[];
+  original_language?: string;
+  origin_country?: string[];
+}
+
+// TMDB genre id for "Animation". Japanese-language animation overlaps with
+// AniList's anime catalog, so it's excluded here to avoid duplicate entries
+// across the two providers.
+const TMDB_GENRE_ANIMATION = 16;
+
+function isAnime(movie: TmdbMovie): boolean {
+  return movie.original_language === 'ja' && !!movie.genre_ids?.includes(TMDB_GENRE_ANIMATION);
 }
 
 interface TmdbPageResponse {
@@ -163,7 +175,9 @@ async function fetchFromTmdb(
   }
 
   const data = await fetchJson<TmdbPageResponse>(url, { signal, headers });
-  return (data?.results ?? []).map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
+  return (data?.results ?? [])
+    .filter(movie => !isAnime(movie))
+    .map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
 }
 
 export const searchMovies = (searchQuery: string, signal: AbortSignal) =>

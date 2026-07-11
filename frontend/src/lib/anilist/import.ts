@@ -357,8 +357,10 @@ function formatMediaId(mediaType: string, format: string | undefined, anilistId:
 function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: number } | null): string {
   if (!fuzzyDate || !fuzzyDate.year) return '';
   const year = fuzzyDate.year;
-  const month = String(fuzzyDate.month ?? 1).padStart(2, '0');
-  const day = String(fuzzyDate.day ?? 1).padStart(2, '0');
+  // AniList uses 0 (not just null/undefined) to mean "unset" for month/day on a
+  // partially-known date, so `?? 1` alone lets a 0 slip through as a literal "00".
+  const month = String(fuzzyDate.month || 1).padStart(2, '0');
+  const day = String(fuzzyDate.day || 1).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

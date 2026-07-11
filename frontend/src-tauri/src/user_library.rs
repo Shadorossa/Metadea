@@ -207,8 +207,11 @@ pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>
     let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).str_err()?;
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
+    // `content` is always the complete map (read via read_monthly_history), so a
+    // month absent here means "cleared" — wipe the whole table before rewriting,
+    // not just the months that still have entries, or removals never persist.
+    tx.execute("DELETE FROM monthly_history", []).str_err()?;
     for (month, ids) in &map {
-        tx.execute("DELETE FROM monthly_history WHERE month = ?1", [month]).str_err()?;
         for (pos, id) in ids.iter().enumerate() {
             tx.execute(
                 "INSERT INTO monthly_history (month, external_id, position) VALUES (?1, ?2, ?3)",

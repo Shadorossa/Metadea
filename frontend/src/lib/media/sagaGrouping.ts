@@ -27,18 +27,20 @@ export interface SagaGroupEntry {
   mainId: string;
   /** Every id belonging to this cluster (only >1 for 'group' entries sharing a Concept Group name). */
   ids: string[];
-  /** 'group' covers both 'main' and 'alternative' saga-relation-type ids; the other three are always standalone. */
+  /** 'group' covers 'main' saga-relation-type ids; the other three are always standalone. */
   kind: 'group' | 'source' | 'episode' | 'update';
 }
 
 /** Walks the saga's chronological order once and clusters it into
- *  SagaGroupEntry buckets — 'main'/'alternative' ids sharing the same
- *  free-text Concept Group name collapse into a single 'group' entry (so
- *  e.g. a console remaster and its PC original count as one step in the
- *  saga timeline), while 'source'/'episode'/'update' ids always stay
- *  standalone. Shared by the editor's render (to draw group boxes) and by
- *  handleSubmit (to derive prequel/sequel + source/episode/update edges) —
- *  previously each kept its own slightly different copy of this walk. */
+ *  SagaGroupEntry buckets — 'main' ids sharing the same free-text Concept
+ *  Group name collapse into a single 'group' entry, which is what makes them
+ *  alternates of each other (so e.g. a console remaster and its PC original,
+ *  or Inazuma Eleven 2's three versions, count as one step in the saga
+ *  timeline instead of a chain of their own sequels/prequels), while
+ *  'source'/'episode'/'update' ids always stay standalone. Shared by the
+ *  editor's render (to draw group boxes) and by handleSubmit (to derive
+ *  prequel/sequel + source/episode/update edges) — previously each kept its
+ *  own slightly different copy of this walk. */
 export function classifySagaChain(
   fullChain: string[],
   sagaRelationTypes: Record<string, SagaRelationType>,
@@ -50,7 +52,7 @@ export function classifySagaChain(
   for (const id of fullChain) {
     const relType = sagaRelationTypes[id] || 'main';
 
-    if (relType === 'main' || relType === 'alternative') {
+    if (relType === 'main') {
       const rawGroupId = sagaGroups[id];
       const groupId = rawGroupId ? rawGroupId.trim().toLowerCase() : '';
 
@@ -63,7 +65,7 @@ export function classifySagaChain(
       const clusterIds = fullChain.filter(otherId => {
         const otherRelType = sagaRelationTypes[otherId] || 'main';
         const otherGroupId = sagaGroups[otherId];
-        return (otherRelType === 'main' || otherRelType === 'alternative') &&
+        return otherRelType === 'main' &&
           !!otherGroupId && otherGroupId.trim().toLowerCase() === groupId;
       });
       renderedGroupIds.add(groupId);

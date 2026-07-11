@@ -4,7 +4,7 @@ import { invoke } from '../../lib/tauri';
 import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelations, saveMediaRelations, getMediaAuthors } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../lib/media/mediaService';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
-import { getMediaCharacters, type DbMediaCharacter } from '../../lib/tauri/characters';
+import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
@@ -34,6 +34,8 @@ interface Props {
 
 
 const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
+
+const DEFAULT_NEW_RELATION_TYPE = 'REL_ADAPTATION';
 
 // True when two string records differ after normalizing each value (missing
 // keys fall back through `normalize`), regardless of which record a key is in.
@@ -70,7 +72,8 @@ function Field({ label, changed, small, full, children }: {
 import { getT } from '../../i18n/client';
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
-  const tm = getT().media;
+  const t = getT();
+  const tm = t.media;
   const relationLabels = tm.relations;
 
   const [loading, setLoading] = useState(true);
@@ -106,10 +109,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   // either from the existing relation rows (which already join title/cover
   // from media_catalog) or from the live API search result the user picked.
   const [sagaMeta, setSagaMeta] = useState<Record<string, MediaMeta>>({});
-  // 'main'/'alternative' ids can share a free-text Concept Group name
-  // (sagaGroups) to collapse into one saga-timeline step (e.g. a console
-  // remaster + its PC original); 'source'/'episode'/'update' ids attach to
-  // the nearest preceding group instead (see classifySagaChain).
+  // 'main' ids can share a free-text Concept Group name (sagaGroups) to
+  // collapse into one saga-timeline step and become alternates of each other
+  // (e.g. a console remaster + its PC original); 'source'/'episode'/'update'
+  // ids attach to the nearest preceding group instead (see classifySagaChain).
   const [sagaRelationTypes, setSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [sagaGroups, setSagaGroups] = useState<Record<string, string>>({});
   const [originalSagaRelationTypes, setOriginalSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
@@ -120,10 +123,13 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
 
   const [characters, setCharacters] = useState<DbMediaCharacter[]>([]);
+  const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
+  const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
+  const [characterQuery, setCharacterQuery] = useState('');
+  const [showCharacterSug, setShowCharacterSug] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'relations' | null>(null);
-  const [selectedRelationType, setSelectedRelationType] = useState<string>('REL_ADAPTATION');
 
   useEffect(() => {
     const load = async () => {
@@ -239,7 +245,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               }
             } else {
               const lower = r.relation_type.toLowerCase();
-              if (isSagaRelationType(lower) && lower !== 'main' && lower !== 'alternative') {
+              if (isSagaRelationType(lower) && lower !== 'main') {
                 relTypesMap[otherId] = lower;
               }
             }
@@ -261,9 +267,40 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     };
 
     load();
-    getMediaCharacters(externalId).then(setCharacters).catch(() => setCharacters([]));
+    getMediaCharacters(externalId).then(chars => { setCharacters(chars); setOriginalCharacters(chars); }).catch(() => { setCharacters([]); setOriginalCharacters([]); });
     getMediaAuthors(externalId).then(setMediaAuthors).catch(() => setMediaAuthors([]));
+    getAllCharacters().then(setAllCharacters).catch(() => setAllCharacters([]));
   }, [externalId]);
+
+  // ── Character handlers ──────────────────────────────────────────────────────
+
+  const removeCharacter = (charExternalId: string) =>
+    setCharacters(characters.filter(c => c.external_id !== charExternalId));
+  const updateCharacterRole = (charExternalId: string, role: string) =>
+    setCharacters(characters.map(c => c.external_id === charExternalId ? { ...c, relation_type: role } : c));
+  const addCharacter = (c: CharacterEntry) => {
+    if (characters.some(existing => existing.external_id === c.external_id)) return;
+    setCharacters([...characters, {
+      external_id: c.external_id,
+      name: c.name,
+      image_url: c.image_url,
+      relation_type: 'SUPPORTING',
+      character_name: null,
+    }]);
+    setCharacterQuery('');
+    setShowCharacterSug(false);
+  };
+  const charactersChanged = () => {
+    const key = (c: DbMediaCharacter) => `${c.external_id}::${c.relation_type ?? ''}`;
+    const a = new Set(characters.map(key));
+    const b = new Set(originalCharacters.map(key));
+    return a.size !== b.size || [...a].some(k => !b.has(k));
+  };
+  const characterSuggestions = characterQuery
+    ? allCharacters
+        .filter(c => c.name.toLowerCase().includes(characterQuery.toLowerCase()) && !characters.some(existing => existing.external_id === c.external_id))
+        .slice(0, 8)
+    : [];
 
   // ── Saga handlers ──────────────────────────────────────────────────────────
 
@@ -335,10 +372,13 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
   const addEditableRelation = (result: ApiSearchResult) => {
     if (!editableRelations.some(r => r.related_media_external_id === result.externalId)) {
+      // Type is picked afterward on the card's own select (same one shown
+      // for pre-existing relations), not before adding — a default here is
+      // just the starting point.
       setEditableRelations([...editableRelations, {
         related_media_external_id: result.externalId,
-        relation_type: selectedRelationType,
-        type_label: (relationLabels as any)[selectedRelationType] || selectedRelationType,
+        relation_type: DEFAULT_NEW_RELATION_TYPE,
+        type_label: (relationLabels as any)[DEFAULT_NEW_RELATION_TYPE] || DEFAULT_NEW_RELATION_TYPE,
         title: result.titleMain,
         cover: result.coverUrl,
       }]);
@@ -435,7 +475,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       }
     }
 
-    if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
+    if (charactersChanged()) lines.push(`- Characters: ${characters.length} character(s)`);
+    else if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
     if (mediaAuthors.length > 0) lines.push(`- Includes ${mediaAuthors.length} cached author/staff credit(s)`);
 
     return lines.length > 0 ? lines.join('\n') : '- No field changes detected (metadata refresh only)';
@@ -558,6 +599,11 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...currentChainRows];
       await saveMediaRelations(externalId, currentFinalRelations)
         .catch(err => console.error('Failed to save relations:', err));
+
+      if (charactersChanged()) {
+        await saveCharactersSkeleton(externalId, characters)
+          .catch(err => console.error('Failed to save characters:', err));
+      }
 
       await invoke('save_media_saga_groups', { groups: sagaGroups })
         .catch(err => console.error('Failed to save local saga groups:', err));
@@ -725,6 +771,67 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 </div>
               </div>
             </div>
+
+            <div className="pr-editor-section">
+              <span className="pr-editor-section-title">
+                Personajes
+                {charactersChanged() && <span className="pr-editor-section-changed-dot" />}
+              </span>
+              <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
+                {characters.map(c => (
+                  <div key={c.external_id} className="pr-editor-media-card">
+                    <div className="pr-editor-media-card-cover">
+                      {c.image_url
+                        ? <img src={c.image_url} alt="" />
+                        : <div className="pr-editor-media-card-placeholder" />}
+                      <button
+                        type="button"
+                        className="pr-editor-media-card-remove"
+                        onClick={() => removeCharacter(c.external_id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="pr-editor-media-card-title" title={c.name}>{c.name}</div>
+                    <select
+                      value={c.relation_type ?? 'SUPPORTING'}
+                      onChange={e => updateCharacterRole(c.external_id, e.target.value)}
+                      className="pr-editor-media-card-select"
+                      style={{ fontSize: '0.7rem' }}
+                    >
+                      <option value="MAIN">{t.character.role_main}</option>
+                      <option value="SUPPORTING">{t.character.role_supporting}</option>
+                      <option value="BACKGROUND">{t.character.role_background}</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  className="pr-editor-slot-input"
+                  placeholder="Buscar personaje para añadir..."
+                  value={characterQuery}
+                  onChange={e => { setCharacterQuery(e.target.value); setShowCharacterSug(true); }}
+                  onFocus={() => setShowCharacterSug(true)}
+                  onBlur={() => setTimeout(() => setShowCharacterSug(false), 150)}
+                  style={{ width: '100%' }}
+                />
+                {showCharacterSug && characterSuggestions.length > 0 && (
+                  <div className="pr-editor-suggestions-dropdown">
+                    {characterSuggestions.map(c => (
+                      <div
+                        key={c.external_id}
+                        className="pr-editor-suggestion-item"
+                        onMouseDown={() => addCharacter(c)}
+                      >
+                        {c.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Column: Media Assets, Classification, Saga, Collaborators */}
@@ -886,18 +993,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <select
-                    value={selectedRelationType}
-                    onChange={e => setSelectedRelationType(e.target.value)}
-                    className="pr-editor-media-card-select"
-                    style={{ fontSize: '0.7rem' }}
-                  >
-                    {EDITABLE_RELATION_OPTIONS.map(type => (
-                      <option key={type} value={type}>
-                        {((relationLabels as any)[type]) || type}
-                      </option>
-                    ))}
-                  </select>
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
                 </div>
               </div>

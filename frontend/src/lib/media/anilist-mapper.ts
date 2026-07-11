@@ -108,10 +108,14 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     });
 
   // Staff / Authors — AniList lists staff roles (Original Creator, Original
-  // Story, Director, ...) without ranking them, so the first non-empty group
-  // in priority order becomes the work's credited author(s). Anime falls
-  // back to Director too since many anime don't credit an Original Creator
-  // staff entry at all; manga/light novels stop at Original Story.
+  // Story, Director, Story & Art, ...) without ranking them, so the first
+  // non-empty tier in priority order becomes the work's credited author(s).
+  // Anime falls back to Director too since many anime don't credit an
+  // Original Creator staff entry at all. Manga/light novels are usually
+  // credited to one "Story & Art" mangaka, but when the story and art are
+  // split between two different people, AniList credits them separately as
+  // "Story" and "Art" — both belong together as co-authors, so that tier
+  // combines the two roles instead of picking just one.
   const staffEdges = raw.staff?.edges || [];
   const mapStaffEdges = (edges: AniListStaffEdge[], role: string): MediaAuthor[] =>
     edges.filter(e => e.role === role).map(e => ({
@@ -122,15 +126,15 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       url: `/author?id=staff:${e.node.id}`,
     }));
 
-  const rolePriority = resolvedType === 'anime'
-    ? ['Original Creator', 'Original Story', 'Director']
+  const rolePriority: string[][] = resolvedType === 'anime'
+    ? [['Original Creator'], ['Original Story'], ['Director']]
     : resolvedType === 'manga' || resolvedType === 'lnovel'
-      ? ['Original Creator', 'Original Story']
+      ? [['Story & Art'], ['Story', 'Art'], ['Original Creator'], ['Original Story']]
       : [];
 
   let authors: MediaAuthor[] = [];
-  for (const role of rolePriority) {
-    const matches = mapStaffEdges(staffEdges, role);
+  for (const tier of rolePriority) {
+    const matches = tier.flatMap(role => mapStaffEdges(staffEdges, role));
     if (matches.length > 0) {
       authors = matches;
       break;

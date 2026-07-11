@@ -8,22 +8,25 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, IGDB_GAME_TYPE_REMAKE, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor, MediaStat } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStat } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
+import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { formatDateParts, parseExternalId } from './mapper-utils';
 import { getT } from '../../i18n/client';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
 
-// Sequel/prequel first, then same-group alternates, everything else after —
+// Fuente / Precuela / Secuela / Historia paralela, everything else after —
 // shared by every place that turns saved DB relations back into the page's
 // Related section (first full fetch, catalog-first partial render).
-const RELATION_SORT_PRIORITY: Record<string, number> = { PREQUEL: 1, SEQUEL: 2, ALTERNATIVE: 3 };
+const RELATION_SORT_PRIORITY: Record<string, number> = {
+  SOURCE: 1, PARENT: 1, PREQUEL: 2, SEQUEL: 3, SIDE_STORY: 4,
+};
 
 function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPageData['relations']; hasSaga: boolean } {
   const sorted = [...rels].sort((a, b) => {
-    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 4;
-    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 4;
+    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 5;
+    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 5;
     if (priorityA !== priorityB) return priorityA - priorityB;
     return a.title.localeCompare(b.title);
   });
@@ -45,6 +48,15 @@ function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {
     image: a.image || undefined,
     role: a.role || undefined,
     url: `/author?id=${a.external_id}`,
+  };
+}
+
+function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter {
+  return {
+    id: c.external_id,
+    name: c.name,
+    image: c.image_url || undefined,
+    role: c.relation_type || c.character_name || undefined,
   };
 }
 
@@ -385,6 +397,7 @@ export function fetchMediaDataWithFallback(
   let hasLocalData = false;
   let localData: MediaPageData | null = null;
   let catalogEntry: MediaCatalogEntry | null = null;
+  let dbCharacterCount = 0;
 
   getCatalogEntry(rawId)
     .then(async catalog => {
@@ -395,6 +408,8 @@ export function fetchMediaDataWithFallback(
 
         try {
           const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
+          const dbChars = await getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]);
+          dbCharacterCount = dbChars.length;
 
           if (dbRels.length > 0) {
             const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
@@ -405,8 +420,12 @@ export function fetchMediaDataWithFallback(
           if (dbAuthors.length > 0) {
             localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
           }
+
+          if (dbChars.length > 0) {
+            localData.characters = dbChars.map(dbCharacterToMediaCharacter);
+          }
         } catch (e) {
-          console.error("Failed to load local media relations or authors", e);
+          console.error("Failed to load local media relations, authors or characters", e);
         }
 
         if (!fullArrived) {
@@ -419,13 +438,18 @@ export function fetchMediaDataWithFallback(
       // If the catalog entry is a thin skeleton or missing basic columns
       // (like synopsis, source, format, release date, genres, or companies),
       // we do not skip the live API fetch — we fetch from the network to enrich it.
+      // Anime/manga/lnovel entries always have characters on AniList, so a
+      // fully-enriched catalog row with zero locally-cached characters still
+      // forces a live re-fetch instead of permanently showing none.
+      const isAniListType = catalogEntry ? (ANILIST_TYPES as readonly string[]).includes(catalogEntry.type) : false;
       const isSkeleton = !catalogEntry ||
         !catalogEntry.format ||
         !catalogEntry.source ||
         !catalogEntry.synopsis ||
         !catalogEntry.release_year ||
         !catalogEntry.genres_csv ||
-        !catalogEntry.companies_cache_csv;
+        !catalogEntry.companies_cache_csv ||
+        (isAniListType && dbCharacterCount === 0);
 
       if (hasLocalData && localData && !isSkeleton) {
         fullArrived = true;

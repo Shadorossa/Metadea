@@ -14,6 +14,7 @@ const TYPE_ICON = typeIconMap(16);
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
@@ -42,10 +43,8 @@ function buildTagBadgesHtml(tags: string[] | null | undefined): string {
 }
 
 function buildDateHtml(started: string | null | undefined, finished: string | null | undefined): string {
-  if (!started && !finished) return '';
-  const parts: string[] = [];
-  if (started) parts.push(fmtDate(started));
-  if (finished) parts.push(fmtDate(finished));
+  const parts = [fmtDate(started), fmtDate(finished)].filter(Boolean);
+  if (parts.length === 0) return '';
   return `<span class="library-card-date">${CALENDAR_ICON}${parts.join(' → ')}</span>`;
 }
 

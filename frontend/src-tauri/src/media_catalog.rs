@@ -1122,12 +1122,13 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         .str_err()?;
 
         tx.execute(
-            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
-             VALUES (?1, ?2, ?3, ?4)",
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![
                 &char.external_id,
                 &entry.external_id,
                 &char.relation_type,
+                &char.character_name,
                 &now,
             ],
         )
@@ -1205,7 +1206,7 @@ pub async fn get_transitive_relation_ids(
             SELECT mr.related_media_external_id
             FROM media_relations mr
             JOIN saga_graph sg ON sg.id = mr.media_external_id
-            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'SOURCE', 'ADAPTATION', 'EPISODE', 'UPDATE', 'PART_OF')
+            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL')
         )
         SELECT id FROM saga_graph"
     ).str_err()?;

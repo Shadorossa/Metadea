@@ -245,6 +245,15 @@ pub async fn save_characters_skeleton(
     let now = Utc::now().to_rfc3339();
     let mut seen = std::collections::HashSet::new();
 
+    // `characters` is always the full curated list for this media (the PR
+    // editor's Personajes grid), so anything missing from it was
+    // deliberately removed — clear existing rows first or removals never
+    // persist (same class of bug fixed in media_catalog::import_proposal_bundle).
+    tx.execute(
+        "DELETE FROM character_appearances WHERE media_external_id = ?1",
+        [&media_external_id],
+    ).str_err()?;
+
     for char in characters {
         if !seen.insert(char.external_id.clone()) {
             continue;
