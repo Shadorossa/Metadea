@@ -32,9 +32,17 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T19:33:39.332Z",
-    "updated_at": "2026-07-07T20:47:45.926870700+00:00"
+    "updated_at": "2026-07-11T11:23:32.582566100+00:00"
   },
   "media_relations": [
+    {
+      "related_media_external_id": "game:400876",
+      "relation_type": "REL_UPDATE",
+      "type_label": "Update",
+      "title": "Resident Evil Requiem: Leon Must Die Forever",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc19v.jpg",
+      "media_external_id": "game:347668"
+    },
     {
       "media_external_id": "game:347668",
       "related_media_external_id": "game:55163",
