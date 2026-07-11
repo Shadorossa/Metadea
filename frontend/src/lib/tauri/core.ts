@@ -10,11 +10,33 @@ export const isTauri = (): boolean => {
   return false;
 };
 
+let dbReadyPromise: Promise<void> | null = null;
+let resolveDbReady: (() => void) | null = null;
+
+export function getDbReadyPromise(): Promise<void> {
+  if (!dbReadyPromise) {
+    dbReadyPromise = new Promise((resolve) => {
+      resolveDbReady = resolve;
+    });
+  }
+  return dbReadyPromise;
+}
+
+export function markDbReady() {
+  getDbReadyPromise();
+  if (resolveDbReady) resolveDbReady();
+}
+
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri()) {
     console.warn(`[Tauri] "${cmd}" called outside Tauri`);
     throw new Error('Tauri not available');
   }
+
+  if (cmd !== 'init_database') {
+    await getDbReadyPromise();
+  }
+
   const tauri = window.__TAURI__;
   if (tauri?.core?.invoke) return tauri.core.invoke<T>(cmd, args);
   const { invoke: tauriInvoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
