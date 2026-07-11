@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
-import type { MediaCharacter } from '../tauri/characters';
+import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';
 
 const REPO_OWNER = 'Shadorossa';
@@ -9,17 +9,12 @@ const REPO_NAME = 'Metadea';
 export interface ProposalBundle {
   media_catalog: MediaCatalogEntry;
   media_relations: Array<DbMediaRelation & { media_external_id: string }>;
-  characters: MediaCharacter[];
+  characters: DbMediaCharacter[];
   media_authors: DbMediaAuthor[];
   saga_groups: Record<string, string>;
 }
 
-// Everything needed to turn a collaborative-catalog bundle into a GitHub PR:
-// fork the repo (if the submitter isn't the owner), branch, commit the JSON
-// file, open a PR with a dash-bulleted change summary, and hand back a URL
-// the caller can open in the browser. Pulled out of PrEditorModal's
-// handleSubmit because none of this is view logic — it's a standalone
-// backend-orchestration workflow that's independently testable.
+// Handles the workflow of creating a branch, committing catalog JSON data, and opening a GitHub PR.
 export async function submitCollaborativeProposal(
   externalId: string,
   bundle: ProposalBundle,
@@ -114,10 +109,7 @@ export async function submitCollaborativeProposal(
     throw new Error('Failed to commit JSON file to GitHub.');
   }
 
-  // Always open a PR (even for the repo owner — a same-repo branch→main PR
-  // works fine on GitHub) so the flow is consistent: every submission ends
-  // with a real PR the app can open in the browser, prepared with a
-  // dash-bulleted list of exactly what changed.
+  // Always open a PR to keep the workflow consistent and provide a review URL.
   onStatus('Opening Pull Request...');
   const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for **${entry.title_main || externalId}** (\`${externalId}\`).\n\n### Changes\n${changeSummary}`;
   const prRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls`, {

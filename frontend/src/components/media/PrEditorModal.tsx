@@ -8,7 +8,7 @@ import {
   getMediaAuthors,
 } from '../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
-import { getMediaCharacters, type MediaCharacter } from '../../lib/tauri/characters';
+import { getMediaCharacters, type DbMediaCharacter } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
@@ -130,7 +130,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [originalSagaName, setOriginalSagaName] = useState('');
 
 
-  const [characters, setCharacters] = useState<MediaCharacter[]>([]);
+  const [characters, setCharacters] = useState<DbMediaCharacter[]>([]);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'relations' | null>(null);

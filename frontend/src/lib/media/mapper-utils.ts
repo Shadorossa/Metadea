@@ -34,17 +34,12 @@ export function normalizeScore100(raw: number | undefined | null): number | unde
   return Math.round((raw / 10) * 10) / 10;
 }
 
-/**
- * Look up a translated label by a runtime API value (e.g. AniList's
- * 'RELEASING', 'ADAPTATION') in an i18n dict keyed by those same enum-like
- * strings. Centralizes the `as Record<string, string>` cast that dict lookups
- * by a dynamic key would otherwise need at every call site.
- */
+// Look up a translated label by an API key in an i18n dictionary
 export function lookupLabel(dict: Record<string, string>, key: string | null | undefined, fallback: string): string {
   return (key ? dict[key] : undefined) ?? fallback;
 }
 
-/** Parse external_id (e.g. "anime:123", "game_igdb:456") into type and numeric ID. */
+// Parse external_id (e.g. "anime:123") into type and numeric ID
 export function parseExternalId(externalId: string): { type: string; id: number } {
   const colonIdx = externalId.indexOf(':');
   const type = externalId.slice(0, colonIdx).split('_')[0];
@@ -52,14 +47,13 @@ export function parseExternalId(externalId: string): { type: string; id: number 
   return { type, id };
 }
 
-/** Extract just the numeric ID from external_id. */
+// Extract the numeric ID from external_id
 export function extractNumericId(externalId: string): number {
   const colonIdx = externalId.indexOf(':');
   return parseInt(externalId.slice(colonIdx + 1), 10);
 }
 
-/** Create a sort key for release date (year, month, day) for use in comparisons.
- *  Returns [year, month, day] with Infinity for missing values to sort unknowns last. */
+// Create a sort key [year, month, day] for comparisons (unknowns sorted last)
 export function getReleaseDateKey(item: { release_year?: number | null; release_month?: number | null; release_day?: number | null }): [number, number, number] {
   return [
     item.release_year ?? Infinity,

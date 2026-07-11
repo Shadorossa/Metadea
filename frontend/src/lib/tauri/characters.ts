@@ -5,8 +5,7 @@ export interface CharacterEntry {
   external_id:  string;
   name:         string;
   name_native?: string | null;
-  /** Comma-separated alternative names (AniList's name.alternative list). */
-  aliases_csv?: string | null;
+  aliases_csv?: string | null; // Comma-separated alternative names
   biography?:   string | null;
   image_url?:   string | null;
   reaction?:    string | null;
@@ -36,9 +35,7 @@ export async function getCharacter(externalId: string): Promise<CharacterEntry |
   return tauriCmd<CharacterEntry | null>('get_character', null, { externalId });
 }
 
-// Bulk fetch for UI that needs every cached character's name/cover without a
-// per-id round trip (e.g. the profile Favorites tab) — characters live only
-// in this table, never in media_catalog.
+// Fetch all cached characters (e.g. for profile Favorites tab)
 export async function getAllCharacters(): Promise<CharacterEntry[]> {
   return tauriCmd<CharacterEntry[]>('get_all_characters', []);
 }
@@ -67,7 +64,7 @@ export async function saveCharactersSkeleton(mediaExternalId: string, characters
   return tauriRun('save_characters_skeleton', { mediaExternalId, characters });
 }
 
-export interface MediaCharacter {
+export interface DbMediaCharacter {
   external_id: string;
   name: string;
   image_url?: string | null;
@@ -75,9 +72,7 @@ export interface MediaCharacter {
   character_name?: string | null;
 }
 
-// Reverse of getCharacterAppearances — all characters already cached locally
-// for a given media, used to carry them along into a collaborative-catalog
-// PR bundle (see PrEditorModal) instead of losing them.
-export async function getMediaCharacters(mediaExternalId: string): Promise<MediaCharacter[]> {
-  return tauriCmd<MediaCharacter[]>('get_media_characters', [], { mediaExternalId });
+// Get all characters cached locally for a specific media
+export async function getMediaCharacters(mediaExternalId: string): Promise<DbMediaCharacter[]> {
+  return tauriCmd<DbMediaCharacter[]>('get_media_characters', [], { mediaExternalId });
 }
