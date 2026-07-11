@@ -86,9 +86,11 @@ export function mapTmdbToMedia(
     .filter(r => r.poster_path)
     .map(r => ({
       typeLabel: lookupLabel(tm.relations, 'RECOMMENDATION', tm.relations.OTHER),
+      relationType: 'RECOMMENDATION',
       title: r.title ?? r.name ?? '',
       cover: r.poster_path ? API_ENDPOINTS.TMDB_IMAGE(r.poster_path, 'w300') : undefined,
       url: `/media?id=${mediaType}:${r.id}`,
+      relatedExternalId: `${mediaType}:${r.id}`,
     }));
 
   // Series credit their showrunner(s) directly on the TV detail response

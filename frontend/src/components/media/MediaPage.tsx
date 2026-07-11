@@ -285,7 +285,15 @@ export default function MediaPage({ i18n }: Props) {
   // Upsert catalog entry with the latest metadata from the API once we know the type
   // (library entry loading is handled by useLibraryEntry above)
   useEffect(() => {
-    if (!data?.type || !currentId) return;
+    // data and currentId can briefly disagree when navigating quickly between
+    // pages: currentId updates to the new page in the same render where
+    // `data` still holds the *previous* page's fetch result (this effect and
+    // the data-fetch effect above both run in the same commit, and the
+    // fetch effect's setData(null) doesn't take effect until the next
+    // render). Without this check, that stale `data` gets upserted under the
+    // new currentId's row — e.g. quickly opening MGS3 then MGS2 could leave
+    // MGS3's catalog entry overwritten with MGS2's data.
+    if (!data?.type || !currentId || data.externalId !== currentId) return;
 
     saveCatalogEntry({
       id:                    '',

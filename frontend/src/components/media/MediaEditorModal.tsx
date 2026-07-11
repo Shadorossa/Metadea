@@ -1,7 +1,7 @@
-import React, { useReducer, useEffect, useCallback, useMemo } from 'react';
+import React, { useReducer, useEffect, useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, fetchAniListLogData, isAniListType } from '../../lib/media/anilist-sync';
@@ -325,6 +325,26 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     tagInput: '', anilistStatus: 'idle', anilistError: null,
     anilistImportStatus: 'idle', anilistImportError: null,
   });
+
+  // Cover/title lookup for whichever media occupies each month slot in the
+  // history grid, so a blocked (or one's own) month shows *which* entry it
+  // belongs to instead of just a bare "taken" state.
+  const [monthMediaInfo, setMonthMediaInfo] = useState<Record<string, { title: string; cover: string }>>({});
+  useEffect(() => {
+    const ids = new Set<string>();
+    for (const occupants of Object.values(entry.monthlyHistory)) {
+      for (const id of occupants) ids.add(id);
+    }
+    const missing = [...ids].filter(id => !(id in monthMediaInfo));
+    if (missing.length === 0) return;
+    Promise.all(missing.map(id => getCatalogEntry(id).then(e => [id, e] as const))).then(results => {
+      setMonthMediaInfo(prev => {
+        const next = { ...prev };
+        for (const [id, e] of results) next[id] = { title: e?.title_main ?? id, cover: e?.cover_url ?? '' };
+        return next;
+      });
+    });
+  }, [entry.monthlyHistory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The single source of truth for whatever log tab is currently active —
   // everything in the form reads/writes through this instead of a mirrored
@@ -846,11 +866,35 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     {te.months.map((mName, idx) => {
                       const mNumber = idx + 1;
                       const key = `${entry.selectedYear}-${String(mNumber).padStart(2, '0')}`;
+                      const isSelected = entry.selectedMonthKey === key;
+                      // Only 1 media per month across the whole library — a
+                      // month already claimed by a *different* entry is
+                      // blocked here instead of letting SET_MONTH silently
+                      // pile more than one id into the same slot. The
+                      // currently-viewed entry can still freely toggle its
+                      // own month on/off (its own id doesn't count as taken).
+                      const takenBy = (entry.monthlyHistory[key] ?? []).find(id => id !== externalId);
+                      const occupantId = takenBy ?? (isSelected ? externalId : undefined);
+                      const occupant = occupantId ? monthMediaInfo[occupantId] : undefined;
                       return (
                         <button key={key} type="button"
-                          className={`me-month-btn${entry.selectedMonthKey === key ? ' active' : ''}`}
+                          className={`me-month-btn${isSelected ? ' active' : ''}${takenBy ? ' me-month-btn--taken' : ''}${occupant?.cover ? ' me-month-btn--has-cover' : ''}`}
+                          disabled={!!takenBy}
+                          title={takenBy ? `${te.month_taken}${occupant ? `: ${occupant.title}` : ''}` : undefined}
                           onClick={() => handleMonthClick(mNumber)}>
-                          {mName}
+                          {occupant?.cover && (
+                            <>
+                              {/* Blurred, cover-cropped backdrop fills the whole
+                                  card (no dead space) — the sharp <img> on top,
+                                  sized with object-fit:contain, shows the full
+                                  poster undistorted instead of a hard crop,
+                                  since posters are portrait and this card is a
+                                  short rectangle. */}
+                              <div className="me-month-btn-backdrop" style={{ backgroundImage: `url('${occupant.cover}')` }} />
+                              <img className="me-month-btn-cover-img" src={occupant.cover} alt="" />
+                            </>
+                          )}
+                          <span className="me-month-btn-label">{mName}</span>
                         </button>
                       );
                     })}

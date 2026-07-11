@@ -223,6 +223,7 @@ export const es = {
       delete:      'Eliminar',
       no_dates:  'Sin fechas',
       history_month: 'Mes de Historial',
+      month_taken: 'Ya hay otra obra asignada a este mes',
       months: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
       editions:        'Ediciones',
       edition_current: 'Esta edición',

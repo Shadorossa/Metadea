@@ -96,11 +96,14 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'
         : 'manga';
+      const relatedExternalId = `${relType}:${e.node.id}`;
       return {
         typeLabel,
+        relationType: e.relationType,
         title: e.node.title.romaji ?? '',
         cover: e.node.coverImage?.medium ?? undefined,
-        url:   `/media?id=${relType}:${e.node.id}`,
+        url:   `/media?id=${relatedExternalId}`,
+        relatedExternalId,
       };
     });
 

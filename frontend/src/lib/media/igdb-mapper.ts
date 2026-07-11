@@ -59,6 +59,8 @@ interface IgdbDetailGame {
 // backend/src/services/igdb.ts (IGDB_CATEGORY_LABELS) for search results —
 // same IGDB enum, two apps that can't share a module, so keep both in sync
 // by hand when IGDB's category list changes.
+export const IGDB_GAME_TYPE_REMAKE = 8;
+
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',
   2: 'EXPANSION',
@@ -153,11 +155,14 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
       const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
+      const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
       relations.push({
         typeLabel: label,
+        relationType: label,
         title: cleanEditionTitle(sg.name),
         cover,
-        url: `/media?id=${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`,
+        url: `/media?id=${relatedExternalId}`,
+        relatedExternalId,
       });
     }
   };
@@ -223,12 +228,17 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
   const tm = getT().media;
-  const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => ({
-    typeLabel: tm.relations.PARENT,
-    title: cleanEditionTitle(sg.name),
-    cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
-    url: `/media?id=${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`,
-  }));
+  const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => {
+    const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
+    return {
+      typeLabel: tm.relations.PARENT,
+      relationType: 'PARENT',
+      title: cleanEditionTitle(sg.name),
+      cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
+      url: `/media?id=${relatedExternalId}`,
+      relatedExternalId,
+    };
+  });
   return { ...data, relations: [...baseRelations, ...data.relations] };
 }
 
@@ -266,8 +276,7 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
   const seen = new Set<string>([data.externalId]);
   if (data.parentGame) seen.add(data.parentGame.externalId);
   for (const r of data.relations) {
-    const match = r.url?.match(/id=([^&]+)/);
-    if (match) seen.add(decodeURIComponent(match[1]));
+    if (r.relatedExternalId) seen.add(r.relatedExternalId);
   }
 
   // Group by "via" so edition/collection SKU duplicates are deduped within
@@ -291,9 +300,11 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
       seen.add(externalId);
       extra.push({
         typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
+        relationType: n.via,
         title: cleanEditionTitle(n.name),
         cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
         url: `/media?id=${externalId}`,
+        relatedExternalId: externalId,
       });
     }
   }

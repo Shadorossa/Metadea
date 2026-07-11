@@ -1757,8 +1757,8 @@
 
 .me-month-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   gap: 0.35rem;
 }
 
@@ -1767,13 +1767,65 @@
   border: 1px solid var(--border-color);
   color: var(--text-muted);
   border-radius: var(--radius-sm);
-  padding: 0.45rem 0.2rem;
+  padding: 0.45rem 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
   transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast), box-shadow var(--anim-fast);
   text-align: center;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  overflow: hidden;
+  aspect-ratio: 2.2 / 1;
+}
+
+.me-month-btn--has-cover {
+  align-items: flex-end;
+  color: #fff;
+}
+
+/* Posters are portrait; this card is a short, wide rectangle. A plain
+   `cover` crops the poster down to a tiny blown-up sliver ("gigante"), and a
+   plain `contain` leaves ugly empty bars. Splitting it into two layers gets
+   both: a blurred, cover-cropped backdrop fills the whole card edge to
+   edge, while the real, undistorted poster sits on top sized to fit
+   entirely inside it. */
+.me-month-btn-backdrop {
+  position: absolute;
+  inset: -10px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(8px) brightness(0.5);
+  z-index: 0;
+}
+
+.me-month-btn-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.me-month-btn--has-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.15) 55%, transparent 85%);
+}
+
+.me-month-btn-label {
+  position: relative;
+  z-index: 3;
+  padding-bottom: 0.15rem;
 }
 
 .me-month-btn:hover {
@@ -1793,6 +1845,7 @@
 .me-month-btn.active::after {
   content: '';
   position: absolute;
+  z-index: 4;
   bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
@@ -1800,6 +1853,28 @@
   height: 4px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.7);
+}
+
+.me-month-btn--taken {
+  background: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03) 4px,
+    rgba(255, 255, 255, 0.07) 4px, rgba(255, 255, 255, 0.07) 8px
+  );
+  color: rgba(255, 255, 255, 0.25);
+  cursor: not-allowed;
+}
+.me-month-btn--taken.me-month-btn--has-cover {
+  color: rgba(255, 255, 255, 0.6);
+  filter: grayscale(0.6) brightness(0.7);
+}
+
+.me-month-btn--taken:hover {
+  background: repeating-linear-gradient(
+    45deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03) 4px,
+    rgba(255, 255, 255, 0.07) 4px, rgba(255, 255, 255, 0.07) 8px
+  );
+  border-color: var(--border-color);
+  color: rgba(255, 255, 255, 0.25);
 }
 
 .me-month-header {

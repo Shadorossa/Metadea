@@ -223,6 +223,7 @@ export const en = {
       delete:      'Delete',
       no_dates:  'No dates',
       history_month: 'History Month',
+      month_taken: 'Another entry is already assigned to this month',
       months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
       editions:        'Editions',
       edition_current: 'This edition',

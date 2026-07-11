@@ -16,9 +16,17 @@ export interface MediaCharacter {
 
 export interface MediaRelation {
   typeLabel: string;
+  /** Machine-readable relation kind (SEQUEL, PREQUEL, ADAPTATION, RECOMMENDATION, Remaster, ...) —
+   *  distinct from typeLabel, which is already translated for display and must never be
+   *  reparsed to recover the underlying type. */
+  relationType?: string;
   title: string;
   cover?: string;
   url?: string;
+  /** The related media's own external_id (e.g. "anime:123") — set directly by
+   *  the mapper that produced this relation, so consumers never need to
+   *  extract it by parsing `url`. */
+  relatedExternalId?: string;
 }
 
 export interface MediaAuthor {

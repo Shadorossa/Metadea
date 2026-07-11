@@ -4,12 +4,13 @@ import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, IGDB_GAME_TYPE_REMAKE, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
-import type { DbMediaRelation } from '../tauri/catalog';
+import { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import { formatDateParts, parseExternalId } from './mapper-utils';
+import { getT } from '../../i18n/client';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -34,6 +35,27 @@ function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPag
     })),
     hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
   };
+}
+
+function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {
+  return {
+    external_id: a.external_id,
+    name: a.name,
+    image: a.image || undefined,
+    role: a.role || undefined,
+    url: `/author?id=${a.external_id}`,
+  };
+}
+
+// Shared by fetchMediaData and fetchMediaDataWithFallback — both need "load
+// whatever's already curated in the DB for this media" before deciding
+// whether to trust it as-is or enrich it with a live API fetch.
+async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relations: DbMediaRelation[]; authors: DbMediaAuthor[] }> {
+  const [relations, authors] = await Promise.all([
+    getMediaRelations(rawId).catch(() => []),
+    getMediaAuthors(rawId).catch(() => []),
+  ]);
+  return { relations, authors };
 }
 
 const CACHE_PREFIX   = 'media_cache_v3:';
@@ -101,7 +123,7 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 
     // Remakes need one extra request — IGDB has no back-reference field to
     // find the base/original game, only a reverse `where remakes = id` lookup.
-    if ((game as { game_type?: number }).game_type === 8) {
+    if (game.game_type === IGDB_GAME_TYPE_REMAKE) {
       const baseGames = await igdbGetBaseGames(numericId).catch(() => null);
       if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
     }
@@ -166,7 +188,7 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
   return 'reading';
 }
 
-export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = 'En progreso'): MediaPageData {
+export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
   const authorList = c.authors_csv ? c.authors_csv.split(',').filter(Boolean) : [];
   const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
   const stats: MediaStat[] = [];
@@ -255,27 +277,20 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 
   const data = await fetchMediaDataInternal(rawId);
   if (data) {
-    const { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors } = await import('../tauri/catalog');
-    
     // Load existing database relations and authors first
-    const [dbRels, dbAuthors] = await Promise.all([
-      getMediaRelations(rawId).catch(() => []),
-      getMediaAuthors(rawId).catch(() => [])
-    ]);
+    const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
     // Only save API relations if we don't have any in the DB
     if (dbRels.length === 0 && data.relations && data.relations.length > 0) {
-      const dbRelsToSave = data.relations.map(r => {
-        const match = r.url?.match(/id=([^&]+)/);
-        const relId = match ? decodeURIComponent(match[1]) : '';
-        return {
-          related_media_external_id: relId || r.url || '',
-          relation_type: r.typeLabel.toUpperCase(),
+      const dbRelsToSave = data.relations
+        .filter(r => r.relatedExternalId)
+        .map(r => ({
+          related_media_external_id: r.relatedExternalId!,
+          relation_type: r.relationType ?? r.typeLabel,
           type_label: r.typeLabel,
           title: r.title,
-          cover: r.cover || null
-        };
-      }).filter(r => r.related_media_external_id);
+          cover: r.cover || null,
+        }));
       await saveMediaRelations(rawId, dbRelsToSave).catch(console.error);
     }
 
@@ -285,25 +300,16 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     }
 
     // Reload from database to ensure local curated relations/authors are used in the final UI data object!
-    const [finalRels, finalAuthors] = await Promise.all([
-      getMediaRelations(rawId).catch(() => []),
-      getMediaAuthors(rawId).catch(() => [])
-    ]);
+    const { relations: finalRels, authors: finalAuthors } = await loadDbRelationsAndAuthors(rawId);
 
-    if (finalRels && finalRels.length > 0) {
+    if (finalRels.length > 0) {
       const { relations, hasSaga } = sortRelationsForDisplay(finalRels);
       data.relations = relations;
       data.hasSaga = hasSaga;
     }
 
-    if (finalAuthors && finalAuthors.length > 0) {
-      data.authors = finalAuthors.map(a => ({
-        external_id: a.external_id,
-        name: a.name,
-        image: a.image || undefined,
-        role: a.role || undefined,
-        url: `/author?id=${a.external_id}`
-      }));
+    if (finalAuthors.length > 0) {
+      data.authors = finalAuthors.map(dbAuthorToMediaAuthor);
     }
 
     setCachedMediaData(rawId, data);
@@ -344,26 +350,16 @@ export function fetchMediaDataWithFallback(
         localData = mapCatalogEntryToPartialData(catalog);
 
         try {
-          const { getMediaRelations, getMediaAuthors } = await import('../tauri/catalog');
-          const [dbRels, dbAuthors] = await Promise.all([
-            getMediaRelations(rawId).catch(() => []),
-            getMediaAuthors(rawId).catch(() => [])
-          ]);
+          const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
-          if (dbRels && dbRels.length > 0) {
+          if (dbRels.length > 0) {
             const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
             localData.relations = relations;
             localData.hasSaga = hasSaga;
           }
 
-          if (dbAuthors && dbAuthors.length > 0) {
-            localData.authors = dbAuthors.map(a => ({
-              external_id: a.external_id,
-              name: a.name,
-              image: a.image || undefined,
-              role: a.role || undefined,
-              url: `/author?id=${a.external_id}`
-            }));
+          if (dbAuthors.length > 0) {
+            localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
           }
         } catch (e) {
           console.error("Failed to load local media relations or authors", e);
