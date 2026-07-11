@@ -71,12 +71,13 @@ function Field({ label, changed, small, full, children }: {
 const RELATION_TYPE_LABELS: Record<string, string> = {
   REL_ADAPTATION: 'Adaptación',
   SPIN_OFF: 'Spin-off',
-  REL_ALTERNATIVE: 'Alternativa',
+  REL_ALTERNATIVE: 'Versión',
   PARENT: 'Fuente',
   SIDE_STORY: 'Side Story',
   SUMMARY: 'Resumen',
   REMASTER: 'Remaster',
   EXPANDED_GAME: 'Edición extendida',
+  REL_UPDATE: 'Update',
 };
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
