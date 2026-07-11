@@ -32,15 +32,15 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T19:33:01.369Z",
-    "updated_at": "2026-07-11T11:37:29.799468600+00:00"
+    "updated_at": "2026-07-11T15:00:40.313560800+00:00"
   },
   "media_relations": [
     {
       "related_media_external_id": "game:24869",
-      "relation_type": "REMASTER",
-      "type_label": "Remaster",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
       "title": "Resident Evil",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vz8.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vz8.jpg",
       "media_external_id": "game:424"
     },
     {
