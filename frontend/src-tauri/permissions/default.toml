@@ -98,6 +98,25 @@ commands.allow = [
   "save_favorite_custom_image",
   "get_favorite_custom_image",
   "get_all_favorite_custom_images",
-  "delete_favorite_custom_image"
+  "delete_favorite_custom_image",
+  "save_game_link",
+  "delete_game_link",
+  "launch_game",
+  "open_local_file",
+  "scan_anime_folder",
+  "play_file_with_vlc",
+  "get_vlc_playback_status",
+  "save_anime_folder",
+  "get_anime_folder",
+  "igdb_get_relation_graph",
+  "sync_community_catalog",
+  "create_tier_list",
+  "get_all_tier_lists",
+  "get_tier_list",
+  "delete_tier_list",
+  "update_tier_list_tiers",
+  "add_item_to_tier_list",
+  "remove_item_from_tier_list",
+  "set_tier_list_placements"
 ]
 

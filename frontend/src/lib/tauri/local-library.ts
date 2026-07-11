@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd } from './core';
+import { isTauri, invoke, tauriCmd, tauriRun } from './core';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface LocalGame {
@@ -39,6 +39,10 @@ export async function scanFolderContents(path: string): Promise<LocalFolderEntry
   return tauriCmd<LocalFolderEntry[]>('scan_folder_contents', [], { path });
 }
 
+export async function openLocalFile(path: string): Promise<void> {
+  return tauriRun('open_local_file', { path });
+}
+
 export async function scanAllGames(): Promise<LocalGame[]> {
   return tauriCmd<LocalGame[]>('scan_all_games', []);
 }
@@ -53,5 +57,5 @@ export async function getLocalFolders(): Promise<SavedFolder[]> {
 
 export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
   if (!isTauri()) { localStorage.setItem(STORAGE_KEYS.localFolders, JSON.stringify(folders)); return; }
-  return invoke<void>('save_local_folders', { folders_json: JSON.stringify(folders) });
+  return invoke<void>('save_local_folders', { foldersJson: JSON.stringify(folders) });
 }

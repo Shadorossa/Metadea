@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo } from '../../lib/tauri';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
-import { useLocalGames }     from './hooks/useLocalGames';
-import { useMetadataCache }  from './hooks/useMetadataCache';
-import { useCategoryRoutes } from './hooks/useCategoryRoutes';
-import { useActivePlatform } from './hooks/useActivePlatform';
+import { useLocalGames }        from './hooks/useLocalGames';
+import { useMetadataCache }     from './hooks/useMetadataCache';
+import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
+import { useActivePlatform }    from './hooks/useActivePlatform';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY } from './hooks/useLocalMediaEntries';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
@@ -14,7 +15,7 @@ import { FolderEntryCard }  from './cards/FolderEntryCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
-import { AnimeLocal }       from './AnimeLocal';
+import { LocalMediaSection } from './LocalMediaSection';
 import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
 
 export default function LocalLibrary() {
@@ -152,6 +153,16 @@ export default function LocalLibrary() {
           />
         )}
 
+        {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] ? (
+          <LocalMediaSection
+            category={activeCategory}
+            rootFolder={routes[activeCategory]}
+            rootEntries={folderFiles}
+            rootLoading={folderLoading}
+            onSetRoute={() => setRoute(activeCategory)}
+            onClearRoute={() => clearRoute(activeCategory)}
+          />
+        ) : (
         <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>
           <div className="local-main-content">
 
@@ -242,10 +253,8 @@ export default function LocalLibrary() {
                 )}
               </div>
 
-            ) : activeCategory === 'anime' ? (
-              <AnimeLocal />
             ) : (
-              /* ── Folder view ────────────────────────────────────────────────── */
+              /* ── Folder view (categories without a library-backed grid, e.g. visual-novel) ── */
               <div className="local-content">
                 {routes[activeCategory] && (
                   <div className="local-content-header">
@@ -297,6 +306,7 @@ export default function LocalLibrary() {
             />
           )}
         </div>
+        )}
       </div>
     </>
   );

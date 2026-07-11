@@ -645,6 +645,111 @@
   gap: 0.75rem;
 }
 
+/* ── Local media (anime/manga/lnovel/books/series/movies) status badge ───────── */
+
+.local-media-status-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--color-completed) 85%, black 15%);
+  line-height: 1.4;
+}
+
+.local-media-status-badge--planning {
+  background: color-mix(in srgb, var(--color-planning) 85%, black 15%);
+}
+
+/* ── Local media detail panel — actions + folder/episode match row ───────────── */
+
+.local-media-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.local-media-detail-edit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+
+.local-media-detail-edit-icon:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.local-media-play-error {
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--color-error);
+}
+
+.local-media-play-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.local-media-play-status--ok {
+  color: var(--color-completed);
+}
+
+.local-media-play-status .spinner--sm {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.local-media-match-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0;
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+
+.local-media-match-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-main);
+}
+
+.local-media-match-chip.ok    { color: var(--color-completed); }
+.local-media-match-chip.fail  { color: var(--color-error); }
+
+.local-media-match-chip svg { flex-shrink: 0; }
+.local-media-match-chip strong { color: var(--text-main); }
+
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
 .local-folder-entry {
   display: flex;
   align-items: center;
@@ -992,6 +1097,15 @@
 .local-game-detail-play:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+.local-game-detail-play:disabled {
+  background: var(--bg-elevated);
+  border-color: var(--border-color);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .local-game-detail-stats {

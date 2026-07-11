@@ -1,0 +1,237 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry, type LocalFolderEntry } from '../../../lib/tauri';
+import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
+import { findMatchingFolder, findMatchingEpisodeFile, extractTitleSeason } from '../utils/folderMatch';
+import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
+
+interface LocalMediaDetailPanelProps {
+  item:            LocalMediaItem;
+  rootFolder:      string | undefined;
+  rootEntries:     LocalFolderEntry[];
+  rootLoading:     boolean;
+  onClose:         () => void;
+  onProgressSaved: () => void;
+}
+
+// The "in progress" verb a freshly-started entry should switch to — matches
+// the same three-way split used everywhere else in the app (watching an
+// anime/series/movie vs. reading a manga/light novel/book).
+const START_STATUS_BY_TYPE: Record<string, string> = {
+  anime: 'watching', series: 'watching', movie: 'watching',
+  manga: 'reading', lnovel: 'reading', book: 'reading',
+};
+
+// Position (0-1) VLC has to reach for an episode to count as "watched" —
+// leaves room for trailing credits/next-episode previews the user skips.
+const AUTO_MARK_THRESHOLD = 0.8;
+const POLL_INTERVAL_MS = 3000;
+
+export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onClose, onProgressSaved }: LocalMediaDetailPanelProps) {
+  const [subEntries, setSubEntries] = useState<LocalFolderEntry[] | null>(null);
+  const [subLoading, setSubLoading] = useState(false);
+  const [playError, setPlayError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [justMarked, setJustMarked] = useState<number | null>(null);
+
+  // Which episode number the auto-mark already fired for, so a stray extra
+  // poll tick (or VLC staying open past the threshold) can't save twice.
+  const markedForRef = useRef<number | null>(null);
+
+  const candidateTitles = useMemo(
+    () => [item.title, item.titleRomaji, item.titleNative].filter((t): t is string => !!t),
+    [item],
+  );
+
+  // The season this specific library entry belongs to, inferred from its own
+  // title (e.g. "... 2nd GIG" -> 2) — needed so a sequel season doesn't get
+  // matched against the prequel's folder/files (see folderMatch.ts).
+  const itemSeason = useMemo(
+    () => candidateTitles.reduce<number | null>((found, t) => found ?? extractTitleSeason(t), null),
+    [candidateTitles],
+  );
+
+  const matchedFolder = useMemo(
+    () => findMatchingFolder(rootEntries, candidateTitles, itemSeason),
+    [rootEntries, candidateTitles, itemSeason],
+  );
+
+  useEffect(() => {
+    setPlayError(null);
+    setIsPlaying(false);
+    setJustMarked(null);
+    markedForRef.current = null;
+  }, [item.externalId]);
+
+  useEffect(() => {
+    if (!matchedFolder || !rootFolder) { setSubEntries(null); return; }
+    setSubLoading(true);
+    scanFolderContents(`${rootFolder}/${matchedFolder.name}`)
+      .then(setSubEntries)
+      .catch(() => setSubEntries([]))
+      .finally(() => setSubLoading(false));
+  }, [matchedFolder, rootFolder]);
+
+  // The next episode/chapter to watch/read — one past whatever's saved as
+  // progress, or the first one when the entry is still just "planning".
+  const nextNumber = item.status === 'planning' ? 1 : item.progress + 1;
+  const nextFile = subEntries ? findMatchingEpisodeFile(subEntries, nextNumber, itemSeason) : null;
+
+  const playPath = rootFolder && matchedFolder && nextFile
+    ? `${rootFolder}/${matchedFolder.name}/${nextFile.name}`
+    : null;
+
+  const handleEdit = () => {
+    window.dispatchEvent(new CustomEvent('open-profile-editor', {
+      detail: {
+        externalId:  item.externalId,
+        libraryEntry: item.libraryEntry,
+        catalogEntry: item.catalogEntry,
+      },
+    }));
+  };
+
+  const handlePlay = () => {
+    if (!playPath) return;
+    setPlayError(null);
+    setJustMarked(null);
+    playFileWithVlc(playPath)
+      .then(() => setIsPlaying(true))
+      .catch(err => setPlayError(String(err)));
+  };
+
+  const markWatched = async (episodeNumber: number) => {
+    if (markedForRef.current === episodeNumber) return;
+    markedForRef.current = episodeNumber;
+
+    const nextStatus = item.status === 'planning'
+      ? (START_STATUS_BY_TYPE[item.libraryEntry.type] ?? item.status)
+      : item.libraryEntry.status;
+
+    try {
+      await saveLibraryEntry({
+        ...item.libraryEntry,
+        progress:   episodeNumber,
+        status:     nextStatus,
+        started_at: item.libraryEntry.started_at ?? new Date().toISOString(),
+      });
+      setJustMarked(episodeNumber);
+      onProgressSaved();
+    } catch (err) {
+      // Don't block the next poll tick from retrying on a transient save error.
+      markedForRef.current = null;
+      console.error('Failed to auto-mark episode watched', err);
+    }
+  };
+
+  // While VLC is playing the file we just launched, poll its HTTP status
+  // interface and mark the episode watched once position crosses 80%.
+  useEffect(() => {
+    if (!isPlaying || !nextFile) return;
+
+    const episodeNumber = nextNumber;
+    const interval = setInterval(() => {
+      getVlcPlaybackStatus().then(status => {
+        if (!status) return;
+        if (status.state !== 'playing' && status.state !== 'paused') {
+          // VLC closed or moved on to something else — stop polling this file.
+          setIsPlaying(false);
+          return;
+        }
+        if (status.position >= AUTO_MARK_THRESHOLD) {
+          markWatched(episodeNumber);
+        }
+      }).catch(() => {});
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, nextFile, nextNumber]);
+
+  return (
+    <div className="local-game-detail-panel">
+      <div className="local-game-detail-header">
+        {item.cover ? (
+          <img src={item.cover} alt={item.title} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
+            <IconFolder />
+          </div>
+        )}
+        <div className="local-game-detail-backdrop" />
+        <button className="local-game-detail-close" onClick={onClose}><IconX /></button>
+      </div>
+
+      <div className="local-game-detail-content">
+        <div className="local-game-detail-title-block">
+          <p className="local-game-detail-title">{item.title}</p>
+        </div>
+
+        <div className="local-media-detail-actions">
+          <button
+            type="button"
+            className="local-game-detail-play"
+            disabled={!playPath}
+            title={playPath ? undefined : 'No se encontró el archivo del próximo episodio/capítulo'}
+            onClick={handlePlay}
+          >
+            {isPlaying ? (
+              <span className="spinner spinner--sm" />
+            ) : (
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            )}
+            {isPlaying ? 'Reproduciendo' : 'Reproducir'}
+          </button>
+          <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title="Editar log en el catálogo">
+            <IconPencil />
+          </button>
+        </div>
+
+        {playError && (
+          <p className="local-media-play-error">No se pudo abrir VLC: {playError}</p>
+        )}
+
+        {justMarked != null && (
+          <p className="local-media-play-status local-media-play-status--ok">
+            <IconCheck /> Episodio/capítulo {justMarked} marcado como visto.
+          </p>
+        )}
+
+        {!rootFolder ? (
+          <div className="local-state-placeholder">
+            <IconFolder />
+            <p>No hay carpeta asignada para esta categoría.</p>
+          </div>
+        ) : rootLoading ? (
+          <div className="local-state-placeholder"><div className="spinner" /></div>
+        ) : (
+          <div className="local-media-match-row">
+            <span className={`local-media-match-chip${matchedFolder ? ' ok' : ' fail'}`}>
+              {matchedFolder ? <IconCheck /> : <IconAlertCircle />}
+              {matchedFolder
+                ? <>Carpeta encontrada: <strong>{matchedFolder.name}</strong></>
+                : 'Carpeta no encontrada'}
+            </span>
+
+            {matchedFolder && (
+              subLoading ? (
+                <span className="local-media-match-chip">
+                  <div className="spinner spinner--sm" />
+                  Buscando próximo episodio…
+                </span>
+              ) : (
+                <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
+                  {nextFile ? <IconCheck /> : <IconAlertCircle />}
+                  {nextFile
+                    ? <>Próximo episodio: <strong>{nextFile.name}</strong></>
+                    : `Próximo episodio (${nextNumber}) no encontrado`}
+                </span>
+              )
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -268,6 +268,15 @@ pub async fn launch_game(
     }
 }
 
+// Opens any local file with the OS's default handler for its extension —
+// video player for anime/series/movies, image/PDF/e-reader for
+// manga/lnovel/books, whatever is registered rather than assuming VLC.
+#[tauri::command]
+pub async fn open_local_file(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app_handle.opener().open_path(path, None::<String>).str_err()
+}
+
 #[tauri::command]
 pub async fn scan_anime_folder(folder_path: String) -> Result<Vec<String>, String> {
     let path = std::path::Path::new(&folder_path);
@@ -296,13 +305,125 @@ pub async fn scan_anime_folder(folder_path: String) -> Result<Vec<String>, Strin
     Ok(files)
 }
 
+// A plain `Command::new("vlc")` only works when VLC's install dir was added
+// to PATH, which the default Windows installer does *not* do — that silent
+// spawn failure was why the "Reproducir" button did nothing. This looks up
+// VLC the same way Windows itself does (the "App Paths" registry key VLC's
+// installer registers), then falls back to the two standard install
+// locations, and only tries bare "vlc" last in case it *is* on PATH.
+#[cfg(windows)]
+fn vlc_path_from_registry() -> Option<PathBuf> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+    const SUBKEY: &str = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\vlc.exe";
+    // VLC is very commonly still distributed/installed as a 32-bit build even
+    // on 64-bit Windows — its App Paths entry then only exists in the WOW64
+    // 32-bit registry view, which a 64-bit process (this app) does not see
+    // by default. Check both views on both hives explicitly.
+    for hive in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+        for view in [KEY_WOW64_64KEY, KEY_WOW64_32KEY] {
+            if let Ok(key) =
+                RegKey::predef(hive).open_subkey_with_flags(SUBKEY, KEY_READ | view)
+            {
+                if let Ok(path) = key.get_value::<String, _>("") {
+                    let p = PathBuf::from(path.trim_matches('"'));
+                    if p.exists() {
+                        return Some(p);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(not(windows))]
+fn vlc_path_from_registry() -> Option<PathBuf> {
+    None
+}
+
+fn find_vlc_executable() -> PathBuf {
+    if let Some(p) = vlc_path_from_registry() {
+        return p;
+    }
+    for candidate in [
+        "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+        "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
+    ] {
+        let p = PathBuf::from(candidate);
+        if p.exists() {
+            return p;
+        }
+    }
+    PathBuf::from("vlc")
+}
+
+// Fixed loopback-only port/password for VLC's HTTP status interface — this
+// only ever talks to a VLC instance we ourselves just spawned on the same
+// machine, so a hardcoded local secret is fine (nothing external can reach
+// it, and there's no sensitive data behind it beyond "what's playing").
+const VLC_HTTP_PORT: u16 = 39321;
+const VLC_HTTP_PASSWORD: &str = "metadea-local";
+
 #[tauri::command]
 pub async fn play_file_with_vlc(file_path: String) -> Result<(), String> {
-    std::process::Command::new("vlc")
+    // `--extraintf http` runs VLC's web status API *alongside* its normal
+    // player window (it doesn't replace the UI) so get_vlc_playback_status
+    // can poll episode progress. If VLC is already running in single-instance
+    // mode, this file just gets forwarded to that instance and these flags
+    // are silently ignored — a known limitation of external control this way.
+    std::process::Command::new(find_vlc_executable())
         .arg(&file_path)
+        .arg("--extraintf").arg("http")
+        .arg("--http-host").arg("127.0.0.1")
+        .arg("--http-port").arg(VLC_HTTP_PORT.to_string())
+        .arg("--http-password").arg(VLC_HTTP_PASSWORD)
         .spawn()
         .map_err(|e| format!("Failed to launch VLC: {}", e))?;
     Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VlcPlaybackStatus {
+    pub state:    String,
+    pub position: f64,
+    pub time:     i64,
+    pub length:   i64,
+}
+
+// Polled by the frontend while an episode is playing to auto-mark it as
+// watched once position crosses 80%. Returns Ok(None) whenever VLC's HTTP
+// interface isn't reachable (not running yet, or running without
+// --extraintf http) rather than erroring — that's an expected, frequent
+// state (e.g. right after spawn, before VLC has finished starting up), not
+// a failure the caller needs to react to.
+#[tauri::command]
+pub async fn get_vlc_playback_status() -> Result<Option<VlcPlaybackStatus>, String> {
+    let url = format!("http://127.0.0.1:{}/requests/status.json", VLC_HTTP_PORT);
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(&url)
+        .basic_auth("", Some(VLC_HTTP_PASSWORD))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await;
+
+    let resp = match resp {
+        Ok(r) if r.status().is_success() => r,
+        _ => return Ok(None),
+    };
+
+    let json: serde_json::Value = match resp.json().await {
+        Ok(v) => v,
+        Err(_) => return Ok(None),
+    };
+
+    Ok(Some(VlcPlaybackStatus {
+        state:    json.get("state").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        position: json.get("position").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        time:     json.get("time").and_then(|v| v.as_i64()).unwrap_or(0),
+        length:   json.get("length").and_then(|v| v.as_i64()).unwrap_or(0),
+    }))
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
