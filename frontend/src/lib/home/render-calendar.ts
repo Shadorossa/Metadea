@@ -13,6 +13,8 @@ import { fetchGeneralUpcomingReleases } from './upcoming-general';
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type CalendarMode = 'mine' | 'general';
 
+let activeClickListener: ((e: MouseEvent) => void) | null = null;
+
 function escAttr(s: string): string {
   return s.replace(/"/g, '&quot;');
 }
@@ -302,6 +304,16 @@ export async function renderReleaseCalendar(el: HTMLElement): Promise<void> {
       openDays.forEach(d => d.classList.remove('open'));
     }
   }
-  document.addEventListener('click', handleDocumentClick);
-  document.addEventListener('astro:before-swap', () => document.removeEventListener('click', handleDocumentClick), { once: true });
+  if (activeClickListener) {
+    document.removeEventListener('click', activeClickListener);
+  }
+  activeClickListener = handleDocumentClick;
+  document.addEventListener('click', activeClickListener);
+
+  document.addEventListener('astro:before-swap', () => {
+    if (activeClickListener) {
+      document.removeEventListener('click', activeClickListener);
+      activeClickListener = null;
+    }
+  }, { once: true });
 }

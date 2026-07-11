@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' https: data: asset:; connect-src 'self' https: ipc:; script-src 'self'; style-src 'self' 'unsafe-inline';"
     },
     "withGlobalTauri": true
   },

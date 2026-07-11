@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../tauri';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';

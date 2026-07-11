@@ -41,15 +41,12 @@ impl MetadeaDb {
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN name_native TEXT", []);
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN aliases_csv TEXT DEFAULT ''", []);
         let _ = conn.execute("ALTER TABLE characters ADD COLUMN biography TEXT", []);
-        // Upgrade path for DBs created before rating_system existed on
-        // user_profile — same idempotent-ALTER pattern as above.
+        // Add rating_system to user_profile if missing
         let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN rating_system TEXT NOT NULL DEFAULT '5-star'", []);
-        // Upgrade path for DBs created before character_appearances had a
-        // dedicated column for the character an actor plays (TMDB movies/
-        // series) — previously overloaded into relation_type, which also
-        // holds anime relation kinds (MAIN/SUPPORTING) for AniList characters.
+        // Add character_name to character_appearances if missing
         let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN character_name TEXT", []);
         conn.execute("PRAGMA foreign_keys = ON", [])?;
+        conn.pragma_update(None, "journal_mode", &"WAL")?;
         Ok(Self { conn: Mutex::new(conn) })
     }
 }

@@ -1,8 +1,4 @@
-// Splits a character's raw AniList-style biography HTML into the bold-label
-// "characteristics" lines (e.g. "<b>Height:</b> 170 cm") and the remaining
-// free-text description — same DOM-based parse the character detail page
-// uses to render them in separate sections (pages/character.astro), shared
-// here so the PR editor can show/save them the same way.
+// Parses a character's biography HTML into bold characteristics and free-text description.
 
 export interface ParsedCharacteristic {
   label: string;
@@ -11,15 +7,12 @@ export interface ParsedCharacteristic {
 
 export interface ParsedBiography {
   characteristics: ParsedCharacteristic[];
-  /** Remaining biography HTML with the stat lines stripped out. */
   cleanBiography: string;
 }
 
 export function parseCharacterBiography(rawHtml: string | null | undefined): ParsedBiography {
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = rawHtml || '';
-
-  const boldElements = tempDiv.querySelectorAll('b, strong');
+  const doc = new DOMParser().parseFromString(rawHtml || '', 'text/html');
+  const boldElements = doc.querySelectorAll('b, strong');
   const characteristics: ParsedCharacteristic[] = [];
   const elementsToRemove: Node[] = [];
 
@@ -27,10 +20,7 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
     const label = (el.textContent || '').trim().replace(/:$/, '').trim();
     if (label.length > 30 || label.length < 2) continue;
 
-    // A value can span several fragments — plain text followed by an
-    // AniList spoiler span — so don't stop at the first text fragment,
-    // only at a real block boundary (another tag, or a <br> once content
-    // has already been accumulated).
+    // A value can span text fragments, line breaks, or spoiler spans
     let nextNode: Node | null = el.nextSibling;
     const valueParts: string[] = [];
 
@@ -44,8 +34,6 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
           break;
         }
       } else if (nextNode instanceof Element && nextNode.classList.contains('markdown_spoiler')) {
-        // Editable text field, so just the text — see buildBiographyHtml
-        // for why re-saving loses the spoiler wrapping on this one value.
         valueParts.push(nextNode.textContent || '');
       } else {
         break;
@@ -71,7 +59,7 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
     node.parentNode?.removeChild(node);
   }
 
-  const cleanBiography = tempDiv.innerHTML
+  const cleanBiography = doc.body.innerHTML
     .replace(/(?:\s*<br\s*\/?>\s*){2,}/gi, '<br />')
     .replace(/^(?:\s*<br\s*\/?>|\s*<p>\s*<\/p>|\s*&nbsp;)+/gi, '')
     .trim();
@@ -79,10 +67,7 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
   return { characteristics, cleanBiography };
 }
 
-/** Inverse of parseCharacterBiography — reassembles the stat lines and the
- *  free-text description back into a single biography string for storage,
- *  the same "<b>Label:</b> value<br>" shape AniList's own descriptions use
- *  (so the character page's own parser keeps finding them). */
+// Reassembles characteristics and description back into standard HTML biography string
 export function buildBiographyHtml(characteristics: ParsedCharacteristic[], cleanBiography: string): string {
   const statLines = characteristics
     .filter(c => c.label.trim() && c.value.trim())

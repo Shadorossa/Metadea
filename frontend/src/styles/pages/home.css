@@ -246,7 +246,8 @@
   border-radius: var(--radius-md);
   padding: 0.6rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  z-index: 60; /* above the bottom nav bar (navbar.css, z-index: 50) */
+  z-index: 60;
+  /* above the bottom nav bar (navbar.css, z-index: 50) */
   flex-direction: column;
   gap: 0.5rem;
 }
@@ -291,7 +292,8 @@
   padding-top: 0.4rem;
   border-top: 1px solid var(--border-color);
   position: relative;
-  z-index: 61; /* above the bottom nav bar (navbar.css, z-index: 50) */
+  z-index: 61;
+  /* above the bottom nav bar (navbar.css, z-index: 50) */
 }
 
 .calendar-popover-pager-btn {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../../lib/tauri';
 import {
   getCatalogEntry, saveCatalogEntry,
   saveCachedSaga,
