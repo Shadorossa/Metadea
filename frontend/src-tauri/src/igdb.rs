@@ -1344,15 +1344,7 @@ pub async fn igdb_get_relation_graph(
         "remakes", "remasters", "dlcs", "expansions",
         "standalone_expansions", "expanded_games", "ports", "forks",
     ];
-    // dlcs/expansions/standalone_expansions belong to whichever *specific*
-    // edition IGDB attaches them to — walking those fields past the root
-    // means a remake's own DLC would surface as if it belonged to the
-    // original game (and vice versa) once discovered 2+ hops out. Editions
-    // themselves (remakes, remasters, ports, forks, expanded editions) still
-    // chain freely from any depth, since those really do represent "the same
-    // underlying work" transitively — only the content *attached to* an
-    // edition is edition-specific.
-    const CONTENT_ONLY_FIELDS: &[&str] = &["dlcs", "expansions", "standalone_expansions"];
+
 
     let mut visited: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
     visited.insert(root_id, "root".to_string());
@@ -1400,22 +1392,17 @@ pub async fn igdb_get_relation_graph(
                 collected.push(out);
             }
 
-            // A content node (a DLC/expansion/standalone-expansion attached
-            // to *some* edition, not necessarily the root) is a dead end for
-            // traversal — its own remaster/remake/port/etc. belongs to that
-            // specific piece of content, not to whatever game is being
-            // viewed. Without this, "a remaster of the base game's
-            // standalone expansion" surfaced as if it were the base game's
-            // own relation, two hops out, instead of only showing up on the
-            // expansion's own page.
-            let reached_via_content = id != root_id
-                && CONTENT_ONLY_FIELDS.contains(&visited.get(&id).map(String::as_str).unwrap_or(""));
-            if reached_via_content {
+            // All non-root nodes are dead ends for BFS traversal.
+            // Their own sub-relations (DLC of a remake, remaster of a remake)
+            // belong specifically to that edition and must only show on its own
+            // page — not bubble up to the base game's relation list.
+            if id != root_id {
                 continue;
             }
 
             for field in REL_FIELDS {
-                if id != root_id && CONTENT_ONLY_FIELDS.contains(field) {
+                // Ports are never shown as related versions.
+                if *field == "ports" {
                     continue;
                 }
                 if let Some(list) = item[*field].as_array() {
