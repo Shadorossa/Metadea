@@ -201,7 +201,7 @@ const t    = useTranslations(lang);
 
       const { getUserInfo } = await import('../lib/tauri');
       const userInfo = await getUserInfo();
-      const fontId = (userInfo.profile_font as string | undefined) ?? 'inter';
+      const fontId = (userInfo.font as string | undefined) ?? 'inter';
       localStorage.setItem('profile_font_cache', fontId);
       const fontSrc = getFontFile(fontId);
       if (fontSrc) {

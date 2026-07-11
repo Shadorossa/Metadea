@@ -26,29 +26,56 @@ impl MetadeaDb {
     pub fn open(path: &std::path::Path) -> SqlResult<Self> {
         let conn = Connection::open(path)?;
         conn.execute_batch(METADEA_SCHEMA)?;
-        // Upgrade path for DBs created before authors_csv existed on media_catalog.
-        // media_author/media_by_author/media_relations are already created by
-        // METADEA_SCHEMA above (CREATE TABLE IF NOT EXISTS) — do not repeat or
-        // drop them here, that previously wiped every saved author profile on
-        // every app launch.
-        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
-        // Upgrade path for DBs created before shop_links_csv existed — same
-        // idempotent-ALTER pattern as authors_csv above (fresh DBs already
-        // get it inline via METADEA_SCHEMA's CREATE TABLE text).
-        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN shop_links_csv TEXT DEFAULT ''", []);
-        // Upgrade path for DBs created before these three columns existed on
-        // characters — same idempotent-ALTER pattern as above.
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN name_native TEXT", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN aliases_csv TEXT DEFAULT ''", []);
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN biography TEXT", []);
-        // Add rating_system to user_profile if missing
-        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN rating_system TEXT NOT NULL DEFAULT '5-star'", []);
-        // Add character_name to character_appearances if missing
-        let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN character_name TEXT", []);
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (
+                version    INTEGER PRIMARY KEY,
+                applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );"
+        )?;
+        run_migrations(&conn)?;
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         conn.pragma_update(None, "journal_mode", &"WAL")?;
         Ok(Self { conn: Mutex::new(conn) })
     }
+}
+
+fn current_schema_version(conn: &Connection) -> i64 {
+    conn.query_row(
+        "SELECT COALESCE(MAX(version), 0) FROM schema_migrations",
+        [],
+        |r| r.get(0),
+    ).unwrap_or(0)
+}
+
+fn mark_migration(conn: &Connection, version: i64) -> SqlResult<()> {
+    conn.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES (?1)", [version])?;
+    Ok(())
+}
+
+fn run_migrations(conn: &Connection) -> SqlResult<()> {
+    let v = current_schema_version(conn);
+
+    if v < 1 {
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN authors_csv TEXT DEFAULT ''", []);
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN shop_links_csv TEXT DEFAULT ''", []);
+        mark_migration(conn, 1)?;
+    }
+    if v < 2 {
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN name_native TEXT", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN aliases_csv TEXT DEFAULT ''", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN biography TEXT", []);
+        mark_migration(conn, 2)?;
+    }
+    if v < 3 {
+        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN rating_system TEXT NOT NULL DEFAULT '5-star'", []);
+        mark_migration(conn, 3)?;
+    }
+    if v < 4 {
+        let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN character_name TEXT", []);
+        mark_migration(conn, 4)?;
+    }
+
+    Ok(())
 }
 
 // ─── ID generator ─────────────────────────────────────────────────────────────

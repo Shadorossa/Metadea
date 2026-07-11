@@ -26,7 +26,7 @@ export async function initFontPicker(username: string, showToast: (msg?: string)
   const btnNext = document.getElementById('font-next')!;
 
   const info    = await getUserInfo();
-  const savedId = (info.profile_font as string | undefined) ?? 'inter';
+  const savedId = (info.font as string | undefined) ?? 'inter';
   let idx       = PROFILE_FONTS.findIndex(f => f.id === savedId);
   if (idx < 0) idx = 0;
 
@@ -47,14 +47,14 @@ export async function initFontPicker(username: string, showToast: (msg?: string)
   btnPrev.addEventListener('click', async () => {
     idx = (idx - 1 + PROFILE_FONTS.length) % PROFILE_FONTS.length;
     render();
-    await saveUserInfo({ profile_font: PROFILE_FONTS[idx].id });
+    await saveUserInfo({ font: PROFILE_FONTS[idx].id });
     showToast('Fuente guardada');
   });
 
   btnNext.addEventListener('click', async () => {
     idx = (idx + 1) % PROFILE_FONTS.length;
     render();
-    await saveUserInfo({ profile_font: PROFILE_FONTS[idx].id });
+    await saveUserInfo({ font: PROFILE_FONTS[idx].id });
     showToast('Fuente guardada');
   });
 

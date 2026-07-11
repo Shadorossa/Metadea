@@ -1,23 +1,10 @@
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { isTauri, invoke as tauriInvoke } from '../tauri/core';
 
-// Keys that map to files in %appdata%\com.metadea.app\user_metadata\
 const TAURI_KEYS: Record<string, string> = {
   [STORAGE_KEYS.profileAvatarCustom]: 'avatar',
   [STORAGE_KEYS.profileBannerCustom]: 'banner',
 };
-
-const isTauri = () =>
-  typeof window !== 'undefined' &&
-  ('__TAURI__' in window || '__TAURI_IPC__' in window);
-
-async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const tauri = window.__TAURI__;
-  if (tauri?.core?.invoke) {
-    return tauri.core.invoke<T>(cmd, args);
-  }
-  const { invoke } = await import(/* @vite-ignore */ '@tauri-apps/api/core');
-  return invoke<T>(cmd, args);
-}
 
 // ── IndexedDB fallback ────────────────────────────────────────────────────────
 
