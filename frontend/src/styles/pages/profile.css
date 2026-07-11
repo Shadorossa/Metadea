@@ -412,6 +412,14 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  /* Covers are saved at their largest available size (e.g. AniList's
+     extraLarge, ~460px) and shown here at ~75px — a 6x+ downscale that can
+     make Chromium/WebView2 fall back to a cheaper, jaggier scaling path
+     instead of properly filtering. Promoting the image to its own GPU
+     layer forces the higher-quality raster/downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
 }
 
 .library-card-no-cover {
