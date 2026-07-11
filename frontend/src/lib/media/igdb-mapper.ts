@@ -60,9 +60,11 @@ interface IgdbDetailGame {
 // same IGDB enum, two apps that can't share a module, so keep both in sync
 // by hand when IGDB's category list changes.
 export const IGDB_GAME_TYPE_REMAKE = 8;
+export const IGDB_GAME_TYPE_REMASTER = 9;
 
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',
+  1: 'DLC',
   2: 'EXPANSION',
   4: 'EXPANSION',
   5: 'MOD',
@@ -192,16 +194,51 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       }
     : undefined;
 
-  addRelations(game.remakes, 'REMAKE');
-  // Expanded editions (game_type 10) commonly point at unrelated remasters
-  // of the base game rather than a remaster of the edition itself — skip.
-  if (gameType !== 10) addRelations(game.remasters, 'REMASTER');
-  addRelations(game.dlcs, 'DLC');
-  addRelations(game.expansions, 'EXPANSION');
-  addRelations(game.standalone_expansions, 'STANDALONE');
-  addRelations(game.expanded_games, 'EXPANDED_GAME');
-  // Ports are never shown as related versions.
-  addRelations(game.forks, 'FORK');
+  // IGDB tends to copy/inherit the base game's whole sibling-editions web
+  // onto a "full edition" of that game (remake/remaster/expanded edition/
+  // port/fork) — e.g. a remaster's own "standalone_expansions" field
+  // pointing at the *original, non-remastered* expansion, rendering as if
+  // it belonged to the remaster. So those types only ever get their
+  // Fuente/parent relation (set below, unconditionally) — nothing else from
+  // their own IGDB record.
+  //
+  // Content attached to a specific release (DLC/expansion/standalone
+  // expansion/episode/season/mod/update) doesn't have that inheritance
+  // problem — its own remakes/remasters/etc. genuinely describe *that*
+  // piece of content (e.g. an expansion's own remaster), so those types
+  // keep their full direct relations alongside their Fuente.
+  const IS_FULL_EDITION_TYPE = new Set([8, 9, 10, 11, 12]); // remake, remaster, expanded_game, port, fork
+  if (!IS_FULL_EDITION_TYPE.has(gameType)) {
+    addRelations(game.remakes, 'REMAKE');
+    addRelations(game.remasters, 'REMASTER');
+    addRelations(game.dlcs, 'DLC');
+    addRelations(game.expansions, 'EXPANSION');
+    addRelations(game.standalone_expansions, 'STANDALONE');
+    addRelations(game.expanded_games, 'EXPANDED_GAME');
+    // Ports are never shown as related versions.
+    addRelations(game.forks, 'FORK');
+  }
+
+  // Unlike remakes/remasters (which need a reverse `where remakes/remasters
+  // = id` lookup — see mediaService.ts — because IGDB doesn't reliably set a
+  // forward parent field on those), DLCs/expansions/standalone expansions
+  // usually DO have `parent_game`/`version_parent` pointing at the base game
+  // directly, so their Fuente relation can be added right here without an
+  // extra request.
+  if (parentSub) {
+    const relatedExternalId = `${parentSub.is_vn ? 'vnovel' : 'game'}:${parentSub.id}`;
+    if (!seenRelatedIds.has(relatedExternalId)) {
+      seenRelatedIds.add(relatedExternalId);
+      relations.push({
+        typeLabel: tm.relations.PARENT,
+        relationType: 'PARENT',
+        title: cleanEditionTitle(parentSub.name),
+        cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
+        url: `/media?id=${relatedExternalId}`,
+        relatedExternalId,
+      });
+    }
+  }
 
   return {
     externalId: rawId,

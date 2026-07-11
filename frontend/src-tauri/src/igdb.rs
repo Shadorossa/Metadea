@@ -1277,13 +1277,17 @@ pub async fn igdb_get_game_detail(
     Ok(game)
 }
 
-// Reverse lookup for remakes: IGDB only exposes the forward "remakes" array
-// on the original game, not a back-reference on the remake itself. Only
-// called by the frontend when the core detail response has game_type == 8.
+// Reverse lookup for remakes/remasters: IGDB only exposes the forward
+// "remakes"/"remasters" array on the original game, not a back-reference on
+// the edition itself. `relation_field` picks which forward array to search
+// ("remakes" when the core detail response has game_type == 8, "remasters"
+// for game_type == 9) — same query shape either way, just which column is
+// matched against.
 #[tauri::command]
 pub async fn igdb_get_base_games(
     app_handle: tauri::AppHandle,
     igdb_id: u64,
+    relation_field: String,
 ) -> Result<serde_json::Value, String> {
     let cfg = load_env_config(&app_handle)?;
     let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
@@ -1291,9 +1295,13 @@ pub async fn igdb_get_base_games(
     let token = get_twitch_token(&client_id, &client_secret).await?;
     let client = get_http_client();
 
+    if relation_field != "remakes" && relation_field != "remasters" {
+        return Err(format!("Unsupported relation_field: {}", relation_field));
+    }
+
     let base_query = format!(
-        "fields id,name,cover.image_id,first_release_date,genres.id; where remakes = {}; limit 5;",
-        igdb_id
+        "fields id,name,cover.image_id,first_release_date,genres.id; where {} = {}; limit 5;",
+        relation_field, igdb_id
     );
 
     let mut results = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &base_query).await?;
@@ -1336,6 +1344,15 @@ pub async fn igdb_get_relation_graph(
         "remakes", "remasters", "dlcs", "expansions",
         "standalone_expansions", "expanded_games", "ports", "forks",
     ];
+    // dlcs/expansions/standalone_expansions belong to whichever *specific*
+    // edition IGDB attaches them to — walking those fields past the root
+    // means a remake's own DLC would surface as if it belonged to the
+    // original game (and vice versa) once discovered 2+ hops out. Editions
+    // themselves (remakes, remasters, ports, forks, expanded editions) still
+    // chain freely from any depth, since those really do represent "the same
+    // underlying work" transitively — only the content *attached to* an
+    // edition is edition-specific.
+    const CONTENT_ONLY_FIELDS: &[&str] = &["dlcs", "expansions", "standalone_expansions"];
 
     let mut visited: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
     visited.insert(root_id, "root".to_string());
@@ -1383,7 +1400,24 @@ pub async fn igdb_get_relation_graph(
                 collected.push(out);
             }
 
+            // A content node (a DLC/expansion/standalone-expansion attached
+            // to *some* edition, not necessarily the root) is a dead end for
+            // traversal — its own remaster/remake/port/etc. belongs to that
+            // specific piece of content, not to whatever game is being
+            // viewed. Without this, "a remaster of the base game's
+            // standalone expansion" surfaced as if it were the base game's
+            // own relation, two hops out, instead of only showing up on the
+            // expansion's own page.
+            let reached_via_content = id != root_id
+                && CONTENT_ONLY_FIELDS.contains(&visited.get(&id).map(String::as_str).unwrap_or(""));
+            if reached_via_content {
+                continue;
+            }
+
             for field in REL_FIELDS {
+                if id != root_id && CONTENT_ONLY_FIELDS.contains(field) {
+                    continue;
+                }
                 if let Some(list) = item[*field].as_array() {
                     for sub in list {
                         if let Some(sid) = sub["id"].as_u64() {

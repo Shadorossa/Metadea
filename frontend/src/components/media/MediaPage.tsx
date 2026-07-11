@@ -255,25 +255,36 @@ export default function MediaPage({ i18n }: Props) {
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
         // etc.) take a few extra sequential IGDB requests — fetch them after
         // the page is already showing instead of delaying first render.
+        //
+        // Only run this walk when the page being viewed is itself the true
+        // base game — every other edition (remake/remaster/DLC/expansion/...)
+        // only needs its own Fuente/parent relation (already set), and
+        // walking IGDB's edition/content graph starting from a non-base
+        // id kept surfacing siblings that don't belong to *this specific*
+        // edition (e.g. a remake's page showing the original's remaster and
+        // its non-remastered DLC, as if those were the remake's own).
+        const isBaseGame = full.format === 'GAME' || full.format === 'VISUAL_NOVEL';
         const targetRelationsId = full.parentGame?.externalId || currentId;
-        fetchExtraRelations(targetRelationsId, full).then(relations => {
-          // `cancelled` covers "the user has since navigated away from this
-          // page load" — skip the cache write too in that case, or a stale
-          // response computed from *this* page's data could land in
-          // whichever page's cache entry `targetRelationsId` now refers to
-          // (a parent game's page, if the user navigated there), corrupting
-          // it with relations that don't belong to it.
-          if (cancelled || !relations) return;
-          patchCachedRelations(targetRelationsId, relations);
-          setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
-          // Transitive relations (remaster-of-an-expansion, etc.) used to
-          // only ever land in the session cache — never media_relations —
-          // so they rendered fine here but never showed up as an editable
-          // relation in the collaborative catalog editor, which reads
-          // straight from the DB. Persist them now that we know this
-          // response still belongs to the current page.
-          mergeAndPersistRelations(targetRelationsId, relations).catch(console.error);
-        });
+        if (isBaseGame) {
+          fetchExtraRelations(targetRelationsId, full).then(relations => {
+            // `cancelled` covers "the user has since navigated away from this
+            // page load" — skip the cache write too in that case, or a stale
+            // response computed from *this* page's data could land in
+            // whichever page's cache entry `targetRelationsId` now refers to
+            // (a parent game's page, if the user navigated there), corrupting
+            // it with relations that don't belong to it.
+            if (cancelled || !relations) return;
+            patchCachedRelations(targetRelationsId, relations);
+            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+            // Transitive relations (remaster-of-an-expansion, etc.) used to
+            // only ever land in the session cache — never media_relations —
+            // so they rendered fine here but never showed up as an editable
+            // relation in the collaborative catalog editor, which reads
+            // straight from the DB. Persist them now that we know this
+            // response still belongs to the current page.
+            mergeAndPersistRelations(targetRelationsId, relations).catch(console.error);
+          });
+        }
 
         if (full.type === 'book' || full.type === 'comic') {
           fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(relations => {
@@ -455,7 +466,21 @@ export default function MediaPage({ i18n }: Props) {
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
   const editionsLabel = tm.relations.EDITIONS;
-  const relatedRelations    = data.relations.filter(r => r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel);
+  // A "full edition" of the base game (remake/remaster/expanded edition/
+  // port/fork) tends to inherit the base game's whole sibling-editions web
+  // in IGDB's own data — e.g. a remaster's own relations pointing at the
+  // *original, non-remastered* content — so those only ever show their
+  // Fuente/parent relation. Content attached to a specific release (DLC,
+  // expansion, standalone expansion, episode, season, mod, update) doesn't
+  // have that inheritance problem — its own remakes/remasters genuinely
+  // describe that piece of content, so those keep their full relations.
+  // mapIgdbToMedia already stops fetching the excluded ones fresh; this also
+  // filters out any leftover rows saved to the DB before that fix.
+  const isFullEdition = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']).has(data.format ?? '');
+  const relatedRelations    = data.relations.filter(r =>
+    r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel &&
+    (!isFullEdition || r.typeLabel === tm.relations.PARENT)
+  );
   const recommendedRelations = data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION);
   const editionRelations    = data.relations.filter(r => r.typeLabel === editionsLabel);
   const hasRecommendedRelations = recommendedRelations.length > 0;
@@ -655,7 +680,7 @@ export default function MediaPage({ i18n }: Props) {
 
         {/* Relacionados */}
         <div className="media-col-related">
-          {data.relations.length > 0 && (
+          {(relatedRelations.length > 0 || hasRecommendedRelations || hasEditionRelations) && (
             <>
               <div className="media-section-header-row">
                 {/* TMDB recommendations ride in the same list as real

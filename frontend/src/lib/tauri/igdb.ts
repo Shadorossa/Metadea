@@ -43,8 +43,8 @@ export async function igdbGetGameDetail(igdbId: number): Promise<Record<string, 
   return tauriTry<Record<string, unknown> | null>('igdb_get_game_detail', null, { igdbId });
 }
 
-export async function igdbGetBaseGames(igdbId: number): Promise<unknown[] | null> {
-  return tauriTry<unknown[] | null>('igdb_get_base_games', null, { igdbId });
+export async function igdbGetBaseGames(igdbId: number, relationField: 'remakes' | 'remasters'): Promise<unknown[] | null> {
+  return tauriTry<unknown[] | null>('igdb_get_base_games', null, { igdbId, relationField });
 }
 
 export async function igdbGetRelationGraph(rootId: number): Promise<unknown[]> {

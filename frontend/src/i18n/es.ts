@@ -201,7 +201,7 @@ export const es = {
       REL_UPDATE: 'Update',
       DLC: 'DLC',
       EXPANSION: 'Expansión',
-      STANDALONE: 'Expansión independiente',
+      STANDALONE: 'Expansión',
       FORK: 'Fork',
     },
     sources: {

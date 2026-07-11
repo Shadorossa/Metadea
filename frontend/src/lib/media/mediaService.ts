@@ -5,7 +5,7 @@ import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, IGDB_GAME_TYPE_REMAKE, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, IGDB_GAME_TYPE_REMAKE, IGDB_GAME_TYPE_REMASTER, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStat } from './types';
@@ -153,10 +153,13 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     if (!game) return null;
     let data = mapIgdbToMedia(game, rawId);
 
-    // Remakes need one extra request — IGDB has no back-reference field to
-    // find the base/original game, only a reverse `where remakes = id` lookup.
-    if (game.game_type === IGDB_GAME_TYPE_REMAKE) {
-      const baseGames = await igdbGetBaseGames(numericId).catch(() => null);
+    // Remakes/remasters need one extra request each — IGDB has no back-
+    // reference field to find the base/original game on the edition itself,
+    // only a reverse `where remakes = id` / `where remasters = id` lookup.
+    // Without this, a remake/remaster's page had no "Fuente" relation at all.
+    if (game.game_type === IGDB_GAME_TYPE_REMAKE || game.game_type === IGDB_GAME_TYPE_REMASTER) {
+      const relationField = game.game_type === IGDB_GAME_TYPE_REMAKE ? 'remakes' : 'remasters';
+      const baseGames = await igdbGetBaseGames(numericId, relationField).catch(() => null);
       if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
     }
 
