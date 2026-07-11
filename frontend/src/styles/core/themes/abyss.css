@@ -1,0 +1,10 @@
+:root {
+  --bg-primary: #02040a;
+}
+
+#app-bg {
+  background:
+    radial-gradient(circle at 80% 20%, rgba(13, 148, 136, 0.28) 0%, transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.22) 0%, transparent 60%);
+  animation: th-breathe 14s ease-in-out infinite;
+}

@@ -149,13 +149,7 @@ body::after {
   box-shadow: 0 0 10px rgba(29, 255, 115, 0.2) !important;
 }
 
-/* Images have a green monochrome tint */
-.card-media-img,
-.media-cover-img,
-.library-card-thumb img,
-.fav-cover {
-  filter: brightness(0.85) contrast(1.1) sepia(1) hue-rotate(85deg) saturate(1.8) !important;
-}
+
 
 /* Typography Terminal dividers */
 h2, h3, .settings-panel-title, .section-label {

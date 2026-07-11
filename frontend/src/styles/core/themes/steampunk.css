@@ -1,0 +1,124 @@
+html[data-theme="steampunk"], [data-theme="steampunk"] {
+  --bg-primary: #120d0a; /* Cuero oscuro */
+  --bg-elevated: #211812; /* Madera/cobre oxidado */
+  --bg-card: #2e2118; /* Papel pergamino oscuro */
+  --bg-card-rgb: 46 33 24;
+
+  --text-main: #dfc2a1; /* Texto beige envejecido */
+  --text-muted: #b49b7f; /* Latón apagado */
+  --text-dim: #7d6550; /* Cobre oxidado oscuro */
+
+  --border-color: #8c6239; /* Cobre pulido */
+
+  --accent: #d4a373; /* Bronce radiante */
+  --accent-rgb: 212 163 115;
+  --accent-soft: rgba(212, 163, 115, 0.08);
+  --accent-border: #a67c52;
+  --accent-glow: rgba(212, 163, 115, 0.25);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+body[data-theme="steampunk"], html[data-theme="steampunk"] body {
+  font-family: 'Cinzel', 'Georgia', serif !important;
+  background-color: var(--bg-primary);
+  background-image: radial-gradient(circle at 50% 50%, rgba(140, 98, 57, 0.05) 0%, transparent 80%);
+}
+
+/* ── Steampunk borders & textures ────────────────────────────── */
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #0e0a08;
+  background-image: 
+    /* Textura de grano fino / metal cepillado */
+    repeating-linear-gradient(45deg, rgba(140, 98, 57, 0.01) 0px, rgba(140, 98, 57, 0.01) 2px, transparent 2px, transparent 10px),
+    /* Gradiente cálido central */
+    radial-gradient(circle at 50% 30%, rgba(140, 98, 57, 0.08) 0%, transparent 70%);
+}
+
+/* ── UI Element Overrides: Victorian Metal Panels ─────────────────────────── */
+
+/* Botones con aspecto de placas de latón remachadas */
+[data-theme="steampunk"] .btn,
+[data-theme="steampunk"] .settings-tab,
+[data-theme="steampunk"] .search-action-btn,
+[data-theme="steampunk"] .search-tab,
+[data-theme="steampunk"] .status-dropdown-trigger {
+  border: 2px solid #8c6239 !important;
+  background: linear-gradient(180deg, #3a2b1f 0%, #261c14 100%) !important;
+  color: #dfc2a1 !important;
+  box-shadow: 0 2px 0 #5c3f24, inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  text-shadow: 1px 1px 1px #000;
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+  font-family: 'Cinzel', 'Georgia', serif !important;
+}
+
+[data-theme="steampunk"] .btn:hover,
+[data-theme="steampunk"] .settings-tab:hover,
+[data-theme="steampunk"] .search-action-btn:hover,
+[data-theme="steampunk"] .status-dropdown-trigger:hover {
+  background: linear-gradient(180deg, #4d3a2b 0%, #2e2118 100%) !important;
+  border-color: #d4a373 !important;
+  box-shadow: 0 2px 4px rgba(212, 163, 115, 0.2), 0 2px 0 #5c3f24 !important;
+}
+
+[data-theme="steampunk"] .btn:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 0px 0 #5c3f24 !important;
+}
+
+/* Inputs como indicadores vintage */
+[data-theme="steampunk"] .search-input,
+[data-theme="steampunk"] input[type="text"],
+[data-theme="steampunk"] input[type="number"],
+[data-theme="steampunk"] textarea {
+  border: 2px solid #5c3f24 !important;
+  background-color: #1a120e !important;
+  color: #dfc2a1 !important;
+  border-radius: 4px !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important;
+  font-family: 'Cinzel', 'Georgia', serif !important;
+}
+
+[data-theme="steampunk"] .search-input:focus,
+[data-theme="steampunk"] input[type="text"]:focus {
+  border-color: #d4a373 !important;
+  outline: none;
+}
+
+/* Cartas de obras con borde de cobre y filigrana */
+[data-theme="steampunk"] .media-card,
+[data-theme="steampunk"] .hof-card,
+[data-theme="steampunk"] .media-relation-card {
+  border: 1px solid #5c3f24 !important;
+  background: #211812 !important;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4) !important;
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+[data-theme="steampunk"] .media-card:hover,
+[data-theme="steampunk"] .media-relation-card:hover {
+  border-color: #d4a373 !important;
+  box-shadow: 0 8px 16px rgba(212, 163, 115, 0.15), 0 4px 8px rgba(0,0,0,0.6) !important;
+  transform: translateY(-4px) rotate(0.5deg) !important;
+}
+
+
+
+/* Scrollbars de cobre */
+[data-theme="steampunk"] ::-webkit-scrollbar-track {
+  background: #120d0a !important;
+}
+[data-theme="steampunk"] ::-webkit-scrollbar-thumb {
+  background: #5c3f24 !important;
+  border: 2px solid #120d0a !important;
+}
+[data-theme="steampunk"] ::-webkit-scrollbar-thumb:hover {
+  background: #8c6239 !important;
+}
