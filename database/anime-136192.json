@@ -32,9 +32,17 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-11T12:27:36.935365100+00:00",
-    "updated_at": "2026-07-11T12:27:58.006635400+00:00"
+    "updated_at": "2026-07-11T14:36:40.814819500+00:00"
   },
   "media_relations": [
+    {
+      "related_media_external_id": "manga:30102",
+      "relation_type": "PARENT",
+      "type_label": "Fuente",
+      "title": "Fruits Basket",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/bx30102-MJuQ0e0k2CgU.png",
+      "media_external_id": "anime:136192"
+    },
     {
       "media_external_id": "anime:136192",
       "related_media_external_id": "anime:124194",
@@ -194,7 +202,8 @@
     }
   ],
   "saga_groups": {
-    "anime:120": "Group 1",
-    "anime:105334": "Group 1"
-  }
+    "anime:105334": "Group 1",
+    "anime:120": "Group 1"
+  },
+  "saga_name": "Fruits Basket: 1st Season"
 }
