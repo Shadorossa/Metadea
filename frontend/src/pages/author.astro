@@ -80,6 +80,7 @@ const lang = getLang(Astro.url);
   import { invoke } from '@tauri-apps/api/core';
   import { fetchAniListStaffDetail } from '../lib/search/providers/anilist';
   import { fetchOpenLibAuthorFullDetail, bookIdFromWorkKey } from '../lib/search/providers/openlibrary';
+  import { mapExternalFormatToType } from '../lib/media/mapper-utils';
 
   async function loadAuthorData() {
     const loadingEl = document.getElementById('author-loading')!;
@@ -147,9 +148,7 @@ const lang = getLang(Astro.url);
           worksGrid.innerHTML = edges
             .map(edge => {
               const item = edge.node;
-              const type = item.type?.toLowerCase() === 'anime' ? 'anime'
-                : item.format === 'NOVEL' ? 'lnovel'
-                : 'manga';
+              const type = mapExternalFormatToType(item.type, item.format);
               const title = item.title.english || item.title.romaji || 'Unknown Title';
               const coverImg = item.coverImage?.medium
                 ? `<img src="${item.coverImage.medium}" alt="${title}" class="author-work-cover" />`
@@ -179,9 +178,7 @@ const lang = getLang(Astro.url);
         };
         const dbRelations = edges.map(edge => {
           const item = edge.node;
-          const type = item.type?.toLowerCase() === 'anime' ? 'anime'
-            : item.format === 'NOVEL' ? 'lnovel'
-            : 'manga';
+          const type = mapExternalFormatToType(item.type, item.format);
           return {
             media_external_id: `${type}:${item.id}`,
             role: edge.staffRole || null,

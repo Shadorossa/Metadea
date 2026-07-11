@@ -77,3 +77,12 @@ export function compareByReleaseDate<T extends { release_year?: number | null; r
   if (keyA[2] !== keyB[2]) return keyA[2] - keyB[2];
   return (a.id || '').localeCompare(b.id || '');
 }
+
+/** Map AniList type/format to internal media types ('anime', 'lnovel', 'manga'). */
+export function mapExternalFormatToType(type: string | null | undefined, format: string | null | undefined): 'anime' | 'lnovel' | 'manga' {
+  const lowerType = type?.toLowerCase();
+  if (lowerType === 'anime') return 'anime';
+  if (format === 'NOVEL') return 'lnovel';
+  return 'manga';
+}
+
