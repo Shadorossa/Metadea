@@ -193,16 +193,7 @@ const t = useTranslations(lang);
         }
       }
 
-      // Remember the current path so index.astro's boot redirect can return
-      // here instead of always landing on /home — a full reload (F5, or a
-      // background Rust rebuild restarting `tauri dev`'s webview) re-enters
-      // through / every time, which used to discard whatever page (e.g. a
-      // media detail page) the user was actually on. Called both immediately
-      // (covers hard/full navigations, which don't reliably re-fire
-      // astro:page-load in time — e.g. library card links stop click
-      // propagation to their own card handler, which also blocks the
-      // ClientRouter's delegated listener from soft-navigating) and from the
-      // page-load listener below (covers client-side transitions).
+      // Cache current path to restore session after full reloads/restarts
       function rememberCurrentPath() {
         const pathname = window.location.pathname;
         const search = window.location.search;
@@ -215,30 +206,22 @@ const t = useTranslations(lang);
           return;
         }
 
-        // Always save the current path
         localStorage.setItem(STORAGE_KEYS.lastVisitedPath, fullPath);
       }
       rememberCurrentPath();
 
-      // Belt-and-suspenders against the astro:page-load timing gap described
-      // above: `beforeunload` fires right before the page actually goes away
-      // for *any* reason (F5, closing the tab, a background Rust rebuild
-      // restarting the webview), reading whatever window.location is *at
-      // that exact moment* — so it can't go stale the way a listener that
-      // only runs on arrival can if the "you've arrived" event never fires.
+      // Listeners and periodic check to keep the cached path updated
       window.addEventListener('beforeunload', rememberCurrentPath);
-
-      // Belt-and-suspenders #2: even `beforeunload` turned out not to be
-      // enough (reported still bouncing to a stale page while genuinely
-      // sitting on /profile) — Tauri's WebView2 doesn't reliably fire it for
-      // a same-URL reload the way a real browser tab does. Polling instead
-      // of depending on any single event means the cached path is never
-      // more than a second stale, whichever mechanism ends up mattering.
       setInterval(rememberCurrentPath, 1000);
 
       document.addEventListener('astro:page-load', async () => {
+        try {
+          const { initTauriDatabase } = await import('../lib/tauri');
+          await initTauriDatabase();
+        } catch (e) {
+          console.error(e);
+        }
         initAuthModal();
-        // Ensure we save immediately after page load to prevent stale paths
         setTimeout(rememberCurrentPath, 0);
 
         if (!updaterChecked) {
