@@ -336,10 +336,21 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // Load existing database relations and authors first
     const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
-    // Only save API relations if we don't have any in the DB
-    if (dbRels.length === 0 && data.relations && data.relations.length > 0) {
-      const dbRelsToSave = data.relations
-        .filter(r => r.relatedExternalId)
+    // Merge freshly-fetched API relations into whatever's already saved,
+    // instead of only ever syncing once per title. IGDB keeps adding
+    // DLCs/standalone expansions/etc. to a game's entry over time, and a
+    // plain "skip if dbRels isn't empty" gate meant any title that already
+    // had one curated/synced relation (e.g. a manually-added PREQUEL) would
+    // never pick up newly-listed ones again — they'd render fine on that one
+    // page load (from live memory) but silently never reach media_relations,
+    // so they never showed up as an editable relation in the collaborative
+    // catalog editor. Existing DB rows always win on id conflicts since they
+    // may have been hand-edited (saga grouping, relation-type fixes) via
+    // PrEditorModal and must not be clobbered by a fresh IGDB fetch.
+    if (data.relations && data.relations.length > 0) {
+      const dbIds = new Set(dbRels.map(r => r.related_media_external_id));
+      const newFromApi = data.relations
+        .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
         .map(r => ({
           related_media_external_id: r.relatedExternalId!,
           relation_type: r.relationType ?? r.typeLabel,
@@ -347,7 +358,10 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
           title: r.title,
           cover: r.cover || null,
         }));
-      await saveMediaRelations(rawId, dbRelsToSave).catch(console.error);
+
+      if (newFromApi.length > 0) {
+        await saveMediaRelations(rawId, [...dbRels, ...newFromApi]).catch(console.error);
+      }
     }
 
     // Only save API authors if we don't have any in the DB

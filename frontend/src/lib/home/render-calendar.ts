@@ -99,7 +99,6 @@ function dayPopoverHtml(releases: UpcomingRelease[]): string {
 
   return `
     <div class="calendar-day-popover">
-      ${buildTypeTabsHtml(releases, null, 'calendar-popover-type-tab')}
       <div class="calendar-popover-body">
         ${popoverBodyHtml(releases)}
       </div>
