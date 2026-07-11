@@ -67,20 +67,12 @@ function Field({ label, changed, small, full, children }: {
 // REL_ADAPTATION / REL_ALTERNATIVE are namespaced (see EDITABLE_RELATION_OPTIONS
 // in sagaTypes.ts) to avoid colliding with the saga-chain's own ADAPTATION /
 // ALTERNATIVE relation_type strings, which the backend's transitive-chain walk
-// would otherwise sweep into the Saga order the next time the editor loads.
-const RELATION_TYPE_LABELS: Record<string, string> = {
-  REL_ADAPTATION: 'Adaptación',
-  SPIN_OFF: 'Spin-off',
-  REL_ALTERNATIVE: 'Versión',
-  PARENT: 'Fuente',
-  SIDE_STORY: 'Side Story',
-  SUMMARY: 'Resumen',
-  REMASTER: 'Remaster',
-  EXPANDED_GAME: 'Edición extendida',
-  REL_UPDATE: 'Update',
-};
+import { getT } from '../../i18n/client';
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
+  const tm = getT().media;
+  const relationLabels = tm.relations;
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
@@ -346,7 +338,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       setEditableRelations([...editableRelations, {
         related_media_external_id: result.externalId,
         relation_type: selectedRelationType,
-        type_label: RELATION_TYPE_LABELS[selectedRelationType] || selectedRelationType,
+        type_label: (relationLabels as any)[selectedRelationType] || selectedRelationType,
         title: result.titleMain,
         cover: result.coverUrl,
       }]);
@@ -354,7 +346,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   };
   const updateEditableRelationType = (id: string, relationType: string) =>
     setEditableRelations(prev => prev.map(r => r.related_media_external_id === id
-      ? { ...r, relation_type: relationType, type_label: RELATION_TYPE_LABELS[relationType] || relationType }
+      ? { ...r, relation_type: relationType, type_label: (relationLabels as any)[relationType] || relationType }
       : r));
   const removeEditableRelation = (id: string) =>
     setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));
@@ -886,7 +878,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                         )}
                         {EDITABLE_RELATION_OPTIONS.map(type => (
                           <option key={type} value={type}>
-                            {RELATION_TYPE_LABELS[type] || type}
+                            {((relationLabels as any)[type]) || type}
                           </option>
                         ))}
                       </select>
@@ -902,7 +894,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                   >
                     {EDITABLE_RELATION_OPTIONS.map(type => (
                       <option key={type} value={type}>
-                        {RELATION_TYPE_LABELS[type] || type}
+                        {((relationLabels as any)[type]) || type}
                       </option>
                     ))}
                   </select>

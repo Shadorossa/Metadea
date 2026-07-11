@@ -193,6 +193,11 @@ export const en = {
       SUMMARY: 'Summary', SPIN_OFF: 'Spin-off', OTHER: 'Other',
       CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
       EDITIONS: 'Editions',
+      REL_ADAPTATION: 'Adaptation',
+      REL_ALTERNATIVE: 'Version',
+      REMASTER: 'Remaster',
+      EXPANDED_GAME: 'Expanded Edition',
+      REL_UPDATE: 'Update',
     },
     sources: {
       MANGA: 'Manga', LIGHT_NOVEL: 'Light novel', VISUAL_NOVEL: 'Visual novel',
