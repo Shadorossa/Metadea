@@ -41,6 +41,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .avatar-preview-wrap,
 [data-theme="newspaper-dark"] .banner-drop-zone,
 [data-theme="newspaper-dark"] .card-media-base,
+[data-theme="newspaper-dark"] .media-card,
+[data-theme="newspaper-dark"] .library-card,
 [data-theme="newspaper-dark"] .hof-btn,
 [data-theme="newspaper-dark"] .hof-container,
 [data-theme="newspaper-dark"] .hof-card,
@@ -57,6 +59,22 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-transform: capitalize !important;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
+}
+
+/* Fine 1px border for covers */
+[data-theme="newspaper-dark"] .library-card-thumb,
+[data-theme="newspaper-dark"] .library-card-thumb img,
+[data-theme="newspaper-dark"] .card-media-img {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Vintage white rating stars */
+[data-theme="newspaper-dark"] .library-card-rating svg,
+[data-theme="newspaper-dark"] .media-card-rating svg,
+[data-theme="newspaper-dark"] .card-rating-stars svg {
+  color: var(--text-main) !important;
+  fill: var(--text-main) !important;
 }
 
 /* Hover/Active states simulate vintage ink press highlight */
@@ -144,7 +162,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .media-card:hover,
-[data-theme="newspaper-dark"] .media-relation-card:hover {
+[data-theme="newspaper-dark"] .media-relation-card:hover,
+[data-theme="newspaper-dark"] .library-card:hover {
   border-color: var(--text-main) !important;
   transform: translateY(-2px) !important;
+}
+
+/* Translucent backgrounds for related and character cards */
+[data-theme="newspaper-dark"] .media-relation-card,
+[data-theme="newspaper-dark"] .media-char-card {
+  background-color: rgba(28, 26, 23, 0.45) !important;
+}
+
+[data-theme="newspaper-dark"] .media-relation-card:hover,
+[data-theme="newspaper-dark"] .media-char-card:hover {
+  background-color: rgba(28, 26, 23, 0.65) !important;
 }
