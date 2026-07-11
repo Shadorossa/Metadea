@@ -1,20 +1,20 @@
 html[data-theme="gothic"], [data-theme="gothic"] {
-  --bg-primary: #0a0808; /* Carbón y piedra de cripta */
-  --bg-elevated: #161111; /* Catedral oscura */
-  --bg-card: #201717; /* Relicario medieval */
-  --bg-card-rgb: 32 23 23;
+  --bg-primary: #070505;
+  --bg-elevated: #110d0d;
+  --bg-card: #191212;
+  --bg-card-rgb: 25 18 18;
 
-  --text-main: #dfd5c6; /* Pergamino gastado */
-  --text-muted: #967f67; /* Oro viejo / Latón antiguo */
-  --text-dim: #5c4e41;
+  --text-main: #e2d9cd; /* Pergamino antiguo */
+  --text-muted: #a68968; /* Oro bruñido */
+  --text-dim: #6e5843;
 
-  --border-color: #531212; /* Sangre seca / Carmesí gótico */
+  --border-color: #5c1414; /* Hierro forjado / sangre gótica */
 
-  --accent: #d11a1a; /* Fuego de antorcha / Escarlata */
-  --accent-rgb: 209 26 26;
-  --accent-soft: rgba(209, 26, 26, 0.08);
-  --accent-border: #801313;
-  --accent-glow: rgba(209, 26, 26, 0.3);
+  --accent: #b71c1c; /* Antorcha apagada / Escarlata */
+  --accent-rgb: 183 28 28;
+  --accent-soft: rgba(183, 28, 28, 0.08);
+  --accent-border: #801010;
+  --accent-glow: rgba(183, 28, 28, 0.4);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -23,23 +23,22 @@ html[data-theme="gothic"], [data-theme="gothic"] {
 }
 
 body[data-theme="gothic"], html[data-theme="gothic"] body {
-  font-family: 'Cinzel', 'Georgia', serif !important;
+  font-family: 'Cinzel', 'Playfair Display', serif !important;
   background-color: var(--bg-primary);
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 
-/* ── Gothic Cathedral Backdrop ────────────────────────────── */
+/* ── Gothic Cathedral Mist Backdrop ────────────────────────────── */
 
 #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background-color: #080606;
+  background-color: #070505;
   background-image: 
-    /* Efecto de niebla / humo de cripta */
-    radial-gradient(circle at 50% 90%, rgba(83, 18, 18, 0.12) 0%, transparent 60%),
-    /* Textura de piedra antigua */
-    radial-gradient(circle at 10% 20%, rgba(209, 26, 26, 0.03) 0%, transparent 40%);
+    /* Niebla de ceniza roja en la base */
+    radial-gradient(circle at 50% 100%, rgba(92, 20, 20, 0.16) 0%, transparent 60%),
+    /* Textura de piedra de mazmorra */
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,0.01) 0%, transparent 40%);
 }
 
 /* ── UI Element Overrides: Reliquary Panels ─────────────────────────── */
@@ -49,58 +48,39 @@ body[data-theme="gothic"], html[data-theme="gothic"] body {
 [data-theme="gothic"] .search-action-btn,
 [data-theme="gothic"] .search-tab,
 [data-theme="gothic"] .status-dropdown-trigger {
-  border: 2px solid #531212 !important;
-  background: #161111 !important;
-  color: #dfd5c6 !important;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.6) !important;
+  border: 1px solid #5c1414 !important;
+  background: linear-gradient(180deg, #1b0c0c 0%, #0d0505 100%) !important;
+  color: #e2d9cd !important;
+  box-shadow: inset 0 0 10px rgba(92, 20, 20, 0.3), 0 4px 8px rgba(0,0,0,0.6) !important;
   font-family: inherit !important;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
+  font-size: 0.8rem;
+  border-radius: 2px !important;
 }
 
 [data-theme="gothic"] .btn:hover,
 [data-theme="gothic"] .settings-tab:hover,
 [data-theme="gothic"] .search-action-btn:hover {
-  border-color: #d11a1a !important;
-  background: #201717 !important;
-  box-shadow: 0 0 10px rgba(209, 26, 26, 0.25), 0 4px 6px rgba(0,0,0,0.6) !important;
-}
-
-[data-theme="gothic"] .search-input,
-[data-theme="gothic"] input[type="text"],
-[data-theme="gothic"] input[type="number"],
-[data-theme="gothic"] textarea {
-  border: 1px solid #443527 !important;
-  background-color: #0c0909 !important;
-  color: #dfd5c6 !important;
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.9) !important;
-  font-family: inherit !important;
-}
-
-[data-theme="gothic"] .search-input:focus,
-[data-theme="gothic"] input[type="text"]:focus {
-  border-color: #531212 !important;
-  box-shadow: 0 0 8px rgba(83, 18, 18, 0.4) !important;
+  border-color: #b71c1c !important;
+  background: linear-gradient(180deg, #2a1111 0%, #160707 100%) !important;
+  box-shadow: 0 0 12px rgba(183, 28, 28, 0.25), 0 4px 8px rgba(0,0,0,0.6) !important;
+  color: #fff !important;
 }
 
 [data-theme="gothic"] .media-card,
 [data-theme="gothic"] .hof-card,
 [data-theme="gothic"] .media-relation-card {
-  border: 2px solid #362828 !important;
-  background: #130f0f !important;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.8) !important;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  border: 1px solid #441a1a !important;
+  background-color: #110d0d !important;
+  /* Efecto de marco tallado en piedra */
+  outline: 1px solid #000 !important;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.9) !important;
 }
 
 [data-theme="gothic"] .media-card:hover,
 [data-theme="gothic"] .media-relation-card:hover {
-  border-color: #531212 !important;
-  transform: translateY(-3px) !important;
-  box-shadow: 0 15px 30px rgba(83, 18, 18, 0.3), 0 10px 20px rgba(0,0,0,0.8) !important;
-}
-
-
-
-[data-theme="gothic"] ::-webkit-scrollbar-thumb {
-  background: #531212 !important;
+  border-color: #b71c1c !important;
+  transform: translateY(-4px) !important;
+  box-shadow: 0 15px 30px rgba(183, 28, 28, 0.2), 0 12px 24px rgba(0,0,0,0.9) !important;
 }

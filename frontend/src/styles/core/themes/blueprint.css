@@ -1,0 +1,87 @@
+html[data-theme="blueprint"], [data-theme="blueprint"] {
+  --bg-primary: #0b1227;
+  --bg-elevated: #0f1a38;
+  --bg-card: #132148;
+  --bg-card-rgb: 19 33 72;
+
+  --text-main: #64ffda; /* Tiza cian brillante */
+  --text-muted: #8892b0;
+  --text-dim: #455272;
+
+  --border-color: #1a2f66;
+
+  --accent: #64ffda;
+  --accent-rgb: 100 255 218;
+  --accent-soft: rgba(100, 255, 218, 0.08);
+  --accent-border: #64ffda;
+  --accent-glow: rgba(100, 255, 218, 0.2);
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+body[data-theme="blueprint"], html[data-theme="blueprint"] body {
+  font-family: 'Courier New', Courier, monospace !important;
+  background-color: var(--bg-primary);
+}
+
+/* ── Technical Grid Backdrop ────────────────────────────── */
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #0b1227;
+  background-image: 
+    linear-gradient(rgba(100, 255, 218, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 255, 218, 0.02) 1px, transparent 1px),
+    linear-gradient(rgba(100, 255, 218, 0.007) 5px, transparent 5px),
+    linear-gradient(90deg, rgba(100, 255, 218, 0.007) 5px, transparent 5px);
+  background-size: 60px 60px, 60px 60px, 12px 12px, 12px 12px;
+}
+
+/* ── UI Element Overrides: Sketch and Blueprint lines ─────────────────────────── */
+
+[data-theme="blueprint"] .btn,
+[data-theme="blueprint"] .settings-tab,
+[data-theme="blueprint"] .search-action-btn,
+[data-theme="blueprint"] .search-tab,
+[data-theme="blueprint"] .status-dropdown-trigger {
+  border: 1px dashed #64ffda !important;
+  background-color: transparent !important;
+  color: #64ffda !important;
+  box-shadow: none !important;
+  font-family: inherit !important;
+  transition: all 0.15s ease !important;
+}
+
+[data-theme="blueprint"] .btn:hover,
+[data-theme="blueprint"] .settings-tab:hover,
+[data-theme="blueprint"] .search-action-btn:hover {
+  border-style: solid !important;
+  background-color: rgba(100, 255, 218, 0.06) !important;
+  /* Inclinación sutil estilo dibujo manual */
+  transform: rotate(-0.8deg) !important;
+}
+
+[data-theme="blueprint"] .media-card,
+[data-theme="blueprint"] .hof-card,
+[data-theme="blueprint"] .media-relation-card {
+  border: 1px dashed #1a2f66 !important;
+  background-color: #0f1a38 !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="blueprint"] .media-card:hover,
+[data-theme="blueprint"] .media-relation-card:hover {
+  border-style: solid !important;
+  border-color: #64ffda !important;
+  /* Inclinación sutil de boceto en las cartas */
+  transform: rotate(0.4deg) scale(1.01) !important;
+}
+
+[data-theme="blueprint"] ::-webkit-scrollbar-thumb {
+  background: #1a2f66 !important;
+}

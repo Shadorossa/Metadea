@@ -51,6 +51,26 @@ const THEMES = [
     name: 'Catedral (Gótico)',
     bg: 'radial-gradient(circle at 50% 90%, rgba(83, 18, 18, 0.7) 0%, transparent 80%), #0a0808',
   },
+  {
+    id: 'glitch',
+    name: 'Hacker (Glitch)',
+    bg: 'radial-gradient(circle at 50% 50%, rgba(57, 255, 20, 0.4) 0%, transparent 80%), #050209',
+  },
+  {
+    id: 'luxury',
+    name: 'Royal Gold',
+    bg: 'linear-gradient(135deg, #07070a 0%, #191922 50%, #d4af37 100%)',
+  },
+  {
+    id: 'jungle',
+    name: 'Ruinas (Jungle)',
+    bg: 'radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.4) 0%, transparent 80%), #070e0a',
+  },
+  {
+    id: 'blueprint',
+    name: 'Pizarra (Blueprint)',
+    bg: 'radial-gradient(circle at 50% 50%, rgba(100, 255, 218, 0.3) 0%, transparent 80%), #0a1128',
+  },
 ] as const;
 
 const CHECK_SVG = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;

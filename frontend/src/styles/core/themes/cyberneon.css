@@ -1,20 +1,20 @@
 html[data-theme="cyberneon"], [data-theme="cyberneon"] {
-  --bg-primary: #030308;
-  --bg-elevated: #090915;
-  --bg-card: #0e0e22;
-  --bg-card-rgb: 14 14 34;
+  --bg-primary: #020205;
+  --bg-elevated: #050510;
+  --bg-card: #090918;
+  --bg-card-rgb: 9 9 24;
 
-  --text-main: #00f0ff; /* Cian neón */
-  --text-muted: #ab00ff; /* Violeta neón */
-  --text-dim: #5c00a3;
+  --text-main: #00f0ff; /* Cian láser */
+  --text-muted: #ff0055; /* Magenta láser */
+  --text-dim: #73003c;
 
-  --border-color: #ff0055; /* Magenta brillante */
+  --border-color: #ff0055;
 
-  --accent: #ffff00; /* Amarillo eléctrico */
+  --accent: #ffff00; /* Amarillo cibernético */
   --accent-rgb: 255 255 0;
   --accent-soft: rgba(255, 255, 0, 0.08);
   --accent-border: #ffff00;
-  --accent-glow: rgba(255, 255, 0, 0.4);
+  --accent-glow: rgba(255, 255, 0, 0.5);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -24,86 +24,75 @@ html[data-theme="cyberneon"], [data-theme="cyberneon"] {
 
 body[data-theme="cyberneon"], html[data-theme="cyberneon"] body {
   font-family: 'Courier New', Courier, monospace !important;
-  font-weight: 700;
+  font-weight: 900;
   background-color: var(--bg-primary);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
-/* ── Cyberneon grid & glow ────────────────────────────── */
+/* ── Cyberneon Backdrop Grid ────────────────────────────── */
 
 #app-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
-  background-color: #030308;
+  background-color: #020205;
   background-image: 
-    linear-gradient(rgba(255, 0, 85, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 0, 85, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px, 24px 24px;
+    /* Líneas de escaneo horizontales y cuadrícula */
+    linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
 }
 
-/* ── UI Element Overrides: High-tech terminals ─────────────────────────── */
+/* ── UI Element Overrides: High-tech angled terminals ─────────────────────────── */
 
 [data-theme="cyberneon"] .btn,
 [data-theme="cyberneon"] .settings-tab,
 [data-theme="cyberneon"] .search-action-btn,
 [data-theme="cyberneon"] .search-tab,
 [data-theme="cyberneon"] .status-dropdown-trigger {
-  border: 1px solid var(--border-color) !important;
+  border: 2px solid #ff0055 !important;
   background: transparent !important;
   color: #00f0ff !important;
-  clip-path: polygon(0 0, 92% 0, 100% 35%, 100% 100%, 8% 100%, 0 70%) !important;
-  text-shadow: 0 0 4px rgba(0, 240, 255, 0.4);
-  transition: all 0.15s ease !important;
+  /* Botón con esquina cortada radical */
+  clip-path: polygon(0 0, 85% 0, 100% 40%, 100% 100%, 15% 100%, 0 60%) !important;
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+  font-family: inherit !important;
+  transition: all 0.1s steps(4) !important;
 }
 
 [data-theme="cyberneon"] .btn:hover,
 [data-theme="cyberneon"] .settings-tab:hover,
 [data-theme="cyberneon"] .search-action-btn:hover {
-  background: var(--border-color) !important;
-  color: #000 !important;
-  box-shadow: 0 0 12px var(--border-color) !important;
+  background: #ff0055 !important;
+  color: #020205 !important;
+  box-shadow: 0 0 15px #ff0055, 0 0 30px rgba(255, 0, 85, 0.5) !important;
   text-shadow: none;
+  transform: translate(-1px, -1px);
 }
 
-[data-theme="cyberneon"] .search-input,
-[data-theme="cyberneon"] input[type="text"],
-[data-theme="cyberneon"] input[type="number"],
-[data-theme="cyberneon"] textarea {
-  border: 1px solid #ab00ff !important;
-  background-color: #05050f !important;
-  color: #00f0ff !important;
-  box-shadow: inset 0 0 10px rgba(171, 0, 255, 0.2) !important;
-  font-family: inherit !important;
-}
-
-[data-theme="cyberneon"] .search-input:focus,
-[data-theme="cyberneon"] input[type="text"]:focus {
-  border-color: #00f0ff !important;
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3) !important;
+[data-theme="cyberneon"] .btn:active {
+  transform: translate(1px, 1px);
 }
 
 [data-theme="cyberneon"] .media-card,
 [data-theme="cyberneon"] .hof-card,
 [data-theme="cyberneon"] .media-relation-card {
-  border: 1px solid #1a1a3a !important;
-  background: #090918 !important;
-  clip-path: polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%) !important;
+  border: 2px solid #1a1a3a !important;
+  background-color: #090918 !important;
+  /* Corte tecnológico en esquinas superior derecha e inferior izquierda */
+  clip-path: polygon(0 0, 92% 0, 100% 8%, 100% 100%, 8% 100%, 0 92%) !important;
+  transition: all 0.15s cubic-bezier(0.19, 1, 0.22, 1) !important;
 }
 
 [data-theme="cyberneon"] .media-card:hover,
 [data-theme="cyberneon"] .media-relation-card:hover {
   border-color: #00f0ff !important;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2) !important;
-}
-
-/* Neon styled checks */
-[data-theme="cyberneon"] .theme-card.active {
-  border-color: #ffff00 !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3) !important;
+  transform: scale(1.02) !important;
 }
 
 [data-theme="cyberneon"] ::-webkit-scrollbar-thumb {
   background: #ff0055 !important;
-  border-radius: 0px !important;
+  box-shadow: 0 0 10px #ff0055 !important;
 }

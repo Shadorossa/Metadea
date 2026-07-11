@@ -1,0 +1,107 @@
+html[data-theme="jungle"], [data-theme="jungle"] {
+  --bg-primary: #070e0a; /* Piedra de templo mojada / Humus */
+  --bg-elevated: #0f1c13; /* Follaje cerrado */
+  --bg-card: #15271a; /* Madera musgosa */
+  --bg-card-rgb: 21 39 26;
+
+  --text-main: #9ece9a; /* Verde liquen claro */
+  --text-muted: #4e8055; /* Esmeralda apagado */
+  --text-dim: #2f5236;
+
+  --border-color: #3b5e40; /* Lianas / Raíces oscuras */
+
+  --accent: #10b981; /* Verde esmeralda brillante */
+  --accent-rgb: 16 185 129;
+  --accent-soft: rgba(16, 185, 129, 0.08);
+  --accent-border: #6ee7b7;
+  --accent-glow: rgba(16, 185, 129, 0.25);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+body[data-theme="jungle"], html[data-theme="jungle"] body {
+  font-family: 'Georgia', serif !important;
+  background-color: var(--bg-primary);
+}
+
+/* ── Forest Canopy Backdrop ────────────────────────────── */
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #070e0a;
+  background-image: 
+    /* Efecto de hojas y lianas proyectadas en la sombra */
+    radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(5, 150, 105, 0.03) 0%, transparent 60%);
+}
+
+/* ── UI Element Overrides: Ancient Carved Stone ─────────────────────────── */
+
+[data-theme="jungle"] .btn,
+[data-theme="jungle"] .settings-tab,
+[data-theme="jungle"] .search-action-btn,
+[data-theme="jungle"] .search-tab,
+[data-theme="jungle"] .status-dropdown-trigger {
+  border: 2px solid #3b5e40 !important;
+  background-color: #0f1c13 !important;
+  color: #9ece9a !important;
+  box-shadow: 0 4px 0px #223725 !important;
+  transition: all 0.1s ease !important;
+  font-family: inherit !important;
+}
+
+[data-theme="jungle"] .btn:hover,
+[data-theme="jungle"] .settings-tab:hover,
+[data-theme="jungle"] .search-action-btn:hover {
+  background-color: #15271a !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15), 0 4px 0px #223725 !important;
+}
+
+[data-theme="jungle"] .btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0px 0px #223725 !important;
+}
+
+[data-theme="jungle"] .search-input,
+[data-theme="jungle"] input[type="text"],
+[data-theme="jungle"] input[type="number"],
+[data-theme="jungle"] textarea {
+  border: 1px solid #2f5236 !important;
+  background-color: #050a07 !important;
+  color: #9ece9a !important;
+  border-radius: 6px !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.6) !important;
+  font-family: inherit !important;
+}
+
+[data-theme="jungle"] .search-input:focus,
+[data-theme="jungle"] input[type="text"]:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="jungle"] .media-card,
+[data-theme="jungle"] .hof-card,
+[data-theme="jungle"] .media-relation-card {
+  border: 1px solid #233a27 !important;
+  background-color: #0f1c13 !important;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.5) !important;
+  border-radius: 8px !important;
+}
+
+[data-theme="jungle"] .media-card:hover,
+[data-theme="jungle"] .media-relation-card:hover {
+  border-color: #10b981 !important;
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.1), 0 6px 12px rgba(0,0,0,0.5) !important;
+  transform: translateY(-2px) !important;
+}
+
+[data-theme="jungle"] ::-webkit-scrollbar-thumb {
+  background: #3b5e40 !important;
+}

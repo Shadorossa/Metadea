@@ -1,0 +1,91 @@
+html[data-theme="luxury"], [data-theme="luxury"] {
+  --bg-primary: #050508;
+  --bg-elevated: #0d0d12;
+  --bg-card: #14141d;
+  --bg-card-rgb: 20 20 29;
+
+  --text-main: #f5e6b3; /* Oro noble */
+  --text-muted: #d8b23c; /* Latón real */
+  --text-dim: #7a6320;
+
+  --border-color: #d8b23c;
+
+  --accent: #d8b23c;
+  --accent-rgb: 216 178 60;
+  --accent-soft: rgba(216, 178, 60, 0.08);
+  --accent-border: #f5e6b3;
+  --accent-glow: rgba(216, 178, 60, 0.35);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+body[data-theme="luxury"], html[data-theme="luxury"] body {
+  font-family: 'Cinzel', 'Playfair Display', serif !important;
+  background-color: var(--bg-primary);
+  letter-spacing: 0.05em;
+}
+
+/* ── Royal Gold Ambient Backdrop ────────────────────────────── */
+
+#app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-color: #050508;
+  background-image: 
+    /* Brillo dorado en el centro y esquinas */
+    radial-gradient(circle at 50% -20%, rgba(216, 178, 60, 0.06) 0%, transparent 60%),
+    radial-gradient(circle at 10% 90%, rgba(216, 178, 60, 0.03) 0%, transparent 40%);
+}
+
+/* ── UI Element Overrides: Royal Golden Bars ─────────────────────────── */
+
+[data-theme="luxury"] .btn,
+[data-theme="luxury"] .settings-tab,
+[data-theme="luxury"] .search-action-btn,
+[data-theme="luxury"] .search-tab,
+[data-theme="luxury"] .status-dropdown-trigger {
+  border: 1px solid #d8b23c !important;
+  background: linear-gradient(180deg, #1b1b24 0%, #0d0d12 100%) !important;
+  color: #f5e6b3 !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05) !important;
+  font-family: inherit !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: var(--radius-sm) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+[data-theme="luxury"] .btn:hover,
+[data-theme="luxury"] .settings-tab:hover,
+[data-theme="luxury"] .search-action-btn:hover {
+  border-color: #f5e6b3 !important;
+  background: linear-gradient(180deg, #d8b23c 0%, #a6841c 100%) !important;
+  color: #050508 !important;
+  box-shadow: 0 0 15px rgba(216, 178, 60, 0.4), 0 4px 10px rgba(0,0,0,0.4) !important;
+  font-weight: bold;
+}
+
+[data-theme="luxury"] .media-card,
+[data-theme="luxury"] .hof-card,
+[data-theme="luxury"] .media-relation-card {
+  border: 1px solid rgba(216, 178, 60, 0.15) !important;
+  background-color: #0d0d12 !important;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.6) !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+[data-theme="luxury"] .media-card:hover,
+[data-theme="luxury"] .media-relation-card:hover {
+  border-color: #d8b23c !important;
+  box-shadow: 0 15px 30px rgba(216, 178, 60, 0.15), 0 10px 20px rgba(0,0,0,0.6) !important;
+  transform: translateY(-4px) !important;
+}
+
+[data-theme="luxury"] ::-webkit-scrollbar-thumb {
+  background: #d8b23c !important;
+}
