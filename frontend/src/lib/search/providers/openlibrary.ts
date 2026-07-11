@@ -121,12 +121,12 @@ async function searchOpenLibraryDocs(searchQuery: string, signal: AbortSignal): 
 
 export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
   const docs = await searchOpenLibraryDocs(searchQuery, signal);
-  return docs.filter(b => !isComicBook(b)).map(b => mapBook(b, 'book'));
+  return docs.filter(b => b.cover_i && !isComicBook(b)).map(b => mapBook(b, 'book'));
 }
 
 export async function searchComics(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
   const docs = await searchOpenLibraryDocs(searchQuery, signal);
-  return docs.filter(isComicBook).map(b => mapBook(b, 'comic'));
+  return docs.filter(b => b.cover_i && isComicBook(b)).map(b => mapBook(b, 'comic'));
 }
 
 interface OpenLibWorkEntry {

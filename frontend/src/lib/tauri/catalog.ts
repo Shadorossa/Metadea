@@ -1,4 +1,4 @@
-import { isTauri, invoke, tauriCmd, tauriRun } from './core';
+import { invoke, tauriCmd, tauriRun, isTauri } from './core';
 
 export interface MediaCatalogEntry {
   id:                   string;
