@@ -10,7 +10,7 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
-  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, SAGA_RELATION_TYPE_OPTIONS, EDITABLE_RELATION_OPTIONS,
+  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
 import { classifySagaChain, createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
@@ -95,7 +95,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     cover?: string | null;
   }
   const [editableRelations, setEditableRelations] = useState<EditableRelation[]>([]);
-  const [originalEditableRelationIds, setOriginalEditableRelationIds] = useState<Set<string>>(new Set());
+  // Maps id -> its original relation_type, both to know which ids existed
+  // before (Set-like via .has) and to detect an in-place type change on an
+  // id that's still present (a plain id Set couldn't tell the two apart).
+  const [originalEditableRelationTypes, setOriginalEditableRelationTypes] = useState<Map<string, string>>(new Map());
 
   // Saga — one single ordered chain (chronological order), including this
   // entry itself. Every adjacent pair in this order gets a SEQUEL edge
@@ -183,7 +186,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             cover: r.cover,
           }));
         setEditableRelations(editable);
-        setOriginalEditableRelationIds(new Set(editable.map(r => r.related_media_external_id)));
+        setOriginalEditableRelationTypes(new Map(editable.map(r => [r.related_media_external_id, r.relation_type])));
 
         const entriesData = await Promise.all(
           transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
@@ -319,8 +322,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     next.splice(toIndex, 0, moved);
     setSagaOrder(next);
   };
-  const updateSagaRelationType = (id: string, type: SagaRelationType) =>
-    setSagaRelationTypes(prev => ({ ...prev, [id]: type }));
   const updateSagaGroup = (id: string, group: string) =>
     setSagaGroups(prev => ({ ...prev, [id]: group }));
 
@@ -406,8 +407,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     return {
       addedBundled: bundledRelations.filter(r => !originalBundledIds.has(r.external_id)),
       removedBundledIds: [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id)),
-      addedEditableRelations: editableRelations.filter(r => !originalEditableRelationIds.has(r.related_media_external_id)),
-      removedEditableRelationIds: [...originalEditableRelationIds].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
+      addedEditableRelations: editableRelations.filter(r => !originalEditableRelationTypes.has(r.related_media_external_id)),
+      removedEditableRelationIds: [...originalEditableRelationTypes.keys()].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
+      changedEditableRelations: editableRelations.filter(r => {
+        const originalType = originalEditableRelationTypes.get(r.related_media_external_id);
+        return originalType !== undefined && originalType !== r.relation_type;
+      }),
       addedSaga: sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id)),
       removedSaga: originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id)),
       sagaOrderChanged: sagaOrder.join(',') !== originalSagaOrder.join(','),
@@ -422,7 +427,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
-      || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0
+      || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0 || d.changedEditableRelations.length > 0
       || d.addedSaga.length > 0 || d.removedSaga.length > 0
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
   };
@@ -454,6 +459,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
     for (const r of d.addedEditableRelations) lines.push(`- Added Relation: ${formatWork(r.related_media_external_id, r.title)} (${r.type_label})`);
     for (const id of d.removedEditableRelationIds) lines.push(`- Removed Relation: ${formatWork(id)}`);
+    for (const r of d.changedEditableRelations) {
+      const before = originalEditableRelationTypes.get(r.related_media_external_id) ?? '';
+      lines.push(`- Changed Relation Type: ${formatWork(r.related_media_external_id, r.title)} (${before} → ${r.relation_type})`);
+    }
 
     if (d.addedSaga.length > 0 || d.removedSaga.length > 0 || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged) {
       if (d.sagaNameChanged) {
@@ -923,17 +932,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                         <div className="pr-editor-media-card-title" title={meta.title || id}>
                           {meta.title || id}
                         </div>
-                        <select
-                          value={sagaRelationTypes[id] || 'main'}
-                          onChange={e => updateSagaRelationType(id, e.target.value as SagaRelationType)}
-                          className="pr-editor-media-card-select"
-                        >
-                          {SAGA_RELATION_TYPE_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
                         <input
                           type="text"
                           placeholder="Concept Group..."

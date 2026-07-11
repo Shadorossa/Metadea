@@ -2662,13 +2662,39 @@
 
 .pr-editor-media-card-select {
   width: 100%;
-  font-size: 0.65rem;
-  padding: 0.15rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 1.35rem 0.3rem 0.5rem;
   border: 1px solid rgba(124, 106, 247, 0.4);
-  background: transparent;
+  background-color: rgba(124, 106, 247, 0.08);
   color: var(--accent, #7c6af7);
-  border-radius: 2px;
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%237c6af7' d='M2.5 4.5l3.5 3.5 3.5-3.5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 9px;
+  text-overflow: ellipsis;
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.pr-editor-media-card-select:hover {
+  border-color: var(--accent, #7c6af7);
+  background-color: rgba(124, 106, 247, 0.16);
+}
+
+.pr-editor-media-card-select:focus {
+  outline: none;
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.25);
+}
+
+.pr-editor-media-card-select option {
+  color: var(--text-main, #e3e1db);
+  background: var(--bg-elevated, #1b1917);
+  font-weight: 400;
 }
 
 .pr-editor-media-card-group-input {

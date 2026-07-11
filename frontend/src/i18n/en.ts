@@ -196,6 +196,7 @@ export const en = {
       REL_ADAPTATION: 'Adaptation',
       REL_ALTERNATIVE: 'Version',
       REMASTER: 'Remaster',
+      REMAKE: 'Remake',
       EXPANDED_GAME: 'Expanded Edition',
       REL_UPDATE: 'Update',
     },
