@@ -6,7 +6,7 @@ import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, IGDB_GAME_TYPE_REMAKE, IGDB_GAME_TYPE_REMASTER, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
-import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
+import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStat } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
@@ -153,15 +153,8 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     if (!game) return null;
     let data = mapIgdbToMedia(game, rawId);
 
-    // Remakes/remasters need one extra request each — IGDB has no back-
-    // reference field to find the base/original game on the edition itself,
-    // only a reverse `where remakes = id` / `where remasters = id` lookup.
-    // Without this, a remake/remaster's page had no "Fuente" relation at all.
-    if (game.game_type === IGDB_GAME_TYPE_REMAKE || game.game_type === IGDB_GAME_TYPE_REMASTER) {
-      const relationField = game.game_type === IGDB_GAME_TYPE_REMAKE ? 'remakes' : 'remasters';
-      const baseGames = await igdbGetBaseGames(numericId, relationField).catch(() => null);
-      if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
-    }
+    // Remakes/remasters base games (PARENT) are slow because they require a reverse query.
+    // We defer this lookup to the asynchronous fetchExtraRelations so the initial page renders instantly.
 
     data.relations = dedupeRelationsByTarget(data.relations);
 
@@ -372,7 +365,7 @@ export async function mergeAndPersistRelations(rawId: string, fetchedRelations: 
     .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
     .map(r => ({
       related_media_external_id: r.relatedExternalId!,
-      relation_type: r.relationType ?? r.typeLabel,
+      relation_type: r.relationType ?? 'RELATED',
       type_label: r.typeLabel,
       title: r.title,
       cover: r.cover || null,
@@ -380,6 +373,49 @@ export async function mergeAndPersistRelations(rawId: string, fetchedRelations: 
 
   if (newFromApi.length > 0 || changedLegacyTypes) {
     await saveMediaRelations(rawId, [...normalizedDbRels, ...newFromApi]).catch(console.error);
+  }
+}
+
+// Comprueba caché primero; si no está, fetcha y guarda
+// Helper to persist live API data back to SQLite media_catalog cache
+async function persistToCatalog(data: MediaPageData): Promise<void> {
+  try {
+    const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
+    
+    const entry: MediaCatalogEntry = {
+      id: '', // Will be filled/matched by Rust if already exists
+      external_id: data.externalId,
+      parent_id: data.parentGame?.externalId || null,
+      type: data.type,
+      format: data.format || null,
+      source: data.source || 'igdb',
+      title_main: data.titleMain,
+      title_native: data.titleNative || null,
+      title_romaji: data.titleEnglish || null,
+      synopsis: data.description || null,
+      cover_url: data.cover || null,
+      banners_csv: data.bannerImage || null,
+      release_year: data.releaseYear || null,
+      release_month: data.releaseMonth || null,
+      release_day: data.releaseDay || null,
+      time_length: data.timeLength || null,
+      status: data.status || null,
+      score_global: data.scoreGlobal || null,
+      total_count: data.totalCount || null,
+      total_count_2: data.totalCount_2 || null,
+      genres_csv: data.genreDots ? data.genreDots.split(' · ').join(',') : null,
+      genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
+      platforms_csv: data.platforms ? data.platforms.join(',') : null,
+      shop_links_csv: shopLinks || null,
+      companies_cache_csv: data.companies ? data.companies.join(',') : null,
+      authors_csv: (data.authors ?? []).map(a => a.name).join(','),
+      created_at: '',
+      updated_at: '',
+    };
+    
+    await saveCatalogEntry(entry).catch(console.error);
+  } catch (e) {
+    console.error("Failed to persist media to local SQLite cache", e);
   }
 }
 
@@ -392,6 +428,9 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   if (data) {
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
     await mergeAndPersistRelations(rawId, data.relations);
+
+    // Persist to local SQLite cache so F5 or next visit loads instantly
+    await persistToCatalog(data);
 
     // Only save API authors if we don't have any in the DB
     if (dbAuthors.length === 0 && data.authors && data.authors.length > 0) {
@@ -503,8 +542,10 @@ export function fetchMediaDataWithFallback(
         // DLCs/expansions/remasters IGDB has added since this row was last
         // synced) never runs for already-visited titles. Kick it off in the
         // background so relations catch up in the DB for next time, without
-        // delaying or replacing what's already on screen.
-        fetchMediaData(rawId).catch(() => {});
+        // delaying or replacing what's already on screen. Delay by 1 second to avoid database locks.
+        setTimeout(() => {
+          fetchMediaData(rawId).catch(() => {});
+        }, 1000);
         return;
       }
 
@@ -554,12 +595,31 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   if (!IGDB_TYPES.includes(type)) return null;
   if (!numericId) return null;
 
-  const graphNodes = await igdbGetRelationGraph(numericId).catch(() => []);
-  if (!graphNodes.length) return null;
+  // Run the relation graph and optional base game (PARENT) lookup in parallel to minimize latency.
+  const isRemake = currentData.format === 'REMAKE';
+  const isRemaster = currentData.format === 'REMASTER';
+  
+  const graphPromise = igdbGetRelationGraph(numericId).catch(() => []);
+  const baseGamesPromise = (isRemake || isRemaster)
+    ? igdbGetBaseGames(numericId, isRemake ? 'remakes' : 'remasters').catch(() => null)
+    : Promise.resolve(null);
 
-  const gameType = currentData.format === 'EXPANDED_GAME' ? 10 : undefined;
-  const merged = mergeRelationGraph(currentData, graphNodes as RelationGraphNode[], gameType);
-  if (merged.relations.length === currentData.relations.length) return null; // nothing new
+  const [graphNodes, baseGames] = await Promise.all([graphPromise, baseGamesPromise]);
 
-  return merged.relations;
+  let updatedData = { ...currentData };
+
+  // 1. Merge parent relation (source game) if found
+  if (baseGames && baseGames.length > 0) {
+    updatedData = mergeBaseGameRelation(updatedData, baseGames as IgdbSubGame[]);
+  }
+
+  // 2. Merge transitively discovered relation graph nodes
+  if (graphNodes.length > 0) {
+    const gameType = currentData.format === 'EXPANDED_GAME' ? 10 : undefined;
+    updatedData = mergeRelationGraph(updatedData, graphNodes as RelationGraphNode[], gameType);
+  }
+
+  if (updatedData.relations.length === currentData.relations.length) return null; // nothing new
+
+  return updatedData.relations;
 }

@@ -213,8 +213,34 @@ export default function MediaPage({ i18n }: Props) {
   useEffect(() => {
     if (!currentId) return;
 
-    setPageState('loading');
-    setData(null);
+    const params = new URLSearchParams(window.location.search);
+    const urlId = params.get('id') ?? '';
+    
+    // Solo inicializamos el esqueleto si la URL actual corresponde al juego que vamos a cargar
+    if (urlId === currentId) {
+      const skeletonTitle = params.get('t');
+      const skeletonCover = params.get('c');
+
+      if (skeletonTitle) {
+        setData({
+          externalId: currentId,
+          type: currentId.split(':')[0],
+          titleMain: skeletonTitle,
+          cover: skeletonCover || undefined,
+          bannerColor: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+          characters: [],
+          relations: [],
+        } as unknown as MediaPageData);
+        setPageState('ready');
+      } else {
+        setPageState('loading');
+        setData(null);
+      }
+    } else {
+      setPageState('loading');
+      setData(null);
+    }
+    
     setIsFetchingFull(true);
     setRelationPage(1);
     setRelationsTab('related');
@@ -477,9 +503,20 @@ export default function MediaPage({ i18n }: Props) {
   // mapIgdbToMedia already stops fetching the excluded ones fresh; this also
   // filters out any leftover rows saved to the DB before that fix.
   const isFullEdition = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']).has(data.format ?? '');
+  // For full-edition pages (remakes, remasters…) only show their own content
+  // (DLCs, expansions, standalone, remasters, expanded games) and their source (PARENT). Everything else
+  // IGDB inherits from the base game (sibling remakes, etc.) is blocked.
+  const FULL_EDITION_ALLOWED = new Set([
+    tm.relations.PARENT,
+    tm.relations.DLC,
+    tm.relations.EXPANSION,
+    tm.relations.STANDALONE,
+    tm.relations.REMASTER,
+    tm.relations.EXPANDED_GAME
+  ]);
   const relatedRelations    = data.relations.filter(r =>
     r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel &&
-    (!isFullEdition || r.typeLabel === tm.relations.PARENT)
+    (!isFullEdition || FULL_EDITION_ALLOWED.has(r.typeLabel))
   );
   const recommendedRelations = data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION);
   const editionRelations    = data.relations.filter(r => r.typeLabel === editionsLabel);

@@ -174,12 +174,18 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       seenRelatedIds.add(relatedExternalId);
 
       const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
+      const title = cleanEditionTitle(sg.name);
+      
+      const queryParams = new URLSearchParams({ id: relatedExternalId });
+      queryParams.set('t', title);
+      if (cover) queryParams.set('c', cover);
+
       relations.push({
         typeLabel: tm.relations[relationType],
         relationType,
-        title: cleanEditionTitle(sg.name),
+        title,
         cover,
-        url: `/media?id=${relatedExternalId}`,
+        url: `/media?${queryParams.toString()}`,
         relatedExternalId,
       });
     }
@@ -209,15 +215,23 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // keep their full direct relations alongside their Fuente.
   const IS_FULL_EDITION_TYPE = new Set([8, 9, 10, 11, 12]); // remake, remaster, expanded_game, port, fork
   if (!IS_FULL_EDITION_TYPE.has(gameType)) {
+    // Sibling editions are only shown on the base game — IGDB tends to inherit
+    // the base game's whole edition web onto remakes/remasters, so we block them there.
     addRelations(game.remakes, 'REMAKE');
     addRelations(game.remasters, 'REMASTER');
-    addRelations(game.dlcs, 'DLC');
-    addRelations(game.expansions, 'EXPANSION');
-    addRelations(game.standalone_expansions, 'STANDALONE');
     addRelations(game.expanded_games, 'EXPANDED_GAME');
-    // Ports are never shown as related versions.
     addRelations(game.forks, 'FORK');
+  } else {
+    // A remake or remaster is allowed to have its own remasters and expanded editions
+    addRelations(game.remasters, 'REMASTER');
+    addRelations(game.expanded_games, 'EXPANDED_GAME');
   }
+  // Content (DLCs/expansions/standalone) is genuinely attached to whichever
+  // specific game IGDB links it to — a remake's exclusive DLC should appear
+  // on the remake's page, not only on the base game's page.
+  addRelations(game.dlcs, 'DLC');
+  addRelations(game.expansions, 'EXPANSION');
+  addRelations(game.standalone_expansions, 'STANDALONE');
 
   // Unlike remakes/remasters (which need a reverse `where remakes/remasters
   // = id` lookup — see mediaService.ts — because IGDB doesn't reliably set a
@@ -283,12 +297,19 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
   const tm = getT().media;
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => {
     const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
+    const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
+    const title = cleanEditionTitle(sg.name);
+    
+    const queryParams = new URLSearchParams({ id: relatedExternalId });
+    queryParams.set('t', title);
+    if (cover) queryParams.set('c', cover);
+
     return {
       typeLabel: tm.relations.PARENT,
       relationType: 'PARENT',
-      title: cleanEditionTitle(sg.name),
-      cover: sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined,
-      url: `/media?id=${relatedExternalId}`,
+      title,
+      cover,
+      url: `/media?${queryParams.toString()}`,
       relatedExternalId,
     };
   });
@@ -357,13 +378,20 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
       const externalId = `${n.is_vn ? 'vnovel' : 'game'}:${n.id}`;
       if (seen.has(externalId)) continue;
       seen.add(externalId);
+      const cover = n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined;
+      const title = cleanEditionTitle(n.name);
+      
+      const queryParams = new URLSearchParams({ id: externalId });
+      queryParams.set('t', title);
+      if (cover) queryParams.set('c', cover);
+
       const relationType = VIA_TO_RELATION_TYPE[n.via];
       extra.push({
         typeLabel: relationType ? tm.relations[relationType as keyof typeof tm.relations] : 'Related',
         relationType: relationType ?? n.via,
-        title: cleanEditionTitle(n.name),
-        cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
-        url: `/media?id=${externalId}`,
+        title,
+        cover,
+        url: `/media?${queryParams.toString()}`,
         relatedExternalId: externalId,
       });
     }
