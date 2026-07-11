@@ -34,7 +34,7 @@ export function useLibraryEntry(currentId: string, mediaType: string | undefined
   useEffect(() => {
     if (!mediaType || !currentId) return;
 
-    getLibraryEntry(currentId, mediaType)
+    getLibraryEntry(currentId)
       .then(fetched => {
         lastKnownEntry.current = fetched;
         setEntry(fetched);

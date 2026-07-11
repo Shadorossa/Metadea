@@ -2,25 +2,25 @@ import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } 
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface LibraryEntry {
-  id:                string;
-  user_id:           string;
-  external_id:       string;
-  type:              string;
-  status:            string | null;
-  rating:            number | null;
-  progress:          number;
-  progress_2:        number;
-  minutes_spent:     number;
-  is_favorite:       number;
-  is_platinum:       number;
-  tags:              string[] | null;
-  notes:             string | null;
-  added_at:          string | null;
-  updated_at:        string | null;
+  id: string;
+  user_id: string;
+  external_id: string;
+  type: string;
+  status: string | null;
+  rating: number | null;
+  progress: number;
+  progress_2: number;
+  minutes_spent: number;
+  is_favorite: number;
+  is_platinum: number;
+  tags: string[] | null;
+  notes: string | null;
+  added_at: string | null;
+  updated_at: string | null;
   selected_platform: string | null;
-  selected_version:  string | null;
-  started_at:        string | null;
-  finished_at:       string | null;
+  selected_version: string | null;
+  started_at: string | null;
+  finished_at: string | null;
 }
 
 export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {
@@ -28,12 +28,12 @@ export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntr
   return invoke<LibraryEntry>('save_library_entry', { entry });
 }
 
-export async function getLibraryEntry(externalId: string, entryType: string): Promise<LibraryEntry | null> {
-  return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId, entryType });
+export async function getLibraryEntry(externalId: string): Promise<LibraryEntry | null> {
+  return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId });
 }
 
-export async function deleteLibraryEntry(externalId: string, entryType: string): Promise<void> {
-  return tauriRun('delete_library_entry', { externalId, entryType });
+export async function deleteLibraryEntry(externalId: string): Promise<void> {
+  return tauriRun('delete_library_entry', { externalId });
 }
 
 export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {

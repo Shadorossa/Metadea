@@ -305,12 +305,7 @@ fn extract_xml_attr(content: &str, attr: &str) -> Option<String> {
     None
 }
 
-trait Pipe: Sized {
-    fn pipe<F: FnOnce(Self) -> Self>(self, f: F) -> Self {
-        f(self)
-    }
-}
-impl Pipe for PathBuf {}
+
 
 fn scan_xbox_games() -> Vec<LocalGame> {
     let mut games = Vec::new();
@@ -371,20 +366,19 @@ fn scan_xbox_games() -> Vec<LocalGame> {
                 continue;
             }
 
-            let config = path.join("Content").join("MicrosoftGame.config").pipe(|p| {
-                if p.exists() {
-                    p
-                } else {
-                    path.join("MicrosoftGame.config")
-                }
-            });
-            let msix = path.join("Content").join("AppxManifest.xml").pipe(|p| {
-                if p.exists() {
-                    p
-                } else {
-                    path.join("AppxManifest.xml")
-                }
-            });
+            let content_config = path.join("Content").join("MicrosoftGame.config");
+            let config = if content_config.exists() {
+                content_config
+            } else {
+                path.join("MicrosoftGame.config")
+            };
+
+            let content_msix = path.join("Content").join("AppxManifest.xml");
+            let msix = if content_msix.exists() {
+                content_msix
+            } else {
+                path.join("AppxManifest.xml")
+            };
 
             let name: Option<String> = if config.exists() {
                 if let Ok(c) = std::fs::read_to_string(&config) {

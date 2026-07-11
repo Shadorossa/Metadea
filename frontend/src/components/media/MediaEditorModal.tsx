@@ -369,7 +369,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     const loadAllVersions = async (bId: string) => {
       try {
         // 1. Cargar el juego base
-        const baseEntry = await getLibraryEntry(bId, 'game');
+        const baseEntry = await getLibraryEntry(bId);
         if (baseEntry) {
           dispatchEntry({ type: 'LOAD_LOG', id: bId, entry: baseEntry });
         }
@@ -389,7 +389,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
         // 3. Cargar logs existentes para los candidatos
         for (const candId of candidates) {
-          const ev = await getLibraryEntry(candId, 'game');
+          const ev = await getLibraryEntry(candId);
           if (ev) {
             dispatchEntry({ type: 'LOAD_LOG', id: candId, entry: ev });
           }
@@ -399,7 +399,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         // que no se cargaron como existentes, inicializarlas vacías
         if (baseEntry && baseEntry.selected_version) {
           for (const versionId of baseEntry.selected_version.split(',')) {
-            const ev = await getLibraryEntry(versionId, 'game');
+            const ev = await getLibraryEntry(versionId);
             dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
           }
         }
@@ -428,7 +428,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   useEffect(() => {
     if (!baseSelectedVersion) return;
     for (const versionId of baseSelectedVersion.split(',')) {
-      getLibraryEntry(versionId, 'game')
+      getLibraryEntry(versionId)
         .then(ev => dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) }));
     }
   }, [baseSelectedVersion]);
@@ -575,7 +575,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     const existing = entry.logs[activeId]?.existing;
     if (!existing) { onClose(); return; }
     try {
-      await deleteLibraryEntry(activeId, data.type);
+      await deleteLibraryEntry(activeId);
       await syncFavorites(data.type, activeId, false)
         .catch(e => console.error('Failed to sync favorites', e));
       onDeleted();
