@@ -1,10 +1,11 @@
-import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
-import type { MediaCatalogEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations } from '../tauri';
+import type { MediaCatalogEntry, DbMediaRelation } from '../tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../shared/icon-strings';
 import { TYPE_LABELS, isInProgressStatus } from '../constants/media';
 import { getItemMinutes } from './stats-calculators';
+import { compareByReleaseDate } from '../media/mapper-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -48,42 +49,115 @@ function buildDateHtml(started: string | null | undefined, finished: string | nu
   return `<span class="library-card-date">${CALENDAR_ICON}${parts.join(' → ')}</span>`;
 }
 
+// Sequel/prequel relations are saved for games too (IGDB), not just
+// anime/manga/lnovel (AniList) — Silent Hill, Metal Gear Solid, Final
+// Fantasy VII etc. all have real SEQUEL/PREQUEL rows in media_relations,
+// confirmed directly against the DB.
+const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel']);
+
 // Groups library entries that are editions of one another (remakes,
-// remasters, ports, ...) under a single "slot" so they don't each claim a
-// spot in the grid. Two independent signals decide who nests under whom:
-//   1. Explicit link — the base entry's `selected_version`, a CSV of linked
-//      external_ids written by MediaEditorModal's edition switcher when the
-//      user manually flips between tabs and saves.
-//   2. Auto-detected link — the edition's own catalog entry `parent_id`,
-//      cached from IGDB's `parent_game`/`version_parent` the first time the
-//      edition's own media page was visited (see MediaPage.tsx). This is
-//      what makes "Vengeance"-style editions group without the user ever
-//      opening the editor's version switcher.
-// Both signals are resolved into a single child→parent map first so
-// grouping doesn't depend on which order the items happen to sort in.
-// Grouping is scoped to a single status section: an edition tracked under a
-// different status still gets its own card there instead of silently
+// remasters, ports, ...), or — for anime/manga/lnovel — entries linked by a
+// saved SEQUEL/PREQUEL relation, under a single "slot" so they don't each
+// claim a spot in the grid. Three independent signals decide who nests
+// under whom:
+//   1. Explicit edition link — the base entry's `selected_version`, a CSV of
+//      linked external_ids written by MediaEditorModal's edition switcher
+//      when the user manually flips between tabs and saves. Opt-in, gated
+//      behind `includeEditions` (the "Agrupar por ediciones" toggle) — an
+//      alternate edition genuinely is a different product.
+//   2. Auto-detected edition link — the edition's own catalog entry
+//      `parent_id`, cached from IGDB's `parent_game`/`version_parent` the
+//      first time the edition's own media page was visited (see
+//      MediaPage.tsx). Also gated behind `includeEditions`.
+//   3. Saga link — a saved SEQUEL/PREQUEL row in media_relations between two
+//      anime/manga/lnovel entries both already in this section. Also gated
+//      behind `includeEditions` (same "Agrupar por ediciones" toggle) per
+//      user preference. Relations are only recorded from whichever side the
+//      user has actually opened (see mediaService.ts), so the graph can be
+//      one-directional or only partially known — chains are resolved to
+//      whichever entry is already the current root, so a 5-season saga
+//      still collapses under its earliest entry even if the edges were
+//      saved in a scattered order.
+// All signals are resolved into a single child→parent map first so grouping
+// doesn't depend on which order the items happen to sort in. Grouping is
+// scoped to a single status section: an edition or saga entry tracked under
+// a different status still gets its own card there instead of silently
 // disappearing into a differently-labeled section.
-function groupEditions<T extends { external_id: string; selected_version: string | null }>(
+function groupEditions<T extends { external_id: string; selected_version: string | null; type: string }>(
   sectionItems: T[],
   catalogMap: Map<string, MediaCatalogEntry>,
+  sagaRelations: DbMediaRelation[],
+  includeEditions: boolean,
 ): Array<{ item: T; grouped: T[] }> {
   const byId = new Map(sectionItems.map(i => [i.external_id, i]));
   const parentOf = new Map<string, string>();
 
-  for (const item of sectionItems) {
-    const linkedIds = item.selected_version ? item.selected_version.split(',').map(s => s.trim()).filter(Boolean) : [];
-    for (const linkedId of linkedIds) {
-      if (linkedId !== item.external_id && byId.has(linkedId)) parentOf.set(linkedId, item.external_id);
+  if (includeEditions) {
+    for (const item of sectionItems) {
+      const linkedIds = item.selected_version ? item.selected_version.split(',').map(s => s.trim()).filter(Boolean) : [];
+      for (const linkedId of linkedIds) {
+        if (linkedId !== item.external_id && byId.has(linkedId)) parentOf.set(linkedId, item.external_id);
+      }
+    }
+
+    for (const item of sectionItems) {
+      if (parentOf.has(item.external_id)) continue;
+      const catalogParentId = catalogMap.get(item.external_id)?.parent_id;
+      if (catalogParentId && catalogParentId !== item.external_id && byId.has(catalogParentId)) {
+        parentOf.set(item.external_id, catalogParentId);
+      }
     }
   }
 
-  for (const item of sectionItems) {
-    if (parentOf.has(item.external_id)) continue;
-    const catalogParentId = catalogMap.get(item.external_id)?.parent_id;
-    if (catalogParentId && catalogParentId !== item.external_id && byId.has(catalogParentId)) {
-      parentOf.set(item.external_id, catalogParentId);
+  const rootOf = (id: string): string => {
+    let cur = id;
+    const seen = new Set<string>();
+    while (parentOf.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = parentOf.get(cur)!;
     }
+    return cur;
+  };
+
+  if (includeEditions) {
+    for (const rel of sagaRelations) {
+      // A relation_type bug fixed earlier this session used to store the
+      // *translated* label uppercased instead of AniList's raw enum value
+      // (e.g. "SECUELA"/"PRECUELA" in Spanish instead of "SEQUEL"/
+      // "PREQUEL"), and that fix doesn't rewrite already-saved rows — so
+      // existing libraries still have relations stuck under the old,
+      // wrong-cased label. Recognizing both keeps saga grouping working for
+      // data saved before and after that fix, without needing to touch the
+      // database.
+      const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
+      const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
+      if (!isSequel && !isPrequel) continue;
+      if (!rel.media_external_id) continue;
+      const a = rel.media_external_id;
+      const b = rel.related_media_external_id;
+      if (!byId.has(a) || !byId.has(b)) continue;
+      if (!SAGA_GROUPABLE_TYPES.has(byId.get(a)!.type) || !SAGA_GROUPABLE_TYPES.has(byId.get(b)!.type)) continue;
+
+      // relation_type is from `a`'s point of view: a SEQUEL edge to b means a
+      // comes first; a PREQUEL edge to b means b comes first.
+      const [earlier, later] = isSequel ? [a, b] : [b, a];
+      if (parentOf.has(later)) continue; // already grouped under something else
+
+      const root = rootOf(earlier);
+      if (root === later) continue; // would create a cycle
+      parentOf.set(later, root);
+    }
+  }
+
+  // Flatten multi-level chains (e.g. Rebirth → Remake → Original, from two
+  // separate direct parent_id edges) so every entry in the chain ends up
+  // pointing straight at the same ultimate root. Without this, the output
+  // loop below only matches *direct* children of a root — Remake would show
+  // up grouped under Original, but Rebirth (parented to Remake, not
+  // Original) would neither get its own top-level card (it "has a parent")
+  // nor appear in anyone's grouped list, vanishing from the grid entirely.
+  for (const id of [...parentOf.keys()]) {
+    parentOf.set(id, rootOf(id));
   }
 
   const out: Array<{ item: T; grouped: T[] }> = [];
@@ -98,9 +172,10 @@ function groupEditions<T extends { external_id: string; selected_version: string
 
 export async function renderLibrary(el: HTMLElement): Promise<void> {
   const p = getT().profile;
-  let [rawItems, catalogEntries] = await Promise.all([
+  let [rawItems, catalogEntries, sagaRelations] = await Promise.all([
     getAllLibraryEntries().catch(() => []),
     getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+    getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
   ]);
   // Refreshes the localStorage cache read by buildRatingHtml's
   // getActiveRatingSystem() below — see syncActiveRatingSystem's own doc.
@@ -264,7 +339,10 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
     sectionsListEl.innerHTML = sectionsData
       .filter(sec => sec.items.length > 0)
       .map(sec => {
-        const cards = groupByEdition ? groupEditions(sec.items, catalogMap) : sec.items.map(item => ({ item, grouped: [] as Items }));
+        // Saga (prequel/sequel) grouping always runs — see groupEditions'
+        // own doc — only the edition-specific signals are gated behind the
+        // "Agrupar por ediciones" toggle.
+        const cards = groupEditions(sec.items, catalogMap, sagaRelations, groupByEdition);
 
         return `
         <div class="library-section">
@@ -277,32 +355,71 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
           const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
           const style = cover ? `style="--cover: url('${cover}')"` : '';
-          const stackClass = grouped.length > 0 ? ' library-card--stacked' : '';
-          const groupedTitles = grouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
+          const stackClass = grouped.length > 0 ? ' library-card-cell--stacked' : '';
+          // Chronological, earliest first — so a saga's flyout reads left to
+          // right in release order (SH1, SH2, SH3, ...) instead of whatever
+          // order the section's own sort (rating/date-finished/duration)
+          // happened to leave them in.
+          const orderedGrouped = [...grouped].sort((a, b) =>
+            compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
+          );
+          const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
           const badge = grouped.length > 0
             ? `<span class="library-card-group-badge" title="${p.library_group_editions_hint}: ${groupedTitles.join(', ').replace(/"/g, '&quot;')}">+${grouped.length}</span>`
             : '';
           const tagBadges = buildTagBadgesHtml(item.tags);
 
+          // Hidden until hover (see .library-card--stacked:hover in
+          // profile.css) — a peek at exactly what's collapsed under the
+          // "+N" badge, sliding out to the right instead of making the user
+          // guess from the badge's tooltip alone.
+          const stackExtra = grouped.length > 0
+            ? `<div class="library-card-stack-extra">
+                ${orderedGrouped.map(g => {
+                  const gMeta  = catalogMap.get(g.external_id);
+                  const gTitle = gMeta?.title_main ?? g.external_id;
+                  const gCover = gMeta?.cover_url ?? '';
+                  const gUrl   = `/media?id=${encodeURIComponent(g.external_id)}`;
+                  return `<a class="library-card-stack-extra-item" href="${gUrl}" title="${gTitle.replace(/"/g, '&quot;')}" onclick="event.stopPropagation()">
+                    ${gCover
+                      ? `<img src="${gCover}" alt="${gTitle}" loading="lazy" />`
+                      : `<div class="library-card-no-cover"><span>${gTitle.slice(0, 2).toUpperCase()}</span></div>`
+                    }
+                  </a>`;
+                }).join('')}
+              </div>`
+            : '';
+
+          // .library-card-stack-extra is a *sibling* of .library-card, both
+          // wrapped in .library-card-cell, instead of a child of the card
+          // itself. The card needs overflow:hidden permanently (it clips
+          // its own blurred cover background) — toggling that off on hover
+          // so the flyout could escape also un-clipped the blur, making the
+          // card visibly wider than its column on every hover, grouped or
+          // not. The wrapper carries overflow:visible instead, and has no
+          // painted content of its own to worry about clipping.
           return `
-                <div class="library-card${stackClass}" data-id="${item.external_id}" ${style}>
-                  ${cover ? `<div class="library-card-bg"></div>` : ''}
-                  ${badge}
-                  ${tagBadges ? `<div class="library-card-tag-badges">${tagBadges}</div>` : ''}
-                  <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
-                    ${cover
+                <div class="library-card-cell${stackClass}">
+                  <div class="library-card" data-id="${item.external_id}" ${style}>
+                    ${cover ? `<div class="library-card-bg"></div>` : ''}
+                    ${badge}
+                    ${tagBadges ? `<div class="library-card-tag-badges">${tagBadges}</div>` : ''}
+                    <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">
+                      ${cover
               ? `<img src="${cover}" alt="${title}" loading="lazy" />`
               : `<div class="library-card-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
             }
-                  </a>
-                  <div class="library-card-info">
-                    <span class="library-card-title">${title}</span>
-                    ${buildRatingHtml(item.rating)}
-                    <div class="library-card-footer">
-                      ${buildDateHtml(item.started_at, item.finished_at)}
-                      <span class="library-card-type">${typeIc}</span>
+                    </a>
+                    <div class="library-card-info">
+                      <span class="library-card-title">${title}</span>
+                      ${buildRatingHtml(item.rating)}
+                      <div class="library-card-footer">
+                        ${buildDateHtml(item.started_at, item.finished_at)}
+                        <span class="library-card-type">${typeIc}</span>
+                      </div>
                     </div>
                   </div>
+                  ${stackExtra}
                 </div>`;
         }).join('')}
           </div>

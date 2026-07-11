@@ -561,6 +561,41 @@ pub async fn get_media_relations(
     Ok(rows)
 }
 
+// Bulk fetch for the library grid's "group by edition/saga" toggle — grouping
+// anime/manga/lnovel by SEQUEL/PREQUEL needs every relation up front to build
+// the parent/child map client-side, instead of one get_media_relations round
+// trip per library item (which is what the per-media query above is for).
+#[tauri::command]
+pub async fn get_all_media_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<DbMediaRelation>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
+             FROM media_relations mr
+             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id",
+        )
+        .str_err()?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(DbMediaRelation {
+                media_external_id: row.get(0)?,
+                related_media_external_id: row.get(1)?,
+                relation_type: row.get(2)?,
+                type_label: row.get(3)?,
+                title: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
+                cover: row.get(5)?,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(rows)
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DbMediaAuthor {

@@ -220,6 +220,22 @@ const t = useTranslations(lang);
       }
       rememberCurrentPath();
 
+      // Belt-and-suspenders against the astro:page-load timing gap described
+      // above: `beforeunload` fires right before the page actually goes away
+      // for *any* reason (F5, closing the tab, a background Rust rebuild
+      // restarting the webview), reading whatever window.location is *at
+      // that exact moment* — so it can't go stale the way a listener that
+      // only runs on arrival can if the "you've arrived" event never fires.
+      window.addEventListener('beforeunload', rememberCurrentPath);
+
+      // Belt-and-suspenders #2: even `beforeunload` turned out not to be
+      // enough (reported still bouncing to a stale page while genuinely
+      // sitting on /profile) — Tauri's WebView2 doesn't reliably fire it for
+      // a same-URL reload the way a real browser tab does. Polling instead
+      // of depending on any single event means the cached path is never
+      // more than a second stale, whichever mechanism ends up mattering.
+      setInterval(rememberCurrentPath, 1000);
+
       document.addEventListener('astro:page-load', async () => {
         initAuthModal();
         // Ensure we save immediately after page load to prevent stale paths

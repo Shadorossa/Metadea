@@ -62,6 +62,7 @@ commands.allow = [
   "get_media_saga_groups",
   "save_media_relations",
   "get_media_relations",
+  "get_all_media_relations",
   "save_media_authors",
   "get_media_authors",
   "save_author_profile_and_relations",

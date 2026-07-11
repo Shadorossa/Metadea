@@ -93,6 +93,13 @@ export async function getMediaRelations(mediaExternalId: string): Promise<DbMedi
   return tauriCmd<DbMediaRelation[]>('get_media_relations', [], { mediaExternalId });
 }
 
+// Bulk fetch across every media — used by the library grid's saga grouping,
+// which needs the whole SEQUEL/PREQUEL graph up front instead of one
+// getMediaRelations() round trip per library item.
+export async function getAllMediaRelations(): Promise<DbMediaRelation[]> {
+  return tauriCmd<DbMediaRelation[]>('get_all_media_relations', []);
+}
+
 export interface DbMediaAuthor {
   external_id: string;
   name: string;

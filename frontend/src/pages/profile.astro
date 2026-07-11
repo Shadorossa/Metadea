@@ -107,6 +107,17 @@ const t    = useTranslations(lang);
     // character, ...) could bounce back to the profile/library instead.
     if (!document.getElementById('profile-tab-content')) return;
 
+    // BaseLayout's rememberCurrentPath() is supposed to keep this in sync on
+    // every navigation, but it depends on the astro:page-load listener
+    // actually firing before an F5 — e.g. clicking a library card stops
+    // click propagation to avoid double-triggering its own handler, which
+    // also happens to swallow the ClientRouter's delegated soft-nav
+    // dispatch, so the path never gets re-saved. Since this init() only
+    // ever runs when /profile is genuinely showing (guard above), saving it
+    // here directly makes /profile "solid": reloading while on it can never
+    // bounce back to a stale cached page from before you navigated here.
+    localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search + window.location.hash);
+
     const session = await getAuthToken().catch(() => null);
     if (!session?.token) { window.location.replace('/login'); return; }
 
