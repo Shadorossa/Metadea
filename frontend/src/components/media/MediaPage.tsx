@@ -459,6 +459,7 @@ export default function MediaPage({ i18n }: Props) {
     : relationsTab === 'editions'
     ? editionRelations
     : relatedRelations;
+  const pageSize = relationsTab === 'recommended' ? 8 : 12;
 
   return (
     <>
@@ -734,7 +735,7 @@ export default function MediaPage({ i18n }: Props) {
               </div>
               <div className="media-relations-grid">
                 {visibleRelations
-                  .slice((relationPage - 1) * 12, relationPage * 12)
+                  .slice((relationPage - 1) * pageSize, relationPage * pageSize)
                   .map((r, i) => (
                     <a key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} href={r.url ?? '#'} className="media-relation-card">
                       <div className="media-relation-bg-layer">
@@ -753,9 +754,9 @@ export default function MediaPage({ i18n }: Props) {
                     </a>
                   ))}
               </div>
-              {visibleRelations.length > 12 && (
+              {visibleRelations.length > pageSize && (
                 <div className="media-pagination">
-                  {Array.from({ length: Math.ceil(visibleRelations.length / 12) }).map((_, i) => (
+                  {Array.from({ length: Math.ceil(visibleRelations.length / pageSize) }).map((_, i) => (
                     <button
                       key={i + 1}
                       type="button"
