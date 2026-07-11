@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import {
-  getCatalogEntry, saveCatalogEntry,
-  saveCachedSaga,
-  getMediaRelations, saveMediaRelations,
-  getMediaAuthors,
-} from '../../lib/tauri/catalog';
+import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelations, saveMediaRelations, getMediaAuthors } from '../../lib/tauri/catalog';
+import { invalidateCachedMediaData } from '../../lib/media/mediaService';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
@@ -590,6 +586,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         } catch (err) {
           console.error(`Failed to propagate saga relation to ${otherId}:`, err);
         }
+      }
+
+      // Invalidate frontend session cache so changes load instantly
+      invalidateCachedMediaData(externalId);
+      for (const otherId of otherChainIds) {
+        invalidateCachedMediaData(otherId);
       }
 
       if (onSaved) onSaved();

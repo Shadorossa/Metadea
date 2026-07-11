@@ -100,6 +100,12 @@ export function patchCachedRelations(rawId: string, relations: MediaPageData['re
   } catch { /* sessionStorage lleno */ }
 }
 
+export function invalidateCachedMediaData(rawId: string): void {
+  try {
+    sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);
+  } catch {}
+}
+
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
 async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
