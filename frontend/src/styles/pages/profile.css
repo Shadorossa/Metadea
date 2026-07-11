@@ -143,6 +143,10 @@
   color: #fff;
 }
 
+.profile-tab:active {
+  transform: scale(0.92);
+}
+
 /* Tooltip */
 .profile-tab[title]::after {
   content: attr(title);
@@ -864,13 +868,6 @@
   color: #fff;
   line-height: 1.25;
   word-break: break-word;
-}
-
-.hof-card-rating {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--color-planning);
-  margin-top: 0.3rem;
 }
 
 /* ── Bottom grid (monthly history + activity) ─────────────────────────────── */
@@ -1851,13 +1848,27 @@
 /* ── Tab Content Transition ────────────────────────────────────────────────── */
 .profile-tab-content {
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
 }
 
-.profile-tab-content.switching {
-  opacity: 0;
-  transform: translateY(4px);
+.profile-tab-content.entering {
+  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes profile-tab-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-tab-content.entering {
+    animation: none;
+  }
 }
 
 /* ── Statistics ──────────────────────────────────────────────────────────── */
@@ -2685,6 +2696,17 @@
 }
 
 .review-card-type { display: inline-flex; align-items: center; gap: 0.25rem; }
+
+.review-card-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.review-card-rating svg {
+  display: inline-block;
+  vertical-align: middle;
+}
 
 .review-card-date { margin-left: auto; }
 

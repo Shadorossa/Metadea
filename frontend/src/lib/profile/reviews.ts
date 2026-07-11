@@ -90,7 +90,7 @@ export async function renderReviews(el: HTMLElement): Promise<void> {
       const fallback = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg,#374151,#1f2937)';
       const date  = (item.updated_at ?? item.added_at ?? '').slice(0, 10);
       const ratingHtml = item.rating
-        ? formatRatingHtml(item.rating, system)
+        ? formatRatingHtml(item.rating, system, 'review-card-rating')
         : `<span style="color:var(--text-dim)">—</span>`;
       const url = `/media?id=${encodeURIComponent(item.external_id)}`;
 

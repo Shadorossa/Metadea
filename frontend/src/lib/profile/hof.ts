@@ -4,7 +4,6 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import type { getAllLibraryEntries, MediaCatalogEntry, CharacterEntry, FavoriteCustomImage } from '../tauri';
-import { getActiveRatingSystem, formatRatingHtml } from '../media/rating-utils';
 import { ICON_CROWN, ICON_PERSON } from '../shared/icon-strings';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -23,12 +22,6 @@ export const HOF_GRADIENTS: Record<string, string> = {
 };
 
 const DEFAULT_GRADIENT = 'linear-gradient(160deg, #374151, #1f2937)';
-
-// Format rating according to the user's active rating system
-function getRatingHtml(rating: number | null | undefined): string {
-  if (!rating) return '';
-  return formatRatingHtml(rating, getActiveRatingSystem(), 'hof-card-rating');
-}
 
 // Pads the ranked items array with nulls to always render exactly 10 slots
 function padTo10<T>(items: T[]): (T | null)[] {
@@ -80,8 +73,7 @@ export function buildHofHtml(
 
     const inner = `
         <span class="hof-card-type">${typeLabel(item.type)}</span>
-        <span class="hof-card-id">${title}</span>
-        ${item.rating != null ? getRatingHtml(item.rating) : ''}`;
+        <span class="hof-card-id">${title}</span>`;
     return hofCardHtml(i + 1, cover, title, inner);
   }).join('');
 
