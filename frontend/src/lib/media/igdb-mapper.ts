@@ -166,7 +166,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // wins and later calls silently skip it, rather than pushing a second
   // relation object IGDB itself considers the same underlying game.
   const seenRelatedIds = new Set<string>();
-  const addRelations = (subGames: IgdbSubGame[] | undefined, relationType: keyof typeof tm.relations) => {
+  const addRelations = (subGames: IgdbSubGame[] | undefined, defaultRelationType: keyof typeof tm.relations) => {
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
@@ -179,6 +179,9 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       const queryParams = new URLSearchParams({ id: relatedExternalId });
       queryParams.set('t', title);
       if (cover) queryParams.set('c', cover);
+
+      // Dynamically detect updates (game_type 14) so they are grouped under "REL_UPDATE"
+      const relationType = sg.game_type === 14 ? 'REL_UPDATE' : defaultRelationType;
 
       relations.push({
         typeLabel: tm.relations[relationType],

@@ -1159,14 +1159,14 @@ pub async fn igdb_get_game_detail(
          artworks.image_id,artworks.width,artworks.height,artworks.alpha_channel,\
          screenshots.image_id,screenshots.width,screenshots.height,\
          external_games.category,external_games.url,\
-         remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,remakes.genres.id,\
-         remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,remasters.genres.id,\
-         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,dlcs.genres.id,\
-         expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,expansions.genres.id,\
-         standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,standalone_expansions.genres.id,\
-         expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,expanded_games.genres.id,\
-         ports.id,ports.name,ports.cover.image_id,ports.first_release_date,ports.genres.id,\
-         forks.id,forks.name,forks.cover.image_id,forks.first_release_date,forks.genres.id; \
+         remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,remakes.genres.id,remakes.game_type,\
+         remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,remasters.genres.id,remasters.game_type,\
+         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,dlcs.genres.id,dlcs.game_type,\
+         expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,expansions.genres.id,expansions.game_type,\
+         standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,standalone_expansions.genres.id,standalone_expansions.game_type,\
+         expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,expanded_games.genres.id,expanded_games.game_type,\
+         ports.id,ports.name,ports.cover.image_id,ports.first_release_date,ports.genres.id,ports.game_type,\
+         forks.id,forks.name,forks.cover.image_id,forks.first_release_date,forks.genres.id,forks.game_type; \
          where id = {}; limit 1;",
         igdb_id
     );

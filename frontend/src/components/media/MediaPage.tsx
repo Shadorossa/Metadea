@@ -514,7 +514,8 @@ export default function MediaPage({ i18n }: Props) {
     tm.relations.EXPANSION,
     tm.relations.STANDALONE,
     tm.relations.REMASTER,
-    tm.relations.EXPANDED_GAME
+    tm.relations.EXPANDED_GAME,
+    tm.relations.REL_UPDATE
   ]);
   const relatedRelations    = data.relations.filter(r =>
     r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel &&
