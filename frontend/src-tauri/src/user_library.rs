@@ -149,9 +149,7 @@ pub async fn save_library_entry(
 pub async fn get_library_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
-    entry_type: String,
 ) -> Result<Option<LibraryEntry>, String> {
-    let _ = entry_type;
     let conn = state.conn.lock().str_err()?;
     conn.query_row(
         &format!("{} WHERE external_id = ?1", SELECT_BASE),
@@ -166,9 +164,7 @@ pub async fn get_library_entry(
 pub async fn delete_library_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
-    entry_type: String,
 ) -> Result<(), String> {
-    let _ = entry_type;
     let conn = state.conn.lock().str_err()?;
     conn.execute("DELETE FROM user_library WHERE external_id = ?1", [&external_id])
         .map(|_| ())

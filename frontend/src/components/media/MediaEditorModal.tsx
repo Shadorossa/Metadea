@@ -758,10 +758,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   <HeaderField label={te.view_date || 'Fecha de visionado'}>
                     <input type="date" className="me-header-field-input me-header-field-input--date"
                       value={activeLog.startedAt || activeLog.finishedAt}
-                      onChange={e => dispatchEntry({
-                        type: 'UPDATE_LOG',
-                        updates: { startedAt: e.target.value, finishedAt: e.target.value }
-                      })} />
+                      onChange={e => {
+                        const val = e.target.value;
+                        const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
+                        if (val) {
+                          updates.status = 'completed';
+                          if (data.totalCount && data.totalCount > 0) updates.progress = data.totalCount;
+                          if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
+                        }
+                        dispatchEntry({ type: 'UPDATE_LOG', updates });
+                      }} />
                   </HeaderField>
                 ) : (
                   <>
@@ -773,7 +779,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     <HeaderField label={te.ended}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         value={activeLog.finishedAt}
-                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: e.target.value } })} />
+                        onChange={e => {
+                          const val = e.target.value;
+                          const updates: Partial<LogState> = { finishedAt: val };
+                          if (val) {
+                            updates.status = 'completed';
+                            if (data.totalCount && data.totalCount > 0) updates.progress = data.totalCount;
+                            if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
+                          }
+                          dispatchEntry({ type: 'UPDATE_LOG', updates });
+                        }} />
                     </HeaderField>
                   </>
                 )}
