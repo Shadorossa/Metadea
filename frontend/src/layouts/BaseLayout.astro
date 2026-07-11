@@ -10,37 +10,20 @@ import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 import ClientRouter from 'astro/components/ClientRouter.astro';
 
-import nebulaUrl from '../styles/core/themes/nebula.css?url';
-import cyberpunkUrl from '../styles/core/themes/cyberpunk.css?url';
-import newspaperDarkUrl from '../styles/core/themes/newspaper-dark.css?url';
-import pipboyUrl from '../styles/core/themes/pipboy.css?url';
-import glassmorphismUrl from '../styles/core/themes/glassmorphism.css?url';
-import synthwaveUrl from '../styles/core/themes/synthwave.css?url';
-import steampunkUrl from '../styles/core/themes/steampunk.css?url';
-import cyberneonUrl from '../styles/core/themes/cyberneon.css?url';
-import scifiUrl from '../styles/core/themes/scifi.css?url';
-import gothicUrl from '../styles/core/themes/gothic.css?url';
-import glitchUrl from '../styles/core/themes/glitch.css?url';
-import luxuryUrl from '../styles/core/themes/luxury.css?url';
-import jungleUrl from '../styles/core/themes/jungle.css?url';
-import blueprintUrl from '../styles/core/themes/blueprint.css?url';
-
-const themeUrls = {
-  nebula: nebulaUrl,
-  cyberpunk: cyberpunkUrl,
-  'newspaper-dark': newspaperDarkUrl,
-  pipboy: pipboyUrl,
-  glassmorphism: glassmorphismUrl,
-  synthwave: synthwaveUrl,
-  steampunk: steampunkUrl,
-  cyberneon: cyberneonUrl,
-  scifi: scifiUrl,
-  gothic: gothicUrl,
-  glitch: glitchUrl,
-  luxury: luxuryUrl,
-  jungle: jungleUrl,
-  blueprint: blueprintUrl,
-};
+import '../styles/core/themes/nebula.css';
+import '../styles/core/themes/cyberpunk.css';
+import '../styles/core/themes/newspaper-dark.css';
+import '../styles/core/themes/pipboy.css';
+import '../styles/core/themes/glassmorphism.css';
+import '../styles/core/themes/synthwave.css';
+import '../styles/core/themes/steampunk.css';
+import '../styles/core/themes/cyberneon.css';
+import '../styles/core/themes/scifi.css';
+import '../styles/core/themes/gothic.css';
+import '../styles/core/themes/glitch.css';
+import '../styles/core/themes/luxury.css';
+import '../styles/core/themes/jungle.css';
+import '../styles/core/themes/blueprint.css';
 
 interface Props {
   title: string;
@@ -59,22 +42,12 @@ const t = useTranslations(lang);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <ClientRouter />
-    <link id="theme-stylesheet" rel="stylesheet" href={nebulaUrl} />
 
     <!-- Apply theme before CSS loads to prevent flash -->
-    <script is:inline define:vars={{ themeUrls, themeStorageKey: STORAGE_KEYS.appTheme }}>
+    <script is:inline define:vars={{ themeStorageKey: STORAGE_KEYS.appTheme }}>
       function applyTheme() {
         var t = localStorage.getItem(themeStorageKey) || 'nebula';
         document.documentElement.setAttribute('data-theme', t);
-        var link = document.getElementById('theme-stylesheet');
-        if (link) {
-          var url = themeUrls[t] || themeUrls['nebula'];
-          // Asegurar que la url empiece por '/' para evitar rutas relativas rotas
-          if (url && !url.startsWith('/') && !url.startsWith('http')) {
-            url = '/' + url;
-          }
-          link.setAttribute('href', url);
-        }
       }
       applyTheme();
       // Re-aplicar inmediatamente después de que Astro intercambie el HTML
