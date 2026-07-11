@@ -25,8 +25,6 @@ html[data-theme="steampunk"], [data-theme="steampunk"] {
 body[data-theme="steampunk"], html[data-theme="steampunk"] body {
   font-family: 'Cinzel', 'Georgia', serif !important;
   background-color: var(--bg-primary);
-  /* Tonalidad sepia ambiental en toda la UI */
-  filter: sepia(0.08) contrast(1.02);
 }
 
 /* ── Steampunk Background ────────────────────────────── */
@@ -102,7 +100,7 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
 [data-theme="steampunk"] .media-card:hover,
 [data-theme="steampunk"] .media-relation-card:hover {
   border-color: #d4a373 !important;
-  transform: translateY(-4px) rotate(0.5deg) !important;
+  transform: translateY(-4px) !important;
   box-shadow: 0 12px 24px rgba(212, 163, 115, 0.15), 0 8px 16px rgba(0,0,0,0.7) !important;
 }
 
