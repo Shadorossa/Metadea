@@ -397,11 +397,17 @@
 }
 
 .media-col-synopsis,
-.media-col-stats,
+.media-col-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .media-col-related {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 340px;
 }
 
 /* ── Stats list (col 2) ──────────────────────────────────────────────────── */
