@@ -192,6 +192,7 @@ export const en = {
       ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source',
       SUMMARY: 'Summary', SPIN_OFF: 'Spin-off', OTHER: 'Other',
       CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
+      EDITIONS: 'Editions',
     },
     sources: {
       MANGA: 'Manga', LIGHT_NOVEL: 'Light novel', VISUAL_NOVEL: 'Visual novel',

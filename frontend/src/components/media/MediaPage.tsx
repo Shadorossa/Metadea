@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, patchCachedRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -137,7 +137,7 @@ export default function MediaPage({ i18n }: Props) {
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended'>('related');
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -267,6 +267,14 @@ export default function MediaPage({ i18n }: Props) {
           patchCachedRelations(targetRelationsId, relations);
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
         });
+
+        if (full.type === 'book' || full.type === 'comic') {
+          fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(relations => {
+            if (cancelled || !relations) return;
+            patchCachedRelations(currentId, relations);
+            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+          });
+        }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
     );
@@ -439,11 +447,17 @@ export default function MediaPage({ i18n }: Props) {
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
-  const relatedRelations = data.relations.filter(r => r.typeLabel !== tm.relations.RECOMMENDATION);
+  const editionsLabel = tm.relations.EDITIONS;
+  const relatedRelations    = data.relations.filter(r => r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel);
   const recommendedRelations = data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION);
+  const editionRelations    = data.relations.filter(r => r.typeLabel === editionsLabel);
   const hasRecommendedRelations = recommendedRelations.length > 0;
-  const visibleRelations = hasRecommendedRelations
-    ? (relationsTab === 'recommended' ? recommendedRelations : relatedRelations)
+  const hasEditionRelations     = editionRelations.length > 0;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations;
+  const visibleRelations = relationsTab === 'recommended'
+    ? recommendedRelations
+    : relationsTab === 'editions'
+    ? editionRelations
     : relatedRelations;
 
   return (
@@ -641,7 +655,7 @@ export default function MediaPage({ i18n }: Props) {
                     each label becomes a tab switching which subset the grid
                     below shows, instead of mixing recommendations into
                     "Related". */}
-                {hasRecommendedRelations ? (
+                {hasTabs ? (
                   <>
                     <button
                       type="button"
@@ -651,13 +665,27 @@ export default function MediaPage({ i18n }: Props) {
                       {tm.section_related}
                     </button>
                     <div className="media-section-header-line media-section-header-line--short" />
-                    <button
-                      type="button"
-                      className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
-                      onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
-                    >
-                      {tm.relations.RECOMMENDATION}
-                    </button>
+                    {hasEditionRelations && (
+                      <button
+                        type="button"
+                        className={`section-label section-label--tab${relationsTab === 'editions' ? ' active' : ''}`}
+                        onClick={() => { setRelationsTab('editions'); setRelationPage(1); }}
+                      >
+                        {editionsLabel}
+                      </button>
+                    )}
+                    {hasEditionRelations && hasRecommendedRelations && (
+                      <div className="media-section-header-line media-section-header-line--short" />
+                    )}
+                    {hasRecommendedRelations && (
+                      <button
+                        type="button"
+                        className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
+                        onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
+                      >
+                        {tm.relations.RECOMMENDATION}
+                      </button>
+                    )}
                     <div className="media-section-header-line" />
                   </>
                 ) : (

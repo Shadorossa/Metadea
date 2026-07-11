@@ -155,8 +155,6 @@ export interface OpenLibAuthorDetail {
 }
 
 export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<OpenLibAuthorDetail | null> {
-  // The works list doesn't depend on the author detail response — fetch both
-  // at once instead of awaiting them one after another.
   const [detail, worksRes] = await Promise.all([
     fetchJson<OpenLibAuthorDetailRaw>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`),
     fetchJson<{ entries?: OpenLibWorkEntry[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`),
@@ -175,4 +173,43 @@ export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<O
     photos: detail.photos,
     works
   };
+}
+
+export interface OpenLibEdition {
+  key: string;
+  title: string;
+  covers?: number[];
+  publish_date?: string;
+  publishers?: string[];
+  languages?: { key: string }[];
+  physical_format?: string;
+}
+
+interface OpenLibEditionsResponse {
+  size?: number;
+  entries?: OpenLibEdition[];
+}
+
+// Fetches all editions with a valid cover (covers[0] > 0) for a given work key.
+export async function fetchOpenLibEditions(workId: string): Promise<OpenLibEdition[]> {
+  const LIMIT = 50;
+  const allEditions: OpenLibEdition[] = [];
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const url = `${API_ENDPOINTS.OPENLIBRARY}/works/${workId}/editions.json?limit=${LIMIT}&offset=${offset}&fields=key,title,covers,publish_date,publishers,languages,physical_format`;
+    const data = await fetchJson<OpenLibEditionsResponse>(url);
+    if (!data) break;
+
+    if (total === Infinity) total = data.size ?? 0;
+
+    const page = data.entries ?? [];
+    allEditions.push(...page.filter(e => e.covers?.[0] && e.covers[0] > 0));
+
+    if (page.length < LIMIT) break;
+    offset += LIMIT;
+  }
+
+  return allEditions;
 }

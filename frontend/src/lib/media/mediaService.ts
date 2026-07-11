@@ -1,5 +1,6 @@
 import { fetchAniListDetail } from '../search/providers/anilist';
-import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
+import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
+import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
@@ -174,6 +175,43 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   }
 
   return null;
+}
+
+// Maps OpenLibrary editions to MediaRelation shape for the 'Ediciones' tab.
+// Only editions with a valid cover are included.
+function editionsToRelations(editions: OpenLibEdition[], label: string): MediaPageData['relations'] {
+  const seen = new Set<string>();
+  const result: MediaPageData['relations'] = [];
+  for (const ed of editions) {
+    const edId = bookIdFromWorkKey(ed.key);
+    if (seen.has(edId)) continue;
+    seen.add(edId);
+    const coverId = ed.covers?.[0];
+    const cover = coverId && coverId > 0 ? openLibCoverUrl(coverId, 'M') : undefined;
+    if (!cover) continue;
+    const publisherPart = ed.publishers?.[0] ?? '';
+    const yearPart = ed.publish_date ? ` (${ed.publish_date})` : '';
+    const title = ed.title + (publisherPart ? ` — ${publisherPart}${yearPart}` : yearPart);
+    result.push({ typeLabel: label, title, cover });
+  }
+  return result;
+}
+
+// Background fetch: loads all editions for a book and returns them merged with
+// any existing relations. Called after the page already has data, same pattern
+// as fetchExtraRelations for games.
+export async function fetchBookEditions(
+  rawId: string,
+  currentRelations: MediaPageData['relations'],
+  editionsLabel: string,
+): Promise<MediaPageData['relations'] | null> {
+  const workId = rawId.slice(rawId.indexOf(':') + 1);
+  const editions = await fetchOpenLibEditions(workId).catch(() => []);
+  if (!editions.length) return null;
+  const editionRelations = editionsToRelations(editions, editionsLabel);
+  if (!editionRelations.length) return null;
+  const withoutOld = currentRelations.filter(r => r.typeLabel !== editionsLabel);
+  return [...withoutOld, ...editionRelations];
 }
 
 // ── Catalog → partial MediaPageData ──────────────────────────────────────────

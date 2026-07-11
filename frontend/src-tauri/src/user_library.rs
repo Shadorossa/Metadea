@@ -209,18 +209,20 @@ pub async fn read_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>)
 #[tauri::command]
 pub async fn write_monthly_history(state: tauri::State<'_, crate::db::MetadeaDb>, content: String) -> Result<(), String> {
     let map: std::collections::HashMap<String, Vec<String>> = serde_json::from_str(&content).str_err()?;
-    let conn = state.conn.lock().str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
     for (month, ids) in &map {
-        conn.execute("DELETE FROM monthly_history WHERE month = ?1", [month]).str_err()?;
+        tx.execute("DELETE FROM monthly_history WHERE month = ?1", [month]).str_err()?;
         for (pos, id) in ids.iter().enumerate() {
-            conn.execute(
+            tx.execute(
                 "INSERT INTO monthly_history (month, external_id, position) VALUES (?1, ?2, ?3)",
                 rusqlite::params![month, id, pos as i64],
             ).str_err()?;
         }
     }
-    Ok(())
+    tx.commit().str_err()
 }
+
 
 // ─── user_journey (relational) ────────────────────────────────────────────────
 

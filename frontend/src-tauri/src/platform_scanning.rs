@@ -14,6 +14,16 @@ pub struct LocalGame {
     pub installed: Option<bool>,
 }
 
+impl LocalGame {
+    fn installed(name: String, launcher: &str, app_id: Option<String>, install_path: Option<String>) -> Self {
+        Self {
+            name, launcher: launcher.to_string(), app_id, external_id: None,
+            install_path, playtime_minutes: None, last_played: None, installed: Some(true),
+        }
+    }
+}
+
+
 #[cfg(windows)]
 fn steam_root_from_registry() -> Option<PathBuf> {
     use winreg::enums::*;
@@ -142,16 +152,12 @@ fn scan_steam_games() -> Vec<LocalGame> {
                                     .join(&install_dir)
                                     .to_string_lossy()
                                     .to_string();
-                                games.push(LocalGame {
+                                games.push(LocalGame::installed(
                                     name,
-                                    launcher: "steam".to_string(),
-                                    app_id: Some(app_id),
-                                    external_id: None,
-                                    install_path: Some(install_path),
-                                    playtime_minutes: None,
-                                    last_played: None,
-                                    installed: Some(true),
-                                });
+                                    "steam",
+                                    Some(app_id),
+                                    Some(install_path),
+                                ));
                             }
                         }
                     }
@@ -184,16 +190,12 @@ fn scan_epic_games() -> Vec<LocalGame> {
                                 let app_id = json["CatalogItemId"].as_str().map(|s| s.to_string());
                                 let is_game = json["bIsApplication"].as_bool().unwrap_or(true);
                                 if !name.is_empty() && is_game {
-                                    games.push(LocalGame {
-                                        name,
-                                        launcher: "epic".to_string(),
-                                        app_id,
-                                        external_id: None,
-                                        install_path,
-                                        playtime_minutes: None,
-                                        last_played: None,
-                                        installed: Some(true),
-                                    });
+                                    games.push(LocalGame::installed(
+                                    name,
+                                    "epic",
+                                    app_id,
+                                    install_path,
+                                ));
                                 }
                             }
                         }
@@ -242,16 +244,12 @@ fn scan_gog_games() -> Vec<LocalGame> {
                             .map(|s| s.trim().to_string())
                             .unwrap_or_default();
                         if !name.is_empty() {
-                            games.push(LocalGame {
+                            games.push(LocalGame::installed(
                                 name,
-                                launcher: "gog".to_string(),
-                                app_id: None,
-                                external_id: None,
-                                install_path: Some(game_dir.to_string_lossy().to_string()),
-                                playtime_minutes: None,
-                                last_played: None,
-                                installed: Some(true),
-                            });
+                                "gog",
+                                None,
+                                Some(game_dir.to_string_lossy().to_string()),
+                            ));
                         }
                     }
                 } else if let Ok(sub) = std::fs::read_dir(&game_dir) {
@@ -425,16 +423,12 @@ fn scan_xbox_games() -> Vec<LocalGame> {
                 if name.starts_with("ms-resource:") || name.is_empty() {
                     continue;
                 }
-                games.push(LocalGame {
+                games.push(LocalGame::installed(
                     name,
-                    launcher: "xbox".to_string(),
-                    app_id: None,
-                    external_id: None,
-                    install_path: Some(path.to_string_lossy().to_string()),
-                    playtime_minutes: None,
-                    last_played: None,
-                    installed: Some(true),
-                });
+                    "xbox",
+                    None,
+                    Some(path.to_string_lossy().to_string()),
+                ));
             }
         }
     }
@@ -463,16 +457,12 @@ fn scan_ea_games() -> Vec<LocalGame> {
                             if let Some(name) = extract_xml_attr(&content, "displayName")
                                 .or_else(|| extract_xml_attr(&content, "title"))
                             {
-                                games.push(LocalGame {
+                                games.push(LocalGame::installed(
                                     name,
-                                    launcher: "ea".to_string(),
-                                    app_id: None,
-                                    external_id: None,
-                                    install_path: Some(path.to_string_lossy().to_string()),
-                                    playtime_minutes: None,
-                                    last_played: None,
-                                    installed: Some(true),
-                                });
+                                    "ea",
+                                    None,
+                                    Some(path.to_string_lossy().to_string()),
+                                ));
                             }
                         }
                     }
@@ -510,16 +500,12 @@ fn scan_ea_games() -> Vec<LocalGame> {
                         if let Some(name) =
                             path.file_name().map(|n| n.to_string_lossy().to_string())
                         {
-                            games.push(LocalGame {
+                            games.push(LocalGame::installed(
                                 name,
-                                launcher: "ea".to_string(),
-                                app_id: None,
-                                external_id: None,
-                                install_path: Some(path.to_string_lossy().to_string()),
-                                playtime_minutes: None,
-                                last_played: None,
-                                installed: Some(true),
-                            });
+                                "ea",
+                                None,
+                                Some(path.to_string_lossy().to_string()),
+                            ));
                         }
                     }
                 }
@@ -541,16 +527,12 @@ fn scan_local_folder(folder: &str) -> Vec<LocalGame> {
             entries
                 .filter_map(|e| e.ok())
                 .filter(|e| e.path().is_dir())
-                .map(|e| LocalGame {
-                    name: e.file_name().to_string_lossy().to_string(),
-                    launcher: "local".to_string(),
-                    app_id: None,
-                    external_id: None,
-                    install_path: Some(e.path().to_string_lossy().to_string()),
-                    playtime_minutes: None,
-                    last_played: None,
-                    installed: Some(true),
-                })
+                .map(|e| LocalGame::installed(
+                    e.file_name().to_string_lossy().to_string(),
+                    "local",
+                    None,
+                    Some(e.path().to_string_lossy().to_string()),
+                ))
                 .collect()
         })
         .unwrap_or_default()
