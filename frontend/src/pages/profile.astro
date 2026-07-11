@@ -63,7 +63,10 @@ const t    = useTranslations(lang);
               var avatarHtml = avatarCache
                 ? '<img class="profile-avatar" src="' + avatarCache + '" alt="' + nameCache + '" referrerpolicy="no-referrer">'
                 : '<div class="profile-avatar-placeholder">' + (nameCache[0] || '?').toUpperCase() + '</div>';
-              document.write(avatarHtml + '<h1 class="profile-username-large" style="font-family: \'profile-font\', sans-serif;">' + nameCache + '</h1>');
+              var container = document.getElementById('banner-content');
+              if (container) {
+                container.innerHTML = avatarHtml + '<h1 class="profile-username-large" style="font-family: \'profile-font\', sans-serif;">' + nameCache + '</h1>';
+              }
             }
           })();
         </script>
