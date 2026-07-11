@@ -24,41 +24,37 @@ function getRatingHtml(rating: number | null | undefined): string {
 
 // Same precedence as the Favorites tab: a user-set custom crop/position
 // wins over the raw cover, which wins over a plain gradient placeholder.
+// Both the custom and raw-cover cases render as two background layers —
+// the actual image on top of an always-`cover`-sized copy of the fallback
+// gradient — because AniList character art is often a cutout PNG with
+// transparent regions (no fill around the character). Sizing the image
+// alone lets those transparent pixels show through to whatever's behind
+// the card, reading as "the image doesn't reach the edges" even though
+// it's correctly sized and positioned; the gradient layer behind it means
+// a transparent pixel just shows that color instead of a see-through gap.
 //
-// `bg_size` is a percentage calibrated against the Favorites card's own
-// aspect ratio (see image-crop-modal.ts's recomputeZoomBounds), which is a
-// different shape than the HOF card. Most custom crops still happen to
-// cover the HOF box fine as-is; only ones where that stored size under-
-// covers this differently-shaped box need bumping up. That correction needs
-// the image's natural size and the HOF card's real rendered size, so it
-// can't be computed at HTML-build time — this only emits the data
-// attributes; adjustHofCustomImages() does the actual (conditional) fix
-// once the cards are in the DOM.
-// Character art on AniList is often a cutout PNG with transparent regions
-// (no background fill around the character) — cover-sizing it alone lets
-// those transparent pixels show through to whatever's behind the card,
-// which reads as "the image doesn't reach the edges" even though it's
-// sized and positioned correctly. Layering the gradient placeholder in as
-// a second, always-cover background *behind* the real image means any
-// transparent pixel just shows that color instead of a see-through gap.
+// Both cases also get `data-cover-img`/`data-bg-size`/`data-pos-x/y` —
+// fixHofCardHoverZoom() re-derives a fixed pixel size from these once the
+// card is in the DOM (needs the image's natural size and the card's real
+// rendered size, so it can't happen at HTML-build time here). Raw covers
+// carry the same attributes as if bg_size were a plain, centered 100%, so
+// they go through that exact same fix instead of being left on the live
+// `cover` keyword, which re-fits (and so visibly re-zooms) on every hover
+// the same way an under-sized custom crop used to.
 function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): { style: string; attrs: string } {
-  if (customImg) {
-    return {
-      style: `background-image:url('${customImg.image_url}'), ${fallbackBg}; background-size:${customImg.bg_size}%, cover; background-position:${customImg.pos_x}% ${customImg.pos_y}%, center; background-repeat:no-repeat, no-repeat;`,
-      attrs: `data-custom-img="${customImg.image_url}" data-bg-size="${customImg.bg_size}" data-pos-x="${customImg.pos_x}" data-pos-y="${customImg.pos_y}"`,
-    };
-  }
-  if (rawCover) {
-    return {
-      // Same data-* attributes as the custom-image branch (as if bg_size
-      // were a plain 100%, centered) — this puts plain covers through the
-      // exact same fixed-pixel-size fix in adjustHofCustomImages(), instead
-      // of leaving them on the live `cover` keyword that re-zooms on every
-      // hover just like custom crops used to before that fix.
-      style: `background-image: url('${rawCover}'), ${fallbackBg}; background-size: cover, cover; background-position: center, center; background-repeat: no-repeat, no-repeat;`,
-      attrs: `data-custom-img="${rawCover}" data-bg-size="100" data-pos-x="50" data-pos-y="50"`,
-    };
-  }
+  // `cssSize` is whatever goes directly in the initial inline style (a
+  // percentage for a real custom crop, the `cover` keyword for a plain
+  // raw cover); `bgSize` is always the plain number fixHofCardHoverZoom()
+  // needs later, so a raw cover's implicit "100%, centered" framing is
+  // still comparable to a real bg_size instead of stashing the literal
+  // string "cover" where a number is expected.
+  const layered = (url: string, cssSize: string, bgSize: number, posX: number, posY: number) => ({
+    style: `background-image:url('${url}'), ${fallbackBg}; background-size:${cssSize}, cover; background-position:${posX}% ${posY}%, center; background-repeat:no-repeat, no-repeat;`,
+    attrs: `data-cover-img="${url}" data-bg-size="${bgSize}" data-pos-x="${posX}" data-pos-y="${posY}"`,
+  });
+
+  if (customImg) return layered(customImg.image_url, `${customImg.bg_size}%`, customImg.bg_size, customImg.pos_x, customImg.pos_y);
+  if (rawCover)   return layered(rawCover, 'cover', 100, 50, 50);
   return { style: `background: ${fallbackBg};`, attrs: '' };
 }
 
@@ -140,7 +136,7 @@ export function buildHofHtml(
 // and .hof-card:hover changes the box's width (flex 1 → 1.3) without
 // changing its height. That reads as the photo itself zooming in on every
 // hover, not just the card opening up — true for plain covers and custom
-// crops alike, which is why coverStyle() tags *both* with data-custom-img.
+// crops alike, which is why coverStyle() tags *both* with data-cover-img.
 // Freezing the image at a fixed *pixel* width instead means hovering can
 // only ever do what .hof-card:hover alone says: grow the box around a
 // same-size photo.
@@ -151,15 +147,11 @@ export function buildHofHtml(
 // assumed wider box so hovering never uncovers a gap at the edges either.
 const HOVER_WIDTH_FACTOR = 1.35;
 
-// Natural dimensions never change for a given URL — caching them means a
-// card that's hidden on first pass (the chars view starts display:none, so
-// its cards measure as zero-size and skip) doesn't need a fresh network
-// image load the moment it's switched into view. Without this, switching to
-// "personajes" would show the old (too-small, gappy) size for a beat before
-// the freshly-loaded image resolves and the fix snaps in — visible as a
-// pop/zoom right as the tab opens. Warming the cache during the initial
-// (works-view) pass means it's normally already resolved by the time the
-// user actually switches tabs, so the fix is just... already there.
+// Natural dimensions never change for a given URL — caching them means the
+// chars view (permanently laid out at full size behind the works view via
+// .hof-view-stack, just visibility:hidden — see profile.css) gets its
+// correction computed during the initial pass same as the works view,
+// instead of only once the user actually switches to it.
 const naturalSizeCache = new Map<string, { w: number; h: number } | null>();
 
 function getNaturalSize(url: string): Promise<{ w: number; h: number } | null> {
@@ -179,10 +171,10 @@ function getNaturalSize(url: string): Promise<{ w: number; h: number } | null> {
   });
 }
 
-function adjustHofCustomImages(el: HTMLElement): void {
-  const cards = el.querySelectorAll<HTMLElement>('.hof-card[data-custom-img]');
+function fixHofCardHoverZoom(el: HTMLElement): void {
+  const cards = el.querySelectorAll<HTMLElement>('.hof-card[data-cover-img]');
   cards.forEach(card => {
-    const url    = card.dataset.customImg!;
+    const url    = card.dataset.coverImg!;
     const bgSize = Number(card.dataset.bgSize);
     const posX   = card.dataset.posX ?? '50';
     const posY   = card.dataset.posY ?? '50';
@@ -192,7 +184,7 @@ function adjustHofCustomImages(el: HTMLElement): void {
       if (!natural) return;
 
       const rect = card.getBoundingClientRect();
-      if (!rect.width || !rect.height) return; // still hidden — a later call (e.g. on tab switch) will catch it, now cache-warm
+      if (!rect.width || !rect.height) return;
 
       const imgAspect = natural.w / natural.h;
       // Width needed to cover the box even once hovered-and-widened, and
@@ -226,7 +218,10 @@ export function initHofListeners(el: HTMLElement): void {
   const btnChars  = el.querySelector<HTMLButtonElement>('#hof-btn-chars');
   if (!viewWorks || !viewChars || !btnWorks || !btnChars) return;
 
-  adjustHofCustomImages(el);
+  // Both views are always full-size (see .hof-view-stack in profile.css —
+  // the hidden one is visibility:hidden, not display:none), so this single
+  // pass already corrects both; switching tabs is a pure visibility toggle.
+  fixHofCardHoverZoom(el);
 
   function switchView(type: 'works' | 'chars') {
     const isWorks = type === 'works';
@@ -234,10 +229,6 @@ export function initHofListeners(el: HTMLElement): void {
     viewChars!.classList.toggle('hof-view-hidden',  isWorks);
     btnWorks!.classList.toggle('hof-btn--active',  isWorks);
     btnChars!.classList.toggle('hof-btn--active', !isWorks);
-    // The chars view starts hidden (display:none), so its cards report a
-    // zero-size rect on the initial adjustHofCustomImages() pass — redo it
-    // now that whichever view was just revealed has real dimensions.
-    adjustHofCustomImages(el);
   }
 
   btnWorks.addEventListener('click', () => switchView('works'));
