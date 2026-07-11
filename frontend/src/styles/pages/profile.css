@@ -347,6 +347,14 @@
    grouped card look wider than its column whenever you hovered it. */
 .library-card-cell {
   position: relative;
+  /* .library-card used to be the grid item directly, and its own
+     overflow:hidden incidentally contained its size to the 1fr track. Now
+     that this wrapper (overflow:visible, so the flyout can escape) is the
+     grid item instead, it inherits CSS Grid's default min-width:auto — a
+     grid item never shrinks below its content's min-content size, so the
+     column (and every card in it) was stretching wider than the 1fr share
+     to fit whatever it contained. min-width:0 is the standard override. */
+  min-width: 0;
 }
 
 .library-card-cell:hover {
@@ -361,6 +369,8 @@
   align-items: stretch;
   gap: 0.75rem;
   padding: 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
   height: 120px;
   border-radius: var(--radius-md);
   overflow: hidden;

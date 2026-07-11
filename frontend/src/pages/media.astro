@@ -14,29 +14,3 @@ const t    = useTranslations(lang);
   </div>
 </BaseLayout>
 
-<script>
-  // Prevent automatic redirects to /profile from /media
-  // (Something in the app was calling history.pushState/replaceState to /profile)
-  if (typeof window !== 'undefined') {
-    const originalPushState = window.history.pushState;
-    const originalReplaceState = window.history.replaceState;
-
-    const blockProfileRedirect = (url: any) => {
-      return typeof url === 'string' && url.includes('/profile');
-    };
-
-    window.history.pushState = function(state: any, title: string, url: any) {
-      if (blockProfileRedirect(url)) {
-        return; // Silently block redirect to /profile
-      }
-      return originalPushState.call(this, state, title, url);
-    };
-
-    window.history.replaceState = function(state: any, title: string, url: any) {
-      if (blockProfileRedirect(url)) {
-        return; // Silently block redirect to /profile
-      }
-      return originalReplaceState.call(this, state, title, url);
-    };
-  }
-</script>
