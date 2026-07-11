@@ -604,11 +604,23 @@
   gap: 0.75rem;
 }
 
+/* Both views stack in the exact same slot (absolute, inset: 0) instead of
+   being swapped in/out with display:none — the hidden one still gets real,
+   accurate dimensions at all times, so its custom-image sizes (see
+   adjustHofCustomImages in hof.ts) can be corrected well before the user
+   ever switches to it, instead of only once display:none lifts and a
+   gappy/wrong size is visible for a beat before the fix catches up. */
+.hof-view-stack {
+  position: relative;
+  flex: 1;
+  height: 368px;
+}
+
 .hof-container {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: row;
-  height: 368px;
-  flex: 1;
   gap: 2px;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -616,7 +628,8 @@
 }
 
 .hof-view-hidden {
-  display: none;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* ── HOF sidebar buttons ──────────────────────────────────────────────────── */
