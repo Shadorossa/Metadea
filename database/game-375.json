@@ -25,13 +25,14 @@
     "genres_csv": "Shooter,Tactical,Adventure",
     "genres_tag_csv": null,
     "platforms_csv": "PlayStation 3,PlayStation,PlayStation Portable",
+    "shop_links_csv": null,
     "companies_cache_csv": "Konami Computer Entertainment Japan,Konami",
     "authors_csv": null,
     "last_synced_at": null,
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T14:46:01.534Z",
-    "updated_at": "2026-07-07T14:46:02.964284800+00:00"
+    "updated_at": "2026-07-11T09:22:54.979013200+00:00"
   },
   "media_relations": [
     {
@@ -55,8 +56,16 @@
       "relation_type": "EXPANDED EDITION",
       "type_label": "Expanded Edition",
       "title": "Metal Gear Solid: Integral",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobpal.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpal.jpg",
       "media_external_id": "game:375"
+    },
+    {
+      "media_external_id": "game:375",
+      "related_media_external_id": "game:377",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear 2: Solid Snake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg"
     },
     {
       "media_external_id": "game:375",
@@ -64,7 +73,31 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 2: Sons of Liberty",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5e1c.jpg"
+    },
+    {
+      "media_external_id": "game:344546",
+      "related_media_external_id": "game:377",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear 2: Solid Snake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg"
+    },
+    {
+      "media_external_id": "game:377",
+      "related_media_external_id": "game:344546",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Metal Gear",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa04q.jpg"
+    },
+    {
+      "media_external_id": "game:377",
+      "related_media_external_id": "game:375",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Metal Gear Solid",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpak.jpg"
     },
     {
       "media_external_id": "game:376",
@@ -80,7 +113,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 3: Snake Eater",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5ei5.jpg"
     },
     {
       "media_external_id": "game:379",
@@ -88,7 +121,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid 2: Sons of Liberty",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5e1c.jpg"
     },
     {
       "media_external_id": "game:379",
@@ -96,7 +129,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 4: Guns of the Patriots",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eju.jpg"
     },
     {
       "media_external_id": "game:380",
@@ -104,7 +137,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid 3: Snake Eater",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5ei5.jpg"
     },
     {
       "media_external_id": "game:380",
@@ -112,7 +145,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid: Peace Walker",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coawb5.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coawb5.jpg"
     },
     {
       "media_external_id": "game:382",
@@ -120,7 +153,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid 4: Guns of the Patriots",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eju.jpg"
     },
     {
       "media_external_id": "game:382",
@@ -128,7 +161,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid V: Ground Zeroes",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v88.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v88.jpg"
     },
     {
       "media_external_id": "game:5328",
@@ -136,7 +169,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid: Peace Walker",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coawb5.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coawb5.jpg"
     },
     {
       "media_external_id": "game:5328",
@@ -144,7 +177,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid V: The Phantom Pain",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v85.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v85.jpg"
     },
     {
       "media_external_id": "game:1985",
@@ -152,22 +185,11 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid V: Ground Zeroes",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1v88.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v88.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {
-    "game:134112": "GOGX",
-    "game:9685": "IEGO",
-    "game:47673": "IEGO",
-    "game:9693": "GOCS",
-    "game:47835": "IE2",
-    "game:47675": "IE3",
-    "game:47674": "IE3",
-    "game:62739": "GOGX",
-    "game:47676": "IE3",
-    "game:47716": "IE2",
-    "game:23220": "GOCS"
-  }
+  "saga_groups": {},
+  "saga_name": "Metal Gear Solid V: The Phantom Pain"
 }
