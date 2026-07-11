@@ -199,6 +199,10 @@ export const es = {
       REMAKE: 'Remake',
       EXPANDED_GAME: 'Edición extendida',
       REL_UPDATE: 'Update',
+      DLC: 'DLC',
+      EXPANSION: 'Expansión',
+      STANDALONE: 'Expansión independiente',
+      FORK: 'Fork',
     },
     sources: {
       MANGA: 'Manga', LIGHT_NOVEL: 'Novela ligera', VISUAL_NOVEL: 'Novela visual',

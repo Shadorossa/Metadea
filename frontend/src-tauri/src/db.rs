@@ -74,6 +74,34 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN character_name TEXT", []);
         mark_migration(conn, 4)?;
     }
+    if v < 5 {
+        // media_relations used to key on (media, related, relation_type),
+        // which let the same target accumulate more than one row over time —
+        // most visibly, an old sync writing the raw display label as
+        // relation_type ("Expanded Edition") and a later one writing the
+        // canonical key ("EXPANDED_GAME") for the exact same pair, so the
+        // same related title rendered twice in a row's relations. Rebuild
+        // the table keyed on (media, related) only, keeping the
+        // most-recently-written row per pair (rowid DESC + INSERT OR IGNORE
+        // = first-seen-wins-per-key, so the newest survives).
+        let _ = conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS media_relations_v5 (
+                media_external_id         TEXT NOT NULL,
+                related_media_external_id TEXT NOT NULL,
+                relation_type             TEXT NOT NULL,
+                type_label                TEXT NOT NULL,
+                PRIMARY KEY (media_external_id, related_media_external_id)
+             );
+             INSERT OR IGNORE INTO media_relations_v5
+                (media_external_id, related_media_external_id, relation_type, type_label)
+             SELECT media_external_id, related_media_external_id, relation_type, type_label
+             FROM media_relations
+             ORDER BY rowid DESC;
+             DROP TABLE media_relations;
+             ALTER TABLE media_relations_v5 RENAME TO media_relations;"
+        );
+        mark_migration(conn, 5)?;
+    }
 
     Ok(())
 }
@@ -239,12 +267,17 @@ CREATE TABLE IF NOT EXISTS saga_relations (
 );
 CREATE INDEX IF NOT EXISTS saga_relations_saga_idx ON saga_relations(saga_id);
 
+-- relation_type is deliberately NOT part of the primary key — a given work
+-- can only relate to another work one way at a time (see migration 5's
+-- comment for why including it there let the same pair accumulate more than
+-- one row, e.g. once tagged with a raw display label and again with a
+-- canonical key after a later fix, both surviving side by side).
 CREATE TABLE IF NOT EXISTS media_relations (
     media_external_id         TEXT NOT NULL,
     related_media_external_id TEXT NOT NULL,
     relation_type             TEXT NOT NULL,
     type_label                TEXT NOT NULL,
-    PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
+    PRIMARY KEY (media_external_id, related_media_external_id)
 );
 
 CREATE TABLE IF NOT EXISTS media_saga_groups (

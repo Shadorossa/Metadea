@@ -54,8 +54,26 @@ export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label:
  *  new additions. */
 export const EDITABLE_RELATION_OPTIONS: string[] = [
   'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'REL_UPDATE',
+  'DLC', 'EXPANSION', 'STANDALONE', 'FORK',
 ];
 
 export function isSagaRelationType(value: string): value is SagaRelationType {
   return SAGA_RELATION_TYPE_OPTIONS.some(o => o.value === value);
+}
+
+// Game relations used to be saved with the raw English display label as
+// their relation_type (e.g. "Expanded Edition") instead of the canonical
+// key ("EXPANDED_GAME") every other part of the system expects — rows saved
+// before that was fixed still carry the old value. Shared by mediaService's
+// background DB resync (which rewrites saved rows to canonical) and
+// PrEditorModal (which normalizes at render time so a stale row shows the
+// correct pre-selected option immediately, without waiting on that resync).
+export const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
+  'Remake': 'REMAKE', 'Remaster': 'REMASTER', 'DLC': 'DLC',
+  'Expansion': 'EXPANSION', 'Standalone': 'STANDALONE',
+  'Expanded Edition': 'EXPANDED_GAME', 'Fork': 'FORK',
+};
+
+export function normalizeLegacyRelationType(relationType: string): string {
+  return LEGACY_RELATION_TYPE_LABELS[relationType] ?? relationType;
 }

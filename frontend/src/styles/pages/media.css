@@ -2589,6 +2589,13 @@
   gap: 0.35rem;
   cursor: grab;
   width: 100%;
+  /* Grid items default to `min-width: auto`, meaning a track won't shrink
+     below its content's natural width — a long title (e.g. "Resident Evil
+     Code: Veronica X") could force its 1fr column wider than a neighboring
+     card's, even though both are nominally the same fraction, making covers
+     render at different sizes. This lets every column actually share space
+     equally, same-size covers guaranteed regardless of title length. */
+  min-width: 0;
 }
 
 .pr-editor-media-card:active {
@@ -2695,6 +2702,81 @@
   color: var(--text-main, #e3e1db);
   background: var(--bg-elevated, #1b1917);
   font-weight: 400;
+}
+
+/* ── Custom relation-type dropdown (replaces the native <select> — Windows/
+   Chromium won't let CSS style a native listbox's row spacing, corners, or
+   hover color, which is what made it look cramped and generic) ──────────── */
+
+.rel-type-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid rgba(124, 106, 247, 0.4);
+  background-color: rgba(124, 106, 247, 0.08);
+  color: var(--accent, #7c6af7);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.rel-type-select-trigger:hover {
+  border-color: var(--accent, #7c6af7);
+  background-color: rgba(124, 106, 247, 0.16);
+}
+
+.rel-type-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rel-type-select-chevron {
+  flex-shrink: 0;
+  color: var(--accent, #7c6af7);
+}
+
+.rel-type-select-panel {
+  position: fixed;
+  z-index: 10000;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.rel-type-select-option {
+  text-align: left;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main, #e3e1db);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 100ms;
+}
+
+.rel-type-select-option:hover {
+  background: rgba(124, 106, 247, 0.16);
+}
+
+.rel-type-select-option.active {
+  background: rgba(124, 106, 247, 0.28);
+  color: var(--accent, #7c6af7);
+  font-weight: 700;
 }
 
 .pr-editor-media-card-group-input {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -266,6 +266,13 @@ export default function MediaPage({ i18n }: Props) {
           if (cancelled || !relations) return;
           patchCachedRelations(targetRelationsId, relations);
           setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+          // Transitive relations (remaster-of-an-expansion, etc.) used to
+          // only ever land in the session cache — never media_relations —
+          // so they rendered fine here but never showed up as an editable
+          // relation in the collaborative catalog editor, which reads
+          // straight from the DB. Persist them now that we know this
+          // response still belongs to the current page.
+          mergeAndPersistRelations(targetRelationsId, relations).catch(console.error);
         });
 
         if (full.type === 'book' || full.type === 'comic') {

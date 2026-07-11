@@ -9,9 +9,10 @@ import type { SagaEntry } from '../../lib/anilist/saga';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { SlotInput } from './SlotInput';
+import { RelationTypeSelect } from './RelationTypeSelect';
 import {
   BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
-  isSagaRelationType, type SagaRelationType,
+  isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
 import { classifySagaChain, createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
@@ -178,13 +179,21 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         // member is re-derived by the saga chain builder on save instead.
         const editable = rels
           .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !sagaMemberIds.has(r.related_media_external_id))
-          .map(r => ({
-            related_media_external_id: r.related_media_external_id,
-            relation_type: r.relation_type,
-            type_label: r.type_label || r.relation_type,
-            title: r.title,
-            cover: r.cover,
-          }));
+          .map(r => {
+            // Rows saved before game relations used canonical type keys
+            // (see igdb-mapper.ts) still carry the raw English label as
+            // relation_type (e.g. "Expanded Edition") — normalize on load so
+            // the dropdown pre-selects the real, localized option instead of
+            // rendering it as an extra unlocalized duplicate.
+            const relationType = normalizeLegacyRelationType(r.relation_type);
+            return {
+              related_media_external_id: r.related_media_external_id,
+              relation_type: relationType,
+              type_label: (relationLabels as any)[relationType] || r.type_label || relationType,
+              title: r.title,
+              cover: r.cover,
+            };
+          });
         setEditableRelations(editable);
         setOriginalEditableRelationTypes(new Map(editable.map(r => [r.related_media_external_id, r.relation_type])));
 
@@ -968,25 +977,13 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                       <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
                         {r.title || r.related_media_external_id}
                       </div>
-                      <select
+                      <RelationTypeSelect
                         value={r.relation_type}
-                        onChange={e => updateEditableRelationType(r.related_media_external_id, e.target.value)}
-                        className="pr-editor-media-card-select"
-                        style={{ fontSize: '0.7rem' }}
-                      >
-                        {/* Pre-existing relations can carry a type outside the
-                            curated add-new list (CHARACTER, OTHER, ...) — keep
-                            it selectable so the dropdown doesn't silently
-                            snap to a different value on first render. */}
-                        {!EDITABLE_RELATION_OPTIONS.includes(r.relation_type) && (
-                          <option value={r.relation_type}>{r.type_label}</option>
-                        )}
-                        {EDITABLE_RELATION_OPTIONS.map(type => (
-                          <option key={type} value={type}>
-                            {((relationLabels as any)[type]) || type}
-                          </option>
-                        ))}
-                      </select>
+                        options={EDITABLE_RELATION_OPTIONS}
+                        labels={relationLabels as unknown as Record<string, string>}
+                        extraOption={{ value: r.relation_type, label: r.type_label }}
+                        onChange={type => updateEditableRelationType(r.related_media_external_id, type)}
+                      />
                     </div>
                   ))}
                 </div>

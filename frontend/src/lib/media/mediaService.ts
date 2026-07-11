@@ -5,7 +5,7 @@ import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, IGDB_GAME_TYPE_REMAKE, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, IGDB_GAME_TYPE_REMAKE, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStat } from './types';
@@ -15,6 +15,7 @@ import { formatDateParts, parseExternalId } from './mapper-utils';
 import { getT } from '../../i18n/client';
 
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
+import { normalizeLegacyRelationType } from './sagaTypes';
 
 // Fuente / Precuela / Secuela / Historia paralela, everything else after —
 // shared by every place that turns saved DB relations back into the page's
@@ -22,6 +23,12 @@ import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/me
 const RELATION_SORT_PRIORITY: Record<string, number> = {
   SOURCE: 1, PARENT: 1, PREQUEL: 2, SEQUEL: 3, SIDE_STORY: 4,
 };
+
+function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {
+  const canonical = normalizeLegacyRelationType(rel.relation_type);
+  if (canonical === rel.relation_type) return rel;
+  return { ...rel, relation_type: canonical, type_label: getT().media.relations[canonical as keyof ReturnType<typeof getT>['media']['relations']] ?? rel.type_label };
+}
 
 function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPageData['relations']; hasSaga: boolean } {
   const sorted = [...rels].sort((a, b) => {
@@ -36,6 +43,12 @@ function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPag
       title: r.title,
       cover: r.cover || undefined,
       url: `/media?id=${r.related_media_external_id}`,
+      // Without this, mergeRelationGraph's "already have this id" dedup Set
+      // (built by reading relatedExternalId off whatever's already in
+      // data.relations) never sees DB-sourced rows — since they only had
+      // `url` set — so the transitive relation-graph walk could rediscover
+      // and re-add an already-saved relation under a second, different type.
+      relatedExternalId: r.related_media_external_id,
     })),
     hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
   };
@@ -146,6 +159,8 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
       const baseGames = await igdbGetBaseGames(numericId).catch(() => null);
       if (baseGames) data = mergeBaseGameRelation(data, baseGames as IgdbSubGame[]);
     }
+
+    data.relations = dedupeRelationsByTarget(data.relations);
 
     // The transitive relation graph (remaster-of-an-expansion, port-of-a-
     // remaster, etc.) needs up to 4 sequential IGDB requests — too slow to
@@ -326,6 +341,45 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
 
 // ── API pública ───────────────────────────────────────────────────────────
 
+// Merges freshly-fetched relations (from any source — the direct IGDB
+// fetch, or the transitive relation-graph walk) into whatever's already
+// saved, instead of only ever syncing once per title. IGDB keeps adding
+// DLCs/standalone expansions/etc. to a game's entry over time, and a plain
+// "skip if dbRels isn't empty" gate meant any title that already had one
+// curated/synced relation (e.g. a manually-added PREQUEL) would never pick
+// up newly-listed ones again — they'd render fine on that one page load
+// (from live memory) but silently never reach media_relations, so they
+// never showed up as an editable relation in the collaborative catalog
+// editor. Existing DB rows always win on id conflicts since they may have
+// been hand-edited (saga grouping, relation-type fixes) via PrEditorModal
+// and must not be clobbered by a fresh IGDB fetch.
+//
+// Also normalizes any legacy-labeled DB rows even when there's nothing new
+// to merge — that must not be gated behind "there's something to add", or a
+// title whose relations were all saved under the old raw-label scheme (and
+// whose live fetch happens to add nothing new) would never get corrected.
+export async function mergeAndPersistRelations(rawId: string, fetchedRelations: MediaPageData['relations']): Promise<void> {
+  const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
+
+  const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
+  const changedLegacyTypes = normalizedDbRels.some((r, i) => r.relation_type !== dbRels[i].relation_type);
+
+  const dbIds = new Set(dbRels.map(r => r.related_media_external_id));
+  const newFromApi = (fetchedRelations ?? [])
+    .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
+    .map(r => ({
+      related_media_external_id: r.relatedExternalId!,
+      relation_type: r.relationType ?? r.typeLabel,
+      type_label: r.typeLabel,
+      title: r.title,
+      cover: r.cover || null,
+    }));
+
+  if (newFromApi.length > 0 || changedLegacyTypes) {
+    await saveMediaRelations(rawId, [...normalizedDbRels, ...newFromApi]).catch(console.error);
+  }
+}
+
 // Comprueba caché primero; si no está, fetcha y guarda
 export async function fetchMediaData(rawId: string): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
@@ -333,36 +387,8 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 
   const data = await fetchMediaDataInternal(rawId);
   if (data) {
-    // Load existing database relations and authors first
-    const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-
-    // Merge freshly-fetched API relations into whatever's already saved,
-    // instead of only ever syncing once per title. IGDB keeps adding
-    // DLCs/standalone expansions/etc. to a game's entry over time, and a
-    // plain "skip if dbRels isn't empty" gate meant any title that already
-    // had one curated/synced relation (e.g. a manually-added PREQUEL) would
-    // never pick up newly-listed ones again — they'd render fine on that one
-    // page load (from live memory) but silently never reach media_relations,
-    // so they never showed up as an editable relation in the collaborative
-    // catalog editor. Existing DB rows always win on id conflicts since they
-    // may have been hand-edited (saga grouping, relation-type fixes) via
-    // PrEditorModal and must not be clobbered by a fresh IGDB fetch.
-    if (data.relations && data.relations.length > 0) {
-      const dbIds = new Set(dbRels.map(r => r.related_media_external_id));
-      const newFromApi = data.relations
-        .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
-        .map(r => ({
-          related_media_external_id: r.relatedExternalId!,
-          relation_type: r.relationType ?? r.typeLabel,
-          type_label: r.typeLabel,
-          title: r.title,
-          cover: r.cover || null,
-        }));
-
-      if (newFromApi.length > 0) {
-        await saveMediaRelations(rawId, [...dbRels, ...newFromApi]).catch(console.error);
-      }
-    }
+    const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
+    await mergeAndPersistRelations(rawId, data.relations);
 
     // Only save API authors if we don't have any in the DB
     if (dbAuthors.length === 0 && data.authors && data.authors.length > 0) {
@@ -468,6 +494,14 @@ export function fetchMediaDataWithFallback(
       if (hasLocalData && localData && !isSkeleton) {
         fullArrived = true;
         onFull(localData);
+        // A "fully enriched" catalog row (synopsis/genres/companies all
+        // present) skips the live IGDB fetch entirely for speed — but that
+        // also means fetchMediaData's relation-merge-and-save step (new
+        // DLCs/expansions/remasters IGDB has added since this row was last
+        // synced) never runs for already-visited titles. Kick it off in the
+        // background so relations catch up in the DB for next time, without
+        // delaying or replacing what's already on screen.
+        fetchMediaData(rawId).catch(() => {});
         return;
       }
 

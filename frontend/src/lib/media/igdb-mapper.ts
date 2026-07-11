@@ -151,14 +151,30 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Agrupamiento y mapeo de las relaciones de IGDB en secciones
   const relations: MediaRelation[] = [];
 
-  const addRelations = (subGames: IgdbSubGame[] | undefined, label: string) => {
+  // `relationType` must be the same canonical key used everywhere else in the
+  // system (EDITABLE_RELATION_OPTIONS, the i18n `relations` table, the saved
+  // DB row) — it used to be the raw English display label itself (e.g.
+  // "Expanded Edition"), which meant it never matched EDITABLE_RELATION_OPTIONS
+  // and the collaborative-catalog editor rendered it as an extra, unlocalized
+  // duplicate option alongside the real (localized) "EXPANDED_GAME" entry.
+  //
+  // IGDB sometimes lists the exact same title under more than one of these
+  // categories (e.g. both `expansions` and `standalone_expansions`) — a work
+  // can only relate to another one way, so the first category to claim an id
+  // wins and later calls silently skip it, rather than pushing a second
+  // relation object IGDB itself considers the same underlying game.
+  const seenRelatedIds = new Set<string>();
+  const addRelations = (subGames: IgdbSubGame[] | undefined, relationType: keyof typeof tm.relations) => {
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
-      const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
+      if (seenRelatedIds.has(relatedExternalId)) continue;
+      seenRelatedIds.add(relatedExternalId);
+
+      const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
       relations.push({
-        typeLabel: label,
-        relationType: label,
+        typeLabel: tm.relations[relationType],
+        relationType,
         title: cleanEditionTitle(sg.name),
         cover,
         url: `/media?id=${relatedExternalId}`,
@@ -176,16 +192,16 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       }
     : undefined;
 
-  addRelations(game.remakes, 'Remake');
+  addRelations(game.remakes, 'REMAKE');
   // Expanded editions (game_type 10) commonly point at unrelated remasters
   // of the base game rather than a remaster of the edition itself — skip.
-  if (gameType !== 10) addRelations(game.remasters, 'Remaster');
+  if (gameType !== 10) addRelations(game.remasters, 'REMASTER');
   addRelations(game.dlcs, 'DLC');
-  addRelations(game.expansions, 'Expansion');
-  addRelations(game.standalone_expansions, 'Standalone');
-  addRelations(game.expanded_games, 'Expanded Edition');
+  addRelations(game.expansions, 'EXPANSION');
+  addRelations(game.standalone_expansions, 'STANDALONE');
+  addRelations(game.expanded_games, 'EXPANDED_GAME');
   // Ports are never shown as related versions.
-  addRelations(game.forks, 'Fork');
+  addRelations(game.forks, 'FORK');
 
   return {
     externalId: rawId,
@@ -256,22 +272,28 @@ export interface RelationGraphNode {
   is_vn?: boolean;
 }
 
+// IGDB relation-array field name -> the same canonical relation_type key
+// addRelations() above uses. This used to map straight to a raw English
+// label ("Expanded Edition") instead, which — since this graph-walk result
+// merges into the same `data.relations` array the direct fetch already
+// populated with the canonical key — meant the *same* related game could
+// show up twice: once correctly labeled from the direct fetch, once again
+// here under its old, unlocalized, un-deduped-against-DB label.
+const VIA_TO_RELATION_TYPE: Record<string, string> = {
+  remakes: 'REMAKE',
+  remasters: 'REMASTER',
+  dlcs: 'DLC',
+  expansions: 'EXPANSION',
+  standalone_expansions: 'STANDALONE',
+  expanded_games: 'EXPANDED_GAME',
+  forks: 'FORK',
+  parent_game: 'PARENT',
+};
+
 export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {
   if (!nodes.length) return data;
 
   const tm = getT().media;
-  const VIA_LABELS: Record<string, string> = {
-    remakes: 'Remake',
-    remasters: 'Remaster',
-    dlcs: 'DLC',
-    expansions: 'Expansion',
-    standalone_expansions: 'Standalone',
-    expanded_games: 'Expanded Edition',
-    ports: 'Port',
-    forks: 'Fork',
-    parent_game: tm.relations.PARENT,
-    relation: 'Related',
-  };
 
   const seen = new Set<string>([data.externalId]);
   if (data.parentGame) seen.add(data.parentGame.externalId);
@@ -298,9 +320,10 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
       const externalId = `${n.is_vn ? 'vnovel' : 'game'}:${n.id}`;
       if (seen.has(externalId)) continue;
       seen.add(externalId);
+      const relationType = VIA_TO_RELATION_TYPE[n.via];
       extra.push({
-        typeLabel: VIA_LABELS[n.via] ?? VIA_LABELS.relation,
-        relationType: n.via,
+        typeLabel: relationType ? tm.relations[relationType as keyof typeof tm.relations] : 'Related',
+        relationType: relationType ?? n.via,
         title: cleanEditionTitle(n.name),
         cover: n.cover?.image_id ? igdbImageUrl(n.cover.image_id, 'cover_big') : undefined,
         url: `/media?id=${externalId}`,
@@ -309,6 +332,26 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
     }
   }
   if (!extra.length) return data;
-  return { ...data, relations: [...data.relations, ...extra] };
+  return { ...data, relations: dedupeRelationsByTarget([...data.relations, ...extra]) };
+}
+
+// Final safety net: even with every merge step deduping against what it's
+// about to append, three independent relation sources feed the same
+// `data.relations` array (direct IGDB fetch, this transitive graph walk,
+// DB-persisted rows) — collapsing by target id here guarantees the same
+// related work can never render twice regardless of which upstream step
+// let one slip through. Keeps the first occurrence (direct fetch / DB rows
+// are merged in before this graph walk runs, so they take priority over a
+// less-specific transitively-discovered duplicate).
+export function dedupeRelationsByTarget(relations: MediaRelation[]): MediaRelation[] {
+  const seen = new Set<string>();
+  const result: MediaRelation[] = [];
+  for (const r of relations) {
+    const key = r.relatedExternalId ?? r.url ?? `${r.typeLabel}:${r.title}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(r);
+  }
+  return result;
 }
 
