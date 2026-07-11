@@ -109,6 +109,7 @@ interface CachedCharacterData {
 }
 
 export function CharacterPrEditorModal() {
+  const t = getT().character_editor;
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [currentId, setCurrentId] = useState('');
@@ -442,7 +443,7 @@ export function CharacterPrEditorModal() {
 
     setSubmitting(true);
     setErrorMsg('');
-    setStatusMsg('Guardando localmente...');
+    setStatusMsg(t.saving_local);
 
     try {
       const reassembledBiography = buildBiographyHtml(characteristics, cleanBiography);
@@ -470,7 +471,7 @@ export function CharacterPrEditorModal() {
         })));
       }
 
-      setStatusMsg('Preparando propuesta...');
+      setStatusMsg(t.preparing_proposal);
 
       const bundle: ProposalBundle = {
         media_catalog: {} as any, // Characters don't need media_catalog
@@ -488,7 +489,7 @@ export function CharacterPrEditorModal() {
       const prUrl = await submitCollaborativeProposal(currentId, bundle, changeSummary, setStatusMsg);
 
       if (prUrl) {
-        setStatusMsg('¡Pull Request creado exitosamente!');
+        setStatusMsg(t.pr_success);
         await new Promise(r => setTimeout(r, 1500));
         // Clear cache for this character so next edit loads fresh data
         delete characterCacheRef.current[currentId];
@@ -497,7 +498,7 @@ export function CharacterPrEditorModal() {
       }
     } catch (err: any) {
       console.error('Failed to submit proposal:', err);
-      setErrorMsg(err.message || 'Error al enviar la propuesta');
+      setErrorMsg(err.message || t.pr_error);
     } finally {
       setSubmitting(false);
     }
@@ -523,7 +524,7 @@ export function CharacterPrEditorModal() {
       <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <span className="pr-editor-title">Editar Personaje</span>
+            <span className="pr-editor-title">{t.title}</span>
             <span className="pr-editor-subtitle">ID: {currentId}</span>
           </div>
           {statusMsg && (
@@ -540,17 +541,17 @@ export function CharacterPrEditorModal() {
           {/* ── Foto ────────────────────────────────────────────────── */}
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">
-              Foto
+              {t.photo}
               {isFieldChanged(imageUrl, originalCharacter?.image_url) && <span className="pr-editor-section-changed-dot" />}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.6rem' }}>
               <div className="pr-editor-cover-preview-card" style={{ width: '90px', aspectRatio: '3 / 4', flexShrink: 0 }}>
                 {imageUrl
                   ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
-                  : <span className="pr-editor-cover-placeholder">Sin imagen</span>}
+                  : <span className="pr-editor-cover-placeholder">{t.no_image}</span>}
               </div>
               <button type="button" className="pr-editor-add-btn" onClick={handleChangePhoto}>
-                Cambiar imagen…
+                {t.change_image}
               </button>
             </div>
           </div>
@@ -558,16 +559,16 @@ export function CharacterPrEditorModal() {
           {/* ── Datos básicos ───────────────────────────────────────── */}
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
-              <Field label="Nombre" changed={isFieldChanged(name, originalCharacter?.name)}>
+              <Field label={t.name} changed={isFieldChanged(name, originalCharacter?.name)}>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} />
               </Field>
 
-              <Field label="Nombre Nativo" changed={isFieldChanged(nameNative, originalCharacter?.name_native)}>
-                <input type="text" value={nameNative} onChange={e => setNameNative(e.target.value)} placeholder="(Opcional)" />
+              <Field label={t.native_name} changed={isFieldChanged(nameNative, originalCharacter?.name_native)}>
+                <input type="text" value={nameNative} onChange={e => setNameNative(e.target.value)} placeholder={t.optional} />
               </Field>
 
-              <Field label="Aliases" changed={aliases.join(',') !== (originalCharacter?.aliases_csv || '')} full>
-                <TagsInput tags={aliases} onChange={setAliases} placeholder="Escribe alias y presiona coma o Enter (Opcional)" />
+              <Field label={t.aliases} changed={aliases.join(',') !== (originalCharacter?.aliases_csv || '')} full>
+                <TagsInput tags={aliases} onChange={setAliases} placeholder={t.aliases_ph} />
               </Field>
             </div>
           </div>
@@ -575,7 +576,7 @@ export function CharacterPrEditorModal() {
           {/* ── Características (género, edad, altura...) ──────────── */}
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">
-              Características
+              {t.characteristics}
               {characteristicsChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem' }}>
@@ -585,14 +586,14 @@ export function CharacterPrEditorModal() {
                     type="text"
                     value={c.label}
                     onChange={e => updateCharacteristic(idx, 'label', e.target.value)}
-                    placeholder="Etiqueta (ej. Altura)"
+                    placeholder={t.char_label_ph}
                     style={{ flex: '0 0 40%' }}
                   />
                   <input
                     type="text"
                     value={c.value}
                     onChange={e => updateCharacteristic(idx, 'value', e.target.value)}
-                    placeholder="Valor (ej. 170 cm)"
+                    placeholder={t.char_value_ph}
                     style={{ flex: 1 }}
                   />
                   <button
@@ -605,15 +606,15 @@ export function CharacterPrEditorModal() {
                   </button>
                 </div>
               ))}
-              <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic}>+ Añadir característica</button>
+              <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic}>{t.add_characteristic}</button>
             </div>
           </div>
 
           {/* ── Biografía ────────────────────────────────────────────── */}
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
-              <Field label="Biografía" changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
-                <textarea rows={6} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder="Descripción del personaje (Opcional)" />
+              <Field label={t.biography} changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
+                <textarea rows={6} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder={t.biography_ph} />
               </Field>
             </div>
           </div>
@@ -621,7 +622,7 @@ export function CharacterPrEditorModal() {
           {/* ── Apariciones ──────────────────────────────────────────── */}
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">
-              Apariciones en Obras
+              {t.appearances}
               {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
             <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
@@ -664,17 +665,17 @@ export function CharacterPrEditorModal() {
                   <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
                 ))}
               </select>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>+ Añadir aparición</button>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>{t.add_appearance}</button>
             </div>
           </div>
         </div>
 
         <div className="pr-editor-footer">
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={handleClose} disabled={submitting}>
-            Cancelar
+            {t.cancel}
           </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanged()}>
-            {submitting ? 'Enviando...' : 'Crear Pull Request'}
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
+            {submitting ? t.submitting : t.submit}
           </button>
         </div>
       </div>
