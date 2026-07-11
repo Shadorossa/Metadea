@@ -211,6 +211,7 @@ export const en = {
       progress:  'Progress',
       started:   'Start Date',
       ended:     'End Date',
+      view_date: 'Viewing Date',
       tags:      'Tags',
       notes:     'Notes',
       notes_ph:  'Review or personal notes…',

@@ -324,6 +324,7 @@ function NumberField({ label, value, max, step, onChange }: {
 export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry }: Props) {
   const t  = i18n;
   const te = t.editor;
+  const isMovie = data.type === 'movie' || (data.type === 'anime' && data.format === 'MOVIE');
 
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
@@ -753,16 +754,29 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 </HeaderField>
 
                 {/* Dates */}
-                <HeaderField label={te.started}>
-                  <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={activeLog.startedAt}
-                    onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })} />
-                </HeaderField>
-                <HeaderField label={te.ended}>
-                  <input type="date" className="me-header-field-input me-header-field-input--date"
-                    value={activeLog.finishedAt}
-                    onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: e.target.value } })} />
-                </HeaderField>
+                {isMovie ? (
+                  <HeaderField label={te.view_date || 'Fecha de visionado'}>
+                    <input type="date" className="me-header-field-input me-header-field-input--date"
+                      value={activeLog.startedAt || activeLog.finishedAt}
+                      onChange={e => dispatchEntry({
+                        type: 'UPDATE_LOG',
+                        updates: { startedAt: e.target.value, finishedAt: e.target.value }
+                      })} />
+                  </HeaderField>
+                ) : (
+                  <>
+                    <HeaderField label={te.started}>
+                      <input type="date" className="me-header-field-input me-header-field-input--date"
+                        value={activeLog.startedAt}
+                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })} />
+                    </HeaderField>
+                    <HeaderField label={te.ended}>
+                      <input type="date" className="me-header-field-input me-header-field-input--date"
+                        value={activeLog.finishedAt}
+                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: e.target.value } })} />
+                    </HeaderField>
+                  </>
+                )}
               </div>
             </div>
           </div>

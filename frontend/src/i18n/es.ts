@@ -211,6 +211,7 @@ export const es = {
       progress:  'Progreso',
       started:   'Inicio',
       ended:     'Fin',
+      view_date: 'Fecha de visionado',
       tags:      'Etiquetas',
       notes:     'Notas',
       notes_ph:  'Reseña o notas personales…',
