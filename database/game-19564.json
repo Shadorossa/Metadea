@@ -11,7 +11,7 @@
     "title_native": "死亡搁浅",
     "synopsis": "Death Stranding is an action game set in a post-apocalyptic United States.\n\nPlayers control Sam Porter Bridges, a courier tasked with reconnecting isolated cities via a communication network while delivering essential cargo. The gameplay blends traversal, resource management, and narrative elements, with a focus on social connectivity through asynchronous multiplayer. It is known for its unique mechanics, atmospheric world, and philosophical themes.",
     "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksf.jpg",
-    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/u8ylruedniehtc18wzin.webp",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar3ptf.jpg",
     "release_year": 2019,
     "release_month": 11,
     "release_day": 8,
@@ -32,16 +32,16 @@
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-07T18:39:28.560Z",
-    "updated_at": "2026-07-07T19:28:23.644020800+00:00"
+    "updated_at": "2026-07-11T23:26:09.593007+00:00"
   },
   "media_relations": [
     {
-      "media_external_id": "game:19564",
       "related_media_external_id": "game:152063",
-      "relation_type": "EXPANDED EDITION",
-      "type_label": "Expanded Edition",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Edición extendida",
       "title": "Death Stranding: Director's Cut",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksg.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksg.jpg",
+      "media_external_id": "game:19564"
     },
     {
       "media_external_id": "game:19564",
@@ -49,7 +49,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Death Stranding 2: On the Beach",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ipx.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ipx.jpg"
     },
     {
       "media_external_id": "game:228530",
