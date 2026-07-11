@@ -18,8 +18,34 @@ export const HOF_GRADIENTS: Record<string, string> = {
   vnovel: 'linear-gradient(160deg, #a21caf 0%, #e11d48 100%)',
 };
 
+const DEFAULT_GRADIENT = 'linear-gradient(160deg, #374151, #1f2937)';
+
 function getRatingHtml(rating: number | null | undefined): string {
   return buildStarHtml(rating ?? 0, 'hof-card-rating', 'display:flex;gap:2px;align-items:center;color:currentColor;');
+}
+
+// Every ranked list here is always exactly 10 slots — real entries first,
+// padded with nulls (rendered as empty placeholder cards) for the rest.
+function padTo10<T>(items: T[]): (T | null)[] {
+  const padded: (T | null)[] = items.slice(0, 10);
+  while (padded.length < 10) padded.push(null);
+  return padded;
+}
+
+interface CoverStyle { style: string; attrs: string; }
+
+// Shared shell for both the work and character cards — an empty slot when
+// there's no entry for that rank, otherwise the cover layers plus whatever
+// rank-specific inner content the caller provides (stats+rating for works,
+// just the name for characters).
+function hofCardHtml(rank: number, cover: CoverStyle | null, label: string, innerContent: string): string {
+  if (!cover) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
+  return `<div class="hof-card" style="${cover.style}" ${cover.attrs}>
+      <div class="hof-card-overlay"></div>
+      <span class="hof-card-rank">#${rank}</span>
+      <div class="hof-card-label">${label}</div>
+      <div class="hof-card-content">${innerContent}</div>
+    </div>`;
 }
 
 // Same precedence as the Favorites tab: a user-set custom crop/position
@@ -41,7 +67,7 @@ function getRatingHtml(rating: number | null | undefined): string {
 // they go through that exact same fix instead of being left on the live
 // `cover` keyword, which re-fits (and so visibly re-zooms) on every hover
 // the same way an under-sized custom crop used to.
-function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): { style: string; attrs: string } {
+function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): CoverStyle {
   // `cssSize` is whatever goes directly in the initial inline style (a
   // percentage for a real custom crop, the `cover` keyword for a plain
   // raw cover); `bgSize` is always the plain number fixHofCardHoverZoom()
@@ -66,53 +92,27 @@ export function buildHofHtml(
   characterMap: Map<string, CharacterEntry> = new Map(),
   customImageMap: Map<string, FavoriteCustomImage> = new Map(),
 ): string {
-  const top10: (Items[number] | null)[] = [...items].slice(0, 10);
-
-  while (top10.length < 10) top10.push(null);
-
-  const workCards = top10.map((item, i) => {
-    if (!item) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;
+  const workCards = padTo10(items).map((item, i) => {
+    if (!item) return hofCardHtml(i + 1, null, '', '');
     const meta  = catalogMap.get(item.external_id);
     const title = meta?.title_main ?? item.external_id;
-    const cover = meta?.cover_url ?? '';
-    const label = typeLabel(item.type);
+    const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
+    const cover = coverStyle(meta?.cover_url ?? '', customImageMap.get(item.external_id), bg);
 
-    const bg = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg, #374151, #1f2937)';
-    const { style, attrs } = coverStyle(cover, customImageMap.get(item.external_id), bg);
-
-    return `<div class="hof-card" style="${style}" ${attrs}>
-      <div class="hof-card-overlay"></div>
-      <span class="hof-card-rank">#${i + 1}</span>
-      <div class="hof-card-label">${title}</div>
-      <div class="hof-card-content">
-        <span class="hof-card-type">${label}</span>
+    const inner = `
+        <span class="hof-card-type">${typeLabel(item.type)}</span>
         <span class="hof-card-id">${title}</span>
-        ${item.rating != null ? getRatingHtml(item.rating) : ''}
-      </div>
-    </div>`;
+        ${item.rating != null ? getRatingHtml(item.rating) : ''}`;
+    return hofCardHtml(i + 1, cover, title, inner);
   }).join('');
 
   // Top 10 favorite characters — sourced from the Favorites tab's
   // "character" bucket (already user-ordered via drag reorder there), not a
   // separate ranking of its own.
-  const top10Chars: (CharacterEntry | null)[] = charFavIds
-    .slice(0, 10)
-    .map(id => characterMap.get(id) ?? null);
-  while (top10Chars.length < 10) top10Chars.push(null);
-
-  const charCards = top10Chars.map((char, i) => {
-    if (!char) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${i + 1}</span></div>`;
-
-    const { style, attrs } = coverStyle(char.image_url ?? '', customImageMap.get(char.external_id), 'linear-gradient(160deg, #374151, #1f2937)');
-
-    return `<div class="hof-card" style="${style}" ${attrs}>
-      <div class="hof-card-overlay"></div>
-      <span class="hof-card-rank">#${i + 1}</span>
-      <div class="hof-card-label">${char.name}</div>
-      <div class="hof-card-content">
-        <span class="hof-card-id">${char.name}</span>
-      </div>
-    </div>`;
+  const charCards = padTo10(charFavIds.map(id => characterMap.get(id) ?? null)).map((char, i) => {
+    if (!char) return hofCardHtml(i + 1, null, '', '');
+    const cover = coverStyle(char.image_url ?? '', customImageMap.get(char.external_id), DEFAULT_GRADIENT);
+    return hofCardHtml(i + 1, cover, char.name, `<span class="hof-card-id">${char.name}</span>`);
   }).join('');
 
   return `
@@ -147,14 +147,22 @@ export function buildHofHtml(
 // assumed wider box so hovering never uncovers a gap at the edges either.
 const HOVER_WIDTH_FACTOR = 1.35;
 
+// Not just a rounding fudge — this is what actually has to absorb
+// HOVER_WIDTH_FACTOR being an estimate (real flex distribution varies) and
+// getBoundingClientRect's sub-pixel values, so err on the side of a hair
+// too zoomed rather than any visible gap.
+const SIZE_SAFETY_MARGIN = 1.08;
+
+interface NaturalSize { w: number; h: number; }
+
 // Natural dimensions never change for a given URL — caching them means the
 // chars view (permanently laid out at full size behind the works view via
 // .hof-view-stack, just visibility:hidden — see profile.css) gets its
 // correction computed during the initial pass same as the works view,
 // instead of only once the user actually switches to it.
-const naturalSizeCache = new Map<string, { w: number; h: number } | null>();
+const naturalSizeCache = new Map<string, NaturalSize | null>();
 
-function getNaturalSize(url: string): Promise<{ w: number; h: number } | null> {
+function getNaturalSize(url: string): Promise<NaturalSize | null> {
   const cached = naturalSizeCache.get(url);
   if (cached !== undefined) return Promise.resolve(cached);
   return new Promise(resolve => {
@@ -196,11 +204,7 @@ function fixHofCardHoverZoom(el: HTMLElement): void {
       const pxForHoverWidth = rect.width * HOVER_WIDTH_FACTOR;
       const pxForHeight     = rect.height * imgAspect;
       const pxForSavedSize  = (bgSize / 100) * rect.width;
-      // A generous margin, not just a rounding fudge — this is what actually
-      // has to absorb HOVER_WIDTH_FACTOR being an estimate (real flex
-      // distribution varies) and getBoundingClientRect's sub-pixel values,
-      // so err on the side of a hair too zoomed rather than any visible gap.
-      const pxWidth = Math.max(pxForHoverWidth, pxForHeight, pxForSavedSize) * 1.08;
+      const pxWidth = Math.max(pxForHoverWidth, pxForHeight, pxForSavedSize) * SIZE_SAFETY_MARGIN;
 
       // Two layers, same as coverStyle's initial inline style — the real
       // image plus the always-cover gradient behind it for any transparent
