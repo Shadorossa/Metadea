@@ -32,9 +32,16 @@ function padTo10<T>(items: T[]): (T | null)[] {
 }
 
 // Generates the HTML shell for a HOF card slot (empty or filled)
-function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, innerContent: string): string {
-  if (!coverStyleStr) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
-  return `<div class="hof-card" style="${coverStyleStr}">
+function hofCardHtml(rank: number, cardBg: CardBg | null, label: string, innerContent: string): string {
+  if (!cardBg) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
+  // Only set the fallback gradient as the card's own background when there's
+  // no image to draw on top of it — themes with a double/dashed border style
+  // (e.g. newspaper-dark) paint the element's own background in the gaps of
+  // that border, so leaving the gradient set underneath a fully-covering
+  // image bleeds through as a colored ring around every card.
+  const bgStyle = cardBg.imgHtml ? '' : ` style="background: ${cardBg.fallbackBg};"`;
+  return `<div class="hof-card"${bgStyle}>
+      ${cardBg.imgHtml}
       <div class="hof-card-overlay"></div>
       <span class="hof-card-rank">#${rank}</span>
       <div class="hof-card-label">${label}</div>
@@ -42,15 +49,32 @@ function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, 
     </div>`;
 }
 
-// Builds CSS background layers for crops/covers, fallback to gradient if empty
-function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): string {
+interface CardBg {
+  imgHtml: string;
+  fallbackBg: string;
+}
+
+// Same approach as render-favorites.ts's proven-working cards: a plain
+// <img> for the real cover (custom crops use a background-image div
+// instead, since bg_size/pos_x/pos_y are CSS background-position/size
+// percentages) — NOT a background-image set on the card itself. Setting it
+// on the card was silently invisible in the packaged production build even
+// though it worked in dev; the <img>-based Favorites cards never had that
+// problem, so cards here are built the same way.
+function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): CardBg {
   if (customImg) {
-    return `background-image: url('${wrapAssetUrl(customImg.image_url)}'), ${fallbackBg}; background-size: ${customImg.bg_size}% auto, cover; background-position: ${customImg.pos_x}% ${customImg.pos_y}%, center; background-repeat: no-repeat, no-repeat;`;
+    return {
+      imgHtml: `<div class="hof-card-bg hof-card-bg--custom" style="background-image:url('${wrapAssetUrl(customImg.image_url)}'); background-size:${customImg.bg_size}% auto; background-position:${customImg.pos_x}% ${customImg.pos_y}%;"></div>`,
+      fallbackBg,
+    };
   }
   if (rawCover) {
-    return `background-image: url('${wrapAssetUrl(rawCover)}'); background-size: cover; background-position: center;`;
+    return {
+      imgHtml: `<img class="hof-card-bg" src="${wrapAssetUrl(rawCover)}" />`,
+      fallbackBg,
+    };
   }
-  return `background: ${fallbackBg};`;
+  return { imgHtml: '', fallbackBg };
 }
 
 // Assembles the final HTML row containing works and character cards

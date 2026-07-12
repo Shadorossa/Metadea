@@ -376,11 +376,16 @@
   cursor: grabbing;
 }
 
+/* A plain <img> (not a background-image div) — CSS background-image set
+   via JS was silently invisible in the packaged production build. Position
+   is reproduced with the standard left/top(%) + translate(-%) trick, which
+   is exactly equivalent to background-position for a given background-size. */
 .img-crop-preview {
   position: absolute;
-  inset: 0;
-  background-repeat: no-repeat;
+  height: auto;
+  max-width: none;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .img-crop-empty {

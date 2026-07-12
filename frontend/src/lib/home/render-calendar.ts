@@ -116,13 +116,17 @@ function buildCalendarGridHtml(calendarDays: CalendarDay[], startOffset: number)
   }
   for (const { day, isToday, releases: dayReleases } of calendarDays) {
     const hasReleases = dayReleases.length > 0;
-    let cellStyle = '';
+    let coverImgHtml = '';
     let hasCoverClass = '';
     let dotHtml = '';
     if (hasReleases) {
       const firstRelease = dayReleases[0];
       if (firstRelease.cover) {
-        cellStyle = `background-image: url('${wrapAssetUrl(firstRelease.cover)}');`;
+        // A real <img>, not a CSS background-image — background-image set
+        // via inline style silently failed to render in the packaged
+        // production build (same root cause fixed for the Hall of Fame
+        // cards), while <img> elements always rendered fine.
+        coverImgHtml = `<img class="calendar-day-cover" src="${wrapAssetUrl(firstRelease.cover)}" alt="" />`;
         hasCoverClass = 'has-cover';
       } else {
         dotHtml = `<div class="calendar-day-event-dot"></div>`;
@@ -130,7 +134,8 @@ function buildCalendarGridHtml(calendarDays: CalendarDay[], startOffset: number)
     }
 
     calendarCells.push(`
-      <div class="calendar-day ${isToday ? 'today' : ''} ${hasCoverClass} ${hasReleases ? 'has-releases' : ''}" data-day="${day}" style="${cellStyle}">
+      <div class="calendar-day ${isToday ? 'today' : ''} ${hasCoverClass} ${hasReleases ? 'has-releases' : ''}" data-day="${day}">
+        ${coverImgHtml}
         <span class="calendar-day-num">${day}</span>
         ${dotHtml}
         ${dayPopoverHtml(dayReleases)}

@@ -45,7 +45,7 @@ export function openImageCropModal(opts: ImageCropModalOptions): Promise<ImageCr
         <h3 class="img-crop-title">${escapeHtml(opts.title)}</h3>
         <input type="text" class="img-crop-url" placeholder="URL de la imagen..." value="${escapeAttr(imageUrl)}" />
         <div class="img-crop-viewport" style="aspect-ratio: ${aspectRatio};">
-          <div class="img-crop-preview"></div>
+          <img class="img-crop-preview" alt="" />
           <div class="img-crop-empty">Pega una URL de imagen arriba</div>
         </div>
         <label class="img-crop-zoom-label">
@@ -65,7 +65,7 @@ export function openImageCropModal(opts: ImageCropModalOptions): Promise<ImageCr
 
     const urlInput   = overlay.querySelector<HTMLInputElement>('.img-crop-url')!;
     const viewport    = overlay.querySelector<HTMLElement>('.img-crop-viewport')!;
-    const preview     = overlay.querySelector<HTMLElement>('.img-crop-preview')!;
+    const preview     = overlay.querySelector<HTMLImageElement>('.img-crop-preview')!;
     const emptyState  = overlay.querySelector<HTMLElement>('.img-crop-empty')!;
     const zoomSlider  = overlay.querySelector<HTMLInputElement>('.img-crop-zoom')!;
     const removeBtn   = overlay.querySelector<HTMLButtonElement>('#img-crop-remove');
@@ -74,14 +74,20 @@ export function openImageCropModal(opts: ImageCropModalOptions): Promise<ImageCr
 
     const applyPreview = () => {
       if (!imageUrl) {
-        preview.style.backgroundImage = '';
+        preview.style.visibility = 'hidden';
+        preview.removeAttribute('src');
         emptyState.style.display = 'flex';
         return;
       }
       emptyState.style.display = 'none';
-      preview.style.backgroundImage = `url("${wrapAssetUrl(imageUrl)}")`;
-      preview.style.backgroundSize = `${bgSize}%`;
-      preview.style.backgroundPosition = `${posX}% ${posY}%`;
+      preview.style.visibility = 'visible';
+      if (preview.src !== wrapAssetUrl(imageUrl)) preview.src = wrapAssetUrl(imageUrl);
+      // Standard left/top(%) + translate(-%) trick — exactly reproduces
+      // background-size/background-position for an absolutely positioned img.
+      preview.style.width = `${bgSize}%`;
+      preview.style.left = `${posX}%`;
+      preview.style.top = `${posY}%`;
+      preview.style.transform = `translate(-${posX}%, -${posY}%)`;
     };
     applyPreview();
 

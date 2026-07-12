@@ -177,15 +177,6 @@
 
 .calendar-day {
   aspect-ratio: 1.2;
-  /* background-color, not the `background` shorthand — a day cell's cover
-     is set as an inline `background-image` style, and the shorthand form
-     implicitly resets background-image/size/position/repeat to their
-     initial values wherever it's declared. That reset only needs to lose
-     the cascade fight against .has-cover's explicit background-size/
-     position once (by source order, load timing, or a future edit to
-     either rule) for the cover to silently stop rendering — background-
-     color never touches those properties at all, so there's nothing left
-     for it to accidentally clobber regardless of rule order. */
   background-color: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -204,9 +195,18 @@
   z-index: 5;
 }
 
+/* A real <img>, not a background-image on the cell — see render-calendar.ts. */
+.calendar-day-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
 .calendar-day.has-cover {
-  background-size: cover !important;
-  background-position: center !important;
   overflow: hidden;
 }
 

@@ -791,10 +791,7 @@
   max-width: 285px;
   cursor: default;
   transition: flex 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s ease;
-  background-repeat: no-repeat;
   border-radius: var(--radius-sm);
-  background-size: cover;
-  background-position: center;
 }
 
 .hof-card:hover {
@@ -805,6 +802,27 @@
 
 .hof-card--empty {
   background: rgba(255, 255, 255, 0.03);
+}
+
+/* Cover image layer — a real <img> for raw covers (or a background-image
+   div for custom crops, since those need bg_size/pos_x/pos_y percentages).
+   Kept as its own element instead of a background-image on .hof-card. */
+.hof-card-bg {
+  display: block;
+  position: absolute;
+  /* Slight overscan (not inset: 0) so no subpixel rounding gap between this
+     layer and .hof-card's own edge can ever reveal the fallback gradient
+     set on the card behind it. */
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.hof-card-bg--custom {
+  background-repeat: no-repeat;
 }
 
 .hof-card-overlay {
