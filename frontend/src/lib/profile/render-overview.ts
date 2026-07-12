@@ -140,7 +140,13 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
     const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
     const multimediaIds = favData.multimedia || [];
-    const hofItems = multimediaIds.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+    const hofItems = multimediaIds.map(id => {
+      const local = items.find(item => item.external_id === id);
+      if (local) return local;
+      const meta = catalogMap.get(id);
+      if (meta) return { external_id: id, type: meta.type } as any;
+      return null;
+    }).filter(Boolean) as Items;
 
     // Characters are never in media_catalog — resolved separately from their
     // own table, same as the Favorites tab.

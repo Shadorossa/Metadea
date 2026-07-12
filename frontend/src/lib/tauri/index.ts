@@ -5,6 +5,7 @@
 // (auth, library, catalog, lists, tier lists, IGDB, Steam, Discord, ...).
 
 export * from './core';
+export { wrapAssetUrl } from './core';
 export * from './auth';
 export * from './database';
 export * from './local-library';

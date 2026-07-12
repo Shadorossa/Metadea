@@ -1,5 +1,6 @@
 import { HOF_GRADIENTS } from './hof';
 import { formatMonthLabel } from './utils';
+import { wrapAssetUrl } from '../tauri';
 import type { getAllLibraryEntries } from '../tauri';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -37,7 +38,7 @@ export function buildMonthlyHistoryHtml(
     const bg    = HOF_GRADIENTS[item?.type ?? 'game'] ?? 'linear-gradient(160deg, #374151, #1f2937)';
 
     const card = `<div class="mh-card" style="${cover ? '' : `background:${bg}`}" title="${monthLabel}">
-      ${cover ? `<img class="mh-card-cover-img" src="${cover}" alt="" />` : ''}
+      ${cover ? `<img class="mh-card-cover-img" src="${wrapAssetUrl(cover)}" alt="" />` : ''}
       <div class="mh-card-overlay"></div>
       <div class="mh-card-content">
         <span class="mh-card-month">${monthLabel}</span>

@@ -4,6 +4,7 @@
 import { typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import type { getAllLibraryEntries, MediaCatalogEntry, CharacterEntry, FavoriteCustomImage } from '../tauri';
+import { wrapAssetUrl } from '../tauri';
 import { ICON_CROWN, ICON_PERSON } from '../shared/icon-strings';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -44,10 +45,10 @@ function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, 
 // Builds CSS background layers for crops/covers, fallback to gradient if empty
 function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): string {
   if (customImg) {
-    return `background-image: url('${customImg.image_url}'), ${fallbackBg}; background-size: ${customImg.bg_size}% auto, cover; background-position: ${customImg.pos_x}% ${customImg.pos_y}%, center; background-repeat: no-repeat, no-repeat;`;
+    return `background-image: url('${wrapAssetUrl(customImg.image_url)}'), ${fallbackBg}; background-size: ${customImg.bg_size}% auto, cover; background-position: ${customImg.pos_x}% ${customImg.pos_y}%, center; background-repeat: no-repeat, no-repeat;`;
   }
   if (rawCover) {
-    return `background-image: url('${rawCover}'); background-size: cover; background-position: center;`;
+    return `background-image: url('${wrapAssetUrl(rawCover)}'); background-size: cover; background-position: center;`;
   }
   return `background: ${fallbackBg};`;
 }

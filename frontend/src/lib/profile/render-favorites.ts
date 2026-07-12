@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl } from '../tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
 import { getT } from '../../i18n/client';
 import { dbRatingToStars5 } from '../media/rating-utils';
@@ -140,9 +140,9 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           </div>
 
           ${customImg
-          ? `<div class="fav-cover-wrap fav-cover-wrap--custom" style="background-image:url('${customImg.image_url}'); background-size:${customImg.bg_size}% auto; background-position:${customImg.pos_x}% ${customImg.pos_y}%;"></div>`
+          ? `<div class="fav-cover-wrap fav-cover-wrap--custom" style="background-image:url('${wrapAssetUrl(customImg.image_url)}'); background-size:${customImg.bg_size}% auto; background-position:${customImg.pos_x}% ${customImg.pos_y}%;"></div>`
           : rawCover
-          ? `<img class="fav-cover" src="${rawCover}" alt="${title}" loading="lazy" />`
+          ? `<img class="fav-cover" src="${wrapAssetUrl(rawCover)}" alt="${title}" loading="lazy" />`
           : `<div class="fav-no-cover"><span>${title.slice(0, 2).toUpperCase()}</span></div>`
         }
           <div class="fav-overlay">

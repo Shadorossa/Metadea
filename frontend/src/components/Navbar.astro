@@ -8,7 +8,7 @@ interface Props {
 const { activePage, i18n } = Astro.props;
 ---
 
-<header class={`navbar${activePage === 'search' ? ' navbar--transparent' : ''}`}>
+<header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
   <!-- Izquierda: home + search -->
   <div class="nav-group">
     <a href="/home"   data-nav="home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
@@ -87,7 +87,6 @@ const { activePage, i18n } = Astro.props;
     document.querySelectorAll('.navbar [data-nav]').forEach(el => {
       el.classList.toggle('active', el.getAttribute('data-nav') === key);
     });
-    document.querySelector('.navbar')?.classList.toggle('navbar--transparent', key === 'search');
 
     // The account icon doubles as a profile/settings toggle: on /profile it
     // shows the settings icon (and links there); everywhere else — including

@@ -82,3 +82,22 @@ export async function writeStoredJson<T>(cmd: string, localKey: string, value: T
 export async function pathToDataUrl(filePath: string): Promise<string | null> {
   return tauriTry<string | null>('file_to_data_url', null, { filePath });
 }
+
+export function wrapAssetUrl(filePath: string): string {
+  if (!isTauri() || !filePath) return filePath;
+  // If it's already a URL scheme (http/https/data), don't touch it
+  if (filePath.startsWith('http') || filePath.startsWith('data:') || filePath.startsWith('asset:')) return filePath;
+  
+  try {
+    const tauri = window.__TAURI__;
+    if (tauri?.core?.convertFileSrc) {
+      return tauri.core.convertFileSrc(filePath);
+    }
+    // Fallback: manually prefix for asset protocol if internals aren't fully resolved yet
+    const normalized = filePath.replace(/\\/g, '/');
+    return `http://asset.localhost/${encodeURIComponent(normalized)}`;
+  } catch (e) {
+    console.error('Failed to convert file src:', e);
+    return filePath;
+  }
+}

@@ -224,3 +224,13 @@ body::before {
   background-repeat: repeat;
   background-size: 200px 200px;
 }
+
+/* Evitar que la Navbar sufra animaciones de fundido o desvanecimiento del motor ViewTransitions */
+::view-transition-group(navbar) {
+  animation: none !important;
+}
+::view-transition-old(navbar),
+::view-transition-new(navbar) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}

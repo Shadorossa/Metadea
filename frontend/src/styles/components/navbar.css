@@ -16,13 +16,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
 }
 
-/* En search, la navbar es transparente porque el slot central es el selector de medios */
-.navbar--transparent {
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-bottom-color: transparent;
-}
+
 
 .nav-center-slot {
   pointer-events: auto;
