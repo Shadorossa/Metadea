@@ -1,0 +1,402 @@
+{
+  "media_catalog": {
+    "id": "21cbc5f8e9fbc54f21cbc5f8e9fbc54f",
+    "external_id": "game:220932",
+    "parent_id": "game:125174",
+    "type": "game",
+    "format": "SEASON",
+    "source": "igdb",
+    "title_main": "Overwatch 2: Season 1 - Cyberpunk",
+    "title_romaji": null,
+    "title_native": null,
+    "synopsis": "New heroes join the fight and all-new rewards await in Overwatch 2 Season 1, including the Season 1 Battle Pass, which offers players 80 tiers of rewards through the season.\nAs a part of the free track, players can earn and unlock Overwatch 2’s new support hero “Kiriko”, Epic skins, and a collection of new cosmetic items.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co5k4a.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar1xeh.jpg",
+    "release_year": 2022,
+    "release_month": 10,
+    "release_day": 4,
+    "time_length": null,
+    "status": null,
+    "score_global": null,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Strategy",
+    "genres_tag_csv": null,
+    "platforms_csv": "Xbox Series X|S,PlayStation 4,PC (Microsoft Windows),PlayStation 5,Xbox One,Nintendo Switch",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Blizzard Entertainment",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-12T16:21:13.581Z",
+    "updated_at": "2026-07-12T19:06:34.368080100+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:125174",
+      "relation_type": "PARENT",
+      "type_label": "Fuente",
+      "title": "Overwatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coc99p.jpg",
+      "media_external_id": "game:220932"
+    },
+    {
+      "media_external_id": "game:220932",
+      "related_media_external_id": "game:228002",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 2 - Greek Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ufr.jpg"
+    },
+    {
+      "media_external_id": "game:228002",
+      "related_media_external_id": "game:220932",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 1 - Cyberpunk",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5k4a.jpg"
+    },
+    {
+      "media_external_id": "game:228002",
+      "related_media_external_id": "game:234373",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 3 - Asian Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co65ms.jpg"
+    },
+    {
+      "media_external_id": "game:234373",
+      "related_media_external_id": "game:228002",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 2 - Greek Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ufr.jpg"
+    },
+    {
+      "media_external_id": "game:234373",
+      "related_media_external_id": "game:243933",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 4 - Space Opera",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6cdl.jpg"
+    },
+    {
+      "media_external_id": "game:243933",
+      "related_media_external_id": "game:234373",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 3 - Asian Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co65ms.jpg"
+    },
+    {
+      "media_external_id": "game:243933",
+      "related_media_external_id": "game:252775",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 5 - High-Fantasy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6m9c.jpg"
+    },
+    {
+      "media_external_id": "game:252775",
+      "related_media_external_id": "game:243933",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 4 - Space Opera",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6cdl.jpg"
+    },
+    {
+      "media_external_id": "game:252775",
+      "related_media_external_id": "game:252842",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 6 - Invasion",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6x50.jpg"
+    },
+    {
+      "media_external_id": "game:252842",
+      "related_media_external_id": "game:252775",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 5 - High-Fantasy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6m9c.jpg"
+    },
+    {
+      "media_external_id": "game:252842",
+      "related_media_external_id": "game:270044",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 7 - Rise of the Darkness",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co77ww.jpg"
+    },
+    {
+      "media_external_id": "game:270044",
+      "related_media_external_id": "game:252842",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 6 - Invasion",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6x50.jpg"
+    },
+    {
+      "media_external_id": "game:270044",
+      "related_media_external_id": "game:275170",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 8 - Call of the Hunt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7gei.jpg"
+    },
+    {
+      "media_external_id": "game:275170",
+      "related_media_external_id": "game:270044",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 7 - Rise of the Darkness",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co77ww.jpg"
+    },
+    {
+      "media_external_id": "game:275170",
+      "related_media_external_id": "game:285782",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 9 - Champions",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7rmf.jpg"
+    },
+    {
+      "media_external_id": "game:285782",
+      "related_media_external_id": "game:275170",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 8 - Call of the Hunt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7gei.jpg"
+    },
+    {
+      "media_external_id": "game:285782",
+      "related_media_external_id": "game:294507",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 10 - Venture Forth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co84h8.jpg"
+    },
+    {
+      "media_external_id": "game:294507",
+      "related_media_external_id": "game:285782",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 9 - Champions",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7rmf.jpg"
+    },
+    {
+      "media_external_id": "game:294507",
+      "related_media_external_id": "game:305394",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 11 - Super Mega Ultrawatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8e4h.jpg"
+    },
+    {
+      "media_external_id": "game:305394",
+      "related_media_external_id": "game:294507",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 10 - Venture Forth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co84h8.jpg"
+    },
+    {
+      "media_external_id": "game:305394",
+      "related_media_external_id": "game:313594",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 12 - New Frontiers",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8pe1.jpg"
+    },
+    {
+      "media_external_id": "game:313594",
+      "related_media_external_id": "game:305394",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 11 - Super Mega Ultrawatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8e4h.jpg"
+    },
+    {
+      "media_external_id": "game:313594",
+      "related_media_external_id": "game:319357",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 13 - Spellbinder",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8y0b.jpg"
+    },
+    {
+      "media_external_id": "game:319357",
+      "related_media_external_id": "game:313594",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 12 - New Frontiers",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8pe1.jpg"
+    },
+    {
+      "media_external_id": "game:319357",
+      "related_media_external_id": "game:324865",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 14 - Hazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co94zi.jpg"
+    },
+    {
+      "media_external_id": "game:324865",
+      "related_media_external_id": "game:319357",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 13 - Spellbinder",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8y0b.jpg"
+    },
+    {
+      "media_external_id": "game:324865",
+      "related_media_external_id": "game:331286",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 15 - Honor & Glory",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9f5l.jpg"
+    },
+    {
+      "media_external_id": "game:331286",
+      "related_media_external_id": "game:324865",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 14 - Hazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co94zi.jpg"
+    },
+    {
+      "media_external_id": "game:331286",
+      "related_media_external_id": "game:341007",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 16 - Stadium",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0tb.jpg"
+    },
+    {
+      "media_external_id": "game:341007",
+      "related_media_external_id": "game:331286",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 15 - Honor & Glory",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9f5l.jpg"
+    },
+    {
+      "media_external_id": "game:341007",
+      "related_media_external_id": "game:350615",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 17 - Powered Up!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0t9.jpg"
+    },
+    {
+      "media_external_id": "game:350615",
+      "related_media_external_id": "game:341007",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 16 - Stadium",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0tb.jpg"
+    },
+    {
+      "media_external_id": "game:350615",
+      "related_media_external_id": "game:362281",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 18 - Stadium Quickplay",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coacoy.jpg"
+    },
+    {
+      "media_external_id": "game:362281",
+      "related_media_external_id": "game:350615",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 17 - Powered Up!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0t9.jpg"
+    },
+    {
+      "media_external_id": "game:362281",
+      "related_media_external_id": "game:373424",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 19 - Haunted Masquerade",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coaoi0.jpg"
+    },
+    {
+      "media_external_id": "game:373424",
+      "related_media_external_id": "game:362281",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 18 - Stadium Quickplay",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coacoy.jpg"
+    },
+    {
+      "media_external_id": "game:373424",
+      "related_media_external_id": "game:380108",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch 2: Season 20 - Vendetta",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob0ql.jpg"
+    },
+    {
+      "media_external_id": "game:380108",
+      "related_media_external_id": "game:373424",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 19 - Haunted Masquerade",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coaoi0.jpg"
+    },
+    {
+      "media_external_id": "game:380108",
+      "related_media_external_id": "game:388391",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch: Reign of Talon - Season 1: Conquest",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobjxl.jpg"
+    },
+    {
+      "media_external_id": "game:388391",
+      "related_media_external_id": "game:380108",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch 2: Season 20 - Vendetta",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob0ql.jpg"
+    },
+    {
+      "media_external_id": "game:388391",
+      "related_media_external_id": "game:398289",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch: Reign of Talon - Season 2: Summit",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobxhg.jpg"
+    },
+    {
+      "media_external_id": "game:398289",
+      "related_media_external_id": "game:388391",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch: Reign of Talon - Season 1: Conquest",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobjxl.jpg"
+    },
+    {
+      "media_external_id": "game:398289",
+      "related_media_external_id": "game:406719",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch: Reign of Talon - Season 3: Into the Tigers Den",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc9ny.jpg"
+    },
+    {
+      "media_external_id": "game:406719",
+      "related_media_external_id": "game:398289",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch: Reign of Talon - Season 2: Summit",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobxhg.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
