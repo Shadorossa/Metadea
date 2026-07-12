@@ -191,3 +191,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border-radius: 0px !important;
   filter: sepia(0.2) contrast(1.05);
 }
+
+/* Favorites section typography */
+[data-theme="newspaper-dark"] .fav-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+[data-theme="newspaper-dark"] .fav-tab-btn {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
