@@ -13,7 +13,7 @@ export const isTauri = (): boolean => {
 let dbReadyPromise: Promise<void> | null = null;
 let resolveDbReady: (() => void) | null = null;
 
-export function getDbReadyPromise(): Promise<void> {
+function getDbReadyPromise(): Promise<void> {
   if (!dbReadyPromise) {
     dbReadyPromise = new Promise((resolve) => {
       resolveDbReady = resolve;

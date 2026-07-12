@@ -186,6 +186,7 @@
   flex-direction: column;
   gap: 1.25rem;
   box-sizing: border-box;
+  opacity: 1;
 }
 
 /* ── Stats bar (centrada, dentro del tab de perfil) ───────────────────────── */
@@ -310,37 +311,6 @@
   width: 1px;
   height: 14px;
   background: var(--border-color);
-}
-
-/* ── Type chips ───────────────────────────────────────────────────────────── */
-.type-chips {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: clamp(0.25rem, 1vw, 0.5rem);
-  justify-content: center;
-}
-
-.type-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem clamp(0.5rem, 2vw, 0.85rem);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  border-radius: 99px;
-  font-size: clamp(0.65rem, 1.5vw, 0.72rem);
-  white-space: nowrap;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-.type-chip-count {
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.type-chip-label {
-  color: var(--text-muted);
 }
 
 /* ── Library grid (5 columnas de cards horizontales grandes) ─────────────────────── */
@@ -685,18 +655,6 @@
   text-decoration: underline;
 }
 
-.profile-coming-soon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 3.5rem 1rem;
-  color: var(--text-dim);
-  text-align: center;
-  font-size: 0.8rem;
-}
-
 /* ── Hall of Fame ─────────────────────────────────────────────────────────── */
 .hof-wrapper {
   width: 100%;
@@ -1024,9 +982,6 @@
   align-items: flex-start;
   margin: 0;
   padding: 0;
-}
-
-.mh-row-bottom {
   transform: translateX(4rem);
   margin-top: -3rem;
 }
@@ -1100,55 +1055,16 @@
 }
 
 .act-card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.45rem 0.65rem;
-  background: rgba(255, 255, 255, 0.03);
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 8px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
   min-height: 52px;
-  transition: border-color var(--anim-fast);
-}
-
-.act-card:hover {
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.act-cover {
-  width: 32px;
-  height: 44px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.act-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
-}
-
-.act-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.act-meta {
-  font-size: 0.62rem;
-  color: var(--text-dim);
-}
-
-.act-date {
-  font-size: 0.58rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .act-empty {
@@ -1663,29 +1579,22 @@
 
 /* Crown button styles */
 .fav-crown-btn {
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  color: var(--text-dim) !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   cursor: pointer;
-  transition: all var(--anim-fast);
+  transition: opacity var(--anim-fast) ease, color var(--anim-fast) ease, background var(--anim-fast) ease !important;
+  box-shadow: none !important;
+  padding: 0 !important;
   z-index: 10;
-}
-
-.fav-crown-btn:hover {
-  color: var(--color-planning);
-  border-color: var(--color-planning);
-  background: rgba(0, 0, 0, 0.9);
-}
-
-.fav-crown-btn.active {
-  color: var(--color-planning);
-  border-color: var(--color-planning);
 }
 
 /* Icon toolbar (edit-image + crown + remove) top-right of a favorite card —
@@ -1786,28 +1695,6 @@
    resolution — oversized and misaligned custom covers. */
 .fav-cover-wrap--custom {
   background-repeat: no-repeat;
-}
-
-/* Reorder movement arrow styles */
-.fav-arrow-btn {
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all var(--anim-fast);
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
-.fav-arrow-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
 }
 
 .fav-cover {
@@ -1958,10 +1845,6 @@
 
 
 /* ── Tab Content Transition ────────────────────────────────────────────────── */
-.profile-tab-content {
-  opacity: 1;
-}
-
 .profile-tab-content.entering {
   animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -1988,9 +1871,9 @@
 .stats-layout {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.25rem;
   width: 100%;
-  padding: 0 24rem;
+  padding: 0.25rem 0 2rem;
   box-sizing: border-box;
 }
 
@@ -2056,36 +1939,6 @@
   color: var(--text-main);
   line-height: 1;
   letter-spacing: -0.5px;
-}
-
-.stats-days-row {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3rem;
-}
-
-.stats-day-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.stats-day-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-
-.stats-day-value {
-  font-size: 1.1rem;
-  font-weight: 900;
-  color: var(--text-main);
 }
 
 .stats-block {
@@ -2217,56 +2070,6 @@
   }
 }
 
-.stats-type-card {
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.stats-type-icon {
-  color: var(--accent);
-  opacity: 0.7;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-
-.stats-type-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.stats-type-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stats-type-count {
-  font-size: 0.95rem;
-  font-weight: 900;
-  color: var(--text-main);
-  margin: 0;
-  line-height: 1.1;
-}
-
-.stats-type-hours {
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  margin: 0;
-}
 
 /* ── Rating Configurator ────────────────────────────────────────────────── */
 .rating-system-picker {
@@ -2313,24 +2116,6 @@
 }
 
 /* ── Favorites Crown Button ──────────────────────────────────────────────── */
-.fav-crown-btn {
-  opacity: 0;
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-radius: 50% !important;
-  width: 22px !important;
-  height: 22px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer;
-  color: var(--text-dim) !important;
-  transition: opacity var(--anim-fast) ease, color var(--anim-fast) ease, background var(--anim-fast) ease !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-
 .fav-crown-btn:hover {
   color: var(--color-planning) !important;
   background: rgba(0, 0, 0, 0.85) !important;
@@ -2348,13 +2133,6 @@
 
 /* ── Stats Layout, Heatmap, Calendar and Charts ─────────────────────────── */
 /* ── Stats layout shell ──────────────────────────────────────────────────── */
-
-.stats-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  padding: 0.25rem 0 2rem;
-}
 
 /* Status + Time pair */
 .stats-main-pair {
@@ -2546,29 +2324,10 @@
   box-shadow: 0 0 8px var(--accent);
 }
 
-.activity-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .act-day-events {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.65rem;
-}
-
-.act-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-  min-height: 52px;
 }
 
 .act-card:hover {
@@ -2987,16 +2746,6 @@
   margin-top: 0.1rem;
 }
 
-.list-card-desc {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  display: block;
-  margin-top: 0.2rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .lists-empty-state {
   display: flex;
   flex-direction: column;
@@ -3377,12 +3126,6 @@
 
 /* ── Advanced Stats ───────────────────────────────────────────────────────────── */
 
-.stats-advanced-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
 .stats-histogram {
   display: flex;
   flex-direction: column;
@@ -3453,12 +3196,6 @@
   width: 26px;
   text-align: right;
   flex-shrink: 0;
-}
-
-@media (max-width: 900px) {
-  .stats-advanced-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Favorite custom-image editor styling now lives in the shared, page-agnostic

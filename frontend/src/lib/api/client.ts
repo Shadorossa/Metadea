@@ -4,13 +4,6 @@
  * duplicated across each provider file (AniList, TMDB, Open Library, ...).
  */
 
-export class ApiError extends Error {
-  constructor(message: string, public status?: number) {
-    super(message);
-    this.name = 'ApiError';
-  }
-}
-
 export interface FetchJsonOptions extends RequestInit {
   /** Aborts the request after this many ms if no signal was already provided. */
   timeoutMs?: number;
@@ -36,18 +29,6 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
   } finally {
     if (timer) clearTimeout(timer);
   }
-}
-
-/**
- * Same as fetchJson, but throws an ApiError instead of swallowing failures —
- * for call sites that need to surface the error to the user.
- */
-export async function fetchJsonOrThrow<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new ApiError(`Request failed: ${response.status} ${response.statusText}`, response.status);
-  }
-  return await response.json() as T;
 }
 
 export interface GraphQLResult<T> {
