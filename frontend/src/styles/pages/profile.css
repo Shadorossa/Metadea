@@ -908,7 +908,8 @@
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
+  padding: 1.5rem 0 1rem 0;
   scroll-behavior: smooth;
   scrollbar-width: none;
   --mh-fade: 40px;
@@ -952,7 +953,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateY(-2rem);
+  transform: translateY(-0.75rem);
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
@@ -970,8 +971,8 @@
   display: flex;
   flex-direction: column;
   gap: -2.5rem;
-  margin: -1.25rem 0 0 0;
-  padding: 0 0 1.5rem 0;
+  margin: 0;
+  padding: 0;
   width: max-content;
 }
 
