@@ -1,6 +1,6 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
 
-export const PROFILE_FONTS = [
+const PROFILE_FONTS = [
   { id: 'inter',            name: 'Inter',             file: 'inter/Inter-VariableFont_opsz,wght.woff2' },
   { id: 'roboto',           name: 'Roboto',            file: 'roboto/Roboto-VariableFont_wdth,wght.woff2' },
   { id: 'montserrat',       name: 'Montserrat',        file: 'montserrat/Montserrat-VariableFont_wght.woff2' },

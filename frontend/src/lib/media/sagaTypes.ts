@@ -68,7 +68,7 @@ export function isSagaRelationType(value: string): value is SagaRelationType {
 // background DB resync (which rewrites saved rows to canonical) and
 // PrEditorModal (which normalizes at render time so a stale row shows the
 // correct pre-selected option immediately, without waiting on that resync).
-export const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
+const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
   'Remake': 'REMAKE', 'Remaster': 'REMASTER', 'DLC': 'DLC',
   'Expansion': 'EXPANSION', 'Standalone': 'STANDALONE',
   'Expanded Edition': 'EXPANDED_GAME', 'Fork': 'FORK',

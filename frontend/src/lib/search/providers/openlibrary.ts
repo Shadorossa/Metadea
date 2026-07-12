@@ -50,7 +50,7 @@ export function bookIdFromWorkKey(workKey: string): string {
 // Reverses bookIdFromWorkKey — also accepts an already-full key so it's safe
 // to call on either a freshly-shortened id or one saved before this format
 // change.
-export function workKeyFromBookId(bookId: string): string {
+function workKeyFromBookId(bookId: string): string {
   return bookId.startsWith('/works/') ? bookId : `/works/${bookId}`;
 }
 

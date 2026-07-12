@@ -56,7 +56,7 @@ export function averageScoreSuffix(system: RatingSystem): string {
   return system === '10-dec' || system === '10' ? ' / 10' : ' / 5';
 }
 
-export function buildStarHtml(rating: number, cssClass: string, wrapperStyle = ''): string {
+function buildStarHtml(rating: number, cssClass: string, wrapperStyle = ''): string {
   if (!rating) return '';
   const stars5 = dbRatingToStars5(rating);
   let html = '';

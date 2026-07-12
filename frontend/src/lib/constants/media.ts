@@ -50,7 +50,7 @@ export const GAME_FORMAT_LABELS: Record<string, string> = {
   UPDATE:        'Actualización',
 };
 
-export const FAV_LABELS: Record<string, string> = {
+const FAV_LABELS: Record<string, string> = {
   anime_fav:     'Anime',
   manga_fav:     'Manga',
   lnovel_fav:    'Light Novels',
@@ -79,8 +79,8 @@ export const TYPE_GRADIENTS: Record<string, string> = {
 
 // ─── AniList formats ──────────────────────────────────────────────────────────
 
-export const ANIME_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC'] as const;
-export const MANGA_FORMATS = ['MANGA', 'NOVEL', 'ONE_SHOT'] as const;
+const ANIME_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC'] as const;
+const MANGA_FORMATS = ['MANGA', 'NOVEL', 'ONE_SHOT'] as const;
 
 export const ANIME_FORMAT_SET = new Set<string>(ANIME_FORMATS);
 export const MANGA_FORMAT_SET = new Set<string>(MANGA_FORMATS);
