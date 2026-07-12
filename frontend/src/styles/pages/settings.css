@@ -1003,6 +1003,13 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 0;
+  /* Hard-capped so the button's box can never be driven by anything other
+     than this rule (previously relied entirely on each call site's own
+     inline width/height — one missing/misapplied inline style, e.g. in a
+     production build, left the button's box unconstrained). */
+  width: 18px;
+  height: 18px;
 }
 
 .settings-help-btn:hover {
@@ -1010,8 +1017,73 @@
 }
 
 .settings-help-btn svg {
-  width: 100%;
-  height: 100%;
+  /* Fixed px size, not a percentage — a percentage here means "whatever
+     size the button box ends up being," which is exactly what let a
+     16x16 icon balloon to fill the entire page when the button's own box
+     wasn't reliably constrained (see the width/height rule above). */
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Local Routes ─────────────────────────────────────────────────────────── */
+.local-route-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.local-route-label {
+  flex: 0 0 130px;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.local-route-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  background: var(--bg-input, var(--bg-card));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  color: var(--text-main);
+  cursor: default;
+}
+
+.local-route-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--bg-elevated, var(--bg-card));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color var(--anim-fast), color var(--anim-fast), background var(--anim-fast);
+}
+
+.local-route-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.local-route-btn--danger:hover {
+  border-color: var(--color-error, #ff6b6b);
+  color: var(--color-error, #ff6b6b);
+}
+
+/* Reserves the same width the "quitar ruta" button would take, so every row
+   lines up identically whether or not it has one — previously, a row
+   without a saved path was one button shorter than the rest. */
+.local-route-btn-spacer {
+  flex-shrink: 0;
+  width: 28px;
 }
 
 /* ── Help Modal ───────────────────────────────────────────────────────────── */

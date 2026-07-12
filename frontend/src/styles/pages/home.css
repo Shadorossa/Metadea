@@ -177,7 +177,16 @@
 
 .calendar-day {
   aspect-ratio: 1.2;
-  background: rgba(255, 255, 255, 0.01);
+  /* background-color, not the `background` shorthand — a day cell's cover
+     is set as an inline `background-image` style, and the shorthand form
+     implicitly resets background-image/size/position/repeat to their
+     initial values wherever it's declared. That reset only needs to lose
+     the cascade fight against .has-cover's explicit background-size/
+     position once (by source order, load timing, or a future edit to
+     either rule) for the cover to silently stop rendering — background-
+     color never touches those properties at all, so there's nothing left
+     for it to accidentally clobber regardless of rule order. */
+  background-color: rgba(255, 255, 255, 0.01);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 4px;
@@ -186,18 +195,18 @@
   flex-direction: column;
   justify-content: space-between;
   cursor: default;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
 .calendar-day:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background-color: rgba(255, 255, 255, 0.04);
   border-color: var(--accent);
   z-index: 5;
 }
 
 .calendar-day.has-cover {
-  background-size: cover;
-  background-position: center;
+  background-size: cover !important;
+  background-position: center !important;
   overflow: hidden;
 }
 
@@ -240,7 +249,11 @@
 
 .calendar-day.today {
   border-color: var(--accent);
-  background: rgba(var(--accent-rgb, 139, 92, 246), 0.1);
+  /* background-color, not the shorthand — same reasoning as the base
+     .calendar-day rule above: this must never implicitly reset the
+     inline background-image a has-cover cell sets, which today's cell is
+     just as likely to be as any other day. */
+  background-color: rgba(var(--accent-rgb, 139, 92, 246), 0.1);
 }
 
 .calendar-day-event-dot {

@@ -711,14 +711,16 @@
 
 /* Both views stack in the exact same slot (absolute, inset: 0) instead of
    being swapped in/out with display:none — the hidden one still gets real,
-   accurate dimensions at all times, so its custom-image sizes (see
-   adjustHofCustomImages in hof.ts) can be corrected well before the user
-   ever switches to it, instead of only once display:none lifts and a
-   gappy/wrong size is visible for a beat before the fix catches up. */
+   accurate dimensions at all times. Height matches .hof-card's own fixed
+   width/aspect-ratio (150px / 3:4 ≈ 200px) — cards used to stretch to fill
+   whatever width 10-across-one-row left them (as narrow as ~90px at
+   ~368px tall, an extreme ~0.27 aspect ratio nothing like a 3:4 cover),
+   which is why the same custom crop that looked right in Favoritos (a real
+   3:4 card) landed on an arbitrary region of the image here instead. */
 .hof-view-stack {
   position: relative;
   flex: 1;
-  height: 368px;
+  height: 200px;
 }
 
 .hof-container {
@@ -728,7 +730,11 @@
   flex-direction: row;
   gap: 2px;
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  /* 10 fixed-width 3:4 cards may not all fit the row's width on narrower
+     viewports — scroll horizontally rather than squeezing them narrower
+     again (which is exactly the aspect-ratio problem this fixes). */
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
@@ -780,35 +786,21 @@
 .hof-card {
   position: relative;
   overflow: hidden;
-  flex: 1;
-  min-width: 1.5rem;
+  /* Fixed width + 3:4 aspect ratio, matching .fav-card exactly — a custom
+     crop (or the plain cover's centered fit) now looks the same in both
+     places instead of being squeezed into an unrelated shape here. */
+  flex: 0 0 auto;
+  width: 150px;
+  aspect-ratio: 3 / 4;
   cursor: default;
-  transition: flex 0.4s ease-in-out;
-}
-
-.hof-card-bg-wrap {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-
-.hof-card-bg-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-}
-
-.hof-card-bg-img--custom {
-  /* Si es una imagen personalizada con zoom, no limitamos object-fit para que el zoom sea aplicable */
-  object-fit: none !important;
+  transition: transform 0.25s ease, z-index 0s;
+  background-repeat: no-repeat;
+  border-radius: var(--radius-sm);
 }
 
 .hof-card:hover {
-  flex: 1.3;
+  transform: scale(1.06);
+  z-index: 2;
 }
 
 .hof-card--empty {
@@ -1728,12 +1720,15 @@
   z-index: 0;
 }
 
-.fav-cover--custom {
-  position: absolute;
-  width: 100% !important;
-  height: auto !important;
-  min-height: 100% !important;
-  object-fit: none !important;
+/* bg_size/pos_x/pos_y (from the shared pan/zoom crop editor, image-crop-
+   modal.ts) are CSS background-size/background-position percentages by
+   design — its own live preview sets `backgroundSize = '${bgSize}%'`.
+   Rendering them on an <img> with `width` + `object-fit: none` instead (as
+   this used to) ignores that: object-fit's fixed keywords don't support an
+   arbitrary percentage zoom, so the image rendered at native, unscaled
+   resolution — oversized and misaligned custom covers. */
+.fav-cover-wrap--custom {
+  background-repeat: no-repeat;
 }
 
 /* Reorder movement arrow styles */
@@ -3198,8 +3193,14 @@
 
 .stats-hist-bar-outer {
   flex: 1;
+  min-width: 0;
   height: 10px;
-  background: rgba(255,255,255,0.03);
+  /* Was rgba(255,255,255,0.03) — nearly invisible against a dark theme,
+     let alone a warm/tan dynamic-theme background close in tone to the
+     accent-colored fill, which made every bar look like a solid block
+     regardless of its actual value since the empty track was indistinguishable
+     from the filled portion. */
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--border-color);
   border-radius: 3px;
   overflow: hidden;
@@ -3207,9 +3208,11 @@
 
 .stats-hist-bar-inner {
   height: 100%;
+  min-width: 2px;
   background: var(--accent);
   border-radius: 3px;
   transition: width 0.4s ease;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .stats-hist-count {

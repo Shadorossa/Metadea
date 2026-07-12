@@ -1,5 +1,6 @@
 import { readEnvConfig, writeEnvConfig, openEnvFolder, readRoutes, writeRoutes, pickFolder } from '../tauri';
 import { CATEGORIES } from '../../components/local/utils/constants';
+import { ICON_FOLDER, ICON_X_SMALL } from '../shared/icon-strings';
 
 // Local folder routes cover every category except 'videojuegos' (games use
 // Steam/local scan instead of a folder route) — reuse the shared category
@@ -93,19 +94,19 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
       for (const cat of LOCAL_ROUTE_CATEGORIES) {
         const path = routes[cat.id] ?? '';
         const row = document.createElement('div');
-        row.style.cssText = 'display: flex; align-items: center; gap: 0.5rem;';
+        row.className = 'local-route-row';
         row.innerHTML = `
-          <span style="flex: 0 0 130px; font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${cat.label}</span>
+          <span class="local-route-label">${cat.label}</span>
           <input
             type="text"
             readonly
             value="${path.replace(/"/g, '&quot;')}"
             placeholder="Sin ruta"
-            style="flex: 1; font-size: 0.75rem; background: var(--bg-input, var(--bg-card)); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.3rem 0.5rem; color: var(--text-main); cursor: default; min-width: 0;"
+            class="local-route-input"
             data-route-id="${cat.id}"
           />
-          <button class="btn btn--sm btn--secondary" data-pick="${cat.id}" style="flex-shrink: 0; padding: 0.25rem 0.5rem; font-size: 0.75rem;" title="Seleccionar carpeta">📁</button>
-          ${path ? `<button class="btn btn--sm btn--ghost" data-clear="${cat.id}" style="flex-shrink: 0; padding: 0.25rem 0.5rem; font-size: 0.75rem; color: var(--color-error, #ff6b6b);" title="Quitar ruta">✕</button>` : ''}
+          <button class="local-route-btn" data-pick="${cat.id}" title="Seleccionar carpeta">${ICON_FOLDER}</button>
+          ${path ? `<button class="local-route-btn local-route-btn--danger" data-clear="${cat.id}" title="Quitar ruta">${ICON_X_SMALL}</button>` : '<span class="local-route-btn-spacer"></span>'}
         `;
         routesList.appendChild(row);
       }

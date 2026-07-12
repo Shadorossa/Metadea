@@ -541,10 +541,20 @@ export function fetchMediaDataWithFallback(
         // also means fetchMediaData's relation-merge-and-save step (new
         // DLCs/expansions/remasters IGDB has added since this row was last
         // synced) never runs for already-visited titles. Kick it off in the
-        // background so relations catch up in the DB for next time, without
-        // delaying or replacing what's already on screen. Delay by 1 second to avoid database locks.
+        // background so relations catch up without delaying the initial
+        // render. Delay by 1 second to avoid database locks.
+        //
+        // The refreshed data (e.g. a remake/remaster's Fuente relation,
+        // absent from the stale DB snapshot shown above) must actually reach
+        // the page once this resolves — a fire-and-forget call here used to
+        // silently update media_relations with nothing on screen reflecting
+        // it, so the correct data only ever showed up on a *later* visit
+        // (once it was already saved from the previous one), never on the
+        // page load that triggered the resync.
         setTimeout(() => {
-          fetchMediaData(rawId).catch(() => {});
+          fetchMediaData(rawId).then(freshData => {
+            if (freshData) onFull(freshData);
+          }).catch(() => {});
         }, 1000);
         return;
       }

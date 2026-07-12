@@ -30,13 +30,12 @@ function padTo10<T>(items: T[]): (T | null)[] {
   return padded;
 }
 
-interface CoverStyle { style: string; attrs: string; }
-
-// Generates the HTML shell for a HOF card slot (empty or filled)
-function hofCardHtml(rank: number, coverHtml: string, label: string, innerContent: string): string {
-  if (!coverHtml) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
-  return `<div class="hof-card">
-      ${coverHtml}
+// Generates the HTML shell for a HOF card slot (empty or filled). The cover
+// is a CSS background-image on the card itself rather than a separate
+// wrapper + <img>.
+function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, innerContent: string): string {
+  if (!coverStyleStr) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
+  return `<div class="hof-card" style="${coverStyleStr}">
       <div class="hof-card-overlay"></div>
       <span class="hof-card-rank">#${rank}</span>
       <div class="hof-card-label">${label}</div>
@@ -44,19 +43,23 @@ function hofCardHtml(rank: number, coverHtml: string, label: string, innerConten
     </div>`;
 }
 
-// Builds CSS background layers for crops/covers, fallback to gradient if empty
+// bg_size/pos_x/pos_y (from the shared pan/zoom crop editor) are CSS
+// background-size/background-position percentages calibrated for a 3:4 box
+// — see image-crop-modal.ts's own coverPercent formula, which factors in
+// the editor's own aspectRatio (defaulted to 3/4 by favorite-image-editor.ts,
+// matching .fav-card). .hof-card is now also fixed at a 3:4 aspect ratio
+// (profile.css) specifically so this reuses the exact same crop as
+// Favoritos instead of landing on an arbitrary region of the image — it
+// used to fall back to a plain centered cover here because HOF cards were a
+// completely different, much taller/narrower shape.
 function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): string {
   if (customImg) {
-    return `<div class="hof-card-bg-wrap">
-      <img class="hof-card-bg-img hof-card-bg-img--custom" src="${customImg.image_url}" alt="" style="width: ${customImg.bg_size}%; object-position: ${customImg.pos_x}% ${customImg.pos_y}%;" />
-    </div>`;
+    return `background-image: url('${customImg.image_url}'); background-size: ${customImg.bg_size}% auto; background-position: ${customImg.pos_x}% ${customImg.pos_y}%;`;
   }
   if (rawCover) {
-    return `<div class="hof-card-bg-wrap">
-      <img class="hof-card-bg-img" src="${rawCover}" alt="" />
-    </div>`;
+    return `background-image: url('${rawCover}'); background-size: cover; background-position: center;`;
   }
-  return `<div class="hof-card-bg-wrap" style="background: ${fallbackBg};"></div>`;
+  return `background: ${fallbackBg};`;
 }
 
 // Assembles the final HTML row containing works and character cards
@@ -69,7 +72,7 @@ export function buildHofHtml(
   customImageMap: Map<string, FavoriteCustomImage> = new Map(),
 ): string {
   const workCards = padTo10(items).map((item, i) => {
-    if (!item) return hofCardHtml(i + 1, '', '', '');
+    if (!item) return hofCardHtml(i + 1, null, '', '');
     const meta  = catalogMap.get(item.external_id);
     const title = meta?.title_main ?? item.external_id;
     const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
@@ -82,7 +85,7 @@ export function buildHofHtml(
   }).join('');
 
   const charCards = padTo10(charFavIds.map(id => characterMap.get(id) ?? null)).map((char, i) => {
-    if (!char) return hofCardHtml(i + 1, '', '', '');
+    if (!char) return hofCardHtml(i + 1, null, '', '');
     const cover = coverStyle(char.image_url ?? '', customImageMap.get(char.external_id), DEFAULT_GRADIENT);
     return hofCardHtml(i + 1, cover, char.name, `<span class="hof-card-id">${char.name}</span>`);
   }).join('');
@@ -103,68 +106,13 @@ export function buildHofHtml(
     </div>`;
 }
 
-const HOVER_WIDTH_FACTOR = 1.35;
-const SIZE_SAFETY_MARGIN = 1.08;
-
-interface NaturalSize { w: number; h: number; }
-
-const naturalSizeCache = new Map<string, NaturalSize | null>();
-
-// Resolves and caches the natural dimensions of card cover images
-function getNaturalSize(url: string): Promise<NaturalSize | null> {
-  const cached = naturalSizeCache.get(url);
-  if (cached !== undefined) return Promise.resolve(cached);
-  return new Promise(resolve => {
-    const probe = new Image();
-    probe.onload = () => {
-      const size = probe.naturalWidth && probe.naturalHeight
-        ? { w: probe.naturalWidth, h: probe.naturalHeight }
-        : null;
-      naturalSizeCache.set(url, size);
-      resolve(size);
-    };
-    probe.onerror = () => { naturalSizeCache.set(url, null); resolve(null); };
-    probe.src = url;
-  });
-}
-
-// Adjusts background sizes to pixel units to prevent weird scaling/distortion on card hover
-function fixHofCardHoverZoom(el: HTMLElement): void {
-  const cards = el.querySelectorAll<HTMLElement>('.hof-card[data-cover-img]');
-  cards.forEach(card => {
-    const url    = card.dataset.coverImg!;
-    const bgSize = Number(card.dataset.bgSize);
-    const posX   = card.dataset.posX ?? '50';
-    const posY   = card.dataset.posY ?? '50';
-    if (!url || !Number.isFinite(bgSize)) return;
-
-    getNaturalSize(url).then(natural => {
-      if (!natural) return;
-
-      const rect = card.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-
-      const imgAspect = natural.w / natural.h;
-      const pxForHoverWidth = rect.width * HOVER_WIDTH_FACTOR;
-      const pxForHeight     = rect.height * imgAspect;
-      const pxForSavedSize  = (bgSize / 100) * rect.width;
-      const pxWidth = Math.max(pxForHoverWidth, pxForHeight, pxForSavedSize) * SIZE_SAFETY_MARGIN;
-
-      card.style.backgroundSize     = `${pxWidth}px auto, cover`;
-      card.style.backgroundPosition = `${posX}% ${posY}%, center`;
-    });
-  });
-}
-
-// Setup click handlers for tab toggles and runs initial hover fix sizing
+// Setup click handlers for tab toggles
 export function initHofListeners(el: HTMLElement): void {
   const viewWorks = el.querySelector<HTMLElement>('#hof-view-works');
   const viewChars = el.querySelector<HTMLElement>('#hof-view-chars');
   const btnWorks  = el.querySelector<HTMLButtonElement>('#hof-btn-works');
   const btnChars  = el.querySelector<HTMLButtonElement>('#hof-btn-chars');
   if (!viewWorks || !viewChars || !btnWorks || !btnChars) return;
-
-  fixHofCardHoverZoom(el);
 
   function switchView(type: 'works' | 'chars') {
     const isWorks = type === 'works';
