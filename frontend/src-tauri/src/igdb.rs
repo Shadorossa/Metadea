@@ -47,8 +47,8 @@ fn get_game_category(game: &serde_json::Value) -> u64 {
 
 /// Returns true if the game is a DLC/addon/non-game entry that should be excluded.
 fn is_non_game(game: &serde_json::Value) -> bool {
-    // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 8 (remake), 14 (update)
-    const ALLOWED: &[u64] = &[0, 4, 8, 14];
+    // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 7 (season), 8 (remake), 14 (update)
+    const ALLOWED: &[u64] = &[0, 4, 7, 8, 14];
     let category = get_game_category(game);
     !ALLOWED.contains(&category)
 }
@@ -1107,7 +1107,7 @@ pub async fn igdb_search(
             }
 
             let category = get_game_category(&item);
-            if !matches!(category, 0 | 4 | 8 | 14) {
+            if !matches!(category, 0 | 4 | 7 | 8 | 14) {
                 continue;
             }
 

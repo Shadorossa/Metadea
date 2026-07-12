@@ -234,6 +234,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .pr-editor-modal,
 [data-theme="newspaper-dark"] .pr-editor-modal *,
 [data-theme="newspaper-dark"] .char-pr-editor-modal,
-[data-theme="newspaper-dark"] .char-pr-editor-modal * {
+[data-theme="newspaper-dark"] .char-pr-editor-modal *,
+[data-theme="newspaper-dark"] .pr-editor-search-popup,
+[data-theme="newspaper-dark"] .pr-editor-search-popup * {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
