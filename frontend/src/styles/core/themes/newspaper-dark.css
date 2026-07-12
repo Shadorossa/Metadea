@@ -40,7 +40,6 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .theme-card-preview,
 [data-theme="newspaper-dark"] .avatar-preview-wrap,
 [data-theme="newspaper-dark"] .banner-drop-zone,
-[data-theme="newspaper-dark"] .card-media-base,
 [data-theme="newspaper-dark"] .media-card,
 [data-theme="newspaper-dark"] .library-card,
 [data-theme="newspaper-dark"] .hof-btn,
@@ -64,6 +63,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 /* Fine 1px border for covers */
 [data-theme="newspaper-dark"] .library-card-thumb,
 [data-theme="newspaper-dark"] .library-card-thumb img,
+[data-theme="newspaper-dark"] .card-media-base,
 [data-theme="newspaper-dark"] .card-media-img {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
@@ -93,6 +93,10 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 /* Custom newspaper-dark styling for search tabs on navbar */
+[data-theme="newspaper-dark"] .search-tab {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
 [data-theme="newspaper-dark"] .search-tab:hover {
   background: none !important;
   color: var(--text-main) !important;
@@ -141,8 +145,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 [data-theme="newspaper-dark"] .search-tab.active {
-  background: var(--bg-elevated) !important;
-  color: var(--accent) !important;
+  background: none !important;
+  color: var(--text-main) !important;
 }
 
 [data-theme="newspaper-dark"] .input-dark:focus,

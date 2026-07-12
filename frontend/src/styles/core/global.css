@@ -133,9 +133,7 @@ body {
   box-sizing: border-box;
 }
 
-body[data-page="search"] #page-content {
-  z-index: 100; /* raises stacking context of the search page above navbar (50) */
-}
+
 
 
 

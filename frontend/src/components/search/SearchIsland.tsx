@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { search, type MediaType, type SearchResult } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
@@ -182,11 +183,11 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
       <div className="search-header">
 
-        {/* Tabs de tipo de medio (solo se renderizan en cliente para evitar fallos de hidratación de SVGs) */}
-        <div className="search-tabs-row">
-          <div className="search-tabs-inner" style={{ minHeight: '38px' }}>
-            {isMounted ? (
-              MEDIA_TYPE_IDS.map(typeId => (
+        {/* Tabs de tipo de medio inyectadas mediante React Portal directamente en el centro de la Navbar */}
+        {isMounted && document.getElementById('nav-center-slot') ? (
+          createPortal(
+            <div className="search-tabs-inner">
+              {MEDIA_TYPE_IDS.map(typeId => (
                 <button
                   key={typeId}
                   onClick={() => handleMediaTypeChange(typeId)}
@@ -195,13 +196,14 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                   {TAB_ICONS[typeId]}
                   {i18n.types[typeId]}
                 </button>
-              ))
-            ) : (
-              // Esqueleto vacío en servidor para prevenir saltos de layout
-              <div style={{ opacity: 0, height: '38px' }}></div>
-            )}
-          </div>
-        </div>
+              ))}
+            </div>,
+            document.getElementById('nav-center-slot')!
+          )
+        ) : (
+          // Contenedor de reserva/carga
+          null
+        )}
 
 
         {/* Barra de búsqueda */}
