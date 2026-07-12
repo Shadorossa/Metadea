@@ -1,36 +1,21 @@
-// Central registry of the relation_type strings the collaborative-catalog
-// editor (PrEditorModal) reads and writes for saga chains — kept in one
-// place so a filter list can't quietly drift out of sync with the list used
-// to generate those same relations (that mismatch used to let stray
-// ADAPTATION/PART_OF rows leak into "untouched" pass-through relations
-// instead of being recognized as saga-managed, duplicating them on re-save).
+// Tipos de relación usados por la cadena de sagas (PrEditorModal).
+// Centralizados aquí para que filtros y escritores nunca diverjan.
 
 export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE'];
 
 export const SAGA_DIRECT_RELATION_TYPES: string[] = ['PREQUEL', 'SEQUEL'];
 
-/** Every relation_type the saga-chain feature can generate or read back —
- *  used to dedupe/overwrite previously-written chain edges on save. This is
- *  deliberately broader than what makes a work an actual saga *member*
- *  (get_transitive_relation_ids only walks PREQUEL/SEQUEL — see its comment
- *  in media_catalog.rs): a work reachable only via SOURCE/ALTERNATIVE/etc.
- *  is a plain relation, not a saga entry, but a work that IS a saga member
- *  can still carry an ALTERNATIVE edge to another member (grouping same-tier
- *  versions) or a SOURCE/EPISODE/UPDATE edge attaching it near a group —
- *  those edge types must stay listed here or re-saving would duplicate them
- *  instead of replacing them. */
+// Todos los relation_type que la saga-chain puede generar o leer.
+// Más amplio que los tipos que hacen a una obra miembro de saga
+// (el walker Rust solo recorre PREQUEL/SEQUEL) porque un miembro
+// puede tener ALTERNATIVE/SOURCE/etc. adicionales — sin listarlos
+// aquí, re-guardar los duplicaría en vez de reemplazarlos.
 export const ALL_CHAIN_RELATION_TYPES: string[] = [
   'PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'SOURCE', 'ADAPTATION', 'EPISODE', 'UPDATE', 'PART_OF',
 ];
 
-// 'alternative' used to be a selectable option here, but classifySagaChain
-// (sagaGrouping.ts) never actually distinguished it from 'main' — clustering
-// is driven entirely by two members sharing the same Concept Group name, not
-// by this tag. Giving matching items the same Concept Group name is now the
-// only way to mark them as alternates of each other (e.g. Inazuma Eleven 2's
-// three versions — Rayo Celeste / Fuego Explosivo / Ogro — all share one
-// group, and that group as a whole is the sequel/prequel step relative to
-// Inazuma Eleven 1/3).
+// 'alternative' ya no es seleccionable: la agrupación la define
+// compartir un Concept Group, no esta etiqueta.
 export type SagaRelationType = 'main' | 'source' | 'episode' | 'update';
 
 export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label: string }> = [
@@ -40,18 +25,9 @@ export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label:
   { value: 'update', label: 'Update' },
 ];
 
-/** Relation types offered when attaching a *new* relation in the PR editor.
- *  'ADAPTATION' and 'ALTERNATIVE' are deliberately namespaced as
- *  'REL_ADAPTATION' / 'REL_ALTERNATIVE' — the plain names are also the
- *  relation_type strings the saga-chain feature writes for its own
- *  source/adaptation pair and same-group alternates, and the backend's
- *  transitive-chain walk (get_transitive_relation_ids) matches on those
- *  exact strings. Reusing them here would make a plain "this is an
- *  adaptation of X" relation silently get swept into the Saga chain the
- *  next time the editor reloads. The other options don't collide, so they
- *  keep their plain names. Pre-existing relations of any other type are
- *  still shown and stay editable; this list only curates what's offered for
- *  new additions. */
+// REL_ADAPTATION / REL_ALTERNATIVE llevan prefijo para no colisionar con
+// los strings que el saga-chain escribe internamente (ADAPTATION/ALTERNATIVE).
+// Reutilizarlos haría que una relación plain quedara dentro del saga walk.
 export const EDITABLE_RELATION_OPTIONS: string[] = [
   'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'REL_UPDATE',
   'DLC', 'EXPANSION', 'STANDALONE', 'FORK',
@@ -61,13 +37,8 @@ export function isSagaRelationType(value: string): value is SagaRelationType {
   return SAGA_RELATION_TYPE_OPTIONS.some(o => o.value === value);
 }
 
-// Game relations used to be saved with the raw English display label as
-// their relation_type (e.g. "Expanded Edition") instead of the canonical
-// key ("EXPANDED_GAME") every other part of the system expects — rows saved
-// before that was fixed still carry the old value. Shared by mediaService's
-// background DB resync (which rewrites saved rows to canonical) and
-// PrEditorModal (which normalizes at render time so a stale row shows the
-// correct pre-selected option immediately, without waiting on that resync).
+// Relaciones de juegos guardadas con la etiqueta display antes de usar keys.
+// Usado en mediaService (resync) y PrEditorModal (normaliza en render).
 const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
   'Remake': 'REMAKE', 'Remaster': 'REMASTER', 'DLC': 'DLC',
   'Expansion': 'EXPANSION', 'Standalone': 'STANDALONE',
