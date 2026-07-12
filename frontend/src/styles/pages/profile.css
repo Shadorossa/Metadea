@@ -736,11 +736,6 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
 }
 
-.hof-view-hidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-
 /* ── HOF sidebar buttons ──────────────────────────────────────────────────── */
 .hof-sidebar {
   display: flex;
@@ -2131,37 +2126,55 @@
   flex-shrink: 0;
 }
 
+/* A native <progress value max> instead of two nested divs with an inline
+   `style="width:...%"` fill — the fill proportion is a plain HTML attribute,
+   not a CSS style, so it can't be affected by whatever silently drops
+   inline `style` attributes in the packaged production build (same class
+   of bug already fixed elsewhere for background-image). WebView2/Chromium
+   supports the standard -webkit- pseudo-elements for styling it. */
 .stats-bar-outer {
+  appearance: none;
+  -webkit-appearance: none;
   flex: 1;
   height: 10px;
-  background: rgba(255, 255, 255, 0.04);
+  border: none;
   border-radius: 99px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.stats-bar-inner {
-  height: 100%;
+.stats-bar-outer::-webkit-progress-bar {
+  background: transparent;
+}
+
+.stats-bar-outer::-webkit-progress-value {
   border-radius: 99px;
+  transition: width 0.4s ease;
 }
 
-.stats-bar-inner.completed {
+.stats-bar-outer.completed::-webkit-progress-value {
   background: #10b981;
 }
 
-.stats-bar-inner.in_progress {
+.stats-bar-outer.in_progress::-webkit-progress-value {
   background: #3b82f6;
 }
 
-.stats-bar-inner.planning {
+.stats-bar-outer.planning::-webkit-progress-value {
   background: #6b7280;
 }
 
-.stats-bar-inner.paused {
+.stats-bar-outer.paused::-webkit-progress-value {
   background: #f59e0b;
 }
 
-.stats-bar-inner.dropped {
+.stats-bar-outer.dropped::-webkit-progress-value {
   background: #ef4444;
+}
+
+.stats-bar-outer--time::-webkit-progress-value {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
 }
 
 .stats-status-count {
@@ -3384,28 +3397,43 @@
   min-width: 130px;
 }
 
+/* Same native <progress> approach as .stats-bar-outer above — see that
+   rule's comment. */
 .stats-hist-bar-outer {
+  appearance: none;
+  -webkit-appearance: none;
   flex: 1;
   min-width: 0;
   height: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
   /* Was rgba(255,255,255,0.03) — nearly invisible against a dark theme,
      let alone a warm/tan dynamic-theme background close in tone to the
      accent-colored fill, which made every bar look like a solid block
      regardless of its actual value since the empty track was indistinguishable
      from the filled portion. */
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  overflow: hidden;
 }
 
-.stats-hist-bar-inner {
-  height: 100%;
+.stats-hist-bar-outer::-webkit-progress-bar {
+  background: transparent;
+}
+
+.stats-hist-bar-outer::-webkit-progress-value {
   min-width: 2px;
   background: var(--accent);
   border-radius: 3px;
   transition: width 0.4s ease;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.stats-hist-bar-outer--score::-webkit-progress-value {
+  background: color-mix(in srgb, var(--accent) 65%, #818cf8);
+}
+
+.stats-hist-bar-outer--year::-webkit-progress-value {
+  background: color-mix(in srgb, var(--accent) 50%, #a78bfa);
 }
 
 .stats-hist-count {

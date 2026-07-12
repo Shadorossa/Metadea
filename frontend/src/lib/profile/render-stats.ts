@@ -120,14 +120,11 @@ export async function renderStats(el: HTMLElement): Promise<void> {
             <div class="stats-status-list">
               ${statusList.map(s => {
     const pct = ((s.value / totalWorks) * 100).toFixed(0);
-    const pctPrecise = ((s.value / totalWorks) * 100).toFixed(1);
     return `
                   <div class="stats-status-row">
                     <div class="stats-status-icon">${s.icon}</div>
                     <span class="stats-status-label">${s.label}</span>
-                    <div class="stats-bar-outer">
-                      <div class="stats-bar-inner ${s.color}" style="width: ${pctPrecise}%"></div>
-                    </div>
+                    <progress class="stats-bar-outer ${s.color}" value="${s.value}" max="${totalWorks}"></progress>
                     <span class="stats-status-count">${s.value}</span>
                     <span class="stats-status-percent">${pct}%</span>
                   </div>
@@ -143,16 +140,13 @@ export async function renderStats(el: HTMLElement): Promise<void> {
             <div class="stats-time-bars">
               ${byType.map(tEntry => {
     const label = TYPE_LABELS[tEntry.type] || tEntry.type;
-    const percent = maxHours > 0 ? (tEntry.hours / maxHours) * 100 : 0;
     return `
                   <div class="stats-time-row">
                     <div class="stats-time-meta">
                       <span class="stats-time-label">${label}</span>
                       <span class="stats-time-value">${tEntry.hours.toFixed(0)} h <span class="stats-time-count">(${tEntry.count})</span></span>
                     </div>
-                    <div class="stats-bar-outer">
-                      <div class="stats-bar-inner" style="width: ${percent}%; background: var(--accent); box-shadow: 0 0 6px var(--accent);"></div>
-                    </div>
+                    <progress class="stats-bar-outer stats-bar-outer--time" value="${tEntry.hours}" max="${maxHours}"></progress>
                   </div>
                 `;
   }).join('')}
@@ -173,9 +167,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                 ${topGenres.map(([genre, count]) => `
                   <div class="stats-hist-row">
                     <span class="stats-hist-label">${genre}</span>
-                    <div class="stats-hist-bar-outer">
-                      <div class="stats-hist-bar-inner" style="width:${(count / maxGenreCount) * 100}%"></div>
-                    </div>
+                    <progress class="stats-hist-bar-outer" value="${count}" max="${maxGenreCount}"></progress>
                     <span class="stats-hist-count">${count}</span>
                   </div>
                 `).join('')}
@@ -190,9 +182,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                 ${scoreDist.map(s => `
                   <div class="stats-hist-row">
                     <span class="stats-hist-label">${s.label}</span>
-                    <div class="stats-hist-bar-outer">
-                      <div class="stats-hist-bar-inner" style="width:${(s.count / maxScoreCount) * 100}%;background:color-mix(in srgb, var(--accent) 65%, #818cf8);"></div>
-                    </div>
+                    <progress class="stats-hist-bar-outer stats-hist-bar-outer--score" value="${s.count}" max="${maxScoreCount}"></progress>
                     <span class="stats-hist-count">${s.count}</span>
                   </div>
                 `).join('')}
@@ -207,9 +197,7 @@ export async function renderStats(el: HTMLElement): Promise<void> {
                 ${yearEntries.map(y => `
                   <div class="stats-hist-row">
                     <span class="stats-hist-label">${y.year}</span>
-                    <div class="stats-hist-bar-outer">
-                      <div class="stats-hist-bar-inner" style="width:${(y.count / maxYearCount) * 100}%;background:color-mix(in srgb, var(--accent) 50%, #a78bfa);"></div>
-                    </div>
+                    <progress class="stats-hist-bar-outer stats-hist-bar-outer--year" value="${y.count}" max="${maxYearCount}"></progress>
                     <span class="stats-hist-count">${y.count}</span>
                   </div>
                 `).join('')}

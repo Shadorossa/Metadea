@@ -160,7 +160,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const customImageMap = new Map(customImages.map(c => [c.external_id, c]));
 
     el.innerHTML = buildHofHtml(hofItems, catalogMap, p, charFavIds, characterMap, customImageMap) + statsHtml + bottomHtml;
-    initHofListeners(el);
+    initHofListeners(el, hofItems, catalogMap, charFavIds, characterMap, customImageMap);
     initActivityListeners(el, catalogMap, p);
     const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
     if (monthlyHistoryEl) initMonthlyHistoryListeners(monthlyHistoryEl);

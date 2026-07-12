@@ -77,7 +77,47 @@ function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined
   return { imgHtml: '', fallbackBg };
 }
 
-// Assembles the final HTML row containing works and character cards
+interface HofData {
+  items: Items;
+  catalogMap: Map<string, MediaCatalogEntry>;
+  charFavIds: string[];
+  characterMap: Map<string, CharacterEntry>;
+  customImageMap: Map<string, FavoriteCustomImage>;
+}
+
+function buildWorkCardsHtml(data: HofData): string {
+  return padTo10(data.items).map((item, i) => {
+    if (!item) return hofCardHtml(i + 1, null, '', '');
+    const meta  = data.catalogMap.get(item.external_id);
+    const title = meta?.title_main ?? item.external_id;
+    const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
+    const cover = coverStyle(meta?.cover_url ?? '', data.customImageMap.get(item.external_id), bg);
+
+    const inner = `
+        <span class="hof-card-type">${typeLabel(item.type)}</span>
+        <span class="hof-card-id">${title}</span>`;
+    return hofCardHtml(i + 1, cover, title, inner);
+  }).join('');
+}
+
+function buildCharCardsHtml(data: HofData): string {
+  return padTo10(data.charFavIds.map(id => data.characterMap.get(id) ?? null)).map((char, i) => {
+    if (!char) return hofCardHtml(i + 1, null, '', '');
+    const cover = coverStyle(char.image_url ?? '', data.customImageMap.get(char.external_id), DEFAULT_GRADIENT);
+    return hofCardHtml(i + 1, cover, char.name, `<span class="hof-card-id">${char.name}</span>`);
+  }).join('');
+}
+
+// Assembles the final HTML row — only the active (works) view's cards are
+// built and mounted up front; the character view is built on demand when
+// the tab is switched (see initHofListeners) instead of both being built
+// and kept permanently mounted with one hidden via CSS visibility. That
+// used to leave a stale, still-"hoverable" character grid sitting under the
+// visible one at all times, which is what caused the rank/label flicker on
+// switch: the moment the previously-hidden view regained pointer-events, it
+// could immediately pick up a stray hover from wherever the cursor already
+// was, firing rank/label's hover-fade transition. A full innerHTML replace
+// on switch can't carry over any such state since the old nodes are gone.
 export function buildHofHtml(
   items: Items,
   catalogMap: Map<string, MediaCatalogEntry>,
@@ -86,31 +126,12 @@ export function buildHofHtml(
   characterMap: Map<string, CharacterEntry> = new Map(),
   customImageMap: Map<string, FavoriteCustomImage> = new Map(),
 ): string {
-  const workCards = padTo10(items).map((item, i) => {
-    if (!item) return hofCardHtml(i + 1, null, '', '');
-    const meta  = catalogMap.get(item.external_id);
-    const title = meta?.title_main ?? item.external_id;
-    const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
-    const cover = coverStyle(meta?.cover_url ?? '', customImageMap.get(item.external_id), bg);
-
-    const inner = `
-        <span class="hof-card-type">${typeLabel(item.type)}</span>
-        <span class="hof-card-id">${title}</span>`;
-    return hofCardHtml(i + 1, cover, title, inner);
-  }).join('');
-
-  const charCards = padTo10(charFavIds.map(id => characterMap.get(id) ?? null)).map((char, i) => {
-    if (!char) return hofCardHtml(i + 1, null, '', '');
-    const cover = coverStyle(char.image_url ?? '', customImageMap.get(char.external_id), DEFAULT_GRADIENT);
-    return hofCardHtml(i + 1, cover, char.name, `<span class="hof-card-id">${char.name}</span>`);
-  }).join('');
-
+  const data: HofData = { items, catalogMap, charFavIds, characterMap, customImageMap };
   return `
     <div class="hof-wrapper">
       <div class="hof-row">
         <div class="hof-view-stack">
-          <div class="hof-container" id="hof-view-works">${workCards}</div>
-          <div class="hof-container hof-view-hidden" id="hof-view-chars">${charCards}</div>
+          <div class="hof-container" id="hof-view">${buildWorkCardsHtml(data)}</div>
         </div>
         <div class="hof-sidebar">
           <button class="hof-btn hof-btn--active" id="hof-btn-works" title="${p.stat_total}">${ICON_CROWN}</button>
@@ -121,18 +142,25 @@ export function buildHofHtml(
     </div>`;
 }
 
-// Setup click handlers for tab toggles
-export function initHofListeners(el: HTMLElement): void {
-  const viewWorks = el.querySelector<HTMLElement>('#hof-view-works');
-  const viewChars = el.querySelector<HTMLElement>('#hof-view-chars');
-  const btnWorks  = el.querySelector<HTMLButtonElement>('#hof-btn-works');
-  const btnChars  = el.querySelector<HTMLButtonElement>('#hof-btn-chars');
-  if (!viewWorks || !viewChars || !btnWorks || !btnChars) return;
+// Setup click handlers for tab toggles — takes the same data buildHofHtml
+// used, so it can rebuild whichever view wasn't mounted initially.
+export function initHofListeners(
+  el: HTMLElement,
+  items: Items,
+  catalogMap: Map<string, MediaCatalogEntry>,
+  charFavIds: string[] = [],
+  characterMap: Map<string, CharacterEntry> = new Map(),
+  customImageMap: Map<string, FavoriteCustomImage> = new Map(),
+): void {
+  const data: HofData = { items, catalogMap, charFavIds, characterMap, customImageMap };
+  const viewEl   = el.querySelector<HTMLElement>('#hof-view');
+  const btnWorks = el.querySelector<HTMLButtonElement>('#hof-btn-works');
+  const btnChars = el.querySelector<HTMLButtonElement>('#hof-btn-chars');
+  if (!viewEl || !btnWorks || !btnChars) return;
 
   function switchView(type: 'works' | 'chars') {
     const isWorks = type === 'works';
-    viewWorks!.classList.toggle('hof-view-hidden', !isWorks);
-    viewChars!.classList.toggle('hof-view-hidden',  isWorks);
+    viewEl!.innerHTML = isWorks ? buildWorkCardsHtml(data) : buildCharCardsHtml(data);
     btnWorks!.classList.toggle('hof-btn--active',  isWorks);
     btnChars!.classList.toggle('hof-btn--active', !isWorks);
   }
