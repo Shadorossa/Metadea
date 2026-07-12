@@ -1,10 +1,12 @@
+import { createRoot, type Root } from 'react-dom/client';
+import { createElement } from 'react';
 import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readMonthlyHistory, readUserFavorites } from '../tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
-import { buildHofHtml, initHofListeners } from './hof';
+import { HofSection } from '../../components/profile/HofSection';
+import { ActivitySection } from '../../components/profile/ActivitySection';
 import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from './monthly';
-import { buildActivityHtml, initActivityListeners } from './activity';
 import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
 import { isInProgressStatus, GAME_FORMAT_LABELS } from '../constants/media';
 import { ICON_MH_MEDIA, ICON_MH_CHARACTER } from '../shared/icon-strings';
@@ -12,7 +14,18 @@ import { getNonEditionItems, getEditionItems, getItemMinutes } from './stats-cal
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
+// The Hall of Fame and Recent Activity sections are React islands mounted
+// imperatively into this string-rendered tab's DOM — renderOverview rebuilds
+// el.innerHTML from scratch on every tab switch, which would otherwise
+// orphan the previous React roots without unmounting them.
+let hofRoot: Root | null = null;
+let activityRoot: Root | null = null;
+
 export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
+  hofRoot?.unmount();
+  hofRoot = null;
+  activityRoot?.unmount();
+  activityRoot = null;
   try {
     const t = getT();
     const p = t.profile;
@@ -134,7 +147,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
           <p class="profile-section-label">${p.recent_activity}</p>
           <div class="profile-section-line"></div>
         </div>
-        ${await buildActivityHtml(catalogMap, p)}
+        <div id="activity-mount"></div>
       </div>
     </div>`;
 
@@ -159,9 +172,13 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const customImages = await getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]);
     const customImageMap = new Map(customImages.map(c => [c.external_id, c]));
 
-    el.innerHTML = buildHofHtml(hofItems, catalogMap, p, charFavIds, characterMap, customImageMap) + statsHtml + bottomHtml;
-    initHofListeners(el, hofItems, catalogMap, charFavIds, characterMap, customImageMap);
-    initActivityListeners(el, catalogMap, p);
+    el.innerHTML = `<div id="hof-mount"></div>` + statsHtml + bottomHtml;
+    const hofMount = el.querySelector<HTMLElement>('#hof-mount')!;
+    hofRoot = createRoot(hofMount);
+    hofRoot.render(createElement(HofSection, { items: hofItems, catalogMap, p, charFavIds, characterMap, customImageMap }));
+    const activityMount = el.querySelector<HTMLElement>('#activity-mount')!;
+    activityRoot = createRoot(activityMount);
+    activityRoot.render(createElement(ActivitySection, { catalogMap, p }));
     const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
     if (monthlyHistoryEl) initMonthlyHistoryListeners(monthlyHistoryEl);
   } catch (error) {
