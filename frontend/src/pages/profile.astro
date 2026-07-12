@@ -170,7 +170,14 @@ const t    = useTranslations(lang);
 
     const payload  = decodeJwtPayload(session.token);
     const avatar   = payload.avatar as string | null;
-    const username = session.username;
+
+    // A custom display name set in Settings > Apariencia takes priority over
+    // the raw username picked at login — fetched here (not just below for the
+    // font) so every use of "the user's name" on this page reflects it,
+    // not just the login-time username.
+    const { getUserInfo } = await import('../lib/tauri');
+    const userInfo = await getUserInfo().catch(() => ({} as Record<string, unknown>));
+    const username = (userInfo.display_name as string | undefined)?.trim() || session.username;
 
     // Custom banner image
     const bannerEl = document.querySelector('.profile-banner') as HTMLElement | null;
@@ -203,8 +210,6 @@ const t    = useTranslations(lang);
         ? `<img class="profile-avatar" src="${avatarSrc}" alt="${username}" referrerpolicy="no-referrer">`
         : `<div class="profile-avatar-placeholder">${(username[0] ?? '?').toUpperCase()}</div>`;
 
-      const { getUserInfo } = await import('../lib/tauri');
-      const userInfo = await getUserInfo();
       const fontId = (userInfo.font as string | undefined) ?? 'inter';
       localStorage.setItem('profile_font_cache', fontId);
       const fontSrc = getFontFile(fontId);

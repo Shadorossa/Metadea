@@ -11,8 +11,14 @@ import '../../styles/pages/login.css';
     <p id="status">Iniciando sesión…</p>
 
     <script>
-      import { storeAuthToken } from '../../lib/tauri';
+      import { storeAuthToken, initTauriDatabase } from '../../lib/tauri';
       import { API_URL } from '../../lib/config';
+
+      // Standalone page (no BaseLayout) — every invoke() call (see
+      // lib/tauri/core.ts) awaits a promise that only resolves once this
+      // runs, so without it storeAuthToken's invoke('store_auth_token')
+      // below would hang forever with no error and no visible feedback.
+      initTauriDatabase().catch(e => console.error('Failed to init Tauri database:', e));
 
       const params = new URLSearchParams(window.location.search);
       const code   = params.get('code');

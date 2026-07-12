@@ -39,11 +39,18 @@ const t    = useTranslations(lang);
     </div>
 
     <script>
-      import { storeAuthToken } from '../lib/tauri';
+      import { storeAuthToken, initTauriDatabase } from '../lib/tauri';
 
       const form = document.getElementById('login-form');
       const input = document.getElementById('username-input') as HTMLInputElement;
       const errorMsg = document.getElementById('error-msg');
+
+      // This is a standalone page (no BaseLayout), which is normally the one
+      // that calls initTauriDatabase() on every page load — every invoke()
+      // call (see lib/tauri/core.ts) awaits a promise that only resolves once
+      // that runs, so without this, storeAuthToken's invoke('store_auth_token')
+      // below would hang forever with no error and no visible feedback.
+      initTauriDatabase().catch(e => console.error('Failed to init Tauri database:', e));
 
       form?.addEventListener('submit', async (e) => {
         e.preventDefault();
