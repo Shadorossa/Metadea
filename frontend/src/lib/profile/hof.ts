@@ -33,9 +33,10 @@ function padTo10<T>(items: T[]): (T | null)[] {
 interface CoverStyle { style: string; attrs: string; }
 
 // Generates the HTML shell for a HOF card slot (empty or filled)
-function hofCardHtml(rank: number, cover: CoverStyle | null, label: string, innerContent: string): string {
-  if (!cover) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
-  return `<div class="hof-card" style="${cover.style}" ${cover.attrs}>
+function hofCardHtml(rank: number, coverHtml: string, label: string, innerContent: string): string {
+  if (!coverHtml) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
+  return `<div class="hof-card">
+      ${coverHtml}
       <div class="hof-card-overlay"></div>
       <span class="hof-card-rank">#${rank}</span>
       <div class="hof-card-label">${label}</div>
@@ -44,15 +45,18 @@ function hofCardHtml(rank: number, cover: CoverStyle | null, label: string, inne
 }
 
 // Builds CSS background layers for crops/covers, fallback to gradient if empty
-function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): CoverStyle {
-  const layered = (url: string, cssSize: string, bgSize: number, posX: number, posY: number) => ({
-    style: `background-image:url('${url}'), ${fallbackBg}; background-size:${cssSize}, cover; background-position:${posX}% ${posY}%, center; background-repeat:no-repeat, no-repeat;`,
-    attrs: `data-cover-img="${url}" data-bg-size="${bgSize}" data-pos-x="${posX}" data-pos-y="${posY}"`,
-  });
-
-  if (customImg) return layered(customImg.image_url, `${customImg.bg_size}%`, customImg.bg_size, customImg.pos_x, customImg.pos_y);
-  if (rawCover)   return layered(rawCover, 'cover', 100, 50, 50);
-  return { style: `background: ${fallbackBg};`, attrs: '' };
+function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): string {
+  if (customImg) {
+    return `<div class="hof-card-bg-wrap">
+      <img class="hof-card-bg-img hof-card-bg-img--custom" src="${customImg.image_url}" alt="" style="width: ${customImg.bg_size}%; object-position: ${customImg.pos_x}% ${customImg.pos_y}%;" />
+    </div>`;
+  }
+  if (rawCover) {
+    return `<div class="hof-card-bg-wrap">
+      <img class="hof-card-bg-img" src="${rawCover}" alt="" />
+    </div>`;
+  }
+  return `<div class="hof-card-bg-wrap" style="background: ${fallbackBg};"></div>`;
 }
 
 // Assembles the final HTML row containing works and character cards
@@ -65,7 +69,7 @@ export function buildHofHtml(
   customImageMap: Map<string, FavoriteCustomImage> = new Map(),
 ): string {
   const workCards = padTo10(items).map((item, i) => {
-    if (!item) return hofCardHtml(i + 1, null, '', '');
+    if (!item) return hofCardHtml(i + 1, '', '', '');
     const meta  = catalogMap.get(item.external_id);
     const title = meta?.title_main ?? item.external_id;
     const bg    = HOF_GRADIENTS[item.type] ?? DEFAULT_GRADIENT;
@@ -78,7 +82,7 @@ export function buildHofHtml(
   }).join('');
 
   const charCards = padTo10(charFavIds.map(id => characterMap.get(id) ?? null)).map((char, i) => {
-    if (!char) return hofCardHtml(i + 1, null, '', '');
+    if (!char) return hofCardHtml(i + 1, '', '', '');
     const cover = coverStyle(char.image_url ?? '', customImageMap.get(char.external_id), DEFAULT_GRADIENT);
     return hofCardHtml(i + 1, cover, char.name, `<span class="hof-card-id">${char.name}</span>`);
   }).join('');

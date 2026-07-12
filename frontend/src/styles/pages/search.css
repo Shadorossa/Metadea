@@ -26,37 +26,38 @@
   padding: 0 4rem; /* espacio para los iconos fixed en los extremos */
 }
 
-.search-tab {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.65rem 0.75rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--text-muted);
-  white-space: nowrap;
-  cursor: pointer;
-  background: none;
-  border: none;
-  outline: none;
-  transition: color var(--anim-fast) var(--anim-ease);
+.search-page-wrapper .search-tab {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.65rem 0.75rem !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  color: var(--text-muted) !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: none !important;
+  border: none !important;
+  outline: none !important;
+  transition: color var(--anim-fast) var(--anim-ease) !important;
 }
-.search-tab svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  opacity: 0.7;
+.search-page-wrapper .search-tab svg {
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0 !important;
+  opacity: 0.7 !important;
 }
-.search-tab:hover {
-  color: var(--text-main);
+.search-page-wrapper .search-tab:hover {
+  color: var(--text-main) !important;
 }
-.search-tab:hover svg { opacity: 1; }
-.search-tab.active {
-  color: var(--accent);
+.search-page-wrapper .search-tab:hover svg { opacity: 1 !important; }
+.search-page-wrapper .search-tab.active {
+  color: var(--accent) !important;
+  background: none !important;
 }
-.search-tab.active svg { opacity: 1; }
+.search-page-wrapper .search-tab.active svg { opacity: 1 !important; }
 
 /* ── Search bar ──────────────────────────────────────────────────────────── */
 .search-bar-row {
@@ -73,43 +74,43 @@
   flex: 1;
 }
 
-.search-input {
-  width: 100%;
-  padding: 0.65rem 1rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
-  font-size: 0.8rem;
-  letter-spacing: -0.01em;
-  outline: none;
-  transition: border-color var(--anim-fast) var(--anim-ease), background var(--anim-fast);
+.search-page-wrapper .search-input {
+  width: 100% !important;
+  padding: 0.65rem 1rem !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--text-main) !important;
+  font-size: 0.8rem !important;
+  letter-spacing: -0.01em !important;
+  outline: none !important;
+  transition: border-color var(--anim-fast) var(--anim-ease), background var(--anim-fast) !important;
 }
-.search-input::placeholder { color: var(--text-muted); }
-.search-input:focus {
-  border-color: var(--accent);
-  background: rgba(192, 132, 252, 0.03);
+.search-page-wrapper .search-input::placeholder { color: var(--text-muted) !important; }
+.search-page-wrapper .search-input:focus {
+  border-color: var(--accent) !important;
+  background: rgba(192, 132, 252, 0.03) !important;
 }
 
 /* Botones a la derecha del input */
-.search-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex-shrink: 0;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast);
+.search-page-wrapper .search-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  flex-shrink: 0 !important;
+  border-radius: var(--radius-md) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-muted) !important;
+  cursor: pointer !important;
+  transition: color var(--anim-fast), background var(--anim-fast), border-color var(--anim-fast) !important;
 }
-.search-action-btn:hover {
-  color: var(--text-main);
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.12);
+.search-page-wrapper .search-action-btn:hover {
+  color: var(--text-main) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 .search-action-btn.loading {
   pointer-events: none;

@@ -1,6 +1,6 @@
 ---
-import '../styles/pages/search.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages/search.css';
 import { getLang, useTranslations } from '../i18n/index';
 import SearchIsland from '../components/search/SearchIsland';
 
@@ -17,7 +17,7 @@ const type: MediaType = (VALID_MEDIA_TYPES as string[]).includes(rawType) ? rawT
 ---
 
 <BaseLayout title={`${t.search.title} — Metadea`} lang={lang} activePage="search">
-  <main>
+  <main class="search-page-wrapper">
     <SearchIsland
       client:load
       initialQuery={q}

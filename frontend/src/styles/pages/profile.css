@@ -4,18 +4,25 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 /* ── Banner ──────────────────────────────────────────────────────────────────*/
 .profile-banner {
   position: relative;
   width: 100%;
+  box-sizing: border-box;
   height: 380px;
   background:
     radial-gradient(ellipse 120% 100% at 50% 0%, rgba(120, 50, 220, 0.25) 0%, transparent 60%),
     linear-gradient(180deg, #0e0820 0%, #07070e 100%);
   flex-shrink: 0;
   border-bottom: 1px solid var(--border-color);
+  background-size: cover;
+  background-position: center;
 }
 
 /* Custom banner image */
@@ -173,11 +180,12 @@
 /* ── Tab content ──────────────────────────────────────────────────────────── */
 .profile-tab-content {
   flex: 1;
-  padding: 1.25rem 15rem;
+  padding: 1.25rem 7rem;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  box-sizing: border-box;
 }
 
 /* ── Stats bar (centrada, dentro del tab de perfil) ───────────────────────── */
@@ -455,12 +463,18 @@
 .library-card-bg {
   position: absolute;
   inset: -6px;
-  background-image: var(--cover);
-  background-size: cover;
-  background-position: center;
-  filter: blur(2px) saturate(0.8);
-  opacity: 0.55;
+  overflow: hidden;
   pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+}
+
+.library-card-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: blur(4px) saturate(0.8);
 }
 
 .library-card::after {
@@ -547,6 +561,10 @@
   margin-top: auto;
   margin-bottom: 0.1rem;
   color: var(--color-planning);
+}
+
+.library-card-rating svg[fill="none"] {
+  fill: none !important;
 }
 
 
@@ -766,6 +784,27 @@
   min-width: 1.5rem;
   cursor: default;
   transition: flex 0.4s ease-in-out;
+}
+
+.hof-card-bg-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.hof-card-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.hof-card-bg-img--custom {
+  /* Si es una imagen personalizada con zoom, no limitamos object-fit para que el zoom sea aplicable */
+  object-fit: none !important;
 }
 
 .hof-card:hover {
@@ -996,13 +1035,21 @@
   cursor: default;
   transition: transform var(--anim-fast), box-shadow var(--anim-fast), clip-path var(--anim-fast);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background-size: cover;
-  background-position: center 40%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   clip-path: inset(20% 0 20% 0);
+}
+
+.mh-card-cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  display: block;
 }
 
 .mh-card:hover {
@@ -1672,8 +1719,21 @@
   background: rgba(0, 0, 0, 0.9);
 }
 
+.fav-cover-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
 .fav-cover--custom {
-  background-repeat: no-repeat;
+  position: absolute;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 100% !important;
+  object-fit: none !important;
 }
 
 /* Reorder movement arrow styles */

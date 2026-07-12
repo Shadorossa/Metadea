@@ -9,21 +9,21 @@ const t = useTranslations(lang);
 ---
 
 <BaseLayout title="Metadea" lang={lang} activePage="home">
-  <main class="flex flex-col items-center justify-center min-h-screen gap-6">
-    <h1 class="text-4xl font-bold tracking-tight">
+  <main class="home-page-container">
+    <h1 class="home-title">
       {t.home.title}
     </h1>
 
     <div
       id="google-link-container"
       class="animate-fade-in"
-      style="display: none;"
+      style="display: none; justify-content: center; width: 100%;"
     >
       <a
         id="home-google-btn"
         class="google-btn"
         href="#"
-        style="max-width: 280px;"
+        style="max-width: 280px !important; margin: 0 auto; display: flex; justify-content: center;"
       >
         <svg width="18" height="18" viewBox="0 0 48 48">
           <path

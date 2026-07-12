@@ -1,7 +1,7 @@
-@import "tailwindcss";
 
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 :root {
+  --bg-base: #07070e;
   --bg-primary: #07070e;
   --bg-elevated: #13131f;
   --bg-card: #191927;
@@ -50,13 +50,22 @@
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 html {
   background-color: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scrollbar-gutter: stable;
   overflow-x: hidden !important;
+  width: 100%;
   max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -64,7 +73,13 @@ body {
   color: var(--text-main);
   font-family: 'Inter', 'SF Pro Text', system-ui, -apple-system, sans-serif;
   overflow-x: hidden !important;
+  width: 100%;
   max-width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Dynamic background layer ────────────────────────────────────────────── */
@@ -108,6 +123,14 @@ body {
 #page-content {
   position: relative;
   z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 

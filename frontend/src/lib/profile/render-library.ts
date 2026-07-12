@@ -353,7 +353,6 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           const cover = meta?.cover_url ?? '';
           const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
           const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-          const style = cover ? `style="--cover: url('${cover}')"` : '';
           const stackClass = grouped.length > 0 ? ' library-card-cell--stacked' : '';
           // Chronological, earliest first — so a saga's flyout reads left to
           // right in release order (SH1, SH2, SH3, ...) instead of whatever
@@ -399,8 +398,8 @@ export async function renderLibrary(el: HTMLElement): Promise<void> {
           // painted content of its own to worry about clipping.
           return `
                 <div class="library-card-cell${stackClass}">
-                  <div class="library-card" data-id="${item.external_id}" ${style}>
-                    ${cover ? `<div class="library-card-bg"></div>` : ''}
+                  <div class="library-card" data-id="${item.external_id}">
+                    ${cover ? `<div class="library-card-bg"><img class="library-card-bg-img" src="${cover}" alt="" /></div>` : ''}
                     ${badge}
                     ${tagBadges ? `<div class="library-card-tag-badges">${tagBadges}</div>` : ''}
                     <a class="library-card-thumb" href="${mediaUrl}" onclick="event.stopPropagation()">

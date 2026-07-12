@@ -34,9 +34,10 @@ export function buildMonthlyHistoryHtml(
     const item  = mainItem ? libMap.get(mainItem) : null;
     const meta  = mainItem ? catalogMap.get(mainItem) : null;
     const cover = meta?.cover_url ?? '';
-    const bg    = cover ? `url('${cover}')` : (HOF_GRADIENTS[item?.type ?? 'game'] ?? 'linear-gradient(160deg, #374151, #1f2937)');
+    const bg    = HOF_GRADIENTS[item?.type ?? 'game'] ?? 'linear-gradient(160deg, #374151, #1f2937)';
 
-    const card = `<div class="mh-card" style="background-image:${bg.startsWith('url') ? bg : 'none'};background:${bg.startsWith('url') ? '' : bg}" title="${monthLabel}">
+    const card = `<div class="mh-card" style="${cover ? '' : `background:${bg}`}" title="${monthLabel}">
+      ${cover ? `<img class="mh-card-cover-img" src="${cover}" alt="" />` : ''}
       <div class="mh-card-overlay"></div>
       <div class="mh-card-content">
         <span class="mh-card-month">${monthLabel}</span>
