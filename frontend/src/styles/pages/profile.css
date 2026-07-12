@@ -510,6 +510,7 @@
   min-width: 0;
   position: relative;
   z-index: 2;
+  align-self: stretch;
 }
 
 .library-card-title {
@@ -523,13 +524,18 @@
   line-height: 1.2;
 }
 
+.library-card-bottom-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: auto;
+}
+
 .library-card-rating {
   display: flex;
   align-items: center;
   gap: 2px;
   line-height: 1;
-  margin-top: auto;
-  margin-bottom: 0.1rem;
   color: var(--color-planning);
 }
 

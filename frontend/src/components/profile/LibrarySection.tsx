@@ -194,10 +194,12 @@ function LibraryCard({ item, grouped, catalogMap, p }: {
         </a>
         <div className="library-card-info">
           <span className="library-card-title">{title}</span>
-          <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
-          <div className="library-card-footer">
-            {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
-            <span className="library-card-type" dangerouslySetInnerHTML={{ __html: typeIc }} />
+          <div className="library-card-bottom-group">
+            <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
+            <div className="library-card-footer">
+              {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
+              <span className="library-card-type" dangerouslySetInnerHTML={{ __html: typeIc }} />
+            </div>
           </div>
         </div>
       </div>
