@@ -1,0 +1,19 @@
+{
+  "entry": [
+    "src/pages/**/*.{astro,ts,tsx}",
+    "src/layouts/**/*.{astro,ts,tsx}",
+    "src/components/**/*.{astro,ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,astro}"
+  ],
+  "ignore": [
+    "src-tauri/**",
+    "dist/**",
+    "src/env.d.ts",
+    "src/global.d.ts"
+  ],
+  "ignoreDependencies": [
+    "@tauri-apps/cli"
+  ]
+}
