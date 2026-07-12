@@ -19,6 +19,7 @@ import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } fr
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
+import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 
 interface BundledRelation {
   external_id: string;
@@ -34,8 +35,6 @@ interface Props {
 }
 
 
-const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
-
 const DEFAULT_NEW_RELATION_TYPE = 'REL_ADAPTATION';
 
 // True when two string records differ after normalizing each value (missing
@@ -46,24 +45,6 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
     if (normalize(a[k]) !== normalize(b[k])) return true;
   }
   return false;
-}
-
-function ChangedDot({ show, className = 'pr-editor-changed-dot' }: { show: boolean; className?: string }) {
-  return show ? <span className={className} /> : null;
-}
-
-function Field({ label, changed, small, full, children }: {
-  label: string; changed: boolean; small?: boolean; full?: boolean; children: React.ReactNode;
-}) {
-  return (
-    <div className={`pr-editor-field${small ? ' pr-editor-field--small' : ''}${full ? ' pr-editor-field--full' : ''}`}>
-      <label>
-        {label}
-        <ChangedDot show={changed} />
-      </label>
-      {children}
-    </div>
-  );
 }
 
 // Relation type labels (Spanish) — matches i18n/es.ts relations dict

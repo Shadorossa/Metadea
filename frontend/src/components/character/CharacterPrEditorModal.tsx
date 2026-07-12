@@ -12,8 +12,7 @@ import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic 
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
-
-const normField = (v: unknown) => (v === '' || v === undefined ? null : v);
+import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 
 function TagsInput({ tags, onChange, placeholder }: { tags: string[], onChange: (tags: string[]) => void, placeholder: string }) {
   const [input, setInput] = useState('');
@@ -74,24 +73,6 @@ interface AppearanceRow {
 
 const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>
   `${a.media_external_id}::${a.relation_type ?? ''}`;
-
-function ChangedDot({ show }: { show: boolean }) {
-  return show ? <span className="pr-editor-changed-dot" /> : null;
-}
-
-function Field({ label, changed, full, children }: {
-  label: string; changed: boolean; full?: boolean; children: React.ReactNode;
-}) {
-  return (
-    <div className={`pr-editor-field${full ? ' pr-editor-field--full' : ''}`}>
-      <label>
-        {label}
-        <ChangedDot show={changed} />
-      </label>
-      {children}
-    </div>
-  );
-}
 
 interface CachedCharacterData {
   character: CharacterEntry;
