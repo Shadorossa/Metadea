@@ -1,0 +1,226 @@
+{
+  "media_catalog": {
+    "id": "a2d2f50ceddbc2eba2d2f50ceddbc2eb",
+    "external_id": "game:125174",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Overwatch",
+    "title_romaji": null,
+    "title_native": null,
+    "synopsis": "Overwatch is a free-to-play first-person hero shooter developed by Blizzard Entertainment. Players choose from a large roster of role-based heroes and compete in 5v5 team matches across various objective-based game modes, with both casual and ranked competitive play. Originally released as Overwatch 2 in 2023 as a successor to the 2016 original, the game was rebranded to simply Overwatch in 2026 with a renewed focus on seasonal narrative content and expanded hero rosters.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/coc99p.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar6a9.jpg",
+    "release_year": 2023,
+    "release_month": 8,
+    "release_day": 10,
+    "time_length": null,
+    "status": null,
+    "score_global": 7.6,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter",
+    "genres_tag_csv": null,
+    "platforms_csv": "Xbox Series X|S,PlayStation 4,Nintendo Switch 2,PC (Microsoft Windows),PlayStation 5,Xbox One,Nintendo Switch",
+    "shop_links_csv": "steam|https://store.steampowered.com/app/2357570,xbox|https://www.xbox.com/en-us/games/store/overwatch-2/C1C4DZJPBC2V",
+    "companies_cache_csv": "Blizzard Entertainment",
+    "authors_csv": "",
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-12T15:36:18.444645100+00:00",
+    "updated_at": "2026-07-12T16:30:17.952089100+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:220932",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 1 - Cyberpunk",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5k4a.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:228002",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 2 - Greek Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ufr.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:234373",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 3 - Asian Mythology",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co65ms.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:243933",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 4 - Space Opera",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6cdl.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:252775",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 5 - High-Fantasy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6m9c.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:252842",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 6 - Invasion",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6x50.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:270044",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 7 - Rise of the Darkness",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co77ww.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:275170",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 8 - Call of the Hunt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7gei.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:285782",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 9 - Champions",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7rmf.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:294507",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 10 - Venture Forth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co84h8.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:305394",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 11 - Super Mega Ultrawatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8e4h.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:313594",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 12 - New Frontiers",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8pe1.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:319357",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 13 - Spellbinder",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8y0b.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:324865",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 14 - Hazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co94zi.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:331286",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 15 - Honor & Glory",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9f5l.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:341007",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 16 - Stadium",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0tb.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:350615",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 17 - Powered Up!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa0t9.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:362281",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 18 - Stadium Quickplay",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coacoy.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:373424",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 19 - Haunted Masquerade",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coaoi0.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:380108",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch 2: Season 20 - Vendetta",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob0ql.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:388391",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch: Reign of Talon - Season 1: Conquest",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobjxl.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:398289",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch: Reign of Talon - Season 2: Summit",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobxhg.jpg",
+      "media_external_id": "game:125174"
+    },
+    {
+      "related_media_external_id": "game:406719",
+      "relation_type": "SEASON",
+      "type_label": "Temporada",
+      "title": "Overwatch: Reign of Talon - Season 3: Into the Tigers Den",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc9ny.jpg",
+      "media_external_id": "game:125174"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
