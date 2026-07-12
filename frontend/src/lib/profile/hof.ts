@@ -30,9 +30,7 @@ function padTo10<T>(items: T[]): (T | null)[] {
   return padded;
 }
 
-// Generates the HTML shell for a HOF card slot (empty or filled). The cover
-// is a CSS background-image on the card itself rather than a separate
-// wrapper + <img>.
+// Generates the HTML shell for a HOF card slot (empty or filled)
 function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, innerContent: string): string {
   if (!coverStyleStr) return `<div class="hof-card hof-card--empty"><span class="hof-card-rank">#${rank}</span></div>`;
   return `<div class="hof-card" style="${coverStyleStr}">
@@ -43,18 +41,10 @@ function hofCardHtml(rank: number, coverStyleStr: string | null, label: string, 
     </div>`;
 }
 
-// bg_size/pos_x/pos_y (from the shared pan/zoom crop editor) are CSS
-// background-size/background-position percentages calibrated for a 3:4 box
-// — see image-crop-modal.ts's own coverPercent formula, which factors in
-// the editor's own aspectRatio (defaulted to 3/4 by favorite-image-editor.ts,
-// matching .fav-card). .hof-card is now also fixed at a 3:4 aspect ratio
-// (profile.css) specifically so this reuses the exact same crop as
-// Favoritos instead of landing on an arbitrary region of the image — it
-// used to fall back to a plain centered cover here because HOF cards were a
-// completely different, much taller/narrower shape.
+// Builds CSS background layers for crops/covers, fallback to gradient if empty
 function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined, fallbackBg: string): string {
   if (customImg) {
-    return `background-image: url('${customImg.image_url}'); background-size: ${customImg.bg_size}% auto; background-position: ${customImg.pos_x}% ${customImg.pos_y}%;`;
+    return `background-image: url('${customImg.image_url}'), ${fallbackBg}; background-size: ${customImg.bg_size}% auto, cover; background-position: ${customImg.pos_x}% ${customImg.pos_y}%, center; background-repeat: no-repeat, no-repeat;`;
   }
   if (rawCover) {
     return `background-image: url('${rawCover}'); background-size: cover; background-position: center;`;

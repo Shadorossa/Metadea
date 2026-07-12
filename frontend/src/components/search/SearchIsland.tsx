@@ -197,8 +197,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 </button>
               ))
             ) : (
-              // Esqueleto/placeholder vacío en servidor para prevenir saltos de layout
-              <div style={{ opacity: 0 }}>Cargando filtros...</div>
+              // Esqueleto vacío en servidor para prevenir saltos de layout
+              <div style={{ opacity: 0, height: '38px' }}></div>
             )}
           </div>
         </div>
