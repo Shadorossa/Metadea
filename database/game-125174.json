@@ -27,12 +27,12 @@
     "platforms_csv": "Xbox Series X|S,PlayStation 4,Nintendo Switch 2,PC (Microsoft Windows),PlayStation 5,Xbox One,Nintendo Switch",
     "shop_links_csv": "steam|https://store.steampowered.com/app/2357570,xbox|https://www.xbox.com/en-us/games/store/overwatch-2/C1C4DZJPBC2V",
     "companies_cache_csv": "Blizzard Entertainment",
-    "authors_csv": "",
+    "authors_csv": null,
     "last_synced_at": null,
     "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-12T15:36:18.444645100+00:00",
-    "updated_at": "2026-07-12T16:30:17.952089100+00:00"
+    "updated_at": "2026-07-12T18:53:55.144860700+00:00"
   },
   "media_relations": [
     {
@@ -64,7 +64,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 4 - Space Opera",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6cdl.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co6cdl.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -72,7 +72,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 5 - High-Fantasy",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6m9c.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co6m9c.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -80,7 +80,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 6 - Invasion",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6x50.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co6x50.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -88,7 +88,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 7 - Rise of the Darkness",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co77ww.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co77ww.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -184,7 +184,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 19 - Haunted Masquerade",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coaoi0.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coaoi0.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -192,7 +192,7 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch 2: Season 20 - Vendetta",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob0ql.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob0ql.jpg",
       "media_external_id": "game:125174"
     },
     {
@@ -216,8 +216,24 @@
       "relation_type": "SEASON",
       "type_label": "Temporada",
       "title": "Overwatch: Reign of Talon - Season 3: Into the Tigers Den",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc9ny.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coc9ny.jpg",
       "media_external_id": "game:125174"
+    },
+    {
+      "media_external_id": "game:125174",
+      "related_media_external_id": "game:8173",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Overwatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1rcb.jpg"
+    },
+    {
+      "media_external_id": "game:8173",
+      "related_media_external_id": "game:125174",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Overwatch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coc99p.jpg"
     }
   ],
   "characters": [],
