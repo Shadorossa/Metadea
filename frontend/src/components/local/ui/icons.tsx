@@ -93,7 +93,12 @@ export function IconAll(p: SvgProps) {
 }
 
 export function IconAnime(p: SvgProps) {
-  return <Svg {...p}><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></Svg>;
+  const size = p.size ?? 20;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <text x="50%" y="78%" textAnchor="middle" fontSize="21" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" stroke="none">画</text>
+    </svg>
+  );
 }
 
 export function IconManga(p: SvgProps) {

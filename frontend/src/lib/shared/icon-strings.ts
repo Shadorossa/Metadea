@@ -5,7 +5,7 @@
 
 const INNER: Record<string, string> = {
   game:      `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>`,
-  anime:     `<path d="M8 4c-1 0-2 1-2 2v2c0 1 .5 2 1 2.5-.5.5-1 1.5-1 2.5 0 2 1 3 2 3h8c1 0 2-1 2-3 0-1-.5-2-1-2.5.5-.5 1-1.5 1-2.5V6c0-1-1-2-2-2H8z"/><circle cx="10" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="14" cy="10" r="1" fill="currentColor" stroke="none"/>`,
+  anime:     `<text x="50%" y="78%" textAnchor="middle" fontSize="21" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" fill="currentColor" stroke="none">画</text>`,
   manga:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   lnovel:    `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
   vnovel:    `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
@@ -73,11 +73,19 @@ export function getBaseMediaType(type: string): string {
 export function typeIconStr(type: string, size: number): string {
   const baseType = getBaseMediaType(type);
   const inner = INNER[baseType] ?? INNER.book;
+  if (baseType === 'anime') {
+    return fill(size, inner);
+  }
   return stroke(size, '2', inner);
 }
 
 export function typeIconMap(size: number): Record<string, string> {
-  const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => [t, stroke(size, '2', INNER[t])]));
+  const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => {
+    if (t === 'anime') {
+      return [t, fill(size, INNER[t])];
+    }
+    return [t, stroke(size, '2', INNER[t])];
+  }));
   return new Proxy(baseTypes, {
     get(target, prop) {
       if (typeof prop !== 'string') return undefined;
