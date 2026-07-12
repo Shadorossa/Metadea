@@ -86,11 +86,28 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 /* Hover/Active states simulate vintage ink press highlight */
 [data-theme="newspaper-dark"] .btn:hover,
 [data-theme="newspaper-dark"] .google-btn:hover,
-[data-theme="newspaper-dark"] .hof-btn:hover,
-[data-theme="newspaper-dark"] .search-tab:hover {
+[data-theme="newspaper-dark"] .hof-btn:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
+}
+
+/* Custom newspaper-dark styling for search tabs on navbar */
+[data-theme="newspaper-dark"] .search-tab:hover {
+  background: none !important;
+  color: var(--text-main) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+}
+
+[data-theme="newspaper-dark"] .search-tab.active {
+  color: var(--text-main) !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="newspaper-dark"] .search-tab.active::after {
+  background: var(--text-main) !important;
+  height: 2px !important;
 }
 
 [data-theme="newspaper-dark"] .theme-card.active .theme-card-preview,

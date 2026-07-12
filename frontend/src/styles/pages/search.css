@@ -1,37 +1,52 @@
 /* Search page */
 
-/* ── Sticky header ──────────────────────────────────────────────────────── */
+/* Stacking context setup to ensure search page is layered above navbar */
+.search-page-wrapper {
+  position: relative;
+  z-index: 100;
+}
+
+/* Sticky header containing the search input below navbar */
 .search-header {
   position: sticky;
   top: 48px; /* sits right below the main navbar */
-  z-index: 60; /* lies on top of the navbar (50) to block out background visual overlap when scrolling, or look integrated */
+  z-index: 60;
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
 }
 
-/* ── Tabs row ────────────────────────────────────────────────────────────── */
+/* Tabs row positioned absolute inside the navbar area (height 48px, top 0) */
 .search-tabs-row {
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-top: 0.75rem;
+  position: fixed;
+  top: 0;
+  left: 10rem;
+  right: 10rem;
+  height: 48px;
+  z-index: 101; /* Must be strictly above fixed navbar (50) and content container */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  pointer-events: none; /* Let elements behind or beside it be clickable */
 }
-.search-tabs-row::-webkit-scrollbar { display: none; }
 
 .search-tabs-inner {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: max-content;
+  gap: 0.25rem;
   margin: 0 auto;
-  padding: 0 4rem; /* espacio para los iconos fixed en los extremos */
+  pointer-events: auto; /* Re-enable clicks for the buttons */
 }
 
 .search-page-wrapper .search-tab {
+  position: relative;
   display: flex !important;
   align-items: center !important;
   gap: 0.35rem !important;
-  padding: 0.65rem 0.75rem !important;
-  font-size: 0.7rem !important;
+  padding: 0 0.65rem !important;
+  height: 48px !important;
+  font-size: 0.68rem !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.07em !important;
@@ -58,6 +73,18 @@
   background: none !important;
 }
 .search-page-wrapper .search-tab.active svg { opacity: 1 !important; }
+
+/* Active indicator line under the tab */
+.search-page-wrapper .search-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0.65rem;
+  right: 0.65rem;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 99px;
+}
 
 /* ── Search bar ──────────────────────────────────────────────────────────── */
 .search-bar-row {
