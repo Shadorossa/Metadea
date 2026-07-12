@@ -16,7 +16,12 @@ const RELATION_PRIORITY: Record<string, number> = {
 
 function formatDescription(raw: string | null | undefined): string | undefined {
   if (!raw) return undefined;
-  return raw.replace(
+  // Convert physical newlines to <br> first
+  let cleaned = raw.replace(/\r?\n/g, '<br>');
+  // Replace consecutive <br> tags (with optional spaces/newlines inside/around them) with a single <br>
+  cleaned = cleaned.replace(/(?:\s*<br\s*\/?>\s*)+/gi, '<br>');
+  // Apply Source metadata styling
+  return cleaned.replace(
     /\(Source:\s*([^)]+)\)/g,
     '<span class="media-description-source">&nbsp;&nbsp;—&nbsp;Source: $1</span>'
   );

@@ -17,11 +17,39 @@ import { getT } from '../../i18n/client';
 import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
 import { normalizeLegacyRelationType } from './sagaTypes';
 
-// Fuente / Precuela / Secuela / Historia paralela, everything else after —
-// shared by every place that turns saved DB relations back into the page's
-// Related section (first full fetch, catalog-first partial render).
+// Order of relations: Fuente > Prequel > Sequel > Side story (Historia paralela) > Alternative > Other
 const RELATION_SORT_PRIORITY: Record<string, number> = {
-  SOURCE: 1, PARENT: 1, PREQUEL: 2, SEQUEL: 3, SIDE_STORY: 4,
+  // Fuente
+  SOURCE: 1,
+  PARENT: 1,
+  ADAPTATION: 1,
+  REL_ADAPTATION: 1,
+
+  // Prequel
+  PREQUEL: 2,
+
+  // Sequel
+  SEQUEL: 3,
+
+  // Side story
+  SIDE_STORY: 4,
+  SPIN_OFF: 4,
+
+  // Alternative
+  ALTERNATIVE: 5,
+  REL_ALTERNATIVE: 5,
+
+  // Other
+  OTHER: 6,
+  SUMMARY: 6,
+  REMAKE: 6,
+  REMASTER: 6,
+  EXPANDED_GAME: 6,
+  REL_UPDATE: 6,
+  DLC: 6,
+  EXPANSION: 6,
+  STANDALONE: 6,
+  FORK: 6,
 };
 
 function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {
@@ -32,14 +60,15 @@ function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {
 
 function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPageData['relations']; hasSaga: boolean } {
   const sorted = [...rels].sort((a, b) => {
-    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 5;
-    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 5;
+    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
+    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
     return a.title.localeCompare(b.title);
   });
   return {
     relations: sorted.map(r => ({
       typeLabel: r.type_label,
+      relationType: r.relation_type,
       title: r.title,
       cover: r.cover || undefined,
       url: `/media?id=${r.related_media_external_id}`,
@@ -52,6 +81,17 @@ function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPag
     })),
     hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
   };
+}
+
+export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
+  return [...relations].sort((a, b) => {
+    const rTypeA = a.relationType?.toUpperCase() ?? '';
+    const rTypeB = b.relationType?.toUpperCase() ?? '';
+    const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
+    const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
+    if (priorityA !== priorityB) return priorityA - priorityB;
+    return a.title.localeCompare(b.title);
+  });
 }
 
 function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {

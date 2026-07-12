@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -517,11 +517,11 @@ export default function MediaPage({ i18n }: Props) {
     tm.relations.EXPANDED_GAME,
     tm.relations.REL_UPDATE
   ]);
-  const relatedRelations    = data.relations.filter(r =>
+  const relatedRelations    = sortMediaRelations(data.relations.filter(r =>
     r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel &&
     (!isFullEdition || FULL_EDITION_ALLOWED.has(r.typeLabel))
-  );
-  const recommendedRelations = data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION);
+  ));
+  const recommendedRelations = sortMediaRelations(data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION));
   const editionRelations    = data.relations.filter(r => r.typeLabel === editionsLabel);
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;

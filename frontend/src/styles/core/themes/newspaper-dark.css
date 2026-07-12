@@ -178,6 +178,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border: 6px double var(--text-main) !important;
 }
 
+/* Square shape for media author avatars */
+[data-theme="newspaper-dark"] .media-author-avatar,
+[data-theme="newspaper-dark"] .media-author-avatar--placeholder {
+  border-radius: 0px !important;
+}
+
 /* Role and relation type badges */
 [data-theme="newspaper-dark"] .media-char-role,
 [data-theme="newspaper-dark"] .media-relation-type {

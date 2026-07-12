@@ -1478,7 +1478,17 @@
   align-items: center;
   justify-content: center;
   padding-bottom: 1rem;
-  width: 100%;
+  /* .fav-layout deliberately overflows its normal column by 30rem (see its
+     own comment) so the card grid below can fit more columns — but that
+     same extra width, inherited via a plain 100%, pushed this row's own
+     box 15rem past the visible edge on each side. The reorder button's
+     `right: 0` then landed 15rem off-screen instead of next to the last
+     tab. Undoing the expansion here and re-centering keeps this row (and
+     the button positioned against its real edge) where the pills visually
+     sit, without affecting the grid's own intentional overflow. */
+  width: calc(100% - 30rem);
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .fav-tabs-row::after {

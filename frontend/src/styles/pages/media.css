@@ -444,11 +444,7 @@
   font-weight: 600;
 }
 
-.media-description-text br {
-  display: block;
-  content: '';
-  margin-bottom: 0.5rem;
-}
+
 
 .media-description-source {
   font-size: 0.75rem;
