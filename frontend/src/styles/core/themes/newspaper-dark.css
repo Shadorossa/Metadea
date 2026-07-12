@@ -77,6 +77,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   fill: var(--text-main) !important;
 }
 
+[data-theme="newspaper-dark"] .library-card-rating svg[fill="none"],
+[data-theme="newspaper-dark"] .media-card-rating svg[fill="none"],
+[data-theme="newspaper-dark"] .card-rating-stars svg[fill="none"] {
+  fill: none !important;
+}
+
 /* Hover/Active states simulate vintage ink press highlight */
 [data-theme="newspaper-dark"] .btn:hover,
 [data-theme="newspaper-dark"] .google-btn:hover,
