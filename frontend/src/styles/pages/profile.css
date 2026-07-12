@@ -952,6 +952,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transform: translateY(-2rem);
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
@@ -968,22 +969,44 @@
 .mh-zigzag {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin: -1.5rem 0 0 0;
-  padding: 1.5rem 0 1rem 0;
+  gap: -2.5rem;
+  margin: -1.25rem 0 0 0;
+  padding: 0 0 1.5rem 0;
   width: max-content;
 }
 
-.mh-row-top,
-.mh-row-bottom {
+.mh-row-top {
+  position: relative;
+  z-index: 2; /* higher than bottom row by default so hover overlaps down */
   display: flex;
-  gap: 0.8rem;
+  gap: 1.25rem;
   justify-content: flex-start;
   align-items: flex-start;
   margin: 0;
   padding: 0;
-  transform: translateX(4rem);
-  margin-top: -3rem;
+  transform: translateX(-1rem);
+  transition: z-index 0.2s;
+}
+
+.mh-row-top:hover {
+  z-index: 20; /* forces absolute priority when user hovers any card in top row */
+}
+
+.mh-row-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 1.25rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  transform: translateY(-2.5rem) translateX(4.75rem);
+  transition: z-index 0.2s;
+}
+
+.mh-row-bottom:hover {
+  z-index: 20; /* forces absolute priority when user hovers any card in bottom row */
 }
 
 .mh-card {
