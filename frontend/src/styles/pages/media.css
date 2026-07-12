@@ -2464,13 +2464,13 @@
 }
 
 .pr-editor-section--row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2rem;
 }
 
-.pr-editor-subsection--saga {
-  grid-column: span 1;
+.pr-editor-section--row .pr-editor-subgroup-divider {
+  display: none !important;
 }
 
 .pr-editor-media-card {
@@ -2687,7 +2687,7 @@
 
 .pr-editor-media-group-cards {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 0.75rem;
   width: 100%;
 }
@@ -2704,6 +2704,12 @@
 
 .pr-editor-media-group-cards--wide {
   grid-template-columns: repeat(12, 1fr);
+}
+
+/* Relations grid — fixed 6 per row instead of auto-fill, so the count
+   doesn't drift with column width. */
+.pr-editor-media-group-cards--six {
+  grid-template-columns: repeat(6, 1fr);
 }
 
 .pr-editor-subsection {

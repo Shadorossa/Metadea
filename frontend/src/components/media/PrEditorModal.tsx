@@ -921,7 +921,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                     style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
                   />
                 </div>
-                <label className="pr-editor-subsection-label">Saga order</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Saga order</label>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
+                </div>
                 <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
                   {sagaOrder.map((id, index) => {
                     const meta = resolveMeta(id);
@@ -964,14 +967,16 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                     );
                   })}
                 </div>
-                <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
               </div>
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
               <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
-                <label className="pr-editor-subsection-label">Relations</label>
-                <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Relations</label>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
+                </div>
+                <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six" style={{ marginBottom: '1.25rem' }}>
                   {editableRelations.map((r, index) => (
                     <div
                       key={r.related_media_external_id}
@@ -994,9 +999,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                           ×
                         </button>
                       </div>
-                      <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
-                        {r.title || r.related_media_external_id}
-                      </div>
                       <RelationTypeSelect
                         value={r.relation_type}
                         options={EDITABLE_RELATION_OPTIONS}
@@ -1004,18 +1006,21 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                         extraOption={{ value: r.relation_type, label: r.type_label }}
                         onChange={type => updateEditableRelationType(r.related_media_external_id, type)}
                       />
+                      <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
+                        {r.title || r.related_media_external_id}
+                      </div>
                     </div>
                   ))}
-                </div>
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
                 </div>
               </div>
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
-              <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '220px', flexShrink: 0 }}>
-                <label className="pr-editor-subsection-label">Bundled In</label>
+              <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Bundled In</label>
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
+                </div>
                 <div className="pr-editor-bundled-list">
                   {bundledRelations.map(r => (
                     <div key={r.external_id} className="pr-editor-bundled-row">
@@ -1051,7 +1056,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                     </div>
                   ))}
                 </div>
-                <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
               </div>
             </div>
           </div>

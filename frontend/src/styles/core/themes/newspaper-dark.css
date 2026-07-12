@@ -240,26 +240,31 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
 
-/* Custom styled dropdowns for newspaper-dark */
+/* Custom styled dropdowns for newspaper-dark — a plain underline instead of
+   a bordered box, matching the vintage "underlined field" look used
+   elsewhere in this theme (no box, just a rule under the value). */
 [data-theme="newspaper-dark"] .rel-type-select-trigger {
   border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background-color: var(--bg-card) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  background-color: transparent !important;
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   box-shadow: none !important;
   height: 28px !important;
   line-height: 1 !important;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-trigger:hover {
-  background-color: var(--text-main) !important;
-  color: var(--bg-primary) !important;
-  border-color: var(--text-main) !important;
+  background-color: transparent !important;
+  color: var(--text-main) !important;
+  border-bottom-color: var(--text-main) !important;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-trigger:hover .rel-type-select-chevron {
-  color: var(--bg-primary) !important;
+  color: var(--text-main) !important;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-chevron {
@@ -268,24 +273,42 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .rel-type-select-panel {
   border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background: var(--bg-card) !important;
+  border: 3px double var(--border-color) !important;
+  background: var(--bg-elevated) !important;
   box-shadow: none !important;
-  padding: 2px 0 !important;
+  padding: 0 !important;
 }
 
+/* Dashed dividers between entries (last one dropped) so the open list reads
+   like a little printed table of contents rather than a plain floating box. */
 [data-theme="newspaper-dark"] .rel-type-select-option {
   border-radius: 0px !important;
   color: var(--text-main) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
   border: none !important;
+  border-bottom: 1px dashed var(--border-color) !important;
   background: transparent !important;
-  padding: 6px 12px !important;
+  padding: 7px 12px !important;
   text-align: left !important;
   cursor: pointer !important;
   outline: none !important;
   display: block !important;
   width: 100% !important;
+  transition: background-color 0.15s, color 0.15s !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option:last-child {
+  border-bottom: none !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option.active {
+  color: var(--accent) !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="newspaper-dark"] .rel-type-select-option:hover {
