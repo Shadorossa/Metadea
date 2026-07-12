@@ -765,45 +765,51 @@ const version = pkg.version;
 
           <div
             class="settings-section"
-            style="max-width: 600px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+            style="max-width: 900px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
           >
             <p class="settings-hint" style="margin-bottom: 0.5rem;">
               Mantente al día con las últimas versiones y mejoras de la
               aplicación.
             </p>
 
-            <div class="settings-version-card">
-              <div>
-                <span class="settings-auth-name">{t.settings.app_version_label}</span>
-                <span
-                  class="app-curr-ver settings-auth-status settings-auth-status--mono"
-                  data-version={version}
-                ></span>
+            <div style="display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="flex: 1; min-width: 0;">
+                <div class="settings-version-card">
+                  <div>
+                    <span class="settings-auth-name">{t.settings.app_version_label}</span>
+                    <span
+                      class="app-curr-ver settings-auth-status settings-auth-status--mono"
+                      data-version={version}
+                    ></span>
+                  </div>
+                  <button
+                    class="btn btn--sm btn--secondary"
+                    id="app-check-update-btn">{t.settings.app_check_update}</button
+                  >
+                </div>
+                <div
+                  id="updater-status-text"
+                  style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+                >
+                </div>
               </div>
-              <button
-                class="btn btn--sm btn--secondary"
-                id="app-check-update-btn">{t.settings.app_check_update}</button
-              >
-            </div>
-            <div
-              id="updater-status-text"
-              style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
-            >
-            </div>
 
-            <div class="settings-version-card">
-              <div>
-                <span class="settings-auth-name">{t.settings.community_catalog_sync_label}</span>
+              <div style="flex: 1; min-width: 0;">
+                <div class="settings-version-card">
+                  <div>
+                    <span class="settings-auth-name">{t.settings.community_catalog_sync_label}</span>
+                  </div>
+                  <button
+                    class="btn btn--sm btn--secondary"
+                    id="community-catalog-sync-btn">{t.settings.community_catalog_sync_btn}</button
+                  >
+                </div>
+                <div
+                  id="community-catalog-sync-status"
+                  style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+                >
+                </div>
               </div>
-              <button
-                class="btn btn--sm btn--secondary"
-                id="community-catalog-sync-btn">{t.settings.community_catalog_sync_btn}</button
-              >
-            </div>
-            <div
-              id="community-catalog-sync-status"
-              style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
-            >
             </div>
           </div>
         </div>

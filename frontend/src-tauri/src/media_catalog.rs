@@ -5,11 +5,15 @@ use std::collections::HashSet;
 use tauri::Manager;
 use crate::db::ToStringErr;
 
-// Raw GitHub URL for the repo's shared community catalog — rebuilt by
-// .github/workflows/update-database.yml (scripts/build-database.js) from
-// every database/*.json a merged collaborative-catalog PR has added, so this
-// always reflects main without the app needing GitHub API auth to read it.
-const COMMUNITY_DB_URL: &str = "https://raw.githubusercontent.com/Shadorossa/Metadea/main/database.db";
+// Fixed GitHub Release asset for the repo's shared community catalog —
+// rebuilt by .github/workflows/update-database.yml (scripts/build-database.js)
+// from every database/*.json a merged collaborative-catalog PR has added, and
+// republished to the 'catalog-latest' release (asset overwritten in place)
+// on every run. A Release asset instead of a branch-tracked raw file on
+// purpose — committing the rebuilt .db straight to main on every merge would
+// grow the repo's git history by a near-full binary copy forever, with no
+// ceiling, at any real proposal volume.
+const COMMUNITY_DB_URL: &str = "https://github.com/Shadorossa/Metadea/releases/download/catalog-latest/database.db";
 
 // Batch existence check used by save_cached_saga / save_media_relations /
 // save_author_profile_and_relations — each used to run one

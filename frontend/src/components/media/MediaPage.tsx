@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
-import { saveCatalogEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
+import { saveCatalogEntry, saveLibraryEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -463,17 +463,36 @@ export default function MediaPage({ i18n }: Props) {
     rollback();
   }, [rollback]);
 
-  const handleStatusChange = useCallback((next: string) => {
-    updateLocal({ status: next || null });
-    setShowEditor(true);
-  }, [updateLocal]);
+  // Quick hero-widget edits persist immediately instead of opening the full
+  // editor — previously both just staged an optimistic local draft and
+  // always opened MediaEditorModal, so a click that didn't end in an
+  // explicit Save (closing the modal, or not noticing it opened at all)
+  // silently rolled back, making the star/status click look like it did
+  // nothing. saveLibraryEntry writes the same merged draft updateLocal
+  // already builds, so no other field on the entry is touched.
+  const handleStatusChange = useCallback(async (next: string) => {
+    const draft = updateLocal({ status: next || null });
+    try {
+      const saved = await saveLibraryEntry(draft);
+      applySaved(saved);
+    } catch (e) {
+      console.error('Failed to save status:', e);
+      rollback();
+    }
+  }, [updateLocal, applySaved, rollback]);
 
-  const handleRate = useCallback((stars: number) => {
+  const handleRate = useCallback(async (stars: number) => {
     const dbRating = stars * 2;
     const nextRating = libRating === dbRating ? 0 : dbRating;
-    updateLocal({ rating: nextRating || null });
-    setShowEditor(true);
-  }, [libRating, updateLocal]);
+    const draft = updateLocal({ rating: nextRating || null });
+    try {
+      const saved = await saveLibraryEntry(draft);
+      applySaved(saved);
+    } catch (e) {
+      console.error('Failed to save rating:', e);
+      rollback();
+    }
+  }, [libRating, updateLocal, applySaved, rollback]);
 
   // ── States: loading / error ──────────────────────────────────────────────
 

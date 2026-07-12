@@ -1085,6 +1085,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           onSelect={addBundledRelation}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
+          closeOnSelect={false}
         />
       )}
 

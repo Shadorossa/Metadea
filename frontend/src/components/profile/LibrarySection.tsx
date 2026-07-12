@@ -233,6 +233,22 @@ function LibraryCard({ item, grouped, catalogMap, p }: {
   );
 }
 
+// media_catalog.format values this filter cares about (see GAME_FORMAT_LABELS
+// in constants/media.ts) — a fixed subset, not every possible format, so an
+// item whose format is something else entirely (or unset, for non-game
+// types) is left alone by this filter rather than hidden by it. 'GAME' (the
+// base entry, no edition) is surfaced to the user as "Main".
+const EDITION_FILTER_OPTIONS = [
+  { key: 'GAME', label: 'Main' },
+  { key: 'REMAKE', label: 'Remake' },
+  { key: 'EXPANDED_GAME', label: 'Expanded Game' },
+  { key: 'REMASTER', label: 'Remaster' },
+  { key: 'UPDATE', label: 'Update' },
+  { key: 'SEASON', label: 'Season' },
+] as const;
+const EDITION_FILTER_KEYS = new Set(EDITION_FILTER_OPTIONS.map(o => o.key));
+const DEFAULT_EDITION_FILTERS = ['GAME', 'REMAKE', 'EXPANDED_GAME', 'REMASTER'];
+
 export function LibrarySection() {
   const p = getT().profile;
   const STATUS_LIST = useMemo(() => [
@@ -250,6 +266,7 @@ export function LibrarySection() {
 
   const [nameFilter, setNameFilter] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedEditionFormats, setSelectedEditionFormats] = useState<string[]>(DEFAULT_EDITION_FILTERS);
   const [statusIndex, setStatusIndex] = useState(0);
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [groupByEdition, setGroupByEdition] = useState(false);
@@ -284,6 +301,8 @@ export function LibrarySection() {
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
       if (nameVal && !title.includes(nameVal)) return false;
       if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) return false;
+      const editionFormat = meta?.format || 'GAME';
+      if (EDITION_FILTER_KEYS.has(editionFormat) && !selectedEditionFormats.includes(editionFormat)) return false;
       if (statusKey) {
         if (statusKey === 'in_progress') { if (!isInProgressStatus(item.status)) return false; }
         else if (item.status !== statusKey) return false;
@@ -317,7 +336,7 @@ export function LibrarySection() {
       // doc — only the edition-specific signals are gated behind the
       // "Agrupar por ediciones" toggle.
       .map(sec => ({ title: sec.title, cards: groupEditions(sec.items, catalogMap, sagaRelations, groupByEdition) }));
-  }, [items, catalogMap, sagaRelations, nameFilter, selectedTypes, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
 
   if (items === null) return null;
 
@@ -360,6 +379,24 @@ export function LibrarySection() {
                 onClick={() => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type])}
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
+            ))}
+          </div>
+        </div>
+
+        <div className="library-filter-group">
+          <label className="library-filter-label">Tipo de Edición</label>
+          <div className="library-edition-filters">
+            {EDITION_FILTER_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                type="button"
+                className={`library-edition-btn ${selectedEditionFormats.includes(opt.key) ? 'active' : ''}`}
+                onClick={() => setSelectedEditionFormats(prev =>
+                  prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key]
+                )}
+              >
+                {opt.label}
+              </button>
             ))}
           </div>
         </div>

@@ -97,11 +97,12 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
   }, [query, typeFilter]);
 
   const handleSelect = async (result: ApiSearchResult) => {
-    if (closeOnSelect) {
-      onClose();
-    } else {
-      setQuery(''); // clear the search box so the next pick starts fresh, popup stays open
-    }
+    if (closeOnSelect) onClose();
+    // Query and results are left as-is when the popup stays open — the
+    // just-picked result disappears from the list on its own next render
+    // (the parent adds its id to excludeIds), so the same search stays
+    // usable to add several results in a row instead of forcing a retype
+    // for every single pick.
     await ensureSkeletonCatalogEntry(result);
     onSelect(result);
   };
