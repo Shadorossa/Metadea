@@ -8,6 +8,7 @@ type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 export interface OverviewAggregate {
   totalWorks: number;
+  totalSeasons: number;
   totalHours: number;
   totalDays: string;
   avgPerWork: string;
@@ -37,9 +38,16 @@ function getEditionChildIds(items: Items): Set<string> {
   return childIds;
 }
 
-export function getNonEditionItems(items: Items): Items {
+export function getNonEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
   const childIds = getEditionChildIds(items);
-  return items.filter(item => !childIds.has(item.external_id));
+  return items.filter(item => {
+    if (childIds.has(item.external_id)) return false;
+    if (catalogMap) {
+      const entry = catalogMap.get(item.external_id);
+      if (entry?.format === 'SEASON') return false;
+    }
+    return true;
+  });
 }
 
 // Complement of getNonEditionItems: only the version-log child entries
@@ -68,8 +76,14 @@ export function getItemMinutes(item: Items[number], catalogMap: Map<string, Medi
 }
 
 export function computeOverviewAggregate(items: Items, catalogMap: Map<string, MediaCatalogEntry>): OverviewAggregate {
-  const nonEditionItems = getNonEditionItems(items);
+  const nonEditionItems = getNonEditionItems(items, catalogMap);
   const totalWorks = nonEditionItems.length;
+
+  const totalSeasons = items.filter(item => {
+    const entry = catalogMap.get(item.external_id);
+    return entry?.format === 'SEASON';
+  }).length;
+
   const totalMinutes = items.reduce((acc, item) => acc + getItemMinutes(item, catalogMap), 0);
   const totalHours = totalMinutes / 60;
 
@@ -86,7 +100,7 @@ export function computeOverviewAggregate(items: Items, catalogMap: Map<string, M
   const totalDays = (totalHours / 24).toFixed(1);
   const avgPerWork = totalWorks > 0 ? (totalHours / totalWorks).toFixed(1) : '0.0';
 
-  return { totalWorks, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning };
+  return { totalWorks, totalSeasons, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning };
 }
 
 // ── Time spent by media type ────────────────────────────────────────────────
@@ -199,8 +213,8 @@ export interface YearEntry {
   count: number;
 }
 
-export function computeCompletedByYear(items: Items, currentYear: number): YearEntry[] {
-  const nonEditionItems = getNonEditionItems(items);
+export function computeCompletedByYear(items: Items, currentYear: number, catalogMap?: Map<string, MediaCatalogEntry>): YearEntry[] {
+  const nonEditionItems = getNonEditionItems(items, catalogMap);
   const byYear: Record<number, number> = {};
   for (const item of nonEditionItems) {
     if (item.status !== 'completed') continue;
@@ -235,7 +249,7 @@ export function computeUpcomingPlanningReleases(
   catalogMap: Map<string, MediaCatalogEntry>,
   minDate: Date, // lower bound; pass the 1st of the month to include earlier-this-month releases, not just today onward
 ): UpcomingRelease[] {
-  const releases = getNonEditionItems(items)
+  const releases = getNonEditionItems(items, catalogMap)
     .filter(item => item.status === 'planning')
     .map(item => {
       const entry = catalogMap.get(item.external_id);

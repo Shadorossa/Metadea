@@ -61,9 +61,7 @@ export function StatsSection() {
   }
 
   // Fetched early so hours math below can look up per-episode/movie runtime
-  // (media_catalog.time_length) for anime/series instead of trusting the
-  // flat progress*60 stored on minutes_spent.
-  const { totalWorks, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning } =
+  const { totalWorks, totalSeasons, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning } =
     computeOverviewAggregate(items, catalogMap);
 
   const byType = computeTypeBreakdown(items, catalogMap);
@@ -92,7 +90,7 @@ export function StatsSection() {
   const scoreDist = computeScoreDistribution(ratedItems, system);
   const maxScoreCount = Math.max(...scoreDist.map(s => s.count), 1);
 
-  const yearEntries = computeCompletedByYear(items, currentYear);
+  const yearEntries = computeCompletedByYear(items, currentYear, catalogMap);
   const maxYearCount = Math.max(...yearEntries.map(y => y.count), 1);
 
   const maxHours = byType.length > 0 ? Math.max(...byType.map(t => t.hours)) : 1;
@@ -101,11 +99,16 @@ export function StatsSection() {
     <div className="stats-layout">
 
       {/* 1. KPI Cards */}
-      <div className="stats-grid-4">
+      <div className="stats-grid-5">
         <div className="stats-card">
           <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STACK }} />
           <span className="stats-card-label">{p.stat_total}</span>
           <span className="stats-card-value">{totalWorks.toLocaleString()}</span>
+        </div>
+        <div className="stats-card">
+          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` }} />
+          <span className="stats-card-label">Temporadas</span>
+          <span className="stats-card-value">{totalSeasons.toLocaleString()}</span>
         </div>
         <div className="stats-card">
           <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CLOCK }} />
