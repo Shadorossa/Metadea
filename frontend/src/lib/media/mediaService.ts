@@ -5,171 +5,32 @@ import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
-import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, IGDB_GAME_TYPE_REMAKE, IGDB_GAME_TYPE_REMASTER, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
+import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStat } from './types';
-import { getMediaRelations, getMediaAuthors, saveMediaRelations, saveMediaAuthors, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
+import type { MediaPageData, MediaAuthor } from './types';
+import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
-import { formatDateParts, parseExternalId } from './mapper-utils';
-import { getT } from '../../i18n/client';
+import { parseExternalId } from './mapper-utils';
+import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 
-import { ANILIST_TYPES, IGDB_TYPES, IN_PROGRESS_STATUSES } from '../constants/media';
-import { normalizeLegacyRelationType } from './sagaTypes';
+import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData } from './media-cache';
+import { mapCatalogEntryToPartialData, inferProgressStatus } from './catalog-mapper';
+import {
+  sortRelationsForDisplay, sortMediaRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
+  loadDbRelationsAndAuthors, mergeAndPersistRelations,
+} from './media-relations';
 
-// Order of relations: Fuente > Prequel > Sequel > Side story (Historia paralela) > Alternative > Other
-const RELATION_SORT_PRIORITY: Record<string, number> = {
-  // Fuente
-  SOURCE: 1,
-  PARENT: 1,
-  ADAPTATION: 1,
-  REL_ADAPTATION: 1,
-
-  // Prequel
-  PREQUEL: 2,
-
-  // Sequel
-  SEQUEL: 3,
-
-  // Side story
-  SIDE_STORY: 4,
-  SPIN_OFF: 4,
-
-  // Alternative
-  ALTERNATIVE: 5,
-  REL_ALTERNATIVE: 5,
-
-  // Other
-  OTHER: 6,
-  SUMMARY: 6,
-  REMAKE: 6,
-  REMASTER: 6,
-  EXPANDED_GAME: 6,
-  REL_UPDATE: 6,
-  DLC: 6,
-  EXPANSION: 6,
-  STANDALONE: 6,
-  FORK: 6,
+// Re-exported so existing callers (MediaPage.tsx, ProfileLibraryEditor.tsx,
+// etc.) don't need to change their import path — mediaService.ts stays the
+// single public entry point for "everything about loading/caching a media
+// page", even though the cache/relations/catalog-mapping concerns now live
+// in their own files (media-cache.ts, media-relations.ts, catalog-mapper.ts).
+export {
+  getCachedMediaData, patchCachedRelations, invalidateCachedMediaData,
+  mapCatalogEntryToPartialData, inferProgressStatus,
+  sortMediaRelations, mergeAndPersistRelations,
 };
-
-function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {
-  const canonical = normalizeLegacyRelationType(rel.relation_type);
-  if (canonical === rel.relation_type) return rel;
-  return { ...rel, relation_type: canonical, type_label: getT().media.relations[canonical as keyof ReturnType<typeof getT>['media']['relations']] ?? rel.type_label };
-}
-
-function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: MediaPageData['relations']; hasSaga: boolean } {
-  const sorted = [...rels].sort((a, b) => {
-    const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
-    const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
-    if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.title.localeCompare(b.title);
-  });
-  return {
-    relations: sorted.map(r => ({
-      typeLabel: r.type_label,
-      relationType: r.relation_type,
-      title: r.title,
-      cover: r.cover || undefined,
-      url: `/media?id=${r.related_media_external_id}`,
-      // Without this, mergeRelationGraph's "already have this id" dedup Set
-      // (built by reading relatedExternalId off whatever's already in
-      // data.relations) never sees DB-sourced rows — since they only had
-      // `url` set — so the transitive relation-graph walk could rediscover
-      // and re-add an already-saved relation under a second, different type.
-      relatedExternalId: r.related_media_external_id,
-    })),
-    hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
-  };
-}
-
-export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
-  return [...relations].sort((a, b) => {
-    const rTypeA = a.relationType?.toUpperCase() ?? '';
-    const rTypeB = b.relationType?.toUpperCase() ?? '';
-    const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
-    const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
-    if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.title.localeCompare(b.title);
-  });
-}
-
-function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {
-  return {
-    external_id: a.external_id,
-    name: a.name,
-    image: a.image || undefined,
-    role: a.role || undefined,
-    url: `/author?id=${a.external_id}`,
-  };
-}
-
-function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter {
-  return {
-    id: c.external_id,
-    name: c.name,
-    image: c.image_url || undefined,
-    role: c.relation_type || c.character_name || undefined,
-  };
-}
-
-// Shared by fetchMediaData and fetchMediaDataWithFallback — both need "load
-// whatever's already curated in the DB for this media" before deciding
-// whether to trust it as-is or enrich it with a live API fetch.
-async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relations: DbMediaRelation[]; authors: DbMediaAuthor[] }> {
-  const [relations, authors] = await Promise.all([
-    getMediaRelations(rawId).catch(() => []),
-    getMediaAuthors(rawId).catch(() => []),
-  ]);
-  return { relations, authors };
-}
-
-const CACHE_PREFIX   = 'media_cache_v3:';
-const CACHE_TTL_MS   = 5 * 60 * 1000; // 5 min
-
-// ── Cache (sessionStorage) ────────────────────────────────────────────────
-
-interface CacheEntry { data: MediaPageData; ts: number; }
-
-export function getCachedMediaData(rawId: string): MediaPageData | null {
-  try {
-    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${rawId}`);
-    if (!raw) return null;
-    const entry: CacheEntry = JSON.parse(raw);
-    if (Date.now() - entry.ts > CACHE_TTL_MS) {
-      sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);
-      return null;
-    }
-    return entry.data;
-  } catch { return null; }
-}
-
-function setCachedMediaData(rawId: string, data: MediaPageData): void {
-  try {
-    sessionStorage.setItem(`${CACHE_PREFIX}${rawId}`, JSON.stringify({ data, ts: Date.now() }));
-  } catch { /* sessionStorage lleno */ }
-}
-
-// Patches just the relations field of an already-cached entry (used once the
-// background transitive-relations fetch resolves), keeping its original
-// timestamp so the TTL isn't reset. Exported so callers can gate the write
-// behind their own "is this fetch still relevant" check — see the comment
-// on fetchExtraRelations below for why this can't safely happen internally.
-export function patchCachedRelations(rawId: string, relations: MediaPageData['relations']): void {
-  try {
-    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${rawId}`);
-    if (!raw) return;
-    const entry: CacheEntry = JSON.parse(raw);
-    entry.data = { ...entry.data, relations };
-    sessionStorage.setItem(`${CACHE_PREFIX}${rawId}`, JSON.stringify(entry));
-  } catch { /* sessionStorage lleno */ }
-}
-
-export function invalidateCachedMediaData(rawId: string): void {
-  try {
-    sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);
-  } catch {}
-}
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
@@ -283,145 +144,12 @@ export async function fetchBookEditions(
   return [...withoutOld, ...editionRelations];
 }
 
-// ── Catalog → partial MediaPageData ──────────────────────────────────────────
-// Builds immediately-usable page data from the local catalog (SQLite).
-// Missing fields (stats, characters, relations, metaLines) are empty — filled
-// once the full API fetch completes.
-
-export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
-  const base = type.split('_')[0];
-  if (base === 'game' || base === 'vnovel') return 'playing';
-  if (base === 'anime' || base === 'series' || base === 'movie') return 'watching';
-  return 'reading';
-}
-
-export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
-  const authorList = c.authors_csv ? c.authors_csv.split(',').filter(Boolean) : [];
-  const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
-  const stats: MediaStat[] = [];
-  if (authorList.length > 0) {
-    stats.push({
-      label: authorList.length > 1 ? 'Autores' : 'Autor',
-      value: authorList.join(', '),
-    });
-  }
-
-  const companies = c.companies_cache_csv ? c.companies_cache_csv.split(',').filter(Boolean) : [];
-  const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
-  const isGameType = c.type === 'game' || c.type === 'vnovel';
-
-  // "platform|url" pairs — see MediaPage.tsx's catalog-sync payload.
-  const storeLinks = c.shop_links_csv
-    ? c.shop_links_csv.split(',').filter(Boolean).map(pair => {
-        const [platform, url] = pair.split('|');
-        return { platform: platform || '', url: url || '' };
-      }).filter(l => l.url)
-    : undefined;
-
-  // Mirrors each API mapper's own metaLines convention (igdb-mapper: platforms
-  // then publisher; anilist-mapper: studios then format/episode count) so the
-  // catalog-only render (no live API call — see fetchMediaDataWithFallback)
-  // doesn't lose this info once catalog data is the final answer instead of
-  // just a placeholder while the API call is in flight.
-  const metaLines: string[] = [];
-  if (c.type === 'book' || c.type === 'comic') {
-    if (authorList.length > 0) metaLines.push(authorList.join(', '));
-  } else if (isGameType) {
-    if (platforms.length > 0) metaLines.push(platforms.join(' · '));
-    if (companies.length > 0) metaLines.push(companies.join(', '));
-  } else {
-    if (companies.length > 0) metaLines.push(companies.join(', '));
-    const quickBits: string[] = [];
-    if (c.format) quickBits.push(c.format);
-    if (c.total_count) quickBits.push(`${c.total_count} ${c.type === 'anime' ? 'ep' : 'cap'}`);
-    if (quickBits.length > 0) metaLines.push(quickBits.join(' · '));
-  }
-
-  const dateBadge = formatDateParts({ year: c.release_year, month: c.release_month, day: c.release_day }) || undefined;
-
-  return {
-    externalId:    c.external_id,
-    type:          c.type,
-    titleMain:     c.title_main   ?? c.external_id,
-    titleNative:   c.title_native ?? undefined,
-    titleEnglish:  c.title_romaji ?? undefined,
-    cover:         c.cover_url    ?? undefined,
-    bannerImage:   c.banners_csv?.split(',')[0] ?? undefined,
-    bannerColor:   'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
-    description:   c.synopsis     ?? undefined,
-    genreDots:     c.genres_csv     ? c.genres_csv.split(',').join(' · ')     : undefined,
-    genreTagDots:  c.genres_tag_csv ? c.genres_tag_csv.split(',').join(' · ') : undefined,
-    dateBadge,
-    totalCount:    c.total_count   ?? undefined,
-    totalCount_2:  c.total_count_2 ?? undefined,
-    scoreGlobal:   c.score_global  ?? undefined,
-    releaseYear:   c.release_year  ?? undefined,
-    releaseMonth:  c.release_month ?? undefined,
-    releaseDay:    c.release_day   ?? undefined,
-    timeLength:    c.time_length   ?? undefined,
-    status:        c.status        ?? undefined,
-    format:        c.format        ?? undefined,
-    source:        c.source        ?? undefined,
-    platforms:     platforms.length > 0 ? platforms : undefined,
-    companies:     companies.length > 0 ? companies : undefined,
-    storeLinks,
-    metaLines,
-    stats,
-    characters:    [],
-    relations:     [],
-    progressStatus: inferProgressStatus(c.type),
-    progressLabel,
-    authors:       authors.length > 0 ? authors : undefined,
-  };
-}
-
-// ── API pública ───────────────────────────────────────────────────────────
-
-// Merges freshly-fetched relations (from any source — the direct IGDB
-// fetch, or the transitive relation-graph walk) into whatever's already
-// saved, instead of only ever syncing once per title. IGDB keeps adding
-// DLCs/standalone expansions/etc. to a game's entry over time, and a plain
-// "skip if dbRels isn't empty" gate meant any title that already had one
-// curated/synced relation (e.g. a manually-added PREQUEL) would never pick
-// up newly-listed ones again — they'd render fine on that one page load
-// (from live memory) but silently never reach media_relations, so they
-// never showed up as an editable relation in the collaborative catalog
-// editor. Existing DB rows always win on id conflicts since they may have
-// been hand-edited (saga grouping, relation-type fixes) via PrEditorModal
-// and must not be clobbered by a fresh IGDB fetch.
-//
-// Also normalizes any legacy-labeled DB rows even when there's nothing new
-// to merge — that must not be gated behind "there's something to add", or a
-// title whose relations were all saved under the old raw-label scheme (and
-// whose live fetch happens to add nothing new) would never get corrected.
-export async function mergeAndPersistRelations(rawId: string, fetchedRelations: MediaPageData['relations']): Promise<void> {
-  const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
-
-  const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
-  const changedLegacyTypes = normalizedDbRels.some((r, i) => r.relation_type !== dbRels[i].relation_type);
-
-  const dbIds = new Set(dbRels.map(r => r.related_media_external_id));
-  const newFromApi = (fetchedRelations ?? [])
-    .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
-    .map(r => ({
-      related_media_external_id: r.relatedExternalId!,
-      relation_type: r.relationType ?? 'RELATED',
-      type_label: r.typeLabel,
-      title: r.title,
-      cover: r.cover || null,
-    }));
-
-  if (newFromApi.length > 0 || changedLegacyTypes) {
-    await saveMediaRelations(rawId, [...normalizedDbRels, ...newFromApi]).catch(console.error);
-  }
-}
-
 // Comprueba caché primero; si no está, fetcha y guarda
 // Helper to persist live API data back to SQLite media_catalog cache
 async function persistToCatalog(data: MediaPageData): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
-    
+
     const entry: MediaCatalogEntry = {
       id: '', // Will be filled/matched by Rust if already exists
       external_id: data.externalId,
@@ -452,7 +180,7 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       created_at: '',
       updated_at: '',
     };
-    
+
     await saveCatalogEntry(entry).catch(console.error);
   } catch (e) {
     console.error("Failed to persist media to local SQLite cache", e);
@@ -648,7 +376,7 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   // Run the relation graph and optional base game (PARENT) lookup in parallel to minimize latency.
   const isRemake = currentData.format === 'REMAKE';
   const isRemaster = currentData.format === 'REMASTER';
-  
+
   const graphPromise = igdbGetRelationGraph(numericId).catch(() => []);
   const baseGamesPromise = (isRemake || isRemaster)
     ? igdbGetBaseGames(numericId, isRemake ? 'remakes' : 'remasters').catch(() => null)
