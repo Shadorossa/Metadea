@@ -221,3 +221,13 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .fav-tab-btn {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
+
+/* Typography for the Media Editor Modal and Collaborative PR Editor Modals */
+[data-theme="newspaper-dark"] .me-modal,
+[data-theme="newspaper-dark"] .me-modal *,
+[data-theme="newspaper-dark"] .pr-editor-modal,
+[data-theme="newspaper-dark"] .pr-editor-modal *,
+[data-theme="newspaper-dark"] .char-pr-editor-modal,
+[data-theme="newspaper-dark"] .char-pr-editor-modal * {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
