@@ -828,13 +828,13 @@ pub async fn sync_community_catalog(
             // the character rows and their media links the same "fill gaps
             // only" way.
             conn.execute(
-                "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
-                 SELECT id, external_id, name, image_url, reaction, created_at, updated_at FROM community.characters",
+                "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
+                 SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
                 [],
             ).str_err()?;
             conn.execute(
-                "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at)
-                 SELECT character_external_id, media_external_id, relation_type, added_at FROM community.character_appearances",
+                "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
+                 SELECT character_external_id, media_external_id, relation_type, character_name, added_at FROM community.character_appearances",
                 [],
             ).str_err()?;
 

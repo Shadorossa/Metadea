@@ -103,6 +103,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [originalSagaRelationTypes, setOriginalSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [originalSagaGroups, setOriginalSagaGroups] = useState<Record<string, string>>({});
   const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
+  const [draggedRelationIndex, setDraggedRelationIndex] = useState<number | null>(null);
   const [sagaName, setSagaName] = useState('');
   const [originalSagaName, setOriginalSagaName] = useState('');
 
@@ -315,11 +316,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const updateSagaGroup = (id: string, group: string) =>
     setSagaGroups(prev => ({ ...prev, [id]: group }));
 
-  // Native HTML5 drag-and-drop is unreliable inside Tauri's webview, so
-  // reordering is done with plain pointer events instead: press on a card,
-  // then whichever card the pointer is currently over (found via
-  // elementFromPoint + a data-saga-index marker) swaps into the dragged
-  // card's slot live, left-to-right following the saga's chronological order.
+  const reorderRelations = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= editableRelations.length || toIndex >= editableRelations.length) return;
+    const next = [...editableRelations];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setEditableRelations(next);
+  };
+
+  // Drag and drop for saga cards
   useEffect(() => {
     if (draggedSagaIndex === null) return;
 
@@ -341,6 +346,29 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       document.removeEventListener('pointerup', handleUp);
     };
   }, [draggedSagaIndex, sagaOrder]);
+
+  // Drag and drop for relations cards
+  useEffect(() => {
+    if (draggedRelationIndex === null) return;
+
+    const handleMove = (e: PointerEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const card = el?.closest<HTMLElement>('[data-relation-index]');
+      if (!card) return;
+      const overIndex = parseInt(card.dataset.relationIndex || '', 10);
+      if (Number.isNaN(overIndex) || overIndex === draggedRelationIndex) return;
+      reorderRelations(draggedRelationIndex, overIndex);
+      setDraggedRelationIndex(overIndex);
+    };
+    const handleUp = () => setDraggedRelationIndex(null);
+
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [draggedRelationIndex, editableRelations]);
 
   // ── Bundled-in handlers ────────────────────────────────────────────────────
 
@@ -902,7 +930,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                         key={id}
                         data-saga-index={index}
                         className={`pr-editor-media-card${id === externalId ? ' pr-editor-media-card--current' : ''}${draggedSagaIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-                        onPointerDown={() => setDraggedSagaIndex(index)}
+                        onPointerDown={e => {
+                          e.preventDefault();
+                          setDraggedSagaIndex(index);
+                        }}
                       >
                         <div className="pr-editor-media-card-cover">
                           {meta.cover
@@ -941,11 +972,19 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
                 <label className="pr-editor-subsection-label">Relations</label>
                 <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
-                  {editableRelations.map(r => (
-                    <div key={r.related_media_external_id} className="pr-editor-media-card">
+                  {editableRelations.map((r, index) => (
+                    <div
+                      key={r.related_media_external_id}
+                      data-relation-index={index}
+                      className={`pr-editor-media-card${draggedRelationIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
+                      onPointerDown={e => {
+                        e.preventDefault();
+                        setDraggedRelationIndex(index);
+                      }}
+                    >
                       <div className="pr-editor-media-card-cover">
                         {r.cover
-                          ? <img src={r.cover} alt="" />
+                          ? <img src={r.cover} alt="" draggable={false} />
                           : <div className="pr-editor-media-card-placeholder" />}
                         <button
                           type="button"

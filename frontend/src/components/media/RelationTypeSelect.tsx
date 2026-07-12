@@ -42,10 +42,14 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
     // Any scroll *outside* the panel (modal body, page, etc.) invalidates
     // the measured rect — simplest correct behavior is to just close rather
     // than track it live. Scrolling *inside* the panel's own option list
-    // must NOT close it, or the list becomes impossible to scroll at all
-    // (every scroll attempt immediately closes it, right back at the top).
+    // must NOT close it, or the list becomes impossible to scroll at all.
     const handleScroll = (e: Event) => {
-      if (panelRef.current?.contains(e.target as Node)) return;
+      if (!panelRef.current) return;
+      const target = e.target as HTMLElement;
+      // If the scroll happened inside the dropdown panel, do NOT close it!
+      if (panelRef.current === target || panelRef.current.contains(target)) {
+        return;
+      }
       setOpen(false);
     };
     const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };

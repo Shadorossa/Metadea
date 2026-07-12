@@ -69,6 +69,9 @@ CREATE TABLE characters (
     id          TEXT PRIMARY KEY,
     external_id TEXT UNIQUE NOT NULL,
     name        TEXT NOT NULL DEFAULT '',
+    name_native TEXT,
+    aliases_csv TEXT DEFAULT '',
+    biography   TEXT,
     image_url   TEXT,
     reaction    TEXT,
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -79,16 +82,24 @@ CREATE TABLE character_appearances (
     character_external_id TEXT NOT NULL,
     media_external_id     TEXT NOT NULL,
     relation_type         TEXT,
+    character_name        TEXT,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
 );
 
+-- relation_type is deliberately NOT part of the primary key — matches
+-- db.rs's live media_relations table (migration 5). A 3-column PK here let
+-- the same (media, related_media) pair accumulate more than one row (e.g.
+-- once under a raw display label and again under a canonical key), and
+-- since sync_community_catalog's INSERT OR IGNORE targets the user's
+-- 2-column-PK table, a stray duplicate row here could silently win over the
+-- canonical one depending on insertion order.
 CREATE TABLE media_relations (
     media_external_id         TEXT NOT NULL,
     related_media_external_id TEXT NOT NULL,
     relation_type              TEXT NOT NULL,
     type_label                 TEXT NOT NULL,
-    PRIMARY KEY (media_external_id, related_media_external_id, relation_type)
+    PRIMARY KEY (media_external_id, related_media_external_id)
 );
 
 CREATE TABLE media_author (
@@ -150,11 +161,16 @@ function buildDatabase(bundles) {
   const catalogPlaceholders = CATALOG_COLUMNS.map(() => '?').join(', ');
   const catalogStmt = db.prepare(`INSERT OR REPLACE INTO media_catalog (${CATALOG_COLUMNS.join(', ')}) VALUES (${catalogPlaceholders})`);
 
+  // name_native/aliases_csv/biography have no source in the bundle today —
+  // ProposalBundle.characters is a Vec<SkeletonCharacter> (external_id, name,
+  // image_url, relation_type, character_name only, see characters.rs), so
+  // these three columns exist for schema parity with db.rs but are always
+  // written NULL/'' until the collaborative editor starts submitting them.
   const characterStmt = db.prepare(
-    'INSERT OR REPLACE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    'INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const appearanceStmt = db.prepare(
-    'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, added_at) VALUES (?, ?, ?, ?)'
+    'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at) VALUES (?, ?, ?, ?, ?)'
   );
   const relationStmt = db.prepare(
     'INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
@@ -192,8 +208,8 @@ function buildDatabase(bundles) {
 
     for (const char of bundle.characters || []) {
       if (!char.external_id) continue;
-      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', char.image_url ?? null, null, now, now);
-      appearanceStmt.run(char.external_id, externalId, char.relation_type ?? null, now);
+      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', null, '', null, char.image_url ?? null, null, now, now);
+      appearanceStmt.run(char.external_id, externalId, char.relation_type ?? null, char.character_name ?? null, now);
     }
 
     for (const author of bundle.media_authors || []) {

@@ -790,6 +790,21 @@ const version = pkg.version;
               style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
             >
             </div>
+
+            <div class="settings-version-card">
+              <div>
+                <span class="settings-auth-name">{t.settings.community_catalog_sync_label}</span>
+              </div>
+              <button
+                class="btn btn--sm btn--secondary"
+                id="community-catalog-sync-btn">{t.settings.community_catalog_sync_btn}</button
+              >
+            </div>
+            <div
+              id="community-catalog-sync-status"
+              style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+            >
+            </div>
           </div>
         </div>
       </div>
@@ -817,6 +832,7 @@ const version = pkg.version;
   import { initActivitySettings } from "../lib/settings/activity";
   import { initBio } from "../lib/settings/bio";
   import { initUpdater } from "../lib/settings/updater";
+  import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
   import { initSettingsTabs } from "../lib/settings/tabs";
   import { getT } from "../i18n/client";
 
@@ -933,6 +949,7 @@ const version = pkg.version;
     const defaultVersion =
       (document.querySelector(".app-curr-ver") as HTMLElement | null)?.dataset.version || "0.1.9";
     initUpdater(defaultVersion);
+    initCommunityCatalogSync();
     initSettingsTabs();
 
     // Re-setup help modals on SPA navigation

@@ -30,7 +30,7 @@ export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label:
 // Reutilizarlos haría que una relación plain quedara dentro del saga walk.
 export const EDITABLE_RELATION_OPTIONS: string[] = [
   'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'REL_UPDATE',
-  'DLC', 'EXPANSION', 'STANDALONE', 'FORK',
+  'DLC', 'EXPANSION', 'STANDALONE', 'FORK', 'SEASON',
 ];
 
 export function isSagaRelationType(value: string): value is SagaRelationType {

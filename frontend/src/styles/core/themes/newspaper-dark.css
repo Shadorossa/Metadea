@@ -239,3 +239,62 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .pr-editor-search-popup * {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
+
+/* Custom styled dropdowns for newspaper-dark */
+[data-theme="newspaper-dark"] .rel-type-select-trigger {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: none !important;
+  height: 28px !important;
+  line-height: 1 !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-trigger:hover {
+  background-color: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-trigger:hover .rel-type-select-chevron {
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-chevron {
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-panel {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-card) !important;
+  box-shadow: none !important;
+  padding: 2px 0 !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option {
+  border-radius: 0px !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 6px 12px !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  outline: none !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option:hover {
+  background-color: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-option.active {
+  background-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+  font-weight: bold !important;
+}

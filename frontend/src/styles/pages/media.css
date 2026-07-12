@@ -2479,6 +2479,7 @@
   gap: 0.35rem;
   cursor: grab;
   width: 100%;
+  touch-action: none;
   /* Grid items default to `min-width: auto`, meaning a track won't shrink
      below its content's natural width — a long title (e.g. "Resident Evil
      Code: Veronica X") could force its 1fr column wider than a neighboring
