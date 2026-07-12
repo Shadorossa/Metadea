@@ -7,7 +7,7 @@ import {
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { fetchAniListCharacterDetail, fetchAniListDetail } from '../../lib/search/providers/anilist';
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
-import { openImageCropModal } from '../../lib/shared/image-crop-modal';
+import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';

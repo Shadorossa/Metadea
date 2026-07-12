@@ -1,8 +1,8 @@
 import { saveFavoriteCustomImage, deleteFavoriteCustomImage, type FavoriteCustomImage } from '../tauri';
-import { openImageCropModal } from '../shared/image-crop-modal';
+import { openImageCropModal } from '../../components/shared/ImageCropModal';
 
 // Local-only cover editor for the profile Favorites tab. Thin wrapper around
-// the shared pan/zoom picker (lib/shared/image-crop-modal.ts) that persists
+// the shared pan/zoom picker (components/shared/ImageCropModal.tsx) that persists
 // the resulting crop — same aspect ratio (3:4) as the .fav-card grid so the
 // live preview here and the final card render in render-favorites.ts always
 // match.
