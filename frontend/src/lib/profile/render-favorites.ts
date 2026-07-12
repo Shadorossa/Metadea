@@ -81,7 +81,13 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
     if (catKey === 'character') {
       return ids.map(id => ({ external_id: id, type: 'character' }));
     }
-    return ids.map(id => items.find(item => item.external_id === id)).filter(Boolean) as Items;
+    return ids.map(id => {
+      const local = items.find(item => item.external_id === id);
+      if (local) return local;
+      const meta = catalogMap.get(id);
+      if (meta) return { external_id: id, type: meta.type } as any;
+      return null;
+    }).filter(Boolean) as Items;
   };
 
   let activeCatKey = 'multimedia';

@@ -1,4 +1,4 @@
-import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, wrapAssetUrl } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import { getT } from '../../i18n/client';
 import { TYPE_LABELS } from '../constants/media';
@@ -21,7 +21,7 @@ function escAttr(s: string): string {
 
 function releaseThumbHtml(r: UpcomingRelease): string {
   return r.cover
-    ? `<img class="calendar-popover-cover" src="${r.cover}" alt="" loading="lazy" />`
+    ? `<img class="calendar-popover-cover" src="${wrapAssetUrl(r.cover)}" alt="" loading="lazy" />`
     : `<div class="calendar-popover-cover calendar-popover-cover--empty"></div>`;
 }
 
@@ -122,7 +122,7 @@ function buildCalendarGridHtml(calendarDays: CalendarDay[], startOffset: number)
     if (hasReleases) {
       const firstRelease = dayReleases[0];
       if (firstRelease.cover) {
-        cellStyle = `background-image: url('${firstRelease.cover}');`;
+        cellStyle = `background-image: url('${wrapAssetUrl(firstRelease.cover)}');`;
         hasCoverClass = 'has-cover';
       } else {
         dotHtml = `<div class="calendar-day-event-dot"></div>`;

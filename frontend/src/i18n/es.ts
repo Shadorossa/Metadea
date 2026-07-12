@@ -83,7 +83,7 @@ export const es = {
     stats_by_time:      'Tiempo consumido por categoría',
     stats_by_status:    'Por estado',
     stats_by_type:      'Distribución de obras',
-    stats_calendar:     'Lanzamientos en espera',
+    stats_calendar:     'Calendario de lanzamientos',
     stats_heatmap:      'Mapa de calor (últimos 6 meses)',
     stats_days_eq:      'Días equivalentes',
     stats_avg_per:      'Media de horas por obra',

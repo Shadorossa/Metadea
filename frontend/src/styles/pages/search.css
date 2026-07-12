@@ -3,16 +3,16 @@
 /* ── Sticky header ──────────────────────────────────────────────────────── */
 .search-header {
   position: sticky;
-  top: 0;
-  z-index: 40;
+  top: 48px; /* sits right below the main navbar */
+  z-index: 60; /* lies on top of the navbar (50) to block out background visual overlap when scrolling, or look integrated */
   background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* ── Tabs row ────────────────────────────────────────────────────────────── */
 .search-tabs-row {
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--border-color);
   padding-top: 0.75rem;
 }
 .search-tabs-row::-webkit-scrollbar { display: none; }

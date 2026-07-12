@@ -116,11 +116,17 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
 [data-theme="synthwave"] .media-relation-card,
 [data-theme="synthwave"] .media-char-card,
 [data-theme="synthwave"] .media-library-widget-box,
-[data-theme="synthwave"] .status-dropdown-tray,
-[data-theme="synthwave"] .hof-card {
+[data-theme="synthwave"] .status-dropdown-tray {
   border-radius: var(--radius-md) !important;
   border: 1px solid rgba(255, 0, 127, 0.3) !important;
   background-color: var(--bg-card) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+[data-theme="synthwave"] .hof-card {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid rgba(255, 0, 127, 0.3) !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }

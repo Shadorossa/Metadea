@@ -85,6 +85,10 @@ export async function pathToDataUrl(filePath: string): Promise<string | null> {
 
 export function wrapAssetUrl(filePath: string): string {
   if (!isTauri() || !filePath) return filePath;
+  // If it's a protocol-relative URL (like //images.igdb.com/...), normalize it to https:
+  if (filePath.startsWith('//')) {
+    filePath = 'https:' + filePath;
+  }
   // If it's already a URL scheme (http/https/data), don't touch it
   if (filePath.startsWith('http') || filePath.startsWith('data:') || filePath.startsWith('asset:')) return filePath;
   

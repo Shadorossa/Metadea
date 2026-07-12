@@ -132,11 +132,17 @@ html[data-theme="pipboy"]::after {
 [data-theme="pipboy"] .media-relation-card,
 [data-theme="pipboy"] .media-char-card,
 [data-theme="pipboy"] .media-library-widget-box,
-[data-theme="pipboy"] .status-dropdown-tray,
-[data-theme="pipboy"] .hof-card {
+[data-theme="pipboy"] .status-dropdown-tray {
   border-radius: 0px !important;
   border: 1px dashed var(--border-color) !important;
   background-color: var(--bg-card) !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+[data-theme="pipboy"] .hof-card {
+  border-radius: 0px !important;
+  border: 1px dashed var(--border-color) !important;
   transition: all 0.2s ease !important;
   box-shadow: none !important;
 }

@@ -4,6 +4,7 @@
 // resulting crop) and the character photo editor (which only wants the
 // picked URL, previewed at the right aspect ratio — see callers for how the
 // result is used).
+import { wrapAssetUrl } from '../tauri';
 
 // Fallback bounds while the image's natural size hasn't loaded yet.
 const DEFAULT_MIN_ZOOM = 100;
@@ -78,7 +79,7 @@ export function openImageCropModal(opts: ImageCropModalOptions): Promise<ImageCr
         return;
       }
       emptyState.style.display = 'none';
-      preview.style.backgroundImage = `url("${imageUrl}")`;
+      preview.style.backgroundImage = `url("${wrapAssetUrl(imageUrl)}")`;
       preview.style.backgroundSize = `${bgSize}%`;
       preview.style.backgroundPosition = `${posX}% ${posY}%`;
     };
@@ -118,7 +119,7 @@ export function openImageCropModal(opts: ImageCropModalOptions): Promise<ImageCr
         zoomSlider.value = String(bgSize);
         applyPreview();
       };
-      probe.src = url;
+      probe.src = wrapAssetUrl(url);
     };
     recomputeZoomBounds(imageUrl);
 
