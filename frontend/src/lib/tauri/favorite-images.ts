@@ -6,6 +6,9 @@ import { isTauri, invoke, tauriCmd, tauriRun } from './core';
 // formula — see components/profile/FavoriteImageEditor.ts.
 export interface FavoriteCustomImage {
   external_id: string;
+  list_name:   string;
+  file_name:   string;
+  /** Ready-to-use `data:` URL — the image bytes live on disk, this is filled in by the backend at read time. */
   image_url:   string;
   bg_size:     number;
   pos_x:       number;

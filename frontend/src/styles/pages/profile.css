@@ -1675,14 +1675,23 @@
   border-color: var(--color-planning);
 }
 
-/* Icon toolbar (edit-image + crown) top-right of a favorite card */
+/* Icon toolbar (edit-image + crown + remove) top-right of a favorite card —
+   two rows (crown+remove, then edit-image below) instead of one cramped row
+   of three, since cards are only 135-150px wide. */
 .fav-card-icons {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   z-index: 10;
   display: flex;
-  gap: 0.4rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.fav-card-icons-row {
+  display: flex;
+  gap: 0.3rem;
 }
 
 .fav-edit-image-btn {
@@ -1690,8 +1699,8 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1709,6 +1718,33 @@
 .fav-edit-image-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.fav-remove-btn {
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--anim-fast);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fav-card:hover .fav-remove-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fav-remove-btn:hover {
+  color: #ef4444;
+  border-color: #ef4444;
   background: rgba(0, 0, 0, 0.9);
 }
 
@@ -1817,20 +1853,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.fav-meta {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.fav-meta-type {
-  display: flex;
-  align-items: center;
-  color: var(--text-dim);
 }
 
 .fav-empty-state {
@@ -2255,8 +2277,8 @@
   background: rgba(0, 0, 0, 0.65) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 50% !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 22px !important;
+  height: 22px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

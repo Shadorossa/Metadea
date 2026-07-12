@@ -102,6 +102,29 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 5)?;
     }
+    if v < 6 {
+        // Custom favorite images used to store an arbitrary remote image_url
+        // read straight from the DB at render time — broken in release
+        // builds whenever that URL wasn't reachable/allowed. Now the actual
+        // image bytes are downloaded once and saved under the app's own
+        // data dir (user_metadata/custom_image/<list_name>/<file_name>), so
+        // rendering never depends on network/CSP again. Old rows point at
+        // URLs, not files, so they can't be migrated in-place — drop and
+        // let the user re-pick their custom crops.
+        let _ = conn.execute_batch(
+            "DROP TABLE IF EXISTS favorite_custom_images;
+             CREATE TABLE favorite_custom_images (
+                external_id TEXT PRIMARY KEY,
+                list_name   TEXT NOT NULL,
+                file_name   TEXT NOT NULL,
+                bg_size     REAL NOT NULL DEFAULT 100,
+                pos_x       REAL NOT NULL DEFAULT 50,
+                pos_y       REAL NOT NULL DEFAULT 50,
+                updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+             );"
+        );
+        mark_migration(conn, 6)?;
+    }
 
     Ok(())
 }
@@ -136,10 +159,14 @@ CREATE TABLE IF NOT EXISTS app_env (
 -- favorited media or character already has without touching the real
 -- media_catalog/characters cover_url. bg_size/pos_x/pos_y map directly to
 -- CSS background-size/background-position percentages, so the editor's
--- live preview and the final card render use the exact same formula.
+-- live preview and the final card render use the exact same formula. The
+-- image itself is downloaded once and stored on disk under
+-- user_metadata/custom_image/<list_name>/<file_name> (see favorite_images.rs)
+-- rather than re-fetched from image_url at render time.
 CREATE TABLE IF NOT EXISTS favorite_custom_images (
     external_id TEXT PRIMARY KEY,
-    image_url   TEXT NOT NULL,
+    list_name   TEXT NOT NULL,
+    file_name   TEXT NOT NULL,
     bg_size     REAL NOT NULL DEFAULT 100,
     pos_x       REAL NOT NULL DEFAULT 50,
     pos_y       REAL NOT NULL DEFAULT 50,

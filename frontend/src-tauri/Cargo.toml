@@ -32,7 +32,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
 base64 = "0.22"
 futures = "0.3"
-image = { version = "0.25", default-features = false, features = ["jpeg", "webp"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "webp", "png"] }
 tokio = { version = "1", features = ["time"] }
 tauri-plugin-process = "2"
 discord-rich-presence = "0.2"

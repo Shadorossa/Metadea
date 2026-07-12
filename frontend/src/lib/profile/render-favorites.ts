@@ -1,7 +1,6 @@
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
 import { getT } from '../../i18n/client';
-import { dbRatingToStars5 } from '../media/rating-utils';
 import { typeIconMap } from '../shared/icon-strings';
 import { openFavoriteImageEditor } from './favorite-image-editor';
 import { ALL_MEDIA_TYPES } from '../constants/media';
@@ -122,9 +121,6 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
       const mediaUrl = item.type === 'character'
         ? `/character?id=${item.external_id.replace('character:', '')}`
         : `/media?id=${encodeURIComponent(item.external_id)}`;
-      const typeIc = item.type === 'character'
-        ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
-        : (TYPE_ICON[item.type] ?? TYPE_ICON['book']);
       const isCrowned = favData.multimedia?.includes(item.external_id);
 
       return `
@@ -133,16 +129,22 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
           <div class="fav-badge">#${idx + 1}</div>
 
           <div class="fav-card-icons">
+            <div class="fav-card-icons-row">
+              <!-- Crown button overlay -->
+              ${activeCatKey !== 'multimedia' && item.type !== 'character' ? `
+                <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
+                </button>
+              ` : ''}
+              <!-- Remove from favorites -->
+              <button class="fav-remove-btn" data-id="${item.external_id}" data-type="${item.type}" title="Quitar de favoritos">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
             <!-- Custom-image editor trigger (hover-only, see .fav-edit-image-btn CSS) -->
             <button class="fav-edit-image-btn" data-id="${item.external_id}" title="Editar imagen">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </button>
-            <!-- Crown button overlay -->
-            ${activeCatKey !== 'multimedia' && item.type !== 'character' ? `
-              <button class="fav-crown-btn ${isCrowned ? 'active' : ''}" data-id="${item.external_id}" title="Multimedia">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="${isCrowned ? '#fbbf24' : 'none'}" stroke="${isCrowned ? '#fbbf24' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/><path d="M3 20h18v2H3z"/></svg>
-              </button>
-            ` : ''}
           </div>
 
           ${customImg
@@ -153,10 +155,6 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         }
           <div class="fav-overlay">
             <span class="fav-title">${title}</span>
-            <div class="fav-meta">
-              ${item.type !== 'character' ? `<span>★ ${item.rating ? dbRatingToStars5(item.rating).toFixed(1) : '0.0'}</span>` : ''}
-              <span class="fav-meta-type">${typeIc}</span>
-            </div>
           </div>
         </div>
       `;
@@ -224,6 +222,32 @@ export async function renderFavorites(el: HTMLElement): Promise<void> {
         } else {
           favData.multimedia.push(id);
         }
+        await writeUserFavorites(favData);
+        renderContent();
+      });
+    });
+
+    // Hook remove-from-favorites buttons
+    el.querySelectorAll('.fav-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const id = (btn as HTMLElement).dataset.id || '';
+        const type = (btn as HTMLElement).dataset.type || '';
+        if (!id) return;
+
+        if (type === 'character') {
+          favData.character = (favData.character || []).filter(x => x !== id);
+        } else {
+          const entry = items.find(i => i.external_id === id);
+          if (entry) {
+            entry.is_favorite = 0;
+            await saveLibraryEntry(entry).catch(console.error);
+          }
+          favData[type] = (favData[type] || []).filter(x => x !== id);
+        }
+        favData.multimedia = (favData.multimedia || []).filter(x => x !== id);
+
         await writeUserFavorites(favData);
         renderContent();
       });
