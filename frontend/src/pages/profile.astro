@@ -258,12 +258,14 @@ const t    = useTranslations(lang);
       }
     });
 
+    // LibrarySection listens for this same event itself and re-fetches in
+    // place — re-rendering it from here too used to unmount/remount the
+    // whole tab (every card, every filter) for a single field change,
+    // flashing the whole grid. Still refreshed here since cachedItems feeds
+    // the click-to-open-editor lookup below, independent of which tab (if
+    // any) is currently showing the library.
     window.addEventListener('refresh-profile-library', async () => {
       cachedItems = await getAllLibraryEntries().catch(() => []);
-      const content = document.getElementById('profile-tab-content');
-      if (content && activeTab === 'library') {
-        await renderLibrary(content);
-      }
     });
   }
 

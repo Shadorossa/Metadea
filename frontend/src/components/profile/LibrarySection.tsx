@@ -273,7 +273,8 @@ export function LibrarySection() {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    const load = async () => {
       const [rawItems, catalogEntries, relations] = await Promise.all([
         getAllLibraryEntries().catch(() => [] as Items),
         getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
@@ -286,8 +287,20 @@ export function LibrarySection() {
       setItems(rawItems);
       setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
       setSagaRelations(relations);
-    })();
-    return () => { cancelled = true; };
+    };
+
+    load();
+
+    // Fired by ProfileLibraryEditor after a save/delete in the media editor
+    // modal — re-fetches in place (setState diffs just the changed card)
+    // instead of profile.astro re-mounting this whole component from
+    // scratch, which used to unmount/remount the entire grid (every card,
+    // every filter control) for a one-field change, flashing the full tab.
+    window.addEventListener('refresh-profile-library', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('refresh-profile-library', load);
+    };
   }, []);
 
   const sections = useMemo(() => {
