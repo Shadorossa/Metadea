@@ -52,6 +52,7 @@ function interpolateTemplate(template: string, variables: Record<string, string>
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
+  const [navSlot, setNavSlot]     = useState<HTMLElement | null>(null);
   const [query, setQuery]         = useState(initialQuery);
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
@@ -65,6 +66,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   useEffect(() => {
     setIsMounted(true);
+
+    // On a full page load the Navbar's #nav-center-slot is already painted
+    // before React hydrates, so this resolves on the first check. But on an
+    // Astro view-transition navigation to /search, this island can mount
+    // before the Navbar has (re)created that node — a one-time getElementById
+    // check would miss it forever, leaving the type tabs blank until F5.
+    // Poll a few frames until the node shows up.
+    let rafId: number;
+    let attempts = 0;
+    const findSlot = () => {
+      const el = document.getElementById('nav-center-slot');
+      if (el) {
+        setNavSlot(el);
+      } else if (attempts++ < 60) {
+        rafId = requestAnimationFrame(findSlot);
+      }
+    };
+    findSlot();
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
 
@@ -184,7 +204,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       <div className="search-header">
 
         {/* Tabs de tipo de medio inyectadas mediante React Portal directamente en el centro de la Navbar */}
-        {isMounted && document.getElementById('nav-center-slot') ? (
+        {isMounted && navSlot ? (
           createPortal(
             <div className="search-tabs-inner">
               {MEDIA_TYPE_IDS.map(typeId => (
@@ -198,7 +218,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 </button>
               ))}
             </div>,
-            document.getElementById('nav-center-slot')!
+            navSlot
           )
         ) : (
           // Contenedor de reserva/carga
