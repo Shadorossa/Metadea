@@ -53,7 +53,7 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.title.localeCompare(b.title);
+    return 0;
   });
   return {
     relations: sorted.map(r => ({
@@ -80,7 +80,7 @@ export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] 
     const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
-    return a.title.localeCompare(b.title);
+    return 0;
   });
 }
 

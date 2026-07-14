@@ -543,7 +543,8 @@ pub async fn get_media_relations(
             "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
              JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mr.media_external_id = ?1",
+             WHERE mr.media_external_id = ?1
+             ORDER BY mr.rowid",
         )
         .str_err()?;
 

@@ -1189,7 +1189,6 @@
   color: var(--accent);
 }
 
-/* ── Library Layout & Filters ──────────────────────────────────────────────── */
 .library-layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -1199,6 +1198,15 @@
   max-width: 100%;
   margin: 0;
   padding: 0 0 3rem;
+}
+.library-layout.entering {
+  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-layout.entering {
+    animation: none;
+  }
 }
 
 .library-filters {
