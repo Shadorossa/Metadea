@@ -811,7 +811,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
                 return (
                   <>
-                    <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem', minHeight: '28.5rem' }}>
+                    <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem', minHeight: '25.5rem' }}>
                       {paginatedChars.map(c => (
                         <div key={c.external_id} className="pr-editor-media-card">
                           <div className="pr-editor-media-card-cover">
@@ -826,7 +826,21 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                               ×
                             </button>
                           </div>
-                          <div className="pr-editor-media-card-title" title={c.name}>{c.name}</div>
+                          <div
+                            className="pr-editor-media-card-title"
+                            title={c.name}
+                            style={{
+                              height: '2.4em',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.2'
+                            }}
+                          >
+                            {c.name}
+                          </div>
                           <select
                             value={c.relation_type ?? 'SUPPORTING'}
                             onChange={e => updateCharacterRole(c.external_id, e.target.value)}
@@ -981,6 +995,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                           placeholder="Concept Group..."
                           value={sagaGroups[id] || ''}
                           onChange={e => updateSagaGroup(id, e.target.value)}
+                          onPointerDown={e => e.stopPropagation()}
                           className="pr-editor-media-card-group-input"
                         />
                       </div>
