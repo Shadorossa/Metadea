@@ -69,7 +69,7 @@ export async function saveCachedSaga(entries: SagaEntry[], sagaName = ''): Promi
 }
 
 export async function getSagaName(externalId: string): Promise<string> {
-  return tauriCmd<string>('get_saga_name', '', { externalId });
+  return tauriCmd<string>('get_saga_name', '', { mediaExternalId: externalId });
 }
 
 export interface DbMediaRelation {
