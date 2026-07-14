@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, getCatalogEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -7,6 +7,8 @@ import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_
 import { TYPE_LABELS, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
+import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
+import { fetchMediaData } from '../../lib/media/mediaService';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -287,6 +289,31 @@ export function LibrarySection() {
       setItems(rawItems);
       setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
       setSagaRelations(relations);
+
+      // Entering your library is the other trigger point (besides visiting
+      // the media page itself) for the weekly RELEASING re-sync — catches
+      // shows you're actively watching/reading even if you don't click into
+      // their page that day. Scoped to in-progress entries only (no point
+      // re-checking something you haven't started), sequential with a short
+      // stagger so a library full of ongoing shows doesn't burst AniList's
+      // rate limit, and each result is patched into catalogMap as it lands
+      // so "Al día" grouping and episode counts update live.
+      const dueForResync = rawItems.filter(item => {
+        if (!isInProgressStatus(item.status)) return false;
+        const catalog = catalogEntries.find(e => e.external_id === item.external_id);
+        return catalog?.status === 'RELEASING' && needsResync(catalog);
+      });
+
+      for (const item of dueForResync) {
+        if (cancelled) return;
+        await fetchMediaData(item.external_id).catch(() => null);
+        const fresh = await getCatalogEntry(item.external_id).catch(() => null);
+        if (cancelled) return;
+        if (fresh) {
+          setCatalogMap(prev => new Map(prev).set(fresh.external_id, fresh));
+        }
+        await new Promise(resolve => setTimeout(resolve, 400));
+      }
     };
 
     load();
@@ -335,8 +362,16 @@ export function LibrarySection() {
       return dateB - dateA; // newest finished to oldest finished
     });
 
+    // "Al día" is a purely computed regrouping, not a stored status — an
+    // in-progress entry moves here when its progress has caught up with
+    // everything a still-RELEASING show has aired/published so far (see
+    // isCaughtUpOnReleasing), and drops back into "En curso" the moment the
+    // weekly resync raises total_count past it again.
+    const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
+
     const sectionsData = [
-      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status))) },
+      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i))) },
+      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i))) },
       { title: p.section_completed, items: sortItems(filtered.filter(i => i.status === 'completed')) },
       { title: p.section_planning, items: sortItems(filtered.filter(i => i.status === 'planning')) },
       { title: p.section_paused, items: sortItems(filtered.filter(i => i.status === 'paused')) },

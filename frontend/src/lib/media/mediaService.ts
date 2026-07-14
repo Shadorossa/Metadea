@@ -13,6 +13,7 @@ import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { parseExternalId } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
+import { needsResync } from './media-status';
 
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData } from './media-cache';
 import { mapCatalogEntryToPartialData, inferProgressStatus } from './catalog-mapper';
@@ -177,6 +178,13 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       shop_links_csv: shopLinks || null,
       companies_cache_csv: data.companies ? data.companies.join(',') : null,
       authors_csv: (data.authors ?? []).map(a => a.name).join(','),
+      // Marks "we just checked the live provider" — needsResync() (see
+      // media-status.ts) reads this to decide whether a RELEASING/
+      // NOT_YET_RELEASED/HIATUS entry is due for another check yet, instead
+      // of every page view unconditionally re-fetching forever.
+      last_synced_at: new Date().toISOString(),
+      sync_failed_count: 0,
+      last_sync_error: null,
       created_at: '',
       updated_at: '',
     };
@@ -310,7 +318,10 @@ export function fetchMediaDataWithFallback(
         // DLCs/expansions/remasters IGDB has added since this row was last
         // synced) never runs for already-visited titles. Kick it off in the
         // background so relations catch up without delaying the initial
-        // render. Delay by 1 second to avoid database locks.
+        // render — but only when needsResync() says this entry is actually
+        // due (see media-status.ts's per-status cadence), instead of
+        // unconditionally hitting the live API on every single page view
+        // forever. Delay by 1 second to avoid database locks.
         //
         // The refreshed data (e.g. a remake/remaster's Fuente relation,
         // absent from the stale DB snapshot shown above) must actually reach
@@ -319,11 +330,13 @@ export function fetchMediaDataWithFallback(
         // it, so the correct data only ever showed up on a *later* visit
         // (once it was already saved from the previous one), never on the
         // page load that triggered the resync.
-        setTimeout(() => {
-          fetchMediaData(rawId).then(freshData => {
-            if (freshData) onFull(freshData);
-          }).catch(() => {});
-        }, 1000);
+        if (needsResync(catalogEntry)) {
+          setTimeout(() => {
+            fetchMediaData(rawId).then(freshData => {
+              if (freshData) onFull(freshData);
+            }).catch(() => {});
+          }, 1000);
+        }
         return;
       }
 

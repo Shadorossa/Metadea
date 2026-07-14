@@ -3,7 +3,8 @@ import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
-import { unixToDateParts, formatDateParts, normalizeScore100 } from './mapper-utils';
+import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
+import { canonicalizeIgdbStatus, STATUS_BADGE_CLASS } from './media-status';
 
 export interface IgdbSubGame {
   id: number;
@@ -29,6 +30,9 @@ interface IgdbDetailGame {
   first_release_date?: number;
   rating?: number;
   total_rating?: number;
+  /** IGDB's release-status enum: 0 Released, 2 Alpha, 3 Beta, 4 Early Access,
+   *  5 Offline, 6 Cancelled, 7 Rumored, 8 Delisted (no 1). */
+  status?: number;
   game_type?: number;
   genres?: { id: number; name: string }[];
   involved_companies?: {
@@ -143,8 +147,13 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Score (prefer total_rating, fallback to rating — IGDB is /100)
   const scoreGlobal = normalizeScore100(game.total_rating ?? game.rating);
 
+  const canonicalStatus = canonicalizeIgdbStatus(game.status);
+  const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
+  const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
+
   const stats: { label: string; value: string }[] = [];
   if (scoreGlobal) stats.push({ label: tm.stat_score, value: scoreGlobal.toFixed(1) + ' / 10' });
+  if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
 
   const metaLines: string[] = [];
   if (platforms.length) metaLines.push(platforms.join(' · '));
@@ -266,6 +275,8 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     cover: coverUrl,
     bannerImage: bannerUrl,
     bannerColor: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    statusLabel,
+    statusClass,
     genreDots,
     genreTagDots,
     metaLines,
@@ -287,6 +298,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     releaseDay,
     platforms,
     scoreGlobal,
+    status: canonicalStatus,
     companies: [...new Set([...developers, ...publishers])],
   };
 }

@@ -3,11 +3,7 @@ import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation, MediaAuthor } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
-
-const STATUS_CLASS: Record<string, string> = {
-  RELEASING:        'media-badge--status-airing',
-  NOT_YET_RELEASED: 'media-badge--status-upcoming',
-};
+import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 
 const RELATION_PRIORITY: Record<string, number> = {
   PARENT: 1, ADAPTATION: 2, PREQUEL: 3, SEQUEL: 4,
@@ -45,8 +41,16 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const coverColor = raw.coverImage?.color ?? '#1a1a2e';
 
   const formatLabel = lookupLabel(tm.formats, raw.format, raw.format ?? '');
-  const statusLabel = lookupLabel(tm.statuses, raw.status, raw.status ?? '');
-  const statusClass = STATUS_CLASS[raw.status ?? ''] ?? '';
+  const canonicalStatus = canonicalizeAniListStatus(raw.status);
+  const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
+  const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
+
+  // AniList doesn't know the final episode count while a show is still
+  // airing (raw.episodes is null) — nextAiringEpisode.episode is the number
+  // of the *next* episode to air, so subtracting 1 gives how many have
+  // already aired, which is what total_count should track until the show
+  // actually finishes (at which point raw.episodes takes over).
+  const airedEpisodes = raw.nextAiringEpisode ? raw.nextAiringEpisode.episode - 1 : undefined;
 
   const seasonInfo = (raw.season && raw.seasonYear)
     ? `${lookupLabel(tm.seasons, raw.season, raw.season)} ${raw.seasonYear}`
@@ -60,7 +64,8 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
 
   let quickMeta = formatLabel;
   if (resolvedType === 'anime') {
-    if (raw.episodes) quickMeta += ` · ${raw.episodes} ep`;
+    const episodeCount = raw.episodes ?? airedEpisodes;
+    if (episodeCount) quickMeta += ` · ${episodeCount} ep`;
     if (raw.duration) quickMeta += ` · ${raw.duration} min`;
   } else {
     if (raw.chapters) quickMeta += ` · ${raw.chapters} cap`;
@@ -191,8 +196,8 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     scoreGlobal:  normalizeScore100(raw.averageScore),
     platforms:    undefined,
     timeLength:   resolvedType === 'anime' ? (raw.duration ?? undefined) : undefined,
-    status:       raw.status ?? undefined,
-    totalCount:   resolvedType === 'anime' ? (raw.episodes ?? undefined) : (raw.chapters ?? undefined),
+    status:       canonicalStatus,
+    totalCount:   resolvedType === 'anime' ? (raw.episodes ?? airedEpisodes) : (raw.chapters ?? undefined),
     totalCount_2: (resolvedType === 'manga' || resolvedType === 'lnovel') ? (raw.volumes ?? undefined) : undefined,
     // Studios only apply to anime — AniList's `studios` connection is
     // effectively unused for manga/light novels (no animation involved).

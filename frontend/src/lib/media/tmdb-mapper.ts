@@ -5,18 +5,12 @@ import { unifyGenres } from './genre-unifier';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { formatDateParts, lookupLabel } from './mapper-utils';
+import { canonicalizeTmdbStatus, STATUS_BADGE_CLASS } from './media-status';
 
 // TMDB doesn't rank cast by relevance beyond its own `order` field — capping
 // avoids dumping a 100+ name cast list onto a page that has no pagination for
 // the Characters grid (only a "load more" that reveals 12 at a time).
 const CAST_LIMIT = 25;
-
-const STATUS_CLASS: Record<string, string> = {
-  'Returning Series': 'media-badge--status-airing',
-  'In Production':    'media-badge--status-airing',
-  'Planned':          'media-badge--status-upcoming',
-  'Post Production':  'media-badge--status-upcoming',
-};
 
 function isTvDetail(d: TmdbMovieDetail | TmdbTvDetail): d is TmdbTvDetail {
   return 'name' in d;
@@ -47,8 +41,9 @@ export function mapTmdbToMedia(
     { monthStyle: 'long', requireDay: true },
   ) || undefined;
 
-  const statusLabel = lookupLabel(tm.tmdb_statuses, raw.status, raw.status ?? '');
-  const statusClass = STATUS_CLASS[raw.status ?? ''] ?? '';
+  const canonicalStatus = canonicalizeTmdbStatus(raw.status, isTv);
+  const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
+  const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
 
   const { core: coreGenres, tags: genreTags } = unifyGenres((raw.genres ?? []).map(g => g.name));
   const genreDots    = coreGenres.join(' · ') || undefined;
@@ -139,7 +134,7 @@ export function mapTmdbToMedia(
     releaseDay,
     scoreGlobal,
     timeLength,
-    status: raw.status ?? undefined,
+    status: canonicalStatus,
     totalCount: isTv ? raw.number_of_episodes ?? undefined : 1,
     totalCount_2: isTv ? raw.number_of_seasons ?? undefined : undefined,
     companies,

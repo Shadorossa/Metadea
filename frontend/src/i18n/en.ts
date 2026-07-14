@@ -49,6 +49,7 @@ export const en = {
     section_all: 'All',
     section_planning: 'Planned',
     section_in_progress: 'In Progress',
+    section_caught_up: 'Caught Up',
     section_completed: 'Completed',
     section_paused: 'Paused',
     section_dropped: 'Dropped',
@@ -168,23 +169,17 @@ export const en = {
       ONA: 'ONA', SPECIAL: 'Special', MUSIC: 'Music',
       MANGA: 'Manga', ONE_SHOT: 'One-Shot', NOVEL: 'Light novel',
     },
+    // Canonical release-status vocabulary shared by every provider mapper
+    // (see lib/media/media-status.ts) — AniList's own enum plus UNAVAILABLE
+    // for the one case nothing else has an equivalent for (IGDB's
+    // offline/delisted games).
     statuses: {
       FINISHED:         'Finished',
       RELEASING:        'Releasing',
       NOT_YET_RELEASED: 'Not Yet Released',
       CANCELLED:        'Cancelled',
       HIATUS:           'Hiatus',
-    },
-    tmdb_statuses: {
-      'Rumored':         'Rumored',
-      'Planned':         'Planned',
-      'In Production':   'In Production',
-      'Post Production': 'Post Production',
-      'Released':        'Released',
-      'Canceled':        'Canceled',
-      'Returning Series':'Returning Series',
-      'Ended':           'Ended',
-      'Pilot':           'Pilot',
+      UNAVAILABLE:      'Unavailable',
     },
     seasons: {
       WINTER: 'Winter', SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall',
