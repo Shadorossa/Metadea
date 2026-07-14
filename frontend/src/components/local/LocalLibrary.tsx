@@ -143,7 +143,7 @@ export default function LocalLibrary() {
         />
       )}
 
-      <div className="local-library">
+      <div key={activeCategory} className="local-library entering">
         {activeCategory === 'videojuegos' && activePlatform && availablePlatforms && (
           <PlatformSidebar
             activePlatform={activePlatform}

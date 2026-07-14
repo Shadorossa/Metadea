@@ -1250,8 +1250,29 @@
   white-space: nowrap;
   transition: all var(--anim-base) var(--anim-ease);
 }
-
 .local-game-detail-catalog-link:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ── Transitions ────────────────────────────────────────────────────────── */
+.local-library.entering {
+  animation: local-library-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes local-library-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .local-library.entering {
+    animation: none;
+  }
 }
