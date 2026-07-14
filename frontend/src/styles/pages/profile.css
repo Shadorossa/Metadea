@@ -1509,16 +1509,6 @@
   box-sizing: border-box;
 }
 
-.fav-layout.entering {
-  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fav-layout.entering {
-    animation: none;
-  }
-}
-
 @media (max-width: 1024px) {
   .fav-layout {
     padding: 0 1rem;
@@ -1644,16 +1634,17 @@
   width: 100%;
   max-width: 1650px;
   margin: 0 auto;
+  animation: favGridFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@keyframes fav-card-enter {
+@keyframes favGridFadeIn {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -1668,16 +1659,6 @@
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  opacity: 0;
-  animation: fav-card-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--fav-index, 0) * 15ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fav-card {
-    opacity: 1;
-    animation: none;
-  }
 }
 
 .fav-card:hover {
@@ -1799,6 +1780,7 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   image-rendering: auto;
+  transition: transform 0.3s ease;
 }
 
 /* bg_size/pos_x/pos_y (from the shared pan/zoom crop editor, image-crop-
@@ -1823,7 +1805,8 @@
   image-rendering: auto;
 }
 
-.fav-card:hover .fav-cover {
+.fav-card:hover .fav-cover,
+.fav-card:hover .fav-cover-wrap--custom {
   transform: scale(1.05) translateZ(0);
 }
 

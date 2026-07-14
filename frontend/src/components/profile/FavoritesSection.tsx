@@ -268,15 +268,17 @@ export function FavoritesSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reorderModeActive, activeCatKey]);
 
+  if (items === null) return null;
+
   const cat = categories.find(c => c.key === activeCatKey) || categories[0];
-  const catItems = items !== null ? getOrderedItems(activeCatKey) : [];
+  const catItems = getOrderedItems(activeCatKey);
 
   return (
-    <div className="fav-layout entering">
+    <div className="fav-layout">
       <div className="fav-tabs-row">
         <div className="fav-tabs">
           {categories.map(c => {
-            const count = items !== null ? getOrderedItems(c.key).length : 0;
+            const count = getOrderedItems(c.key).length;
             return (
               <button
                 key={c.key}
@@ -300,11 +302,7 @@ export function FavoritesSection() {
         />
       </div>
       <div className="fav-grid-container">
-        {items === null ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-            <span>Cargando favoritos...</span>
-          </div>
-        ) : catItems.length > 0 ? (
+        {catItems.length > 0 ? (
           <div className="fav-grid" ref={gridRef} key={activeCatKey}>
             {catItems.map((item, idx) => {
               const title = item.type === 'character'
@@ -320,12 +318,7 @@ export function FavoritesSection() {
               const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
 
               return (
-                <div
-                  className={`fav-card ${reorderModeActive ? 'reordering' : ''}`}
-                  data-id={item.external_id}
-                  key={item.external_id}
-                  style={{ '--fav-index': idx } as React.CSSProperties}
-                >
+                <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} key={item.external_id}>
                   <a className="fav-card-link" href={mediaUrl} />
                   <div className="fav-badge">#{idx + 1}</div>
 
