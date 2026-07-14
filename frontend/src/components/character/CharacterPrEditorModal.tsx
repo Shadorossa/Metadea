@@ -13,46 +13,7 @@ import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
-
-function TagsInput({ tags, onChange, placeholder }: { tags: string[], onChange: (tags: string[]) => void, placeholder: string }) {
-  const [input, setInput] = useState('');
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === ',' || e.key === 'Enter') {
-      e.preventDefault();
-      const trimmed = input.trim();
-      if (trimmed && !tags.includes(trimmed)) {
-        onChange([...tags, trimmed]);
-        setInput('');
-      }
-    }
-  };
-
-  const removeTag = (idx: number) => {
-    onChange(tags.filter((_, i) => i !== idx));
-  };
-
-  return (
-    <div className="tags-input-container">
-      <div className="tags-input-wrapper">
-        {tags.map((tag, idx) => (
-          <div key={idx} className="tags-input-tag">
-            {tag}
-            <button type="button" onClick={() => removeTag(idx)} className="tags-input-tag-remove">×</button>
-          </div>
-        ))}
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={tags.length === 0 ? placeholder : ''}
-          className="tags-input-field"
-        />
-      </div>
-    </div>
-  );
-}
+import { TagsInput } from '../shared/TagsInput';
 
 const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
 const getRelationTypeLabels = () => {
