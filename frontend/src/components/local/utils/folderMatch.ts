@@ -96,14 +96,14 @@ const NOISE_NUMBERS = new Set([360, 480, 720, 1080, 1440, 2160]);
 // Season+episode markers (checked first, since they disambiguate which
 // season a file belongs to when several seasons live in the same folder).
 const SEASON_EPISODE_MARKERS = [
-  /\bS(\d{1,2})[.\s_-]?E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})\b/i,
-  /\b(\d{1,2})x(\d{1,4})\b/i,
+  /(?:^|[^0-9])S(\d{1,2})[.\s_-]?E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^0-9])(\d{1,2})x(\d{1,4})(?:$|[^0-9])/i,
 ];
 
 const EPISODE_MARKERS = [
-  /\bE(?:p(?:isode)?)?[.\s_-]?(\d{1,4})\b/i,
-  /\bcap(?:[ií]tulo)?[.\s_-]?(\d{1,4})\b/i,
-  /\bch(?:apter)?[.\s_-]?(\d{1,4})\b/i,
+  /(?:^|[^0-9])E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^0-9])cap(?:[ií]tulo)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^0-9])ch(?:apter)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /[-_\s](\d{1,4})(?=\s*[[(]|\s*$)/,
 ];
 
