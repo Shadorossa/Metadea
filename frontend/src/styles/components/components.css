@@ -4,19 +4,15 @@
 .hide-scroll::-webkit-scrollbar { display: none; }
 .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-
-
 /* ── Media cards ─────────────────────────────────────────────────────────── */
-/*
-  Sin glassmorphism ni backdrop-filter:
-  Fondo sólido oscuro + translate vertical en hover — efecto "poster que sale del estante"
-*/
 .card-media-base {
   background: var(--bg-card);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
+  aspect-ratio: 3 / 4;
+  width: 100%;
   transition:
     transform     var(--anim-base) var(--anim-ease),
     box-shadow    var(--anim-base) var(--anim-ease),
@@ -28,7 +24,6 @@
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent-border);
   border-color: var(--accent-border);
 }
-
 .card-media-img {
   width: 100%;
   height: 100%;

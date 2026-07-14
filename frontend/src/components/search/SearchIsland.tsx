@@ -338,18 +338,30 @@ const HOVER_PREFETCH_DELAY_MS = 300;
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isValidCover, setIsValidCover] = useState<boolean | null>(result.coverUrl ? null : true);
 
-  function handleMouseEnter() {
-    if (!hasDetail || result.type === 'character') return;
-    hoverTimer.current = setTimeout(() => prefetchMediaData(result.externalId), HOVER_PREFETCH_DELAY_MS);
+  useEffect(() => {
+    if (!result.coverUrl) return;
+    const img = new Image();
+    img.src = result.coverUrl;
+    img.onload = () => {
+      if (img.naturalWidth > img.naturalHeight) {
+        setIsValidCover(false);
+      } else {
+        setIsValidCover(true);
+      }
+    };
+    img.onerror = () => {
+      setIsValidCover(true);
+    };
+  }, [result.coverUrl]);
+
+  if (isValidCover === false || isValidCover === null) {
+    return null;
   }
 
-  function handleMouseLeave() {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
+  function handleMouseEnter() {
+    if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
   }
 
   async function handleClick() {
@@ -375,7 +387,6 @@ function MediaCard({ result }: { result: SearchResult }) {
       className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       role={hasDetail ? 'button' : undefined}
       tabIndex={hasDetail ? 0 : undefined}
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
