@@ -1,0 +1,239 @@
+---
+import { ICON_HELP_CIRCLE } from "../../lib/shared/icon-strings";
+import type { Translations } from "../../i18n/index";
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<!-- Tab: Entorno -->
+<div class="settings-panel hidden" id="panel-environment">
+  <h2 class="settings-panel-title">{t.settings.tab_environment}</h2>
+
+  <div class="settings-section">
+    <h3 class="settings-section-title">{t.settings.env_title}</h3>
+    <p class="settings-hint">{t.settings.env_hint}</p>
+    <button
+      class="btn btn--sm btn--ghost"
+      id="open-env-folder-btn"
+      style="margin-bottom: 1rem;"
+    >
+      📁 {t.settings.env_open_folder}
+    </button>
+
+    <!-- API Platforms Selector Bar -->
+    <div class="api-platforms-selector">
+      <button type="button" class="api-platform-tab-btn" data-platform="igdb" title="IGDB (Videojuegos)">
+        <img class="api-platform-logo" src="/API/IGDB_logo.png" alt="IGDB" />
+      </button>
+      <button type="button" class="api-platform-tab-btn" data-platform="tmdb" title="TheMovieDB (Cine & Series)">
+        <img class="api-platform-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
+      </button>
+      <button type="button" class="api-platform-tab-btn" data-platform="steam" title="Steam (Sincronización PC)">
+        <img class="api-platform-logo" src="/platforms/steam_logo.png" alt="Steam" />
+      </button>
+      <button type="button" class="api-platform-tab-btn" data-platform="anilist" title="AniList (Anime & Manga)">
+        <img class="api-platform-logo" src="/API/Anilist_logo.png" alt="AniList" />
+      </button>
+    </div>
+
+    <!-- API Keys Safe Content Viewport -->
+    <div class="api-keys-viewport">
+
+      <!-- State: None selected (Default) -->
+      <div class="api-keys-empty-placeholder" id="api-keys-placeholder">
+      </div>
+
+      <!-- Form: IGDB -->
+      <div class="api-platform-form-block hidden" id="api-form-igdb">
+        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+          <span class="api-form-service-title">Twitch / IGDB API</span>
+          <button type="button" class="settings-help-btn" data-help="igdb" title="¿Cómo obtener las claves de IGDB?" style="position: absolute; top: 0; right: 0;">
+            <Fragment set:html={ICON_HELP_CIRCLE} />
+          </button>
+        </div>
+        <div class="env-fields env-fields--row">
+          <div class="env-field">
+            <label class="env-label" for="igdb-client-id">{t.settings.env_igdb_client_id}</label>
+            <input
+              class="env-input"
+              type="text"
+              id="igdb-client-id"
+              placeholder="xxxxxxxxxxxxxxxxxxxxxxxx"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="env-field">
+            <label class="env-label" for="igdb-client-secret">{t.settings.env_igdb_client_secret}</label>
+            <input
+              class="env-input"
+              type="password"
+              id="igdb-client-secret"
+              placeholder="••••••••••••••••••••••••"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Form: TMDB -->
+      <div class="api-platform-form-block hidden" id="api-form-tmdb">
+        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+          <span class="api-form-service-title">TheMovieDB API</span>
+          <button type="button" class="settings-help-btn" data-help="tmdb" title="¿Cómo obtener las claves de TMDB?" style="position: absolute; top: 0; right: 0;">
+            <Fragment set:html={ICON_HELP_CIRCLE} />
+          </button>
+        </div>
+        <div class="env-fields env-fields--row">
+          <div class="env-field">
+            <label class="env-label" for="tmdb-access-token">{t.settings.env_tmdb_access_token}</label>
+            <input
+              class="env-input"
+              type="password"
+              id="tmdb-access-token"
+              placeholder="••••••••••••••••••••••••••••••••"
+              autocomplete="off"
+            />
+          </div>
+          <div class="env-field">
+            <label class="env-label" for="tmdb-api-key">{t.settings.env_tmdb_api_key}</label>
+            <input
+              class="env-input"
+              type="password"
+              id="tmdb-api-key"
+              placeholder="••••••••••••••••••••••••••••••••"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Form: Steam -->
+      <div class="api-platform-form-block hidden" id="api-form-steam">
+        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+          <span class="api-form-service-title">Steam Web API</span>
+          <button type="button" class="settings-help-btn" data-help="steam" title="¿Cómo obtener la clave de Steam?" style="position: absolute; top: 0; right: 0;">
+            <Fragment set:html={ICON_HELP_CIRCLE} />
+          </button>
+        </div>
+        <div class="env-fields">
+          <div class="env-field">
+            <label class="env-label" for="steam-api-key">{t.settings.env_steam_api_key}</label>
+            <input
+              class="env-input"
+              type="password"
+              id="steam-api-key"
+              placeholder="••••••••••••••••••••••••••••••••"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Form: AniList -->
+      <div class="api-platform-form-block hidden" id="api-form-anilist">
+        <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
+          <span class="api-form-service-title">AniList Developer API</span>
+        </div>
+        <div class="env-fields">
+          <div class="env-field">
+            <label class="env-label" for="anilist-client-id">Client ID</label>
+            <input
+              class="env-input"
+              type="text"
+              id="anilist-client-id"
+              placeholder="Ej. 18343"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-divider settings-divider--actions" style="justify-content: center; margin-top: 1.5rem;">
+      <button class="btn btn--primary" id="env-save-btn"
+        >{t.settings.env_save}</button
+      >
+      <button class="btn btn--ghost" id="env-clear-btn"
+        >{t.settings.env_clear}</button
+      >
+    </div>
+  </div>
+
+  <!-- Local Routes -->
+  <div class="settings-section" style="margin-top: 2rem;">
+    <h3 class="settings-section-title">Rutas locales</h3>
+    <p class="settings-hint">Carpetas locales para cada tipo de medio. Úsalas en la sección Biblioteca Local.</p>
+    <div id="local-routes-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Help Modals for Environment -->
+  <div id="igdb-help-modal" class="settings-help-modal hidden">
+    <div class="settings-help-modal-overlay"></div>
+    <div class="settings-help-modal-content">
+      <div class="settings-help-modal-header">
+        <h3>¿Cómo obtener claves de IGDB?</h3>
+        <button class="settings-help-modal-close" data-modal="igdb-help-modal">&times;</button>
+      </div>
+      <div class="settings-help-modal-body">
+        <p><strong>IGDB</strong> es una base de datos de videojuegos. Para obtener tus claves:</p>
+        <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+          <li>Ve a <a href="https://api-docs.igdb.com/#getting-started" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">api-docs.igdb.com</a></li>
+          <li>Sigue la guía de "Getting Started" en la documentación</li>
+          <li>Necesitarás obtener tu <strong>Client ID</strong> y <strong>Access Token</strong></li>
+          <li>Pega ambas claves en los campos correspondientes</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div id="tmdb-help-modal" class="settings-help-modal hidden">
+    <div class="settings-help-modal-overlay"></div>
+    <div class="settings-help-modal-content">
+      <div class="settings-help-modal-header">
+        <h3>¿Cómo obtener claves de TMDB?</h3>
+        <button class="settings-help-modal-close" data-modal="tmdb-help-modal">&times;</button>
+      </div>
+      <div class="settings-help-modal-body">
+        <p><strong>TMDB</strong> (The Movie Database) es una base de datos de películas y series. Para obtener tus claves:</p>
+        <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+          <li>Ve a <a href="https://developer.themoviedb.org/docs/getting-started" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">developer.themoviedb.org</a></li>
+          <li>Sigue la guía de "Getting Started" en la documentación</li>
+          <li>Necesitarás crear una cuenta si no la tienes</li>
+          <li>Obtén tu <strong>API Key</strong> y <strong>Access Token</strong></li>
+          <li>Pega ambas claves en los campos correspondientes</li>
+        </ol>
+        <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">Nota: Ambos campos son necesarios para acceso completo a TMDB</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="steam-help-modal" class="settings-help-modal hidden">
+    <div class="settings-help-modal-overlay"></div>
+    <div class="settings-help-modal-content">
+      <div class="settings-help-modal-header">
+        <h3>¿Cómo obtener clave de Steam?</h3>
+        <button class="settings-help-modal-close" data-modal="steam-help-modal">&times;</button>
+      </div>
+      <div class="settings-help-modal-body">
+        <p><strong>Steam</strong> es la plataforma de distribución de videojuegos de Valve. Para obtener tu clave API:</p>
+        <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
+          <li>Necesitas una <strong>cuenta de Steam</strong> con historial de compras</li>
+          <li>Ve a <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">steamcommunity.com/dev/apikey</a></li>
+          <li>Inicia sesión si es necesario</li>
+          <li>Introduce un <strong>nombre de dominio</strong> (puede ser localhost para desarrollo local)</li>
+          <li>Lee y acepta el acuerdo de licencia</li>
+          <li>Se generará tu <strong>API Key</strong> automáticamente</li>
+          <li>Copia la clave y pégala en el campo de abajo</li>
+        </ol>
+        <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">⚠️ No compartas tu API Key con otros; es personal y única para tu cuenta</p>
+      </div>
+    </div>
+  </div>
+</div>

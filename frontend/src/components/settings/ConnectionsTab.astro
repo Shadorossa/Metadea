@@ -1,0 +1,249 @@
+---
+import { ICON_GITHUB, ICON_HELP_CIRCLE, ICON_IMPORT_DOWNLOAD } from "../../lib/shared/icon-strings";
+import type { Translations } from "../../i18n/index";
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<!-- Tab: Conexiones -->
+<div class="settings-panel hidden" id="panel-application">
+  <h2 class="settings-panel-title">{t.settings.tab_application}</h2>
+
+  <div
+    class="settings-section"
+    style="max-width: 900px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem;"
+  >
+    <div class="settings-connections-row">
+      <!-- GitHub Auth Block -->
+      <div class="settings-auth-block">
+        <div class="settings-auth-info">
+          <div id="github-avatar-container" class="settings-auth-avatar">
+            <Fragment set:html={ICON_GITHUB} />
+          </div>
+          <div class="settings-auth-text">
+            <span class="settings-auth-name">GitHub</span>
+            <button class="settings-help-btn" data-help="github" title="¿Qué es GitHub?">
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+            <span id="github-user-status" class="settings-auth-status"
+              >No conectado</span
+            >
+          </div>
+        </div>
+        <button class="btn btn--sm btn--primary" id="github-login-btn"
+          >Conectar</button
+        >
+      </div>
+
+      <!-- AniList Auth Block -->
+      <div class="settings-auth-block">
+        <div class="settings-auth-info">
+          <div id="anilist-avatar-container" class="settings-auth-avatar">
+            <img src="/API/Anilist_logo.png" class="settings-auth-avatar-img" />
+          </div>
+          <div class="settings-auth-text">
+            <span class="settings-auth-name">AniList</span>
+            <button class="settings-help-btn" data-help="anilist" title="¿Qué es AniList?">
+              <Fragment set:html={ICON_HELP_CIRCLE} />
+            </button>
+            <span id="anilist-user-status" class="settings-auth-status"
+              >No conectado</span
+            >
+          </div>
+        </div>
+        <div class="settings-auth-actions">
+          <button
+            class="btn btn--sm btn--secondary"
+            id="anilist-import-btn"
+            disabled
+          >
+            <Fragment set:html={ICON_IMPORT_DOWNLOAD} />
+            Importar
+          </button>
+          <button
+            class="btn btn--sm btn--primary"
+            id="anilist-login-btn"
+            >Desconectar</button
+          >
+        </div>
+      </div>
+
+      <!-- Import Modal -->
+      <div id="anilist-import-choose-modal" class="settings-import-choose-modal">
+        <span class="settings-import-modal-title">¿Qué descargar de AniList?</span>
+
+        <div class="settings-import-groups">
+          <div class="settings-import-group">
+            <span class="settings-import-group-label">Anime</span>
+            <div class="settings-import-format-grid">
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-TV" checked />
+                <span class="settings-import-format-text">TV</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-TV_SHORT" checked />
+                <span class="settings-import-format-text">TV Short</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-MOVIE" checked />
+                <span class="settings-import-format-text">Movie</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-SPECIAL" checked />
+                <span class="settings-import-format-text">Special</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-OVA" checked />
+                <span class="settings-import-format-text">OVA</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-ONA" checked />
+                <span class="settings-import-format-text">ONA</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-MUSIC" />
+                <span class="settings-import-format-text">Music</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-import-group">
+            <span class="settings-import-group-label">Manga</span>
+            <div class="settings-import-format-grid">
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-MANGA" checked />
+                <span class="settings-import-format-text">Manga</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-ONE_SHOT" checked />
+                <span class="settings-import-format-text">One-Shot</span>
+              </label>
+              <label class="settings-import-format-label">
+                <input type="checkbox" id="fmt-NOVEL" checked />
+                <span class="settings-import-format-text">Light Novel</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-import-actions">
+          <button
+            class="btn btn--sm btn--primary flex-1"
+            id="anilist-import-start-btn"
+          >Importar</button>
+          <button
+            class="btn btn--sm btn--secondary flex-1"
+            id="anilist-sync-start-btn"
+          >Sincronizar</button>
+          <button
+            class="btn btn--sm btn--ghost"
+            id="anilist-import-cancel-btn"
+          >Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GitHub Device Flow modal -->
+    <div id="github-device-modal" class="settings-modal">
+      <span class="settings-modal-title">Iniciar Sesión en GitHub</span>
+      <p class="settings-modal-hint">
+        Entra en la web a continuación e introduce este código:
+      </p>
+      <div id="github-device-code-box" class="settings-modal-code">
+        ----
+      </div>
+      <a
+        href="https://github.com/login/device"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn--sm btn--secondary settings-modal-link"
+        >Abrir github.com/login/device</a
+      >
+      <button
+        class="btn btn--sm btn--ghost"
+        id="github-cancel-device-btn"
+        style="width: 100%;">Cancelar</button
+      >
+    </div>
+
+    <!-- AniList token prompt modal -->
+    <div id="anilist-token-modal" class="settings-modal">
+      <span class="settings-modal-title">Iniciar Sesión en AniList</span>
+      <p class="settings-modal-hint">
+        1. Haz clic en el botón de abajo para autorizar a Metadea en tu
+        navegador.
+      </p>
+      <a
+        href="#"
+        id="anilist-auth-link"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn--sm btn--secondary settings-modal-link"
+        >Abrir página de autorización</a
+      >
+      <p class="settings-modal-hint settings-modal-hint--spaced">
+        2. Copia el token/código largo que te da la web y pégalo aquí:
+      </p>
+      <input
+        type="text"
+        id="anilist-token-input"
+        placeholder="Pega el token aquí..."
+        class="settings-modal-input"
+      />
+      <div class="settings-modal-actions">
+        <button
+          class="btn btn--sm btn--primary"
+          id="anilist-save-token-btn"
+          >Validar y guardar</button
+        >
+        <button
+          class="btn btn--sm btn--ghost"
+          id="anilist-cancel-token-btn"
+          >Cancelar</button
+        >
+      </div>
+    </div>
+
+    <!-- Help modals -->
+    <div id="github-help-modal" class="settings-help-modal hidden">
+      <div class="settings-help-modal-overlay"></div>
+      <div class="settings-help-modal-content">
+        <div class="settings-help-modal-header">
+          <h3>¿Qué es GitHub?</h3>
+          <button class="settings-help-modal-close" data-modal="github-help-modal">&times;</button>
+        </div>
+        <div class="settings-help-modal-body">
+          <p><strong>GitHub</strong> es una plataforma de control de versiones que permite colaborar en proyectos de código.</p>
+          <p>En Metadea, se usa para:</p>
+          <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+            <li><strong>Contribuir cambios:</strong> Proponer ediciones a los datos de animes, mangas y personajes de forma colaborativa</li>
+            <li><strong>Ver historial:</strong> Revisar todas las contribuciones y cambios realizados al proyecto</li>
+            <li><strong>Colaboración segura:</strong> Los cambios se revisan antes de aplicarse, manteniendo la calidad de los datos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="anilist-help-modal" class="settings-help-modal hidden">
+      <div class="settings-help-modal-overlay"></div>
+      <div class="settings-help-modal-content">
+        <div class="settings-help-modal-header">
+          <h3>¿Qué es AniList?</h3>
+          <button class="settings-help-modal-close" data-modal="anilist-help-modal">&times;</button>
+        </div>
+        <div class="settings-help-modal-body">
+          <p><strong>AniList</strong> es una base de datos comunitaria de animes, mangas y personajes muy popular en internet.</p>
+          <p>En Metadea, se usa para:</p>
+          <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
+            <li><strong>Datos de animes y mangas:</strong> Sincronizar información como títulos, géneros, sinopsis y fechas</li>
+            <li><strong>Datos de personajes:</strong> Cargar información detallada de personajes, sus apareamientos y características</li>
+            <li><strong>Sincronizar biblioteca:</strong> Importar tu lista personal de animes y mangas desde AniList</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
