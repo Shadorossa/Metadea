@@ -2,6 +2,7 @@
 
 .local-page {
   min-height: 100vh;
+  padding-top: 48px;
   padding-bottom: 4rem;
 }
 
