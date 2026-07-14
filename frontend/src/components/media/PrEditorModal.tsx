@@ -8,6 +8,7 @@ import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMe
 import type { SagaEntry } from '../../lib/anilist/saga';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
+import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
 import { RelationTypeSelect } from './RelationTypeSelect';
 import {
@@ -111,8 +112,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [characters, setCharacters] = useState<DbMediaCharacter[]>([]);
   const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
   const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
-  const [characterQuery, setCharacterQuery] = useState('');
-  const [showCharacterSug, setShowCharacterSug] = useState(false);
+  const [charPage, setCharPage] = useState(0);
+  const [showCharSearch, setShowCharSearch] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'relations' | null>(null);
@@ -272,17 +273,19 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     setCharacters(characters.filter(c => c.external_id !== charExternalId));
   const updateCharacterRole = (charExternalId: string, role: string) =>
     setCharacters(characters.map(c => c.external_id === charExternalId ? { ...c, relation_type: role } : c));
-  const addCharacter = (c: CharacterEntry) => {
-    if (characters.some(existing => existing.external_id === c.external_id)) return;
+  const addCharacter = (c: CharacterEntry | ApiSearchResult) => {
+    const extId = 'externalId' in c ? c.externalId : c.external_id;
+    const name = 'externalId' in c ? (c.titleMain || 'Unknown Name') : c.name;
+    const imageUrl = 'externalId' in c ? (c.coverUrl || null) : c.image_url;
+
+    if (characters.some(existing => existing.external_id === extId)) return;
     setCharacters([...characters, {
-      external_id: c.external_id,
-      name: c.name,
-      image_url: c.image_url,
+      external_id: extId,
+      name: name,
+      image_url: imageUrl,
       relation_type: 'SUPPORTING',
       character_name: null,
     }]);
-    setCharacterQuery('');
-    setShowCharacterSug(false);
   };
   const charactersChanged = () => {
     const key = (c: DbMediaCharacter) => `${c.external_id}::${c.relation_type ?? ''}`;
@@ -290,11 +293,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     const b = new Set(originalCharacters.map(key));
     return a.size !== b.size || [...a].some(k => !b.has(k));
   };
-  const characterSuggestions = characterQuery
-    ? allCharacters
-        .filter(c => c.name.toLowerCase().includes(characterQuery.toLowerCase()) && !characters.some(existing => existing.external_id === c.external_id))
-        .slice(0, 8)
-    : [];
 
   // ── Saga handlers ──────────────────────────────────────────────────────────
 
@@ -804,60 +802,82 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 Personajes
                 {charactersChanged() && <span className="pr-editor-section-changed-dot" />}
               </span>
-              <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
-                {characters.map(c => (
-                  <div key={c.external_id} className="pr-editor-media-card">
-                    <div className="pr-editor-media-card-cover">
-                      {c.image_url
-                        ? <img src={c.image_url} alt="" />
-                        : <div className="pr-editor-media-card-placeholder" />}
+              
+              {(() => {
+                const itemsPerPage = 12;
+                const totalPages = Math.ceil(characters.length / itemsPerPage) || 1;
+                const safeCharPage = Math.min(charPage, totalPages - 1);
+                const paginatedChars = characters.slice(safeCharPage * itemsPerPage, (safeCharPage + 1) * itemsPerPage);
+
+                return (
+                  <>
+                    <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem', minHeight: '28.5rem' }}>
+                      {paginatedChars.map(c => (
+                        <div key={c.external_id} className="pr-editor-media-card">
+                          <div className="pr-editor-media-card-cover">
+                            {c.image_url
+                              ? <img src={c.image_url} alt="" />
+                              : <div className="pr-editor-media-card-placeholder" />}
+                            <button
+                              type="button"
+                              className="pr-editor-media-card-remove"
+                              onClick={() => removeCharacter(c.external_id)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="pr-editor-media-card-title" title={c.name}>{c.name}</div>
+                          <select
+                            value={c.relation_type ?? 'SUPPORTING'}
+                            onChange={e => updateCharacterRole(c.external_id, e.target.value)}
+                            className="pr-editor-media-card-select"
+                            style={{ fontSize: '0.7rem' }}
+                          >
+                            <option value="MAIN">{t.character.role_main}</option>
+                            <option value="SUPPORTING">{t.character.role_supporting}</option>
+                            <option value="BACKGROUND">{t.character.role_background}</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="pr-editor-btn pr-editor-btn--cancel"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
+                          disabled={safeCharPage === 0}
+                          onClick={() => setCharPage(prev => Math.max(0, prev - 1))}
+                        >
+                          &lt;
+                        </button>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Página {safeCharPage + 1} de {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="pr-editor-btn pr-editor-btn--cancel"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
+                          disabled={safeCharPage >= totalPages - 1}
+                          onClick={() => setCharPage(prev => Math.min(totalPages - 1, prev + 1))}
+                        >
+                          &gt;
+                        </button>
+                      </div>
+
                       <button
                         type="button"
-                        className="pr-editor-media-card-remove"
-                        onClick={() => removeCharacter(c.external_id)}
+                        className="pr-editor-btn pr-editor-btn--submit"
+                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
+                        onClick={() => setShowCharSearch(true)}
                       >
-                        ×
+                        + Añadir personaje
                       </button>
                     </div>
-                    <div className="pr-editor-media-card-title" title={c.name}>{c.name}</div>
-                    <select
-                      value={c.relation_type ?? 'SUPPORTING'}
-                      onChange={e => updateCharacterRole(c.external_id, e.target.value)}
-                      className="pr-editor-media-card-select"
-                      style={{ fontSize: '0.7rem' }}
-                    >
-                      <option value="MAIN">{t.character.role_main}</option>
-                      <option value="SUPPORTING">{t.character.role_supporting}</option>
-                      <option value="BACKGROUND">{t.character.role_background}</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  className="pr-editor-slot-input"
-                  placeholder="Buscar personaje para añadir..."
-                  value={characterQuery}
-                  onChange={e => { setCharacterQuery(e.target.value); setShowCharacterSug(true); }}
-                  onFocus={() => setShowCharacterSug(true)}
-                  onBlur={() => setTimeout(() => setShowCharacterSug(false), 150)}
-                  style={{ width: '100%' }}
-                />
-                {showCharacterSug && characterSuggestions.length > 0 && (
-                  <div className="pr-editor-suggestions-dropdown">
-                    {characterSuggestions.map(c => (
-                      <div
-                        key={c.external_id}
-                        className="pr-editor-suggestion-item"
-                        onMouseDown={() => addCharacter(c)}
-                      >
-                        {c.name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -1095,6 +1115,14 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...editableRelations.map(r => r.related_media_external_id)]}
           closeOnSelect={false}
+        />
+      )}
+
+      {showCharSearch && (
+        <CharacterSearchPopup
+          onSelect={addCharacter}
+          onClose={() => setShowCharSearch(false)}
+          excludeIds={characters.map(c => c.external_id)}
         />
       )}
     </div>,
