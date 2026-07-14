@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry, type LocalFolderEntry } from '../../../lib/tauri';
+import { scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry, type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence } from '../../../lib/tauri';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { findMatchingFolder, findMatchingEpisodeFile, extractTitleSeason } from '../utils/folderMatch';
 import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
@@ -36,6 +36,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // Which episode number the auto-mark already fired for, so a stray extra
   // poll tick (or VLC staying open past the threshold) can't save twice.
   const markedForRef = useRef<number | null>(null);
+  const lastPresenceStartRef = useRef<number | null>(null);
 
   const candidateTitles = useMemo(
     () => [item.title, item.titleRomaji, item.titleNative].filter((t): t is string => !!t),
@@ -60,6 +61,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     setIsPlaying(false);
     setJustMarked(null);
     markedForRef.current = null;
+    lastPresenceStartRef.current = null;
   }, [item.externalId]);
 
   useEffect(() => {
@@ -131,21 +133,58 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const episodeNumber = nextNumber;
     const interval = setInterval(() => {
       getVlcPlaybackStatus().then(status => {
-        if (!status) return;
-        if (status.state !== 'playing' && status.state !== 'paused') {
-          // VLC closed or moved on to something else — stop polling this file.
+        if (!status) {
           setIsPlaying(false);
           return;
         }
+        if (status.state !== 'playing' && status.state !== 'paused') {
+          setIsPlaying(false);
+          return;
+        }
+
+        // Live Discord Rich Presence updates with time remaining countdown
+        if (status.state === 'playing') {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const computedStart = nowSec - status.time;
+          const computedEnd = computedStart + status.length;
+
+          if (
+            lastPresenceStartRef.current === null ||
+            Math.abs(lastPresenceStartRef.current - computedStart) > 4
+          ) {
+            lastPresenceStartRef.current = computedStart;
+            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", computedStart, computedEnd).catch(() => {});
+          }
+        } else if (status.state === 'paused') {
+          if (lastPresenceStartRef.current !== null) {
+            lastPresenceStartRef.current = null;
+            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "Paused").catch(() => {});
+          }
+        }
+
         if (status.position >= AUTO_MARK_THRESHOLD) {
           markWatched(episodeNumber);
         }
-      }).catch(() => {});
+      }).catch(() => {
+        setIsPlaying(false);
+      });
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, nextFile, nextNumber]);
+  }, [isPlaying, nextFile, nextNumber, item.title]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "").catch(() => {});
+    } else {
+      lastPresenceStartRef.current = null;
+      resetDiscordPresence().catch(() => {});
+    }
+    return () => {
+      lastPresenceStartRef.current = null;
+      resetDiscordPresence().catch(() => {});
+    };
+  }, [isPlaying, item.title, nextNumber]);
 
   return (
     <div className="local-game-detail-panel">

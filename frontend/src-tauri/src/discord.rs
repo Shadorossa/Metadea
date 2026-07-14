@@ -2,7 +2,7 @@ use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use std::sync::{Arc, Mutex};
 
 const CLIENT_ID:      &str = "1521817645043810344";
-const DEFAULT_DETAILS: &str = "Explorando la biblioteca";
+const DEFAULT_DETAILS: &str = "Exploring the library";
 const DEFAULT_STATE:   &str = "";
 
 // -- Estado global -------------------------------------------------------------
@@ -30,7 +30,7 @@ impl DiscordState {
                                     .large_text("Metadea");
                                 
                                 let button = activity::Button::new(
-                                    "Descargar Metadea",
+                                    "Download Metadea",
                                     "https://github.com/Shadorossa/Metadea"
                                 );
 
@@ -75,6 +75,8 @@ fn apply_activity(
     large_txt: &str,
     small_img: &str,
     small_txt: &str,
+    start_time: Option<u64>,
+    end_time: Option<u64>,
 ) -> bool {
     let mut assets = activity::Assets::new();
     
@@ -86,14 +88,21 @@ fn apply_activity(
     }
 
     let download_button = activity::Button::new(
-        "Descargar Metadea",
+        "Download Metadea",
         "https://github.com/Shadorossa/Metadea"
     );
 
-    // Creamos la actividad asegurando que no se inyectan Timestamps en el payload
     let mut payload = activity::Activity::new()
         .assets(assets)
         .buttons(vec![download_button]);
+
+    if let Some(start) = start_time {
+        let mut ts = activity::Timestamps::new().start(start as i64);
+        if let Some(end) = end_time {
+            ts = ts.end(end as i64);
+        }
+        payload = payload.timestamps(ts);
+    }
 
     if !details.is_empty() {
         payload = payload.details(details);
@@ -114,6 +123,8 @@ pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
     details: String,
     state: String,
+    start_time: Option<u64>,
+    end_time: Option<u64>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
     ensure_connected(&mut guard)?;
@@ -126,7 +137,9 @@ pub fn update_presence(
         "metadea", 
         "Metadea", 
         "", 
-        ""
+        "",
+        start_time,
+        end_time,
     );
 
     if !ok {
@@ -150,7 +163,9 @@ pub fn reset_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), Str
         "metadea", 
         "Metadea", 
         "", 
-        ""
+        "",
+        None,
+        None,
     );
 
     if !ok {

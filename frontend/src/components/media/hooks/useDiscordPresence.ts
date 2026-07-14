@@ -11,17 +11,16 @@ export function useDiscordPresence(data: MediaPageData | null, discordT: Transla
 
     const baseType = data.type?.split('_')[0];
 
-    // Obtener la línea principal de i18n ("Viendo la ficha de...", etc.)
-    const detailsText =
-      baseType === 'anime' || baseType === 'movie' || baseType === 'series'
-        ? discordT.watching_details
-        : baseType === 'manga' || baseType === 'novel' || baseType === 'book' || baseType === 'comic'
-        ? discordT.reading_details
-        : baseType === 'game' || baseType === 'vnovel'
-        ? discordT.playing_details
-        : 'Metadea';
+    let detailsText = 'Metadea';
+    if (baseType === 'anime' || baseType === 'movie' || baseType === 'series') {
+      detailsText = `Watching ${data.titleMain}`;
+    } else if (baseType === 'manga' || baseType === 'novel' || baseType === 'book' || baseType === 'comic') {
+      detailsText = `Reading ${data.titleMain}`;
+    } else if (baseType === 'game' || baseType === 'vnovel') {
+      detailsText = `Playing ${data.titleMain}`;
+    }
 
-    updateDiscordPresence(detailsText, data.titleMain).catch(() => {});
+    updateDiscordPresence(detailsText, '').catch(() => {});
 
     // Al desmontar (salir de la ficha), restablecemos el estado por defecto
     return () => {
