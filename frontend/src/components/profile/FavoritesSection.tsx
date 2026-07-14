@@ -268,17 +268,15 @@ export function FavoritesSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reorderModeActive, activeCatKey]);
 
-  if (items === null) return null;
-
   const cat = categories.find(c => c.key === activeCatKey) || categories[0];
-  const catItems = getOrderedItems(activeCatKey);
+  const catItems = items !== null ? getOrderedItems(activeCatKey) : [];
 
   return (
     <div className="fav-layout">
       <div className="fav-tabs-row">
         <div className="fav-tabs">
           {categories.map(c => {
-            const count = getOrderedItems(c.key).length;
+            const count = items !== null ? getOrderedItems(c.key).length : 0;
             return (
               <button
                 key={c.key}
@@ -302,7 +300,11 @@ export function FavoritesSection() {
         />
       </div>
       <div className="fav-grid-container">
-        {catItems.length > 0 ? (
+        {items === null ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <span>Cargando favoritos...</span>
+          </div>
+        ) : catItems.length > 0 ? (
           <div className="fav-grid" ref={gridRef} key={activeCatKey}>
             {catItems.map((item, idx) => {
               const title = item.type === 'character'
