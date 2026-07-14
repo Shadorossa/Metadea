@@ -790,8 +790,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
 
                 <div className="pr-editor-subgroup">
                   <div className="pr-editor-subgroup-fields">
-                    {numberField('total_count', 'Episodes / Chapters')}
-                    {numberField('total_count_2', 'Seasons / Volumes')}
+                    {numberField('total_count', 'Eps / Chs')}
+                    {numberField('total_count_2', 'Seas / Vols')}
                   </div>
                 </div>
               </div>
