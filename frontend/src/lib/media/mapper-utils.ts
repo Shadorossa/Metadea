@@ -47,11 +47,6 @@ export function parseExternalId(externalId: string): { type: string; id: number 
   return { type, id };
 }
 
-// Extract the numeric ID from external_id
-export function extractNumericId(externalId: string): number {
-  const colonIdx = externalId.indexOf(':');
-  return parseInt(externalId.slice(colonIdx + 1), 10);
-}
 
 // Create a sort key [year, month, day] for comparisons (unknowns sorted last)
 export function getReleaseDateKey(item: { release_year?: number | null; release_month?: number | null; release_day?: number | null }): [number, number, number] {

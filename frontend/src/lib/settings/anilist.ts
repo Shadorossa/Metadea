@@ -1,5 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
-import { readEnvConfig } from '../tauri';
+import { invoke, readEnvConfig } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';

@@ -1,15 +1,8 @@
-import { createRoot, type Root } from 'react-dom/client';
-import { createElement } from 'react';
+import { createIslandRenderer } from '../shared/mount-island';
 import { LibrarySection } from '../../components/profile/LibrarySection';
 
-// The Library tab is a React island mounted imperatively — profile.astro
-// still drives tab switching (and the 'refresh-profile-library' event) by
-// calling renderLibrary(el) and replacing el's innerHTML wholesale, which
-// would otherwise orphan the previous React root without unmounting it.
-let root: Root | null = null;
-
-export async function renderLibrary(el: HTMLElement): Promise<void> {
-  root?.unmount();
-  root = createRoot(el);
-  root.render(createElement(LibrarySection));
-}
+// profile.astro also relies on this for the 'refresh-profile-library' event
+// path — LibrarySection listens for that itself now and re-fetches in
+// place, so re-invoking this renderer is only needed for actual tab
+// switches, not every library mutation.
+export const renderLibrary = createIslandRenderer(LibrarySection);

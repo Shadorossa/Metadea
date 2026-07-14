@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '../tauri';
 import { ICON_GITHUB } from '../shared/icon-strings';
 import { setAuthButtonBusy } from '../shared/auth-button';
 import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';

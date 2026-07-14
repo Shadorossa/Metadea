@@ -1,9 +1,8 @@
 import { isTauri, invoke, readStoredJson } from './core';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
-const FAV_TYPE_MAP: Record<string, string> = {};
 function typeToFavKey(type: string): string {
-  return FAV_TYPE_MAP[type] ?? `${type}_fav`;
+  return `${type}_fav`;
 }
 
 export async function readUserFavorites(): Promise<Record<string, string[]>> {

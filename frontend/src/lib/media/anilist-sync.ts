@@ -2,7 +2,7 @@ import { ANILIST_TYPES, APP_TO_ANILIST_STATUS, ANILIST_TO_APP_STATUS } from '../
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
 import { isTauri, invoke } from '../tauri/core';
-import { extractNumericId } from './mapper-utils';
+import { parseExternalId } from './mapper-utils';
 export type AniListSyncType = typeof ANILIST_TYPES[number];
 
 export function isAniListType(type: string): type is AniListSyncType {
@@ -212,7 +212,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   const token = await getToken();
   if (!token) return { ok: false, error: 'No AniList token' };
 
-  const mediaId = extractNumericId(params.externalId);
+  const mediaId = parseExternalId(params.externalId).id;
   if (!mediaId) return { ok: false, error: 'Invalid AniList ID' };
 
   const viewer = await getViewer(token);
@@ -282,7 +282,7 @@ export async function fetchAniListLogData(externalId: string, type: string): Pro
   const token = await getToken();
   if (!token) return { ok: false, error: 'No AniList token' };
 
-  const mediaId = extractNumericId(externalId);
+  const mediaId = parseExternalId(externalId).id;
   if (!mediaId) return { ok: false, error: 'Invalid AniList ID' };
 
   const viewer = await getViewer(token);

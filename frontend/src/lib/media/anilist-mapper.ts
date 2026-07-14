@@ -94,10 +94,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       return (aYear * 12 + aMonth) - (bYear * 12 + bMonth);
     })
     .map(e => {
-      let typeLabel = lookupLabel(tm.relations, e.relationType, e.relationType);
-      if (e.relationType === 'ADAPTATION' && resolvedType === 'anime' && e.node.type === 'MANGA') {
-        typeLabel = lookupLabel(tm.relations, 'PARENT', 'Fuente');
-      }
+      const typeLabel = lookupLabel(tm.relations, e.relationType, e.relationType);
       const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'
         : 'manga';
