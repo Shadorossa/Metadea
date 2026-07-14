@@ -1,0 +1,66 @@
+{
+  "media_catalog": {
+    "id": "f11c6b891400171bf11c6b891400171b",
+    "external_id": "game:191931",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Pokémon Scarlet",
+    "title_romaji": null,
+    "title_native": "Pocket Monsters Scarlet",
+    "synopsis": "The Pokémon Scarlet and Pokémon Violet games, the newest chapters in the Pokémon series, are coming to Nintendo Switch later this year. With these new titles, the Pokémon series takes a new evolutionary step, allowing you to explore freely in a richly expressed open world.\n\nVarious towns blend seamlessly into the wilderness with no borders. You’ll be able to see the Pokémon of this region in the skies, in the seas, in the forests, on the streets—all over! You’ll be able to experience the true joy of the Pokémon series—battling against wild Pokémon in order to catch them—now in an open-world game that players of any age can enjoy.​",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co5sfi.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/scg8ud.jpg",
+    "release_year": 2022,
+    "release_month": 11,
+    "release_day": 18,
+    "time_length": null,
+    "status": null,
+    "score_global": 7.3,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Role-playing (RPG),Turn-Based Strategy (TBS),Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "Nintendo Switch 2,Nintendo Switch",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Game Freak,Nintendo",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-14T15:17:52.315700400+00:00",
+    "updated_at": "2026-07-14T15:19:08.837193300+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:239931",
+      "relation_type": "EXPANSION",
+      "type_label": "Expansión",
+      "title": "Pokémon Scarlet: The Hidden Treasure of Area Zero - Part 1: The Teal Mask",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6ldp.jpg",
+      "media_external_id": "game:191931"
+    },
+    {
+      "related_media_external_id": "game:239932",
+      "relation_type": "EXPANSION",
+      "type_label": "Expansión",
+      "title": "Pokémon Scarlet: The Hidden Treasure of Area Zero - Part 2: The Indigo Disk",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobd1y.jpg",
+      "media_external_id": "game:191931"
+    },
+    {
+      "related_media_external_id": "game:191930",
+      "relation_type": "REL_ALTERNATIVE",
+      "type_label": "Versión",
+      "title": "Pokémon Violet",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5sfa.jpg",
+      "media_external_id": "game:191931"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
