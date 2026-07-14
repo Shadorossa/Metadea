@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
-import { readMetadataIndex, pathToDataUrl, type MetaEntry } from '../../../lib/tauri';
+import { useState, useEffect, useMemo } from 'react';
+import { readMetadataIndex, wrapAssetUrl, type MetaEntry } from '../../../lib/tauri';
 import type { CoverCache } from '../details/GameDetailPanel';
 
+// Covers/banners are served straight off disk via Tauri's asset:// protocol
+// (wrapAssetUrl -> convertFileSrc), so building coverCache is a synchronous
+// string transform — no IPC round trip per image. Previously this awaited
+// pathToDataUrl() (read + base64-encode + IPC) for every cached cover and
+// banner, which meant a full round trip per image on every load of the
+// local games page.
 export function useMetadataCache() {
   const [pathCache,  setPathCache]  = useState<Record<string, MetaEntry>>({});
-  const [coverCache, setCoverCache] = useState<CoverCache>({});
 
   useEffect(() => {
     readMetadataIndex()
@@ -12,43 +17,15 @@ export function useMetadataCache() {
       .catch(err => console.error('[useMetadataCache] Failed to load:', err));
   }, []);
 
-  useEffect(() => {
-    const convert = async () => {
-      const entries = Object.entries(pathCache);
-      const converted = await Promise.all(
-        entries.map(async ([appId, entry]) => {
-          const urls: { cover?: string; banner?: string } = {};
-          const promises: Promise<any>[] = [];
-          
-          if (entry.cover_path) {
-            promises.push(
-              pathToDataUrl(entry.cover_path).then(url => {
-                if (url) urls.cover = url;
-              })
-            );
-          }
-          if (entry.banner_path) {
-            promises.push(
-              pathToDataUrl(entry.banner_path).then(url => {
-                if (url) urls.banner = url;
-              })
-            );
-          }
-          
-          await Promise.all(promises);
-          return { appId, urls };
-        })
-      );
-
-      const result: CoverCache = {};
-      for (const item of converted) {
-        if (Object.keys(item.urls).length > 0) {
-          result[item.appId] = item.urls;
-        }
-      }
-      setCoverCache(result);
-    };
-    convert();
+  const coverCache = useMemo(() => {
+    const result: CoverCache = {};
+    for (const [appId, entry] of Object.entries(pathCache)) {
+      const urls: { cover?: string; banner?: string } = {};
+      if (entry.cover_path)  urls.cover  = wrapAssetUrl(entry.cover_path);
+      if (entry.banner_path) urls.banner = wrapAssetUrl(entry.banner_path);
+      if (Object.keys(urls).length > 0) result[appId] = urls;
+    }
+    return result;
   }, [pathCache]);
 
   const refresh = async () => {

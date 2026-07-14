@@ -962,23 +962,6 @@ pub async fn read_game_info(
     serde_json::from_str(&data).str_err()
 }
 
-#[tauri::command]
-pub async fn file_to_data_url(file_path: String) -> Result<String, String> {
-    let bytes = std::fs::read(&file_path).str_err()?;
-    let mime = if file_path.ends_with(".webp") {
-        "image/webp"
-    } else if file_path.ends_with(".png") {
-        "image/png"
-    } else {
-        "image/jpeg"
-    };
-    Ok(format!(
-        "data:{};base64,{}",
-        mime,
-        crate::utils::base64_encode(&bytes)
-    ))
-}
-
 // Games releasing in [start_unix, end_unix] — single request, used by the
 // Home calendar's "General" view. Uses a broader category allowlist than
 // igdb_search's is_non_game (which is tuned for "is this the same game as

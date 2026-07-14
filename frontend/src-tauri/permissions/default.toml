@@ -32,7 +32,6 @@ commands.allow = [
   "igdb_force_by_igdb_id",
   "read_metadata_index",
   "read_game_info",
-  "file_to_data_url",
   "debug_scan_info",
   "open_env_folder",
   "steam_achievements_download",

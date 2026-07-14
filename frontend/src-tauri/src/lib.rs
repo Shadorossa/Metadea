@@ -97,7 +97,6 @@ pub fn run() {
             igdb::igdb_force_by_igdb_id,
             igdb::read_metadata_index,
             igdb::read_game_info,
-            igdb::file_to_data_url,
             user_library::save_library_entry,
             user_library::get_library_entry,
             user_library::delete_library_entry,

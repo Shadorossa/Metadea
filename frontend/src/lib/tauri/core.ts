@@ -79,10 +79,6 @@ export async function writeStoredJson<T>(cmd: string, localKey: string, value: T
   return invoke<void>(cmd, { [argKey]: content });
 }
 
-export async function pathToDataUrl(filePath: string): Promise<string | null> {
-  return tauriTry<string | null>('file_to_data_url', null, { filePath });
-}
-
 export function wrapAssetUrl(filePath: string): string {
   if (!isTauri() || !filePath) return filePath;
   // If it's a protocol-relative URL (like //images.igdb.com/...), normalize it to https:

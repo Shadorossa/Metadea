@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { pathToDataUrl, type LocalGame, type MetaEntry } from '../../../lib/tauri';
+import React from 'react';
+import { wrapAssetUrl, type LocalGame, type MetaEntry } from '../../../lib/tauri';
 import { IconMonitor } from '../ui/icons';
 import type { CoverCache } from '../details/GameDetailPanel';
 
@@ -11,18 +11,9 @@ interface GameCardProps {
 }
 
 export function GameCard({ game, pathCache, coverCache, onClick }: GameCardProps) {
-  const [cover, setCover] = useState<string | null>(null);
-
   const pathEntry   = game.app_id ? pathCache[game.app_id]   : undefined;
   const cachedEntry = game.app_id ? coverCache[game.app_id]  : undefined;
-
-  useEffect(() => {
-    if (cachedEntry?.cover) {
-      setCover(cachedEntry.cover);
-    } else if (pathEntry?.cover_path) {
-      pathToDataUrl(pathEntry.cover_path).then(setCover);
-    }
-  }, [cachedEntry, pathEntry]);
+  const cover = cachedEntry?.cover ?? (pathEntry?.cover_path ? wrapAssetUrl(pathEntry.cover_path) : null);
 
   return (
     <div
