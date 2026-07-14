@@ -151,20 +151,50 @@ export function findMatchingEpisodeFile(
   itemSeason: number | null = null,
 ): LocalFolderEntry | null {
   const mediaExtensions = /\.(mkv|mp4|avi|mov|flv|webm|mp3|m4a|aac|flac|wav|epub|pdf|mobi|azw3|djvu|cbz|cbr)$/i;
-  const candidates = entries
+  
+  const allCandidates = entries
     .filter(e => !e.is_dir && mediaExtensions.test(e.name))
     .map(e => ({ entry: e, info: extractEpisodeInfo(e.name) }))
-    .filter((c): c is { entry: LocalFolderEntry; info: EpisodeInfo } => c.info !== null && c.info.episode === targetEpisode);
+    .filter((c): c is { entry: LocalFolderEntry; info: EpisodeInfo } => c.info !== null);
 
-  if (itemSeason == null) return candidates[0]?.entry ?? null;
+  const directMatches = allCandidates.filter(c => c.info.episode === targetEpisode);
 
-  const exact = candidates.find(c => c.info.season === itemSeason);
-  if (exact) return exact.entry;
+  if (itemSeason != null) {
+    const exact = directMatches.find(c => c.info.season === itemSeason);
+    if (exact) return exact.entry;
 
-  if (itemSeason === 1) {
-    const implicit = candidates.find(c => c.info.season === null);
-    if (implicit) return implicit.entry;
+    if (itemSeason === 1) {
+      const implicit = directMatches.find(c => c.info.season === null);
+      if (implicit) return implicit.entry;
+    }
+    return null;
   }
 
-  return null;
+  const directAbsolute = directMatches.find(c => c.info.season === null || c.info.season === 1);
+  if (directAbsolute) return directAbsolute.entry;
+
+  const seasonSizes: Record<number, number> = {};
+  for (const c of allCandidates) {
+    if (c.info.season !== null) {
+      seasonSizes[c.info.season] = Math.max(seasonSizes[c.info.season] || 0, c.info.episode);
+    }
+  }
+
+  if (Object.keys(seasonSizes).length > 0) {
+    let remaining = targetEpisode;
+    let currentSeason = 1;
+    while (true) {
+      const size = seasonSizes[currentSeason];
+      if (size === undefined) break;
+      if (remaining <= size) {
+        const matched = allCandidates.find(c => c.info.season === currentSeason && c.info.episode === remaining);
+        if (matched) return matched.entry;
+        break;
+      }
+      remaining -= size;
+      currentSeason++;
+    }
+  }
+
+  return directMatches[0]?.entry ?? null;
 }
