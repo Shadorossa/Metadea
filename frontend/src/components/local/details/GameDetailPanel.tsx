@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
+  updateDiscordPresence, resetDiscordPresence,
 } from '../../../lib/tauri';
 import { AchievementCell } from './AchievementCell';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
@@ -21,6 +22,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
+  const [hasLaunched,   setHasLaunched]   = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (hasLaunched) {
+        resetDiscordPresence().catch(() => {});
+      }
+    };
+  }, [hasLaunched]);
 
   useEffect(() => {
     if (!game.app_id) return;
@@ -75,7 +85,16 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
         </div>
 
         <div className="local-game-detail-bottom">
-          <button className="local-game-detail-play" onClick={() => launchGame(game.launcher, game.app_id, game.install_path).catch(console.error)}>
+          <button className="local-game-detail-play" onClick={() => {
+            launchGame(game.launcher, game.app_id, game.install_path)
+              .then(() => {
+                setHasLaunched(true);
+                const startTime = Math.floor(Date.now() / 1000);
+                const coverUrl = banner && banner.startsWith('http') ? banner : undefined;
+                updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
+              })
+              .catch(console.error);
+          }}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5 3 19 12 5 21 5 3" />
             </svg>

@@ -11,16 +11,10 @@ export function useDiscordPresence(data: MediaPageData | null, discordT: Transla
 
     const baseType = data.type?.split('_')[0];
 
-    let detailsText = 'Metadea';
-    if (baseType === 'anime' || baseType === 'movie' || baseType === 'series') {
-      detailsText = `Watching ${data.titleMain}`;
-    } else if (baseType === 'manga' || baseType === 'novel' || baseType === 'book' || baseType === 'comic') {
-      detailsText = `Reading ${data.titleMain}`;
-    } else if (baseType === 'game' || baseType === 'vnovel') {
-      detailsText = `Playing ${data.titleMain}`;
-    }
+    const detailsText = `Viewing ${data.titleMain}`;
 
-    updateDiscordPresence(detailsText, '').catch(() => {});
+    const coverUrl = data.cover && data.cover.startsWith('http') ? data.cover : undefined;
+    updateDiscordPresence(detailsText, '', undefined, undefined, coverUrl, data.titleMain, 'metadea', 'Metadea').catch(() => {});
 
     // Al desmontar (salir de la ficha), restablecemos el estado por defecto
     return () => {

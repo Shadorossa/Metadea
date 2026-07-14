@@ -153,12 +153,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             Math.abs(lastPresenceStartRef.current - computedStart) > 4
           ) {
             lastPresenceStartRef.current = computedStart;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", computedStart, computedEnd).catch(() => {});
+            const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
+            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", computedStart, computedEnd, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
           }
         } else if (status.state === 'paused') {
           if (lastPresenceStartRef.current !== null) {
             lastPresenceStartRef.current = null;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "Paused").catch(() => {});
+            const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
+            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "Paused", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
           }
         }
 
@@ -171,11 +173,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [isPlaying, nextFile, nextNumber, item.title]);
+  }, [isPlaying, nextFile, nextNumber, item.title, item.cover]);
 
   useEffect(() => {
     if (isPlaying) {
-      updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "").catch(() => {});
+      const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
+      updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
     } else {
       lastPresenceStartRef.current = null;
       resetDiscordPresence().catch(() => {});
@@ -184,7 +187,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       lastPresenceStartRef.current = null;
       resetDiscordPresence().catch(() => {});
     };
-  }, [isPlaying, item.title, nextNumber]);
+  }, [isPlaying, item.title, nextNumber, item.cover]);
 
   return (
     <div className="local-game-detail-panel">
