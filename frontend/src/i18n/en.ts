@@ -133,6 +133,7 @@ export const en = {
     missing_keys_cta: 'Go to Settings',
     sort_date:   'Sort by release date',
     sort_rating: 'Sort by global score',
+    load_more:   'Load more',
   },
   media: {
     not_found:      'Media not found.',

@@ -45,6 +45,17 @@ export interface SearchResult {
   authorKey?: string | null;
 }
 
+// One page of search results, capped at ~50 per provider (see each
+// provider's own file) so a single search never has to wait on an unbounded
+// "fetch every page until exhausted" loop before showing anything — that
+// used to be the main reason results took so long to appear (IGDB and
+// OpenLibrary both did this). `hasMore` tells the UI whether a "Load more"
+// click is worth showing.
+export interface SearchPage {
+  results: SearchResult[];
+  hasMore: boolean;
+}
+
 // Every type folded into the "all" tab — deliberately excludes 'character',
 // which stays its own dedicated tab/result shape.
 const ALL_SEARCH_TYPES: MediaType[] = [
@@ -55,19 +66,20 @@ async function searchOne(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
-): Promise<SearchResult[]> {
+  page: number,
+): Promise<SearchPage> {
   switch (mediaType) {
-    case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal);
-    case 'manga':     return searchAniList(searchQuery, 'MANGA', 'manga', signal);
-    case 'lnovel':    return searchAniList(searchQuery, 'MANGA', 'lnovel', signal, 'NOVEL');
-    case 'game':      return searchGames(searchQuery, 'game', signal);
-    case 'vnovel':    return searchGames(searchQuery, 'vnovel', signal);
-    case 'movie':     return searchMovies(searchQuery, signal);
-    case 'series':    return searchSeries(searchQuery, signal);
-    case 'book':      return searchBooks(searchQuery, signal);
-    case 'comic':     return searchComics(searchQuery, signal);
-    case 'character': return searchAniListCharacters(searchQuery, signal);
-    default:          return [];
+    case 'anime':     return searchAniList(searchQuery, 'ANIME', 'anime', signal, undefined, page);
+    case 'manga':     return searchAniList(searchQuery, 'MANGA', 'manga', signal, undefined, page);
+    case 'lnovel':    return searchAniList(searchQuery, 'MANGA', 'lnovel', signal, 'NOVEL', page);
+    case 'game':      return searchGames(searchQuery, 'game', signal, page);
+    case 'vnovel':    return searchGames(searchQuery, 'vnovel', signal, page);
+    case 'movie':     return searchMovies(searchQuery, signal, page);
+    case 'series':    return searchSeries(searchQuery, signal, page);
+    case 'book':      return searchBooks(searchQuery, signal, page);
+    case 'comic':     return searchComics(searchQuery, signal, page);
+    case 'character': return searchAniListCharacters(searchQuery, signal, page);
+    default:          return { results: [], hasMore: false };
   }
 }
 
@@ -77,18 +89,20 @@ async function searchOne(
 // long as *something* else came back, and only surfaced (as a combined
 // MissingApiKeyError) when literally nothing did, so the UI can tell "no
 // matches" apart from "can't search these types at all yet".
-async function searchAll(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
+async function searchAll(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
   const settled = await Promise.allSettled(
-    ALL_SEARCH_TYPES.map(type => searchOne(type, searchQuery, signal)),
+    ALL_SEARCH_TYPES.map(type => searchOne(type, searchQuery, signal, page)),
   );
 
   const results: SearchResult[] = [];
+  let hasMore = false;
   const missingKeyProviders = new Set<string>();
   let sawOtherError = false;
 
   for (const outcome of settled) {
     if (outcome.status === 'fulfilled') {
-      results.push(...outcome.value);
+      results.push(...outcome.value.results);
+      hasMore = hasMore || outcome.value.hasMore;
       continue;
     }
     const reason = outcome.reason;
@@ -108,14 +122,15 @@ async function searchAll(searchQuery: string, signal: AbortSignal): Promise<Sear
     throw new MissingApiKeyError([...missingKeyProviders]);
   }
 
-  return results;
+  return { results, hasMore };
 }
 
 export async function search(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
-): Promise<SearchResult[]> {
-  if (mediaType === 'all') return searchAll(searchQuery, signal);
-  return searchOne(mediaType, searchQuery, signal);
+  page = 1,
+): Promise<SearchPage> {
+  if (mediaType === 'all') return searchAll(searchQuery, signal, page);
+  return searchOne(mediaType, searchQuery, signal, page);
 }

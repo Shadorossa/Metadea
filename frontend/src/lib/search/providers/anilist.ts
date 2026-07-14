@@ -1,4 +1,4 @@
-import type { MediaType, SearchResult } from '../index';
+import type { MediaType, SearchResult, SearchPage } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost } from '../../api/client';
@@ -242,15 +242,16 @@ export async function searchAniList(
   mediaType: MediaType,
   signal: AbortSignal,
   format?: string,
-): Promise<SearchResult[]> {
+  page = 1,
+): Promise<SearchPage> {
   // Adult content is opt-in (Settings → Actividad). Off by default: filter to
   // isAdult: false. When enabled, omit the filter entirely (null) so both
   // adult and non-adult results are returned.
   const isAdult = isAdultContentEnabled() ? null : false;
 
   const variables = format
-    ? { searchQuery, type: anilistType, page: 1, format, isAdult }
-    : { searchQuery, type: anilistType, page: 1, isAdult };
+    ? { searchQuery, type: anilistType, page, format, isAdult }
+    : { searchQuery, type: anilistType, page, isAdult };
   const { ok, result } = await graphqlPost<AniListResponse['data']>(
     API_ENDPOINTS.ANILIST,
     format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY,
@@ -258,11 +259,14 @@ export async function searchAniList(
     { signal },
   );
 
-  if (!ok) return [];
+  if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
-  if (!pageData) return [];
+  if (!pageData) return { results: [], hasMore: false };
 
-  return (pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType));
+  return {
+    results: (pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType)),
+    hasMore: pageData.pageInfo?.hasNextPage ?? false,
+  };
 }
 
 interface AniListCharacterSearch {
@@ -291,20 +295,21 @@ const SEARCH_CHARACTERS_QUERY = `
 export async function searchAniListCharacters(
   searchQuery: string,
   signal: AbortSignal,
-): Promise<SearchResult[]> {
+  page = 1,
+): Promise<SearchPage> {
   const { ok, result } = await graphqlPost<AniListCharResponse['data']>(
     API_ENDPOINTS.ANILIST,
     SEARCH_CHARACTERS_QUERY,
-    { searchQuery, page: 1 },
+    { searchQuery, page },
     { signal },
   );
 
-  if (!ok) return [];
+  if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
-  if (!pageData) return [];
+  if (!pageData) return { results: [], hasMore: false };
 
   const chars = pageData.characters ?? [];
-  return chars.map(char => ({
+  const results: SearchResult[] = chars.map(char => ({
     externalId: `character:${char.id}`,
     type: 'character' as MediaType,
     format: '',
@@ -318,6 +323,7 @@ export async function searchAniListCharacters(
     releaseDay: null,
     scoreGlobal: null,
   }));
+  return { results, hasMore: pageData.pageInfo?.hasNextPage ?? false };
 }
 
 export interface AniListCharacterDetail {

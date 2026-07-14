@@ -9,6 +9,13 @@ export interface FetchJsonOptions extends RequestInit {
   timeoutMs?: number;
 }
 
+// Applied whenever a call site doesn't pass its own timeoutMs — without
+// this, an unreachable/hanging provider (e.g. OpenLibrary timing out) used
+// to block that request until the OS's own TCP timeout kicked in (often
+// 60-130s), which for the "all types" search dragged down every other
+// already-finished provider along with it since it waits on all of them.
+const DEFAULT_TIMEOUT_MS = 8000;
+
 /**
  * Fetches a URL and parses the JSON response.
  * Returns null on any failure (network error, non-OK status, invalid JSON)
@@ -16,18 +23,29 @@ export interface FetchJsonOptions extends RequestInit {
  * providers rely on.
  */
 export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T | null> {
-  const { timeoutMs, signal, ...init } = options;
-  const controller = timeoutMs && !signal ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: externalSignal, ...init } = options;
+
+  // Always run our own timeout, merged with any external (e.g. cancel-on-
+  // new-query) signal — previously an external signal being present
+  // disabled the timeout entirely, so a slow/hung provider ignored it as
+  // long as the search itself hadn't been cancelled.
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', onExternalAbort);
+  }
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, { ...init, signal: signal ?? controller?.signal });
+    const response = await fetch(url, { ...init, signal: controller.signal });
     if (!response.ok) return null;
     return await response.json() as T;
   } catch {
     return null;
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 }
 
@@ -38,31 +56,54 @@ export interface GraphQLResult<T> {
 
 /**
  * POSTs a GraphQL query/variables pair to `endpoint` with the standard JSON
- * headers, optionally authenticated with a bearer token. Never throws on its
- * own — callers decide how to react to a non-OK status or GraphQL errors.
+ * headers, optionally authenticated with a bearer token. Doesn't throw for a
+ * non-OK status or GraphQL errors (callers decide how to react), nor for its
+ * own timeout — but a caller-provided `signal` being aborted (genuine
+ * cancellation, e.g. the user changed the search query) still propagates as
+ * a rejection, since some callers (search) rely on catching that specific
+ * case to avoid overwriting fresher results with a stale/cancelled response.
  */
 export async function graphqlPost<T>(
   endpoint: string,
   query: string,
   variables?: Record<string, unknown>,
-  opts: { token?: string; signal?: AbortSignal } = {},
+  opts: { token?: string; signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<{ ok: boolean; status: number; result: GraphQLResult<T> | null }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(variables !== undefined ? { query, variables } : { query }),
-    signal: opts.signal,
-  });
-
-  let result: GraphQLResult<T> | null = null;
-  try {
-    result = await response.json();
-  } catch {
-    result = null;
+  // Same merged timeout+cancellation as fetchJson — an unreachable AniList
+  // used to hang on the OS's own TCP timeout since this had no timeout of
+  // its own at all.
+  const controller = new AbortController();
+  const onExternalAbort = () => controller.abort();
+  if (opts.signal) {
+    if (opts.signal.aborted) controller.abort();
+    else opts.signal.addEventListener('abort', onExternalAbort);
   }
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
-  return { ok: response.ok, status: response.status, result };
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(variables !== undefined ? { query, variables } : { query }),
+      signal: controller.signal,
+    });
+
+    let result: GraphQLResult<T> | null = null;
+    try {
+      result = await response.json();
+    } catch {
+      result = null;
+    }
+
+    return { ok: response.ok, status: response.status, result };
+  } catch (err) {
+    if (opts.signal?.aborted) throw err; // real cancellation — let the caller catch it
+    return { ok: false, status: 0, result: null }; // our own timeout, or another network failure
+  } finally {
+    clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onExternalAbort);
+  }
 }

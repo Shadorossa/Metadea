@@ -28,8 +28,13 @@ export function igdbImageUrl(imageId: string, size = 'screenshot_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
-export async function igdbSearch(query: string, isVisualNovel = false): Promise<IgdbGame[]> {
-  return invoke<IgdbGame[]>('igdb_search', { query, isVisualNovel });
+export interface IgdbSearchPage {
+  games: IgdbGame[];
+  hasMore: boolean;
+}
+
+export async function igdbSearch(query: string, isVisualNovel = false, page = 1): Promise<IgdbSearchPage> {
+  return invoke<IgdbSearchPage>('igdb_search', { query, isVisualNovel, page });
 }
 
 // Games releasing between the two unix timestamps — single request. Silently

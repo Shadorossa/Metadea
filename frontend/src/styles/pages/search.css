@@ -232,6 +232,36 @@
   opacity: 0.85;
 }
 
+.search-load-more-row {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.search-load-more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140px;
+  padding: 0.6rem 1.4rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+}
+.search-load-more-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.search-load-more-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .card-cursor {
   cursor: default;
 }

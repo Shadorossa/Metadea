@@ -1,5 +1,5 @@
 import { readEnvConfig } from '../../tauri';
-import type { MediaType, SearchResult } from '../index';
+import type { MediaType, SearchResult, SearchPage } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { getLangCode } from '../../../i18n/client';
@@ -29,6 +29,8 @@ function isAnime(movie: TmdbMovie): boolean {
 
 interface TmdbPageResponse {
   results?: TmdbMovie[];
+  page?: number;
+  total_pages?: number;
 }
 
 export interface TmdbGenre { id: number; name: string }
@@ -160,11 +162,15 @@ async function fetchFromTmdb(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
-): Promise<SearchResult[]> {
+  page: number,
+): Promise<SearchPage> {
   const auth = await getTmdbAuth();
   if (!auth) throw new MissingApiKeyError(['tmdb']);
 
-  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=${tmdbLocale()}`;
+  // TMDB's own page size is fixed at 20 (not adjustable) — "page" here is
+  // just TMDB's own page number, one request each, same as every other
+  // provider's own pagination unit.
+  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=${page}&language=${tmdbLocale()}`;
   const headers: Record<string, string> = {};
 
   if (auth.accessToken) {
@@ -176,16 +182,18 @@ async function fetchFromTmdb(
   }
 
   const data = await fetchJson<TmdbPageResponse>(url, { signal, headers });
-  return (data?.results ?? [])
+  const results = (data?.results ?? [])
     .filter(movie => !isAnime(movie))
     .map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
+  const hasMore = !!(data?.page && data?.total_pages && data.page < data.total_pages);
+  return { results, hasMore };
 }
 
-export const searchMovies = (searchQuery: string, signal: AbortSignal) =>
-  fetchFromTmdb('search/movie', searchQuery, 'movie', signal);
+export const searchMovies = (searchQuery: string, signal: AbortSignal, page = 1) =>
+  fetchFromTmdb('search/movie', searchQuery, 'movie', signal, page);
 
-export const searchSeries = (searchQuery: string, signal: AbortSignal) =>
-  fetchFromTmdb('search/tv', searchQuery, 'series', signal);
+export const searchSeries = (searchQuery: string, signal: AbortSignal, page = 1) =>
+  fetchFromTmdb('search/tv', searchQuery, 'series', signal, page);
 
 // Full detail fetch for the media page — search results only carry title/
 // cover/date/score, not overview, genres, runtime or production companies.

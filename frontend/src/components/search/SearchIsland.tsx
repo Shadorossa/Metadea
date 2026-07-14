@@ -42,7 +42,7 @@ const PROVIDER_SETTINGS_LINK: Record<string, string> = {
 // The entry is removed as soon as the request settles, so nothing is reused
 // after the fact; a repeat search always hits the API again.
 
-const inFlightSearches = new Map<string, Promise<SearchResult[]>>();
+const inFlightSearches = new Map<string, ReturnType<typeof search>>();
 
 interface Props {
   initialQuery?: string;
@@ -65,6 +65,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [results, setResults]     = useState<SearchResult[]>([]);
   const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
   const [missingProviders, setMissingProviders] = useState<string[]>([]);
+  const [page, setPage]           = useState(1);
+  const [hasMore, setHasMore]     = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -96,36 +99,48 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   }, []);
 
 
-  const executeSearch = useCallback(async (searchQuery: string, type: MediaType) => {
+  // Results come 50 at a time per provider (see lib/search — this used to
+  // fetch every page a provider had before showing anything at all, which
+  // was the main reason results took so long to appear). pageNum > 1 is a
+  // "Load more" click: appends instead of replacing and uses isLoadingMore
+  // instead of the full loading state so the existing grid doesn't flash.
+  const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1) => {
     if (searchQuery.length < 2) {
       setStatus('idle');
       setResults([]);
+      setHasMore(false);
       return;
     }
 
-    setStatus('loading');
+    if (pageNum === 1) setStatus('loading');
+    else setIsLoadingMore(true);
 
-    // If the exact same type+query is already in flight (e.g. debounce and
-    // Enter racing each other), ride that request instead of firing another
-    // one — this is the only thing avoided, no results are ever reused later.
-    const key = `${type}:${searchQuery.toLowerCase()}`;
+    // If the exact same type+query+page is already in flight (e.g. debounce
+    // and Enter racing each other), ride that request instead of firing
+    // another one — this is the only thing avoided, no results are ever
+    // reused later.
+    const key = `${type}:${searchQuery.toLowerCase()}:${pageNum}`;
     let promise = inFlightSearches.get(key);
     if (!promise) {
-      abortControllerRef.current?.abort();
+      if (pageNum === 1) abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
-      promise = search(searchQuery, type, abortControllerRef.current.signal)
+      promise = search(searchQuery, type, abortControllerRef.current.signal, pageNum)
         .finally(() => inFlightSearches.delete(key));
       inFlightSearches.set(key, promise);
     }
 
     try {
-      const searchResults = await promise;
-      setResults(searchResults);
+      const { results: pageResults, hasMore: more } = await promise;
+      setResults(prev => pageNum === 1 ? pageResults : [...prev, ...pageResults]);
+      setHasMore(more);
+      setPage(pageNum);
       setStatus('done');
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set('type', type);
-      currentUrl.searchParams.set('q', searchQuery);
-      history.replaceState(null, '', currentUrl.toString());
+      if (pageNum === 1) {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('type', type);
+        currentUrl.searchParams.set('q', searchQuery);
+        history.replaceState(null, '', currentUrl.toString());
+      }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
       if (isAbort) return;
@@ -135,8 +150,15 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       } else {
         setStatus('error');
       }
+    } finally {
+      setIsLoadingMore(false);
     }
   }, []);
+
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasMore) return;
+    executeSearch(query, mediaType, page + 1);
+  };
 
   useEffect(() => {
     if (initialQuery) executeSearch(initialQuery, initialType);
@@ -161,6 +183,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     setMediaType(selectedType);
     setQuery('');
     setResults([]);
+    setHasMore(false);
+    setPage(1);
     setStatus('idle');
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
@@ -367,6 +391,19 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                   <MediaCard key={result.externalId} result={result} />
                 ));
             })()}
+          </div>
+        )}
+
+        {status === 'done' && hasMore && (
+          <div className="search-load-more-row">
+            <button
+              type="button"
+              className="search-load-more-btn"
+              onClick={handleLoadMore}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? <span className="spinner spinner--sm" /> : i18n.load_more}
+            </button>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import type { SearchResult } from '../index';
+import type { SearchResult, SearchPage } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 
@@ -76,6 +76,15 @@ function isComicBook(book: OpenLibraryBook): boolean {
   return (book.subject ?? []).some(s => s.toLowerCase().includes('comic'));
 }
 
+// Manga has its own tab (and its own AniList-backed search) — OpenLibrary
+// just tags it as a book subject ("Manga", "Manga comics", "Japanese comic
+// books", ...), so without this it leaked into the Books results alongside
+// actual novels. Comics search doesn't need this: overlapping OpenLibrary
+// listings that are both manga and comic already match isComicBook above.
+function isMangaBook(book: OpenLibraryBook): boolean {
+  return (book.subject ?? []).some(s => s.toLowerCase().includes('manga'));
+}
+
 function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResult {
   return {
     externalId:   `${mediaType}:${bookIdFromWorkKey(book.key)}`,
@@ -95,38 +104,37 @@ function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResu
   };
 }
 
-async function searchOpenLibraryDocs(searchQuery: string, signal: AbortSignal): Promise<OpenLibraryBook[]> {
+// One page (50, matching every other provider's own page size) per request
+// — this used to loop through every page OpenLibrary had (frequently dozens
+// for a broad query, one sequential request each) before returning anything
+// at all, which was the main reason book/comic search felt so much slower
+// than every other provider (a single request each).
+const PAGE_SIZE = 50;
+
+async function searchOpenLibraryDocs(
+  searchQuery: string,
+  signal: AbortSignal,
+  page: number,
+): Promise<{ docs: OpenLibraryBook[]; hasMore: boolean }> {
   const fields = 'key,title,cover_i,first_publish_year,ratings_average,author_name,author_key,subject';
-  const PAGE = 100;
-  const docs: OpenLibraryBook[] = [];
-  let offset = 0;
-  let total = Infinity;
-
-  while (offset < total) {
-    const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE}&offset=${offset}&fields=${fields}`;
-    const data = await fetchJson<OpenLibrarySearchResponse>(url, { signal });
-    if (!data) break;
-
-    if (total === Infinity) total = data.numFound ?? 0;
-
-    const page = data.docs ?? [];
-    docs.push(...page);
-
-    if (page.length < PAGE) break;
-    offset += PAGE;
-  }
-
-  return docs;
+  const offset = (page - 1) * PAGE_SIZE;
+  const url = `${API_ENDPOINTS.OPENLIBRARY}/search.json?q=${encodeURIComponent(searchQuery)}&limit=${PAGE_SIZE}&offset=${offset}&fields=${fields}`;
+  const data = await fetchJson<OpenLibrarySearchResponse>(url, { signal });
+  const docs = data?.docs ?? [];
+  const hasMore = offset + docs.length < (data?.numFound ?? 0);
+  return { docs, hasMore };
 }
 
-export async function searchBooks(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const docs = await searchOpenLibraryDocs(searchQuery, signal);
-  return docs.filter(b => b.cover_i && !isComicBook(b)).map(b => mapBook(b, 'book'));
+export async function searchBooks(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  const { docs, hasMore } = await searchOpenLibraryDocs(searchQuery, signal, page);
+  const results = docs.filter(b => b.cover_i && !isComicBook(b) && !isMangaBook(b)).map(b => mapBook(b, 'book'));
+  return { results, hasMore };
 }
 
-export async function searchComics(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
-  const docs = await searchOpenLibraryDocs(searchQuery, signal);
-  return docs.filter(b => b.cover_i && isComicBook(b)).map(b => mapBook(b, 'comic'));
+export async function searchComics(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  const { docs, hasMore } = await searchOpenLibraryDocs(searchQuery, signal, page);
+  const results = docs.filter(b => b.cover_i && isComicBook(b)).map(b => mapBook(b, 'comic'));
+  return { results, hasMore };
 }
 
 interface OpenLibWorkEntry {

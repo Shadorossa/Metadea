@@ -1,6 +1,6 @@
 import { API_URL } from '../../config';
 import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig } from '../../tauri';
-import type { MediaType, SearchResult } from '../index';
+import type { MediaType, SearchResult, SearchPage } from '../index';
 import { cleanEditionTitle } from '../../media/title-utils';
 import { unixToDateParts } from '../../media/mapper-utils';
 import { MissingApiKeyError } from '../errors';
@@ -9,36 +9,38 @@ export async function searchGames(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
-): Promise<SearchResult[]> {
+  page = 1,
+): Promise<SearchPage> {
   if (isTauri()) {
-    return searchGamesLocal(searchQuery, mediaType, signal);
+    return searchGamesLocal(searchQuery, mediaType, signal, page);
   }
 
-  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=${mediaType}`;
+  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=${mediaType}&page=${page}`;
   const response = await fetch(url, { signal });
-  if (!response.ok) return [];
-  const data = await response.json() as { results?: SearchResult[] };
-  return data.results ?? [];
+  if (!response.ok) return { results: [], hasMore: false };
+  const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
+  return { results: data.results ?? [], hasMore: data.hasMore ?? false };
 }
 
 async function searchGamesLocal(
   searchQuery: string,
   mediaType: MediaType,
   _signal: AbortSignal,
-): Promise<SearchResult[]> {
+  page: number,
+): Promise<SearchPage> {
   const cfg = await readEnvConfig().catch(() => ({}));
   if (!cfg.igdb_client_id || !cfg.igdb_client_secret) {
     throw new MissingApiKeyError(['igdb']);
   }
 
-  let results;
+  let pageResult;
   try {
-    results = await igdbSearch(searchQuery, mediaType === 'vnovel');
+    pageResult = await igdbSearch(searchQuery, mediaType === 'vnovel', page);
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : 'IGDB error');
   }
 
-  return results.map(g => {
+  const results = pageResult.games.map(g => {
     const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
 
     const coverUrl = g.cover?.image_id
@@ -60,4 +62,6 @@ async function searchGamesLocal(
       scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
     };
   });
+
+  return { results, hasMore: pageResult.hasMore };
 }

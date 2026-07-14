@@ -133,6 +133,7 @@ export const es = {
     missing_keys_cta: 'Ir a Ajustes',
     sort_date:   'Ordenar por fecha de lanzamiento',
     sort_rating: 'Ordenar por puntuación global',
+    load_more:   'Cargar más',
   },
   media: {
     not_found:      'No se encontró la obra.',

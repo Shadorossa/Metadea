@@ -1047,9 +1047,10 @@ pub async fn igdb_search(
     app_handle: tauri::AppHandle,
     query: String,
     is_visual_novel: bool,
+    page: Option<u32>,
 ) -> Result<serde_json::Value, String> {
     if query.is_empty() {
-        return Ok(serde_json::json!([]));
+        return Ok(serde_json::json!({ "games": [], "hasMore": false }));
     }
 
     let cfg = load_env_config(&app_handle)?;
@@ -1059,60 +1060,63 @@ pub async fn igdb_search(
     let client = get_http_client();
     let safe_query = query.replace('"', "");
 
-    const PAGE: usize = 100;
-    let mut all: Vec<serde_json::Value> = Vec::new();
-    let mut offset: usize = 0;
+    // One request per page — this used to loop fetching every page IGDB had
+    // (100 at a time) before returning anything at all, which for a broad
+    // query could be dozens of sequential requests and was the main reason
+    // game search felt so much slower than every other provider. `page` is
+    // our own 1-based, 50-results-per-page unit (matching the other
+    // providers), independent of IGDB's own `limit`/`offset` query syntax.
+    const PAGE_SIZE: usize = 50;
+    let page = page.unwrap_or(1).max(1) as usize;
+    let offset = (page - 1) * PAGE_SIZE;
 
-    loop {
-        let page = igdb_query(
-            &client,
-            &client_id,
-            &token,
-            IGDB_API_GAMES,
-            &format!(
-                "fields id,name,cover.image_id,rating,first_release_date,status,\
-                 genres.id,genres.name,category,game_type,\
-                 version_parent.id,version_parent.genres.id,\
-                 parent_game.id,parent_game.genres.id; \
-                 search \"{}\"; where cover != null; limit {}; offset {};",
-                safe_query, PAGE, offset
-            ),
-        )
-        .await?;
+    let raw = igdb_query(
+        &client,
+        &client_id,
+        &token,
+        IGDB_API_GAMES,
+        &format!(
+            "fields id,name,cover.image_id,rating,first_release_date,status,\
+             genres.id,genres.name,category,game_type,\
+             version_parent.id,version_parent.genres.id,\
+             parent_game.id,parent_game.genres.id; \
+             search \"{}\"; where cover != null; limit {}; offset {};",
+            safe_query, PAGE_SIZE, offset
+        ),
+    )
+    .await?;
 
-        let items = page.as_array().cloned().unwrap_or_default();
-        let count = items.len();
+    let items = raw.as_array().cloned().unwrap_or_default();
+    // IGDB returning a full page doesn't guarantee there's a next one (the
+    // last page can happen to be exactly PAGE_SIZE long), but it's the only
+    // signal available without a second request — worst case, one "Load
+    // more" click comes back empty and the UI just stops offering it.
+    let has_more = items.len() == PAGE_SIZE;
 
-        for item in items {
-            // Cancelled status is 6 in IGDB API
-            if item["status"].as_i64() == Some(6) {
-                continue;
-            }
-
-            let category = get_game_category(&item);
-            if !matches!(category, 0 | 4 | 7 | 8 | 14) {
-                continue;
-            }
-
-
-            // Si es main_game (0) y tiene parent o version_title, lo saltamos para evitar duplicados de fichas base
-            if category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()) {
-                continue;
-            }
-
-            let vn = detect_vn(&item);
-            if is_visual_novel == vn {
-                all.push(item);
-            }
+    let mut games: Vec<serde_json::Value> = Vec::new();
+    for item in items {
+        // Cancelled status is 6 in IGDB API
+        if item["status"].as_i64() == Some(6) {
+            continue;
         }
 
-        if count < PAGE {
-            break;
+        let category = get_game_category(&item);
+        if !matches!(category, 0 | 4 | 7 | 8 | 14) {
+            continue;
         }
-        offset += PAGE;
+
+        // Si es main_game (0) y tiene parent o version_title, lo saltamos para evitar duplicados de fichas base
+        if category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()) {
+            continue;
+        }
+
+        let vn = detect_vn(&item);
+        if is_visual_novel == vn {
+            games.push(item);
+        }
     }
 
-    Ok(serde_json::Value::Array(all))
+    Ok(serde_json::json!({ "games": games, "hasMore": has_more }))
 }
 
 // Single-request detail fetch: banner candidates (artworks/screenshots) and
