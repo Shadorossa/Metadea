@@ -128,6 +128,8 @@ export const en = {
     idle_hint:   'Type at least 2 characters',
     error:       'Search failed. Try again.',
     no_results:  'No results for "{q}"',
+    missing_keys:     "Can't search: API keys aren't configured yet in Settings.",
+    missing_keys_cta: 'Go to Settings',
     sort_date:   'Sort by release date',
     sort_rating: 'Sort by global score',
   },

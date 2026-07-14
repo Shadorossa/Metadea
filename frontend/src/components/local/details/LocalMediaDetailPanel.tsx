@@ -221,6 +221,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       </div>
 
       <div className="local-game-detail-content">
+        <div className="local-game-detail-sticky-bar">
         <div className="local-game-detail-title-block">
           <p className="local-game-detail-title">{item.title}</p>
         </div>
@@ -252,6 +253,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             </svg>
             Ver en catálogo
           </a>
+        </div>
         </div>
 
         {playError && (

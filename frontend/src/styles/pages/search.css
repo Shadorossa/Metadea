@@ -209,6 +209,29 @@
   color: var(--color-error);
 }
 
+.results-missing-keys {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-missing-keys-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1.1rem;
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity var(--anim-base) var(--anim-ease);
+}
+.search-missing-keys-btn:hover {
+  opacity: 0.85;
+}
+
 .card-cursor {
   cursor: default;
 }

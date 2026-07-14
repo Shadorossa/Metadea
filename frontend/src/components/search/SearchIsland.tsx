@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { search, type MediaType, type SearchResult } from '../../lib/search/index';
+import { search, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
@@ -27,7 +27,14 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
 
 const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
-type SearchStatus = 'idle' | 'loading' | 'done' | 'error';
+type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
+
+// Search-provider ids -> the settings page's API-platform sub-tab that
+// configures them (see EnvironmentTab.astro's data-platform buttons).
+const PROVIDER_SETTINGS_LINK: Record<string, string> = {
+  igdb: '/settings?tab=environment&platform=igdb',
+  tmdb: '/settings?tab=environment&platform=tmdb',
+};
 
 // ── In-flight request de-duplication ────────────────────────────────────────
 // No result caching — just prevents the exact same type+query from firing
@@ -57,6 +64,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
   const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
+  const [missingProviders, setMissingProviders] = useState<string[]>([]);
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -120,7 +128,11 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       history.replaceState(null, '', currentUrl.toString());
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
-      if (!isAbort) {
+      if (isAbort) return;
+      if (error instanceof MissingApiKeyError) {
+        setMissingProviders(error.providers);
+        setStatus('missing-keys');
+      } else {
         setStatus('error');
       }
     }
@@ -319,6 +331,20 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
         {status === 'error' && (
           <div className="results-empty results-error">{i18n.error}</div>
+        )}
+
+        {status === 'missing-keys' && (
+          <div className="results-empty results-missing-keys">
+            <p>{i18n.missing_keys}</p>
+            <a
+              href={missingProviders.length === 1
+                ? PROVIDER_SETTINGS_LINK[missingProviders[0]] ?? '/settings?tab=environment'
+                : '/settings?tab=environment'}
+              className="search-missing-keys-btn"
+            >
+              {i18n.missing_keys_cta}
+            </a>
+          </div>
         )}
 
         {status === 'done' && results.length === 0 && (

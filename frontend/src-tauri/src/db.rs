@@ -142,6 +142,34 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 7)?;
     }
+    if v < 8 {
+        // Backfill: media_relations rows saved before save_media_relations /
+        // import_proposal_bundle started writing the reciprocal edge (see
+        // reciprocal_relation() in media_catalog.rs) could be one-directional
+        // — a SEQUEL on one side with no matching PREQUEL on the other. The
+        // saga chain's recursive walk only follows a row's own
+        // media_external_id column forward, so a missing reciprocal edge
+        // silently truncated the chain right there. INSERT OR IGNORE so an
+        // already-curated (possibly different) classification on the other
+        // side is never overwritten — this only fills genuine gaps.
+        let pairs: &[(&str, &str, &str)] = &[
+            ("SEQUEL", "PREQUEL", "Prequel"),
+            ("PREQUEL", "SEQUEL", "Sequel"),
+            ("SOURCE", "ADAPTATION", "Adaptation"),
+            ("ADAPTATION", "SOURCE", "Source Material"),
+            ("EPISODE", "PART_OF", "Part of"),
+            ("UPDATE", "PART_OF", "Part of"),
+        ];
+        for (from_type, recip_type, recip_label) in pairs {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 SELECT related_media_external_id, media_external_id, ?2, ?3
+                 FROM media_relations WHERE relation_type = ?1",
+                rusqlite::params![from_type, recip_type, recip_label],
+            );
+        }
+        mark_migration(conn, 8)?;
+    }
 
     Ok(())
 }

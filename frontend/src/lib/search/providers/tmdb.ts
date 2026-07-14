@@ -3,6 +3,7 @@ import type { MediaType, SearchResult } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { getLangCode } from '../../../i18n/client';
+import { MissingApiKeyError } from '../errors';
 
 interface TmdbMovie {
   id: number;
@@ -161,7 +162,7 @@ async function fetchFromTmdb(
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
   const auth = await getTmdbAuth();
-  if (!auth) return [];
+  if (!auth) throw new MissingApiKeyError(['tmdb']);
 
   let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=1&language=${tmdbLocale()}`;
   const headers: Record<string, string> = {};

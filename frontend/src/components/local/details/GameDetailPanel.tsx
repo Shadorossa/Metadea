@@ -108,6 +108,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
       )}
 
       <div className="local-game-detail-content">
+        <div className="local-game-detail-sticky-bar">
         <div className="local-game-detail-title-block">
           <p className="local-game-detail-title">{game.name}</p>
           {gameInfo?.developers && gameInfo.developers.length > 0 && (
@@ -177,6 +178,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
               </a>
             </>
           )}
+        </div>
         </div>
 
         {metaDots && <p className="local-game-detail-metadots">{metaDots}</p>}

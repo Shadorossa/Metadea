@@ -1133,6 +1133,19 @@
   overflow: hidden;
 }
 
+/* Keeps the title, play/edit/catalog buttons (and stats, for games) always
+ * reachable while scrolling a long summary/achievements list below — only
+ * the banner (which can be very tall) is allowed to scroll out of view. */
+.local-game-detail-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -1.5rem -1.5rem 0;
+  padding: 1.25rem 1.5rem 1rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
 .local-game-detail-title-block {
   margin-bottom: 0.75rem;
 }

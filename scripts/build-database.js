@@ -7,7 +7,8 @@
 // already have locally into its own tables.
 //
 // Each database/*.json is a *bundle*, not a bare media_catalog row:
-//   { media_catalog: {...}, media_relations: [...], characters: [...], media_authors: [...] }
+//   { media_catalog: {...}, media_relations: [...], characters: [...],
+//     media_authors: [...], saga_groups: {...}, saga_name: "..." }
 // media_relations already includes both "Bundled In" (EPISODE/UPDATE) and
 // saga-derived PREQUEL/SEQUEL entries — PrEditorModal resolves those before
 // writing the file, so this script only has to fan them out into tables.
@@ -117,7 +118,39 @@ CREATE TABLE media_by_author (
     role               TEXT,
     PRIMARY KEY (media_external_id, author_external_id)
 );
+
+CREATE TABLE media_saga_groups (
+    media_external_id TEXT NOT NULL PRIMARY KEY,
+    group_name         TEXT NOT NULL
+);
+
+CREATE TABLE sagas (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL DEFAULT '',
+    description TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE saga_relations (
+    media_external_id TEXT NOT NULL,
+    saga_id           TEXT NOT NULL,
+    PRIMARY KEY (media_external_id, saga_id)
+);
 `;
+
+// Mirrors reciprocal_relation() in media_catalog.rs — PrEditorModal already
+// writes both sides of PREQUEL/SEQUEL and the REL_TYPE_TO_PAIR types by hand,
+// so this is only a safety net for any bundle that (now or in the future)
+// doesn't go through that exact save path.
+const RECIPROCAL_RELATION = {
+  SEQUEL: ['PREQUEL', 'Prequel'],
+  PREQUEL: ['SEQUEL', 'Sequel'],
+  SOURCE: ['ADAPTATION', 'Adaptation'],
+  ADAPTATION: ['SOURCE', 'Source Material'],
+  EPISODE: ['PART_OF', 'Part of'],
+  UPDATE: ['PART_OF', 'Part of'],
+};
 
 const CATALOG_COLUMNS = [
   'id', 'external_id', 'parent_id', 'type', 'format', 'source',
@@ -175,11 +208,23 @@ function buildDatabase(bundles) {
   const relationStmt = db.prepare(
     'INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
   );
+  const reciprocalRelationStmt = db.prepare(
+    'INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
+  );
   const authorStmt = db.prepare(
     'INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
   );
   const byAuthorStmt = db.prepare(
     'INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role) VALUES (?, ?, ?)'
+  );
+  const sagaGroupStmt = db.prepare(
+    'INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?, ?)'
+  );
+  const sagaStmt = db.prepare(
+    'INSERT OR REPLACE INTO sagas (id, name) VALUES (?, ?)'
+  );
+  const sagaRelationStmt = db.prepare(
+    'INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id) VALUES (?, ?)'
   );
 
   let catalogCount = 0;
@@ -197,13 +242,37 @@ function buildDatabase(bundles) {
     catalogStmt.run(...row);
     catalogCount++;
 
+    const owners = new Set();
     for (const rel of bundle.media_relations || []) {
       if (!rel.related_media_external_id || !rel.relation_type) continue;
       // media_external_id is explicit per row (not assumed to be this file's
       // own entry) — a saga PR carries prequel/sequel edges for every entry
       // in the chain, not just the one this file's media_catalog describes.
       const owner = rel.media_external_id || externalId;
+      owners.add(owner);
       relationStmt.run(owner, rel.related_media_external_id, rel.relation_type, rel.type_label || rel.relation_type);
+
+      const reciprocal = RECIPROCAL_RELATION[rel.relation_type];
+      if (reciprocal) {
+        reciprocalRelationStmt.run(rel.related_media_external_id, owner, reciprocal[0], reciprocal[1]);
+      }
+    }
+
+    for (const [mediaId, groupName] of Object.entries(bundle.saga_groups || {})) {
+      if (mediaId && groupName) sagaGroupStmt.run(mediaId, groupName);
+    }
+
+    if (bundle.saga_name) {
+      // Matches import_proposal_bundle's Rust logic: the saga's own id is the
+      // lexicographically smallest of every entry it touches, so re-merging
+      // the same saga from a later PR (different owner set, same members)
+      // converges on the same id instead of creating a duplicate saga row.
+      const sagaOwners = owners.size > 0 ? [...owners] : [externalId];
+      const sagaId = sagaOwners.slice().sort()[0];
+      sagaStmt.run(sagaId, bundle.saga_name);
+      for (const owner of sagaOwners) {
+        sagaRelationStmt.run(owner, sagaId);
+      }
     }
 
     for (const char of bundle.characters || []) {

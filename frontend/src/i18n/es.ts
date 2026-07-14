@@ -128,6 +128,8 @@ export const es = {
     idle_hint:   'Escribe al menos 2 caracteres',
     error:       'Error al buscar. Inténtalo de nuevo.',
     no_results:  'Sin resultados para "{q}"',
+    missing_keys:     'No se puede buscar: faltan claves API por configurar en Ajustes.',
+    missing_keys_cta: 'Ir a Ajustes',
     sort_date:   'Ordenar por fecha de lanzamiento',
     sort_rating: 'Ordenar por puntuación global',
   },

@@ -2,6 +2,9 @@ import { searchAniList, searchAniListCharacters } from './providers/anilist';
 import { searchGames }                 from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks, searchComics }   from './providers/openlibrary';
+import { MissingApiKeyError }          from './errors';
+
+export { MissingApiKeyError };
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
@@ -42,9 +45,15 @@ export interface SearchResult {
   authorKey?: string | null;
 }
 
-export async function search(
+// Every type folded into the "all" tab — deliberately excludes 'character',
+// which stays its own dedicated tab/result shape.
+const ALL_SEARCH_TYPES: MediaType[] = [
+  'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic',
+];
+
+async function searchOne(
+  mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
-  mediaType: MediaType,
   signal: AbortSignal,
 ): Promise<SearchResult[]> {
   switch (mediaType) {
@@ -58,7 +67,55 @@ export async function search(
     case 'book':      return searchBooks(searchQuery, signal);
     case 'comic':     return searchComics(searchQuery, signal);
     case 'character': return searchAniListCharacters(searchQuery, signal);
-    // 'all': pendiente de integrar
     default:          return [];
   }
+}
+
+// Fans out to every provider in parallel and merges what comes back. A
+// provider missing its API key (IGDB, TMDB) rejects with MissingApiKeyError
+// instead of silently contributing zero results — that's swallowed here as
+// long as *something* else came back, and only surfaced (as a combined
+// MissingApiKeyError) when literally nothing did, so the UI can tell "no
+// matches" apart from "can't search these types at all yet".
+async function searchAll(searchQuery: string, signal: AbortSignal): Promise<SearchResult[]> {
+  const settled = await Promise.allSettled(
+    ALL_SEARCH_TYPES.map(type => searchOne(type, searchQuery, signal)),
+  );
+
+  const results: SearchResult[] = [];
+  const missingKeyProviders = new Set<string>();
+  let sawOtherError = false;
+
+  for (const outcome of settled) {
+    if (outcome.status === 'fulfilled') {
+      results.push(...outcome.value);
+      continue;
+    }
+    const reason = outcome.reason;
+    if (reason instanceof MissingApiKeyError) {
+      reason.providers.forEach(p => missingKeyProviders.add(p));
+    } else if (reason instanceof Error && reason.name === 'AbortError') {
+      // The whole search was cancelled (new query/type) — propagate
+      // immediately instead of reporting a misleading "missing keys" or
+      // "generic error" state for a request nobody cares about anymore.
+      throw reason;
+    } else {
+      sawOtherError = true;
+    }
+  }
+
+  if (results.length === 0 && missingKeyProviders.size > 0 && !sawOtherError) {
+    throw new MissingApiKeyError([...missingKeyProviders]);
+  }
+
+  return results;
+}
+
+export async function search(
+  searchQuery: string,
+  mediaType: MediaType,
+  signal: AbortSignal,
+): Promise<SearchResult[]> {
+  if (mediaType === 'all') return searchAll(searchQuery, signal);
+  return searchOne(mediaType, searchQuery, signal);
 }

@@ -2,7 +2,7 @@ import { importFromAniList, syncFromAniList, type ImportProgress } from '../anil
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
 
-const ALL_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MUSIC', 'MANGA', 'ONE_SHOT', 'NOVEL'];
+const ALL_FORMATS = ['TV', 'TV_SHORT', 'MOVIE', 'SPECIAL', 'OVA', 'ONA', 'MANGA', 'ONE_SHOT', 'NOVEL'];
 
 function selectedFormats(): string[] {
   return ALL_FORMATS.filter(f => (byId<HTMLInputElement>(`fmt-${f}`))?.checked);

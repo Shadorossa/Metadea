@@ -50,6 +50,32 @@ fn existing_catalog_ids(
 // "anime" instead of using the whole id string as the type. Shared by
 // save_media_relations / save_author_profile_and_relations /
 // import_proposal_bundle, which used to each carry their own copy.
+// The saga chain (get_transitive_relation_ids' recursive CTE) only walks
+// forward via a row's own media_external_id column, so every link needs its
+// own outgoing edge — a PREQUEL saved on one side without the matching
+// SEQUEL on the other silently breaks traversal partway through the saga.
+// PrEditorModal already wrote both sides by hand (see REL_TYPE_TO_PAIR /
+// its own SEQUEL+PREQUEL pair) but that only covered its own manual-save
+// path; every other writer (a plain page view re-syncing relations from a
+// live API fetch) saved one-sided edges. Centralizing it here means any
+// current or future caller of save_media_relations/import_proposal_bundle
+// gets the reciprocal edge for free.
+//
+// INSERT OR IGNORE (not REPLACE) at the call site — a curator may have
+// deliberately classified the other side differently (e.g. SIDE_STORY
+// instead of a plain SEQUEL), and a live API re-fetch must not clobber that.
+fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, &'static str)> {
+    match relation_type {
+        "SEQUEL"     => Some(("PREQUEL", "Prequel")),
+        "PREQUEL"    => Some(("SEQUEL", "Sequel")),
+        "SOURCE"     => Some(("ADAPTATION", "Adaptation")),
+        "ADAPTATION" => Some(("SOURCE", "Source Material")),
+        "EPISODE"    => Some(("PART_OF", "Part of")),
+        "UPDATE"     => Some(("PART_OF", "Part of")),
+        _ => None,
+    }
+}
+
 fn infer_type_from_id(external_id: &str) -> String {
     external_id
         .split_once(':')
@@ -508,6 +534,15 @@ pub async fn save_media_relations(
         )
         .str_err()?;
 
+        if let Some((recip_type, recip_label)) = reciprocal_relation(&rel.relation_type) {
+            tx.execute(
+                "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![&rel.related_media_external_id, &media_external_id, recip_type, recip_label],
+            )
+            .str_err()?;
+        }
+
         if !existing_ids.contains(&rel.related_media_external_id) {
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
@@ -865,6 +900,40 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()?;
 
+            // Custom saga display name and per-entry saga sub-group labels
+            // (both editable in PrEditorModal, both exported in every PR
+            // bundle — see saga_groups/saga_name there) — same fill-gaps
+            // merge as everything else above. Guarded by a table-existence
+            // check because these three tables were only added to
+            // build-database.js's output alongside this merge; a community
+            // catalog built by an older workflow run won't have them yet.
+            let has_saga_tables: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'media_saga_groups'",
+                    [],
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+
+            if has_saga_tables {
+                conn.execute(
+                    "INSERT OR IGNORE INTO media_saga_groups (media_external_id, group_name)
+                     SELECT media_external_id, group_name FROM community.media_saga_groups",
+                    [],
+                ).str_err()?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO sagas (id, name)
+                     SELECT id, name FROM community.sagas",
+                    [],
+                ).str_err()?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
+                     SELECT media_external_id, saga_id FROM community.saga_relations",
+                    [],
+                ).str_err()?;
+            }
+
             Ok(())
         })();
         conn.execute("DETACH DATABASE community", []).str_err()?;
@@ -1080,6 +1149,15 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
             ],
         )
         .str_err()?;
+
+        if let Some((recip_type, recip_label)) = reciprocal_relation(&rel.relation_type) {
+            tx.execute(
+                "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![&rel.related_media_external_id, parent_id, recip_type, recip_label],
+            )
+            .str_err()?;
+        }
 
         if !known_ids.contains(&rel.related_media_external_id) {
             let rel_type = infer_type_from_id(&rel.related_media_external_id);

@@ -1,8 +1,9 @@
 import { API_URL } from '../../config';
-import { igdbSearch, igdbImageUrl, isTauri } from '../../tauri';
+import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig } from '../../tauri';
 import type { MediaType, SearchResult } from '../index';
 import { cleanEditionTitle } from '../../media/title-utils';
 import { unixToDateParts } from '../../media/mapper-utils';
+import { MissingApiKeyError } from '../errors';
 
 export async function searchGames(
   searchQuery: string,
@@ -25,6 +26,11 @@ async function searchGamesLocal(
   mediaType: MediaType,
   _signal: AbortSignal,
 ): Promise<SearchResult[]> {
+  const cfg = await readEnvConfig().catch(() => ({}));
+  if (!cfg.igdb_client_id || !cfg.igdb_client_secret) {
+    throw new MissingApiKeyError(['igdb']);
+  }
+
   let results;
   try {
     results = await igdbSearch(searchQuery, mediaType === 'vnovel');
