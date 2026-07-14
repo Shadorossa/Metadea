@@ -1509,6 +1509,16 @@
   box-sizing: border-box;
 }
 
+.fav-layout.entering {
+  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fav-layout.entering {
+    animation: none;
+  }
+}
+
 @media (max-width: 1024px) {
   .fav-layout {
     padding: 0 1rem;

@@ -272,7 +272,7 @@ export function FavoritesSection() {
   const catItems = items !== null ? getOrderedItems(activeCatKey) : [];
 
   return (
-    <div className="fav-layout">
+    <div className="fav-layout entering">
       <div className="fav-tabs-row">
         <div className="fav-tabs">
           {categories.map(c => {
