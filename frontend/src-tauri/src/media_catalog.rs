@@ -257,6 +257,30 @@ pub async fn save_catalog_entry(
     Ok(entry)
 }
 
+// Records a failed live re-sync attempt without touching any other column —
+// unlike save_catalog_entry (INSERT OR REPLACE against the full row), a
+// failed fetch has no fresh data to write, so this only bumps the failure
+// counter/message on whatever's already there. No-ops silently if the row
+// doesn't exist yet (a cold first-visit failure has nothing to attach to;
+// the next visit just retries since needsResync() treats a missing
+// last_synced_at as always due).
+#[tauri::command]
+pub async fn mark_catalog_sync_failed(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+    error: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "UPDATE media_catalog
+         SET sync_failed_count = COALESCE(sync_failed_count, 0) + 1,
+             last_sync_error = ?2
+         WHERE external_id = ?1",
+        rusqlite::params![external_id, error],
+    ).str_err()?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn get_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,

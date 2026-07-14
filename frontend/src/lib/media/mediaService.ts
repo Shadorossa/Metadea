@@ -6,7 +6,7 @@ import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
-import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry } from '../tauri';
+import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
@@ -201,6 +201,14 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   if (cached) return cached;
 
   const data = await fetchMediaDataInternal(rawId);
+  if (!data) {
+    // No-ops in Rust if this id has no catalog row yet (a cold first-visit
+    // failure has nothing to attach a failure count to) — otherwise bumps
+    // sync_failed_count/last_sync_error without touching any other column,
+    // so needsResync() can back off a title whose provider keeps failing
+    // instead of retrying it on every single visit forever.
+    markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
+  }
   if (data) {
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
     await mergeAndPersistRelations(rawId, data.relations);

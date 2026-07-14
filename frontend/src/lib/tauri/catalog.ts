@@ -50,6 +50,10 @@ export async function deleteCatalogEntry(externalId: string): Promise<void> {
   return tauriRun('delete_catalog_entry', { externalId });
 }
 
+export async function markCatalogSyncFailed(externalId: string, error: string): Promise<void> {
+  return tauriRun('mark_catalog_sync_failed', { externalId, error });
+}
+
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
 }

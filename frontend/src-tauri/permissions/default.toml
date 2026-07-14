@@ -52,6 +52,7 @@ commands.allow = [
   "write_user_journey",
   "save_catalog_entry",
   "get_catalog_entry",
+  "mark_catalog_sync_failed",
   "delete_catalog_entry",
   "get_all_catalog_entries",
   "search_catalog",

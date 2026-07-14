@@ -78,16 +78,31 @@ const RESYNC_INTERVAL_DAYS: Record<CanonicalStatus, number> = {
 };
 const DEFAULT_RESYNC_INTERVAL_DAYS = 30; // unknown/missing status
 
-export function needsResync(entry: { status?: string | null; last_synced_at?: string | null } | null | undefined): boolean {
+// Caps how far repeated failures push the interval out — a provider that's
+// been down/erroring for weeks shouldn't stop ever being retried again.
+const MAX_BACKOFF_MULTIPLIER = 8;
+
+export function needsResync(entry: {
+  status?: string | null;
+  last_synced_at?: string | null;
+  sync_failed_count?: number | null;
+} | null | undefined): boolean {
   if (!entry) return true;
   if (!entry.last_synced_at) return true;
 
   const intervalDays = RESYNC_INTERVAL_DAYS[(entry.status ?? '') as CanonicalStatus] ?? DEFAULT_RESYNC_INTERVAL_DAYS;
 
+  // Back off exponentially on repeated failures (1x, 2x, 4x, 8x, capped) —
+  // a title whose provider keeps 404ing/erroring shouldn't retry on the
+  // same weekly cadence as one that's actually working, but also shouldn't
+  // be abandoned forever.
+  const failures = entry.sync_failed_count ?? 0;
+  const backoffMultiplier = failures > 0 ? Math.min(2 ** failures, MAX_BACKOFF_MULTIPLIER) : 1;
+
   const lastSynced = new Date(entry.last_synced_at).getTime();
   if (isNaN(lastSynced)) return true;
 
-  return Date.now() - lastSynced > intervalDays * 24 * 60 * 60 * 1000;
+  return Date.now() - lastSynced > intervalDays * backoffMultiplier * 24 * 60 * 60 * 1000;
 }
 
 // A library entry counts as "caught up" (rather than plain "in progress")

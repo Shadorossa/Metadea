@@ -121,6 +121,7 @@ pub fn run() {
             user_lists::reorder_list_items,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
+            media_catalog::mark_catalog_sync_failed,
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
             media_catalog::search_catalog,
