@@ -303,7 +303,7 @@ export function FavoritesSection() {
       </div>
       <div className="fav-grid-container">
         {catItems.length > 0 ? (
-          <div className="fav-grid" ref={gridRef}>
+          <div className="fav-grid" ref={gridRef} key={activeCatKey}>
             {catItems.map((item, idx) => {
               const title = item.type === 'character'
                 ? (characterMap.get(item.external_id)?.name ?? item.external_id)
@@ -318,7 +318,12 @@ export function FavoritesSection() {
               const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
 
               return (
-                <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} key={item.external_id}>
+                <div
+                  className={`fav-card ${reorderModeActive ? 'reordering' : ''}`}
+                  data-id={item.external_id}
+                  key={item.external_id}
+                  style={{ '--fav-index': idx } as React.CSSProperties}
+                >
                   <a className="fav-card-link" href={mediaUrl} />
                   <div className="fav-badge">#{idx + 1}</div>
 
