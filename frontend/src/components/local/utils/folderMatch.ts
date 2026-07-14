@@ -117,7 +117,10 @@ export interface EpisodeInfo {
 // (typical when each season is stored in its own folder) — callers treat
 // that as "season 1 or unknown", not as a mismatch.
 export function extractEpisodeInfo(filename: string): EpisodeInfo | null {
-  const base = filename.replace(/\.[a-z0-9]+$/i, '');
+  const cleaned = filename
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\([^)]*\)/g, ' ');
+  const base = cleaned.replace(/\.[a-z0-9]+$/i, '');
 
   for (const marker of SEASON_EPISODE_MARKERS) {
     const match = base.match(marker);
@@ -147,8 +150,9 @@ export function findMatchingEpisodeFile(
   targetEpisode: number,
   itemSeason: number | null = null,
 ): LocalFolderEntry | null {
+  const mediaExtensions = /\.(mkv|mp4|avi|mov|flv|webm|mp3|m4a|aac|flac|wav|epub|pdf|mobi|azw3|djvu|cbz|cbr)$/i;
   const candidates = entries
-    .filter(e => !e.is_dir)
+    .filter(e => !e.is_dir && mediaExtensions.test(e.name))
     .map(e => ({ entry: e, info: extractEpisodeInfo(e.name) }))
     .filter((c): c is { entry: LocalFolderEntry; info: EpisodeInfo } => c.info !== null && c.info.episode === targetEpisode);
 
