@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
-  updateDiscordPresence, resetDiscordPresence,
+  updateDiscordPresence, resetDiscordPresence, getCatalogEntry,
+  type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { AchievementCell } from './AchievementCell';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
@@ -41,6 +42,18 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
     if (game.launcher !== 'steam' || !game.app_id) { setAchievements(null); return; }
     steamGetPlayerAchievements(Number(game.app_id)).then(res => setAchievements(res || null));
   }, [game.app_id, game.launcher]);
+
+  const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
+
+  useEffect(() => {
+    if (gameInfo?.igdb_id) {
+      getCatalogEntry(`game:${gameInfo.igdb_id}`)
+        .then(setCatalogEntry)
+        .catch(() => setCatalogEntry(null));
+    } else {
+      setCatalogEntry(null);
+    }
+  }, [gameInfo?.igdb_id]);
 
   const entry      = game.app_id ? coverCache[game.app_id] : undefined;
   const banner     = entry?.banner ?? entry?.cover ?? null;
@@ -90,7 +103,11 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
               .then(() => {
                 setHasLaunched(true);
                 const startTime = Math.floor(Date.now() / 1000);
-                const coverUrl = banner && banner.startsWith('http') ? banner : undefined;
+                const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
+                  ? catalogEntry.cover_url
+                  : (banner && banner.startsWith('http'))
+                  ? banner
+                  : undefined;
                 updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
               })
               .catch(console.error);
