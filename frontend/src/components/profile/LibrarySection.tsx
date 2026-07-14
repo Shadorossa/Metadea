@@ -291,17 +291,27 @@ export function LibrarySection() {
       setSagaRelations(relations);
 
       // Entering your library is the other trigger point (besides visiting
-      // the media page itself) for the weekly RELEASING re-sync — catches
-      // shows you're actively watching/reading even if you don't click into
-      // their page that day. Scoped to in-progress entries only (no point
-      // re-checking something you haven't started), sequential with a short
-      // stagger so a library full of ongoing shows doesn't burst AniList's
-      // rate limit, and each result is patched into catalogMap as it lands
-      // so "Al día" grouping and episode counts update live.
+      // the media page itself) for needsResync()'s per-status cadence —
+      // catches shows/manga you're actively watching/reading even if you
+      // don't click into their page that day. needsResync() itself decides
+      // what's actually due: RELEASING every 7 days (any type — anime AND
+      // manga/lnovel chapters go through the exact same total_count/status
+      // pipeline, see anilist-mapper.ts), other statuses on their own longer
+      // cadence, and — the case this also backfills — a catalog row that
+      // was never synced at all (last_synced_at missing entirely, e.g. a
+      // stub created before this system existed, or one only ever filled in
+      // via community-catalog sync) is always immediately due, so its first
+      // library visit does a full live re-fetch and finally records
+      // last_synced_at/status/total_count for it.
+      // Scoped to in-progress entries only (no point re-checking something
+      // you haven't started), sequential with a short stagger so a library
+      // full of ongoing shows doesn't burst AniList's rate limit, and each
+      // result is patched into catalogMap as it lands so "Al día" grouping
+      // and episode/chapter counts update live.
       const dueForResync = rawItems.filter(item => {
         if (!isInProgressStatus(item.status)) return false;
         const catalog = catalogEntries.find(e => e.external_id === item.external_id);
-        return catalog?.status === 'RELEASING' && needsResync(catalog);
+        return needsResync(catalog);
       });
 
       for (const item of dueForResync) {
