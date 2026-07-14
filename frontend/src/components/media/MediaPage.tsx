@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
-import { saveCatalogEntry, saveLibraryEntry, updateDiscordPresence, resetDiscordPresence } from '../../lib/tauri';
+import { saveCatalogEntry, saveLibraryEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -11,6 +11,9 @@ import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus, IconLayers } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
+import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
+import { useDiscordPresence } from './hooks/useDiscordPresence';
+import { MediaStoreLinks } from './MediaStoreLinks';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
@@ -141,30 +144,7 @@ export default function MediaPage({ i18n }: Props) {
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-
-  // The title is forced to a single line (no wrap) — for long titles that'd
-  // otherwise overflow past the viewport edge, shrink the font size in 1px
-  // steps until it actually fits its column instead of just clipping.
-  useEffect(() => {
-    const el = titleRef.current;
-    const parent = el?.parentElement;
-    if (!el || !parent) return;
-
-    const MIN_FONT_PX = 13;
-    const fit = () => {
-      el.style.fontSize = '';
-      let fontSize = parseFloat(getComputedStyle(el).fontSize);
-      while (el.scrollWidth > parent.clientWidth && fontSize > MIN_FONT_PX) {
-        fontSize -= 1;
-        el.style.fontSize = `${fontSize}px`;
-      }
-    };
-
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
-  }, [data?.titleMain]);
+  const titleRef = useAutoShrinkTitle(data?.titleMain);
 
   const {
     entry: libEntry,
@@ -400,41 +380,7 @@ export default function MediaPage({ i18n }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId, data?.type, data?.bannerImage, data?.authors]);
 
-  // ── Discord Rich Presence ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (!data?.externalId) return;
-
-    const baseType = data.type?.split('_')[0];
-    
-    // Obtener la línea principal de i18n ("Viendo la ficha de...", etc.)
-    const detailsText =
-      baseType === 'anime' || baseType === 'movie' || baseType === 'series'
-        ? t.discord.watching_details
-        : baseType === 'manga' || baseType === 'novel' || baseType === 'book' || baseType === 'comic'
-        ? t.discord.reading_details
-        : baseType === 'game' || baseType === 'vnovel'
-        ? t.discord.playing_details
-        : 'Metadea';
-
-    // Normalizar la URL de la portada para asegurar que Discord la acepte (debe llevar https:)
-    let coverUrl = data.cover || '';
-    if (coverUrl.startsWith('//')) {
-      coverUrl = 'https:' + coverUrl;
-    }
-
-
-    updateDiscordPresence(detailsText, data.titleMain).catch(() => {});
-
-    // Al desmontar (salir de la ficha), restablecemos el estado por defecto
-    return () => {
-      resetDiscordPresence().catch(() => {});
-    };
-
-  // Re-disparar si cambia la obra
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.externalId]);
-
-
+  useDiscordPresence(data, t.discord);
 
   const handleCoverClick = useCallback(() => {
     setShowEditor(true);
@@ -787,41 +733,7 @@ export default function MediaPage({ i18n }: Props) {
                   </>
                 )}
                 {data.storeLinks && data.storeLinks.length > 0 && (
-                  <div className="media-store-links-inline">
-                    {data.storeLinks.map((link) => {
-                      const platformLower = link.platform.toLowerCase();
-                      const logoMap: Record<string, string> = {
-                        'steam': 'steam_logo.png',
-                        'epic': 'epic_logo.png',
-                        'gog': 'gog_logo.png',
-                        'playstation': 'playstation_logo.png',
-                        'xbox': 'xbox_logo.png',
-                        'nintendo': 'nintendo_logo.png',
-                        'ea': 'EA_logo.png'
-                      };
-                      const logoFile = logoMap[platformLower] || 'steam_logo.png';
-                      const logoUrl = `/platforms/${logoFile}`;
-
-                      return (
-                        <button
-                          key={link.platform}
-                          type="button"
-                          className="media-store-link"
-                          title={link.platform}
-                          onClick={() => {
-                            const tauri = window.__TAURI__;
-                            if (tauri?.opener?.openUrl) {
-                              tauri.opener.openUrl(link.url);
-                            } else {
-                              window.open(link.url, '_blank');
-                            }
-                          }}
-                        >
-                          <img src={logoUrl} alt={link.platform} className="media-store-icon" />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <MediaStoreLinks links={data.storeLinks} />
                 )}
               </div>
               <div className="media-relations-grid">
