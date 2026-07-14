@@ -34,7 +34,10 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
           break;
         }
       } else if (nextNode instanceof Element && nextNode.classList.contains('markdown_spoiler')) {
-        valueParts.push(nextNode.textContent || '');
+        // Keeps the spoiler <span> itself (not just its text), so the value
+        // still renders hidden-until-hover instead of leaking the spoiler
+        // text in plain sight.
+        valueParts.push(nextNode.outerHTML);
       } else {
         break;
       }

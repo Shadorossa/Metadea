@@ -143,6 +143,7 @@ const translations = useTranslations(lang);
   };
 
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
+  import { parseCharacterBiography } from '../lib/character/biography-parser';
   import {
     readUserFavorites,
     writeUserFavorites,
@@ -230,82 +231,13 @@ const translations = useTranslations(lang);
         altNamesContainer.style.display = 'none';
       }
 
-      // ── PARSEO DE DATOS TÉCNICOS POR DOM (MÁS ROBUSTO) ───────────────────
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = character.description || '';
-
-      const boldElements = tempDiv.querySelectorAll('b, strong');
-      const parsedStats: Array<{ label: string; value: string }> = [];
-      const elementsToRemove: Node[] = [];
-
-      for (const el of boldElements) {
-        const label = el.textContent.trim().replace(/:$/, '').trim();
-        if (label.length > 30 || label.length < 2) continue;
-
-        // Buscar el valor en los nodos hermanos siguientes. Un valor puede
-        // venir partido en varios fragmentos — texto plano seguido de un
-        // spoiler de AniList (<span class="markdown_spoiler">, lo que
-        // "~!texto!~" se convierte al pedir description(asHtml: true)) — así
-        // que no paramos en el primer fragmento de texto encontrado, solo al
-        // toparnos con un límite real de bloque (otra etiqueta, o un <br>
-        // una vez ya hay contenido acumulado).
-        let nextNode = el.nextSibling;
-        let valueParts: string[] = [];
-
-        while (nextNode) {
-          if (nextNode.nodeType === Node.TEXT_NODE) {
-            const txt = nextNode.textContent?.trim();
-            if (txt) valueParts.push(txt);
-          } else if (nextNode.nodeName === 'BR') {
-            // <b>Label:</b><br>Value — seguimos buscando tras el primer salto
-            // de línea, pero un <br> después de ya tener contenido marca el
-            // final de esta línea de stat.
-            if (valueParts.length > 0) {
-              nextNode = nextNode.nextSibling;
-              break;
-            }
-          } else if (nextNode instanceof Element && nextNode.classList.contains('markdown_spoiler')) {
-            // Conserva el span de spoiler tal cual (no solo su texto) para
-            // que siga ocultándose visualmente en el valor del stat.
-            valueParts.push((nextNode as HTMLElement).outerHTML);
-          } else {
-            // Si nos topamos con otra etiqueta (ej. <b> u otro bloque), paramos
-            break;
-          }
-          nextNode = nextNode.nextSibling;
-        }
-
-        const value = valueParts.join(' ').trim().replace(/^:\s*/, '').trim();
-        if (value) {
-          parsedStats.push({ label, value });
-          elementsToRemove.push(el);
-
-          // También marcamos los nodos intermedios (como saltos de línea) para eliminar
-          let toRemove = el.nextSibling;
-          while (toRemove && toRemove !== nextNode) {
-            elementsToRemove.push(toRemove);
-            toRemove = toRemove.nextSibling;
-          }
-          if (nextNode) {
-            elementsToRemove.push(nextNode);
-          }
-        }
-      }
-
-      // Eliminar nodos parseados de la descripción
-      for (const node of elementsToRemove) {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
-        }
-      }
-
-      let cleanDescription = tempDiv.innerHTML
-        .replace(/(?:\s*<br\s*\/?>\s*){2,}/gi, '<br />')
-        .replace(/^(?:\s*<br\s*\/?>|\s*<p>\s*<\/p>|\s*&nbsp;)+/gi, '')
-        .trim();
+      // ── PARSEO DE DATOS TÉCNICOS (compartido con el editor de personajes,
+      // ver lib/character/biography-parser.ts — misma lógica de extraer
+      // pares <b>Label:</b> Value de la biografía de AniList) ─────────────
+      const { characteristics: parsedStats, cleanBiography } = parseCharacterBiography(character.description);
 
       // Formatear spoilers: Convertir !~ y ~! a span.spoiler
-      cleanDescription = cleanDescription.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
+      const cleanDescription = cleanBiography.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
 
       // ── RENDEREAR ESPECIFICACIONES / ATRIBUTOS ─────────────────────────
       const statsCard = document.getElementById('char-stats-card')!;
