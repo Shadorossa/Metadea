@@ -1,19 +1,16 @@
 import React from 'react';
-import { wrapAssetUrl, type LocalGame, type MetaEntry } from '../../../lib/tauri';
+import type { LocalGame } from '../../../lib/tauri';
 import { IconMonitor } from '../ui/icons';
 import type { CoverCache } from '../details/GameDetailPanel';
 
 interface GameCardProps {
   game:       LocalGame;
-  pathCache:  Record<string, MetaEntry>;
   coverCache: CoverCache;
   onClick:    (game: LocalGame) => void;
 }
 
-export function GameCard({ game, pathCache, coverCache, onClick }: GameCardProps) {
-  const pathEntry   = game.app_id ? pathCache[game.app_id]   : undefined;
-  const cachedEntry = game.app_id ? coverCache[game.app_id]  : undefined;
-  const cover = cachedEntry?.cover ?? (pathEntry?.cover_path ? wrapAssetUrl(pathEntry.cover_path) : null);
+export function GameCard({ game, coverCache, onClick }: GameCardProps) {
+  const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? null;
 
   return (
     <div

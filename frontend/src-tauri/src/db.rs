@@ -125,6 +125,23 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 6)?;
     }
+    if v < 7 {
+        // Separate, append-only table for "when did I watch/read episode N"
+        // — deliberately not touching user_library (which only tracks the
+        // current progress number, not a per-episode timeline) so this can
+        // grow freely without bloating the row every progress edit updates.
+        let _ = conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS episode_history (
+                id             TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+                external_id    TEXT NOT NULL,
+                episode_number REAL NOT NULL,
+                watched_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+             );
+             CREATE INDEX IF NOT EXISTS idx_episode_history_external_id
+                ON episode_history(external_id);"
+        );
+        mark_migration(conn, 7)?;
+    }
 
     Ok(())
 }

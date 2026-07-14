@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
-  updateDiscordPresence, resetDiscordPresence, getCatalogEntry,
+  updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
   type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { AchievementCell } from './AchievementCell';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
-import { IconX, IconMonitor } from '../ui/icons';
+import { IconX, IconMonitor, IconPencil } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatters';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
@@ -58,6 +58,18 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   const entry      = game.app_id ? coverCache[game.app_id] : undefined;
   const banner     = entry?.banner ?? entry?.cover ?? null;
   const metaDots   = [formatDate(gameInfo?.release_date ?? undefined), gameInfo?.genres?.join(', ')].filter(Boolean).join('  ·  ');
+
+  const handleEdit = () => {
+    if (!gameInfo?.igdb_id) return;
+    const externalId = `game:${gameInfo.igdb_id}`;
+    getLibraryEntry(externalId)
+      .then(libraryEntry => {
+        window.dispatchEvent(new CustomEvent('open-profile-editor', {
+          detail: { externalId, libraryEntry: libraryEntry ?? undefined, catalogEntry: catalogEntry ?? undefined },
+        }));
+      })
+      .catch(console.error);
+  };
 
   return (
     <div className="local-game-detail-panel">
@@ -152,13 +164,18 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           </div>
 
           {gameInfo?.igdb_id && (
-            <a href={`/media?id=game:${gameInfo.igdb_id}`} className="local-game-detail-catalog-link">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              Ver en catálogo
-            </a>
+            <>
+              <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title="Editar log en el catálogo">
+                <IconPencil />
+              </button>
+              <a href={`/media?id=game:${gameInfo.igdb_id}`} className="local-game-detail-catalog-link">
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                Ver en catálogo
+              </a>
+            </>
           )}
         </div>
 

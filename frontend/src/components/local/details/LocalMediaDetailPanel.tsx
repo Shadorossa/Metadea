@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry, type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence } from '../../../lib/tauri';
+import {
+  scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry,
+  saveEpisodeHistoryEntry, getEpisodeHistory, type EpisodeHistoryEntry,
+  type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence,
+} from '../../../lib/tauri';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { findMatchingFolder, findMatchingEpisodeFile, extractTitleSeason } from '../utils/folderMatch';
+import { formatWatchedAt } from '../utils/formatters';
 import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
 
 interface LocalMediaDetailPanelProps {
@@ -32,6 +37,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const [playError, setPlayError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [justMarked, setJustMarked] = useState<number | null>(null);
+  const [history, setHistory] = useState<EpisodeHistoryEntry[]>([]);
 
   // Which episode number the auto-mark already fired for, so a stray extra
   // poll tick (or VLC staying open past the threshold) can't save twice.
@@ -62,6 +68,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     setJustMarked(null);
     markedForRef.current = null;
     lastPresenceStartRef.current = null;
+    getEpisodeHistory(item.externalId).then(setHistory).catch(() => setHistory([]));
   }, [item.externalId]);
 
   useEffect(() => {
@@ -118,6 +125,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       });
       setJustMarked(episodeNumber);
       onProgressSaved();
+      saveEpisodeHistoryEntry(item.externalId, episodeNumber)
+        .then(() => getEpisodeHistory(item.externalId))
+        .then(setHistory)
+        .catch(err => console.error('Failed to save episode history', err));
     } catch (err) {
       // Don't block the next poll tick from retrying on a transient save error.
       markedForRef.current = null;
@@ -234,6 +245,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title="Editar log en el catálogo">
             <IconPencil />
           </button>
+          <a href={`/media?id=${item.externalId}`} className="local-game-detail-catalog-link">
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+            Ver en catálogo
+          </a>
         </div>
 
         {playError && (
@@ -277,6 +295,21 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 </span>
               )
             )}
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="local-media-history">
+            <p className="local-media-history-title">Historial</p>
+            <div className="local-media-history-feed">
+              {history.map(h => (
+                <div key={h.id} className="local-media-history-item">
+                  <IconCheck />
+                  <span>Episodio/capítulo <strong>{h.episode_number}</strong></span>
+                  <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

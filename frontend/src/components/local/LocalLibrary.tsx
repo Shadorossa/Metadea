@@ -245,7 +245,7 @@ export default function LocalLibrary() {
                       </h2>
                       <div className="local-games-grid">
                         {list.map((g, i) => (
-                          <GameCard key={i} game={g} pathCache={pathCache} coverCache={coverCache} onClick={setSelectedGame} />
+                          <GameCard key={i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
                         ))}
                       </div>
                     </section>

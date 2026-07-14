@@ -684,6 +684,7 @@
   width: 40px;
   height: 40px;
   flex-shrink: 0;
+  margin-left: auto;
   background: transparent;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -695,6 +696,49 @@
 .local-media-detail-edit-icon:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.local-media-history {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.local-media-history-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin-bottom: 0.6rem;
+}
+
+.local-media-history-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.local-media-history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-main);
+}
+
+.local-media-history-item svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-completed, var(--accent));
+}
+
+.local-media-history-date {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .local-media-play-error {
@@ -800,8 +844,8 @@
 .local-game-detail-panel {
   position: sticky;
   top: 48px;               /* sticks just below the navbar */
-  width: 45vw;
-  max-width: 600px;
+  width: 60vw;
+  max-width: 860px;
   min-width: 320px;
   max-height: calc(100vh - 48px);
   background: var(--bg-primary);

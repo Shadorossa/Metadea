@@ -21,6 +21,15 @@ export function formatDate(timestamp?: number): string | null {
   } catch { return null; }
 }
 
+// SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) —
+// the space instead of "T" makes most JS engines parse it as local time
+// instead of UTC, so normalize it first.
+export function formatWatchedAt(sqliteTimestamp: string): string {
+  const d = new Date(sqliteTimestamp.replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) return sqliteTimestamp;
+  return d.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

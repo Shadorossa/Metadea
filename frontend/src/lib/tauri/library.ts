@@ -40,6 +40,21 @@ export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
   return tauriCmd<LibraryEntry[]>('get_all_library_entries', []);
 }
 
+export interface EpisodeHistoryEntry {
+  id:             string;
+  external_id:    string;
+  episode_number: number;
+  watched_at:     string;
+}
+
+export async function saveEpisodeHistoryEntry(externalId: string, episodeNumber: number): Promise<void> {
+  return tauriRun('save_episode_history_entry', { externalId, episodeNumber });
+}
+
+export async function getEpisodeHistory(externalId: string): Promise<EpisodeHistoryEntry[]> {
+  return tauriCmd<EpisodeHistoryEntry[]>('get_episode_history', [], { externalId });
+}
+
 export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
   return readStoredJson<Record<string, string[]>>('read_monthly_history', STORAGE_KEYS.monthlyHistory, {});
 }

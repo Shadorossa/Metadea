@@ -93,9 +93,10 @@ export function wrapAssetUrl(filePath: string): string {
     if (tauri?.core?.convertFileSrc) {
       return tauri.core.convertFileSrc(filePath);
     }
-    // Fallback: manually prefix for asset protocol if internals aren't fully resolved yet
-    const normalized = filePath.replace(/\\/g, '/');
-    return `http://asset.localhost/${encodeURIComponent(normalized)}`;
+    // Fallback: manually prefix for asset protocol if internals aren't fully resolved yet.
+    // Windows/Android serve it over https, not the "asset:" scheme used elsewhere.
+    const segments = filePath.replace(/\\/g, '/').split('/').map(encodeURIComponent);
+    return `https://asset.localhost/${segments.join('/')}`;
   } catch (e) {
     console.error('Failed to convert file src:', e);
     return filePath;
