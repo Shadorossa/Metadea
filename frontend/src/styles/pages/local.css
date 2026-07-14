@@ -799,13 +799,15 @@
 .local-game-detail-panel {
   position: sticky;
   top: 48px;               /* sticks just below the navbar */
-  width: 1120px;
+  width: 45vw;
+  max-width: 600px;
+  min-width: 320px;
   max-height: calc(100vh - 48px);
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  flex-shrink: 1;
   animation: slide-in-right 0.3s var(--anim-ease);
   overflow-y: auto;
   overflow-x: hidden;
@@ -866,7 +868,7 @@
 .local-game-detail-edit {
   position: absolute;
   top: 0.75rem;
-  left: 0.75rem;
+  left: 3.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -883,6 +885,33 @@
 .local-game-detail-edit:hover {
   background: rgba(0, 0, 0, 0.8);
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+.local-game-detail-back {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: white;
+  cursor: pointer;
+  transition: all var(--anim-base) var(--anim-ease);
+  z-index: 2;
+}
+.local-game-detail-back:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.local-game-detail-back svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ── IGDB Picker Modal ───────────────────────────────── */
@@ -1276,3 +1305,5 @@
     animation: none;
   }
 }
+
+

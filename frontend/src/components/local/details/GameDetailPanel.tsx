@@ -62,6 +62,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   return (
     <div className="local-game-detail-panel">
       <div className="local-game-detail-header">
+        <button className="local-game-detail-back" onClick={onClose} title="Cerrar panel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
         {banner ? (
           <img src={banner} alt={game.name} />
         ) : (
