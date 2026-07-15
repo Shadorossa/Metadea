@@ -20,7 +20,7 @@ import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData } from './media-cache';
-import { mapCatalogEntryToPartialData, inferProgressStatus } from './catalog-mapper';
+import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
   mediaCharactersToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
@@ -33,7 +33,7 @@ import {
 // in their own files (media-cache.ts, media-relations.ts, catalog-mapper.ts).
 export {
   getCachedMediaData, patchCachedRelations, invalidateCachedMediaData,
-  mapCatalogEntryToPartialData, inferProgressStatus,
+  mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mergeAndPersistRelations,
 };
 

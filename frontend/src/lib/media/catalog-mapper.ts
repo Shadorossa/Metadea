@@ -95,3 +95,59 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     authors:       authors.length > 0 ? authors : undefined,
   };
 }
+
+// Inverse of mapCatalogEntryToPartialData — builds the row MediaPage.tsx
+// upserts once live API data (or catalog fast-path data) is on screen, so
+// the next F5/visit has this to build a partial render from instantly. id/
+// created_at/updated_at are always regenerated: save_catalog_entry (Rust)
+// looks up any existing row by external_id and keeps its real id/created_at,
+// this call's values are just placeholders that satisfy MediaCatalogEntry's
+// required fields.
+export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: string): MediaCatalogEntry {
+  const now = new Date().toISOString();
+  return {
+    id:                    '',
+    external_id:           externalId,
+    parent_id:             data.parentGame?.externalId ?? null,
+
+    type:                  data.type,
+    format:                data.format,
+    source:                data.source,
+    title_main:            data.titleMain   || undefined,
+    title_native:          data.titleNative || undefined,
+    title_romaji:          data.titleEnglish || undefined,
+    synopsis:              data.description || undefined,
+    cover_url:             data.cover       || undefined,
+    banners_csv:           data.bannerImage || undefined,
+    release_year:          data.releaseYear,
+    release_month:         data.releaseMonth,
+    release_day:           data.releaseDay,
+    score_global:          data.scoreGlobal,
+    time_length:           data.timeLength,
+    status:                data.status,
+    total_count:           data.totalCount,
+    total_count_2:         data.totalCount_2,
+    genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
+    genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
+    platforms_csv:         data.platforms?.join(',') || undefined,
+    // "platform|url" pairs — IGDB store links (Steam, GOG, ...). Neither
+    // token can contain a comma so a flat CSV join/split round-trips safely.
+    // data.storeLinks is null once the backend has checked this game *and*
+    // its ports and found nothing — persisted as an explicit NULL rather
+    // than left untouched, so "confirmed no links" is distinguishable from
+    // "never checked" (undefined, non-game media types).
+    shop_links_csv:        data.storeLinks === null
+      ? null
+      : data.storeLinks?.length
+        ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
+        : undefined,
+    companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
+    // Names only, same convention as companies_cache_csv — this is a flat
+    // display cache for the instant partial-load path (mapCatalogEntryToPartialData),
+    // not a relation store. The real author relations (id, image, role, url)
+    // are synced separately via saveMediaAuthors, into media_author/media_by_author.
+    authors_csv:           data.authors?.length ? data.authors.map(a => a.name).join(',') : undefined,
+    created_at:            now,
+    updated_at:            now,
+  };
+}

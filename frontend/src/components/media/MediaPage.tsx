@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mapMediaDataToCatalogEntry } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -239,6 +239,13 @@ export default function MediaPage({ i18n }: Props) {
         setPageState('ready');
         setIsFetchingFull(false);
 
+        // Background fetches below resolve after the user may have already
+        // navigated to a different media page — this guards every merge so
+        // a late response can't clobber whatever's now on screen.
+        const patchIfCurrent = (patch: Partial<MediaPageData>) => {
+          setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, ...patch } : prev);
+        };
+
         if (full.characters && full.characters.length > 0) {
           const isCastRole = full.type === 'movie' || full.type === 'series';
           const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
@@ -268,7 +275,7 @@ export default function MediaPage({ i18n }: Props) {
             // it with relations that don't belong to it.
             if (cancelled || !relations) return;
             patchCachedRelations(targetRelationsId, relations);
-            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+            patchIfCurrent({ relations });
             // Transitive relations (remaster-of-an-expansion, etc.) used to
             // only ever land in the session cache — never media_relations —
             // so they rendered fine here but never showed up as an editable
@@ -283,7 +290,7 @@ export default function MediaPage({ i18n }: Props) {
           fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(relations => {
             if (cancelled || !relations) return;
             patchCachedRelations(currentId, relations);
-            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+            patchIfCurrent({ relations });
           });
         }
 
@@ -296,17 +303,17 @@ export default function MediaPage({ i18n }: Props) {
             if (characters.length > 0) {
               const skeletonChars = mediaCharactersToSkeleton(characters, false);
               saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
-              setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, characters } : prev);
+              patchIfCurrent({ characters });
             }
 
             if (genreDots || genreTagDots) {
               updateCatalogGenres(currentId, genreDots ?? null, genreTagDots ?? null).catch(console.error);
-              setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, genreDots, genreTagDots } : prev);
+              patchIfCurrent({ genreDots, genreTagDots });
             }
 
             if (!relations) return;
             patchCachedRelations(currentId, relations);
-            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+            patchIfCurrent({ relations });
           });
         }
       },
@@ -347,51 +354,7 @@ export default function MediaPage({ i18n }: Props) {
     // MGS3's catalog entry overwritten with MGS2's data.
     if (!data?.type || !currentId || data.externalId !== currentId) return;
 
-    saveCatalogEntry({
-      id:                    '',
-      external_id:           currentId,
-      parent_id:             data.parentGame?.externalId ?? null,
-
-      type:                  data.type,
-      format:                data.format,
-      source:                data.source,
-      title_main:            data.titleMain   || undefined,
-      title_native:          data.titleNative || undefined,
-      title_romaji:          data.titleEnglish || undefined,
-      synopsis:              data.description || undefined,
-      cover_url:             data.cover       || undefined,
-      banners_csv:           data.bannerImage || undefined,
-      release_year:          data.releaseYear,
-      release_month:         data.releaseMonth,
-      release_day:           data.releaseDay,
-      score_global:          data.scoreGlobal,
-      time_length:           data.timeLength,
-      status:                data.status,
-      total_count:           data.totalCount,
-      total_count_2:         data.totalCount_2,
-      genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
-      genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
-      platforms_csv:         data.platforms?.join(',') || undefined,
-      // "platform|url" pairs — IGDB store links (Steam, GOG, ...). Neither
-      // token can contain a comma so a flat CSV join/split round-trips safely.
-      // data.storeLinks is null once the backend has checked this game *and*
-      // its ports and found nothing — persisted as an explicit NULL rather
-      // than left untouched, so "confirmed no links" is distinguishable from
-      // "never checked" (undefined, non-game media types).
-      shop_links_csv:        data.storeLinks === null
-        ? null
-        : data.storeLinks?.length
-          ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
-          : undefined,
-      companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
-      // Names only, same convention as companies_cache_csv — this is a flat
-      // display cache for the instant partial-load path (mapCatalogEntryToPartialData),
-      // not a relation store. The real author relations (id, image, role, url)
-      // are synced separately via saveMediaAuthors below, into media_author/media_by_author.
-      authors_csv:           data.authors?.length ? data.authors.map(a => a.name).join(',') : undefined,
-      created_at:            new Date().toISOString(),
-      updated_at:            new Date().toISOString(),
-    }).catch(() => {});
+    saveCatalogEntry(mapMediaDataToCatalogEntry(data, currentId)).catch(() => {});
   // Re-run when bannerImage/authors changes so partial→full transition saves the banner URL and authors to catalog.
   // currentId is included so navigating between two items of the same type (and same
   // transient bannerImage state) still re-fetches the library entry for the new item.
