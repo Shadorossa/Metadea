@@ -1,7 +1,8 @@
 import { searchAniList, searchAniListCharacters } from './providers/anilist';
 import { searchGames }                 from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
-import { searchBooks, searchComics }   from './providers/openlibrary';
+import { searchBooks }                 from './providers/openlibrary';
+import { searchComics }                from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
 
 export { MissingApiKeyError };
@@ -22,7 +23,7 @@ export interface SearchResult {
   /** Matches media_catalog.format — e.g. "TV", "OVA", "MANGA" */
   format: string;
   /** Matches media_catalog.source — which API provided this result */
-  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary';
+  source: 'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine';
   /** Matches media_catalog.title_main — primary display title */
   titleMain: string;
   /** Matches media_catalog.title_romaji — romanised title (AniList only) */

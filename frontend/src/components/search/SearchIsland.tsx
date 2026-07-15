@@ -34,6 +34,7 @@ type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
 const PROVIDER_SETTINGS_LINK: Record<string, string> = {
   igdb: '/settings?tab=environment&platform=igdb',
   tmdb: '/settings?tab=environment&platform=tmdb',
+  comicvine: '/settings?tab=environment&platform=comicvine',
 };
 
 // ── In-flight request de-duplication ────────────────────────────────────────

@@ -64,6 +64,7 @@ pub struct EnvConfig {
     pub tmdb_access_token: Option<String>,
     pub tmdb_api_key: Option<String>,
     pub anilist_client_id: Option<String>,
+    pub comicvine_api_key: Option<String>,
 }
 
 fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
@@ -71,12 +72,13 @@ fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
     let mut stmt = conn.prepare(
         "SELECT name, value FROM app_env WHERE name IN (
             'anilist_client_id','igdb_client_id','igdb_client_secret',
-            'steam_api_key','tmdb_access_token','tmdb_api_key'
+            'steam_api_key','tmdb_access_token','tmdb_api_key','comicvine_api_key'
          )"
     ).str_err()?;
     let mut cfg = EnvConfig {
         anilist_client_id: None, igdb_client_id: None, igdb_client_secret: None,
         steam_api_key: None, tmdb_access_token: None, tmdb_api_key: None,
+        comicvine_api_key: None,
     };
     let rows: Vec<(String, String)> = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
@@ -92,6 +94,7 @@ fn env_from_db(db: &crate::db::MetadeaDb) -> Result<EnvConfig, String> {
             "steam_api_key"      => cfg.steam_api_key      = opt,
             "tmdb_access_token"  => cfg.tmdb_access_token  = opt,
             "tmdb_api_key"       => cfg.tmdb_api_key       = opt,
+            "comicvine_api_key"  => cfg.comicvine_api_key  = opt,
             _ => {}
         }
     }
@@ -119,6 +122,7 @@ pub async fn write_env_config(
         ("steam_api_key",      config.steam_api_key.as_deref().unwrap_or("")),
         ("tmdb_access_token",  config.tmdb_access_token.as_deref().unwrap_or("")),
         ("tmdb_api_key",       config.tmdb_api_key.as_deref().unwrap_or("")),
+        ("comicvine_api_key",  config.comicvine_api_key.as_deref().unwrap_or("")),
     ];
     for (name, value) in pairs {
         conn.execute(

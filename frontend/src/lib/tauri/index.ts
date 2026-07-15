@@ -20,6 +20,7 @@ export * from './catalog';
 export * from './characters';
 export * from './favorite-images';
 export * from './igdb';
+export * from './comicvine';
 export * from './metadata';
 export * from './debug';
 export * from './anime-local';

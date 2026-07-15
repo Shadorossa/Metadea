@@ -1,5 +1,6 @@
 mod auth;
 mod characters;
+mod comicvine;
 mod db;
 mod episode_history;
 mod favorite_images;
@@ -98,6 +99,8 @@ pub fn run() {
             igdb::igdb_force_by_igdb_id,
             igdb::read_metadata_index,
             igdb::read_game_info,
+            comicvine::comicvine_search,
+            comicvine::comicvine_get_volume,
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
             user_library::save_library_entry,

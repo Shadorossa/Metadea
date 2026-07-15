@@ -294,7 +294,7 @@ export default function MediaPage({ i18n }: Props) {
           });
         }
 
-        if (full.type === 'book' || full.type === 'comic') {
+        if (full.type === 'book') {
           fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(relations => {
             if (cancelled || !relations) return;
             patchCachedRelations(currentId, relations);

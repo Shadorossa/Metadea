@@ -14,6 +14,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
   const tmdbAccessTokenInput = document.getElementById('tmdb-access-token')      as HTMLInputElement;
   const tmdbKeyInput         = document.getElementById('tmdb-api-key')           as HTMLInputElement;
   const anilistClientIdInput = document.getElementById('anilist-client-id')       as HTMLInputElement;
+  const comicVineKeyInput    = document.getElementById('comicvine-api-key')      as HTMLInputElement;
   const envSaveBtn           = document.getElementById('env-save-btn')!;
   const envClearBtn          = document.getElementById('env-clear-btn')!;
   const openFolderBtn        = document.getElementById('open-env-folder-btn')!;
@@ -26,6 +27,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
     tmdbAccessTokenInput.value = cfg.tmdb_access_token  ?? '';
     tmdbKeyInput.value         = cfg.tmdb_api_key       ?? '';
     anilistClientIdInput.value = cfg.anilist_client_id  ?? '';
+    comicVineKeyInput.value    = cfg.comicvine_api_key  ?? '';
   } catch {
     // Not in Tauri or file doesn't exist yet
   }
@@ -41,6 +43,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         tmdb_access_token:  tmdbAccessTokenInput.value.trim() || undefined,
         tmdb_api_key:       tmdbKeyInput.value.trim() || undefined,
         anilist_client_id:  anilistClientIdInput.value.trim() || undefined,
+        comicvine_api_key:  comicVineKeyInput.value.trim() || undefined,
       });
       showToast('Credenciales guardadas');
     } catch (err) {
@@ -60,6 +63,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
         tmdb_access_token: undefined,
         tmdb_api_key: undefined,
         anilist_client_id: undefined,
+        comicvine_api_key: undefined,
       });
       clientIdInput.value = '';
       clientSecretInput.value = '';
@@ -67,6 +71,7 @@ export async function initEnvironment(showToast: (msg?: string) => void) {
       tmdbAccessTokenInput.value = '';
       tmdbKeyInput.value = '';
       anilistClientIdInput.value = '';
+      comicVineKeyInput.value = '';
       showToast('Credenciales eliminadas');
     } catch {
       showToast('Error al eliminar');

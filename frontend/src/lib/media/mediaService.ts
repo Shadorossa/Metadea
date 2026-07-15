@@ -2,8 +2,10 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
+import { fetchComicVineVolume } from '../search/providers/comicvine';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
+import { mapComicVineToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed } from '../tauri';
@@ -74,7 +76,15 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
     return raw ? mapTmdbToMedia(raw, type, rawId) : null;
   }
 
-  if (type === 'book' || type === 'comic') {
+  if (type === 'comic') {
+    const idStr = rawId.slice(rawId.indexOf(':') + 1);
+    const volumeId = parseInt(idStr, 10);
+    if (!Number.isFinite(volumeId)) return null;
+    const volume = await fetchComicVineVolume(volumeId);
+    return volume ? mapComicVineToMedia(volume, rawId) : null;
+  }
+
+  if (type === 'book') {
     const idStr = rawId.slice(rawId.indexOf(':') + 1);
     const cachedNames   = sessionStorage.getItem(`book_authors:${rawId}`);
     const cachedKey     = sessionStorage.getItem(`book_author_key:${rawId}`);
