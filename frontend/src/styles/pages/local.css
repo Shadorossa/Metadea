@@ -1347,14 +1347,20 @@
   animation: local-library-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* opacity-only on purpose — the "entering" class is never removed after the
+ * animation finishes (see LocalLibrary.tsx, it's a static className), so
+ * with animation-fill-mode: both any `transform` here (even one that
+ * resolves to a visual no-op like translateY(0) scale(1)) stays applied to
+ * .local-library forever. A `transform` on an ancestor creates a new
+ * containing block for its descendants, which silently breaks `position:
+ * sticky` on the game detail panel nested inside — it stopped tracking the
+ * viewport on scroll instead of staying pinned. */
 @keyframes local-library-enter {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 

@@ -18,8 +18,22 @@ import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
 
+// How long the category-switch fade-in animation runs — must match
+// local-library-enter's own duration in local.css.
+const ENTER_ANIM_MS = 340;
+
 export default function LocalLibrary() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
+  // The "entering" class (drives the fade-in) is only ever applied for this
+  // one animation, then removed — a stray CSS property left permanently
+  // attached via a never-toggled className (as this used to be) is exactly
+  // how the sticky game-detail-panel/platform-sidebar bug happened before:
+  // a since-removed `transform` in that animation's keyframes, held forever
+  // by animation-fill-mode, silently broke `position: sticky` on every
+  // descendant. Toggling the class off after it plays removes that whole
+  // category of bug for any future change to this animation, not just the
+  // one that already bit us.
+  const [entering, setEntering] = useState(true);
   const [selectedGame,   setSelectedGame]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
@@ -35,6 +49,15 @@ export default function LocalLibrary() {
   useEffect(() => {
     if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames();
   }, [activeCategory, gamesState, loadGames]);
+
+  // Re-plays the fade-in (and, critically, clears the "entering" class
+  // afterwards) whenever the category switch remounts this subtree — see
+  // the `entering` state's own comment above for why it can't just stay on.
+  useEffect(() => {
+    setEntering(true);
+    const t = setTimeout(() => setEntering(false), ENTER_ANIM_MS);
+    return () => clearTimeout(t);
+  }, [activeCategory]);
 
   // ── Fetch metadata ───────────────────────────────────────────────────────────
 
@@ -143,7 +166,7 @@ export default function LocalLibrary() {
         />
       )}
 
-      <div key={activeCategory} className="local-library entering">
+      <div key={activeCategory} className={`local-library${entering ? ' entering' : ''}`}>
         {activeCategory === 'videojuegos' && activePlatform && availablePlatforms && (
           <PlatformSidebar
             activePlatform={activePlatform}

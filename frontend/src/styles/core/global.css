@@ -61,7 +61,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scrollbar-gutter: stable;
-  overflow-x: hidden !important;
+  overflow-x: clip !important;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -72,7 +72,7 @@ body {
   background: transparent;
   color: var(--text-main);
   font-family: 'Inter', 'SF Pro Text', system-ui, -apple-system, sans-serif;
-  overflow-x: hidden !important;
+  overflow-x: clip !important;
   width: 100%;
   max-width: 100%;
   margin: 0;

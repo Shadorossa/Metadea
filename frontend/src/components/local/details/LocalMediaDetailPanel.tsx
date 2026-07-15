@@ -43,6 +43,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // poll tick (or VLC staying open past the threshold) can't save twice.
   const markedForRef = useRef<number | null>(null);
   const lastPresenceStartRef = useRef<number | null>(null);
+  // The episode this VLC session is playing, captured once when "Reproducir"
+  // is pressed — NOT recomputed from nextNumber while playing. nextNumber
+  // advances the instant markWatched() saves progress, and the poll effect
+  // used to depend on it directly: marking episode N re-ran the effect with
+  // episode N+1, VLC was still sitting at the same >=80% position in the
+  // same file (nothing about actual playback changed), so it immediately
+  // "auto-marked" N+1 too, then N+2, cascading through the rest of the
+  // season in one burst instead of one mark per episode actually watched.
+  const sessionEpisodeRef = useRef<number | null>(null);
 
   const candidateTitles = useMemo(
     () => [item.title, item.titleRomaji, item.titleNative].filter((t): t is string => !!t),
@@ -84,6 +93,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // progress, or the first one when the entry is still just "planning".
   const nextNumber = item.status === 'planning' ? 1 : item.progress + 1;
   const nextFile = subEntries ? findMatchingEpisodeFile(subEntries, nextNumber, itemSeason) : null;
+  // media_catalog's total_count is the known episode/chapter count (kept
+  // fresh for RELEASING shows too — see media-status.ts's weekly resync).
+  // Once nextNumber goes past it there simply isn't a "next" one yet/ever —
+  // that's not a missing-file problem, so it shouldn't render like one.
+  const totalCount = item.catalogEntry?.total_count ?? null;
+  const isCaughtUp = totalCount != null && totalCount > 0 && nextNumber > totalCount;
 
   const playPath = rootFolder && matchedFolder && nextFile
     ? `${rootFolder}/${matchedFolder.name}/${nextFile.name}`
@@ -103,6 +118,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     if (!playPath) return;
     setPlayError(null);
     setJustMarked(null);
+    sessionEpisodeRef.current = nextNumber;
+    markedForRef.current = null;
     playFileWithVlc(playPath)
       .then(() => setIsPlaying(true))
       .catch(err => setPlayError(String(err)));
@@ -138,10 +155,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   // While VLC is playing the file we just launched, poll its HTTP status
   // interface and mark the episode watched once position crosses 80%.
+  // Deliberately only depends on isPlaying — the episode being watched is
+  // fixed for the whole session via sessionEpisodeRef (see handlePlay's
+  // comment), not re-read from nextNumber, which changes the moment this
+  // effect's own markWatched() call saves progress.
   useEffect(() => {
-    if (!isPlaying || !nextFile) return;
+    if (!isPlaying) return;
+    const episodeNumber = sessionEpisodeRef.current;
+    if (episodeNumber == null) return;
 
-    const episodeNumber = nextNumber;
     const interval = setInterval(() => {
       getVlcPlaybackStatus().then(status => {
         if (!status) {
@@ -165,13 +187,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           ) {
             lastPresenceStartRef.current = computedStart;
             const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", computedStart, computedEnd, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
+            updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "", computedStart, computedEnd, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
           }
         } else if (status.state === 'paused') {
           if (lastPresenceStartRef.current !== null) {
             lastPresenceStartRef.current = null;
             const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "Paused", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
+            updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "Paused", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
           }
         }
 
@@ -184,12 +206,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [isPlaying, nextFile, nextNumber, item.title, item.cover]);
+  }, [isPlaying, item.title, item.cover]);
 
   useEffect(() => {
     if (isPlaying) {
+      const episodeNumber = sessionEpisodeRef.current ?? nextNumber;
       const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-      updateDiscordPresence(`Watching ${item.title} - Episode ${nextNumber}`, "", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
+      updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
     } else {
       lastPresenceStartRef.current = null;
       resetDiscordPresence().catch(() => {});
@@ -198,7 +221,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       lastPresenceStartRef.current = null;
       resetDiscordPresence().catch(() => {});
     };
-  }, [isPlaying, item.title, nextNumber, item.cover]);
+  }, [isPlaying, item.title, item.cover]);
 
   return (
     <div className="local-game-detail-panel">
@@ -231,7 +254,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             type="button"
             className="local-game-detail-play"
             disabled={!playPath}
-            title={playPath ? undefined : 'No se encontró el archivo del próximo episodio/capítulo'}
+            title={playPath ? undefined : isCaughtUp ? 'Ya estás al día' : 'No se encontró el archivo del próximo episodio/capítulo'}
             onClick={handlePlay}
           >
             {isPlaying ? (
@@ -287,6 +310,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 <span className="local-media-match-chip">
                   <div className="spinner spinner--sm" />
                   Buscando próximo episodio…
+                </span>
+              ) : isCaughtUp ? (
+                <span className="local-media-match-chip ok">
+                  <IconCheck />
+                  Al día — no hay episodios/capítulos nuevos ({totalCount} en total)
                 </span>
               ) : (
                 <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
