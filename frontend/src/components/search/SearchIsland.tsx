@@ -422,6 +422,18 @@ const HOVER_PREFETCH_DELAY_MS = 300;
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
   const [isValidCover, setIsValidCover] = useState<boolean | null>(result.coverUrl ? null : true);
+  // Some providers (OpenLibrary especially — its cover proxy sometimes
+  // redirects through archive.org on first request, which can be slow or
+  // fail outright in the webview even though the URL is genuinely valid)
+  // occasionally fail to actually load the image. The probe below used to
+  // treat img.onerror the same as "valid, portrait" and let the real <img>
+  // render with the same broken URL anyway — showing a broken-image icon +
+  // alt text instead of the placeholder, and (since a broken image's
+  // intrinsic box isn't governed by object-fit the same way) breaking the
+  // uniform card size the rest of the grid relies on. Tracked separately
+  // from isValidCover so a genuinely-failed load always falls back to the
+  // placeholder instead of attempting the real <img> at all.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!result.coverUrl) return;
@@ -435,6 +447,7 @@ function MediaCard({ result }: { result: SearchResult }) {
       }
     };
     img.onerror = () => {
+      setLoadFailed(true);
       setIsValidCover(true);
     };
   }, [result.coverUrl]);
@@ -474,13 +487,14 @@ function MediaCard({ result }: { result: SearchResult }) {
       tabIndex={hasDetail ? 0 : undefined}
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
     >
-      <div className="card-media-base aspect-[3/4] mb-1.5">
-        {result.coverUrl ? (
+      <div className="card-media-base mb-1.5">
+        {result.coverUrl && !loadFailed ? (
           <img
             src={result.coverUrl}
             alt={result.titleMain}
             className="card-media-img"
             loading="lazy"
+            onError={() => setLoadFailed(true)}
           />
         ) : (
           <div className="card-media-placeholder" />

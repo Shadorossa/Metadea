@@ -98,7 +98,14 @@ function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResu
     releaseYear:  book.first_publish_year ?? null,
     releaseMonth: null,
     releaseDay:   null,
-    scoreGlobal:  book.ratings_average ? Math.round(book.ratings_average * 10) / 10 : null,
+    // OpenLibrary's ratings_average is already a 0-5 scale — every other
+    // provider's scoreGlobal is normalized to 0-10 (see SearchResult's own
+    // doc comment), and formatAverageScore's default display divides by 2
+    // to get back to 5 stars. Passing the raw 0-5 value through unscaled
+    // meant a book already rated 4.5/5 got displayed as 2.25/5 — halved
+    // twice. *2 here converts it into the same 0-10 convention as AniList/
+    // IGDB/TMDB before it ever reaches that shared display logic.
+    scoreGlobal:  book.ratings_average ? Math.round(book.ratings_average * 2 * 10) / 10 : null,
     authorNames:  book.author_name ?? null,
     authorKey:    book.author_key?.[0] ?? null,
   };
