@@ -20,8 +20,17 @@ const VOLUME_DETAIL_FIELD_LIST: &str = "id,name,image,start_year,publisher,count
 // first_issue/last_issue on the volume resource are only a minimal ref
 // (id/name/issue_number, no cover_date) — one extra lightweight request per
 // issue resolves the actual date, so the page can show a real start–end
-// range instead of just start_year.
+// range instead of just start_year. Also pulls character/concept credits:
+// in practice Comic Vine volume editors rarely fill in the volume's own
+// character_credits/concept_credits (that's the "list of characters/concepts
+// that appear in this volume" field from the docs), even though the field is
+// documented as available — issue-level credits are what's actually kept up
+// to date, so the first issue's cast/concepts are used as a fallback sample
+// when the volume-level fields come back empty.
 const ISSUE_DATE_FIELD_LIST: &str = "cover_date";
+const ISSUE_ENRICHMENT_FIELD_LIST: &str = "cover_date,character_credits,concept_credits";
+// Comic Vine's resource-type prefix for characters (distinct from volume/issue).
+const CHARACTER_RESOURCE_PREFIX: &str = "4005";
 
 // Comic Vine prefixes every resource type's numeric id with a fixed code in
 // detail-endpoint URLs (e.g. "4050-123" for volume 123) — this is the code
@@ -201,20 +210,76 @@ pub async fn comicvine_get_volume(
     if let Some(volume) = parsed.results.as_mut() {
         let first_id = volume.first_issue.as_ref().map(|i| i.id);
         let last_id = volume.last_issue.as_ref().map(|i| i.id);
-        // Same id for a single-issue volume — no need to fetch it twice.
-        let (first_date, last_date) = if first_id.is_some() && first_id == last_id {
-            let date = match first_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
-            (date.clone(), date)
-        } else {
-            let first_date = match first_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
-            let last_date = match last_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
-            (first_date, last_date)
+
+        let first_enrichment = match first_id {
+            Some(id) => fetch_issue_enrichment(&client, &api_key, id).await,
+            None => None,
         };
-        volume.first_issue_cover_date = first_date;
+        // Same id for a single-issue volume — no need to fetch it twice.
+        let last_date = if last_id.is_some() && last_id == first_id {
+            first_enrichment.as_ref().and_then(|e| e.cover_date.clone())
+        } else {
+            match last_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None }
+        };
+
         volume.last_issue_cover_date = last_date;
+        if let Some(enrichment) = first_enrichment {
+            volume.first_issue_cover_date = enrichment.cover_date;
+            if volume.character_credits.is_empty() {
+                volume.character_credits = enrichment.character_credits;
+            }
+            if volume.concept_credits.is_empty() {
+                volume.concept_credits = enrichment.concept_credits;
+            }
+        }
+
+        enrich_character_images(&client, &api_key, &mut volume.character_credits).await;
     }
 
     Ok(parsed.results)
+}
+
+// Character credit objects (from both /volume/ and /issue/ responses) never
+// include an image inline — only the standalone /character/{id}/ resource
+// does. Fetched concurrently since a cast can be a dozen-plus names and
+// sequential round trips would make the page noticeably slower to load.
+async fn enrich_character_images(client: &reqwest::Client, api_key: &str, credits: &mut [ComicVineCharacterCredit]) {
+    let fetches = credits.iter().map(|c| fetch_character_image(client, api_key, c.id));
+    let images = futures::future::join_all(fetches).await;
+    for (credit, image) in credits.iter_mut().zip(images) {
+        credit.image = image;
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct ComicVineCharacterImageResponse {
+    results: Option<ComicVineCharacterImageResult>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct ComicVineCharacterImageResult {
+    #[serde(default)]
+    image: Option<ComicVineImage>,
+}
+
+async fn fetch_character_image(client: &reqwest::Client, api_key: &str, character_id: u64) -> Option<ComicVineImage> {
+    let resp = client
+        .get(format!("{COMICVINE_BASE}/character/{CHARACTER_RESOURCE_PREFIX}-{character_id}/"))
+        .query(&[
+            ("api_key", api_key),
+            ("format", "json"),
+            ("field_list", "image"),
+        ])
+        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
+        .send()
+        .await
+        .ok()?;
+
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    resp.json::<ComicVineCharacterImageResponse>().await.ok()?.results?.image
 }
 
 #[derive(Debug, Deserialize)]
@@ -226,6 +291,89 @@ struct ComicVineIssueDateResponse {
 struct ComicVineIssueDate {
     #[serde(default)]
     cover_date: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ComicVineIssueEnrichmentResponse {
+    results: Option<ComicVineIssueEnrichment>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct ComicVineIssueEnrichment {
+    #[serde(default)]
+    cover_date:        Option<String>,
+    #[serde(default)]
+    character_credits: Vec<ComicVineCharacterCredit>,
+    #[serde(default)]
+    concept_credits:   Vec<ComicVineConceptCredit>,
+}
+
+async fn fetch_issue_enrichment(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<ComicVineIssueEnrichment> {
+    let resp = client
+        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
+        .query(&[
+            ("api_key", api_key),
+            ("format", "json"),
+            ("field_list", ISSUE_ENRICHMENT_FIELD_LIST),
+        ])
+        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
+        .send()
+        .await
+        .ok()?;
+
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    resp.json::<ComicVineIssueEnrichmentResponse>().await.ok()?.results
+}
+
+#[derive(Debug, Serialize)]
+pub struct ComicVineVolumeCast {
+    pub characters: Vec<ComicVineCharacterCredit>,
+    pub concepts:   Vec<ComicVineConceptCredit>,
+}
+
+// Aggregates cast/concepts across every issue of a volume — the volume
+// resource's own character_credits/concept_credits fields are rarely kept
+// up to date by Comic Vine editors (see comicvine_get_volume's fallback to
+// just the first issue), so a full cast needs each issue's own credits.
+// `issue_ids` comes from the frontend's already-fetched comicvine_get_issues
+// list (no need to refetch the issue list itself here) — this only pays for
+// the N per-issue detail requests plus one image request per unique
+// character, all run concurrently.
+#[tauri::command]
+pub async fn comicvine_get_issues_cast(
+    app_handle: tauri::AppHandle,
+    issue_ids: Vec<u64>,
+) -> Result<ComicVineVolumeCast, String> {
+    let api_key = comicvine_api_key(&app_handle).await?;
+    let client = get_http_client().str_err()?;
+
+    let fetches = issue_ids.iter().map(|&id| fetch_issue_enrichment(&client, &api_key, id));
+    let results = futures::future::join_all(fetches).await;
+
+    let mut characters: Vec<ComicVineCharacterCredit> = Vec::new();
+    let mut seen_chars = std::collections::HashSet::new();
+    let mut concepts: Vec<ComicVineConceptCredit> = Vec::new();
+    let mut seen_concepts = std::collections::HashSet::new();
+
+    for enrichment in results.into_iter().flatten() {
+        for c in enrichment.character_credits {
+            if seen_chars.insert(c.id) {
+                characters.push(c);
+            }
+        }
+        for c in enrichment.concept_credits {
+            if seen_concepts.insert(c.id) {
+                concepts.push(c);
+            }
+        }
+    }
+
+    enrich_character_images(&client, &api_key, &mut characters).await;
+
+    Ok(ComicVineVolumeCast { characters, concepts })
 }
 
 async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<String> {
@@ -250,13 +398,16 @@ async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_i
 
 const ISSUE_FIELD_LIST: &str = "id,name,issue_number,image,cover_date,character_credits,concept_credits";
 
-// Comic Vine's issue-level character credits — just id/name, no image
-// (fetching a thumbnail per character would need a separate /character/
-// request each, which doesn't scale for a cast that can be dozens of names).
+// Comic Vine's character credits — id/name only from the issue/volume
+// response; `image` is filled in separately (see enrich_character_images)
+// since the credit object itself never includes it, only the standalone
+// /character/{id}/ resource does.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComicVineCharacterCredit {
-    pub id:   u64,
-    pub name: String,
+    pub id:    u64,
+    pub name:  String,
+    #[serde(default)]
+    pub image: Option<ComicVineImage>,
 }
 
 // Comic Vine's "concepts" are broad recurring themes (Time Travel, Multiverse,
@@ -420,9 +571,14 @@ pub async fn comicvine_get_issue(
         return Ok(None);
     }
 
-    let parsed = resp
+    let mut parsed = resp
         .json::<ComicVineIssueDetailResponse>()
         .await
         .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+
+    if let Some(issue) = parsed.results.as_mut() {
+        enrich_character_images(&client, &api_key, &mut issue.character_credits).await;
+    }
+
     Ok(parsed.results)
 }

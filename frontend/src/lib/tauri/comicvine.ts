@@ -38,8 +38,9 @@ export interface ComicVineSearchPage {
 }
 
 export interface ComicVineCharacterCredit {
-  id:   number;
-  name: string;
+  id:    number;
+  name:  string;
+  image: ComicVineImage | null;
 }
 
 export interface ComicVineConceptCredit {
@@ -90,4 +91,13 @@ export interface ComicVineIssueDetail {
 
 export async function comicVineGetIssue(issueId: number): Promise<ComicVineIssueDetail | null> {
   return invoke<ComicVineIssueDetail | null>('comicvine_get_issue', { issueId });
+}
+
+export interface ComicVineVolumeCast {
+  characters: ComicVineCharacterCredit[];
+  concepts:   ComicVineConceptCredit[];
+}
+
+export async function comicVineGetIssuesCast(issueIds: number[]): Promise<ComicVineVolumeCast> {
+  return invoke<ComicVineVolumeCast>('comicvine_get_issues_cast', { issueIds });
 }

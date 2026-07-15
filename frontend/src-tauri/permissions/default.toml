@@ -36,6 +36,7 @@ commands.allow = [
   "comicvine_get_volume",
   "comicvine_get_issues",
   "comicvine_get_issue",
+  "comicvine_get_issues_cast",
   "save_episode_history_entry",
   "get_episode_history",
   "debug_scan_info",

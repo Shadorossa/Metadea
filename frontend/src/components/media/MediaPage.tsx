@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
-import { saveCatalogEntry, saveLibraryEntry } from '../../lib/tauri';
+import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -303,8 +303,29 @@ export default function MediaPage({ i18n }: Props) {
         }
 
         if (full.type === 'comic') {
-          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE).then(relations => {
-            if (cancelled || !relations) return;
+          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE).then(({ relations, characters, genreDots, genreTagDots }) => {
+            if (cancelled) return;
+
+            // Full cast aggregated across every issue — supersedes the
+            // first-issue-only sample the initial volume fetch showed.
+            if (characters.length > 0) {
+              const skeletonChars = characters.map(char => ({
+                external_id: char.id || `character:${char.name}`,
+                name: char.name,
+                image_url: char.image || null,
+                relation_type: null,
+                character_name: null,
+              }));
+              saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
+              setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, characters } : prev);
+            }
+
+            if (genreDots || genreTagDots) {
+              updateCatalogGenres(currentId, genreDots ?? null, genreTagDots ?? null).catch(console.error);
+              setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, genreDots, genreTagDots } : prev);
+            }
+
+            if (!relations) return;
             patchCachedRelations(currentId, relations);
             setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
           });

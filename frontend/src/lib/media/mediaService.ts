@@ -2,8 +2,9 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
-import { fetchComicVineVolume, fetchComicVineIssues, fetchComicVineIssue } from '../search/providers/comicvine';
+import { fetchComicVineVolume, fetchComicVineIssues, fetchComicVineIssue, fetchComicVineVolumeCast } from '../search/providers/comicvine';
 import type { ComicVineIssue } from '../tauri';
+import { unifyGenres } from './genre-unifier';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
@@ -11,7 +12,7 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { parseExternalId } from './mapper-utils';
@@ -178,27 +179,47 @@ function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageDa
   return result;
 }
 
-// Background fetch: loads all issues for a comic volume and returns them
-// merged with any existing relations. Same pattern as fetchBookEditions.
-// (Cast/genres for the volume itself come straight from the /volume/ detail
-// fetch — see comicvine-mapper.ts — since the /issues/ list resource used
-// here doesn't reliably populate character_credits/concept_credits, only
-// the singular /issue/ and /volume/ detail resources document those fields.)
+export interface ComicIssuesResult {
+  relations: MediaPageData['relations'] | null;
+  characters: MediaCharacter[];
+  genreDots?: string;
+  genreTagDots?: string;
+}
+
+// Background fetch: loads all issues for a comic volume (for the 'Issues'
+// tab) and separately aggregates the full cast/genres across every one of
+// those issues via their own singular /issue/ detail resource — the volume's
+// own character_credits/concept_credits (used for the initial quick display,
+// see comicvine-mapper.ts) is usually just a first-issue sample, since Comic
+// Vine editors rarely fill in the volume-level field. This is the "give me
+// the real, complete cast" pass: one extra request per issue plus one per
+// unique character (for images), so it only runs once per comic (results get
+// persisted) rather than being paid on every page view.
 export async function fetchComicIssues(
   rawId: string,
   currentRelations: MediaPageData['relations'],
   issuesLabel: string,
-): Promise<MediaPageData['relations'] | null> {
+): Promise<ComicIssuesResult> {
   const idStr = rawId.slice(rawId.indexOf(':') + 1);
   const volumeId = parseInt(idStr, 10);
-  if (!Number.isFinite(volumeId)) return null;
+  if (!Number.isFinite(volumeId)) return { relations: null, characters: [] };
   const issues = await fetchComicVineIssues(volumeId).catch(() => []);
-  if (!issues.length) return null;
+  if (!issues.length) return { relations: null, characters: [] };
+
+  const cast = await fetchComicVineVolumeCast(issues.map(i => i.id));
+  const characters: MediaCharacter[] = cast.characters.map(c => ({
+    id: `character:comicvine:${c.id}`,
+    name: c.name,
+    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
+  }));
+  const { core, tags } = unifyGenres(cast.concepts.map(c => c.name));
+  const genreDots = core.join(' · ') || undefined;
+  const genreTagDots = tags.join(' · ') || undefined;
 
   const issueRelations = issuesToRelations(issues, issuesLabel);
-  if (!issueRelations.length) return null;
+  if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };
   const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.typeLabel !== issuesLabel);
-  return [...withoutOld, ...issueRelations];
+  return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };
 }
 
 // Comprueba caché primero; si no está, fetcha y guarda

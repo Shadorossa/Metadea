@@ -36,6 +36,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
   const characters: MediaCharacter[] = volume.character_credits.map(c => ({
     id: `character:comicvine:${c.id}`,
     name: c.name,
+    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));
 
   const conceptNames = volume.concept_credits.map(c => c.name);

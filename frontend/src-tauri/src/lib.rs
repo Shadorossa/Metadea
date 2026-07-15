@@ -103,6 +103,7 @@ pub fn run() {
             comicvine::comicvine_get_volume,
             comicvine::comicvine_get_issues,
             comicvine::comicvine_get_issue,
+            comicvine::comicvine_get_issues_cast,
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
             user_library::save_library_entry,

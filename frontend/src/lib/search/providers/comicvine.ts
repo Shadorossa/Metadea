@@ -7,7 +7,7 @@
 // the same pattern, same underlying reason: IGDB requires a bearer token
 // browser JS can't safely hold anyway, Comic Vine just blocks browser
 // fetches outright).
-import { comicVineSearch, comicVineGetVolume, comicVineGetIssues, comicVineGetIssue, isTauri, type ComicVineVolume, type ComicVineIssue, type ComicVineIssueDetail } from '../../tauri';
+import { comicVineSearch, comicVineGetVolume, comicVineGetIssues, comicVineGetIssue, comicVineGetIssuesCast, isTauri, type ComicVineVolume, type ComicVineIssue, type ComicVineIssueDetail, type ComicVineVolumeCast } from '../../tauri';
 import type { SearchResult, SearchPage } from '../index';
 import { MissingApiKeyError } from '../errors';
 
@@ -79,4 +79,11 @@ export async function fetchComicVineIssues(volumeId: number): Promise<ComicVineI
 export async function fetchComicVineIssue(issueId: number): Promise<ComicVineIssueDetail | null> {
   if (!isTauri()) return null;
   return comicVineGetIssue(issueId).catch(() => null);
+}
+
+const EMPTY_CAST: ComicVineVolumeCast = { characters: [], concepts: [] };
+
+export async function fetchComicVineVolumeCast(issueIds: number[]): Promise<ComicVineVolumeCast> {
+  if (!isTauri() || issueIds.length === 0) return EMPTY_CAST;
+  return comicVineGetIssuesCast(issueIds).catch(() => EMPTY_CAST);
 }
