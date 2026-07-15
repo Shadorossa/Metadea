@@ -2,7 +2,8 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
-import { fetchComicVineVolume } from '../search/providers/comicvine';
+import { fetchComicVineVolume, fetchComicVineIssues } from '../search/providers/comicvine';
+import type { ComicVineIssue } from '../tauri';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia } from './comicvine-mapper';
@@ -153,6 +154,39 @@ export async function fetchBookEditions(
   if (!editionRelations.length) return null;
   const withoutOld = currentRelations.filter(r => r.typeLabel !== editionsLabel);
   return [...withoutOld, ...editionRelations];
+}
+
+// Maps Comic Vine issues to MediaRelation shape for the 'Issues' tab. Only
+// issues with a cover image are included.
+function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageData['relations'] {
+  const result: MediaPageData['relations'] = [];
+  for (const issue of issues) {
+    const cover = issue.image?.medium_url ?? issue.image?.small_url ?? undefined;
+    if (!cover) continue;
+    const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
+    const namePart = issue.name ? ` — ${issue.name}` : '';
+    const title = (numberPart + namePart) || `#${issue.id}`;
+    result.push({ typeLabel: label, title, cover });
+  }
+  return result;
+}
+
+// Background fetch: loads all issues for a comic volume and returns them
+// merged with any existing relations. Same pattern as fetchBookEditions.
+export async function fetchComicIssues(
+  rawId: string,
+  currentRelations: MediaPageData['relations'],
+  issuesLabel: string,
+): Promise<MediaPageData['relations'] | null> {
+  const idStr = rawId.slice(rawId.indexOf(':') + 1);
+  const volumeId = parseInt(idStr, 10);
+  if (!Number.isFinite(volumeId)) return null;
+  const issues = await fetchComicVineIssues(volumeId).catch(() => []);
+  if (!issues.length) return null;
+  const issueRelations = issuesToRelations(issues, issuesLabel);
+  if (!issueRelations.length) return null;
+  const withoutOld = currentRelations.filter(r => r.typeLabel !== issuesLabel);
+  return [...withoutOld, ...issueRelations];
 }
 
 // Comprueba caché primero; si no está, fetcha y guarda

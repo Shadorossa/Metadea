@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -301,6 +301,14 @@ export default function MediaPage({ i18n }: Props) {
             setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
           });
         }
+
+        if (full.type === 'comic') {
+          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE).then(relations => {
+            if (cancelled || !relations) return;
+            patchCachedRelations(currentId, relations);
+            setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, relations } : prev);
+          });
+        }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
     );
@@ -458,7 +466,9 @@ export default function MediaPage({ i18n }: Props) {
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
-  const editionsLabel = tm.relations.EDITIONS;
+  // Books and comics never share a page — reuse the same "editions" tab
+  // slot for comics' issues, just swapping the label/i18n key.
+  const editionsLabel = data.type === 'comic' ? tm.relations.ISSUE : tm.relations.EDITIONS;
   // A "full edition" of the base game (remake/remaster/expanded edition/
   // port/fork) tends to inherit the base game's whole sibling-editions web
   // in IGDB's own data — e.g. a remaster's own relations pointing at the

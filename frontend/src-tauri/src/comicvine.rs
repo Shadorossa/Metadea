@@ -155,3 +155,80 @@ pub async fn comicvine_get_volume(
         .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
     Ok(parsed.results)
 }
+
+const ISSUE_FIELD_LIST: &str = "id,name,issue_number,image,cover_date";
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineIssue {
+    pub id:           u64,
+    pub name:         Option<String>,
+    pub issue_number: Option<String>,
+    pub image:        Option<ComicVineImage>,
+    pub cover_date:   Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ComicVineIssuesResponse {
+    #[serde(default)]
+    results: Vec<ComicVineIssue>,
+}
+
+// Comic Vine's /volume/ resource lists its issues without cover images —
+// fetching them needs the separate /issues/ resource, filtered by volume id.
+// Comic Vine caps each request at 100 results, so a long-running series
+// (100+ issues) needs multiple offset pages fetched in sequence — otherwise
+// the list silently cuts off partway through instead of covering the whole
+// run (mirrors fetch_open_lib_editions' own offset-paging loop).
+#[tauri::command]
+pub async fn comicvine_get_issues(
+    app_handle: tauri::AppHandle,
+    volume_id: u64,
+) -> Result<Vec<ComicVineIssue>, String> {
+    let api_key = comicvine_api_key(&app_handle).await?;
+    let client = get_http_client().str_err()?;
+
+    const LIMIT: u32 = 100;
+    let filter = format!("volume:{volume_id}");
+    let mut all_issues: Vec<ComicVineIssue> = Vec::new();
+    let mut offset: u32 = 0;
+
+    loop {
+        let limit_str = LIMIT.to_string();
+        let offset_str = offset.to_string();
+
+        let resp = client
+            .get(format!("{COMICVINE_BASE}/issues/"))
+            .query(&[
+                ("api_key", api_key.as_str()),
+                ("format", "json"),
+                ("filter", filter.as_str()),
+                ("limit", limit_str.as_str()),
+                ("offset", offset_str.as_str()),
+                ("sort", "issue_number:asc"),
+                ("field_list", ISSUE_FIELD_LIST),
+            ])
+            .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
+            .send()
+            .await
+            .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+
+        if !resp.status().is_success() {
+            break;
+        }
+
+        let parsed = resp
+            .json::<ComicVineIssuesResponse>()
+            .await
+            .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+
+        let page_len = parsed.results.len() as u32;
+        all_issues.extend(parsed.results);
+
+        if page_len < LIMIT {
+            break;
+        }
+        offset += LIMIT;
+    }
+
+    Ok(all_issues)
+}

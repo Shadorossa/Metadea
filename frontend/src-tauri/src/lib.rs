@@ -101,6 +101,7 @@ pub fn run() {
             igdb::read_game_info,
             comicvine::comicvine_search,
             comicvine::comicvine_get_volume,
+            comicvine::comicvine_get_issues,
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
             user_library::save_library_entry,

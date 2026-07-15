@@ -16,7 +16,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     stats.push({ label: tm.stat_studio, value: volume.publisher.name });
   }
   if (volume.count_of_issues != null) {
-    stats.push({ label: tm.stat_episodes, value: String(volume.count_of_issues) });
+    stats.push({ label: tm.stat_issues, value: String(volume.count_of_issues) });
   }
 
   const description = volume.description
@@ -44,5 +44,6 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
     authors:      [],
+    totalCount:   volume.count_of_issues ?? undefined,
   };
 }
