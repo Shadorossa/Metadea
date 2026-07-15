@@ -24,6 +24,29 @@ const ENTER_ANIM_MS = 340;
 
 export default function LocalLibrary() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
+  // On a full page load the Navbar's #nav-center-slot is already painted
+  // before React hydrates, so a one-time getElementById resolves it fine.
+  // But this island can mount before the Navbar has (re)created that node —
+  // most visibly right after the app's own auto-updater relaunches it, where
+  // startup is slower than usual — so a one-shot check misses it forever and
+  // the tab bar renders inline in the page instead of the navbar. Poll a few
+  // frames until the node shows up (same fix already applied to
+  // SearchIsland.tsx).
+  const [navSlot, setNavSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    let rafId: number;
+    let attempts = 0;
+    const findSlot = () => {
+      const el = document.getElementById('nav-center-slot');
+      if (el) {
+        setNavSlot(el);
+      } else if (attempts++ < 60) {
+        rafId = requestAnimationFrame(findSlot);
+      }
+    };
+    findSlot();
+    return () => cancelAnimationFrame(rafId);
+  }, []);
   // The "entering" class (drives the fade-in) is only ever applied for this
   // one animation, then removed — a stray CSS property left permanently
   // attached via a never-toggled className (as this used to be) is exactly
@@ -121,8 +144,6 @@ export default function LocalLibrary() {
   const availablePlatforms = new Set(safeGames.map(g => g.launcher));
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
-
-  const navSlot = typeof document !== 'undefined' ? document.getElementById('nav-center-slot') : null;
 
   const tabBar = (
     <div className="local-tab-bar">
