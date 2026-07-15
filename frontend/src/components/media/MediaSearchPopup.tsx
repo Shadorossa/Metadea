@@ -59,10 +59,10 @@ export interface MediaSearchPopupProps {
   closeOnSelect?: boolean;
 }
 
-/** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary) used to attach
- *  a saga member or bundled-in work to the entry being edited. Closes only
- *  on an outside click (stopPropagation keeps that from also closing the
- *  parent PrEditorModal). */
+/** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
+ *  to attach a saga member or bundled-in work to the entry being edited.
+ *  Closes only on an outside click (stopPropagation keeps that from also
+ *  closing the parent PrEditorModal). */
 export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true }: MediaSearchPopupProps) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
@@ -116,7 +116,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
         <div className="pr-editor-search-controls">
           <input
             type="text"
-            placeholder="Search titles across AniList, IGDB, TMDB, OpenLibrary..."
+            placeholder="Search titles across AniList, IGDB, TMDB, OpenLibrary, Comic Vine..."
             value={query}
             onChange={e => setQuery(e.target.value)}
             autoFocus

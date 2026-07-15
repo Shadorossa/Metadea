@@ -62,10 +62,6 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
   };
 }
 
-export interface ComicVineDetail {
-  volume: ComicVineVolume;
-}
-
 export async function fetchComicVineVolume(volumeId: number): Promise<ComicVineVolume | null> {
   if (!isTauri()) return null;
   return comicVineGetVolume(volumeId).catch(() => null);
