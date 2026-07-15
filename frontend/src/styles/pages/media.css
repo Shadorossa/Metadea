@@ -437,9 +437,13 @@
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Fades the top/bottom edges to hint there's more text to scroll to —
-     stays put regardless of scroll position (a static mask, not JS-driven),
-     which reads fine here since the fade band is thin relative to the box. */
+}
+
+/* Fades the top/bottom edges to hint there's more text to scroll to — only
+   applied when the text actually overflows the box (see MediaPage.tsx's
+   descriptionOverflows check), otherwise a short synopsis that already fits
+   would have its first/last line faded out for no reason. */
+.media-description-text.has-overflow {
   mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
 }

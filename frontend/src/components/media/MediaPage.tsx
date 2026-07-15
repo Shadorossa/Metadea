@@ -145,6 +145,8 @@ export default function MediaPage({ i18n }: Props) {
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useAutoShrinkTitle(data?.titleMain);
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  const [descriptionOverflows, setDescriptionOverflows] = useState(false);
 
   const {
     entry: libEntry,
@@ -344,6 +346,16 @@ export default function MediaPage({ i18n }: Props) {
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') === '1') setShowEditor(true);
   }, [data]);
+
+  // The top/bottom fade on the synopsis should only appear when there's
+  // actually more text than fits — otherwise a short synopsis gets its
+  // first/last line faded out for no reason. Re-measured whenever the
+  // description text itself changes.
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) { setDescriptionOverflows(false); return; }
+    setDescriptionOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [data?.description]);
 
   // Upsert catalog entry with the latest metadata from the API once we know the type
   // (library entry loading is handled by useLibraryEntry above)
@@ -711,7 +723,8 @@ export default function MediaPage({ i18n }: Props) {
                 <div className="media-section-header-line" />
               </div>
               <div
-                className="media-description-text"
+                ref={descriptionRef}
+                className={`media-description-text${descriptionOverflows ? ' has-overflow' : ''}`}
                 dangerouslySetInnerHTML={{ __html: data.description }}
               />
             </>
