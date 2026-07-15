@@ -48,6 +48,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     external_id: `author:comicvine:${p.id}`,
     name: p.name,
     role: p.role ?? undefined,
+    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
 
@@ -102,6 +103,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
   const characters: MediaCharacter[] = issue.character_credits.map(c => ({
     id: `character:comicvine:${c.id}`,
     name: c.name,
+    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));
 
   const conceptNames = issue.concept_credits.map(c => c.name);
@@ -113,6 +115,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     external_id: `author:comicvine:${p.id}`,
     name: p.name,
     role: p.role ?? undefined,
+    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
 
@@ -125,6 +128,17 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
   const titleMain = issue.volume
     ? `${issue.volume.name} ${numberPart}${namePart}`.trim()
     : (numberPart + namePart) || `#${issue.id}`;
+
+  const tm = getT().media;
+  const relations: MediaPageData['relations'] = issue.volume
+    ? [{
+        typeLabel: tm.relations.PARENT,
+        relationType: 'PARENT',
+        title: issue.volume.name,
+        url: `/media?id=comic:${issue.volume.id}`,
+        relatedExternalId: `comic:${issue.volume.id}`,
+      }]
+    : [];
 
   return {
     externalId,
@@ -144,7 +158,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     description,
     stats: [],
     characters,
-    relations:    [],
+    relations,
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
     authors,

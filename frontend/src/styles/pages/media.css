@@ -425,12 +425,27 @@
 }
 
 
-/* Description */
+/* Description — capped to the related column's own height and scrollable
+   internally (wheel/drag) instead of growing the whole row; scrollbar is
+   hidden across browsers so it reads as a plain scrollable text block. */
 .media-description-text {
   font-size: 0.875rem;
   line-height: 1.7;
   color: var(--text-muted);
   max-width: 72ch;
+  max-height: 340px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  /* Fades the top/bottom edges to hint there's more text to scroll to —
+     stays put regardless of scroll position (a static mask, not JS-driven),
+     which reads fine here since the fade band is thin relative to the box. */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%);
+}
+
+.media-description-text::-webkit-scrollbar {
+  display: none;
 }
 
 .media-description-text i,

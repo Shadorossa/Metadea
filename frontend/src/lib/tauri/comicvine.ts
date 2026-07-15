@@ -10,9 +10,10 @@ export interface ComicVinePublisher {
 }
 
 export interface ComicVinePersonCredit {
-  id:   number;
-  name: string;
-  role: string | null;
+  id:    number;
+  name:  string;
+  role:  string | null;
+  image: ComicVineImage | null;
 }
 
 export interface ComicVineVolume {

@@ -29,8 +29,6 @@ const VOLUME_DETAIL_FIELD_LIST: &str = "id,name,image,start_year,publisher,count
 // when the volume-level fields come back empty.
 const ISSUE_DATE_FIELD_LIST: &str = "cover_date";
 const ISSUE_ENRICHMENT_FIELD_LIST: &str = "cover_date,character_credits,concept_credits";
-// Comic Vine's resource-type prefix for characters (distinct from volume/issue).
-const CHARACTER_RESOURCE_PREFIX: &str = "4005";
 
 // Comic Vine prefixes every resource type's numeric id with a fixed code in
 // detail-endpoint URLs (e.g. "4050-123" for volume 123) — this is the code
@@ -58,9 +56,11 @@ pub struct ComicVinePublisher {
 // comma-separated string of roles (e.g. "writer, penciler").
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComicVinePersonCredit {
-    pub id:   u64,
-    pub name: String,
-    pub role: Option<String>,
+    pub id:    u64,
+    pub name:  String,
+    pub role:  Option<String>,
+    #[serde(default)]
+    pub image: Option<ComicVineImage>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -234,52 +234,88 @@ pub async fn comicvine_get_volume(
         }
 
         enrich_character_images(&client, &api_key, &mut volume.character_credits).await;
+        enrich_person_images(&client, &api_key, &mut volume.person_credits).await;
     }
 
     Ok(parsed.results)
 }
 
-// Character credit objects (from both /volume/ and /issue/ responses) never
-// include an image inline — only the standalone /character/{id}/ resource
-// does. Fetched concurrently since a cast can be a dozen-plus names and
-// sequential round trips would make the page noticeably slower to load.
-async fn enrich_character_images(client: &reqwest::Client, api_key: &str, credits: &mut [ComicVineCharacterCredit]) {
-    let fetches = credits.iter().map(|c| fetch_character_image(client, api_key, c.id));
-    let images = futures::future::join_all(fetches).await;
-    for (credit, image) in credits.iter_mut().zip(images) {
-        credit.image = image;
-    }
+#[derive(Debug, Deserialize, Default)]
+struct ComicVineImageLookupEntry {
+    id:                u64,
+    #[serde(default)]
+    image:             Option<ComicVineImage>,
 }
 
 #[derive(Debug, Deserialize)]
-struct ComicVineCharacterImageResponse {
-    results: Option<ComicVineCharacterImageResult>,
-}
-
-#[derive(Debug, Deserialize, Default)]
-struct ComicVineCharacterImageResult {
+struct ComicVineImageLookupResponse {
     #[serde(default)]
-    image: Option<ComicVineImage>,
+    results: Vec<ComicVineImageLookupEntry>,
 }
 
-async fn fetch_character_image(client: &reqwest::Client, api_key: &str, character_id: u64) -> Option<ComicVineImage> {
-    let resp = client
-        .get(format!("{COMICVINE_BASE}/character/{CHARACTER_RESOURCE_PREFIX}-{character_id}/"))
+// Batched id-lookup against a list resource (e.g. /characters/, /people/)
+// with filter=id:1|2|3 — a single request for the whole cast instead of one
+// per id. Individual /character/{id}/ or /person/{id}/ detail requests are
+// known to intermittently 505 on Comic Vine's own end (see their API forums),
+// which silently dropped images when this fetched one credit at a time.
+async fn fetch_images_by_ids(client: &reqwest::Client, api_key: &str, resource_plural: &str, ids: &[u64]) -> std::collections::HashMap<u64, ComicVineImage> {
+    let mut map = std::collections::HashMap::new();
+    if ids.is_empty() {
+        return map;
+    }
+
+    // Comic Vine caps list responses at 100 — a cast/creator list this long
+    // for a single volume is exceedingly rare, so only the first 100 unique
+    // ids get an image rather than adding another paging loop for it.
+    let ids_str: Vec<String> = ids.iter().take(100).map(|id| id.to_string()).collect();
+    let filter = format!("id:{}", ids_str.join("|"));
+
+    let resp = match client
+        .get(format!("{COMICVINE_BASE}/{resource_plural}/"))
         .query(&[
             ("api_key", api_key),
             ("format", "json"),
-            ("field_list", "image"),
+            ("filter", filter.as_str()),
+            ("field_list", "id,image"),
+            ("limit", "100"),
         ])
         .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
-        .ok()?;
+    {
+        Ok(r) => r,
+        Err(_) => return map,
+    };
 
     if !resp.status().is_success() {
-        return None;
+        return map;
     }
 
-    resp.json::<ComicVineCharacterImageResponse>().await.ok()?.results?.image
+    if let Ok(parsed) = resp.json::<ComicVineImageLookupResponse>().await {
+        for entry in parsed.results {
+            if let Some(image) = entry.image {
+                map.insert(entry.id, image);
+            }
+        }
+    }
+
+    map
+}
+
+async fn enrich_character_images(client: &reqwest::Client, api_key: &str, credits: &mut [ComicVineCharacterCredit]) {
+    let ids: Vec<u64> = credits.iter().map(|c| c.id).collect();
+    let images = fetch_images_by_ids(client, api_key, "characters", &ids).await;
+    for credit in credits.iter_mut() {
+        credit.image = images.get(&credit.id).cloned();
+    }
+}
+
+async fn enrich_person_images(client: &reqwest::Client, api_key: &str, credits: &mut [ComicVinePersonCredit]) {
+    let ids: Vec<u64> = credits.iter().map(|c| c.id).collect();
+    let images = fetch_images_by_ids(client, api_key, "people", &ids).await;
+    for credit in credits.iter_mut() {
+        credit.image = images.get(&credit.id).cloned();
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -578,6 +614,7 @@ pub async fn comicvine_get_issue(
 
     if let Some(issue) = parsed.results.as_mut() {
         enrich_character_images(&client, &api_key, &mut issue.character_credits).await;
+        enrich_person_images(&client, &api_key, &mut issue.person_credits).await;
     }
 
     Ok(parsed.results)

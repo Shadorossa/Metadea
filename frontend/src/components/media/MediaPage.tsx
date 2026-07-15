@@ -696,7 +696,11 @@ export default function MediaPage({ i18n }: Props) {
       </div>
 
       {/* Body: 3 columnas */}
-      <div className={`media-body${(data.stats ?? []).length === 0 ? ' media-body--no-stats' : ''}`}>
+      <div className={`media-body${((data.stats ?? []).length === 0 && !(data.authors && data.authors.length > 0)) ? ' media-body--no-stats' : ''}`}>
+        {/* The 3rd grid column only collapses (media-body--no-stats) when the
+            Datos panel below is truly not rendering — otherwise Datos must
+            keep its own column, landing to the right of Sinopsis regardless
+            of whether Relacionados (the middle column) has any content. */}
 
         {/* Sinopsis */}
         <div className="media-col-synopsis">

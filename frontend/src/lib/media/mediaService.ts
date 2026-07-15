@@ -293,8 +293,14 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data);
 
-    // Only save API authors if we don't have any in the DB
-    if (dbAuthors.length === 0 && data.authors && data.authors.length > 0) {
+    // Only save API authors if we don't have any in the DB yet, or the ones
+    // we do have are missing an image — e.g. saved before Comic Vine author
+    // images existed, or from a provider that never supplied one. Otherwise
+    // leave locally-curated authors (added/edited via the collaborative
+    // catalog editor) alone rather than silently overwriting them on every
+    // re-fetch.
+    const authorsMissingImage = dbAuthors.length > 0 && dbAuthors.every(a => !a.image);
+    if ((dbAuthors.length === 0 || authorsMissingImage) && data.authors && data.authors.length > 0) {
       await saveMediaAuthors(rawId, data.authors!).catch(console.error);
     }
 
