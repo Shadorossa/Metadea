@@ -53,11 +53,23 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
 // in sagaTypes.ts) to avoid colliding with the saga-chain's own ADAPTATION /
 // ALTERNATIVE relation_type strings, which the backend's transitive-chain walk
 import { getT } from '../../i18n/client';
+import { en } from '../../i18n/en';
 
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const t = getT();
   const tm = t.media;
+  // Shown to whoever's editing, in their own UI language.
   const relationLabels = tm.relations;
+  // What actually gets persisted (media_relations.type_label, and from there
+  // the PR bundle / shared community catalog) — always English, regardless
+  // of the editor's UI language. Previously this reused relationLabels
+  // (locale-dependent), so a Spanish-UI editor's PR saved "Secuela" while an
+  // English-UI editor's saved "Sequel" for the exact same relation_type —
+  // the shared catalog ended up with type_label mixing languages depending
+  // on who last touched a given row. relation_type itself (the actual key
+  // everything else — the saga CTE walk, filters, EDITABLE_RELATION_OPTIONS
+  // — matches on) was never affected by this; only the display-label column.
+  const canonicalRelationLabels = en.media.relations;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -172,7 +184,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
             return {
               related_media_external_id: r.related_media_external_id,
               relation_type: relationType,
-              type_label: (relationLabels as any)[relationType] || r.type_label || relationType,
+              type_label: (canonicalRelationLabels as any)[relationType] || r.type_label || relationType,
               title: r.title,
               cover: r.cover,
             };
@@ -395,7 +407,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       setEditableRelations([...editableRelations, {
         related_media_external_id: result.externalId,
         relation_type: DEFAULT_NEW_RELATION_TYPE,
-        type_label: (relationLabels as any)[DEFAULT_NEW_RELATION_TYPE] || DEFAULT_NEW_RELATION_TYPE,
+        type_label: (canonicalRelationLabels as any)[DEFAULT_NEW_RELATION_TYPE] || DEFAULT_NEW_RELATION_TYPE,
         title: result.titleMain,
         cover: result.coverUrl,
       }]);
@@ -403,7 +415,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   };
   const updateEditableRelationType = (id: string, relationType: string) =>
     setEditableRelations(prev => prev.map(r => r.related_media_external_id === id
-      ? { ...r, relation_type: relationType, type_label: (relationLabels as any)[relationType] || relationType }
+      ? { ...r, relation_type: relationType, type_label: (canonicalRelationLabels as any)[relationType] || relationType }
       : r));
   const removeEditableRelation = (id: string) =>
     setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));

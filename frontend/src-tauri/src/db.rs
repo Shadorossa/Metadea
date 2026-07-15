@@ -170,8 +170,60 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         }
         mark_migration(conn, 8)?;
     }
+    if v < 9 {
+        // Backfill: media_relations.type_label used to be written from
+        // whichever UI language the editor's app happened to be in (see
+        // PrEditorModal.tsx's now-removed `relationLabels` write path), so
+        // rows saved from a Spanish-language session hold Spanish text
+        // ("Secuela", "Precuela", ...) instead of the canonical English the
+        // shared community catalog expects. relation_type itself (the
+        // actual key everything else matches on) was never affected by that
+        // bug, so it's a reliable source to re-derive the correct label
+        // from — this just re-applies canonical_relation_label() to every
+        // row regardless of its current type_label, which is simpler and
+        // more robust than trying to detect "is this already English".
+        for (relation_type, label) in canonical_relation_labels() {
+            let _ = conn.execute(
+                "UPDATE media_relations SET type_label = ?2 WHERE relation_type = ?1 AND type_label != ?2",
+                rusqlite::params![relation_type, label],
+            );
+        }
+        mark_migration(conn, 9)?;
+    }
 
     Ok(())
+}
+
+// Canonical (always-English) relation_type -> type_label pairs — mirrors
+// frontend/src/i18n/en.ts's `media.relations` table plus the few keys
+// (EPISODE/UPDATE/PART_OF/SOURCE) that are only ever written as hardcoded
+// English literals in the frontend rather than through that i18n table.
+// Kept here (not shared with media_catalog.rs's reciprocal_relation, which
+// only needs a handful of these) since this is a one-off backfill list, not
+// a piece of ongoing relation-writing logic.
+fn canonical_relation_labels() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("SEQUEL", "Sequel"), ("PREQUEL", "Prequel"), ("SIDE_STORY", "Side story"),
+        ("ALTERNATIVE", "Alternative"), ("ADAPTATION", "Adaptation"), ("PARENT", "Source"),
+        ("SUMMARY", "Summary"), ("SPIN_OFF", "Spin-off"), ("OTHER", "Other"),
+        ("CHARACTER", "Character"), ("CONTAINS", "Contains"), ("RECOMMENDATION", "Recommended"),
+        ("EDITIONS", "Editions"),
+        ("REL_ADAPTATION", "Adaptation"),
+        ("REL_ALTERNATIVE", "Alternative Version"),
+        ("REMASTER", "Remaster"),
+        ("REMAKE", "Remake"),
+        ("EXPANDED_GAME", "Expanded Edition"),
+        ("REL_UPDATE", "Update"),
+        ("DLC", "DLC"),
+        ("EXPANSION", "Content Expansion"),
+        ("STANDALONE", "Standalone Expansion"),
+        ("FORK", "Fork"),
+        ("SEASON", "Season"),
+        ("SOURCE", "Source Material"),
+        ("EPISODE", "Episode"),
+        ("UPDATE", "Update"),
+        ("PART_OF", "Part of"),
+    ]
 }
 
 // ─── ID generator ─────────────────────────────────────────────────────────────
