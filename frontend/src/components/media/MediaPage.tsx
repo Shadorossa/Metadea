@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, sortMediaRelations } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -240,25 +240,8 @@ export default function MediaPage({ i18n }: Props) {
         setIsFetchingFull(false);
 
         if (full.characters && full.characters.length > 0) {
-          // char.role is overloaded per source: TMDB (movie/series) puts the
-          // actual character name played there, while AniList (anime/manga/
-          // etc.) puts the MAIN/SUPPORTING relation kind — they need to land
-          // in different DB columns instead of both piling into relation_type.
           const isCastRole = full.type === 'movie' || full.type === 'series';
-          const seen = new Set<string>();
-          const skeletonChars = full.characters
-            .map(char => ({
-              external_id: char.id || `character:${char.name}`,
-              name: char.name,
-              image_url: char.image || null,
-              relation_type: isCastRole ? null : (char.role || null),
-              character_name: isCastRole ? (char.role || null) : null,
-            }))
-            .filter(char => {
-              if (seen.has(char.external_id)) return false;
-              seen.add(char.external_id);
-              return true;
-            });
+          const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
           saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
         }
 
@@ -311,13 +294,7 @@ export default function MediaPage({ i18n }: Props) {
             // Full cast aggregated across every issue — supersedes the
             // first-issue-only sample the initial volume fetch showed.
             if (characters.length > 0) {
-              const skeletonChars = characters.map(char => ({
-                external_id: char.id || `character:${char.name}`,
-                name: char.name,
-                image_url: char.image || null,
-                relation_type: null,
-                character_name: null,
-              }));
+              const skeletonChars = mediaCharactersToSkeleton(characters, false);
               saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
               setData(prev => (prev && prev.externalId === full.externalId) ? { ...prev, characters } : prev);
             }
@@ -503,37 +480,11 @@ export default function MediaPage({ i18n }: Props) {
   // slot for comics' issues, just swapping the label/i18n key.
   const editionsLabel = data.type === 'comic' ? tm.relations.ISSUE : tm.relations.EDITIONS;
   const editionsRelationType = data.type === 'comic' ? 'ISSUE' : 'EDITIONS';
-  // A "full edition" of the base game (remake/remaster/expanded edition/
-  // port/fork) tends to inherit the base game's whole sibling-editions web
-  // in IGDB's own data — e.g. a remaster's own relations pointing at the
-  // *original, non-remastered* content — so those only ever show their
-  // Fuente/parent relation. Content attached to a specific release (DLC,
-  // expansion, standalone expansion, episode, season, mod, update) doesn't
-  // have that inheritance problem — its own remakes/remasters genuinely
-  // describe that piece of content, so those keep their full relations.
-  // mapIgdbToMedia already stops fetching the excluded ones fresh; this also
-  // filters out any leftover rows saved to the DB before that fix.
-  const isFullEdition = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']).has(data.format ?? '');
-  // For full-edition pages (remakes, remasters…) only show their own content
-  // (DLCs, expansions, standalone, remasters, expanded games) and their source (PARENT). Everything else
-  // IGDB inherits from the base game (sibling remakes, etc.) is blocked.
-  const FULL_EDITION_ALLOWED = new Set([
-    'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
-  ]);
-  // Bucketing compares the stable, locale-independent relationType — not
-  // typeLabel, which is either the currently-active locale's translated
-  // string (freshly-fetched data) or whatever locale was active when a row
-  // was first saved to media_relations/session cache (older data). Comparing
-  // typeLabel against the *current* locale's tm.relations.X broke this split
-  // entirely after a language switch, or for any relation loaded from a
-  // stale cache/DB row — relationType never changes with locale, so it's the
-  // only reliable key to bucket on.
-  const relatedRelations    = sortMediaRelations(data.relations.filter(r =>
-    r.relationType !== 'RECOMMENDATION' && r.relationType !== editionsRelationType &&
-    (!isFullEdition || FULL_EDITION_ALLOWED.has(r.relationType ?? ''))
-  ));
-  const recommendedRelations = sortMediaRelations(data.relations.filter(r => r.relationType === 'RECOMMENDATION'));
-  const editionRelations    = data.relations.filter(r => r.relationType === editionsRelationType);
+  const {
+    related: relatedRelations,
+    recommended: recommendedRelations,
+    editions: editionRelations,
+  } = bucketRelations(data.relations, data.format, editionsRelationType);
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasTabs = hasRecommendedRelations || hasEditionRelations;

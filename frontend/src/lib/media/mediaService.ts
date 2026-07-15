@@ -22,8 +22,8 @@ import { needsResync } from './media-status';
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData } from './media-cache';
 import { mapCatalogEntryToPartialData, inferProgressStatus } from './catalog-mapper';
 import {
-  sortRelationsForDisplay, sortMediaRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
-  loadDbRelationsAndAuthors, mergeAndPersistRelations,
+  sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
+  mediaCharactersToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 
 // Re-exported so existing callers (MediaPage.tsx, ProfileLibraryEditor.tsx,
@@ -34,7 +34,7 @@ import {
 export {
   getCachedMediaData, patchCachedRelations, invalidateCachedMediaData,
   mapCatalogEntryToPartialData, inferProgressStatus,
-  sortMediaRelations, mergeAndPersistRelations,
+  sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mergeAndPersistRelations,
 };
 
 // ── Fetch interno ─────────────────────────────────────────────────────────

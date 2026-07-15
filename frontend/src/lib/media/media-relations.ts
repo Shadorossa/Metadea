@@ -3,7 +3,7 @@
 // (still re-exported from there).
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaRelation } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
-import type { DbMediaCharacter } from '../tauri/characters';
+import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';
@@ -93,6 +93,49 @@ export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] 
   });
 }
 
+// A "full edition" of a base game (remake/remaster/expanded edition/port/
+// fork) tends to inherit the base game's whole sibling-editions web in
+// IGDB's own data — e.g. a remaster's own relations pointing at the
+// *original, non-remastered* content — so those only ever show their
+// Fuente/parent relation. Content attached to a specific release (DLC,
+// expansion, standalone expansion, episode, season, mod, update) doesn't
+// have that inheritance problem, so those keep their full relations.
+const FULL_EDITION_FORMATS = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']);
+const FULL_EDITION_ALLOWED_RELATION_TYPES = new Set([
+  'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
+]);
+
+export interface RelationBuckets {
+  related: MediaRelation[];
+  recommended: MediaRelation[];
+  editions: MediaRelation[];
+}
+
+// Splits a media page's relations into the three tabs MediaPage.tsx renders
+// (Related / Recommended / Editions-or-Issues). Always keys off the stable
+// relationType, never typeLabel — typeLabel is locale-translated text (either
+// the currently-active locale, for freshly-fetched data, or whatever locale
+// was active when a row was first saved to media_relations/session cache),
+// so comparing it against the *current* locale's translated string silently
+// breaks this split after a language switch or for any relation loaded from
+// an older cached/DB row. relationType never changes with locale.
+export function bucketRelations(
+  relations: MediaRelation[],
+  format: string | undefined,
+  editionsRelationType: string,
+): RelationBuckets {
+  const isFullEdition = FULL_EDITION_FORMATS.has(format ?? '');
+
+  const related = sortMediaRelations(relations.filter(r =>
+    r.relationType !== 'RECOMMENDATION' && r.relationType !== editionsRelationType &&
+    (!isFullEdition || FULL_EDITION_ALLOWED_RELATION_TYPES.has(r.relationType ?? ''))
+  ));
+  const recommended = sortMediaRelations(relations.filter(r => r.relationType === 'RECOMMENDATION'));
+  const editions = relations.filter(r => r.relationType === editionsRelationType);
+
+  return { related, recommended, editions };
+}
+
 export function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {
   return {
     external_id: a.external_id,
@@ -110,6 +153,31 @@ export function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter
     image: c.image_url || undefined,
     role: c.relation_type || c.character_name || undefined,
   };
+}
+
+// Inverse of dbCharacterToMediaCharacter — used before persisting a freshly-
+// fetched cast (MediaPage.tsx calls this both for the initial full.characters
+// and for a comic's later full-cast aggregation). char.role is overloaded per
+// source: TMDB (movie/series) puts the actual character name played there,
+// while AniList (anime/manga/etc.) puts the MAIN/SUPPORTING relation kind —
+// they need to land in different DB columns instead of both piling into
+// relation_type. Dedupes by external_id since a cast can list the same
+// character more than once (e.g. AniList's multi-voice-actor edges).
+export function mediaCharactersToSkeleton(characters: MediaCharacter[], isCastRole: boolean): SkeletonCharacter[] {
+  const seen = new Set<string>();
+  return characters
+    .map(char => ({
+      external_id: char.id || `character:${char.name}`,
+      name: char.name,
+      image_url: char.image || null,
+      relation_type: isCastRole ? null : (char.role || null),
+      character_name: isCastRole ? (char.role || null) : null,
+    }))
+    .filter(char => {
+      if (seen.has(char.external_id)) return false;
+      seen.add(char.external_id);
+      return true;
+    });
 }
 
 // Shared by fetchMediaData and fetchMediaDataWithFallback (mediaService.ts)
