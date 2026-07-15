@@ -87,11 +87,45 @@
 }
 
 .tier-index-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   text-decoration: none;
   color: inherit;
+}
+
+.tier-index-card-delete-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm, 4px);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid transparent;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.tier-index-card:hover .tier-index-card-delete-btn {
+  opacity: 1;
+}
+
+.tier-index-card-delete-btn:hover {
+  background: var(--color-error, #ff6b6b);
+  border-color: var(--color-error, #ff6b6b);
+}
+
+.tier-index-card-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .tier-index-card-collage {
