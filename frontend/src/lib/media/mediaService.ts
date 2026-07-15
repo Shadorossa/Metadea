@@ -141,7 +141,7 @@ function editionsToRelations(editions: OpenLibEdition[], label: string): MediaPa
     const publisherPart = ed.publishers?.[0] ?? '';
     const yearPart = ed.publish_date ? ` (${ed.publish_date})` : '';
     const title = ed.title + (publisherPart ? ` — ${publisherPart}${yearPart}` : yearPart);
-    result.push({ typeLabel: label, title, cover });
+    result.push({ typeLabel: label, relationType: 'EDITIONS', title, cover });
   }
   return result;
 }
@@ -159,7 +159,7 @@ export async function fetchBookEditions(
   if (!editions.length) return null;
   const editionRelations = editionsToRelations(editions, editionsLabel);
   if (!editionRelations.length) return null;
-  const withoutOld = currentRelations.filter(r => r.typeLabel !== editionsLabel);
+  const withoutOld = currentRelations.filter(r => r.relationType !== 'EDITIONS');
   return [...withoutOld, ...editionRelations];
 }
 
@@ -174,7 +174,7 @@ function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageDa
     const namePart = issue.name ? ` — ${issue.name}` : '';
     const title = (numberPart + namePart) || `#${issue.id}`;
     const relatedExternalId = `comic:issue-${issue.id}`;
-    result.push({ typeLabel: label, title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
+    result.push({ typeLabel: label, relationType: 'ISSUE', title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
   }
   return result;
 }
@@ -218,7 +218,7 @@ export async function fetchComicIssues(
 
   const issueRelations = issuesToRelations(issues, issuesLabel);
   if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };
-  const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.typeLabel !== issuesLabel);
+  const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.relationType !== 'ISSUE');
   return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };
 }
 

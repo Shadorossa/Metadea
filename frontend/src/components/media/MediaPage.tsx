@@ -502,6 +502,7 @@ export default function MediaPage({ i18n }: Props) {
   // Books and comics never share a page — reuse the same "editions" tab
   // slot for comics' issues, just swapping the label/i18n key.
   const editionsLabel = data.type === 'comic' ? tm.relations.ISSUE : tm.relations.EDITIONS;
+  const editionsRelationType = data.type === 'comic' ? 'ISSUE' : 'EDITIONS';
   // A "full edition" of the base game (remake/remaster/expanded edition/
   // port/fork) tends to inherit the base game's whole sibling-editions web
   // in IGDB's own data — e.g. a remaster's own relations pointing at the
@@ -517,20 +518,22 @@ export default function MediaPage({ i18n }: Props) {
   // (DLCs, expansions, standalone, remasters, expanded games) and their source (PARENT). Everything else
   // IGDB inherits from the base game (sibling remakes, etc.) is blocked.
   const FULL_EDITION_ALLOWED = new Set([
-    tm.relations.PARENT,
-    tm.relations.DLC,
-    tm.relations.EXPANSION,
-    tm.relations.STANDALONE,
-    tm.relations.REMASTER,
-    tm.relations.EXPANDED_GAME,
-    tm.relations.REL_UPDATE
+    'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
   ]);
+  // Bucketing compares the stable, locale-independent relationType — not
+  // typeLabel, which is either the currently-active locale's translated
+  // string (freshly-fetched data) or whatever locale was active when a row
+  // was first saved to media_relations/session cache (older data). Comparing
+  // typeLabel against the *current* locale's tm.relations.X broke this split
+  // entirely after a language switch, or for any relation loaded from a
+  // stale cache/DB row — relationType never changes with locale, so it's the
+  // only reliable key to bucket on.
   const relatedRelations    = sortMediaRelations(data.relations.filter(r =>
-    r.typeLabel !== tm.relations.RECOMMENDATION && r.typeLabel !== editionsLabel &&
-    (!isFullEdition || FULL_EDITION_ALLOWED.has(r.typeLabel))
+    r.relationType !== 'RECOMMENDATION' && r.relationType !== editionsRelationType &&
+    (!isFullEdition || FULL_EDITION_ALLOWED.has(r.relationType ?? ''))
   ));
-  const recommendedRelations = sortMediaRelations(data.relations.filter(r => r.typeLabel === tm.relations.RECOMMENDATION));
-  const editionRelations    = data.relations.filter(r => r.typeLabel === editionsLabel);
+  const recommendedRelations = sortMediaRelations(data.relations.filter(r => r.relationType === 'RECOMMENDATION'));
+  const editionRelations    = data.relations.filter(r => r.relationType === editionsRelationType);
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasTabs = hasRecommendedRelations || hasEditionRelations;

@@ -156,13 +156,16 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 /* Header underlines looking like newspaper section dividers */
-[data-theme="newspaper-dark"] h2, 
-[data-theme="newspaper-dark"] h3, 
-[data-theme="newspaper-dark"] .settings-panel-title, 
-[data-theme="newspaper-dark"] .section-label {
+[data-theme="newspaper-dark"] h2,
+[data-theme="newspaper-dark"] h3,
+[data-theme="newspaper-dark"] .settings-panel-title {
   border-bottom: 2px solid var(--text-main) !important;
   font-style: italic;
   padding-bottom: 4px;
+}
+
+[data-theme="newspaper-dark"] .section-label {
+  font-style: italic;
 }
 
 /* Check badges style */

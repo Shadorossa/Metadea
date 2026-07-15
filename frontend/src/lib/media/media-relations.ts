@@ -6,6 +6,7 @@ import { getMediaRelations, getMediaAuthors, saveMediaRelations, type DbMediaRel
 import type { DbMediaCharacter } from '../tauri/characters';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
+import { lookupLabel } from './mapper-utils';
 
 // Order of relations: Fuente > Prequel > Sequel > Side story (Historia paralela) > Alternative > Other
 const RELATION_SORT_PRIORITY: Record<string, number> = {
@@ -55,9 +56,17 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     if (priorityA !== priorityB) return priorityA - priorityB;
     return 0;
   });
+  // r.type_label is whatever locale was active when this row was first
+  // saved (see mergeAndPersistRelations) and is never rewritten afterward —
+  // comparing it against the *current* locale's translated string (as the
+  // Related/Recommended/Editions tab split in MediaPage.tsx does) silently
+  // fails once the UI language changes, dumping everything into "Related".
+  // relation_type itself is stable/canonical, so re-deriving the label from
+  // it at read time keeps the display correct regardless of what got saved.
+  const tm = getT().media;
   return {
     relations: sorted.map(r => ({
-      typeLabel: r.type_label,
+      typeLabel: lookupLabel(tm.relations, r.relation_type, r.type_label),
       relationType: r.relation_type,
       title: r.title,
       cover: r.cover || undefined,
