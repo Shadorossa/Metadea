@@ -815,11 +815,45 @@ fn detect_vn(game: &serde_json::Value) -> bool {
     false
 }
 
+// Resolves a known IGDB game id directly — no Steam-ID/fuzzy-name guessing —
+// shared by igdb_force_by_igdb_id (manual pick from the UI) and
+// igdb_get_cover_by_steam_id's own check for a saved local_game_links
+// override (an earlier manual pick that must keep winning on every future
+// fetch, not just the one time it was made).
+async fn fetch_igdb_game_by_id(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    igdb_id: u64,
+) -> Result<(String, Option<u64>, serde_json::Value), String> {
+    let games = igdb_query(
+        client,
+        client_id,
+        token,
+        IGDB_API_GAMES,
+        &format!(
+            "fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;",
+            igdb_id
+        ),
+    )
+    .await?;
+
+    let game = games
+        .as_array()
+        .and_then(|a| a.first())
+        .ok_or("Game not found in IGDB")?;
+
+    let (cover_image_id, game_id, igdb_game) = extract_cover_and_game(game);
+    let cover_image_id = cover_image_id.ok_or("Game has no cover")?;
+    Ok((cover_image_id, game_id, igdb_game))
+}
+
 // -- Tauri commands ------------------------------------------------------------
 
 #[tauri::command]
 pub async fn igdb_get_cover_by_steam_id(
     app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
     app_id: String,
     game_name: String,
 ) -> Result<Option<String>, String> {
@@ -855,8 +889,25 @@ pub async fn igdb_get_cover_by_steam_id(
     let token = get_twitch_token(&client_id, &client_secret).await?;
     let client = get_http_client();
 
-    let (cover_image_id, igdb_game_id, igdb_game) =
-        resolve_igdb_game(&client, &client_id, &token, &app_id, &game_name).await?;
+    // A manual pick from IgdbPickerModal (see save_game_link in folders.rs)
+    // always wins over guessing — checked first, ahead of Steam-ID/fuzzy
+    // matching, so a corrected mismatch stays fixed even if the cached
+    // cover/banner files above ever get cleared and this whole function
+    // re-runs from scratch.
+    let manual_link = {
+        let conn = state.conn.lock().str_err()?;
+        crate::folders::get_game_link(&conn, "steam", &app_id)
+    };
+    let manual_igdb_id = manual_link
+        .as_deref()
+        .and_then(|eid| eid.rsplit(':').next())
+        .and_then(|id| id.parse::<u64>().ok());
+
+    let (cover_image_id, igdb_game_id, igdb_game) = if let Some(igdb_id) = manual_igdb_id {
+        fetch_igdb_game_by_id(&client, &client_id, &token, igdb_id).await?
+    } else {
+        resolve_igdb_game(&client, &client_id, &token, &app_id, &game_name).await?
+    };
 
     download_game_metadata(
         &client,
@@ -1562,25 +1613,8 @@ pub async fn igdb_force_by_igdb_id(
     let token = get_twitch_token(&client_id, &client_secret).await?;
     let client = get_http_client();
 
-    let games = igdb_query(
-        &client,
-        &client_id,
-        &token,
-        IGDB_API_GAMES,
-        &format!(
-            "fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;",
-            igdb_id
-        ),
-    )
-    .await?;
-
-    let game = games
-        .as_array()
-        .and_then(|a| a.first())
-        .ok_or("Game not found in IGDB")?;
-
-    let (cover_image_id, game_id, igdb_game) = extract_cover_and_game(game);
-    let cover_image_id = cover_image_id.ok_or("Game has no cover")?;
+    let (cover_image_id, game_id, igdb_game) =
+        fetch_igdb_game_by_id(&client, &client_id, &token, igdb_id).await?;
 
     let meta_root = app_handle
         .path()

@@ -164,6 +164,22 @@ pub async fn delete_game_link(
     .str_err()
 }
 
+// Single-row counterpart to lookup_game_links (which pulls the whole table
+// for scan_all_games' bulk pass) — used by the metadata-fetch path, which
+// only ever needs one game's link at a time.
+pub fn get_game_link(
+    conn: &rusqlite::Connection,
+    launcher: &str,
+    link_key: &str,
+) -> Option<String> {
+    conn.query_row(
+        "SELECT external_id FROM local_game_links WHERE launcher = ?1 AND link_key = ?2",
+        rusqlite::params![launcher, link_key],
+        |r| r.get(0),
+    )
+    .ok()
+}
+
 pub fn lookup_game_links(
     conn: &rusqlite::Connection,
 ) -> std::collections::HashMap<(String, String), String> {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbSearchCandidates, igdbForceByIgdbId, type LocalGame, type IgdbCandidate } from '../../../lib/tauri';
+import { igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, type LocalGame, type IgdbCandidate } from '../../../lib/tauri';
 
 interface IgdbPickerModalProps {
   game:     LocalGame;
@@ -38,6 +38,15 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
     setApplying(candidate.id);
     try {
       await igdbForceByIgdbId(game.app_id, game.name, candidate.id);
+      // Persists the pick as the permanent match for this game — without
+      // this, igdbForceByIgdbId only re-downloads the cached cover/banner;
+      // the catalog link itself (external_id, used by "Ver en catálogo" and
+      // the library) would still resolve through automatic Steam-ID/fuzzy
+      // matching on the next scan, which could re-guess wrong again.
+      // linkKey must match scan_all_games' own derivation exactly (see
+      // platform_scanning.rs): app_id ?? install_path ?? name.
+      const linkKey = game.app_id ?? game.install_path ?? game.name;
+      await saveGameLink(game.launcher, linkKey, `game:${candidate.id}`).catch(console.error);
       onPicked();
       onClose();
     } catch (e) {
