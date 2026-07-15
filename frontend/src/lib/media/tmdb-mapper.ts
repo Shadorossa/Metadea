@@ -64,7 +64,9 @@ export function mapTmdbToMedia(
   }
   if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
 
-  const metaLines = [companies.join(', '), dateBadge ?? ''].filter(Boolean);
+  // The date already shows in the banner's own dateBadge overlay (top-right
+  // square) — it must not also repeat here, under the studios/companies line.
+  const metaLines = [companies.join(', ')].filter(Boolean);
 
   const characters: MediaCharacter[] = (raw.credits?.cast ?? [])
     .slice(0, CAST_LIMIT)

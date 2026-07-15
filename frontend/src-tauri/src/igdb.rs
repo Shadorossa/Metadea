@@ -1155,8 +1155,9 @@ pub async fn igdb_search(
             continue;
         }
 
+        // 0 main_game, 3 bundle, 4 standalone_expansion, 7 season, 8 remake, 14 update.
         let category = get_game_category(&item);
-        if !matches!(category, 0 | 4 | 7 | 8 | 14) {
+        if !matches!(category, 0 | 3 | 4 | 7 | 8 | 14) {
             continue;
         }
 

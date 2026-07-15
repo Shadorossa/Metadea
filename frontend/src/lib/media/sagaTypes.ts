@@ -1,7 +1,10 @@
 // Tipos de relación usados por la cadena de sagas (PrEditorModal).
 // Centralizados aquí para que filtros y escritores nunca diverjan.
 
-export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE'];
+// New bundled-in relations are always saved as PART_OF now (PrEditorModal no
+// longer distinguishes episode/update) — EPISODE/UPDATE stay in this filter
+// so relations saved before that change still load into the Bundled In list.
+export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE', 'PART_OF'];
 
 export const SAGA_DIRECT_RELATION_TYPES: string[] = ['PREQUEL', 'SEQUEL'];
 

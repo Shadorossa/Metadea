@@ -22,9 +22,9 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
     const timer = setTimeout(() => {
       setIsLoading(true);
       search(query, 'character', controller.signal)
-        .then(res => {
+        .then(page => {
           if (controller.signal.aborted) return;
-          setResults(res.slice(0, 60));
+          setResults(page.results.slice(0, 60));
         })
         .catch(() => {
           if (!controller.signal.aborted) setResults([]);

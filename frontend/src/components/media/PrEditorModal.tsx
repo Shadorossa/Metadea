@@ -22,9 +22,10 @@ import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 
+// Always saved as a PART_OF relation — there's no per-item type to pick
+// anymore (previously episode/update, shown as a dropdown).
 interface BundledRelation {
   external_id: string;
-  type: 'episode' | 'update';
   title?: string | null;
   cover?: string | null;
 }
@@ -151,12 +152,11 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       try {
         const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
 
-        // Separate bundled relations (EPISODE, UPDATE)
+        // Separate bundled relations (EPISODE, UPDATE, PART_OF)
         const bundled = rels
           .filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type))
           .map(r => ({
             external_id: r.related_media_external_id,
-            type: (r.relation_type === 'UPDATE' ? 'update' : 'episode') as BundledRelation['type'],
             title: r.title,
             cover: r.cover,
           }));
@@ -386,14 +386,11 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (!bundledRelations.some(r => r.external_id === result.externalId)) {
       setBundledRelations([...bundledRelations, {
         external_id: result.externalId,
-        type: 'episode',
         title: result.titleMain,
         cover: result.coverUrl,
       }]);
     }
   };
-  const updateBundledRelationType = (id: string, type: BundledRelation['type']) =>
-    setBundledRelations(prev => prev.map(r => r.external_id === id ? { ...r, type } : r));
   const removeBundledRelation = (id: string) =>
     setBundledRelations(prev => prev.filter(r => r.external_id !== id));
 
@@ -483,7 +480,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     };
 
     const d = getDiff();
-    for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)} (${r.type})`);
+    for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)}`);
     for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
     for (const r of d.addedEditableRelations) lines.push(`- Added Relation: ${formatWork(r.related_media_external_id, r.title)} (${r.type_label})`);
     for (const id of d.removedEditableRelationIds) lines.push(`- Removed Relation: ${formatWork(id)}`);
@@ -612,8 +609,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         .filter(r => r.external_id.trim())
         .map(r => ({
           related_media_external_id: r.external_id.trim(),
-          relation_type: r.type.toUpperCase(),
-          type_label: r.type === 'update' ? 'Update' : 'Episode',
+          relation_type: 'PART_OF',
+          type_label: 'Part of',
           title: r.title || r.external_id.trim(),
           cover: r.cover ?? null,
         }));
@@ -1068,38 +1065,24 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                   <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Bundled In</label>
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
                 </div>
-                <div className="pr-editor-bundled-list">
+                <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
                   {bundledRelations.map(r => (
-                    <div key={r.external_id} className="pr-editor-bundled-row">
-                      <div className="pr-editor-bundled-card">
-                        <div className="pr-editor-bundled-card-cover">
-                          {r.cover ? (
-                            <img src={r.cover} alt="" />
-                          ) : (
-                            <div className="pr-editor-bundled-card-placeholder" />
-                          )}
-                          <button
-                            type="button"
-                            className="pr-editor-bundled-card-remove"
-                            onClick={() => removeBundledRelation(r.external_id)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="pr-editor-bundled-card-info">
-                          <span className="pr-editor-bundled-card-title" title={r.title || r.external_id}>
-                            {r.title || r.external_id}
-                          </span>
-                        </div>
+                    <div key={r.external_id} className="pr-editor-media-card">
+                      <div className="pr-editor-media-card-cover">
+                        {r.cover
+                          ? <img src={r.cover} alt="" draggable={false} />
+                          : <div className="pr-editor-media-card-placeholder" />}
+                        <button
+                          type="button"
+                          className="pr-editor-media-card-remove"
+                          onClick={() => removeBundledRelation(r.external_id)}
+                        >
+                          ×
+                        </button>
                       </div>
-                      <select
-                        value={r.type}
-                        onChange={e => updateBundledRelationType(r.external_id, e.target.value as BundledRelation['type'])}
-                        className="pr-editor-bundled-select"
-                      >
-                        <option value="episode">Episode</option>
-                        <option value="update">Update</option>
-                      </select>
+                      <div className="pr-editor-media-card-title" title={r.title || r.external_id}>
+                        {r.title || r.external_id}
+                      </div>
                     </div>
                   ))}
                 </div>

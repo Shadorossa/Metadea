@@ -80,7 +80,9 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setIsLoading(true);
-      Promise.all(typesToQuery.map(t => search(query, t, controller.signal).catch(() => [])))
+      Promise.all(typesToQuery.map(t =>
+        search(query, t, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+      ))
         .then(perType => {
           if (controller.signal.aborted) return;
           setResults(perType.flat().slice(0, 60));
