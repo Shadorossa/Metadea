@@ -5,14 +5,25 @@
 .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ── Media cards ─────────────────────────────────────────────────────────── */
+/* Fixed 3:4 box via the classic "padding-bottom" technique instead of the
+ * `aspect-ratio` property — every result card (any media type/provider:
+ * AniList, IGDB, TMDB, OpenLibrary) shares this one class, so it needs to be
+ * a hard guarantee of identical box dimensions regardless of the source
+ * cover's own resolution/ratio, not something that depends on `aspect-ratio`
+ * being resolved consistently inside a CSS grid. padding-top: 133.33% (4/3)
+ * on a zero-height box is supported everywhere and can't be undermined by
+ * grid/flex auto-sizing quirks the way aspect-ratio sometimes can — the
+ * `<img>` is absolutely positioned to fill it, cropped via object-fit:cover
+ * the same as before. */
 .card-media-base {
   background: var(--bg-card);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
-  aspect-ratio: 3 / 4;
   width: 100%;
+  height: 0;
+  padding-top: 133.333%;
   transition:
     transform     var(--anim-base) var(--anim-ease),
     box-shadow    var(--anim-base) var(--anim-ease),
@@ -25,6 +36,8 @@
   border-color: var(--accent-border);
 }
 .card-media-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
