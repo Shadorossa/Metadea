@@ -2,11 +2,11 @@ import { fetchAniListDetail } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
-import { fetchComicVineVolume, fetchComicVineIssues } from '../search/providers/comicvine';
+import { fetchComicVineVolume, fetchComicVineIssues, fetchComicVineIssue } from '../search/providers/comicvine';
 import type { ComicVineIssue } from '../tauri';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
-import { mapComicVineToMedia } from './comicvine-mapper';
+import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed } from '../tauri';
@@ -79,6 +79,12 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
 
   if (type === 'comic') {
     const idStr = rawId.slice(rawId.indexOf(':') + 1);
+    if (idStr.startsWith('issue-')) {
+      const issueId = parseInt(idStr.slice('issue-'.length), 10);
+      if (!Number.isFinite(issueId)) return null;
+      const issue = await fetchComicVineIssue(issueId);
+      return issue ? mapComicVineIssueToMedia(issue, rawId) : null;
+    }
     const volumeId = parseInt(idStr, 10);
     if (!Number.isFinite(volumeId)) return null;
     const volume = await fetchComicVineVolume(volumeId);
@@ -166,13 +172,18 @@ function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageDa
     const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
     const namePart = issue.name ? ` — ${issue.name}` : '';
     const title = (numberPart + namePart) || `#${issue.id}`;
-    result.push({ typeLabel: label, title, cover });
+    const relatedExternalId = `comic:issue-${issue.id}`;
+    result.push({ typeLabel: label, title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
   }
   return result;
 }
 
 // Background fetch: loads all issues for a comic volume and returns them
 // merged with any existing relations. Same pattern as fetchBookEditions.
+// (Cast/genres for the volume itself come straight from the /volume/ detail
+// fetch — see comicvine-mapper.ts — since the /issues/ list resource used
+// here doesn't reliably populate character_credits/concept_credits, only
+// the singular /issue/ and /volume/ detail resources document those fields.)
 export async function fetchComicIssues(
   rawId: string,
   currentRelations: MediaPageData['relations'],
@@ -183,9 +194,10 @@ export async function fetchComicIssues(
   if (!Number.isFinite(volumeId)) return null;
   const issues = await fetchComicVineIssues(volumeId).catch(() => []);
   if (!issues.length) return null;
+
   const issueRelations = issuesToRelations(issues, issuesLabel);
   if (!issueRelations.length) return null;
-  const withoutOld = currentRelations.filter(r => r.typeLabel !== issuesLabel);
+  const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.typeLabel !== issuesLabel);
   return [...withoutOld, ...issueRelations];
 }
 

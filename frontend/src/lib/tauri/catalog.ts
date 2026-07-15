@@ -54,6 +54,10 @@ export async function markCatalogSyncFailed(externalId: string, error: string): 
   return tauriRun('mark_catalog_sync_failed', { externalId, error });
 }
 
+export async function updateCatalogGenres(externalId: string, genresCsv: string | null, genresTagCsv: string | null): Promise<void> {
+  return tauriRun('update_catalog_genres', { externalId, genresCsv, genresTagCsv });
+}
+
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
 }

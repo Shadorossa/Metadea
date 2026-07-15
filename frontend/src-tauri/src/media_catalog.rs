@@ -281,6 +281,29 @@ pub async fn mark_catalog_sync_failed(
     Ok(())
 }
 
+// Narrow update for genres/tags discovered by a background fetch after the
+// initial page render (Comic Vine's concepts, aggregated across every issue)
+// — unlike save_catalog_entry (INSERT OR REPLACE against the full row), this
+// only touches genres_csv/genres_tag_csv so it can't clobber every other
+// column with stale/default values from a partial in-memory snapshot.
+#[tauri::command]
+pub async fn update_catalog_genres(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+    genres_csv: Option<String>,
+    genres_tag_csv: Option<String>,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "UPDATE media_catalog
+         SET genres_csv = ?2,
+             genres_tag_csv = ?3
+         WHERE external_id = ?1",
+        rusqlite::params![external_id, genres_csv, genres_tag_csv],
+    ).str_err()?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn get_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,

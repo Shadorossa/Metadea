@@ -247,6 +247,7 @@ const EDITION_FILTER_OPTIONS = [
   { key: 'REMASTER', label: 'Remaster' },
   { key: 'UPDATE', label: 'Update' },
   { key: 'SEASON', label: 'Season' },
+  { key: 'ISSUE', label: 'Issue' },
 ] as const;
 const EDITION_FILTER_KEYS = new Set(EDITION_FILTER_OPTIONS.map(o => o.key));
 const DEFAULT_EDITION_FILTERS = ['GAME', 'REMAKE', 'EXPANDED_GAME', 'REMASTER'];

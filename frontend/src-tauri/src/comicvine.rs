@@ -12,6 +12,16 @@ use crate::db::ToStringErr;
 
 const COMICVINE_BASE: &str = "https://comicvine.gamespot.com/api";
 const FIELD_LIST: &str = "id,name,image,start_year,publisher,count_of_issues,description,deck,site_detail_url";
+// Only the singular /volume/ detail resource documents character_credits/
+// concept_credits/person_credits as populated fields — the /search/ (list)
+// resource above doesn't, so genres/cast/authors were always coming back
+// empty when this list was reused for the single-volume detail fetch.
+const VOLUME_DETAIL_FIELD_LIST: &str = "id,name,image,start_year,publisher,count_of_issues,description,deck,site_detail_url,character_credits,concept_credits,person_credits,first_issue,last_issue";
+// first_issue/last_issue on the volume resource are only a minimal ref
+// (id/name/issue_number, no cover_date) — one extra lightweight request per
+// issue resolves the actual date, so the page can show a real start–end
+// range instead of just start_year.
+const ISSUE_DATE_FIELD_LIST: &str = "cover_date";
 
 // Comic Vine prefixes every resource type's numeric id with a fixed code in
 // detail-endpoint URLs (e.g. "4050-123" for volume 123) — this is the code
@@ -35,17 +45,51 @@ pub struct ComicVinePublisher {
     pub name: Option<String>,
 }
 
+// Comic Vine's person credits (writer, artist, etc.) — `role` is a
+// comma-separated string of roles (e.g. "writer, penciler").
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVinePersonCredit {
+    pub id:   u64,
+    pub name: String,
+    pub role: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineIssueRef {
+    pub id:           u64,
+    pub name:         Option<String>,
+    pub issue_number: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ComicVineVolume {
-    pub id:               u64,
-    pub name:             String,
-    pub image:            Option<ComicVineImage>,
-    pub start_year:       Option<String>,
-    pub publisher:        Option<ComicVinePublisher>,
-    pub count_of_issues:  Option<u64>,
-    pub description:      Option<String>,
-    pub deck:             Option<String>,
-    pub site_detail_url:  Option<String>,
+    pub id:                    u64,
+    pub name:                  String,
+    pub image:                 Option<ComicVineImage>,
+    pub start_year:            Option<String>,
+    pub publisher:             Option<ComicVinePublisher>,
+    pub count_of_issues:       Option<u64>,
+    pub description:           Option<String>,
+    pub deck:                  Option<String>,
+    pub site_detail_url:       Option<String>,
+    #[serde(default)]
+    pub character_credits:     Vec<ComicVineCharacterCredit>,
+    #[serde(default)]
+    pub concept_credits:       Vec<ComicVineConceptCredit>,
+    #[serde(default)]
+    pub person_credits:        Vec<ComicVinePersonCredit>,
+    #[serde(default)]
+    pub first_issue:           Option<ComicVineIssueRef>,
+    #[serde(default)]
+    pub last_issue:            Option<ComicVineIssueRef>,
+    // Not part of Comic Vine's own JSON — resolved by comicvine_get_volume
+    // with two extra lightweight requests (see ISSUE_DATE_FIELD_LIST) after
+    // deserializing the volume response, since first_issue/last_issue above
+    // are minimal refs without a cover_date.
+    #[serde(default)]
+    pub first_issue_cover_date: Option<String>,
+    #[serde(default)]
+    pub last_issue_cover_date:  Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -138,7 +182,7 @@ pub async fn comicvine_get_volume(
         .query(&[
             ("api_key", api_key.as_str()),
             ("format", "json"),
-            ("field_list", FIELD_LIST),
+            ("field_list", VOLUME_DETAIL_FIELD_LIST),
         ])
         .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
@@ -149,22 +193,91 @@ pub async fn comicvine_get_volume(
         return Ok(None);
     }
 
-    let parsed = resp
+    let mut parsed = resp
         .json::<ComicVineDetailResponse>()
         .await
         .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+
+    if let Some(volume) = parsed.results.as_mut() {
+        let first_id = volume.first_issue.as_ref().map(|i| i.id);
+        let last_id = volume.last_issue.as_ref().map(|i| i.id);
+        // Same id for a single-issue volume — no need to fetch it twice.
+        let (first_date, last_date) = if first_id.is_some() && first_id == last_id {
+            let date = match first_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
+            (date.clone(), date)
+        } else {
+            let first_date = match first_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
+            let last_date = match last_id { Some(id) => fetch_issue_cover_date(&client, &api_key, id).await, None => None };
+            (first_date, last_date)
+        };
+        volume.first_issue_cover_date = first_date;
+        volume.last_issue_cover_date = last_date;
+    }
+
     Ok(parsed.results)
 }
 
-const ISSUE_FIELD_LIST: &str = "id,name,issue_number,image,cover_date";
+#[derive(Debug, Deserialize)]
+struct ComicVineIssueDateResponse {
+    results: Option<ComicVineIssueDate>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+struct ComicVineIssueDate {
+    #[serde(default)]
+    cover_date: Option<String>,
+}
+
+async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_id: u64) -> Option<String> {
+    let resp = client
+        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
+        .query(&[
+            ("api_key", api_key),
+            ("format", "json"),
+            ("field_list", ISSUE_DATE_FIELD_LIST),
+        ])
+        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
+        .send()
+        .await
+        .ok()?;
+
+    if !resp.status().is_success() {
+        return None;
+    }
+
+    resp.json::<ComicVineIssueDateResponse>().await.ok()?.results?.cover_date
+}
+
+const ISSUE_FIELD_LIST: &str = "id,name,issue_number,image,cover_date,character_credits,concept_credits";
+
+// Comic Vine's issue-level character credits — just id/name, no image
+// (fetching a thumbnail per character would need a separate /character/
+// request each, which doesn't scale for a cast that can be dozens of names).
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineCharacterCredit {
+    pub id:   u64,
+    pub name: String,
+}
+
+// Comic Vine's "concepts" are broad recurring themes (Time Travel, Multiverse,
+// Superhero Teams, ...) — the closest thing it has to AniList-style tags.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineConceptCredit {
+    pub id:   u64,
+    pub name: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComicVineIssue {
-    pub id:           u64,
-    pub name:         Option<String>,
-    pub issue_number: Option<String>,
-    pub image:        Option<ComicVineImage>,
-    pub cover_date:   Option<String>,
+    pub id:                u64,
+    pub name:              Option<String>,
+    pub issue_number:      Option<String>,
+    pub image:             Option<ComicVineImage>,
+    pub cover_date:        Option<String>,
+    #[serde(default)]
+    pub character_credits: Vec<ComicVineCharacterCredit>,
+    #[serde(default)]
+    pub concept_credits:   Vec<ComicVineConceptCredit>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -230,5 +343,86 @@ pub async fn comicvine_get_issues(
         offset += LIMIT;
     }
 
+    // Comic Vine's own "sort=issue_number:asc" sorts issue_number as a
+    // string ("1", "10", "11", "12", "2", ...) rather than numerically —
+    // re-sort here using the parsed numeric value, falling back to id order
+    // for anything non-numeric (annuals like "Annual 1" etc).
+    all_issues.sort_by(|a, b| {
+        let na = a.issue_number.as_deref().and_then(|s| s.parse::<f64>().ok());
+        let nb = b.issue_number.as_deref().and_then(|s| s.parse::<f64>().ok());
+        match (na, nb) {
+            (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.id.cmp(&b.id),
+        }
+    });
+
     Ok(all_issues)
+}
+
+// Comic Vine's issue resource-type prefix (distinct from VOLUME_RESOURCE_PREFIX).
+const ISSUE_RESOURCE_PREFIX: &str = "4000";
+const ISSUE_DETAIL_FIELD_LIST: &str = "id,name,issue_number,image,cover_date,description,deck,volume,character_credits,concept_credits,person_credits";
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineVolumeRef {
+    pub id:   u64,
+    pub name: String,
+}
+
+// Full single-issue detail — used for an issue's own media page (mirrors a
+// game "Season" having its own trackable page, parented to the base game).
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComicVineIssueDetail {
+    pub id:                u64,
+    pub name:              Option<String>,
+    pub issue_number:      Option<String>,
+    pub image:             Option<ComicVineImage>,
+    pub cover_date:        Option<String>,
+    pub description:       Option<String>,
+    pub deck:              Option<String>,
+    pub volume:            Option<ComicVineVolumeRef>,
+    #[serde(default)]
+    pub character_credits: Vec<ComicVineCharacterCredit>,
+    #[serde(default)]
+    pub concept_credits:   Vec<ComicVineConceptCredit>,
+    #[serde(default)]
+    pub person_credits:    Vec<ComicVinePersonCredit>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ComicVineIssueDetailResponse {
+    results: Option<ComicVineIssueDetail>,
+}
+
+#[tauri::command]
+pub async fn comicvine_get_issue(
+    app_handle: tauri::AppHandle,
+    issue_id: u64,
+) -> Result<Option<ComicVineIssueDetail>, String> {
+    let api_key = comicvine_api_key(&app_handle).await?;
+    let client = get_http_client().str_err()?;
+
+    let resp = client
+        .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))
+        .query(&[
+            ("api_key", api_key.as_str()),
+            ("format", "json"),
+            ("field_list", ISSUE_DETAIL_FIELD_LIST),
+        ])
+        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
+        .send()
+        .await
+        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+
+    let parsed = resp
+        .json::<ComicVineIssueDetailResponse>()
+        .await
+        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+    Ok(parsed.results)
 }

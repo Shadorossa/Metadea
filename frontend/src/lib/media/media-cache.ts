@@ -17,6 +17,14 @@ export function getCachedMediaData(rawId: string): MediaPageData | null {
       sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);
       return null;
     }
+    // Cached entries from an older app version (before a field was added, or
+    // written mid-bug) can have a shape that no longer matches MediaPageData
+    // — treat that as a cache miss instead of handing malformed data to
+    // callers that assume `.relations`/`.characters` are always arrays.
+    if (!Array.isArray(entry.data?.relations) || !Array.isArray(entry.data?.characters)) {
+      sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);
+      return null;
+    }
     return entry.data;
   } catch { return null; }
 }
