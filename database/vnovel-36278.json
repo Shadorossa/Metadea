@@ -1,0 +1,74 @@
+{
+  "media_catalog": {
+    "id": "5574e8c61804a3af5574e8c61804a3af",
+    "external_id": "vnovel:36278",
+    "parent_id": null,
+    "type": "vnovel",
+    "format": "VISUAL_NOVEL",
+    "source": "igdb",
+    "title_main": "The House in Fata Morgana",
+    "title_romaji": null,
+    "title_native": "Fata Morgana no Yakata",
+    "synopsis": "A gothic suspense tale set in a cursed mansion. \"The House in Fata Morgana\" is a full-length visual novel spanning nearly a millennium that deals in tragedy, human nature, and insanity.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co23cn.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar65gg.jpg",
+    "release_year": 2012,
+    "release_month": 12,
+    "release_day": 31,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.3,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Adventure,Visual Novel",
+    "genres_tag_csv": "Indie",
+    "platforms_csv": "Nintendo 3DS,Android,PC (Microsoft Windows),iOS",
+    "shop_links_csv": "steam|https://store.steampowered.com/app/303310,gog|https://www.gog.com/en/game/the_house_in_fata_morgana",
+    "companies_cache_csv": "NOVECT,FuRyu,MangaGamer,Gengosha,Crunchyroll Games",
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
+    "last_sync_error": null,
+    "created_at": "2026-07-01T08:49:33.614Z",
+    "updated_at": "2026-07-16T19:16:12.290069800+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:144844",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "The House in Fata Morgana: Novectacle Collection",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5peu.jpg",
+      "media_external_id": "vnovel:36278"
+    },
+    {
+      "related_media_external_id": "vnovel:119577",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "The House in Fata Morgana: Dreams of the Revenants Edition",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobf78.jpg",
+      "media_external_id": "vnovel:36278"
+    },
+    {
+      "related_media_external_id": "lnovel:110992",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Fata Morgana no Yakata: Anata no Genten ni Itaru Monogatari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/bx110992-ROmqSnw0QDTK.jpg",
+      "media_external_id": "vnovel:36278"
+    },
+    {
+      "related_media_external_id": "manga:101987",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Fata Morgana no Yakata: Anata no Hitomi wo Tozasu Monogatari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/nx101987-B5LLy4S1a8iX.jpg",
+      "media_external_id": "vnovel:36278"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
