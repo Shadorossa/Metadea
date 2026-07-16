@@ -1,0 +1,83 @@
+{
+  "media_catalog": {
+    "id": "3405dd25af3991773405dd25af399177",
+    "external_id": "vnovel:12328",
+    "parent_id": null,
+    "type": "vnovel",
+    "format": "VISUAL_NOVEL",
+    "source": "igdb",
+    "title_main": "Fate/Stay Night",
+    "title_romaji": null,
+    "title_native": null,
+    "synopsis": "Fate/Stay Night is a Japanese visual novel, which was originally released as an adult game. A version of Fate/Stay Night rated for ages 15 and up titled Fate/Stay Night Réalta Nua was released later. Fate/Stay Night'​s gameplay requires little interaction from the player as most of the game's duration is spent on reading the text that appears, representing either dialogue between the characters or the inner thoughts of the protagonist. Often, players will come to a \"decision point\" where they are given the chance to choose from options displayed on the screen, typically two to three at a time. There are three main plot lines that the player will have the chance to experience, one for each of the heroines in the story. To view all three plot lines, the player will have to replay the game multiple times and make different choices during the decision points to progress the plot in an alternate direction.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/sc973s.jpg",
+    "release_year": 2004,
+    "release_month": 1,
+    "release_day": 30,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.8,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Adventure,Visual Novel",
+    "genres_tag_csv": null,
+    "platforms_csv": "PC (Microsoft Windows)",
+    "shop_links_csv": null,
+    "companies_cache_csv": "TYPE-MOON",
+    "authors_csv": "",
+    "last_synced_at": "2026-07-16T09:56:34.173Z",
+    "sync_failed_count": 0,
+    "last_sync_error": null,
+    "created_at": "2026-07-11T20:07:47.867Z",
+    "updated_at": "2026-07-16T09:56:34.174358100+00:00"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:146062",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Fate/Stay Night: Réalta Nua",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co7p4f.jpg",
+      "media_external_id": "vnovel:12328"
+    },
+    {
+      "media_external_id": "vnovel:12328",
+      "related_media_external_id": "lnovel:33649",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fate/Zero",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/33649-rA0ZBSbWhPkH.png"
+    },
+    {
+      "media_external_id": "vnovel:12328",
+      "related_media_external_id": "vnovel:275640",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fate/Hollow Ataraxia",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7p8t.jpg"
+    },
+    {
+      "media_external_id": "lnovel:33649",
+      "related_media_external_id": "vnovel:12328",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fate/Stay Night",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg"
+    },
+    {
+      "media_external_id": "vnovel:275640",
+      "related_media_external_id": "vnovel:12328",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fate/Stay Night",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Fate/Zero"
+}
