@@ -126,6 +126,11 @@ async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaT
   const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
   return entries
     .filter(e => e.type === mediaType)
+    // Guards against stray rows whose external_id doesn't actually start
+    // with "{type}:" (e.g. saved with a malformed id by an older, since-
+    // fixed write path) — those would otherwise surface here with a broken
+    // id that can't resolve to anything when picked.
+    .filter(e => e.external_id.startsWith(`${e.type}:`))
     .filter(e => !e.format || !EXCLUDED_LOCAL_FORMATS.has(e.format))
     .filter(e => (mediaType !== 'game' && mediaType !== 'vnovel') || !titleHasEditionWord(e.title_main || ''))
     .map(catalogEntryToSearchResult);

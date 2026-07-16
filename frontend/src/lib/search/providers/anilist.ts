@@ -263,8 +263,17 @@ export async function searchAniList(
   const pageData = result?.data?.Page;
   if (!pageData) return { results: [], hasMore: false };
 
+  // AniList's MANGA type covers both manga and light novels — the 'lnovel'
+  // caller filters to format: NOVEL explicitly, but the plain 'manga' caller
+  // (no format filter, so it can still find ONE_SHOT/DOUJIN/etc alongside
+  // regular manga) never excluded NOVEL, so the same work turned up twice:
+  // once correctly under "lnovel", once again mislabeled "manga:{id}".
+  const media = mediaType === 'manga'
+    ? (pageData.media ?? []).filter(m => m.format !== 'NOVEL')
+    : (pageData.media ?? []);
+
   return {
-    results: (pageData.media ?? []).map(media => mapAniListMediaToResult(media, mediaType)),
+    results: media.map(m => mapAniListMediaToResult(m, mediaType)),
     hasMore: pageData.pageInfo?.hasNextPage ?? false,
   };
 }
