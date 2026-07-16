@@ -130,16 +130,23 @@ pub async fn get_all_user_lists(
 ) -> Result<Vec<ListInfo>, String> {
     let conn = state.conn.lock().str_err()?;
 
+    // Both the count and the top-4 preview are correlated subqueries instead
+    // of a second prepared statement per list (was N+1 — one extra
+    // roundtrip through Rust/SQLite per list on every Lists-tab load).
+    // idx_user_list_items_list_key_position (db.rs) makes both an index
+    // range scan instead of a full-table scan per row.
     let mut stmt = conn.prepare(
         "SELECT l.key, l.name, l.description, l.is_fav,
-                COUNT(i.external_id) AS item_count
+                (SELECT COUNT(*) FROM user_list_items i WHERE i.list_key = l.key) AS item_count,
+                (SELECT GROUP_CONCAT(external_id, ',') FROM (
+                    SELECT external_id FROM user_list_items
+                    WHERE list_key = l.key ORDER BY position LIMIT 4
+                 )) AS preview_csv
          FROM user_lists l
-         LEFT JOIN user_list_items i ON i.list_key = l.key
-         GROUP BY l.key
          ORDER BY l.is_fav DESC, l.created_at ASC",
     ).str_err()?;
 
-    let rows: Vec<(String, String, String, bool, i64)> = stmt
+    let rows: Vec<(String, String, String, bool, i64, Option<String>)> = stmt
         .query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -147,25 +154,22 @@ pub async fn get_all_user_lists(
                 r.get::<_, String>(2)?,
                 r.get::<_, i64>(3)? != 0,
                 r.get::<_, i64>(4)?,
+                r.get::<_, Option<String>>(5)?,
             ))
         })
         .str_err()?
         .filter_map(|r| r.ok())
         .collect();
 
-    let mut result = Vec::new();
-    for (key, name, description, is_fav, item_count) in rows {
-        let mut prev_stmt = conn.prepare(
-            "SELECT external_id FROM user_list_items WHERE list_key = ?1 ORDER BY position LIMIT 4",
-        ).str_err()?;
-        let preview_ids: Vec<String> = prev_stmt
-            .query_map([&key], |r| r.get(0))
-            .str_err()?
-            .filter_map(|r| r.ok())
-            .collect();
-
-        result.push(ListInfo { key, name, description, is_fav, item_count, preview_ids });
-    }
+    let result = rows
+        .into_iter()
+        .map(|(key, name, description, is_fav, item_count, preview_csv)| {
+            let preview_ids = preview_csv
+                .map(|csv| csv.split(',').map(String::from).collect())
+                .unwrap_or_default();
+            ListInfo { key, name, description, is_fav, item_count, preview_ids }
+        })
+        .collect();
 
     Ok(result)
 }

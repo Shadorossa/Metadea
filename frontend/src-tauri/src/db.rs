@@ -403,6 +403,10 @@ CREATE TABLE IF NOT EXISTS media_relations (
     type_label                TEXT NOT NULL,
     PRIMARY KEY (media_external_id, related_media_external_id)
 );
+-- get_all_media_relations joins media_catalog ON related_media_external_id —
+-- the PK's leading column (media_external_id) doesn't cover that side of
+-- the join, so it fell back to a full scan without this.
+CREATE INDEX IF NOT EXISTS idx_media_relations_related ON media_relations(related_media_external_id);
 
 CREATE TABLE IF NOT EXISTS media_saga_groups (
     media_external_id TEXT NOT NULL PRIMARY KEY,
@@ -416,6 +420,10 @@ CREATE TABLE IF NOT EXISTS monthly_history (
     added_at     TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (month, external_id)
 );
+-- read_monthly_history orders by (month DESC, position) — the PK only
+-- covers point lookups on month, not this ordering, so it still needs a
+-- sort without this.
+CREATE INDEX IF NOT EXISTS idx_monthly_history_month_position ON monthly_history(month, position);
 
 CREATE TABLE IF NOT EXISTS tier_list_items (
     tier_list_id TEXT NOT NULL,
@@ -474,6 +482,10 @@ CREATE TABLE IF NOT EXISTS user_list_items (
     added_at    TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (list_key, external_id)
 );
+-- get_all_user_lists' per-list preview subquery and get_list_items_full both
+-- filter by list_key then order by position — the PK alone still needs a
+-- sort after the point lookup, this index doesn't.
+CREATE INDEX IF NOT EXISTS idx_user_list_items_list_key_position ON user_list_items(list_key, position);
 
 CREATE TABLE IF NOT EXISTS user_lists (
     key         TEXT PRIMARY KEY,

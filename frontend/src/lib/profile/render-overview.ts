@@ -30,12 +30,21 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const t = getT();
     const p = t.profile;
 
-    const catalogEntries = await getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]);
+    // These six Tauri round trips are all independent (none depends on
+    // another's result) — batched instead of the previous sequential await
+    // chain, which added up as separate IPC latencies on every load of the
+    // overview tab (the one rendered on initial page load).
+    const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages] = await Promise.all([
+      getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      readMonthlyHistory().catch(() => ({})),
+      syncActiveRatingSystem(),
+      readUserFavorites().catch(() => ({} as Record<string, string[]>)),
+      getAllCharacters().catch(() => []),
+      getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]),
+    ]);
     const catalogMap = new Map<string, MediaCatalogEntry>(
       catalogEntries.map(e => [e.external_id, e])
     );
-
-    const monthlyHistory = await readMonthlyHistory().catch(() => ({}));
 
     let completed = 0, inProgress = 0, planning = 0, dropped = 0;
     let totalRating = 0, ratedCount = 0, totalMinutes = 0;
@@ -74,7 +83,6 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       totalMinutes += getItemMinutes(item, catalogMap);
     }
 
-    const system = await syncActiveRatingSystem();
     const avgRatingStr = ratedCount > 0
       ? formatAverageScore(totalRating / ratedCount, system)
       : '0.0';
@@ -151,7 +159,6 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
       </div>
     </div>`;
 
-    const favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
     const multimediaIds = favData.multimedia || [];
     const hofItems = multimediaIds.map(id => {
       const local = items.find(item => item.external_id === id);
@@ -163,13 +170,11 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
 
     // Characters are never in media_catalog — resolved separately from their
     // own table, same as the Favorites tab.
-    const characterEntries = await getAllCharacters().catch(() => []);
     const characterMap = new Map(characterEntries.map(c => [c.external_id, c]));
     const charFavIds = favData.character || [];
 
     // Local-only cover overrides set via the Favorites tab's image editor —
     // the Hall of Fame shows the same customized crop, not the raw cover.
-    const customImages = await getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]);
     const customImageMap = new Map(customImages.map(c => [c.external_id, c]));
 
     el.innerHTML = `<div id="hof-mount"></div>` + statsHtml + bottomHtml;
