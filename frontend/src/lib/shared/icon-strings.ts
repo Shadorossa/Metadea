@@ -5,10 +5,20 @@
 
 const INNER: Record<string, string> = {
   game:      `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="16" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="18" cy="13" r="1" fill="currentColor" stroke="none"/>`,
-  anime:     `<text x="50%" y="78%" textAnchor="middle" fontSize="21" fontWeight="900" fontFamily="system-ui, -apple-system, sans-serif" fill="currentColor" stroke="none">画</text>`,
-  manga:     `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
-  lnovel:    `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
-  vnovel:    `<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4m-2-2v4"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/>`,
+  // Rounded screen + play triangle, reading as "animated video" rather than
+  // the kanji glyph (which most users couldn't parse as "anime" on sight) —
+  // distinct from movie's film-strip grid and series' TV+antenna outline.
+  anime:     `<rect x="2.5" y="4" width="19" height="16" rx="3"/><path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" stroke="none"/>`,
+  // Two swept, overlapping pages (an open manga volume) — distinct from the
+  // plain rectangular "book" shape below, so manga/light novel/book no
+  // longer all render as the exact same icon.
+  manga:     `<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>`,
+  // Bookmark shape — a light novel reads as prose (a "marked" single volume)
+  // rather than an open illustrated book.
+  lnovel:    `<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>`,
+  // Dialogue bubble — a visual novel is defined by its branching text/dialogue,
+  // not by controller input, so it no longer shares the "game" glyph.
+  vnovel:    `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
   series:    `<rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2l-5 5-5-5"/>`,
   movie:     `<rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M17 7h5M2 17h5M17 17h5"/>`,
   book:      `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`,
@@ -72,12 +82,7 @@ export function getBaseMediaType(type: string): string {
 }
 
 export function typeIconMap(size: number): Record<string, string> {
-  const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => {
-    if (t === 'anime') {
-      return [t, fill(size, INNER[t])];
-    }
-    return [t, stroke(size, '2', INNER[t])];
-  }));
+  const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => [t, stroke(size, '2', INNER[t])]));
   return new Proxy(baseTypes, {
     get(target, prop) {
       if (typeof prop !== 'string') return undefined;
