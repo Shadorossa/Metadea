@@ -34,6 +34,7 @@ export const es = {
     stat_dropped:    'Abandonadas',
     stat_avg:        'Nota media',
     stat_hours:      'Horas totales',
+    stat_none:       'Ninguno',
     by_type:         'Por tipo',
     coming_soon:      'Estadísticas próximamente',
     monthly_history:  'Historial mensual',

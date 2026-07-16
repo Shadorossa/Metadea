@@ -47,12 +47,21 @@ export function isSagaRelationType(value: string): value is SagaRelationType {
   return SAGA_RELATION_TYPE_OPTIONS.some(o => o.value === value);
 }
 
-// Relaciones de juegos guardadas con la etiqueta display antes de usar keys.
-// Usado en mediaService (resync) y PrEditorModal (normaliza en render).
+// Relaciones de juegos guardadas con la etiqueta display antes de usar keys —
+// incluye tanto las variantes en inglés (canónicas) como en español, ya que
+// hubo un periodo en que type_label se guardaba en el idioma activo de la UI
+// en vez de en la clave canónica (ver el fix de persistencia en
+// igdb-mapper.ts/anilist-mapper.ts/etc.) — filas de esa época pueden llevar
+// cualquiera de las dos. Usado en mediaService (resync) y PrEditorModal
+// (normaliza en render).
 const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
   'Remake': 'REMAKE', 'Remaster': 'REMASTER', 'DLC': 'DLC',
   'Expansion': 'EXPANSION', 'Standalone': 'STANDALONE',
   'Expanded Edition': 'EXPANDED_GAME', 'Fork': 'FORK',
+  // Variantes en español que difieren del literal inglés.
+  'Expansión de contenido': 'EXPANSION',
+  'Expansión autónoma': 'STANDALONE',
+  'Edición expandida': 'EXPANDED_GAME',
 };
 
 export function normalizeLegacyRelationType(relationType: string): string {

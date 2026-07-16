@@ -34,6 +34,7 @@ export const en = {
     stat_dropped:    'Dropped',
     stat_avg:        'Avg. score',
     stat_hours:      'Total hours',
+    stat_none:       'None',
     by_type:         'By type',
     coming_soon:      'Statistics coming soon',
     monthly_history:  'Monthly History',

@@ -109,7 +109,7 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
               </span>
               ${type === 'game' ? versionBreakdownHtml : ''}
             `).join('')
-        : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">Ninguno</span></span>`
+        : `<span class="stat-tooltip-row"><span class="stat-tooltip-label">${p.stat_none}</span></span>`
       }
       </span>
     </span>

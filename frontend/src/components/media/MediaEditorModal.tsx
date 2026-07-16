@@ -15,6 +15,7 @@ import {
   type LogState, type EntryState, type EntryAction, type UiState, type UiAction,
   createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
+import { IGDB_TYPES } from '../../lib/constants/media';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -413,7 +414,13 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   // Editions/versions this entry could be linked to (base game + expanded editions
   // from the IGDB relation list) grouped by relation type.
   const editionGroups = useMemo(() => {
-    if (data.type !== 'game') return [] as { label: string; options: { externalId: string; label: string; cover?: string }[] }[];
+    // vnovel is its own `type` value (see IGDB_TYPES), not a variant of
+    // 'game' — excluding it here meant visual novels never got the version-
+    // log tabs at all, even though they go through the exact same IGDB
+    // edition/relation machinery as games.
+    if (!IGDB_TYPES.includes(data.type as typeof IGDB_TYPES[number])) {
+      return [] as { label: string; options: { externalId: string; label: string; cover?: string }[] }[];
+    }
 
     const groupsMap: Record<string, { externalId: string; label: string; cover?: string }[]> = {};
 
@@ -421,8 +428,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title, cover: data.parentGame.cover }];
     }
 
+    // Every "full edition" relation type (see IS_FULL_EDITION_TYPE in
+    // igdb-mapper.ts) belongs here, not just Expanded Edition/Remaster —
+    // Remake and Fork are equally their own trackable version. Matched by
+    // relationType (a stable canonical key), never typeLabel — the latter is
+    // re-derived in the UI's *current* locale on every reload
+    // (sortRelationsForDisplay), so a hardcoded English label like "Expanded
+    // Edition" only ever matched by coincidence, and never at all once the
+    // UI language wasn't English (e.g. Spanish's "Edición expandida").
+    const EDITION_RELATION_TYPES = new Set(['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK']);
     for (const rel of (data.relations || [])) {
-      if (rel.typeLabel !== 'Expanded Edition' && rel.typeLabel !== 'Remaster') continue;
+      if (!rel.relationType || !EDITION_RELATION_TYPES.has(rel.relationType)) continue;
       const relExternalId = extractExternalIdFromRelationUrl(rel.url);
       if (relExternalId) {
         const groupLabel = rel.typeLabel || 'Others';
