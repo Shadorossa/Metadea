@@ -128,9 +128,16 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Type from rawId prefix (e.g. "vnovel:12345" → "vnovel")
   const mediaType = rawId.split(':')[0].split('_')[0] as 'game' | 'vnovel';
 
-  // Format: VNs are always VISUAL_NOVEL; games use game_type
+  // Format: a plain (game_type 0) VN is VISUAL_NOVEL; every other game_type
+  // (remake, remaster, DLC, ...) uses the same GAME_TYPE_FORMAT label
+  // regardless of vnovel/game — a VN's remake is still a REMAKE. Forcing
+  // every vnovel-typed entry to VISUAL_NOVEL unconditionally used to erase
+  // that distinction: the format badge showed "Visual Novel" instead of
+  // "Remake"/"Remaster" on those pages, and the FULL_EDITION_FORMATS-based
+  // stale-relation pruning in media-relations.ts silently never applied to
+  // any VN (its `format` never matched REMAKE/REMASTER/etc).
   const gameType = game.game_type ?? 0;
-  const format = mediaType === 'vnovel' ? 'VISUAL_NOVEL' : (GAME_TYPE_FORMAT[gameType] ?? 'GAME');
+  const format = gameType === 0 && mediaType === 'vnovel' ? 'VISUAL_NOVEL' : (GAME_TYPE_FORMAT[gameType] ?? 'GAME');
 
   // Genre split: core genres → genreDots, tags → genreTagDots
   const { core: coreGenres, tags: genreTags } = unifyGenres(genres);
@@ -174,8 +181,13 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
       // IGDB occasionally lists a game among its own remakes/remasters/etc.
       // (a self-reference in its data, not a bug on our end) — never turn
-      // that into a relation pointing a media at itself.
-      if (relatedExternalId === rawId) continue;
+      // that into a relation pointing a media at itself. Compared by the raw
+      // numeric IGDB id, not the computed "type:id" string — `is_vn` is
+      // derived per-record and can disagree with how the *current* page
+      // classified the same underlying game, so two references to the same
+      // id can end up with different type prefixes ("game:79848" vs
+      // "vnovel:79848") and slip past a plain string comparison.
+      if (sg.id === game.id) continue;
       if (seenRelatedIds.has(relatedExternalId)) continue;
       seenRelatedIds.add(relatedExternalId);
 
@@ -202,9 +214,10 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
   // IGDB has been seen returning a game as its own parent_game/version_parent
   // (a self-reference in its data) — ignore that instead of rendering the
-  // page's own "Fuente"/parent card as itself.
+  // page's own "Fuente"/parent card as itself. Compared by numeric id, same
+  // reasoning as addRelations() above.
   const rawParentSub = game.parent_game || game.version_parent;
-  const parentSub = rawParentSub && `${rawParentSub.is_vn ? 'vnovel' : 'game'}:${rawParentSub.id}` !== rawId
+  const parentSub = rawParentSub && rawParentSub.id !== game.id
     ? rawParentSub
     : undefined;
   const parentGame = parentSub
@@ -313,10 +326,11 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
+  // Same IGDB self-reference quirk as elsewhere in this file — compared by
+  // numeric id, not the "type:id" string (see addRelations()'s comment).
+  const currentNumericId = parseInt(data.externalId.split(':')[1], 10);
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames)
-    // Same IGDB self-reference quirk as elsewhere in this file — a game
-    // can't be its own base game.
-    .filter(sg => `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}` !== data.externalId)
+    .filter(sg => sg.id !== currentNumericId)
     .map(sg => {
     const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
     const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;

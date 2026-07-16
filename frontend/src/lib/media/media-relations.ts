@@ -209,13 +209,30 @@ export async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relati
 // to merge — that must not be gated behind "there's something to add", or a
 // title whose relations were all saved under the old raw-label scheme (and
 // whose live fetch happens to add nothing new) would never get corrected.
-export async function mergeAndPersistRelations(rawId: string, fetchedRelations: MediaPageData['relations']): Promise<void> {
+// IGDB full editions (remake/remaster/expanded_game/port/fork, see
+// FULL_EDITION_FORMATS above) used to have their REMAKE/REMASTER/
+// EXPANDED_GAME/FORK relations derived straight from IGDB's inherited-from-
+// the-base-game fields (see igdb-mapper.ts) — those rows are always fully
+// re-derived from the live fetch for these formats, never something a user
+// adds by hand for these specific types (manual additions go through
+// PrEditorModal's own relation types), so a stale one left over from before
+// that fix is safe to drop once the live fetch no longer reports it.
+const STALE_INHERITED_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'FORK']);
+
+export async function mergeAndPersistRelations(rawId: string, fetchedRelations: MediaPageData['relations'], format?: string): Promise<void> {
   const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
 
   const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
-  const changedLegacyTypes = normalizedDbRels.some((r, i) => r.relation_type !== dbRels[i].relation_type);
 
-  const dbIds = new Set(dbRels.map(r => r.related_media_external_id));
+  const freshIds = new Set((fetchedRelations ?? []).map(r => r.relatedExternalId).filter(Boolean));
+  const prunedDbRels = format && FULL_EDITION_FORMATS.has(format)
+    ? normalizedDbRels.filter(r => !STALE_INHERITED_RELATION_TYPES.has(r.relation_type) || freshIds.has(r.related_media_external_id))
+    : normalizedDbRels;
+
+  const changedLegacyTypes = normalizedDbRels.some((r, i) => r.relation_type !== dbRels[i].relation_type);
+  const prunedStale = prunedDbRels.length !== normalizedDbRels.length;
+
+  const dbIds = new Set(prunedDbRels.map(r => r.related_media_external_id));
   const newFromApi = (fetchedRelations ?? [])
     .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId))
     .map(r => ({
@@ -226,7 +243,7 @@ export async function mergeAndPersistRelations(rawId: string, fetchedRelations: 
       cover: r.cover || null,
     }));
 
-  if (newFromApi.length > 0 || changedLegacyTypes) {
-    await saveMediaRelations(rawId, [...normalizedDbRels, ...newFromApi]).catch(console.error);
+  if (newFromApi.length > 0 || changedLegacyTypes || prunedStale) {
+    await saveMediaRelations(rawId, [...prunedDbRels, ...newFromApi]).catch(console.error);
   }
 }

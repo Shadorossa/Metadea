@@ -293,7 +293,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   }
   if (data) {
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-    await mergeAndPersistRelations(rawId, data.relations);
+    await mergeAndPersistRelations(rawId, data.relations, data.format);
 
     // persistToCatalog preserves an existing banner in the DB, but this same
     // `data` object also gets shown on screen — patch it too so a live fetch
