@@ -30,6 +30,53 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
     let cancelled = false;
 
+    // Reconstructs the manually-curated order from SEQUEL edges (same
+    // function PrEditorModal uses) instead of just release-date order. Null
+    // if this isn't part of a multi-entry saga at all.
+    async function reconstructFromRelations(): Promise<SagaEntry[] | null> {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { getCatalogEntry } = await import('../../lib/tauri/catalog');
+      const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
+      if (transitiveIds.length <= 1) return null;
+
+      const entriesData = await Promise.all(
+        transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
+      );
+      const validEntries = entriesData.filter(
+        (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
+      );
+
+      // Date sort is just the tie-break input for reconstructSagaOrder below.
+      validEntries.sort((a, b) => compareByReleaseDate(
+        { ...a.entry, id: a.id },
+        { ...b.entry, id: b.id }
+      ));
+
+      const byId = new Map(validEntries.map(x => [x.id, x.entry]));
+      const dateOrderedIds = validEntries.map(x => x.id);
+      const relsByIndex: DbMediaRelation[][] = await Promise.all(
+        dateOrderedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))
+      );
+      const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
+
+      return orderedIds.map(id => {
+        const entry = byId.get(id)!;
+        return {
+          externalId: id,
+          title: entry.title_main || id,
+          cover: entry.cover_url || null,
+          format: entry.format || null,
+          mediaType: entry.type || 'game',
+          year: entry.release_year ?? null,
+          month: entry.release_month ?? null,
+          day: entry.release_day ?? null,
+        };
+      });
+    }
+
+    const sameOrder = (a: SagaEntry[], b: SagaEntry[]) =>
+      a.length === b.length && a.every((e, i) => e.externalId === b[i].externalId);
+
     async function loadSaga() {
       let cached: SagaEntry[] | null = null;
       try {
@@ -43,70 +90,33 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
       if (cached && cached.length > 0) {
         setEntries(cached);
         setLoadState('done');
-        // Load custom saga name if available
         try {
           const customName = await getSagaName(externalId);
           if (customName) setSagaTitle(customName);
         } catch (err) {
           console.warn('[Saga] Failed to load custom saga name:', err);
         }
+
+        // The cache doesn't get invalidated when relations change elsewhere
+        // (e.g. a saga reorder saved before this fix existed) — reconcile
+        // against the real relations in the background and correct it if
+        // it's out of date.
+        reconstructFromRelations().then(fresh => {
+          if (cancelled || !fresh || sameOrder(fresh, cached!)) return;
+          setEntries(fresh);
+          saveCachedSaga(fresh).catch(() => {});
+        }).catch(err => console.warn('[Saga] Background reconcile failed:', err));
         return;
       }
 
-      // Fallback: build from transitive relations in database!
       try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const { getCatalogEntry } = await import('../../lib/tauri/catalog');
-        const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
-        
-        if (transitiveIds.length > 1) {
-          const entriesData = await Promise.all(
-            transitiveIds.map(async id => {
-              const c = await getCatalogEntry(id).catch(() => null);
-              return { id, entry: c };
-            })
-          );
-          const validEntries = entriesData.filter(
-            (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
-          );
-
-          // Date sort is just the tie-break input for reconstructSagaOrder
-          // below, not the final order.
-          validEntries.sort((a, b) => compareByReleaseDate(
-            { ...a.entry, id: a.id },
-            { ...b.entry, id: b.id }
-          ));
-
-          const byId = new Map(validEntries.map(x => [x.id, x.entry]));
-          const dateOrderedIds = validEntries.map(x => x.id);
-
-          // Reconstruct the manually-curated order from SEQUEL edges (same
-          // function PrEditorModal uses) instead of just showing date order.
-          const relsByIndex: DbMediaRelation[][] = await Promise.all(
-            dateOrderedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))
-          );
-          const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
-
-          const sagaList: SagaEntry[] = orderedIds.map(id => {
-            const entry = byId.get(id)!;
-            return {
-              externalId: id,
-              title: entry.title_main || id,
-              cover: entry.cover_url || null,
-              format: entry.format || null,
-              mediaType: entry.type || 'game',
-              year: entry.release_year ?? null,
-              month: entry.release_month ?? null,
-              day: entry.release_day ?? null,
-            };
-          });
-
+        const sagaList = await reconstructFromRelations();
+        if (sagaList) {
           setEntries(sagaList);
           setLoadState('done');
           saveCachedSaga(sagaList).catch(err => {
             console.warn('[Saga] Failed to save to cache:', err);
           });
-          // Load custom saga name if available
           try {
             const customName = await getSagaName(externalId);
             if (customName) setSagaTitle(customName);
