@@ -14,6 +14,7 @@ import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
 import { MediaStoreLinks } from './MediaStoreLinks';
+import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
@@ -309,6 +310,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             if (cancelled || !relations) return;
             patchCachedRelations(currentId, relations);
             patchIfCurrent({ relations });
+            // Same gap the base-game relation walk used to have: caching
+            // this in sessionStorage only meant editions rendered fine here
+            // but never showed up as an editable relation in the
+            // collaborative catalog editor, which reads straight from the DB.
+            mergeAndPersistRelations(currentId, relations).catch(console.error);
           });
         }
 
@@ -332,6 +338,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             if (!relations) return;
             patchCachedRelations(currentId, relations);
             patchIfCurrent({ relations });
+            // Issues used to only ever land in the session cache — never
+            // media_relations — so they never showed up as editable
+            // relations in the collaborative catalog editor either.
+            mergeAndPersistRelations(currentId, relations).catch(console.error);
           });
         }
       },
@@ -744,18 +754,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   ))}
               </div>
               {visibleRelations.length > pageSize && (
-                <div className="media-pagination">
-                  {Array.from({ length: Math.ceil(visibleRelations.length / pageSize) }).map((_, i) => (
-                    <button
-                      key={i + 1}
-                      type="button"
-                      className={`media-pagination-page${relationPage === i + 1 ? ' active' : ''}`}
-                      onClick={() => setRelationPage(i + 1)}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
+                <Pagination
+                  currentPage={relationPage}
+                  totalPages={Math.ceil(visibleRelations.length / pageSize)}
+                  onChange={setRelationPage}
+                />
               )}
             </>
           )}

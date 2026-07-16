@@ -617,6 +617,37 @@
   background: var(--accent-soft);
 }
 
+.media-pagination-gap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  user-select: none;
+}
+
+/* The active page button turns into this in-place when clicked, so typing a
+   page number happens right where "7" was instead of a separate box.
+   display:flex (inherited from .media-pagination-page) only centers an
+   input's own box, not the text rendered inside it — that still needs an
+   explicit line-height/text-align, hence overriding display here too. */
+.media-pagination-page--editing {
+  display: block;
+  box-sizing: border-box;
+  text-align: center;
+  line-height: 34px;
+  padding: 0;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.media-pagination-page--editing:focus {
+  outline: none;
+}
+
 .media-pagination-page.active {
   border-color: var(--accent);
   background: var(--accent-soft);
