@@ -13,7 +13,15 @@ import type { CloudflareEnv } from '../types';
 
 const EXCHANGE_CODE_TTL_MS = 2 * 60 * 1000; // just long enough for the callback page to load and POST back
 
+// Memoized per warm Worker isolate — CREATE TABLE IF NOT EXISTS is safe to
+// call repeatedly, but there's no reason to pay that extra Turso roundtrip on
+// every single login once this isolate has already confirmed the table
+// exists. Resets to false on a cold start, so the table still gets created
+// the first time a fresh isolate handles a request.
+let exchangeCodesTableReady = false;
+
 async function ensureExchangeCodesTable(env: CloudflareEnv): Promise<void> {
+  if (exchangeCodesTableReady) return;
   const db = getTursoClient(env);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS auth_exchange_codes (
@@ -23,6 +31,7 @@ async function ensureExchangeCodesTable(env: CloudflareEnv): Promise<void> {
       created_at TEXT NOT NULL
     )
   `);
+  exchangeCodesTableReady = true;
 }
 
 // ── OAuth `state` cookie (CSRF protection) ─────────────────────────────────
@@ -54,7 +63,11 @@ function redirectWithHeaders(location: string, headers: Record<string, string>):
   return new Response(null, { status: 302, headers: { Location: location, ...headers } });
 }
 
+// Same memoization rationale as exchangeCodesTableReady above.
+let usersTableReady = false;
+
 async function ensureUsersTable(env: CloudflareEnv): Promise<void> {
+  if (usersTableReady) return;
   const db = getTursoClient(env);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
@@ -66,6 +79,7 @@ async function ensureUsersTable(env: CloudflareEnv): Promise<void> {
       created_at TEXT NOT NULL
     )
   `);
+  usersTableReady = true;
 }
 
 function getCallbackUri(env: CloudflareEnv): string {
@@ -113,7 +127,6 @@ export async function googleAuthCallback(request: Request, env: CloudflareEnv): 
       env.GOOGLE_CLIENT_SECRET,
       getCallbackUri(env),
     );
-    console.log('[auth] googleUser:', JSON.stringify({ id: googleUser.id, email: googleUser.email, name: googleUser.name, hasPicture: !!googleUser.picture }));
 
     step = 'ensure_table';
     await ensureUsersTable(env);

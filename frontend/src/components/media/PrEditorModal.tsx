@@ -21,6 +21,7 @@ import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
+import { useDragReorder } from './hooks/useDragReorder';
 
 // Always saved as a PART_OF relation — there's no per-item type to pick
 // anymore (previously episode/update, shown as a dropdown).
@@ -116,8 +117,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [sagaGroups, setSagaGroups] = useState<Record<string, string>>({});
   const [originalSagaRelationTypes, setOriginalSagaRelationTypes] = useState<Record<string, SagaRelationType>>({});
   const [originalSagaGroups, setOriginalSagaGroups] = useState<Record<string, string>>({});
-  const [draggedSagaIndex, setDraggedSagaIndex] = useState<number | null>(null);
-  const [draggedRelationIndex, setDraggedRelationIndex] = useState<number | null>(null);
   const [sagaName, setSagaName] = useState('');
   const [originalSagaName, setOriginalSagaName] = useState('');
 
@@ -334,51 +333,10 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     setEditableRelations(next);
   };
 
-  // Drag and drop for saga cards
-  useEffect(() => {
-    if (draggedSagaIndex === null) return;
-
-    const handleMove = (e: PointerEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const card = el?.closest<HTMLElement>('[data-saga-index]');
-      if (!card) return;
-      const overIndex = parseInt(card.dataset.sagaIndex || '', 10);
-      if (Number.isNaN(overIndex) || overIndex === draggedSagaIndex) return;
-      reorderSaga(draggedSagaIndex, overIndex);
-      setDraggedSagaIndex(overIndex);
-    };
-    const handleUp = () => setDraggedSagaIndex(null);
-
-    document.addEventListener('pointermove', handleMove);
-    document.addEventListener('pointerup', handleUp);
-    return () => {
-      document.removeEventListener('pointermove', handleMove);
-      document.removeEventListener('pointerup', handleUp);
-    };
-  }, [draggedSagaIndex, sagaOrder]);
-
-  // Drag and drop for relations cards
-  useEffect(() => {
-    if (draggedRelationIndex === null) return;
-
-    const handleMove = (e: PointerEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const card = el?.closest<HTMLElement>('[data-relation-index]');
-      if (!card) return;
-      const overIndex = parseInt(card.dataset.relationIndex || '', 10);
-      if (Number.isNaN(overIndex) || overIndex === draggedRelationIndex) return;
-      reorderRelations(draggedRelationIndex, overIndex);
-      setDraggedRelationIndex(overIndex);
-    };
-    const handleUp = () => setDraggedRelationIndex(null);
-
-    document.addEventListener('pointermove', handleMove);
-    document.addEventListener('pointerup', handleUp);
-    return () => {
-      document.removeEventListener('pointermove', handleMove);
-      document.removeEventListener('pointerup', handleUp);
-    };
-  }, [draggedRelationIndex, editableRelations]);
+  const { draggedIndex: draggedSagaIndex, setDraggedIndex: setDraggedSagaIndex } =
+    useDragReorder('sagaIndex', reorderSaga);
+  const { draggedIndex: draggedRelationIndex, setDraggedIndex: setDraggedRelationIndex } =
+    useDragReorder('relationIndex', reorderRelations);
 
   // ── Bundled-in handlers ────────────────────────────────────────────────────
 
