@@ -333,7 +333,28 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   // ── Saga handlers ──────────────────────────────────────────────────────────
 
   const addToSaga = (result: ApiSearchResult) => {
-    if (!sagaOrder.includes(result.externalId)) setSagaOrder([...sagaOrder, result.externalId]);
+    if (sagaOrder.includes(result.externalId)) return;
+
+    // sagaOrder is already deduped by external_id above, but that alone
+    // doesn't catch a *different* id (e.g. IGDB listing separate entries per
+    // platform release of what's really the same episode) that happens to
+    // share a title with something already in the chain — which is how the
+    // saga ends up visibly showing the same card twice. Confirm rather than
+    // silently block, since two genuinely different works can coincidentally
+    // share a title.
+    const normalizedTitle = result.titleMain.trim().toLowerCase();
+    const duplicateTitleId = sagaOrder.find(id => {
+      const existingTitle = id === externalId ? entry?.title_main : sagaMeta[id]?.title;
+      return existingTitle?.trim().toLowerCase() === normalizedTitle;
+    });
+    if (duplicateTitleId) {
+      const proceed = window.confirm(
+        `"${result.titleMain}" ya parece estar en la saga (mismo título, id distinto: ${duplicateTitleId} vs ${result.externalId}). ¿Añadirla de todas formas?`
+      );
+      if (!proceed) return;
+    }
+
+    setSagaOrder([...sagaOrder, result.externalId]);
     setSagaMeta(prev => ({ ...prev, [result.externalId]: { title: result.titleMain, cover: result.coverUrl } }));
   };
   const removeFromSaga = (id: string) => {
