@@ -1175,6 +1175,61 @@ pub async fn igdb_search(
     Ok(serde_json::json!({ "games": games, "hasMore": has_more }))
 }
 
+// Raw IGDB search with zero filtering — no cover requirement, no category
+// allowlist, no VN/game split — used by the admin panel's "Add work" search
+// so any title in IGDB can be found regardless of how it's classified.
+#[tauri::command]
+pub async fn igdb_search_unfiltered(
+    app_handle: tauri::AppHandle,
+    query: String,
+    page: Option<u32>,
+) -> Result<serde_json::Value, String> {
+    if query.is_empty() {
+        return Ok(serde_json::json!({ "games": [], "hasMore": false }));
+    }
+
+    let cfg = load_env_config(&app_handle)?;
+    let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
+    let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
+    let token = get_twitch_token(&client_id, &client_secret).await?;
+    let client = get_http_client();
+    let safe_query = query.replace('"', "");
+
+    const PAGE_SIZE: usize = 50;
+    let page = page.unwrap_or(1).max(1) as usize;
+    let offset = (page - 1) * PAGE_SIZE;
+
+    let raw = igdb_query(
+        &client,
+        &client_id,
+        &token,
+        IGDB_API_GAMES,
+        &format!(
+            "fields id,name,cover.image_id,rating,first_release_date,genres.id,genres.name,category,game_type; \
+             search \"{}\"; limit {}; offset {};",
+            safe_query, PAGE_SIZE, offset
+        ),
+    )
+    .await?;
+
+    let mut items = raw.as_array().cloned().unwrap_or_default();
+    let has_more = items.len() == PAGE_SIZE;
+
+    // Unlike igdb_search (which splits results into two buckets via the
+    // is_visual_novel parameter), this command returns one mixed list — tag
+    // each item with is_vn directly so the frontend can pick "vnovel:" vs
+    // "game:" for the id prefix, same convention as every other place this
+    // gets tagged (see detect_vn's other call sites in this file).
+    for item in items.iter_mut() {
+        let is_vn = detect_vn(item);
+        if let Some(obj) = item.as_object_mut() {
+            obj.insert("is_vn".to_string(), serde_json::Value::Bool(is_vn));
+        }
+    }
+
+    Ok(serde_json::json!({ "games": items, "hasMore": has_more }))
+}
+
 // Single-request detail fetch: banner candidates (artworks/screenshots) and
 // store links (external_games) are Game sub-fields in IGDB's schema, so they
 // ride along in the same query instead of requiring separate round-trips.

@@ -37,6 +37,10 @@ export async function igdbSearch(query: string, isVisualNovel = false, page = 1)
   return invoke<IgdbSearchPage>('igdb_search', { query, isVisualNovel, page });
 }
 
+export async function igdbSearchUnfiltered(query: string, page = 1): Promise<IgdbSearchPage> {
+  return invoke<IgdbSearchPage>('igdb_search_unfiltered', { query, page });
+}
+
 // Games releasing between the two unix timestamps — single request. Silently
 // returns [] if IGDB isn't configured or the call fails (tauriCmd fallback),
 // so the Home calendar's "General" view can call this unconditionally.

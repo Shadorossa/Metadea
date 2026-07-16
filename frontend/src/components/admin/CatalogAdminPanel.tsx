@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
-import { getAllCatalogEntries, searchCatalog, deleteCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri/catalog';
+import {
+  getAllCatalogEntries, searchCatalog, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
+  type MediaCatalogEntry,
+} from '../../lib/tauri/catalog';
 import {
   listDatabaseFiles, getFileAtRef, commitFileToMain, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
@@ -9,13 +12,14 @@ import {
 import { hydrateBundleIntoLocalCatalog, buildBundleFromLocal } from '../../lib/github/bundle-sync';
 import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { PrEditorModal } from '../media/PrEditorModal';
+import { AdminAddSearch } from './AdminAddSearch';
 import { IconPencil, IconTrash } from '../local/ui/icons';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
 }
 
-type Source = 'local' | 'github';
+type Source = 'local' | 'github' | 'add';
 
 interface GithubEditTarget {
   externalId: string;
@@ -69,8 +73,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     setGithubLoading(true);
     try {
       setGithubFiles(await listDatabaseFiles(token));
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to list GitHub database files:', err);
+    } catch (err: any) {
+      // 404 means the database/ folder doesn't exist yet — not an error worth logging
+      if (!String(err?.message ?? err).includes('Not Found')) {
+        console.error('[CatalogAdminPanel] Failed to list GitHub database files:', err);
+      }
       setGithubFiles([]);
     } finally {
       setGithubLoading(false);
@@ -191,6 +198,13 @@ export function CatalogAdminPanel({ i18n }: Props) {
         >
           {t.source_github}
         </button>
+        <button
+          type="button"
+          className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
+          onClick={() => setSource('add')}
+        >
+          {t.source_add}
+        </button>
       </div>
 
       {source === 'local' && (
@@ -268,6 +282,41 @@ export function CatalogAdminPanel({ i18n }: Props) {
             </div>
           )}
         </>
+      )}
+
+      {source === 'add' && (
+        <AdminAddSearch
+          onSelect={async ({ externalId, title, coverUrl }) => {
+            const existing = await getCatalogEntry(externalId).catch(() => null);
+            if (!existing) {
+              const now = new Date().toISOString();
+              await saveCatalogEntry({
+                id: '',
+                external_id: externalId,
+                type: externalId.split(':')[0],
+                format: null,
+                source: externalId.startsWith('game:') || externalId.startsWith('vnovel:') ? 'igdb'
+                  : externalId.startsWith('anime:') || externalId.startsWith('manga:') || externalId.startsWith('lnovel:') ? 'anilist'
+                  : externalId.startsWith('movie:') || externalId.startsWith('series:') ? 'tmdb'
+                  : externalId.startsWith('book:') ? 'openlibrary'
+                  : externalId.startsWith('comic:') ? 'comicvine'
+                  : null,
+                title_main: title,
+                title_romaji: null,
+                title_native: null,
+                cover_url: coverUrl,
+                release_year: null,
+                release_month: null,
+                release_day: null,
+                score_global: null,
+                created_at: now,
+                updated_at: now,
+              }).catch(console.error);
+            }
+            setGithubEditTarget(null);
+            setEditingId(externalId);
+          }}
+        />
       )}
 
       {editingId && (

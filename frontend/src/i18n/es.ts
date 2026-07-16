@@ -137,6 +137,7 @@ export const es = {
     delete_confirm:   '¿Eliminar "{title}"? Esta acción no se puede deshacer.',
     source_local:     'Mi catálogo local',
     source_github:    'GitHub (database/)',
+    source_add:       'Añadir obra',
     github_hint:      'Estas son las entradas ya fusionadas en el catálogo compartido de GitHub. Editar una la actualiza directamente en main.',
     github_open_error:   'No se pudo cargar esta entrada desde GitHub.',
     github_save_error:   'La entrada se guardó localmente, pero no se pudo subir el cambio a GitHub.',

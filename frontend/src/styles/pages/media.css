@@ -2861,6 +2861,24 @@
   max-width: 900px;
 }
 
+/* Embedded inline (e.g. the admin panel's "add work" tab) instead of as a
+   fixed full-page overlay — same card look, just not floating/shadowed. */
+.pr-editor-search-popup-content--inline {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+  border-radius: var(--radius-md, 8px);
+}
+
+/* Fixed 10-per-row instead of auto-fill — the admin panel is wide enough
+   (unlike the popup's fixed 900px width) that letting covers grow to fill
+   available space looked sparse; a fixed column count keeps them a
+   consistent, compact size regardless of container width. */
+.pr-editor-search-popup-content--inline .pr-editor-search-grid {
+  grid-template-columns: repeat(10, 1fr);
+}
+
 .pr-editor-search-controls {
   display: flex;
   flex-shrink: 0;

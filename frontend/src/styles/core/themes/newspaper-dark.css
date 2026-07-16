@@ -149,6 +149,30 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--text-main) !important;
 }
 
+/* Admin panel's source toggle (Mi catálogo local / GitHub / Añadir obra) */
+[data-theme="newspaper-dark"] .catalog-admin-source-btn {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  text-transform: capitalize !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="newspaper-dark"] .catalog-admin-source-btn:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .catalog-admin-source-btn.active {
+  background: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
 [data-theme="newspaper-dark"] .input-dark:focus,
 [data-theme="newspaper-dark"] .search-input:focus {
   border-color: var(--text-main) !important;
