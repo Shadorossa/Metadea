@@ -27,12 +27,12 @@
     "platforms_csv": "PC (Microsoft Windows)",
     "shop_links_csv": "gog|https://www.gog.com/en/game/full_metal_daemon_muramasa",
     "companies_cache_csv": "Nitro Plus,JAST USA",
-    "authors_csv": "",
-    "last_synced_at": "2026-07-16T12:26:48.463Z",
-    "sync_failed_count": 0,
+    "authors_csv": null,
+    "last_synced_at": null,
+    "sync_failed_count": null,
     "last_sync_error": null,
     "created_at": "2026-07-16T12:20:07.937Z",
-    "updated_at": "2026-07-16T12:28:49.108746700+00:00"
+    "updated_at": "2026-07-16T12:50:20.847307300+00:00"
   },
   "media_relations": [
     {
