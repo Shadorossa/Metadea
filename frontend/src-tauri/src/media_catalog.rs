@@ -569,6 +569,13 @@ pub async fn save_media_relations(
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
 
     for rel in relations {
+        // A media can't be related to itself — silently drop rather than
+        // erroring, since this can only come from a bad merge/edit upstream
+        // and shouldn't block saving everything else the user changed.
+        if rel.related_media_external_id == media_external_id {
+            continue;
+        }
+
         tx.execute(
             "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
              VALUES (?1, ?2, ?3, ?4)",
@@ -979,7 +986,8 @@ pub async fn sync_community_catalog(
             // never overwrites a relation the user's own API sync produced.
             conn.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
-                 SELECT media_external_id, related_media_external_id, relation_type, type_label FROM community.media_relations",
+                 SELECT media_external_id, related_media_external_id, relation_type, type_label FROM community.media_relations
+                 WHERE media_external_id != related_media_external_id",
                 [],
             ).str_err()?;
 
@@ -1233,6 +1241,12 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
 
     for rel in &bundle.media_relations {
         let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);
+
+        // A media can't be related to itself.
+        if rel.related_media_external_id == parent_id {
+            continue;
+        }
+
         tx.execute(
             "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
              VALUES (?1, ?2, ?3, ?4)",

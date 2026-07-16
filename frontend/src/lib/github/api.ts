@@ -43,6 +43,61 @@ export async function fetchFileAtRef(token: string, path: string, ref: string): 
   return decodeURIComponent(escape(atob(data.content)));
 }
 
+export interface GitHubFile {
+  content: string;
+  sha: string;
+}
+
+// Same as fetchFileAtRef but also returns the blob sha, needed to update or
+// delete the file afterward (GitHub's contents API requires the current sha
+// of whatever it's replacing/removing).
+export async function getFileAtRef(token: string, path: string, ref: string): Promise<GitHubFile> {
+  const data = await githubFetch<{ content: string; sha: string }>(
+    token,
+    `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+  );
+  return { content: decodeURIComponent(escape(atob(data.content))), sha: data.sha };
+}
+
+export interface GitHubDirEntry {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+}
+
+// Lists every merged collaborative-catalog entry (database/*.json on main) —
+// distinct from listOpenProposalPulls, which only lists entries still under
+// review.
+export async function listDatabaseFiles(token: string): Promise<GitHubDirEntry[]> {
+  const entries = await githubFetch<GitHubDirEntry[]>(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/database`);
+  return entries.filter(e => e.type === 'file' && e.name.endsWith('.json'));
+}
+
+// Direct commit to main — used for owner-only edits to already-merged
+// catalog files, skipping the branch/PR flow entirely.
+export async function commitFileToMain(token: string, path: string, content: string, sha: string, message: string): Promise<void> {
+  const base64Content = btoa(unescape(encodeURIComponent(content)));
+  await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: base64Content, sha, branch: 'main' }),
+  });
+}
+
+export async function deleteFileFromMain(token: string, path: string, sha: string, message: string): Promise<void> {
+  await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, sha, branch: 'main' }),
+  });
+}
+
+// database/{type}-{id}.json → "{type}:{id}" — mirrors the filename convention
+// set by submitCollaborativeProposal.ts (externalId.replace(':', '-')).
+export function externalIdFromDatabaseFilename(name: string): string {
+  return name.replace(/\.json$/, '').replace('-', ':');
+}
+
 export async function mergePull(token: string, number: number): Promise<void> {
   await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${number}/merge`, {
     method: 'PUT',

@@ -172,6 +172,10 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
+      // IGDB occasionally lists a game among its own remakes/remasters/etc.
+      // (a self-reference in its data, not a bug on our end) — never turn
+      // that into a relation pointing a media at itself.
+      if (relatedExternalId === rawId) continue;
       if (seenRelatedIds.has(relatedExternalId)) continue;
       seenRelatedIds.add(relatedExternalId);
 
@@ -196,7 +200,13 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     }
   };
 
-  const parentSub = game.parent_game || game.version_parent;
+  // IGDB has been seen returning a game as its own parent_game/version_parent
+  // (a self-reference in its data) — ignore that instead of rendering the
+  // page's own "Fuente"/parent card as itself.
+  const rawParentSub = game.parent_game || game.version_parent;
+  const parentSub = rawParentSub && `${rawParentSub.is_vn ? 'vnovel' : 'game'}:${rawParentSub.id}` !== rawId
+    ? rawParentSub
+    : undefined;
   const parentGame = parentSub
     ? {
         title: parentSub.name,
@@ -226,11 +236,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     addRelations(game.remasters, 'REMASTER');
     addRelations(game.expanded_games, 'EXPANDED_GAME');
     addRelations(game.forks, 'FORK');
-  } else {
-    // A remake or remaster is allowed to have its own remasters and expanded editions
-    addRelations(game.remasters, 'REMASTER');
-    addRelations(game.expanded_games, 'EXPANDED_GAME');
   }
+  // Full editions (remake/remaster/expanded_game/port/fork) get nothing here
+  // beyond their Fuente relation below — their own remasters/expanded_games
+  // fields are just as inherited-from-the-base-game as standalone_expansions
+  // was (see comment above), so a remake showing "its own remaster" was
+  // actually always the *base game's* remaster, not one made from the remake.
   // Content (DLCs/expansions/standalone) is genuinely attached to whichever
   // specific game IGDB links it to — a remake's exclusive DLC should appear
   // on the remake's page, not only on the base game's page.
@@ -302,7 +313,11 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
-  const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => {
+  const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames)
+    // Same IGDB self-reference quirk as elsewhere in this file — a game
+    // can't be its own base game.
+    .filter(sg => `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}` !== data.externalId)
+    .map(sg => {
     const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
     const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
     const title = cleanEditionTitle(sg.name);

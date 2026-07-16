@@ -98,12 +98,8 @@ const { activePage, i18n } = Astro.props;
     const adminLink = document.getElementById('nav-admin-btn') as HTMLAnchorElement | null;
     if (!adminLink || typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
     try {
-      const { invoke } = await import(/* @vite-ignore */ '../lib/tauri');
-      const { isRepoOwner } = await import(/* @vite-ignore */ '../lib/github/ownership');
-      const token = await invoke('get_github_token').catch(() => null);
-      if (!token) return;
-      const user = await invoke('get_github_user_profile', { token }) as { login: string };
-      if (isRepoOwner(user.login)) adminLink.style.display = '';
+      const { isConnectedAsOwner } = await import(/* @vite-ignore */ '../lib/github/ownership');
+      if (await isConnectedAsOwner()) adminLink.style.display = '';
     } catch (err) {
       console.warn('[Navbar] Admin link visibility check failed:', err);
     }

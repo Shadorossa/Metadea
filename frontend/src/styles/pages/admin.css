@@ -9,6 +9,34 @@
   margin-bottom: 1.25rem;
 }
 
+.catalog-admin-source-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.catalog-admin-source-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted, #a0a0b8);
+}
+
+.catalog-admin-source-btn.active {
+  background: var(--accent, #7c6af7);
+  border-color: var(--accent, #7c6af7);
+  color: #fff;
+}
+
+.catalog-admin-hint {
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
 .catalog-admin-search {
   width: 100%;
   padding: 0.65rem 1rem;
@@ -92,6 +120,11 @@
 
 .catalog-admin-delete-btn:hover {
   background: rgba(248, 113, 113, 0.15);
+}
+
+.catalog-admin-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .catalog-admin-confirm {

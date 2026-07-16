@@ -35,6 +35,7 @@ const INNER: Record<string, string> = {
   settings_connections:  `<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>`,
   settings_environment:  `<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8l2 2-2 2M11 12h4"/>`,
   settings_novedades:    `<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>`,
+  settings_admin:        `<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>`,
   upload_image:          `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>`,
   chevron_left:          `<polyline points="15 18 9 12 15 6"/>`,
   chevron_right:         `<polyline points="9 18 15 12 9 6"/>`,
@@ -126,6 +127,7 @@ export const ICON_SETTINGS_APPEARANCE  = stroke(14, '2', INNER.settings_appearan
 export const ICON_SETTINGS_CONNECTIONS = stroke(14, '2', INNER.settings_connections);
 export const ICON_SETTINGS_ENVIRONMENT = stroke(14, '2', INNER.settings_environment);
 export const ICON_SETTINGS_NOVEDADES   = stroke(14, '2', INNER.settings_novedades);
+export const ICON_SETTINGS_ADMIN       = stroke(14, '2', INNER.settings_admin);
 export const ICON_UPLOAD_IMAGE         = stroke(24, '1.5', INNER.upload_image);
 export const ICON_CHEVRON_LEFT         = stroke(16, '2.5', INNER.chevron_left);
 export const ICON_CHEVRON_RIGHT        = stroke(16, '2.5', INNER.chevron_right);

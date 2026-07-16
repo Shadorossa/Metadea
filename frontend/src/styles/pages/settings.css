@@ -44,6 +44,7 @@
   background: none;
   border: none;
   text-align: left;
+  text-decoration: none;
   width: 100%;
 }
 .settings-tab svg { flex-shrink: 0; }
