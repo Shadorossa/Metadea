@@ -35,7 +35,6 @@ export async function clearAuthToken(): Promise<void> {
   if (isTauri()) await invoke('clear_auth_token');
 }
 
-export async function getAniListToken(): Promise<string | null> {
-  const token = localStorage.getItem(STORAGE_KEYS.anilistToken);
-  return token || null;
+export function getAniListToken(): string | null {
+  return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anilistToken) : null;
 }

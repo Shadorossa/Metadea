@@ -1,4 +1,3 @@
-use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use crate::db::ToStringErr;
@@ -8,12 +7,6 @@ pub struct FolderEntry {
     pub name: String,
     pub is_dir: bool,
     pub size: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SavedFolder {
-    pub path: String,
-    pub label: String,
 }
 
 #[tauri::command]
@@ -44,47 +37,6 @@ pub async fn scan_folder_contents(path: String) -> Result<Vec<FolderEntry>, Stri
     }
     entries.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
     Ok(entries)
-}
-
-#[tauri::command]
-pub async fn get_local_folders(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-) -> Result<Vec<SavedFolder>, String> {
-    let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn
-        .prepare("SELECT label, path FROM local_folders ORDER BY id")
-        .str_err()?;
-    let folders = stmt
-        .query_map([], |row| {
-            Ok(SavedFolder {
-                label: row.get(0)?,
-                path: row.get(1)?,
-            })
-        })
-        .str_err()?
-        .filter_map(|r| r.ok())
-        .collect();
-    Ok(folders)
-}
-
-#[tauri::command]
-pub async fn save_local_folders(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    folders_json: String,
-) -> Result<String, String> {
-    let folders: Vec<SavedFolder> =
-        serde_json::from_str(&folders_json).str_err()?;
-    let conn = state.conn.lock().str_err()?;
-    conn.execute("DELETE FROM local_folders", [])
-        .str_err()?;
-    for f in &folders {
-        conn.execute(
-            "INSERT INTO local_folders (label, path) VALUES (?1, ?2)",
-            rusqlite::params![f.label, f.path],
-        )
-        .str_err()?;
-    }
-    Ok("ok".to_string())
 }
 
 #[tauri::command]
@@ -144,21 +96,6 @@ pub async fn save_game_link(
              external_id = excluded.external_id,
              updated_at  = excluded.updated_at",
         rusqlite::params![launcher, link_key, external_id, now],
-    )
-    .map(|_| ())
-    .str_err()
-}
-
-#[tauri::command]
-pub async fn delete_game_link(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    launcher: String,
-    link_key: String,
-) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
-    conn.execute(
-        "DELETE FROM local_game_links WHERE launcher = ?1 AND link_key = ?2",
-        rusqlite::params![launcher, link_key],
     )
     .map(|_| ())
     .str_err()
@@ -284,43 +221,6 @@ pub async fn launch_game(
     }
 }
 
-// Opens any local file with the OS's default handler for its extension —
-// video player for anime/series/movies, image/PDF/e-reader for
-// manga/lnovel/books, whatever is registered rather than assuming VLC.
-#[tauri::command]
-pub async fn open_local_file(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
-    use tauri_plugin_opener::OpenerExt;
-    app_handle.opener().open_path(path, None::<String>).str_err()
-}
-
-#[tauri::command]
-pub async fn scan_anime_folder(folder_path: String) -> Result<Vec<String>, String> {
-    let path = std::path::Path::new(&folder_path);
-    if !path.is_dir() {
-        return Err("Path is not a directory".to_string());
-    }
-
-    let mut files = vec![];
-    if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    let ext_str = ext.to_string_lossy().to_lowercase();
-                    if matches!(ext_str.as_str(), "mkv" | "mp4" | "avi" | "mov" | "flv" | "webm") {
-                        if let Some(name) = path.file_name() {
-                            files.push(name.to_string_lossy().to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    files.sort();
-    Ok(files)
-}
-
 // A plain `Command::new("vlc")` only works when VLC's install dir was added
 // to PATH, which the default Windows installer does *not* do — that silent
 // spawn failure was why the "Reproducir" button did nothing. This looks up
@@ -442,60 +342,3 @@ pub async fn get_vlc_playback_status() -> Result<Option<VlcPlaybackStatus>, Stri
     }))
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct AnimeLocalEntry {
-    pub anilist_id: i32,
-    pub folder_path: String,
-    pub episode_count: i32,
-    pub updated_at: String,
-}
-
-#[tauri::command]
-pub async fn save_anime_folder(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    anilist_id: i32,
-    folder_path: String,
-    episode_count: i32,
-) -> Result<(), String> {
-    let now = chrono::Utc::now().to_rfc3339();
-    let conn = state.conn.lock().str_err()?;
-
-    conn.execute(
-        "INSERT INTO local_anime_folders (anilist_id, folder_path, episode_count, updated_at)
-         VALUES (?1, ?2, ?3, ?4)
-         ON CONFLICT(anilist_id) DO UPDATE SET
-            folder_path = excluded.folder_path,
-            episode_count = excluded.episode_count,
-            updated_at = excluded.updated_at",
-        rusqlite::params![anilist_id, folder_path, episode_count, now],
-    )
-    .str_err()?;
-
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn get_anime_folder(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    anilist_id: i32,
-) -> Result<Option<AnimeLocalEntry>, String> {
-    let conn = state.conn.lock().str_err()?;
-
-    let result = conn
-        .query_row(
-            "SELECT anilist_id, folder_path, episode_count, updated_at FROM local_anime_folders WHERE anilist_id = ?1",
-            rusqlite::params![anilist_id],
-            |row| {
-                Ok(AnimeLocalEntry {
-                    anilist_id: row.get(0)?,
-                    folder_path: row.get(1)?,
-                    episode_count: row.get(2)?,
-                    updated_at: row.get(3)?,
-                })
-            },
-        )
-        .optional()
-        .str_err()?;
-
-    Ok(result)
-}

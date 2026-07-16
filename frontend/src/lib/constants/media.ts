@@ -4,12 +4,10 @@ export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
 export type AniListMediaType = typeof ANILIST_TYPES[number];
 
 export const IGDB_TYPES = ['game', 'vnovel'] as const;
-export type IgdbMediaType = typeof IGDB_TYPES[number];
 
 export const ALL_MEDIA_TYPES = [
   'anime', 'manga', 'lnovel', 'game', 'vnovel', 'series', 'movie', 'book', 'comic', 'character',
 ] as const;
-export type CoreMediaType = typeof ALL_MEDIA_TYPES[number];
 
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [

@@ -70,15 +70,6 @@ export function getBaseMediaType(type: string): string {
   return type.split('_')[0] || 'book';
 }
 
-export function typeIconStr(type: string, size: number): string {
-  const baseType = getBaseMediaType(type);
-  const inner = INNER[baseType] ?? INNER.book;
-  if (baseType === 'anime') {
-    return fill(size, inner);
-  }
-  return stroke(size, '2', inner);
-}
-
 export function typeIconMap(size: number): Record<string, string> {
   const baseTypes = Object.fromEntries(MEDIA_TYPES.map(t => {
     if (t === 'anime') {
@@ -96,11 +87,6 @@ export function typeIconMap(size: number): Record<string, string> {
 }
 
 // ── Status icons ──────────────────────────────────────────────────────────────
-
-export function statusIconStr(status: string, size: number): string {
-  const inner = INNER[status] ?? '';
-  return stroke(size, '2.5', inner);
-}
 
 export const STATUS_ICONS_14 = {
   completed:   stroke(14, '2.5', INNER.completed),

@@ -1,9 +1,8 @@
-import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatalogEntry, getAniListToken } from '../tauri';
 import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
-import { STORAGE_KEYS } from '../shared/storage-keys';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
 
@@ -86,10 +85,6 @@ interface AniListImportPage {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-function getToken(): string | null {
-  return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.anilistToken) : null;
-}
-
 async function fetchCurrentUserId(token: string): Promise<number | null> {
   const { ok, result } = await graphqlPost<{ Viewer: { id: number } }>(
     API_ENDPOINTS.ANILIST, CURRENT_USER_QUERY, undefined, { token },
@@ -127,7 +122,7 @@ async function fetchAniListItems(
   selectedFormats: string[],
   onProg: (p: ImportProgress) => void
 ): Promise<{ token: string; filteredList: AniListImportMediaItem[] } | { ok: false; error: string }> {
-  const token = getToken();
+  const token = getAniListToken();
   if (!token) return { ok: false, error: 'No AniList token found' };
 
   onProg({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });

@@ -23,5 +23,3 @@ export const API_ENDPOINTS = {
   STEAM_COVERS: (appId: string | number) =>
     `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/library_600x900_2x.jpg`,
 } as const;
-
-export type ApiEndpoints = typeof API_ENDPOINTS;

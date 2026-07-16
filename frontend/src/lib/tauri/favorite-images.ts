@@ -27,10 +27,6 @@ export async function saveFavoriteCustomImage(
   return invoke<FavoriteCustomImage>('save_favorite_custom_image', { externalId, imageUrl, bgSize, posX, posY });
 }
 
-export async function getFavoriteCustomImage(externalId: string): Promise<FavoriteCustomImage | null> {
-  return tauriCmd<FavoriteCustomImage | null>('get_favorite_custom_image', null, { externalId });
-}
-
 // Bulk fetch for the Favorites tab — one round trip instead of one per card.
 export async function getAllFavoriteCustomImages(): Promise<FavoriteCustomImage[]> {
   return tauriCmd<FavoriteCustomImage[]>('get_all_favorite_custom_images', []);

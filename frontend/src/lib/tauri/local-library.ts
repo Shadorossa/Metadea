@@ -1,5 +1,4 @@
-import { isTauri, invoke, tauriCmd, tauriRun } from './core';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { tauriCmd, tauriRun } from './core';
 
 export interface LocalGame {
   name:              string;
@@ -27,21 +26,12 @@ export interface LocalFolderEntry {
   child_count?: number;
 }
 
-export interface SavedFolder {
-  path:  string;
-  label: string;
-}
-
 export async function pickFolder(): Promise<string | null> {
   return tauriCmd<string | null>('pick_folder', null);
 }
 
 export async function scanFolderContents(path: string): Promise<LocalFolderEntry[]> {
   return tauriCmd<LocalFolderEntry[]>('scan_folder_contents', [], { path });
-}
-
-export async function openLocalFile(path: string): Promise<void> {
-  return tauriRun('open_local_file', { path });
 }
 
 export async function scanAllGames(): Promise<LocalGame[]> {
@@ -58,19 +48,3 @@ export async function saveGameLink(launcher: string, linkKey: string, externalId
   return tauriRun('save_game_link', { launcher, linkKey, externalId });
 }
 
-export async function deleteGameLink(launcher: string, linkKey: string): Promise<void> {
-  return tauriRun('delete_game_link', { launcher, linkKey });
-}
-
-export async function getLocalFolders(): Promise<SavedFolder[]> {
-  if (!isTauri()) {
-    const stored = localStorage.getItem(STORAGE_KEYS.localFolders);
-    return stored ? JSON.parse(stored) : [];
-  }
-  return invoke<SavedFolder[]>('get_local_folders');
-}
-
-export async function saveLocalFolders(folders: SavedFolder[]): Promise<void> {
-  if (!isTauri()) { localStorage.setItem(STORAGE_KEYS.localFolders, JSON.stringify(folders)); return; }
-  return invoke<void>('save_local_folders', { foldersJson: JSON.stringify(folders) });
-}

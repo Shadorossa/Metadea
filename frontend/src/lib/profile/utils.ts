@@ -23,11 +23,6 @@ export function decodeJwtPayload(token: string): Record<string, unknown> {
   } catch { return {}; }
 }
 
-/** "14 ene", "3 mar", etc. — for activity cards */
-export function formatShortDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString(getLangCode(), { day: 'numeric', month: 'short' });
-}
-
 /** "ENE", "FEB", etc. — for monthly history badges */
 export function formatMonthLabel(year: number, month: number): string {
   return new Date(year, month - 1)

@@ -6,8 +6,6 @@
 // so relations saved before that change still load into the Bundled In list.
 export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE', 'PART_OF'];
 
-export const SAGA_DIRECT_RELATION_TYPES: string[] = ['PREQUEL', 'SEQUEL'];
-
 // Todos los relation_type que la saga-chain puede generar o leer.
 // Más amplio que los tipos que hacen a una obra miembro de saga
 // (el walker Rust solo recorre PREQUEL/SEQUEL) porque un miembro
