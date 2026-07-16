@@ -27,12 +27,12 @@
     "platforms_csv": "PC (Microsoft Windows)",
     "shop_links_csv": null,
     "companies_cache_csv": "TYPE-MOON",
-    "authors_csv": null,
-    "last_synced_at": null,
-    "sync_failed_count": null,
+    "authors_csv": "",
+    "last_synced_at": "2026-07-16T09:56:34.173Z",
+    "sync_failed_count": 0,
     "last_sync_error": null,
     "created_at": "2026-07-11T20:07:47.867Z",
-    "updated_at": "2026-07-16T09:37:16.459781400+00:00"
+    "updated_at": "2026-07-16T09:56:34.174358100+00:00"
   },
   "media_relations": [
     {
@@ -46,21 +46,13 @@
     {
       "media_external_id": "vnovel:12328",
       "related_media_external_id": "lnovel:33649",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
       "title": "Fate/Zero",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/33649-rA0ZBSbWhPkH.png"
     },
     {
-      "media_external_id": "lnovel:33649",
-      "related_media_external_id": "vnovel:12328",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Fate/Stay Night",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg"
-    },
-    {
-      "media_external_id": "lnovel:33649",
+      "media_external_id": "vnovel:12328",
       "related_media_external_id": "vnovel:275640",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
@@ -68,15 +60,24 @@
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7p8t.jpg"
     },
     {
+      "media_external_id": "lnovel:33649",
+      "related_media_external_id": "vnovel:12328",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fate/Stay Night",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg"
+    },
+    {
       "media_external_id": "vnovel:275640",
-      "related_media_external_id": "lnovel:33649",
+      "related_media_external_id": "vnovel:12328",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
-      "title": "Fate/Zero",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/33649-rA0ZBSbWhPkH.png"
+      "title": "Fate/Stay Night",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2h3l.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {}
+  "saga_groups": {},
+  "saga_name": "Fate/Zero"
 }
