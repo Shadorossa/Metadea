@@ -10,7 +10,6 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
-import { RelationTypeSelect } from './RelationTypeSelect';
 import {
   BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
@@ -22,6 +21,10 @@ import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { useDragReorder } from './hooks/useDragReorder';
+import { PrEditorCharactersSection } from './PrEditorCharactersSection';
+import { PrEditorBundledSection } from './PrEditorBundledSection';
+import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
+import { PrEditorRelationsSection } from './PrEditorRelationsSection';
 
 // Always saved as a PART_OF relation — there's no per-item type to pick
 // anymore (previously episode/update, shown as a dropdown).
@@ -124,7 +127,6 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [characters, setCharacters] = useState<DbMediaCharacter[]>([]);
   const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
   const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
-  const [charPage, setCharPage] = useState(0);
   const [showCharSearch, setShowCharSearch] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
@@ -764,102 +766,14 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
               </div>
             </div>
 
-            <div className="pr-editor-section">
-              <span className="pr-editor-section-title">
-                Personajes
-                {charactersChanged() && <span className="pr-editor-section-changed-dot" />}
-              </span>
-              
-              {(() => {
-                const itemsPerPage = 12;
-                const totalPages = Math.ceil(characters.length / itemsPerPage) || 1;
-                const safeCharPage = Math.min(charPage, totalPages - 1);
-                const paginatedChars = characters.slice(safeCharPage * itemsPerPage, (safeCharPage + 1) * itemsPerPage);
-
-                return (
-                  <>
-                    <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem', minHeight: '25.5rem' }}>
-                      {paginatedChars.map(c => (
-                        <div key={c.external_id} className="pr-editor-media-card">
-                          <div className="pr-editor-media-card-cover">
-                            {c.image_url
-                              ? <img src={c.image_url} alt="" />
-                              : <div className="pr-editor-media-card-placeholder" />}
-                            <button
-                              type="button"
-                              className="pr-editor-media-card-remove"
-                              onClick={() => removeCharacter(c.external_id)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div
-                            className="pr-editor-media-card-title"
-                            title={c.name}
-                            style={{
-                              height: '2.4em',
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '1.2'
-                            }}
-                          >
-                            {c.name}
-                          </div>
-                          <select
-                            value={c.relation_type ?? 'SUPPORTING'}
-                            onChange={e => updateCharacterRole(c.external_id, e.target.value)}
-                            className="pr-editor-media-card-select"
-                            style={{ fontSize: '0.7rem' }}
-                          >
-                            <option value="MAIN">{t.character.role_main}</option>
-                            <option value="SUPPORTING">{t.character.role_supporting}</option>
-                            <option value="BACKGROUND">{t.character.role_background}</option>
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          className="pr-editor-btn pr-editor-btn--cancel"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
-                          disabled={safeCharPage === 0}
-                          onClick={() => setCharPage(prev => Math.max(0, prev - 1))}
-                        >
-                          &lt;
-                        </button>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          Página {safeCharPage + 1} de {totalPages}
-                        </span>
-                        <button
-                          type="button"
-                          className="pr-editor-btn pr-editor-btn--cancel"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
-                          disabled={safeCharPage >= totalPages - 1}
-                          onClick={() => setCharPage(prev => Math.min(totalPages - 1, prev + 1))}
-                        >
-                          &gt;
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="pr-editor-btn pr-editor-btn--submit"
-                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
-                        onClick={() => setShowCharSearch(true)}
-                      >
-                        + Añadir personaje
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
+            <PrEditorCharactersSection
+              t={t}
+              characters={characters}
+              changed={charactersChanged()}
+              onRemove={removeCharacter}
+              onUpdateRole={updateCharacterRole}
+              onOpenSearch={() => setShowCharSearch(true)}
+            />
           </div>
 
           {/* Right Column: Media Assets, Classification, Saga, Collaborators */}
@@ -910,141 +824,40 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           {/* Column 3: Saga & Bundled */}
           <div className="pr-editor-col pr-editor-col--saga">
             <div className="pr-editor-section pr-editor-section--row">
-              <div className="pr-editor-subsection pr-editor-subsection--saga">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
-                  <label className="pr-editor-subsection-label">Saga Name</label>
-                  <input
-                    type="text"
-                    placeholder="Saga Name (e.g. Inazuma Eleven)"
-                    value={sagaName}
-                    onChange={e => setSagaName(e.target.value)}
-                    className="pr-editor-media-card-group-input"
-                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Saga order</label>
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
-                </div>
-                <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
-                  {sagaOrder.map((id, index) => {
-                    const meta = resolveMeta(id);
-                    return (
-                      <div
-                        key={id}
-                        data-saga-index={index}
-                        className={`pr-editor-media-card${id === externalId ? ' pr-editor-media-card--current' : ''}${draggedSagaIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-                        onPointerDown={e => {
-                          e.preventDefault();
-                          setDraggedSagaIndex(index);
-                        }}
-                      >
-                        <div className="pr-editor-media-card-cover">
-                          {meta.cover
-                            ? <img src={meta.cover} alt="" draggable={false} />
-                            : <div className="pr-editor-media-card-placeholder" />}
-                          {id !== externalId && (
-                            <button
-                              type="button"
-                              className="pr-editor-media-card-remove"
-                              onPointerDown={e => e.stopPropagation()}
-                              onClick={() => removeFromSaga(id)}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                        <div className="pr-editor-media-card-title" title={meta.title || id}>
-                          {meta.title || id}
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Concept Group..."
-                          value={sagaGroups[id] || ''}
-                          onChange={e => updateSagaGroup(id, e.target.value)}
-                          onPointerDown={e => e.stopPropagation()}
-                          className="pr-editor-media-card-group-input"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <PrEditorSagaOrderSection
+                externalId={externalId}
+                sagaName={sagaName}
+                onSagaNameChange={setSagaName}
+                sagaOrder={sagaOrder}
+                sagaGroups={sagaGroups}
+                draggedIndex={draggedSagaIndex}
+                onStartDrag={setDraggedSagaIndex}
+                onRemove={removeFromSaga}
+                onUpdateGroup={updateSagaGroup}
+                onOpenSearch={() => setSearchPopupMode('saga')}
+                resolveMeta={resolveMeta}
+              />
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
-              <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Relations</label>
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
-                </div>
-                <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six" style={{ marginBottom: '1.25rem' }}>
-                  {editableRelations.map((r, index) => (
-                    <div
-                      key={r.related_media_external_id}
-                      data-relation-index={index}
-                      className={`pr-editor-media-card${draggedRelationIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-                      onPointerDown={e => {
-                        e.preventDefault();
-                        setDraggedRelationIndex(index);
-                      }}
-                    >
-                      <div className="pr-editor-media-card-cover">
-                        {r.cover
-                          ? <img src={r.cover} alt="" draggable={false} />
-                          : <div className="pr-editor-media-card-placeholder" />}
-                        <button
-                          type="button"
-                          className="pr-editor-media-card-remove"
-                          onClick={() => removeEditableRelation(r.related_media_external_id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <RelationTypeSelect
-                        value={r.relation_type}
-                        options={EDITABLE_RELATION_OPTIONS}
-                        labels={relationLabels as unknown as Record<string, string>}
-                        extraOption={{ value: r.relation_type, label: r.type_label }}
-                        onChange={type => updateEditableRelationType(r.related_media_external_id, type)}
-                      />
-                      <div className="pr-editor-media-card-title" title={r.title || r.related_media_external_id}>
-                        {r.title || r.related_media_external_id}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PrEditorRelationsSection
+                editableRelations={editableRelations}
+                relationOptions={EDITABLE_RELATION_OPTIONS}
+                relationLabels={relationLabels as unknown as Record<string, string>}
+                draggedIndex={draggedRelationIndex}
+                onStartDrag={setDraggedRelationIndex}
+                onRemove={removeEditableRelation}
+                onUpdateType={updateEditableRelationType}
+                onOpenSearch={() => setSearchPopupMode('relations')}
+              />
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
-              <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Bundled In</label>
-                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
-                </div>
-                <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
-                  {bundledRelations.map(r => (
-                    <div key={r.external_id} className="pr-editor-media-card">
-                      <div className="pr-editor-media-card-cover">
-                        {r.cover
-                          ? <img src={r.cover} alt="" draggable={false} />
-                          : <div className="pr-editor-media-card-placeholder" />}
-                        <button
-                          type="button"
-                          className="pr-editor-media-card-remove"
-                          onClick={() => removeBundledRelation(r.external_id)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <div className="pr-editor-media-card-title" title={r.title || r.external_id}>
-                        {r.title || r.external_id}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PrEditorBundledSection
+                bundledRelations={bundledRelations}
+                onRemove={removeBundledRelation}
+                onOpenSearch={() => setSearchPopupMode('bundled')}
+              />
             </div>
           </div>
         </div>
