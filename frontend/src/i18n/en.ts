@@ -193,6 +193,7 @@ export const en = {
       CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
       EDITIONS: 'Editions',
       ISSUE: 'Issue',
+      EPISODE: 'Episode',
       REL_ADAPTATION: 'Adaptation',
       REL_ALTERNATIVE: 'Alternative Version',
       REMASTER: 'Remaster',

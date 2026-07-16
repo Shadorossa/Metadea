@@ -910,6 +910,54 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()?;
 
+            // The INSERT OR IGNORE above only benefits entries the user's
+            // local catalog doesn't have at all — for anything already
+            // cached (the common case, since the live API sync populates
+            // most rows before anyone ever opens the collaborative editor on
+            // them), it's silently skipped. That's fine for fields the live
+            // API sync keeps fresh (title, dates, score, status...), but
+            // banners/genres/companies/authors are *only* ever set through
+            // the collaborative catalog — an existing row can otherwise never
+            // receive a merged PR's update to those fields. Fill them in only
+            // where the local value is still empty, so a manual edit already
+            // present locally (or a fresher live-synced value) is never
+            // clobbered.
+            conn.execute(
+                "UPDATE media_catalog
+                 SET banners_csv = (SELECT c.banners_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                 WHERE (banners_csv IS NULL OR banners_csv = '')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.banners_csv IS NOT NULL AND c.banners_csv != '')",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "UPDATE media_catalog
+                 SET genres_csv = (SELECT c.genres_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                 WHERE (genres_csv IS NULL OR genres_csv = '')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_csv IS NOT NULL AND c.genres_csv != '')",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "UPDATE media_catalog
+                 SET genres_tag_csv = (SELECT c.genres_tag_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                 WHERE (genres_tag_csv IS NULL OR genres_tag_csv = '')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_tag_csv IS NOT NULL AND c.genres_tag_csv != '')",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "UPDATE media_catalog
+                 SET companies_cache_csv = (SELECT c.companies_cache_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                 WHERE (companies_cache_csv IS NULL OR companies_cache_csv = '')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.companies_cache_csv IS NOT NULL AND c.companies_cache_csv != '')",
+                [],
+            ).str_err()?;
+            conn.execute(
+                "UPDATE media_catalog
+                 SET authors_csv = (SELECT c.authors_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                 WHERE (authors_csv IS NULL OR authors_csv = '')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.authors_csv IS NOT NULL AND c.authors_csv != '')",
+                [],
+            ).str_err()?;
+
             // Characters a PR carried over from the entry's already-cached
             // appearances (see PrEditorModal's bundle export) — merge both
             // the character rows and their media links the same "fill gaps

@@ -11,7 +11,8 @@ import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
-  BUNDLE_RELATION_TYPES, ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
+  BUNDLE_RELATION_TYPES, PART_OF_RELATION_TYPES, CONTAINS_RELATION_TYPES,
+  ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
 import { classifySagaChain, createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
@@ -23,6 +24,7 @@ import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './PrEditorCharactersSection';
 import { PrEditorBundledSection } from './PrEditorBundledSection';
+import { PrEditorContainsSection } from './PrEditorContainsSection';
 import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
 import { PrEditorRelationsSection } from './PrEditorRelationsSection';
 
@@ -86,6 +88,12 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [bundledRelations, setBundledRelations] = useState<BundledRelation[]>([]);
   const [originalBundledIds, setOriginalBundledIds] = useState<Set<string>>(new Set());
 
+  // Reverse of Bundled In — items that have *this* entry as their Bundled In
+  // (i.e. this entry is the container). Read/write mirrors bundledRelations
+  // exactly, just the other direction (EPISODE instead of PART_OF).
+  const [containedRelations, setContainedRelations] = useState<BundledRelation[]>([]);
+  const [originalContainedIds, setOriginalContainedIds] = useState<Set<string>>(new Set());
+
   // Editable relations: ADAPTATION, SPIN_OFF, ALTERNATIVE, etc (not saga-managed)
   interface EditableRelation {
     related_media_external_id: string;
@@ -130,7 +138,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const [showCharSearch, setShowCharSearch] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'relations' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -153,9 +161,13 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       try {
         const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
 
-        // Separate bundled relations (EPISODE, UPDATE, PART_OF)
+        // Bundled In (this entry belongs to something else — PART_OF/UPDATE)
+        // vs. Contains (something else belongs to this entry — EPISODE) are
+        // opposite directions of the same relationship; BUNDLE_RELATION_TYPES
+        // covers both only for excluding them from the plain Relations list
+        // below.
         const bundled = rels
-          .filter(r => BUNDLE_RELATION_TYPES.includes(r.relation_type))
+          .filter(r => PART_OF_RELATION_TYPES.includes(r.relation_type))
           .map(r => ({
             external_id: r.related_media_external_id,
             title: r.title,
@@ -163,6 +175,16 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           }));
         setBundledRelations(bundled);
         setOriginalBundledIds(new Set(bundled.map(r => r.external_id)));
+
+        const contained = rels
+          .filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type))
+          .map(r => ({
+            external_id: r.related_media_external_id,
+            title: r.title,
+            cover: r.cover,
+          }));
+        setContainedRelations(contained);
+        setOriginalContainedIds(new Set(contained.map(r => r.external_id)));
 
         const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
         if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
@@ -268,6 +290,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       } catch (err) {
         console.error('Failed to load relations/saga:', err);
         setBundledRelations([]);
+        setContainedRelations([]);
         setEditableRelations([]);
       } finally {
         setLoading(false);
@@ -354,6 +377,20 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const removeBundledRelation = (id: string) =>
     setBundledRelations(prev => prev.filter(r => r.external_id !== id));
 
+  // ── Contains handlers ──────────────────────────────────────────────────────
+
+  const addContainedRelation = (result: ApiSearchResult) => {
+    if (!containedRelations.some(r => r.external_id === result.externalId)) {
+      setContainedRelations([...containedRelations, {
+        external_id: result.externalId,
+        title: result.titleMain,
+        cover: result.coverUrl,
+      }]);
+    }
+  };
+  const removeContainedRelation = (id: string) =>
+    setContainedRelations(prev => prev.filter(r => r.external_id !== id));
+
   // ── Editable relation handlers ────────────────────────────────────────────
 
   const addEditableRelation = (result: ApiSearchResult) => {
@@ -392,6 +429,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     return {
       addedBundled: bundledRelations.filter(r => !originalBundledIds.has(r.external_id)),
       removedBundledIds: [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id)),
+      addedContained: containedRelations.filter(r => !originalContainedIds.has(r.external_id)),
+      removedContainedIds: [...originalContainedIds].filter(id => !containedRelations.some(r => r.external_id === id)),
       addedEditableRelations: editableRelations.filter(r => !originalEditableRelationTypes.has(r.related_media_external_id)),
       removedEditableRelationIds: [...originalEditableRelationTypes.keys()].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
       changedEditableRelations: editableRelations.filter(r => {
@@ -412,6 +451,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
+      || d.addedContained.length > 0 || d.removedContainedIds.length > 0
       || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0 || d.changedEditableRelations.length > 0
       || d.addedSaga.length > 0 || d.removedSaga.length > 0
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
@@ -442,6 +482,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
     const d = getDiff();
     for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)}`);
     for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
+    for (const r of d.addedContained) lines.push(`- Added Contains: ${formatWork(r.external_id, r.title)}`);
+    for (const id of d.removedContainedIds) lines.push(`- Removed Contains: ${formatWork(id)}`);
     for (const r of d.addedEditableRelations) lines.push(`- Added Relation: ${formatWork(r.related_media_external_id, r.title)} (${r.type_label})`);
     for (const id of d.removedEditableRelationIds) lines.push(`- Removed Relation: ${formatWork(id)}`);
     for (const r of d.changedEditableRelations) {
@@ -575,6 +617,16 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           cover: r.cover ?? null,
         }));
 
+      const containedDbRelations: DbMediaRelation[] = containedRelations
+        .filter(r => r.external_id.trim())
+        .map(r => ({
+          related_media_external_id: r.external_id.trim(),
+          relation_type: 'EPISODE',
+          type_label: 'Episode',
+          title: r.title || r.external_id.trim(),
+          cover: r.cover ?? null,
+        }));
+
       const editableDbRelations: DbMediaRelation[] = editableRelations
         .filter(r => r.related_media_external_id.trim())
         .map(r => ({
@@ -590,7 +642,7 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       // pre-existing relation that isn't part of the saga chain, so nothing
       // else needs to pass through untouched.
       const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
-      const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...currentChainRows];
+      const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows];
       await saveMediaRelations(externalId, currentFinalRelations)
         .catch(err => console.error('Failed to save relations:', err));
 
@@ -618,6 +670,67 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           await saveMediaRelations(otherId, [...kept, ...newRows]);
         } catch (err) {
           console.error(`Failed to propagate saga relation to ${otherId}:`, err);
+        }
+      }
+
+      // Bundled In is reciprocal: this entry gets a PART_OF relation pointing
+      // at the target (bundledDbRelations above), and the target itself needs
+      // an EPISODE relation pointing back at this entry — otherwise browsing
+      // to the "container" work never shows this one as its Episode, only
+      // this entry ever shows the PART_OF side. Re-derived from scratch each
+      // save (remove any stale EPISODE->externalId row, re-add for whatever's
+      // currently in bundledRelations) so removing a Bundled In entry also
+      // cleans up the reciprocal side instead of leaving a dangling relation.
+      const currentBundledIds = new Set(bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
+      const bundledTargetsToSync = new Set([...currentBundledIds, ...originalBundledIds]);
+      for (const targetId of bundledTargetsToSync) {
+        try {
+          const existing = await getMediaRelations(targetId);
+          const kept = (existing || []).filter(r =>
+            !(r.relation_type === 'EPISODE' && r.related_media_external_id === externalId)
+          );
+          const rows = currentBundledIds.has(targetId)
+            ? [...kept, {
+                related_media_external_id: externalId,
+                relation_type: 'EPISODE',
+                type_label: 'Episode',
+                title: entry.title_main || externalId,
+                cover: entry.cover_url ?? null,
+              }]
+            : kept;
+          await saveMediaRelations(targetId, rows);
+          invalidateCachedMediaData(targetId);
+        } catch (err) {
+          console.error(`Failed to propagate bundled-in relation to ${targetId}:`, err);
+        }
+      }
+
+      // Same reciprocity, opposite direction: Contains (EPISODE, this entry
+      // → child) needs a PART_OF relation written back on each child pointing
+      // at this entry — symmetric with the Bundled In sync above, so removing
+      // an item from either side (this entry's Contains, or the child's own
+      // Bundled In) cleans up both.
+      const currentContainedIds = new Set(containedRelations.map(r => r.external_id.trim()).filter(Boolean));
+      const containedTargetsToSync = new Set([...currentContainedIds, ...originalContainedIds]);
+      for (const childId of containedTargetsToSync) {
+        try {
+          const existing = await getMediaRelations(childId);
+          const kept = (existing || []).filter(r =>
+            !(r.relation_type === 'PART_OF' && r.related_media_external_id === externalId)
+          );
+          const rows = currentContainedIds.has(childId)
+            ? [...kept, {
+                related_media_external_id: externalId,
+                relation_type: 'PART_OF',
+                type_label: 'Part of',
+                title: entry.title_main || externalId,
+                cover: entry.cover_url ?? null,
+              }]
+            : kept;
+          await saveMediaRelations(childId, rows);
+          invalidateCachedMediaData(childId);
+        } catch (err) {
+          console.error(`Failed to propagate contains relation to ${childId}:`, err);
         }
       }
 
@@ -858,6 +971,17 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
                 onRemove={removeBundledRelation}
                 onOpenSearch={() => setSearchPopupMode('bundled')}
               />
+
+              {containedRelations.length > 0 && (
+                <>
+                  <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
+                  <PrEditorContainsSection
+                    containedRelations={containedRelations}
+                    onRemove={removeContainedRelation}
+                    onOpenSearch={() => setSearchPopupMode('contains')}
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -886,6 +1010,15 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
           onSelect={addBundledRelation}
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
+          closeOnSelect={false}
+        />
+      )}
+
+      {searchPopupMode === 'contains' && (
+        <MediaSearchPopup
+          onSelect={addContainedRelation}
+          onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...containedRelations.map(r => r.external_id)]}
           closeOnSelect={false}
         />
       )}

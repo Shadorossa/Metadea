@@ -128,8 +128,10 @@ export async function submitCollaborativeProposal(
 
   let prUrl: string | null = null;
   if (!prRes.ok) {
-    const prData = await prRes.json();
-    if (prData.errors?.[0]?.message?.includes('A pull request already exists')) {
+    const prData = await prRes.json().catch(() => ({} as { message?: string; errors?: Array<{ message?: string }> }));
+    const message = prData.errors?.[0]?.message || prData.message || '';
+
+    if (message.includes('A pull request already exists')) {
       onStatus('Proposal uploaded! An active Pull Request already exists.');
       const existingRes = await fetch(
         `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls?head=${isOwner ? REPO_OWNER : username}:${branchName}&state=open`,
@@ -139,8 +141,18 @@ export async function submitCollaborativeProposal(
         const existing = await existingRes.json();
         prUrl = existing?.[0]?.html_url ?? null;
       }
+    } else if (message.toLowerCase().includes('no commits between')) {
+      // The branch already carries this exact content (e.g. an earlier
+      // proposal for the same media+user was already merged, and this
+      // resubmission has nothing new on top of a reused branch name) — not
+      // a real failure, just nothing new to open a PR about.
+      onStatus('Nothing new to submit — this branch has no changes ahead of main.');
     } else {
-      throw new Error('Failed to open Pull Request.');
+      // Surface GitHub's actual reason instead of a generic message — a 422
+      // here can mean several different things (validation error, branch
+      // protection, etc.) and silently swallowing which one made this
+      // impossible to diagnose from the console alone.
+      throw new Error(`Failed to open Pull Request: ${message || `HTTP ${prRes.status}`}`);
     }
   } else {
     onStatus('Proposal submitted successfully!');

@@ -6,6 +6,15 @@
 // so relations saved before that change still load into the Bundled In list.
 export const BUNDLE_RELATION_TYPES: string[] = ['EPISODE', 'UPDATE', 'PART_OF'];
 
+// Split of BUNDLE_RELATION_TYPES by direction — "this entry belongs to
+// something else" (Bundled In, PART_OF — UPDATE kept for pre-existing rows
+// saved under the old episode/update picker) vs. "something else belongs to
+// this entry" (Contains, EPISODE). Both used to load into the same "Bundled
+// In" bucket regardless of direction, which made a container's own editor
+// show its contents as if *it* were bundled into them.
+export const PART_OF_RELATION_TYPES: string[] = ['PART_OF', 'UPDATE'];
+export const CONTAINS_RELATION_TYPES: string[] = ['EPISODE'];
+
 // Todos los relation_type que la saga-chain puede generar o leer.
 // Más amplio que los tipos que hacen a una obra miembro de saga
 // (el walker Rust solo recorre PREQUEL/SEQUEL) porque un miembro

@@ -193,6 +193,7 @@ export const es = {
       CHARACTER: 'Personaje', CONTAINS: 'Contiene', RECOMMENDATION: 'Recomendado',
       EDITIONS: 'Ediciones',
       ISSUE: 'Número',
+      EPISODE: 'Episodio',
       REL_ADAPTATION: 'Adaptación',
       REL_ALTERNATIVE: 'Versión alternativa',
       REMASTER: 'Remaster',

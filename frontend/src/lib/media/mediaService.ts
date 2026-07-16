@@ -228,6 +228,16 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
 
+    // Most providers never return a banner (AniList sometimes does, TMDB/
+    // IGDB/Comic Vine/OpenLibrary don't at all) — a banner added by hand via
+    // the collaborative catalog editor's "Banner URLs" field was getting
+    // silently wiped on every subsequent live re-fetch (including the
+    // background needsResync() refresh that can fire ~1s after saving an
+    // edit) because this always overwrote banners_csv with data.bannerImage,
+    // null or not. Falling back to whatever's already in the DB preserves a
+    // manual edit while still letting a real live banner value win.
+    const existing = await getCatalogEntry(data.externalId).catch(() => null);
+
     const entry: MediaCatalogEntry = {
       id: '', // Will be filled/matched by Rust if already exists
       external_id: data.externalId,
@@ -240,7 +250,7 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       title_romaji: data.titleEnglish || null,
       synopsis: data.description || null,
       cover_url: data.cover || null,
-      banners_csv: data.bannerImage || null,
+      banners_csv: data.bannerImage || existing?.banners_csv || null,
       release_year: data.releaseYear || null,
       release_month: data.releaseMonth || null,
       release_day: data.releaseDay || null,
@@ -289,6 +299,21 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   if (data) {
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
     await mergeAndPersistRelations(rawId, data.relations);
+
+    // Most providers never return a banner (AniList sometimes does, TMDB/
+    // IGDB/Comic Vine/OpenLibrary don't at all) — persistToCatalog already
+    // falls back to the DB's existing banners_csv so a manually-added banner
+    // never gets *erased*, but that alone doesn't stop the banner from
+    // visually flickering off: this same `data` object is also what gets
+    // handed to onFull()/setData() by the caller (see fetchMediaDataWithFallback's
+    // needsResync-triggered background refresh), so a live fetch with no
+    // banner would still show as "no banner" on screen for a moment even
+    // though the DB itself stayed correct. Patching data.bannerImage here
+    // too keeps what's on screen consistent with what's persisted.
+    if (!data.bannerImage) {
+      const existing = await getCatalogEntry(rawId).catch(() => null);
+      if (existing?.banners_csv) data.bannerImage = existing.banners_csv.split(',')[0];
+    }
 
     // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data);
