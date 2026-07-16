@@ -125,9 +125,14 @@ function StatusDropdown({
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord'>;
+  // Renders a supplied MediaPageData instead of fetching (used by the PR
+  // preview modal to show a proposal's simulated result). previewMode also
+  // hides every write-triggering control (rating, status, edit/PR buttons).
+  previewData?: MediaPageData;
+  previewMode?: boolean;
 }
 
-export default function MediaPage({ i18n }: Props) {
+export default function MediaPage({ i18n, previewData, previewMode = false }: Props) {
   const t  = i18n;
   const tm = t.media;
 
@@ -175,6 +180,7 @@ export default function MediaPage({ i18n }: Props) {
 
   // Escuchar cambios de navegación (Astro View Transitions y Popstate)
   useEffect(() => {
+    if (previewMode) return;
     const updateId = () => {
       const id = new URLSearchParams(window.location.search).get('id') ?? '';
       setCurrentId(id);
@@ -189,10 +195,22 @@ export default function MediaPage({ i18n }: Props) {
       document.removeEventListener('astro:page-load', updateId);
       window.removeEventListener('popstate', updateId);
     };
-  }, []);
+  }, [previewMode]);
+
+  // Preview mode: render the supplied data directly, skip every fetch below.
+  useEffect(() => {
+    if (!previewMode) return;
+    if (previewData) {
+      setCurrentId(previewData.externalId);
+      setData(previewData);
+      setPageState('ready');
+      setIsFetchingFull(false);
+    }
+  }, [previewMode, previewData]);
 
   // Fetch page data cuando el currentId cambia
   useEffect(() => {
+    if (previewMode) return;
     if (!currentId) return;
 
     const params = new URLSearchParams(window.location.search);
@@ -321,15 +339,15 @@ export default function MediaPage({ i18n }: Props) {
     );
 
     return () => { cancelled = true; };
-  }, [currentId]);
+  }, [currentId, previewMode]);
 
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
-    if (!data) return;
+    if (previewMode || !data) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') === '1') setShowEditor(true);
-  }, [data]);
+  }, [data, previewMode]);
 
   // The top/bottom fade on the synopsis should only appear when there's
   // actually more text than fits — otherwise a short synopsis gets its
@@ -352,14 +370,14 @@ export default function MediaPage({ i18n }: Props) {
     // render). Without this check, that stale `data` gets upserted under the
     // new currentId's row — e.g. quickly opening MGS3 then MGS2 could leave
     // MGS3's catalog entry overwritten with MGS2's data.
-    if (!data?.type || !currentId || data.externalId !== currentId) return;
+    if (previewMode || !data?.type || !currentId || data.externalId !== currentId) return;
 
     saveCatalogEntry(mapMediaDataToCatalogEntry(data, currentId)).catch(() => {});
   // Re-run when bannerImage/authors changes so partial→full transition saves the banner URL and authors to catalog.
   // currentId is included so navigating between two items of the same type (and same
   // transient bannerImage state) still re-fetches the library entry for the new item.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentId, data?.type, data?.bannerImage, data?.authors]);
+  }, [currentId, data?.type, data?.bannerImage, data?.authors, previewMode]);
 
   useDiscordPresence(data, t.discord);
 
@@ -473,7 +491,7 @@ export default function MediaPage({ i18n }: Props) {
           {tm.editor.saved_toast}
         </div>
       )}
-      {showEditor && (
+      {!previewMode && showEditor && (
         <MediaEditorModal
           externalId={currentId}
           data={data}
@@ -484,10 +502,10 @@ export default function MediaPage({ i18n }: Props) {
           onDeleted={handleEditorDeleted}
         />
       )}
-      {showSaga && (
+      {!previewMode && showSaga && (
         <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
       )}
-      {showPrEditor && (
+      {!previewMode && showPrEditor && (
         <PrEditorModal
           externalId={currentId}
           onClose={() => setShowPrEditor(false)}
@@ -518,14 +536,16 @@ export default function MediaPage({ i18n }: Props) {
           {data.dateBadge && (
             <div className="media-banner-date-badge">{data.dateBadge}</div>
           )}
-          <button
-            type="button"
-            className="media-banner-pr-btn"
-            onClick={() => setShowPrEditor(true)}
-            title="Proponer cambios o añadir datos en GitHub"
-          >
-            <IconPlus />
-          </button>
+          {!previewMode && (
+            <button
+              type="button"
+              className="media-banner-pr-btn"
+              onClick={() => setShowPrEditor(true)}
+              title="Proponer cambios o añadir datos en GitHub"
+            >
+              <IconPlus />
+            </button>
+          )}
         </div>
         {data.developerBadge && (
           <div className="media-banner-developer-badge">{data.developerBadge}</div>
@@ -541,27 +561,28 @@ export default function MediaPage({ i18n }: Props) {
 
           {/* Centro: cover + widget de biblioteca */}
           <div className="media-cover-column">
-            {data.hasSaga && (
+            {!previewMode && data.hasSaga && (
               <button type="button" className="media-saga-btn" onClick={() => setShowSaga(true)}>
                 <IconLayers size={14} />
                 {tm.saga_button}
               </button>
             )}
             <div
-              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isBlockedEdition ? ' is-edition' : ''}`}
-              role="button"
-              tabIndex={0}
+              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isBlockedEdition ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
+              role={previewMode ? undefined : 'button'}
+              tabIndex={previewMode ? undefined : 0}
               aria-label={isBlockedEdition
                 ? tm.is_version_of.replace('{title}', data.parentGame!.title)
                 : tm.add_to_library.replace('\n', ' ')}
               onClick={() => {
+                if (previewMode) return;
                 if (isBlockedEdition) {
                   window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`;
                   return;
                 }
                 handleCoverClick();
               }}
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && (
+              onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
                 isBlockedEdition
                   ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`)
                   : handleCoverClick()
@@ -593,7 +614,7 @@ export default function MediaPage({ i18n }: Props) {
               </div>
             </div>
 
-            {!isBlockedEdition && (
+            {!previewMode && !isBlockedEdition && (
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown

@@ -2,9 +2,7 @@ import { invoke } from '../tauri';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';
-
-const REPO_OWNER = 'Shadorossa';
-const REPO_NAME = 'Metadea';
+import { REPO_OWNER, REPO_NAME, isRepoOwner } from './ownership';
 
 export interface ProposalBundle {
   media_catalog: MediaCatalogEntry;
@@ -38,7 +36,7 @@ export async function submitCollaborativeProposal(
   const filePath = `database/${externalId.replace(':', '-')}.json`;
   const branchName = `proposal-${externalId.replace(':', '-')}-${username}`;
 
-  const isOwner = username.toLowerCase() === REPO_OWNER.toLowerCase();
+  const isOwner = isRepoOwner(username);
   const headRef = isOwner ? branchName : `${username}:${branchName}`;
   let targetRepoOwner = REPO_OWNER;
 

@@ -1,0 +1,133 @@
+.catalog-admin-panel {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.catalog-admin-title {
+  font-size: 1.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.catalog-admin-search {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text, #fff);
+  margin-bottom: 1.25rem;
+}
+
+.catalog-admin-status {
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.95rem;
+}
+
+.catalog-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.catalog-admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.catalog-admin-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.catalog-admin-item-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-admin-item-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted, #a0a0b8);
+}
+
+.catalog-admin-item-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.catalog-admin-edit-btn,
+.catalog-admin-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text, #fff);
+}
+
+.catalog-admin-edit-btn:hover {
+  background: var(--accent, #7c6af7);
+  border-color: var(--accent, #7c6af7);
+}
+
+.catalog-admin-delete-btn {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.catalog-admin-delete-btn:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+.catalog-admin-confirm {
+  background: #14141a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.catalog-admin-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.catalog-admin-confirm-cancel,
+.catalog-admin-confirm-delete {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text, #fff);
+}
+
+.catalog-admin-confirm-delete {
+  background: #f87171;
+  border-color: #f87171;
+  color: #1a0a0a;
+  font-weight: 600;
+}
+
+.catalog-admin-confirm-delete:hover {
+  filter: brightness(1.1);
+}

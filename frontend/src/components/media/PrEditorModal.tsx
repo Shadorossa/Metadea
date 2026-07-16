@@ -42,6 +42,11 @@ interface Props {
   externalId: string;
   onClose: () => void;
   onSaved?: () => void;
+  // 'local' (admin catalog panel) writes straight to the local DB and skips
+  // branch/PR creation entirely — everything up to and including onSaved()
+  // already writes locally regardless of mode, so this only gates the
+  // GitHub submission step below it.
+  mode?: 'proposal' | 'local';
 }
 
 
@@ -57,7 +62,7 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
+export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' }: Props) {
   const t = getT();
   const tm = t.media;
   // Shown in the editor, in the UI's own language.
@@ -738,6 +743,14 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
       }
 
       if (onSaved) onSaved();
+
+      if (mode === 'local') {
+        // Everything above already wrote straight to the local DB — the
+        // admin catalog panel doesn't propose anything upstream.
+        setStatusMsg('Guardado en la base de datos local.');
+        setTimeout(() => onClose(), 1000);
+        return;
+      }
 
       // The PR touches more than the flat catalog row — it's a bundle so a
       // single collaborative-catalog file can also carry the entry's

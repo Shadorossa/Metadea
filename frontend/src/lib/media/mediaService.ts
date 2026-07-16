@@ -25,6 +25,7 @@ import {
   sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
   mediaCharactersToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
+import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 
 // Re-exported so existing callers (MediaPage.tsx, ProfileLibraryEditor.tsx,
 // etc.) don't need to change their import path — mediaService.ts stays the
@@ -516,4 +517,27 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   if (updatedData.relations.length === currentData.relations.length) return null; // nothing new
 
   return updatedData.relations;
+}
+
+// Simulates what a collaborative-catalog proposal PR would look like once
+// merged, for the PR preview modal — never fetches or writes anything.
+// `baseline` (the current local catalog entry, or null if this would be a
+// brand-new entry) fills in fields the proposal itself doesn't touch, since
+// bundle.media_catalog only carries what PrEditorModal actually changed.
+export function buildPreviewMediaPageData(bundle: ProposalBundle, baseline: MediaCatalogEntry | null): MediaPageData {
+  const merged: MediaCatalogEntry = baseline ? { ...baseline, ...bundle.media_catalog } : bundle.media_catalog;
+  const base = mapCatalogEntryToPartialData(merged);
+
+  const ownRelations = bundle.media_relations.filter(
+    r => !r.media_external_id || r.media_external_id === bundle.media_catalog.external_id,
+  );
+  const { relations, hasSaga } = sortRelationsForDisplay(ownRelations);
+
+  return {
+    ...base,
+    relations,
+    hasSaga,
+    characters: bundle.characters.map(dbCharacterToMediaCharacter),
+    authors: bundle.media_authors.length > 0 ? bundle.media_authors.map(dbAuthorToMediaAuthor) : base.authors,
+  };
 }
