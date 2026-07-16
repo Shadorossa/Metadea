@@ -32,17 +32,9 @@
     "sync_failed_count": 0,
     "last_sync_error": null,
     "created_at": "2026-07-04T15:04:36.497Z",
-    "updated_at": "2026-07-16T08:48:04.713646900+00:00"
+    "updated_at": "2026-07-16T08:48:00.692368200+00:00"
   },
   "media_relations": [
-    {
-      "related_media_external_id": "vnovel:12198",
-      "relation_type": "PART_OF",
-      "type_label": "Part of",
-      "title": "Umineko no Naku Koro ni",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobw5j.jpg",
-      "media_external_id": "vnovel:272085"
-    },
     {
       "media_external_id": "vnovel:272085",
       "related_media_external_id": "vnovel:67173",
