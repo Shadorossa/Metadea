@@ -821,9 +821,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
     <Field label={label} changed={isFieldChanged(field)}>
       <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
         <option value="">—</option>
-        {Object.keys(tm.formats).map(key => (
-          <option key={key} value={key}>{tm.formats[key as keyof typeof tm.formats]}</option>
-        ))}
+        {Object.keys(tm.formats)
+          .sort((a, b) => tm.formats[a as keyof typeof tm.formats].localeCompare(tm.formats[b as keyof typeof tm.formats]))
+          .map(key => (
+            <option key={key} value={key}>{tm.formats[key as keyof typeof tm.formats]}</option>
+          ))}
       </select>
     </Field>
   );

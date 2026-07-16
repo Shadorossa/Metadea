@@ -2322,6 +2322,27 @@
   resize: vertical;
 }
 
+/* Native <select> arrow/option list look out of place against the dark
+   underlined inputs around it (default browser chrome: light dropdown,
+   plain arrow) — same custom-arrow treatment as .pr-editor-media-card-select
+   elsewhere in this file, plus explicit option colors so the open list
+   itself stays dark instead of falling back to the browser's white default. */
+.pr-editor-field select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  cursor: pointer;
+  padding-right: 1.4rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%23a0a0b8' d='M2.5 4.5l3.5 3.5 3.5-3.5z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.1rem center !important;
+  background-size: 9px !important;
+}
+
+.pr-editor-field select option {
+  background: var(--bg-elevated, #1b1917);
+  color: var(--text-main, #e3e1db);
+}
+
 .pr-editor-slots-box {
   border-top: none !important;
   border-left: none !important;
@@ -2877,8 +2898,10 @@
 /* Fixed 10-per-row instead of auto-fill — the admin panel is wide enough
    (unlike the popup's fixed 900px width) that letting covers grow to fill
    available space looked sparse; a fixed column count keeps them a
-   consistent, compact size regardless of container width. */
-.pr-editor-search-popup-content--inline .pr-editor-search-grid {
+   consistent, compact size regardless of container width. Scoped to the
+   whole admin panel (not just "Add work") so the local-catalog and GitHub
+   tabs' grids match it too. */
+.catalog-admin-panel .pr-editor-search-grid {
   grid-template-columns: repeat(10, 1fr);
 }
 

@@ -40,6 +40,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [githubLoading, setGithubLoading] = useState(true);
   const [githubDeleteTarget, setGithubDeleteTarget] = useState<GitHubDirEntry | null>(null);
   const [githubBusy, setGithubBusy] = useState(false);
+  // GitHub's file listing has no cover — most merged entries are already
+  // synced into the local catalog (see sync_community_catalog), so this maps
+  // external_id → cover_url from the *full* local catalog (independent of
+  // the local tab's own search query) purely to fill in a thumbnail here.
+  const [coverMap, setCoverMap] = useState<Record<string, string>>({});
 
   // "Add work" state
   const [addBusy, setAddBusy] = useState(false);
@@ -88,6 +93,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     if (!isOwner) return;
     loadEntries(query);
     loadGithubFiles();
+    getAllCatalogEntries().then(all => {
+      const map: Record<string, string> = {};
+      for (const e of all) if (e.cover_url) map[e.external_id] = e.cover_url;
+      setCoverMap(map);
+    }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner]);
 
@@ -207,21 +217,24 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!loading && entries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
           {!loading && entries.length > 0 && (
-            <div className="catalog-admin-list">
+            <div className="pr-editor-search-grid">
               {entries.map(entry => (
-                <div key={entry.external_id} className="catalog-admin-item">
-                  <div className="catalog-admin-item-info">
-                    <span className="catalog-admin-item-title">{entry.title_main || entry.external_id}</span>
-                    <span className="catalog-admin-item-meta">{entry.external_id}</span>
+                <div key={entry.external_id} className="catalog-admin-card">
+                  <div className="catalog-admin-card-cover">
+                    {entry.cover_url
+                      ? <img src={entry.cover_url} alt="" loading="lazy" />
+                      : <span className="catalog-admin-card-no-cover">—</span>}
                   </div>
-                  <div className="catalog-admin-item-actions">
-                    <button type="button" className="catalog-admin-edit-btn" onClick={() => setEditingId(entry.external_id)} title={t.edit_button}>
+                  <div className="pr-editor-search-result-info">
+                    <div className="pr-editor-search-result-id">{entry.external_id}</div>
+                    <div className="pr-editor-search-result-title">{entry.title_main || entry.external_id}</div>
+                  </div>
+                  <div className="catalog-admin-card-actions">
+                    <button type="button" className="catalog-admin-icon-btn" onClick={() => setEditingId(entry.external_id)} aria-label={t.edit_button} title={t.edit_button}>
                       <IconPencil size={13} />
-                      {t.edit_button}
                     </button>
-                    <button type="button" className="catalog-admin-delete-btn" onClick={() => setDeleteTarget(entry)} title={t.delete_button}>
+                    <button type="button" className="catalog-admin-icon-btn catalog-admin-icon-btn--delete" onClick={() => setDeleteTarget(entry)} aria-label={t.delete_button} title={t.delete_button}>
                       <IconTrash size={13} />
-                      {t.delete_button}
                     </button>
                   </div>
                 </div>
@@ -246,25 +259,32 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!githubLoading && visibleGithubFiles.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
           {!githubLoading && visibleGithubFiles.length > 0 && (
-            <div className="catalog-admin-list">
-              {visibleGithubFiles.map(file => (
-                <div key={file.path} className="catalog-admin-item">
-                  <div className="catalog-admin-item-info">
-                    <span className="catalog-admin-item-title">{externalIdFromDatabaseFilename(file.name)}</span>
-                    <span className="catalog-admin-item-meta">{file.path}</span>
+            <div className="pr-editor-search-grid">
+              {visibleGithubFiles.map(file => {
+                const fileExternalId = externalIdFromDatabaseFilename(file.name);
+                const cover = coverMap[fileExternalId];
+                return (
+                  <div key={file.path} className="catalog-admin-card">
+                    <div className="catalog-admin-card-cover">
+                      {cover
+                        ? <img src={cover} alt="" loading="lazy" />
+                        : <span className="catalog-admin-card-no-cover">—</span>}
+                    </div>
+                    <div className="pr-editor-search-result-info">
+                      <div className="pr-editor-search-result-id">{fileExternalId}</div>
+                      <div className="pr-editor-search-result-title">{fileExternalId}</div>
+                    </div>
+                    <div className="catalog-admin-card-actions">
+                      <button type="button" className="catalog-admin-icon-btn" disabled={githubBusy} onClick={() => openGithubEntry(file)} aria-label={t.edit_button} title={t.edit_button}>
+                        <IconPencil size={13} />
+                      </button>
+                      <button type="button" className="catalog-admin-icon-btn catalog-admin-icon-btn--delete" onClick={() => setGithubDeleteTarget(file)} aria-label={t.delete_button} title={t.delete_button}>
+                        <IconTrash size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="catalog-admin-item-actions">
-                    <button type="button" className="catalog-admin-edit-btn" disabled={githubBusy} onClick={() => openGithubEntry(file)} title={t.edit_button}>
-                      <IconPencil size={13} />
-                      {t.edit_button}
-                    </button>
-                    <button type="button" className="catalog-admin-delete-btn" onClick={() => setGithubDeleteTarget(file)} title={t.delete_button}>
-                      <IconTrash size={13} />
-                      {t.delete_button}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>

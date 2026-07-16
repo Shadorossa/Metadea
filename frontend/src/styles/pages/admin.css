@@ -53,77 +53,78 @@
   font-size: 0.95rem;
 }
 
-.catalog-admin-list {
+/* Local-catalog and GitHub tab grids reuse .pr-editor-search-grid /
+   .pr-editor-search-result-info / .pr-editor-search-result-id /
+   .pr-editor-search-result-title (media.css) for the same look as the "Add
+   work" search — only the cover box and action buttons are admin-specific,
+   since these cards need two actions (edit/delete) instead of one click. */
+.catalog-admin-card {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1b1917);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.5rem;
+  text-align: center;
 }
 
-.catalog-admin-item {
+.catalog-admin-card-cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 2px;
+  background: var(--bg-primary, #12110f);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1.1rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.catalog-admin-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.catalog-admin-item-title {
-  font-weight: 600;
+  justify-content: center;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.catalog-admin-item-meta {
-  font-size: 0.8rem;
-  color: var(--text-muted, #a0a0b8);
+.catalog-admin-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.catalog-admin-item-actions {
+.catalog-admin-card-no-cover {
+  font-size: 1.2rem;
+  color: var(--text-dim, #7a726a);
+}
+
+.catalog-admin-card-actions {
   display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  gap: 0.4rem;
+  justify-content: center;
 }
 
-.catalog-admin-edit-btn,
-.catalog-admin-delete-btn {
+.catalog-admin-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 6px;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text, #fff);
 }
 
-.catalog-admin-edit-btn:hover {
+.catalog-admin-icon-btn:hover {
   background: var(--accent, #7c6af7);
   border-color: var(--accent, #7c6af7);
 }
 
-.catalog-admin-delete-btn {
+.catalog-admin-icon-btn--delete {
   color: #f87171;
   border-color: rgba(248, 113, 113, 0.3);
 }
 
-.catalog-admin-delete-btn:hover {
+.catalog-admin-icon-btn--delete:hover {
   background: rgba(248, 113, 113, 0.15);
 }
 
-.catalog-admin-edit-btn:disabled {
+.catalog-admin-icon-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -166,85 +167,3 @@
   filter: brightness(1.1);
 }
 
-/* AdminAddSearch */
-.admin-add-search {
-  margin-top: 0.5rem;
-}
-
-.admin-add-search-controls {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-}
-
-.admin-add-search-controls .catalog-admin-search {
-  margin-bottom: 0;
-  flex: 1;
-  min-width: 180px;
-}
-
-.admin-add-search-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.85rem;
-}
-
-.admin-add-search-card {
-  display: flex;
-  flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
-  overflow: hidden;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.admin-add-search-card:hover {
-  border-color: var(--accent, #7c6af7);
-  background: rgba(124, 106, 247, 0.08);
-}
-
-.admin-add-search-card-cover {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  background: rgba(255, 255, 255, 0.04);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.admin-add-search-card-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.admin-add-search-card-no-cover {
-  font-size: 1.5rem;
-  color: rgba(255, 255, 255, 0.15);
-}
-
-.admin-add-search-card-info {
-  padding: 0.5rem 0.65rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.admin-add-search-card-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.admin-add-search-card-meta {
-  font-size: 0.75rem;
-  color: var(--text-muted, #a0a0b8);
-}
