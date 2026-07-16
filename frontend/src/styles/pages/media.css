@@ -2304,6 +2304,7 @@
 .pr-editor-field input[type="text"],
 .pr-editor-field input[type="number"],
 .pr-editor-field textarea,
+.pr-editor-field select,
 .pr-editor-cover-uploader input {
   border-top: none !important;
   border-left: none !important;
@@ -2439,6 +2440,7 @@
 .pr-editor-field input[type="text"],
 .pr-editor-field input[type="number"],
 .pr-editor-field textarea,
+.pr-editor-field select,
 .pr-editor-cover-uploader input {
   transition: border-color var(--anim-fast) ease, box-shadow var(--anim-fast) ease;
 }
@@ -2446,6 +2448,7 @@
 .pr-editor-field input[type="text"]:focus,
 .pr-editor-field input[type="number"]:focus,
 .pr-editor-field textarea:focus,
+.pr-editor-field select:focus,
 .pr-editor-cover-uploader input:focus {
   border-color: var(--accent, #7c6af7) !important;
   box-shadow: 0 0 8px rgba(124, 106, 247, 0.25) !important;
@@ -2999,7 +3002,8 @@
 
 .pr-editor-field input[type="text"],
 .pr-editor-field input[type="number"],
-.pr-editor-field textarea {
+.pr-editor-field textarea,
+.pr-editor-field select {
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
   color: var(--text-main, #e3e1db);
@@ -3011,6 +3015,7 @@
 }
 
 .pr-editor-field input:focus,
+.pr-editor-field select:focus,
 .pr-editor-field textarea:focus {
   border-color: var(--accent, #7c6af7);
   outline: none;

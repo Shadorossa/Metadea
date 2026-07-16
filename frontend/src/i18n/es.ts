@@ -138,9 +138,9 @@ export const es = {
     source_local:     'Mi catálogo local',
     source_github:    'GitHub (database/)',
     source_add:       'Añadir obra',
-    github_hint:      'Estas son las entradas ya fusionadas en el catálogo compartido de GitHub. Editar una la actualiza directamente en main.',
+    add_fetching:     'Obteniendo los datos completos de esta obra...',
+    github_hint:      'Estas son las entradas ya fusionadas en el catálogo compartido de GitHub. Editar una envía tus cambios como una nueva pull request para revisión.',
     github_open_error:   'No se pudo cargar esta entrada desde GitHub.',
-    github_save_error:   'La entrada se guardó localmente, pero no se pudo subir el cambio a GitHub.',
     github_delete_error: 'No se pudo eliminar esta entrada de GitHub.',
   },
   search: {

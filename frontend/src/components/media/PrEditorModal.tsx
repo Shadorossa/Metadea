@@ -813,6 +813,21 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
     </Field>
   );
 
+  // Options come straight from the i18n formats dictionary (media.formats) —
+  // it already carries every format key both AniList (TV/MOVIE/OVA/...) and
+  // IGDB (GAME/REMAKE/REMASTER/.../VISUAL_NOVEL) mappers can produce, so this
+  // never drifts out of sync with what a live fetch would set automatically.
+  const formatField = (field: keyof MediaCatalogEntry, label: string) => (
+    <Field label={label} changed={isFieldChanged(field)}>
+      <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
+        <option value="">—</option>
+        {Object.keys(tm.formats).map(key => (
+          <option key={key} value={key}>{tm.formats[key as keyof typeof tm.formats]}</option>
+        ))}
+      </select>
+    </Field>
+  );
+
   const slotField = (field: keyof MediaCatalogEntry, label: string, opts?: {
     allowed?: string[]; restrict?: boolean; preview?: boolean; fullWidth?: boolean; dotClass?: string;
   }) => (
@@ -933,8 +948,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             </div>
 
             <div className="pr-editor-section">
-              {sectionTitle('Classification & Metadata', ['genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'])}
+              {sectionTitle('Classification & Metadata', ['format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'])}
               <div className="pr-editor-classification-grid">
+                {formatField('format', 'Format')}
                 {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
                 {slotField('genres_tag_csv', 'Themes / Tags')}
                 {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}

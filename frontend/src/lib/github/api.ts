@@ -73,17 +73,6 @@ export async function listDatabaseFiles(token: string): Promise<GitHubDirEntry[]
   return entries.filter(e => e.type === 'file' && e.name.endsWith('.json'));
 }
 
-// Direct commit to main — used for owner-only edits to already-merged
-// catalog files, skipping the branch/PR flow entirely.
-export async function commitFileToMain(token: string, path: string, content: string, sha: string, message: string): Promise<void> {
-  const base64Content = btoa(unescape(encodeURIComponent(content)));
-  await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, content: base64Content, sha, branch: 'main' }),
-  });
-}
-
 export async function deleteFileFromMain(token: string, path: string, sha: string, message: string): Promise<void> {
   await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
     method: 'DELETE',

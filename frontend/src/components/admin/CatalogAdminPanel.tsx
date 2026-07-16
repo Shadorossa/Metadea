@@ -6,11 +6,12 @@ import {
   type MediaCatalogEntry,
 } from '../../lib/tauri/catalog';
 import {
-  listDatabaseFiles, getFileAtRef, commitFileToMain, deleteFileFromMain, externalIdFromDatabaseFilename,
+  listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
 } from '../../lib/github/api';
-import { hydrateBundleIntoLocalCatalog, buildBundleFromLocal } from '../../lib/github/bundle-sync';
+import { hydrateBundleIntoLocalCatalog } from '../../lib/github/bundle-sync';
 import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
 import { AdminAddSearch } from './AdminAddSearch';
 import { IconPencil, IconTrash } from '../local/ui/icons';
@@ -20,12 +21,6 @@ interface Props {
 }
 
 type Source = 'local' | 'github' | 'add';
-
-interface GithubEditTarget {
-  externalId: string;
-  path: string;
-  sha: string;
-}
 
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
@@ -46,11 +41,16 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [githubDeleteTarget, setGithubDeleteTarget] = useState<GitHubDirEntry | null>(null);
   const [githubBusy, setGithubBusy] = useState(false);
 
-  // Editor state — shared between both sources; githubEditTarget is set only
-  // when the entry being edited came from GitHub, so onSaved knows whether to
-  // push the result back to main afterward.
+  // "Add work" state
+  const [addBusy, setAddBusy] = useState(false);
+
+  // Editor state, shared across all three sources — every edit (whether it
+  // started from the local catalog, an already-merged GitHub entry, or a
+  // brand-new "Add work" pick) goes through PrEditorModal's default
+  // 'proposal' mode: a branch + PR, same as any other contribution, since
+  // every change here is meant to reach the shared catalog for every user,
+  // not just stay on this machine.
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [githubEditTarget, setGithubEditTarget] = useState<GithubEditTarget | null>(null);
 
   const isOwner = gate.state === 'owner';
   const token = gate.token;
@@ -124,10 +124,13 @@ export function CatalogAdminPanel({ i18n }: Props) {
     if (!token || githubBusy) return;
     setGithubBusy(true);
     try {
-      const { content, sha } = await getFileAtRef(token, file.path, 'main');
+      const { content } = await getFileAtRef(token, file.path, 'main');
       const bundle = JSON.parse(content) as ProposalBundle;
+      // Imports the merged entry into the local DB so the rich editor has
+      // something to show/edit — the actual save still goes out as a new
+      // proposal PR (see the shared PrEditorModal below), not a direct
+      // overwrite of this file.
       await hydrateBundleIntoLocalCatalog(bundle);
-      setGithubEditTarget({ externalId: bundle.media_catalog.external_id, path: file.path, sha });
       setEditingId(bundle.media_catalog.external_id);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);
@@ -151,28 +154,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
-  const handleEditorClose = () => {
-    setEditingId(null);
-    setGithubEditTarget(null);
-  };
+  const handleEditorClose = () => setEditingId(null);
 
-  const handleEditorSaved = async () => {
+  const handleEditorSaved = () => {
     loadEntries(query);
-    if (!githubEditTarget || !token) return;
-    try {
-      const bundle = await buildBundleFromLocal(githubEditTarget.externalId);
-      if (!bundle) return;
-      await commitFileToMain(
-        token,
-        githubEditTarget.path,
-        JSON.stringify(bundle, null, 2),
-        githubEditTarget.sha,
-        `Update ${githubEditTarget.path} via Metadea admin panel`,
-      );
-    } catch (err) {
-      console.error('[CatalogAdminPanel] Failed to push edit back to GitHub:', err);
-      alert(t.github_save_error);
-    }
+    loadGithubFiles();
   };
 
   const visibleGithubFiles = githubFiles.filter(f =>
@@ -285,44 +271,62 @@ export function CatalogAdminPanel({ i18n }: Props) {
       )}
 
       {source === 'add' && (
-        <AdminAddSearch
-          onSelect={async ({ externalId, title, coverUrl }) => {
-            const existing = await getCatalogEntry(externalId).catch(() => null);
-            if (!existing) {
-              const now = new Date().toISOString();
-              await saveCatalogEntry({
-                id: '',
-                external_id: externalId,
-                type: externalId.split(':')[0],
-                format: null,
-                source: externalId.startsWith('game:') || externalId.startsWith('vnovel:') ? 'igdb'
-                  : externalId.startsWith('anime:') || externalId.startsWith('manga:') || externalId.startsWith('lnovel:') ? 'anilist'
-                  : externalId.startsWith('movie:') || externalId.startsWith('series:') ? 'tmdb'
-                  : externalId.startsWith('book:') ? 'openlibrary'
-                  : externalId.startsWith('comic:') ? 'comicvine'
-                  : null,
-                title_main: title,
-                title_romaji: null,
-                title_native: null,
-                cover_url: coverUrl,
-                release_year: null,
-                release_month: null,
-                release_day: null,
-                score_global: null,
-                created_at: now,
-                updated_at: now,
-              }).catch(console.error);
-            }
-            setGithubEditTarget(null);
-            setEditingId(externalId);
-          }}
-        />
+        <>
+          {addBusy && <p className="catalog-admin-status">{t.add_fetching}</p>}
+          <AdminAddSearch
+            onSelect={async ({ externalId, title, coverUrl }) => {
+              if (addBusy) return;
+              // Only fetch/persist anything when this id has never been
+              // cataloged before — an existing row may carry curated edits
+              // (e.g. a manually-corrected release date) that a live refetch
+              // must never reset back to whatever the API currently says.
+              const existing = await getCatalogEntry(externalId).catch(() => null);
+              if (!existing) {
+                setAddBusy(true);
+                try {
+                  // Same live fetch+map+persist every normal media page does on
+                  // first visit (fetchMediaData → provider mapper →
+                  // persistToCatalog) — gets synopsis/dates/genres/platforms/
+                  // authors/etc, not just title+cover, before opening the editor.
+                  const full = await fetchMediaData(externalId).catch(() => null);
+                  if (!full) {
+                    const now = new Date().toISOString();
+                    await saveCatalogEntry({
+                      id: '',
+                      external_id: externalId,
+                      type: externalId.split(':')[0],
+                      format: null,
+                      source: externalId.startsWith('game:') || externalId.startsWith('vnovel:') ? 'igdb'
+                        : externalId.startsWith('anime:') || externalId.startsWith('manga:') || externalId.startsWith('lnovel:') ? 'anilist'
+                        : externalId.startsWith('movie:') || externalId.startsWith('series:') ? 'tmdb'
+                        : externalId.startsWith('book:') ? 'openlibrary'
+                        : externalId.startsWith('comic:') ? 'comicvine'
+                        : null,
+                      title_main: title,
+                      title_romaji: null,
+                      title_native: null,
+                      cover_url: coverUrl,
+                      release_year: null,
+                      release_month: null,
+                      release_day: null,
+                      score_global: null,
+                      created_at: now,
+                      updated_at: now,
+                    }).catch(console.error);
+                  }
+                } finally {
+                  setAddBusy(false);
+                }
+              }
+              setEditingId(externalId);
+            }}
+          />
+        </>
       )}
 
       {editingId && (
         <PrEditorModal
           externalId={editingId}
-          mode="local"
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
         />

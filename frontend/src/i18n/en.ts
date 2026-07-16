@@ -138,9 +138,9 @@ export const en = {
     source_local:     'My local catalog',
     source_github:    'GitHub (database/)',
     source_add:       'Add work',
-    github_hint:      'These are the entries already merged into the shared catalog on GitHub. Editing one updates it directly on main.',
+    add_fetching:     'Fetching full data for this title...',
+    github_hint:      'These are the entries already merged into the shared catalog on GitHub. Editing one submits your changes as a new pull request for review.',
     github_open_error:   'Could not load this entry from GitHub.',
-    github_save_error:   'The entry was saved locally, but pushing it to GitHub failed.',
     github_delete_error: 'Could not delete this entry from GitHub.',
   },
   search: {

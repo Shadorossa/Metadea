@@ -4,6 +4,7 @@ import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics }                from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
+import { searchCatalog, type MediaCatalogEntry } from '../tauri/catalog';
 
 export { MissingApiKeyError };
 
@@ -63,7 +64,7 @@ const ALL_SEARCH_TYPES: MediaType[] = [
   'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic',
 ];
 
-async function searchOne(
+function fetchFromApi(
   mediaType: Exclude<MediaType, 'all'>,
   searchQuery: string,
   signal: AbortSignal,
@@ -80,8 +81,65 @@ async function searchOne(
     case 'book':      return searchBooks(searchQuery, signal, page);
     case 'comic':     return searchComics(searchQuery, signal, page);
     case 'character': return searchAniListCharacters(searchQuery, signal, page);
-    default:          return { results: [], hasMore: false };
+    default:          return Promise.resolve({ results: [], hasMore: false });
   }
+}
+
+function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
+  return {
+    externalId: entry.external_id,
+    type: entry.type as MediaType,
+    format: entry.format || '',
+    source: (entry.source as SearchResult['source']) || 'igdb',
+    titleMain: entry.title_main || entry.external_id,
+    titleRomaji: entry.title_romaji ?? null,
+    titleNative: entry.title_native ?? null,
+    coverUrl: entry.cover_url ?? null,
+    releaseYear: entry.release_year ?? null,
+    releaseMonth: entry.release_month ?? null,
+    releaseDay: entry.release_day ?? null,
+    scoreGlobal: entry.score_global ?? null,
+  };
+}
+
+// Local catalog entries the live API doesn't surface (IGDB's normal search
+// filters out titles missing a cover or with an unusual category — see
+// AdminAddSearch's unfiltered search, used precisely to find and add those)
+// still deserve to be findable afterward through the regular search, once
+// they're already in the local catalog. Not paginated — only checked on
+// page 1, merged in without overriding an API hit for the same id (the live
+// result is generally fresher/richer).
+async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character'>): Promise<SearchResult[]> {
+  const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
+  return entries.filter(e => e.type === mediaType).map(catalogEntryToSearchResult);
+}
+
+async function searchOne(
+  mediaType: Exclude<MediaType, 'all'>,
+  searchQuery: string,
+  signal: AbortSignal,
+  page: number,
+): Promise<SearchPage> {
+  const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page);
+  if (mediaType === 'character' || page !== 1) return apiPromise;
+
+  const [apiOutcome, localResults] = await Promise.all([
+    apiPromise.then(p => ({ ok: true as const, page: p })).catch(err => ({ ok: false as const, err })),
+    searchLocalCatalog(searchQuery, mediaType),
+  ]);
+
+  if (!apiOutcome.ok) {
+    // Preserve existing error surfacing (e.g. MissingApiKeyError prompts the
+    // user to add an API key) when there's nothing else to show — but a
+    // local-only hit is still a valid result even if the live provider
+    // couldn't be reached.
+    if (localResults.length === 0) throw apiOutcome.err;
+    return { results: localResults, hasMore: false };
+  }
+
+  const seen = new Set(apiOutcome.page.results.map(r => r.externalId));
+  const extraLocal = localResults.filter(r => !seen.has(r.externalId));
+  return { results: [...apiOutcome.page.results, ...extraLocal], hasMore: apiOutcome.page.hasMore };
 }
 
 // Fans out to every provider in parallel and merges what comes back. A
