@@ -45,6 +45,13 @@ fn get_game_category(game: &serde_json::Value) -> u64 {
         .unwrap_or(0)
 }
 
+/// Whole-word match only — "Definitive Edition" is excluded, "Expedition 33"
+/// is not (a substring `contains("edition")` check would wrongly catch it).
+fn name_has_edition_word(name: &str) -> bool {
+    name.split(|c: char| !c.is_alphanumeric())
+        .any(|tok| tok.eq_ignore_ascii_case("edition"))
+}
+
 /// Returns true if the game is a DLC/addon/non-game entry that should be excluded.
 fn is_non_game(game: &serde_json::Value) -> bool {
     // Solo permitimos: 0 (main_game), 4 (standalone_expansion), 7 (season), 8 (remake), 14 (update)
@@ -1155,14 +1162,37 @@ pub async fn igdb_search(
             continue;
         }
 
-        // 0 main_game, 3 bundle, 4 standalone_expansion, 7 season, 8 remake, 14 update.
+        // Bundles (3), remasters (9), updates (14), and expanded editions
+        // (10) never belong in plain search results (bundles aren't a
+        // playable title on their own; remasters/updates/expanded editions
+        // should only ever surface as a relation on the original game's
+        // page, not as their own separate search hit) — checked against
+        // both fields independently since get_game_category's
+        // category-then-game_type fallback can mask one flagging it when
+        // the other is simply absent from this particular record (e.g. an
+        // expanded edition IGDB tagged category=main_game but game_type=10).
+        const EXCLUDED: &[u64] = &[3, 9, 10, 14];
+        if item["category"].as_u64().is_some_and(|c| EXCLUDED.contains(&c))
+            || item["game_type"].as_u64().is_some_and(|c| EXCLUDED.contains(&c)) {
+            continue;
+        }
+
+        // 0 main_game, 4 standalone_expansion, 7 season, 8 remake.
         let category = get_game_category(&item);
-        if !matches!(category, 0 | 3 | 4 | 7 | 8 | 14) {
+        if !matches!(category, 0 | 4 | 7 | 8) {
             continue;
         }
 
         // Si es main_game (0) y tiene parent o version_title, lo saltamos para evitar duplicados de fichas base
         if category == 0 && (!item["version_parent"].is_null() || !item["version_title"].is_null()) {
+            continue;
+        }
+
+        // A main_game (0) whose own name is literally "... Edition" is
+        // almost always a re-released bundle/version IGDB miscategorized as
+        // its own main game rather than as a proper edition/remaster
+        // relation — word-boundary checked so "Expedition 33" isn't caught.
+        if category == 0 && name_has_edition_word(item["name"].as_str().unwrap_or("")) {
             continue;
         }
 

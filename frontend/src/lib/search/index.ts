@@ -102,6 +102,19 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
   };
 }
 
+// Same "not its own search hit" formats igdb_search excludes on the live
+// side (Rust, igdb.rs) — a local catalog row can carry one of these (e.g.
+// synced from the community catalog, or fetched before format tracking
+// existed) and without this it'd not-so-quietly reappear here even though
+// the live path was specifically made to hide it.
+const EXCLUDED_LOCAL_FORMATS = new Set(['REMASTER', 'EXPANDED_GAME', 'UPDATE', 'DLC', 'MOD', 'PORT', 'FORK']);
+
+// Whole-word match only — mirrors name_has_edition_word in igdb.rs so
+// "Expedition 33" isn't caught by a plain "edition" substring check.
+function titleHasEditionWord(title: string): boolean {
+  return title.split(/[^a-zA-Z0-9]+/).some(tok => tok.toLowerCase() === 'edition');
+}
+
 // Local catalog entries the live API doesn't surface (IGDB's normal search
 // filters out titles missing a cover or with an unusual category — see
 // AdminAddSearch's unfiltered search, used precisely to find and add those)
@@ -111,7 +124,11 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
 // result is generally fresher/richer).
 async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character'>): Promise<SearchResult[]> {
   const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
-  return entries.filter(e => e.type === mediaType).map(catalogEntryToSearchResult);
+  return entries
+    .filter(e => e.type === mediaType)
+    .filter(e => !e.format || !EXCLUDED_LOCAL_FORMATS.has(e.format))
+    .filter(e => (mediaType !== 'game' && mediaType !== 'vnovel') || !titleHasEditionWord(e.title_main || ''))
+    .map(catalogEntryToSearchResult);
 }
 
 async function searchOne(
