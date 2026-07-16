@@ -4,6 +4,7 @@ import type { MediaPageData, MediaRelation, MediaAuthor } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
+import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 const RELATION_PRIORITY: Record<string, number> = {
   PARENT: 1, ADAPTATION: 2, PREQUEL: 3, SEQUEL: 4,
@@ -99,7 +100,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       return (aYear * 12 + aMonth) - (bYear * 12 + bMonth);
     })
     .map(e => {
-      const typeLabel = lookupLabel(tm.relations, e.relationType, e.relationType);
+      const typeLabel = lookupLabel(canonicalRelationLabels, e.relationType, e.relationType);
       const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'
         : 'manga';

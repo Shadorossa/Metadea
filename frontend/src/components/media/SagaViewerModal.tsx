@@ -3,10 +3,11 @@ import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
-import { compareByReleaseDate } from '../../lib/media/mapper-utils';
+import { compareByReleaseDate, lookupLabel } from '../../lib/media/mapper-utils';
+import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
 
-import { getCachedSaga, saveCachedSaga, getSagaName } from '../../lib/tauri';
-import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
+import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../../lib/tauri';
+import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -68,26 +69,43 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
           const validEntries = entriesData.filter(
             (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
           );
-          
-          // Sort chronologically
+
+          // Date sort is just the tie-break input for reconstructSagaOrder
+          // below, not the final order.
           validEntries.sort((a, b) => compareByReleaseDate(
             { ...a.entry, id: a.id },
             { ...b.entry, id: b.id }
           ));
 
-          const sagaList: SagaEntry[] = validEntries.map(x => ({
-            externalId: x.id,
-            title: x.entry.title_main || x.id,
-            cover: x.entry.cover_url || null,
-            format: x.entry.format || null,
-            mediaType: x.entry.type || 'game',
-            year: x.entry.release_year ?? null,
-            month: x.entry.release_month ?? null,
-            day: x.entry.release_day ?? null,
-          }));
+          const byId = new Map(validEntries.map(x => [x.id, x.entry]));
+          const dateOrderedIds = validEntries.map(x => x.id);
+
+          // Reconstruct the manually-curated order from SEQUEL edges (same
+          // function PrEditorModal uses) instead of just showing date order.
+          const relsByIndex: DbMediaRelation[][] = await Promise.all(
+            dateOrderedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))
+          );
+          const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
+
+          const sagaList: SagaEntry[] = orderedIds.map(id => {
+            const entry = byId.get(id)!;
+            return {
+              externalId: id,
+              title: entry.title_main || id,
+              cover: entry.cover_url || null,
+              format: entry.format || null,
+              mediaType: entry.type || 'game',
+              year: entry.release_year ?? null,
+              month: entry.release_month ?? null,
+              day: entry.release_day ?? null,
+            };
+          });
 
           setEntries(sagaList);
           setLoadState('done');
+          saveCachedSaga(sagaList).catch(err => {
+            console.warn('[Saga] Failed to save to cache:', err);
+          });
           // Load custom saga name if available
           try {
             const customName = await getSagaName(externalId);
@@ -186,7 +204,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
                     <div className="saga-strip-item-info">
                       <span className="saga-strip-item-title">{entry.title}</span>
                       <div className="saga-strip-item-meta-row">
-                        {entry.format && <span className="saga-strip-item-badge">{entry.format}</span>}
+                        {entry.format && <span className="saga-strip-item-badge">{lookupLabel(t.formats, entry.format, entry.format)}</span>}
                         {entry.year && <span className="saga-strip-item-year">{entry.year}</span>}
                       </div>
                     </div>

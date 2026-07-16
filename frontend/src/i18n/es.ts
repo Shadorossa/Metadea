@@ -170,6 +170,11 @@ export const es = {
       TV: 'TV', TV_SHORT: 'TV Corto', MOVIE: 'Película', OVA: 'OVA',
       ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música',
       MANGA: 'Manga', ONE_SHOT: 'One-Shot', NOVEL: 'Novela ligera',
+      // Formato de juego/vnovel de IGDB (ver GAME_TYPE_FORMAT en igdb-mapper.ts)
+      GAME: 'Juego', DLC: 'DLC', EXPANSION: 'Expansión de contenido', MOD: 'Mod',
+      EPISODE: 'Episodio', SEASON: 'Temporada', REMAKE: 'Remake', REMASTER: 'Remaster',
+      EXPANDED_GAME: 'Edición expandida', PORT: 'Port', FORK: 'Fork', UPDATE: 'Actualización',
+      VISUAL_NOVEL: 'Novela visual',
     },
     // Canonical release-status vocabulary shared by every provider mapper
     // (see lib/media/media-status.ts) — AniList's own enum plus UNAVAILABLE

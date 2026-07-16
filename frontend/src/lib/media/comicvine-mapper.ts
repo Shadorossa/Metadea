@@ -3,6 +3,7 @@ import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, type DateParts } from './mapper-utils';
+import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 // Comic Vine descriptions/decks are HTML — strip tags for plain-text display
 // since MediaPageData.description is rendered as plain text elsewhere.
@@ -132,7 +133,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
   const tm = getT().media;
   const relations: MediaPageData['relations'] = issue.volume
     ? [{
-        typeLabel: tm.relations.PARENT,
+        typeLabel: canonicalRelationLabels.PARENT,
         relationType: 'PARENT',
         title: issue.volume.name,
         url: `/media?id=comic:${issue.volume.id}`,

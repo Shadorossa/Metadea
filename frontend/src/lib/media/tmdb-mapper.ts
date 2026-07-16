@@ -6,6 +6,7 @@ import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { formatDateParts, lookupLabel } from './mapper-utils';
 import { canonicalizeTmdbStatus, STATUS_BADGE_CLASS } from './media-status';
+import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 // TMDB doesn't rank cast by relevance beyond its own `order` field — capping
 // avoids dumping a 100+ name cast list onto a page that has no pagination for
@@ -82,7 +83,7 @@ export function mapTmdbToMedia(
   const relations: MediaRelation[] = (raw.recommendations?.results ?? [])
     .filter(r => r.poster_path)
     .map(r => ({
-      typeLabel: lookupLabel(tm.relations, 'RECOMMENDATION', tm.relations.OTHER),
+      typeLabel: lookupLabel(canonicalRelationLabels, 'RECOMMENDATION', canonicalRelationLabels.OTHER),
       relationType: 'RECOMMENDATION',
       title: r.title ?? r.name ?? '',
       cover: r.poster_path ? API_ENDPOINTS.TMDB_IMAGE(r.poster_path, 'w300') : undefined,

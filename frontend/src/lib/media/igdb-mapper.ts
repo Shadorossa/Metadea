@@ -5,6 +5,7 @@ import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
 import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
 import { canonicalizeIgdbStatus, STATUS_BADGE_CLASS } from './media-status';
+import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 export interface IgdbSubGame {
   id: number;
@@ -167,7 +168,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // wins and later calls silently skip it, rather than pushing a second
   // relation object IGDB itself considers the same underlying game.
   const seenRelatedIds = new Set<string>();
-  const addRelations = (subGames: IgdbSubGame[] | undefined, defaultRelationType: keyof typeof tm.relations) => {
+  const addRelations = (subGames: IgdbSubGame[] | undefined, defaultRelationType: keyof typeof canonicalRelationLabels) => {
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
@@ -185,7 +186,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       const relationType = sg.game_type === 14 ? 'REL_UPDATE' : defaultRelationType;
 
       relations.push({
-        typeLabel: tm.relations[relationType],
+        typeLabel: canonicalRelationLabels[relationType],
         relationType,
         title,
         cover,
@@ -248,7 +249,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (!seenRelatedIds.has(relatedExternalId)) {
       seenRelatedIds.add(relatedExternalId);
       relations.push({
-        typeLabel: tm.relations.PARENT,
+        typeLabel: canonicalRelationLabels.PARENT,
         relationType: 'PARENT',
         title: cleanEditionTitle(parentSub.name),
         cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
@@ -301,7 +302,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
-  const tm = getT().media;
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames).map(sg => {
     const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
     const cover = sg.cover?.image_id ? igdbImageUrl(sg.cover.image_id, 'cover_big') : undefined;
@@ -312,7 +312,7 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
     if (cover) queryParams.set('c', cover);
 
     return {
-      typeLabel: tm.relations.PARENT,
+      typeLabel: canonicalRelationLabels.PARENT,
       relationType: 'PARENT',
       title,
       cover,
@@ -394,7 +394,7 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
 
       const relationType = VIA_TO_RELATION_TYPE[n.via];
       extra.push({
-        typeLabel: relationType ? tm.relations[relationType as keyof typeof tm.relations] : 'Related',
+        typeLabel: relationType ? canonicalRelationLabels[relationType as keyof typeof canonicalRelationLabels] : 'Related',
         relationType: relationType ?? n.via,
         title,
         cover,

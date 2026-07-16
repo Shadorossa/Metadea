@@ -27,6 +27,8 @@ import { PrEditorBundledSection } from './PrEditorBundledSection';
 import { PrEditorContainsSection } from './PrEditorContainsSection';
 import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
 import { PrEditorRelationsSection } from './PrEditorRelationsSection';
+import { getT } from '../../i18n/client';
+import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
 
 // Always saved as a PART_OF relation — there's no per-item type to pick
 // anymore (previously episode/update, shown as a dropdown).
@@ -55,28 +57,14 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-// Relation type labels (Spanish) — matches i18n/es.ts relations dict
-// REL_ADAPTATION / REL_ALTERNATIVE are namespaced (see EDITABLE_RELATION_OPTIONS
-// in sagaTypes.ts) to avoid colliding with the saga-chain's own ADAPTATION /
-// ALTERNATIVE relation_type strings, which the backend's transitive-chain walk
-import { getT } from '../../i18n/client';
-import { en } from '../../i18n/en';
-
 export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const t = getT();
   const tm = t.media;
-  // Shown to whoever's editing, in their own UI language.
+  // Shown in the editor, in the UI's own language.
   const relationLabels = tm.relations;
-  // What actually gets persisted (media_relations.type_label, and from there
-  // the PR bundle / shared community catalog) — always English, regardless
-  // of the editor's UI language. Previously this reused relationLabels
-  // (locale-dependent), so a Spanish-UI editor's PR saved "Secuela" while an
-  // English-UI editor's saved "Sequel" for the exact same relation_type —
-  // the shared catalog ended up with type_label mixing languages depending
-  // on who last touched a given row. relation_type itself (the actual key
-  // everything else — the saga CTE walk, filters, EDITABLE_RELATION_OPTIONS
-  // — matches on) was never affected by this; only the display-label column.
-  const canonicalRelationLabels = en.media.relations;
+  // What actually gets persisted to type_label — always English, regardless
+  // of UI language, so the shared catalog doesn't mix languages per-row.
+  const canonicalRelationLabels = CANONICAL_RELATION_LABELS;
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -335,13 +323,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
   const addToSaga = (result: ApiSearchResult) => {
     if (sagaOrder.includes(result.externalId)) return;
 
-    // sagaOrder is already deduped by external_id above, but that alone
-    // doesn't catch a *different* id (e.g. IGDB listing separate entries per
-    // platform release of what's really the same episode) that happens to
-    // share a title with something already in the chain — which is how the
-    // saga ends up visibly showing the same card twice. Confirm rather than
-    // silently block, since two genuinely different works can coincidentally
-    // share a title.
+    // Catches a *different* id with the same title (e.g. duplicate IGDB
+    // entries per platform) — confirm rather than block outright, since two
+    // different works can coincidentally share a title.
     const normalizedTitle = result.titleMain.trim().toLowerCase();
     const duplicateTitleId = sagaOrder.find(id => {
       const existingTitle = id === externalId ? entry?.title_main : sagaMeta[id]?.title;
@@ -694,14 +678,9 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         }
       }
 
-      // Bundled In is reciprocal: this entry gets a PART_OF relation pointing
-      // at the target (bundledDbRelations above), and the target itself needs
-      // an EPISODE relation pointing back at this entry — otherwise browsing
-      // to the "container" work never shows this one as its Episode, only
-      // this entry ever shows the PART_OF side. Re-derived from scratch each
-      // save (remove any stale EPISODE->externalId row, re-add for whatever's
-      // currently in bundledRelations) so removing a Bundled In entry also
-      // cleans up the reciprocal side instead of leaving a dangling relation.
+      // Bundled In is reciprocal: the target needs an EPISODE relation
+      // pointing back here. Re-synced each save so removing an entry also
+      // removes its reciprocal side.
       const currentBundledIds = new Set(bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
       const bundledTargetsToSync = new Set([...currentBundledIds, ...originalBundledIds]);
       for (const targetId of bundledTargetsToSync) {
@@ -726,11 +705,8 @@ export function PrEditorModal({ externalId, onClose, onSaved }: Props) {
         }
       }
 
-      // Same reciprocity, opposite direction: Contains (EPISODE, this entry
-      // → child) needs a PART_OF relation written back on each child pointing
-      // at this entry — symmetric with the Bundled In sync above, so removing
-      // an item from either side (this entry's Contains, or the child's own
-      // Bundled In) cleans up both.
+      // Same reciprocity, opposite direction: Contains needs a PART_OF
+      // relation written back on each child.
       const currentContainedIds = new Set(containedRelations.map(r => r.external_id.trim()).filter(Boolean));
       const containedTargetsToSync = new Set([...currentContainedIds, ...originalContainedIds]);
       for (const childId of containedTargetsToSync) {
