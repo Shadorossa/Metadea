@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useDeferredValue } from 'react';
 import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
 import {
-  getAllCatalogEntries, searchCatalog, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
+  getAllCatalogEntries, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
   type MediaCatalogEntry,
 } from '../../lib/tauri/catalog';
 import {
@@ -40,11 +40,12 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [githubLoading, setGithubLoading] = useState(true);
   const [githubDeleteTarget, setGithubDeleteTarget] = useState<GitHubDirEntry | null>(null);
   const [githubBusy, setGithubBusy] = useState(false);
-  // GitHub's file listing has no cover — most merged entries are already
-  // synced into the local catalog (see sync_community_catalog), so this maps
-  // external_id → cover_url from the *full* local catalog (independent of
-  // the local tab's own search query) purely to fill in a thumbnail here.
-  const [coverMap, setCoverMap] = useState<Record<string, string>>({});
+  // GitHub's file listing only has raw filenames (no title, no cover) — most
+  // merged entries are already synced into the local catalog (see
+  // sync_community_catalog), so this maps external_id → title/cover from the
+  // *full* local catalog (independent of the local tab's own search query)
+  // to show something more useful than the id twice.
+  const [catalogInfoMap, setCatalogInfoMap] = useState<Record<string, { title?: string; cover?: string }>>({});
 
   // "Add work" state
   const [addBusy, setAddBusy] = useState(false);
@@ -60,11 +61,14 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const isOwner = gate.state === 'owner';
   const token = gate.token;
 
-  const loadEntries = async (q: string) => {
+  // Loads the *whole* local catalog once — filtering as the user types
+  // happens client-side (see visibleEntries below) instead of re-querying
+  // over IPC on every keystroke, which was causing the list (and every
+  // cover image in it) to reload/flicker on each character typed.
+  const loadEntries = async () => {
     setLoading(true);
     try {
-      const list = q.trim() ? await searchCatalog(q.trim()) : await getAllCatalogEntries();
-      setEntries(list);
+      setEntries(await getAllCatalogEntries());
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to load entries:', err);
       setEntries([]);
@@ -91,22 +95,37 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
   useEffect(() => {
     if (!isOwner) return;
-    loadEntries(query);
+    loadEntries();
     loadGithubFiles();
     getAllCatalogEntries().then(all => {
-      const map: Record<string, string> = {};
-      for (const e of all) if (e.cover_url) map[e.external_id] = e.cover_url;
-      setCoverMap(map);
+      const map: Record<string, { title?: string; cover?: string }> = {};
+      for (const e of all) {
+        if (e.cover_url || e.title_main) map[e.external_id] = { title: e.title_main ?? undefined, cover: e.cover_url ?? undefined };
+      }
+      setCatalogInfoMap(map);
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner]);
 
-  useEffect(() => {
-    if (!isOwner) return;
-    const handle = setTimeout(() => loadEntries(query), 300);
-    return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  // Deferred so fast typing doesn't force a full re-filter/re-render of a
+  // (potentially large) catalog on every single keystroke — the input itself
+  // stays instantly responsive, the list just settles a beat behind it.
+  // Both declared unconditionally, above the owner-gate early returns below
+  // (Rules of Hooks — every hook must run on every render).
+  const deferredQuery = useDeferredValue(query);
+  const deferredGithubQuery = useDeferredValue(githubQuery);
+
+  // Mirrors search_catalog's own match (Rust, media_catalog.rs): case-
+  // insensitive substring match against title_main/title_romaji/title_native.
+  const visibleEntries = (() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(e =>
+      e.title_main?.toLowerCase().includes(q)
+      || e.title_romaji?.toLowerCase().includes(q)
+      || e.title_native?.toLowerCase().includes(q)
+    );
+  })();
 
   if (gate.state === 'loading') return null;
   if (!isOwner) {
@@ -167,13 +186,16 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const handleEditorClose = () => setEditingId(null);
 
   const handleEditorSaved = () => {
-    loadEntries(query);
+    loadEntries();
     loadGithubFiles();
   };
 
-  const visibleGithubFiles = githubFiles.filter(f =>
-    !githubQuery.trim() || f.name.toLowerCase().includes(githubQuery.trim().toLowerCase()),
-  );
+  const visibleGithubFiles = githubFiles.filter(f => {
+    const q = deferredGithubQuery.trim().toLowerCase();
+    if (!q) return true;
+    const title = catalogInfoMap[externalIdFromDatabaseFilename(f.name)]?.title;
+    return f.name.toLowerCase().includes(q) || !!title?.toLowerCase().includes(q);
+  });
 
   return (
     <div className="catalog-admin-panel">
@@ -214,11 +236,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
           />
 
           {loading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!loading && entries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
+          {!loading && visibleEntries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
-          {!loading && entries.length > 0 && (
+          {!loading && visibleEntries.length > 0 && (
             <div className="pr-editor-search-grid">
-              {entries.map(entry => (
+              {visibleEntries.map(entry => (
                 <div key={entry.external_id} className="catalog-admin-card">
                   <div className="catalog-admin-card-cover">
                     {entry.cover_url
@@ -262,17 +284,17 @@ export function CatalogAdminPanel({ i18n }: Props) {
             <div className="pr-editor-search-grid">
               {visibleGithubFiles.map(file => {
                 const fileExternalId = externalIdFromDatabaseFilename(file.name);
-                const cover = coverMap[fileExternalId];
+                const info = catalogInfoMap[fileExternalId];
                 return (
                   <div key={file.path} className="catalog-admin-card">
                     <div className="catalog-admin-card-cover">
-                      {cover
-                        ? <img src={cover} alt="" loading="lazy" />
+                      {info?.cover
+                        ? <img src={info.cover} alt="" loading="lazy" />
                         : <span className="catalog-admin-card-no-cover">—</span>}
                     </div>
                     <div className="pr-editor-search-result-info">
                       <div className="pr-editor-search-result-id">{fileExternalId}</div>
-                      <div className="pr-editor-search-result-title">{fileExternalId}</div>
+                      <div className="pr-editor-search-result-title">{info?.title || fileExternalId}</div>
                     </div>
                     <div className="catalog-admin-card-actions">
                       <button type="button" className="catalog-admin-icon-btn" disabled={githubBusy} onClick={() => openGithubEntry(file)} aria-label={t.edit_button} title={t.edit_button}>
