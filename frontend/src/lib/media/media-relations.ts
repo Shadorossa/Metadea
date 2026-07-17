@@ -112,6 +112,12 @@ const FULL_EDITION_ALLOWED_RELATION_TYPES = new Set([
   // own saga chain must keep showing its prequels/sequels/alt versions
   // regardless of format.
   'PREQUEL', 'SEQUEL', 'ALTERNATIVE',
+  // Bundled In (PrEditorModal's own "Bundled In" picker) is the same kind of
+  // explicit, user-set relation — a full edition placed inside a bundle
+  // (e.g. an EXPANDED_GAME that's also one of a Chronicles-style bundle's
+  // contents) must still show that link, not have it silently dropped for
+  // being format=EXPANDED_GAME.
+  'PART_OF',
 ]);
 
 export interface RelationBuckets {

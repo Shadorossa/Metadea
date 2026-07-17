@@ -300,6 +300,47 @@
   font-size: 0.76rem;
 }
 
+/* Wraps just .media-cover-wrap (nothing else) so the favorite button below
+   can be positioned relative to the cover itself, straddling its bottom
+   edge — .media-cover-wrap's own overflow:hidden (it clips its hover
+   overlay) would otherwise cut the half that's meant to hang below it. */
+.media-cover-frame {
+  position: relative;
+}
+
+/* Standalone favorite toggle for bundles (no library entry/editor of their
+   own to hold the usual heart button) — half on the cover, half hanging
+   below its bottom edge, always visible (not gated behind hover like the
+   overlay above, since it's the only way to favorite a bundle at all). */
+.media-cover-favorite-btn {
+  position: absolute;
+  bottom: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.media-cover-favorite-btn:hover {
+  transform: translateX(-50%) scale(1.08);
+}
+
+.media-cover-favorite-btn.active {
+  background: rgba(239, 68, 68, 0.85);
+  color: #fff;
+}
+
 .media-title-main {
   font-size: 1.75rem;
   font-weight: 800;
@@ -1139,11 +1180,6 @@
   width: 50%;
 }
 
-/* Ajustes de layout para media-body sin datos */
-.media-body.media-body--no-stats {
-  grid-template-columns: 1.2fr 3.8fr;
-  padding: 4.5rem 15% 2rem;
-}
 
 /* ── Media Editor Modal ──────────────────────────────────────────────────── */
 

@@ -200,6 +200,31 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   background: var(--bg-primary) !important;
 }
 
+/* Standalone bundle favorite toggle (media page cover) — square vintage
+   badge instead of the default circular glass button, matching every other
+   overlay badge in this theme. */
+[data-theme="newspaper-dark"] .media-cover-favorite-btn {
+  border-radius: 0px !important;
+  border: none !important;
+  background: var(--bg-primary) !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  color: var(--text-main) !important;
+  transition: background-color 0.15s, color 0.15s !important;
+}
+
+[data-theme="newspaper-dark"] .media-cover-favorite-btn:hover {
+  transform: translateX(-50%) !important;
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .media-cover-favorite-btn.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: var(--bg-primary) !important;
+}
+
 [data-theme="newspaper-dark"] .auth-modal-box {
   border-radius: 0px !important;
   border: 6px double var(--text-main) !important;

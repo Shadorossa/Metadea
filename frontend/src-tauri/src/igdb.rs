@@ -1110,7 +1110,13 @@ pub async fn igdb_search(
     query: String,
     is_visual_novel: bool,
     page: Option<u32>,
-    bundles_only: Option<bool>,
+    // Restricts results to exactly these IGDB category/game_type values
+    // instead of the normal main_game/standalone_expansion/season/remake
+    // allowlist below — used by relation pickers (Bundled In: category 3
+    // bundles; Contains: category 10 expanded editions) that need exactly
+    // the categories plain search deliberately excludes. `None` keeps the
+    // normal behavior.
+    only_categories: Option<Vec<u64>>,
 ) -> Result<serde_json::Value, String> {
     if query.is_empty() {
         return Ok(serde_json::json!({ "games": [], "hasMore": false }));
@@ -1155,7 +1161,6 @@ pub async fn igdb_search(
     // signal available without a second request — worst case, one "Load
     // more" click comes back empty and the UI just stops offering it.
     let has_more = items.len() == PAGE_SIZE;
-    let bundles_only = bundles_only.unwrap_or(false);
 
     let mut games: Vec<serde_json::Value> = Vec::new();
     for item in items {
@@ -1164,12 +1169,13 @@ pub async fn igdb_search(
             continue;
         }
 
-        // Used only by the "Bundled In" search popup, which needs the
-        // opposite of the normal allowlist below (category 3 is exactly
-        // what plain search excludes) — every other filter (edition-word
-        // names, version_parent dedup) doesn't apply to bundles.
-        if bundles_only {
-            if get_game_category(&item) != 3 {
+        // Used only by relation pickers (Bundled In: category 3 bundles;
+        // Contains: category 10 expanded editions), which need exactly the
+        // categories plain search deliberately excludes below — every other
+        // filter (edition-word names, version_parent dedup) doesn't apply
+        // to these.
+        if let Some(cats) = &only_categories {
+            if !cats.contains(&get_game_category(&item)) {
                 continue;
             }
             let vn = detect_vn(&item);

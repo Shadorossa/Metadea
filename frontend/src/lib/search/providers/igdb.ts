@@ -22,18 +22,24 @@ export async function searchGames(
   return { results: data.results ?? [], hasMore: data.hasMore ?? false };
 }
 
-// IGDB category 3 (bundle) — plain search deliberately excludes these (a
-// bundle isn't a playable title on its own), but the "Bundled In" relation
-// picker needs exactly this category, so it's a separate query rather than
-// a flag on the normal SEARCHABLE_TYPES fan-out.
-export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+// Shared by searchGameBundles/searchGameExpandedEditions — both need a
+// live IGDB search restricted to exactly one category plain search
+// deliberately excludes (bundles, expanded editions, ...), so it's a
+// separate query rather than a flag on the normal SEARCHABLE_TYPES fan-out.
+async function searchGamesByCategory(
+  searchQuery: string,
+  page: number,
+  category: number,
+  format: string,
+  bundlesOnlyQueryParam: string,
+): Promise<SearchPage> {
   if (isTauri()) {
     const cfg = await readEnvConfig().catch(() => ({}));
     if (!cfg.igdb_client_id || !cfg.igdb_client_secret) return { results: [], hasMore: false };
 
     let pageResult;
     try {
-      pageResult = await igdbSearch(searchQuery, false, page, true);
+      pageResult = await igdbSearch(searchQuery, false, page, [category]);
     } catch {
       return { results: [], hasMore: false };
     }
@@ -44,7 +50,7 @@ export async function searchGameBundles(searchQuery: string, signal: AbortSignal
       return {
         externalId:   `game:${g.id}`,
         type:         'game' as MediaType,
-        format:       'BUNDLE',
+        format,
         source:       'igdb' as const,
         titleMain:    cleanEditionTitle(g.name),
         titleRomaji:  null,
@@ -60,11 +66,22 @@ export async function searchGameBundles(searchQuery: string, signal: AbortSignal
     return { results, hasMore: pageResult.hasMore };
   }
 
-  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=game&page=${page}&bundlesOnly=true`;
-  const response = await fetch(url, { signal });
+  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=game&page=${page}&${bundlesOnlyQueryParam}=true`;
+  const response = await fetch(url);
   if (!response.ok) return { results: [], hasMore: false };
   const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
   return { results: data.results ?? [], hasMore: data.hasMore ?? false };
+}
+
+// IGDB category 3 (bundle) — the "Bundled In" relation picker.
+export async function searchGameBundles(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
+  return searchGamesByCategory(searchQuery, page, 3, 'BUNDLE', 'bundlesOnly');
+}
+
+// IGDB category 10 (expanded_game) — the "Contains" relation picker, since
+// a game can "contain" its own expanded edition as a bundled sub-item.
+export async function searchGameExpandedEditions(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
+  return searchGamesByCategory(searchQuery, page, 10, 'EXPANDED_GAME', 'expandedOnly');
 }
 
 async function searchGamesLocal(

@@ -386,6 +386,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   };
   const removeBundledRelation = (id: string) =>
     setBundledRelations(prev => prev.filter(r => r.external_id !== id));
+  const reorderBundled = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= bundledRelations.length || toIndex >= bundledRelations.length) return;
+    const next = [...bundledRelations];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setBundledRelations(next);
+  };
 
   // ── Contains handlers ──────────────────────────────────────────────────────
 
@@ -400,6 +407,18 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   };
   const removeContainedRelation = (id: string) =>
     setContainedRelations(prev => prev.filter(r => r.external_id !== id));
+  const reorderContained = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= containedRelations.length || toIndex >= containedRelations.length) return;
+    const next = [...containedRelations];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setContainedRelations(next);
+  };
+
+  const { draggedIndex: draggedBundledIndex, setDraggedIndex: setDraggedBundledIndex } =
+    useDragReorder('bundledIndex', reorderBundled);
+  const { draggedIndex: draggedContainedIndex, setDraggedIndex: setDraggedContainedIndex } =
+    useDragReorder('containedIndex', reorderContained);
 
   // ── Editable relation handlers ────────────────────────────────────────────
 
@@ -1028,6 +1047,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
 
               <PrEditorBundledSection
                 bundledRelations={bundledRelations}
+                draggedIndex={draggedBundledIndex}
+                onStartDrag={setDraggedBundledIndex}
                 onRemove={removeBundledRelation}
                 onOpenSearch={() => setSearchPopupMode('bundled')}
               />
@@ -1035,6 +1056,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
               <PrEditorContainsSection
                 containedRelations={containedRelations}
+                draggedIndex={draggedContainedIndex}
+                onStartDrag={setDraggedContainedIndex}
                 onRemove={removeContainedRelation}
                 onOpenSearch={() => setSearchPopupMode('contains')}
               />
@@ -1077,6 +1100,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...containedRelations.map(r => r.external_id)]}
           closeOnSelect={false}
+          includeIgdbExpandedEditions
         />
       )}
 

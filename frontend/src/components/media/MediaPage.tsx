@@ -9,7 +9,7 @@ import { SagaViewerModal } from './SagaViewerModal';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
-import { IconPlus, IconCheck, IconTrayStatus, IconLayers } from '../local/ui/icons';
+import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
@@ -18,6 +18,7 @@ import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -151,6 +152,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
   const [displayedCharacters, setDisplayedCharacters] = useState(12);
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
+  const [isFavorited,        setIsFavorited]        = useState(false);
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleRef = useAutoShrinkTitle(data?.titleMain);
   const descriptionRef = useRef<HTMLDivElement>(null);
@@ -360,6 +362,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     const params = new URLSearchParams(window.location.search);
     if (params.get('edit') === '1') setShowEditor(true);
   }, [data, previewMode]);
+
+  // A bundle has no library entry of its own (see isBundle below) — the
+  // usual "favorite" toggle lives inside MediaEditorModal's library log,
+  // which a bundle never gets to open, so its favorite state is tracked
+  // standalone here instead, straight off the shared favorites list.
+  useEffect(() => {
+    if (previewMode || !data) return;
+    let cancelled = false;
+    readUserFavorites().then(favs => {
+      if (cancelled) return;
+      setIsFavorited((favs[data.type] || []).includes(currentId));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentId, data?.type, previewMode]);
 
   // The top/bottom fade on the synopsis should only appear when there's
   // actually more text than fits — otherwise a short synopsis gets its
@@ -591,6 +607,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 {tm.saga_button}
               </button>
             )}
+            <div className="media-cover-frame">
             <div
               className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isUneditable ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
               role={previewMode ? undefined : 'button'}
@@ -644,6 +661,30 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 </div>
               </div>
             </div>
+              {isBundle && !previewMode && (
+                // A bundle has no library entry/editor of its own to hold the
+                // usual favorite toggle (MediaEditorModal's heart button) —
+                // this is the same syncFavorites call that button makes,
+                // just standalone on the cover itself. Lives outside
+                // .media-cover-wrap (not inside it) specifically so it can
+                // straddle the cover's own bottom edge — that wrap's
+                // overflow:hidden (it clips its own hover overlay) would
+                // otherwise clip half the button off.
+                <button
+                  type="button"
+                  className={`media-cover-favorite-btn${isFavorited ? ' active' : ''}`}
+                  onClick={e => {
+                    e.stopPropagation();
+                    const next = !isFavorited;
+                    setIsFavorited(next);
+                    syncFavorites(data.type, currentId, next).catch(() => setIsFavorited(!next));
+                  }}
+                  title={tm.editor.favorite}
+                >
+                  <IconHeart filled={isFavorited} size={18} />
+                </button>
+              )}
+            </div>
 
             {!previewMode && !isUneditable && (
             <div className="media-library-widget-box">
@@ -676,12 +717,12 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         </div>
       </div>
 
-      {/* Body: 3 columnas */}
-      <div className={`media-body${((data.stats ?? []).length === 0 && !(data.authors && data.authors.length > 0)) ? ' media-body--no-stats' : ''}`}>
-        {/* The 3rd grid column only collapses (media-body--no-stats) when the
-            Datos panel below is truly not rendering — otherwise Datos must
-            keep its own column, landing to the right of Sinopsis regardless
-            of whether Relacionados (the middle column) has any content. */}
+      {/* Body: 3 columnas — Datos (the 3rd column) always renders now (at
+          minimum its header + source link), so the grid never collapses to
+          2 columns anymore; doing so used to reflow/flicker the whole body
+          every time stats/authors loaded in after the initial partial
+          fetch. */}
+      <div className="media-body">
 
         {/* Sinopsis */}
         <div className="media-col-synopsis">
@@ -785,11 +826,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           )}
         </div>
 
-        {/* Datos */}
-        {(data.stats.length > 0 || (data.authors && data.authors.length > 0)) && (
+        {/* Datos — always rendered, even with no stats/authors, since the
+            link to the source page (MediaSourceLink) can always be built
+            from data.source/sourceUrl regardless of whether anything else
+            here has data. */}
           <div className="media-col-stats">
-            {(data.stats.length > 0 || (data.authors && data.authors.length > 0)) && (
-              <>
                 <div className="media-section-header-row">
                   <p className="section-label">{tm.section_data}</p>
                   <div className="media-section-header-line" />
@@ -857,10 +898,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                       </div>
                     ))}
                 </div>
-              </>
-            )}
           </div>
-        )}
       </div>
 
       {/* Personajes */}

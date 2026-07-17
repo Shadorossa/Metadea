@@ -6,13 +6,17 @@ interface BundledRelation {
 
 interface Props {
   bundledRelations: BundledRelation[];
+  draggedIndex: number | null;
+  onStartDrag: (index: number) => void;
   onRemove: (externalId: string) => void;
   onOpenSearch: () => void;
 }
 
 // The "Bundled In" panel — always saved as a PART_OF relation, no per-item
-// type to pick (see PrEditorModal.tsx's own note on this).
-export function PrEditorBundledSection({ bundledRelations, onRemove, onOpenSearch }: Props) {
+// type to pick (see PrEditorModal.tsx's own note on this). Drag reordering
+// itself lives in useDragReorder, in the parent — same pattern as the Saga
+// order list.
+export function PrEditorBundledSection({ bundledRelations, draggedIndex, onStartDrag, onRemove, onOpenSearch }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -20,8 +24,16 @@ export function PrEditorBundledSection({ bundledRelations, onRemove, onOpenSearc
         <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>+ Add</button>
       </div>
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
-        {bundledRelations.map(r => (
-          <div key={r.external_id} className="pr-editor-media-card">
+        {bundledRelations.map((r, index) => (
+          <div
+            key={r.external_id}
+            data-bundled-index={index}
+            className={`pr-editor-media-card${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
+            onPointerDown={e => {
+              e.preventDefault();
+              onStartDrag(index);
+            }}
+          >
             <div className="pr-editor-media-card-cover">
               {r.cover
                 ? <img src={r.cover} alt="" draggable={false} />
@@ -29,6 +41,7 @@ export function PrEditorBundledSection({ bundledRelations, onRemove, onOpenSearc
               <button
                 type="button"
                 className="pr-editor-media-card-remove"
+                onPointerDown={e => e.stopPropagation()}
                 onClick={() => onRemove(r.external_id)}
               >
                 ×

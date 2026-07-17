@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import { search, searchGameBundles, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { search, searchGameBundles, searchGameExpandedEditions, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
 // relation isn't guaranteed to share the current entry's own type (e.g. a
@@ -61,13 +61,19 @@ export interface MediaSearchPopupProps {
    *  these since a bundle isn't a playable title on its own, but the
    *  "Bundled In" picker is exactly where they belong. */
   includeIgdbBundles?: boolean;
+  /** Also surfaces IGDB category-10 (expanded edition) results — normal
+   *  search hides these since an expanded edition should only ever surface
+   *  as a relation on its original game's page, but the "Contains" picker
+   *  is exactly where they belong (a game can bundle its own expanded
+   *  edition as a sub-item). */
+  includeIgdbExpandedEditions?: boolean;
 }
 
 /** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
  *  to attach a saga member or bundled-in work to the entry being edited.
  *  Closes only on an outside click (stopPropagation keeps that from also
  *  closing the parent PrEditorModal). */
-export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false }: MediaSearchPopupProps) {
+export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false }: MediaSearchPopupProps) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
@@ -92,6 +98,11 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
           searchGameBundles(query, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
+      if (includeIgdbExpandedEditions && (typeFilter === 'all' || typeFilter === 'game')) {
+        searchPromises.push(
+          searchGameExpandedEditions(query, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+        );
+      }
       Promise.all(searchPromises)
         .then(perType => {
           if (controller.signal.aborted) return;
@@ -106,7 +117,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, typeFilter, includeIgdbBundles]);
+  }, [query, typeFilter, includeIgdbBundles, includeIgdbExpandedEditions]);
 
   const handleSelect = async (result: ApiSearchResult) => {
     if (closeOnSelect) onClose();
