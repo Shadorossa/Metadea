@@ -4,7 +4,7 @@
     "external_id": "vnovel:12198",
     "parent_id": null,
     "type": "vnovel",
-    "format": "VISUAL_NOVEL",
+    "format": "BUNDLE",
     "source": "igdb",
     "title_main": "Umineko no Naku Koro ni",
     "title_romaji": null,
@@ -18,8 +18,6 @@
     "time_length": null,
     "status": null,
     "score_global": 8.8,
-    "favorites_count": null,
-    "ratings_count": null,
     "total_count": null,
     "total_count_2": null,
     "genres_csv": "Adventure,Visual Novel",
@@ -28,11 +26,9 @@
     "shop_links_csv": null,
     "companies_cache_csv": "07th Expansion,HOBIBOX",
     "authors_csv": null,
-    "last_synced_at": null,
-    "sync_failed_count": null,
-    "last_sync_error": null,
-    "created_at": "2026-07-15T23:50:51.595Z",
-    "updated_at": "2026-07-17T07:57:15.957752300+00:00"
+    "manually_edited_at": null,
+    "created_at": "",
+    "updated_at": ""
   },
   "media_relations": [
     {
@@ -48,7 +44,7 @@
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Umineko no Naku Koro ni: Episode 2 - Turn of the Golden Witch",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78l8.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co78l8.jpg",
       "media_external_id": "vnovel:12198"
     },
     {
@@ -56,7 +52,7 @@
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Umineko no Naku Koro ni: Episode 3 - Banquet of the Golden Witch",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78l9.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co78l9.jpg",
       "media_external_id": "vnovel:12198"
     },
     {
@@ -64,8 +60,24 @@
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Umineko no Naku Koro ni: Episode 4 - Alliance of the Golden Witch",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78la.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co78la.jpg",
       "media_external_id": "vnovel:12198"
+    },
+    {
+      "media_external_id": "vnovel:12198",
+      "related_media_external_id": "vnovel:51267",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Umineko no Naku Koro ni Chiru",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4szy.jpg"
+    },
+    {
+      "media_external_id": "vnovel:51267",
+      "related_media_external_id": "vnovel:12198",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Umineko no Naku Koro ni",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobw5j.jpg"
     }
   ],
   "characters": [],
