@@ -277,6 +277,9 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       last_synced_at: new Date().toISOString(),
       sync_failed_count: 0,
       last_sync_error: null,
+      // Never set here — only PrEditorModal ever stamps this, and once set
+      // it must survive every future live resync untouched.
+      manually_edited_at: existing?.manually_edited_at ?? null,
       created_at: '',
       updated_at: '',
     };
@@ -303,14 +306,23 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   }
   if (data) {
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-    await mergeAndPersistRelations(rawId, data.relations, data.format);
 
     // persistToCatalog preserves an existing banner in the DB, but this same
     // `data` object also gets shown on screen — patch it too so a live fetch
     // with no banner doesn't flash "no banner" before the DB write lands.
-    if (!data.bannerImage) {
-      const existing = await getCatalogEntry(rawId).catch(() => null);
-      if (existing?.banners_csv) data.bannerImage = existing.banners_csv.split(',')[0];
+    const existing = await getCatalogEntry(rawId).catch(() => null);
+    if (!data.bannerImage && existing?.banners_csv) {
+      data.bannerImage = existing.banners_csv.split(',')[0];
+    }
+
+    // Once hand-edited via the collaborative catalog editor (PrEditorModal),
+    // an entry's relations are off-limits to a live resync entirely — the
+    // live provider has no idea a deletion/reorder there was deliberate, it
+    // just reports the same relation graph again, and the merge below can
+    // only ever add rows back in, never truly tell "user removed this"
+    // apart from "never synced this". See MediaCatalogEntry.manually_edited_at.
+    if (!existing?.manually_edited_at) {
+      await mergeAndPersistRelations(rawId, data.relations, data.format);
     }
 
     // Persist to local SQLite cache so F5 or next visit loads instantly

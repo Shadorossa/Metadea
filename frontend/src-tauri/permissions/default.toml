@@ -65,6 +65,7 @@ commands.allow = [
   "save_cached_saga",
   "get_transitive_relation_ids",
   "get_saga_name",
+  "get_saga_names",
   "save_media_saga_groups",
   "get_media_saga_groups",
   "save_media_relations",

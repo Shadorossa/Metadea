@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, getCatalogEntry } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, getCatalogEntry, getSagaNames } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -48,16 +48,15 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
 const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel']);
 
 // Groups library entries that are editions of one another (remakes,
-// remasters, ports, ...), or — for anime/manga/lnovel — entries linked by a
-// saved SEQUEL/PREQUEL relation, under a single "slot" so they don't each
-// claim a spot in the grid. Three independent signals decide who nests under
-// whom — see the git history of the pre-React version of this file for the
-// full rationale on each signal (explicit edition link, auto-detected
-// parent_id, saga link) — logic unchanged, only the rendering moved to JSX.
+// remasters, ports, ...) under a single "slot" so they don't each claim a
+// spot in the grid. Gated entirely behind "Agrupar por ediciones" — sequel/
+// prequel (saga) grouping used to also live here, but now runs separately
+// in refineSagaGroups (see its own doc for why: an edition link only ever
+// connects two owned entries directly, which is fine for editions, but a
+// saga needs to bridge across works the user doesn't own at all).
 function groupEditions<T extends { external_id: string; selected_version: string | null; type: string }>(
   sectionItems: T[],
   catalogMap: Map<string, MediaCatalogEntry>,
-  sagaRelations: DbMediaRelation[],
   includeEditions: boolean,
 ): Array<{ item: T; grouped: T[] }> {
   const byId = new Map(sectionItems.map(i => [i.external_id, i]));
@@ -89,35 +88,6 @@ function groupEditions<T extends { external_id: string; selected_version: string
     }
     return cur;
   };
-
-  if (includeEditions) {
-    for (const rel of sagaRelations) {
-      // A relation_type bug fixed earlier used to store the *translated*
-      // label uppercased instead of AniList's raw enum value (e.g.
-      // "SECUELA"/"PRECUELA" in Spanish instead of "SEQUEL"/"PREQUEL"), and
-      // that fix doesn't rewrite already-saved rows — so existing libraries
-      // still have relations stuck under the old, wrong-cased label.
-      // Recognizing both keeps saga grouping working for data saved before
-      // and after that fix, without needing to touch the database.
-      const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
-      const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
-      if (!isSequel && !isPrequel) continue;
-      if (!rel.media_external_id) continue;
-      const a = rel.media_external_id;
-      const b = rel.related_media_external_id;
-      if (!byId.has(a) || !byId.has(b)) continue;
-      if (!SAGA_GROUPABLE_TYPES.has(byId.get(a)!.type) || !SAGA_GROUPABLE_TYPES.has(byId.get(b)!.type)) continue;
-
-      // relation_type is from `a`'s point of view: a SEQUEL edge to b means a
-      // comes first; a PREQUEL edge to b means b comes first.
-      const [earlier, later] = isSequel ? [a, b] : [b, a];
-      if (parentOf.has(later)) continue; // already grouped under something else
-
-      const root = rootOf(earlier);
-      if (root === later) continue; // would create a cycle
-      parentOf.set(later, root);
-    }
-  }
 
   // Flatten multi-level chains (e.g. Rebirth → Remake → Original, from two
   // separate direct parent_id edges) so every entry in the chain ends up
@@ -204,6 +174,112 @@ function groupBundles<T extends { external_id: string }>(
   return [...remaining, ...bundleGroups];
 }
 
+// Third pass: merges standalone (non-edition, non-bundle) root-groups that
+// belong to the very same saga — via the WHOLE catalog's PREQUEL/SEQUEL
+// graph, not just relations between two entries the user actually owns.
+// That distinction matters: owning 1, 2, 3 and 5 of a saga but not 4 used
+// to only group 1-3 together (the 3→4 and 4→5 edges each need *both* ends
+// owned to link two owned entries), leaving 5 stranded on its own even
+// though it's clearly the same saga. Walking the full graph (every 1-2,
+// 2-3, 3-4, 4-5 edge, whether or not "4" itself is in the library) finds
+// the one connected saga component 1-2-3-4-5 belongs to regardless of
+// gaps, then folds every owned member found in it into one card — same
+// aggregate rating/date-range treatment as a bundle, plus the saga's own
+// assigned name (PrEditorModal's "Saga Name" field, via sagaNames) in place
+// of showing the earliest work's own title, if one was ever set.
+// Deliberately only touches groups groupEditions/groupBundles left as bare
+// singletons (no bundleMeta, nothing already grouped) — an edition-linked
+// or bundle card keeps its own distinct look untouched.
+function refineSagaGroups<T extends { external_id: string }>(
+  groups: Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }>,
+  catalogMap: Map<string, MediaCatalogEntry>,
+  relations: DbMediaRelation[],
+  sagaNames: Record<string, string>,
+): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let cur = id;
+    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
+    return cur;
+  };
+  const union = (a: string, b: string) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  for (const rel of relations) {
+    // See groupEditions' old comment (moved here): SECUELA/PRECUELA are the
+    // pre-fix, Spanish-label rows some libraries still have on disk.
+    // ALTERNATIVE is included too — PrEditorModal's saga editor (see
+    // classifySagaChain) writes it between two entries placed in the same
+    // "Concept Group" (e.g. a remake alongside its original), which is a
+    // saga step exactly like SEQUEL/PREQUEL, just without an order between
+    // them — without this, a remake placed this way ends up joined to its
+    // original by the separate edition/parent_id mechanism but never folds
+    // into the rest of the saga's SEQUEL/PREQUEL cluster.
+    const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
+    const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
+    const isAlternative = rel.relation_type === 'ALTERNATIVE';
+    if (!isSequel && !isPrequel && !isAlternative) continue;
+    if (!rel.media_external_id) continue;
+    const a = rel.media_external_id;
+    const b = rel.related_media_external_id;
+    const typeA = catalogMap.get(a)?.type;
+    const typeB = catalogMap.get(b)?.type;
+    if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
+    if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
+    union(a, b);
+  }
+
+  // A group that groupEditions already fused (e.g. Silent Hill 2 + its
+  // remake, joined by the edition/parent_id mechanism) still belongs in the
+  // bigger saga cluster if EITHER of its members touches the saga graph —
+  // checking only bare singletons here used to leave an edition-linked
+  // group stranded next to, instead of merged into, the rest of its own
+  // saga (Silent Hill 1/3 on one card, Silent Hill 2 + remake on another,
+  // never joined). Only bundles (a genuinely different concept — a
+  // container, not a saga step) are excluded.
+  const byComponent = new Map<string, number[]>();
+  groups.forEach((g, i) => {
+    if (g.bundleMeta) return;
+    const memberIds = [g.item.external_id, ...g.grouped.map(m => m.external_id)];
+    const rootId = memberIds.find(id => parent.has(id));
+    if (!rootId) return;
+    const comp = find(rootId);
+    const list = byComponent.get(comp) ?? [];
+    list.push(i);
+    byComponent.set(comp, list);
+  });
+
+  const consumed = new Set<number>();
+  const sagaGroups: Array<{ item: T; grouped: T[]; titleOverride?: string; aggregateStats: boolean }> = [];
+
+  for (const indices of byComponent.values()) {
+    if (indices.length < 2) continue; // nothing to merge — leave the lone entry exactly as-is
+
+    const allMembers: T[] = [];
+    for (const idx of indices) {
+      const g = groups[idx];
+      allMembers.push(g.item, ...g.grouped);
+      consumed.add(idx);
+    }
+
+    // Earliest release first — the group still sits over its first work,
+    // same as before.
+    const sorted = [...allMembers].sort((a, b) =>
+      compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
+    );
+    const [rep, ...rest] = sorted;
+    const sagaName = allMembers.map(m => sagaNames[m.external_id]).find(Boolean);
+    sagaGroups.push({ item: rep, grouped: rest, titleOverride: sagaName, aggregateStats: true });
+  }
+
+  const remaining = groups.filter((_, i) => !consumed.has(i));
+  return [...remaining, ...sagaGroups];
+}
+
 const STATUS_KEYS = ['', 'planning', 'in_progress', 'completed', 'paused', 'dropped'] as const;
 
 // Averages the ratings of every work a bundle groups together, ignoring
@@ -215,15 +291,24 @@ function averageRating(entries: LibraryEntry[]): number | null {
   return rated.reduce((a, b) => a + b, 0) / rated.length;
 }
 
-function LibraryCard({ item, grouped, bundleMeta, catalogMap, p }: {
+function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
+  /** Saga's own assigned name (PrEditorModal's "Saga Name" field), shown
+   *  instead of the earliest work's own title when a saga-chain merge found
+   *  one — the bundle's own title_main plays the same role for bundles. */
+  titleOverride?: string;
+  /** True for a saga-chain merge (see refineSagaGroups) — same aggregate
+   *  rating/date-range treatment as a bundle, just without swapping the
+   *  cover (a saga still sits over its first work's own cover). */
+  aggregateStats?: boolean;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
 }) {
   const meta = catalogMap.get(item.external_id);
-  const title = bundleMeta?.title_main ?? meta?.title_main ?? item.external_id;
+  const isAggregate = !!bundleMeta || !!aggregateStats;
+  const title = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
   const cover = bundleMeta?.cover_url ?? meta?.cover_url ?? '';
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
@@ -238,14 +323,24 @@ function LibraryCard({ item, grouped, bundleMeta, catalogMap, p }: {
   );
   const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
 
-  // A bundle card merges every contained work's own rating/dates instead of
-  // showing just one work's — the bundle itself was never individually
-  // played/rated, so there's no single "item" to read those from.
-  const ratingHtml = bundleMeta
-    ? formatRatingHtml(averageRating(orderedGrouped), getActiveRatingSystem(), 'library-card-rating')
+  // A bundle or saga-chain card merges every member's own rating/dates
+  // instead of showing just the root's own — there's no single "item" that
+  // represents the whole group's progress. groupBundles' own `grouped`
+  // already includes the representative item itself (it's built by
+  // concatenating every matched sub-group's own item+grouped, one of which
+  // *is* the representative's), while refineSagaGroups' `grouped` is just
+  // "the others" — so only the saga case needs `item` added back in here.
+  const aggregateMembers = bundleMeta ? orderedGrouped : [item, ...orderedGrouped];
+  const ratingHtml = isAggregate
+    ? formatRatingHtml(averageRating(aggregateMembers), getActiveRatingSystem(), 'library-card-rating')
     : formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
-  const dateStr = bundleMeta
-    ? [fmtDate(orderedGrouped[0]?.started_at), fmtDate(orderedGrouped[orderedGrouped.length - 1]?.finished_at)].filter(Boolean).join(' → ')
+  const dateStr = isAggregate
+    ? (() => {
+        const sorted = [...aggregateMembers].sort((a, b) =>
+          compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
+        );
+        return [fmtDate(sorted[0]?.started_at), fmtDate(sorted[sorted.length - 1]?.finished_at)].filter(Boolean).join(' → ');
+      })()
     : [fmtDate(item.started_at), fmtDate(item.finished_at)].filter(Boolean).join(' → ');
 
   const openEditor = () => {
@@ -360,6 +455,7 @@ export function LibrarySection() {
   const [items, setItems] = useState<Items | null>(null);
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
   const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>([]);
+  const [sagaNames, setSagaNames] = useState<Record<string, string>>({});
 
   const [nameFilter, setNameFilter] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -384,6 +480,7 @@ export function LibrarySection() {
       setItems(rawItems);
       setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
       setSagaRelations(relations);
+      getSagaNames(rawItems.map(i => i.external_id)).then(names => { if (!cancelled) setSagaNames(names); }).catch(() => {});
 
       // Entering your library is the other trigger point (besides visiting
       // the media page itself) for needsResync()'s per-status cadence —
@@ -485,38 +582,43 @@ export function LibrarySection() {
 
     return sectionsData
       .filter(sec => sec.items.length > 0)
-      // Saga (prequel/sequel) grouping always runs — see groupEditions' own
-      // doc — only the edition-specific signals are gated behind the
-      // "Agrupar por ediciones" toggle.
+      // Edition, bundle (CONTAINS), and saga-chain (PREQUEL/SEQUEL)
+      // grouping are all gated behind "Agrupar por ediciones" now — none of
+      // this runs on the plain, ungrouped grid.
       .map(sec => {
-        const editionGroups = groupEditions(sec.items, catalogMap, sagaRelations, groupByEdition);
-        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry }> = editionGroups;
+        const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
+        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> = editionGroups;
         if (groupByEdition) {
           cards = groupBundles(editionGroups, catalogMap, sagaRelations);
-          // groupBundles appends merged bundle cards at the end regardless
-          // of date/rating — re-sort by the same criteria as the section
-          // itself, using the bundle's own aggregate (every contained
-          // work's rating/duration, latest finished_at) in place of a
-          // single item's fields.
-          cards = [...cards].sort((a, b) => {
-            const aWorks = a.bundleMeta ? a.grouped : [a.item];
-            const bWorks = b.bundleMeta ? b.grouped : [b.item];
-            if (sortBy === 'rating') return (averageRating(bWorks) ?? 0) - (averageRating(aWorks) ?? 0);
-            if (sortBy === 'duration') {
-              const sum = (arr: Items[number][]) => arr.reduce((acc, it) => acc + getItemMinutes(it, catalogMap), 0);
-              return sum(bWorks) - sum(aWorks);
-            }
-            const latestFinished = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it.finished_at ? new Date(it.finished_at).getTime() : 0));
-            const dateA = latestFinished(aWorks);
-            const dateB = latestFinished(bWorks);
-            if (dateA === 0 && dateB !== 0) return 1;
-            if (dateB === 0 && dateA !== 0) return -1;
-            return dateB - dateA;
-          });
+          cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames);
         }
+
+        // groupBundles/refineSagaGroups can both append merged cards at the
+        // end regardless of date/rating — re-sort by the same criteria as
+        // the section itself, using the group's own aggregate (every
+        // member's rating/duration, latest finished_at) in place of a
+        // single item's fields whenever one applies.
+        cards = [...cards].sort((a, b) => {
+          const isAggA = !!a.bundleMeta || !!a.aggregateStats;
+          const isAggB = !!b.bundleMeta || !!b.aggregateStats;
+          const aWorks = isAggA ? (a.bundleMeta ? a.grouped : [a.item, ...a.grouped]) : [a.item];
+          const bWorks = isAggB ? (b.bundleMeta ? b.grouped : [b.item, ...b.grouped]) : [b.item];
+          if (sortBy === 'rating') return (averageRating(bWorks) ?? 0) - (averageRating(aWorks) ?? 0);
+          if (sortBy === 'duration') {
+            const sum = (arr: Items[number][]) => arr.reduce((acc, it) => acc + getItemMinutes(it, catalogMap), 0);
+            return sum(bWorks) - sum(aWorks);
+          }
+          const latestFinished = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it.finished_at ? new Date(it.finished_at).getTime() : 0));
+          const dateA = latestFinished(aWorks);
+          const dateB = latestFinished(bWorks);
+          if (dateA === 0 && dateB !== 0) return 1;
+          if (dateB === 0 && dateA !== 0) return -1;
+          return dateB - dateA;
+        });
+
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaNames, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
 
   if (items === null) return null;
 
@@ -633,8 +735,17 @@ export function LibrarySection() {
             <div className="library-section" key={sec.title}>
               <h3 className="library-section-title">{sec.title}</h3>
               <div className="library-grid">
-                {sec.cards.map(({ item, grouped, bundleMeta }) => (
-                  <LibraryCard item={item} grouped={grouped} bundleMeta={bundleMeta} catalogMap={catalogMap} p={p} key={bundleMeta?.external_id ?? item.external_id} />
+                {sec.cards.map(({ item, grouped, bundleMeta, titleOverride, aggregateStats }) => (
+                  <LibraryCard
+                    item={item}
+                    grouped={grouped}
+                    bundleMeta={bundleMeta}
+                    titleOverride={titleOverride}
+                    aggregateStats={aggregateStats}
+                    catalogMap={catalogMap}
+                    p={p}
+                    key={bundleMeta?.external_id ?? item.external_id}
+                  />
                 ))}
               </div>
             </div>

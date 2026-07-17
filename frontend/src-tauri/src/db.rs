@@ -190,6 +190,16 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         }
         mark_migration(conn, 9)?;
     }
+    if v < 10 {
+        // Set once by PrEditorModal (the "Edit Collaborative Catalog Entry"
+        // flow) on save — a live API resync checks this before touching an
+        // entry's relations, so a manual deletion/reorder there can't get
+        // silently re-added or reshuffled by the next scheduled resync (the
+        // live provider has no idea the removal was deliberate; it just
+        // reports the same relation again).
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN manually_edited_at TEXT", []);
+        mark_migration(conn, 10)?;
+    }
 
     Ok(())
 }

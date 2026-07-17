@@ -33,6 +33,10 @@ export interface MediaCatalogEntry {
   last_synced_at?:      string | null;
   sync_failed_count?:   number | null;
   last_sync_error?:     string | null;
+  /** Set once by PrEditorModal on save — a live resync checks this before
+   *  touching this entry's relations (see mediaService.ts's fetchMediaData)
+   *  so a manual deletion/reorder there can't get silently re-added. */
+  manually_edited_at?:  string | null;
   created_at:           string;
   updated_at:           string;
 }
@@ -78,6 +82,12 @@ export async function saveCachedSaga(entries: SagaEntry[], sagaName = ''): Promi
 
 export async function getSagaName(externalId: string): Promise<string> {
   return tauriCmd<string>('get_saga_name', '', { mediaExternalId: externalId });
+}
+
+// Bulk variant — used by the library grid's saga grouping to fetch every
+// owned work's assigned saga name (if any) in one round trip.
+export async function getSagaNames(mediaExternalIds: string[]): Promise<Record<string, string>> {
+  return tauriCmd<Record<string, string>>('get_saga_names', {}, { mediaExternalIds });
 }
 
 export interface DbMediaRelation {

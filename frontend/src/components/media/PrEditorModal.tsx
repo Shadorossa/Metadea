@@ -534,7 +534,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
     setErrorMsg('');
 
     try {
-      await saveCatalogEntry(entry);
+      // Marks this entry as hand-curated — a live resync (mediaService.ts's
+      // fetchMediaData) checks this and leaves its relations alone from now
+      // on, so a deletion or saga reorder made here can't be silently
+      // undone by the next automatic re-fetch.
+      await saveCatalogEntry({ ...entry, manually_edited_at: new Date().toISOString() });
 
       const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
 

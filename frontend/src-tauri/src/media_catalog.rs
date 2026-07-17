@@ -138,6 +138,11 @@ pub struct MediaCatalogEntry {
     pub last_synced_at: Option<String>,
     pub sync_failed_count: Option<i32>,
     pub last_sync_error: Option<String>,
+    /// Set once by PrEditorModal on save — a live resync checks this and,
+    /// if present, leaves this entry's relations untouched instead of
+    /// re-merging in whatever the live provider still reports (see
+    /// mediaService.ts's fetchMediaData).
+    pub manually_edited_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -150,7 +155,7 @@ const SELECT_ALL: &str = "
            ratings_count, total_count, total_count_2, genres_csv,
            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           created_at, updated_at
+           manually_edited_at, created_at, updated_at
     FROM media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
@@ -186,8 +191,9 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         last_synced_at:      row.get(28)?,
         sync_failed_count:   row.get(29)?,
         last_sync_error:     row.get(30)?,
-        created_at:          row.get::<_, Option<String>>(31)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(32)?.unwrap_or_default(),
+        manually_edited_at:  row.get(31)?,
+        created_at:          row.get::<_, Option<String>>(32)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
     })
 }
 
@@ -225,8 +231,8 @@ pub async fn save_catalog_entry(
             ratings_count, total_count, total_count_2, genres_csv,
             genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
             authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-            created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33)",
+            manually_edited_at, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34)",
         rusqlite::params![
             &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
             &entry.format, &entry.source,
@@ -240,6 +246,7 @@ pub async fn save_catalog_entry(
             &entry.platforms_csv, &entry.shop_links_csv, &entry.companies_cache_csv,
             &entry.authors_csv,
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
+            &entry.manually_edited_at,
             &entry.created_at, &entry.updated_at,
         ],
     ).str_err()?;
@@ -1466,4 +1473,36 @@ pub async fn get_saga_name(
         .optional()
         .str_err()?;
     Ok(name)
+}
+
+// Bulk variant of get_saga_name — the library grid's saga grouping needs the
+// assigned name (if any) for every owned work in one round trip instead of
+// one get_saga_name call per item.
+#[tauri::command]
+pub async fn get_saga_names(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_ids: Vec<String>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let mut map = std::collections::HashMap::new();
+    if media_external_ids.is_empty() {
+        return Ok(map);
+    }
+
+    let conn = state.conn.lock().str_err()?;
+    let placeholders = media_external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT sr.media_external_id, s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id
+         WHERE sr.media_external_id IN ({}) AND s.name != ''",
+        placeholders
+    );
+    let mut stmt = conn.prepare(&sql).str_err()?;
+    let params = rusqlite::params_from_iter(media_external_ids.iter());
+    let rows = stmt.query_map(params, |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    }).str_err()?;
+
+    for row in rows.filter_map(|r| r.ok()) {
+        map.insert(row.0, row.1);
+    }
+    Ok(map)
 }
