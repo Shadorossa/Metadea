@@ -238,7 +238,17 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       external_id: data.externalId,
       parent_id: data.parentGame?.externalId || null,
       type: data.type,
-      format: data.format || null,
+      // Same "don't overwrite a manual correction with a live re-fetch"
+      // fallback as banners_csv below — format/release date are exactly the
+      // fields the collaborative catalog editor exists to correct (a
+      // provider miscategorizing something as e.g. PORT when it's really
+      // VISUAL_NOVEL, or a wrong release year), and every live re-fetch used
+      // to silently reset that correction back to whatever the API says,
+      // since this function otherwise always wins with the freshest fetch.
+      // Once a local value exists, only the collaborative editor changes it
+      // from here on — a genuine upstream correction can still be pulled in
+      // manually (re-open in the editor, or the admin panel's "Add work").
+      format: existing?.format ?? (data.format || null),
       source: data.source || 'igdb',
       title_main: data.titleMain,
       title_native: data.titleNative || null,
@@ -246,9 +256,9 @@ async function persistToCatalog(data: MediaPageData): Promise<void> {
       synopsis: data.description || null,
       cover_url: data.cover || null,
       banners_csv: data.bannerImage || existing?.banners_csv || null,
-      release_year: data.releaseYear || null,
-      release_month: data.releaseMonth || null,
-      release_day: data.releaseDay || null,
+      release_year: existing?.release_year ?? (data.releaseYear || null),
+      release_month: existing?.release_month ?? (data.releaseMonth || null),
+      release_day: existing?.release_day ?? (data.releaseDay || null),
       time_length: data.timeLength || null,
       status: data.status || null,
       score_global: data.scoreGlobal || null,

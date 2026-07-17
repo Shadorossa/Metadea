@@ -31,7 +31,18 @@ export async function submitCollaborativeProposal(
   const user = await invoke<GitHubUserProfile>('get_github_user_profile', { token });
   const username = user.login;
 
-  const jsonContent = JSON.stringify(bundle, null, 2);
+  // Strip fields that only make sense on this user's own local install
+  // before they leave the machine — the shared community catalog every
+  // other user pulls from has no business carrying one person's sync
+  // bookkeeping or per-install favorite/rating counters as if they were
+  // canonical data.
+  const {
+    last_synced_at, sync_failed_count, last_sync_error, favorites_count, ratings_count,
+    ...sharableCatalogEntry
+  } = entry;
+  const sharableBundle: ProposalBundle = { ...bundle, media_catalog: sharableCatalogEntry };
+
+  const jsonContent = JSON.stringify(sharableBundle, null, 2);
   const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
   const filePath = `database/${externalId.replace(':', '-')}.json`;
   const branchName = `proposal-${externalId.replace(':', '-')}-${username}`;
