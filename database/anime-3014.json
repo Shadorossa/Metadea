@@ -1,0 +1,225 @@
+{
+  "media_catalog": {
+    "id": "15a087c0724885bb15a087c0724885bb",
+    "external_id": "anime:3014",
+    "parent_id": null,
+    "type": "anime",
+    "format": "MOVIE",
+    "source": "anilist",
+    "title_main": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+    "title_romaji": "Legend of the Galactic Heroes: My Conquest Is the Sea of Stars",
+    "title_native": "銀河英雄伝説: わが征くは星の大海",
+    "synopsis": "<p>This movie, based on an anecdote of &quot;Ginga Eiyuu Densetsu&quot; written by novelist Tanaka Yoshiki, preludes the 110-episodes TV series by describing the first encounter between the ambitious young man Reinhard von Museal under the imperial flag and the passive Yang Wenli who serves a corrupting democracy. Set in an imaginative future, the story describes the first encounter between Yang and Reinhard and discusses how heroes are born.<br><span class=\"media-description-source\">&nbsp;&nbsp;—&nbsp;Source: Anime News Network</span></p>",
+    "cover_url": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg",
+    "banners_csv": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/3014-xPKJu0ZRcYHa.jpg",
+    "release_year": 1988,
+    "release_month": 2,
+    "release_day": 6,
+    "time_length": 60,
+    "status": "FINISHED",
+    "score_global": 7.6,
+    "total_count": 1,
+    "total_count_2": null,
+    "genres_csv": "Action,Sci-Fi",
+    "genres_tag_csv": null,
+    "platforms_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": "MADHOUSE,Artland",
+    "authors_csv": "Yoshiki Tanaka",
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3665",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:820",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3016",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3665",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
+    },
+    {
+      "media_external_id": "anime:3016",
+      "related_media_external_id": "anime:820",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:3869",
+      "name": "Dusty Attenborough",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n3869-bbAt9rac2s3H.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12550",
+      "name": "Siegfried Kircheis",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12550-96zZ4MIvuprI.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:3066",
+      "name": "Reinhard von Lohengramm",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3066-bq8s1DooZyTJ.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:2780",
+      "name": "Wenli Yang",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2780-4S84iiE9LyIY.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:40448",
+      "name": "Gregor von Muckenberger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b40448-iYUMznzvXbE2.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12778",
+      "name": "Wolfgang Mittermeyer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12778-JBkV46RACdf5.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:6026",
+      "name": "Oskar von Reuenthal",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b6026-JN6eL036UiyU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19477",
+      "name": "Ernest Mecklinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19477-auT27c6JJ0Dq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19474",
+      "name": "Job Truniht",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19474-uUgZahmK908t.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12898",
+      "name": "Paul von Oberstein",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12898-x9pnZic0uZjZ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:13101",
+      "name": "Olivier Poplan",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b13101-NAKpQLhmZnqs.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [],
+  "saga_groups": {
+    "anime:3016": "Group 1",
+    "anime:820": "Group 1",
+    "anime:170816": "Group 1",
+    "manga:41941": "Group 1",
+    "manga:87134": "Group 1",
+    "anime:20628": "Group 1",
+    "anime:100780": "Group 1",
+    "anime:124032": "Group 1",
+    "anime:148970": "Group 1",
+    "anime:3015": "",
+    "anime:3665": "Gaiden",
+    "anime:3371": "Gaiden"
+  },
+  "saga_name": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai"
+}
