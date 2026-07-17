@@ -44,7 +44,7 @@
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Metal Gear 2: Solid Snake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3whu.jpg",
       "media_external_id": "game:250635"
     },
     {
@@ -53,6 +53,14 @@
       "type_label": "Episode",
       "title": "Metal Gear Solid: Integral",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpal.jpg",
+      "media_external_id": "game:250635"
+    },
+    {
+      "related_media_external_id": "game:474",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear Solid 2: Substance",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eg1.jpg",
       "media_external_id": "game:250635"
     },
     {
