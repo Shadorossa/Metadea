@@ -34,12 +34,18 @@ export async function submitCollaborativeProposal(
   // Strip fields that only make sense on this user's own local install
   // before they leave the machine — the shared community catalog every
   // other user pulls from has no business carrying one person's sync
-  // bookkeeping or per-install favorite/rating counters as if they were
-  // canonical data.
+  // bookkeeping, per-install favorite/rating counters, or this row's local
+  // timestamps as if they were canonical data. id/created_at/updated_at
+  // can't just be omitted (MediaCatalogEntry requires them) — zeroed out
+  // instead, same placeholder convention mapMediaDataToCatalogEntry already
+  // uses for `id`, since save_catalog_entry (Rust) always regenerates all
+  // three from the existing row on import regardless of what's here.
   const {
     last_synced_at, sync_failed_count, last_sync_error, favorites_count, ratings_count,
     ...sharableCatalogEntry
   } = entry;
+  sharableCatalogEntry.created_at = '';
+  sharableCatalogEntry.updated_at = '';
   const sharableBundle: ProposalBundle = { ...bundle, media_catalog: sharableCatalogEntry };
 
   const jsonContent = JSON.stringify(sharableBundle, null, 2);
