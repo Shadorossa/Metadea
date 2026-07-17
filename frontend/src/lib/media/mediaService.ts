@@ -316,14 +316,13 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     }
 
     // Once hand-edited via the collaborative catalog editor (PrEditorModal),
-    // an entry's relations are off-limits to a live resync entirely — the
-    // live provider has no idea a deletion/reorder there was deliberate, it
-    // just reports the same relation graph again, and the merge below can
-    // only ever add rows back in, never truly tell "user removed this"
-    // apart from "never synced this". See MediaCatalogEntry.manually_edited_at.
-    if (!existing?.manually_edited_at) {
-      await mergeAndPersistRelations(rawId, data.relations, data.format);
-    }
+    // a relation to media that already existed back then (an old prequel/
+    // sequel the user deliberately removed) must never be silently re-added
+    // — the live provider has no idea the removal was deliberate, it just
+    // reports the same relation graph again. mergeAndPersistRelations itself
+    // does the actual year-based filtering (existing/newer content still
+    // gets in) — see its own doc and MediaCatalogEntry.manually_edited_at.
+    await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
 
     // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data);

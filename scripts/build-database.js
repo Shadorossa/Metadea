@@ -62,6 +62,7 @@ CREATE TABLE media_catalog (
     last_synced_at       TEXT,
     sync_failed_count    INTEGER DEFAULT 0,
     last_sync_error      TEXT,
+    manually_edited_at   TEXT,
     created_at           TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at           TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -158,7 +159,7 @@ const CATALOG_COLUMNS = [
   'release_year', 'release_month', 'release_day', 'time_length', 'status', 'score_global',
   'favorites_count', 'ratings_count', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv', 'companies_cache_csv', 'authors_csv',
-  'last_synced_at', 'sync_failed_count', 'last_sync_error', 'created_at', 'updated_at',
+  'last_synced_at', 'sync_failed_count', 'last_sync_error', 'manually_edited_at', 'created_at', 'updated_at',
 ];
 
 function readBundles() {

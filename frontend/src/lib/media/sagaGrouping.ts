@@ -102,12 +102,24 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
 
   // precedes.get(A) = ids that a saved SEQUEL edge says come directly after A
   const precedes = new Map<string, Set<string>>();
+  // Two alternates of the same Concept Group have no SEQUEL edge between
+  // them (they're not sequential releases) — without some hint, Kahn's tie
+  // break below always fell back to release-date order, silently reverting
+  // a manual reorder within a group every time the editor reopened. See
+  // PrEditorModal.tsx's own save logic for where this "#N" suffix comes
+  // from (each alternate's own position within its Concept Group).
+  const groupPosition = new Map<string, number>();
+  const ALT_POSITION_RE = /#(\d+)$/;
   for (let i = 0; i < dateOrderedIds.length; i++) {
     for (const r of relsByIndex[i] ?? []) {
       if (r.relation_type === 'SEQUEL' && idSet.has(r.related_media_external_id)) {
         const ownerId = dateOrderedIds[i];
         if (!precedes.has(ownerId)) precedes.set(ownerId, new Set());
         precedes.get(ownerId)!.add(r.related_media_external_id);
+      }
+      if (r.relation_type === 'ALTERNATIVE') {
+        const match = ALT_POSITION_RE.exec(r.type_label || '');
+        if (match) groupPosition.set(dateOrderedIds[i], parseInt(match[1], 10));
       }
     }
   }
@@ -123,7 +135,12 @@ export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMe
   const ready = dateOrderedIds.filter(id => inDegree.get(id) === 0);
   const result: string[] = [];
   while (ready.length > 0) {
-    ready.sort((a, b) => dateIndex.get(a)! - dateIndex.get(b)!);
+    ready.sort((a, b) => {
+      const ga = groupPosition.get(a);
+      const gb = groupPosition.get(b);
+      if (ga !== undefined && gb !== undefined) return ga - gb;
+      return dateIndex.get(a)! - dateIndex.get(b)!;
+    });
     const id = ready.shift()!;
     result.push(id);
     for (const next of precedes.get(id) ?? []) {

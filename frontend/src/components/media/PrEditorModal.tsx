@@ -576,13 +576,23 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
         }
       }
 
-      // 2. Alternative relations within each group
+      // 2. Alternative relations within each group. The trailing "#N" in
+      // type_label is each side's own position within group.ids (which
+      // mirrors the exact drag order the user just set, since group.ids is
+      // derived from fullChain/sagaOrder) — there's no SEQUEL/PREQUEL edge
+      // between two alternates (they're not sequential releases), so
+      // without this hint reconstructSagaOrder had nothing but release date
+      // to break the tie between them on next load, silently reverting any
+      // manual reorder within a Concept Group. See reconstructSagaOrder's
+      // own doc for how the suffix gets read back.
       for (const group of groups) {
+        const mainIndex = group.ids.indexOf(group.mainId);
         for (const altId of group.ids) {
           if (altId === group.mainId) continue;
+          const altIndex = group.ids.indexOf(altId);
           addReciprocalPair(group.mainId, altId,
-            { relation_type: 'ALTERNATIVE', type_label: 'Alternative Version' },
-            { relation_type: 'ALTERNATIVE', type_label: 'Alternative Version' });
+            { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${mainIndex}` },
+            { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${altIndex}` });
         }
       }
 
@@ -672,16 +682,34 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       // edge written locally — fetch its existing relations first so this
       // only replaces the specific chain-managed edges pointing at something
       // inside this chain, keeping everything else (including any relation
-      // to media outside this chain) untouched.
-      const otherChainIds = [...new Set(fullChain.filter(id => id !== externalId))];
+      // to media outside this chain) untouched. Also covers entries just
+      // *removed* from the saga (union with originalSagaOrder): their own
+      // row still carries the old SEQUEL/PREQUEL/ALTERNATIVE edges back into
+      // the chain, and get_transitive_relation_ids walks relations from
+      // every owner, not just this entry's — so a removed film's stale
+      // reciprocal edge alone was enough to pull it right back into the saga
+      // the next time this (or any other chain member's) editor reopened.
+      const otherChainIds = [...new Set([...fullChain, ...originalSagaOrder].filter(id => id !== externalId))];
       for (const otherId of otherChainIds) {
         try {
           const existing = await getMediaRelations(otherId);
           const kept = (existing || []).filter(r =>
-            !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && fullChain.includes(r.related_media_external_id))
+            !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && originalSagaOrder.includes(r.related_media_external_id))
           );
           const newRows = chainRelations.filter(r => r.media_external_id === otherId);
           await saveMediaRelations(otherId, [...kept, ...newRows]);
+
+          // Editing the saga's structure is really an edit of every member's
+          // relations, not just this one's own entry — without stamping this
+          // on every chain member too, visiting one of the *others* directly
+          // (e.g. opening its own prequel/sequel page) still ran a normal
+          // live resync there, since that entry's own manually_edited_at was
+          // never set, and the API's still-unaware-of-the-removal relation
+          // graph reintroduced exactly what was just removed here.
+          const otherEntry = await getCatalogEntry(otherId).catch(() => null);
+          if (otherEntry) {
+            await saveCatalogEntry({ ...otherEntry, manually_edited_at: new Date().toISOString() }).catch(() => {});
+          }
         } catch (err) {
           console.error(`Failed to propagate saga relation to ${otherId}:`, err);
         }

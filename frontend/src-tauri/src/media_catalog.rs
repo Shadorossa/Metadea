@@ -502,6 +502,17 @@ pub async fn save_cached_saga(
     let all_ids: Vec<String> = entries.iter().map(|e| e.external_id.clone()).collect();
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
 
+    // Remove stale members — previously this only INSERT OR REPLACED, so an
+    // entry deliberately removed from the saga by the user would linger in
+    // saga_relations indefinitely and keep appearing in getCachedSaga.
+    // Delete the full old set first so the final set exactly matches what
+    // was passed in.
+    tx.execute(
+        "DELETE FROM saga_relations WHERE saga_id = ?1",
+        rusqlite::params![&saga_id],
+    )
+    .str_err()?;
+
     for entry in &entries {
         let now = Utc::now().to_rfc3339();
 
@@ -904,25 +915,61 @@ pub async fn sync_community_catalog(
             // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
             // would silently shift every column after the mismatch into the
             // wrong field.
-            conn.execute(
-                "INSERT OR IGNORE INTO media_catalog (
-                    id, external_id, parent_id, type, format, source,
-                    title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                    release_year, release_month, release_day, time_length, status, score_global,
-                    favorites_count, ratings_count, total_count, total_count_2,
-                    genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                    last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
-                 )
-                 SELECT
-                    id, external_id, parent_id, type, format, source,
-                    title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                    release_year, release_month, release_day, time_length, status, score_global,
-                    favorites_count, ratings_count, total_count, total_count_2,
-                    genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                    last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
-                 FROM community.media_catalog",
-                [],
-            ).str_err()?;
+            // manually_edited_at is guarded by an existence check the same
+            // way media_saga_groups is below — the community catalog is a
+            // rebuilt-in-place, unversioned file, so a stale download from
+            // just before this column existed would otherwise fail this
+            // whole query with "no such column".
+            let has_manually_edited_col: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('media_catalog', 'community') WHERE name = 'manually_edited_at'",
+                    [],
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+
+            if has_manually_edited_col {
+                conn.execute(
+                    "INSERT OR IGNORE INTO media_catalog (
+                        id, external_id, parent_id, type, format, source,
+                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                        release_year, release_month, release_day, time_length, status, score_global,
+                        favorites_count, ratings_count, total_count, total_count_2,
+                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
+                        last_synced_at, sync_failed_count, last_sync_error, manually_edited_at, created_at, updated_at
+                     )
+                     SELECT
+                        id, external_id, parent_id, type, format, source,
+                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                        release_year, release_month, release_day, time_length, status, score_global,
+                        favorites_count, ratings_count, total_count, total_count_2,
+                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
+                        last_synced_at, sync_failed_count, last_sync_error, manually_edited_at, created_at, updated_at
+                     FROM community.media_catalog",
+                    [],
+                ).str_err()?;
+            } else {
+                conn.execute(
+                    "INSERT OR IGNORE INTO media_catalog (
+                        id, external_id, parent_id, type, format, source,
+                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                        release_year, release_month, release_day, time_length, status, score_global,
+                        favorites_count, ratings_count, total_count, total_count_2,
+                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
+                        last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+                     )
+                     SELECT
+                        id, external_id, parent_id, type, format, source,
+                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
+                        release_year, release_month, release_day, time_length, status, score_global,
+                        favorites_count, ratings_count, total_count, total_count_2,
+                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
+                        last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+                     FROM community.media_catalog",
+                    [],
+                ).str_err()?;
+            }
 
             // The INSERT OR IGNORE above only benefits entries the user's
             // local catalog doesn't have at all — for anything already
@@ -991,10 +1038,21 @@ pub async fn sync_community_catalog(
             // sequel, and any other relation a PR carried over) — same
             // fill-gaps merge, keyed by the table's own composite PK so this
             // never overwrites a relation the user's own API sync produced.
+            // Excludes any media_external_id already hand-edited locally via
+            // PrEditorModal: the community catalog can carry an older
+            // relation (e.g. from a different, earlier PR touching the same
+            // pair) that the user has since deliberately deleted here — the
+            // exact same "can't tell a deletion from never-synced" problem a
+            // live API resync has, so it gets the same guard.
             conn.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
-                 SELECT media_external_id, related_media_external_id, relation_type, type_label FROM community.media_relations
-                 WHERE media_external_id != related_media_external_id",
+                 SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
+                 FROM community.media_relations c
+                 WHERE c.media_external_id != c.related_media_external_id
+                   AND NOT EXISTS (
+                     SELECT 1 FROM media_catalog mc
+                     WHERE mc.external_id = c.media_external_id AND mc.manually_edited_at IS NOT NULL
+                   )",
                 [],
             ).str_err()?;
 
