@@ -74,15 +74,25 @@ fn sanitize_for_filename(external_id: &str) -> String {
     external_id.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect()
 }
 
-// Reads a row's file off disk and encodes it as a data: URL for the frontend.
-fn load_image_data_url(root: &std::path::Path, row: &ImageRow) -> Option<String> {
+// Used to just read the file and base64-encode it into a data: URL here —
+// correct, but every single overview/favorites/HOF tab load paid the cost
+// of a synchronous disk read *and* a ~33%-larger IPC payload for *every*
+// custom image, unconditionally, even when nothing changed since the last
+// view. The frontend's own wrapAssetUrl() (lib/tauri/core.ts) already knows
+// how to turn a plain file path into a native asset://-protocol URL via
+// convertFileSrc — handing it the path instead lets the WebView load (and
+// cache) the image itself, lazily, the same way any other <img src> does,
+// instead of shipping the bytes through IPC up front on every load. Needs
+// this directory allowlisted in tauri.conf.json's assetProtocol.scope (see
+// there) for convertFileSrc to be allowed to serve it at all.
+fn image_file_path(root: &std::path::Path, row: &ImageRow) -> Option<String> {
     let path = root.join(&row.list_name).join(&row.file_name);
-    let bytes = std::fs::read(&path).ok()?;
-    Some(format!("data:image/png;base64,{}", base64_encode(&bytes)))
+    if !path.exists() { return None; }
+    Some(path.to_string_lossy().into_owned())
 }
 
 fn row_into_image(root: &std::path::Path, row: ImageRow) -> Option<FavoriteCustomImage> {
-    let image_url = load_image_data_url(root, &row)?;
+    let image_url = image_file_path(root, &row)?;
     Some(FavoriteCustomImage {
         external_id: row.external_id,
         list_name: row.list_name,

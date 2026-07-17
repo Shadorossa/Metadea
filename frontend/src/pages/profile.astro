@@ -143,7 +143,7 @@ const t    = useTranslations(lang);
     const content = document.getElementById('profile-tab-content');
     if (!content) return;
 
-    if      (tab === 'overview')   await renderOverview(content, cachedItems);
+    if      (tab === 'overview')   await renderOverview(content, cachedItems, cachedCatalog);
     else if (tab === 'library')   await renderLibrary(content);
     else if (tab === 'favorites') await renderFavorites(content);
     else if (tab === 'stats')     await renderStats(content);

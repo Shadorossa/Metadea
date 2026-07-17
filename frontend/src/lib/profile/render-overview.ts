@@ -21,7 +21,7 @@ type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 let hofRoot: Root | null = null;
 let activityRoot: Root | null = null;
 
-export async function renderOverview(el: HTMLElement, items: Items): Promise<void> {
+export async function renderOverview(el: HTMLElement, items: Items, catalog?: MediaCatalogEntry[]): Promise<void> {
   hofRoot?.unmount();
   hofRoot = null;
   activityRoot?.unmount();
@@ -31,12 +31,16 @@ export async function renderOverview(el: HTMLElement, items: Items): Promise<voi
     const p = t.profile;
     const tm = t.media;
 
-    // These six Tauri round trips are all independent (none depends on
-    // another's result) — batched instead of the previous sequential await
-    // chain, which added up as separate IPC latencies on every load of the
-    // overview tab (the one rendered on initial page load).
+    // Five Tauri round trips are all independent (none depends on another's
+    // result) — batched instead of the previous sequential await chain,
+    // which added up as separate IPC latencies on every load of the
+    // overview tab (the one rendered on initial page load). Catalog entries
+    // are skipped here entirely when the caller already has them —
+    // profile.astro's init() fetches the exact same getAllCatalogEntries()
+    // for its own click-delegation lookups, so refetching it again on every
+    // single switch to this tab was a needless duplicate query.
     const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages] = await Promise.all([
-      getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      catalog ? Promise.resolve(catalog) : getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
       readMonthlyHistory().catch(() => ({})),
       syncActiveRatingSystem(),
       readUserFavorites().catch(() => ({} as Record<string, string[]>)),
