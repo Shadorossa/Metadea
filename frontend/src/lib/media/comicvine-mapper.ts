@@ -4,6 +4,7 @@ import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, type DateParts } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
+import { canonicalizeAlwaysFinished } from './media-status';
 
 // Comic Vine descriptions/decks are HTML — strip tags for plain-text display
 // since MediaPageData.description is rendered as plain text elsewhere.
@@ -75,6 +76,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     cover:        volume.image?.medium_url ?? volume.image?.small_url ?? undefined,
     bannerImage:  undefined,
     bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
+    status:       canonicalizeAlwaysFinished(),
     statusLabel:  undefined,
     statusClass:  '',
     genreDots,
@@ -151,6 +153,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     cover:        issue.image?.medium_url ?? issue.image?.small_url ?? undefined,
     bannerImage:  undefined,
     bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
+    status:       canonicalizeAlwaysFinished(),
     statusLabel:  undefined,
     statusClass:  '',
     genreDots,

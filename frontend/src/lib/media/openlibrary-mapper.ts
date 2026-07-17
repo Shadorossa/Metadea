@@ -2,6 +2,7 @@ import type { OpenLibWork } from '../search/providers/openlibrary';
 import { openLibCoverUrl } from '../search/providers/openlibrary';
 import { getT } from '../../i18n/client';
 import type { MediaAuthor, MediaPageData } from './types';
+import { canonicalizeAlwaysFinished } from './media-status';
 
 
 function extractDescription(raw: OpenLibWork['description']): string | undefined {
@@ -47,6 +48,7 @@ export function mapOpenLibToMedia(
     cover,
     bannerImage:  undefined,
     bannerColor:  'linear-gradient(135deg, #1a1a2e22, #2a1a3e44)',
+    status:       canonicalizeAlwaysFinished(),
     statusLabel:  undefined,
     statusClass:  '',
     genreDots,
