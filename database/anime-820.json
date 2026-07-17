@@ -99,7 +99,7 @@
       "media_external_id": "anime:820",
       "related_media_external_id": "anime:3016",
       "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version",
+      "type_label": "Alternative Version #1",
       "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
     },
@@ -163,7 +163,7 @@
       "media_external_id": "anime:3665",
       "related_media_external_id": "anime:3371",
       "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version",
+      "type_label": "Alternative Version #0",
       "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
     },
@@ -171,7 +171,7 @@
       "media_external_id": "anime:3371",
       "related_media_external_id": "anime:3665",
       "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version",
+      "type_label": "Alternative Version #1",
       "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
     },
@@ -179,7 +179,7 @@
       "media_external_id": "anime:3016",
       "related_media_external_id": "anime:820",
       "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version",
+      "type_label": "Alternative Version #0",
       "title": "Ginga Eiyuu Densetsu",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
     }
@@ -1127,11 +1127,11 @@
     }
   ],
   "saga_groups": {
-    "anime:3015": "Gaiden",
-    "anime:820": "Group 1",
     "anime:3016": "Group 1",
     "anime:3665": "Gaiden",
+    "anime:3015": "Gaiden",
     "anime:3371": "Gaiden",
+    "anime:820": "Group 1",
     "anime:170816": "Group 1",
     "manga:41941": "Group 1",
     "manga:87134": "Group 1",
