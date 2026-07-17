@@ -224,14 +224,13 @@ export async function fetchComicIssues(
 }
 
 // Comprueba caché primero; si no está, fetcha y guarda
-// Helper to persist live API data back to SQLite media_catalog cache
-async function persistToCatalog(data: MediaPageData): Promise<void> {
+// Helper to persist live API data back to SQLite media_catalog cache.
+// `existing` is passed in (not re-fetched here) — fetchMediaData, this
+// function's only caller, already needs the same row for its own banner-
+// fallback/manually_edited_at checks just before calling this.
+async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
-
-    // Most providers never return a banner — fall back to the DB's existing
-    // value instead of wiping a manually-added one on every live re-fetch.
-    const existing = await getCatalogEntry(data.externalId).catch(() => null);
 
     const entry: MediaCatalogEntry = {
       id: '', // Will be filled/matched by Rust if already exists
@@ -325,7 +324,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
 
     // Persist to local SQLite cache so F5 or next visit loads instantly
-    await persistToCatalog(data);
+    await persistToCatalog(data, existing);
 
     // Only save API authors if we don't have any in the DB yet, or the ones
     // we do have are missing an image — e.g. saved before Comic Vine author

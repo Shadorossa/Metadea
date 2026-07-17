@@ -28,6 +28,7 @@ export async function searchGames(
 // separate query rather than a flag on the normal SEARCHABLE_TYPES fan-out.
 async function searchGamesByCategory(
   searchQuery: string,
+  signal: AbortSignal,
   page: number,
   category: number,
   format: string,
@@ -67,21 +68,21 @@ async function searchGamesByCategory(
   }
 
   const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=game&page=${page}&${bundlesOnlyQueryParam}=true`;
-  const response = await fetch(url);
+  const response = await fetch(url, { signal });
   if (!response.ok) return { results: [], hasMore: false };
   const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
   return { results: data.results ?? [], hasMore: data.hasMore ?? false };
 }
 
 // IGDB category 3 (bundle) — the "Bundled In" relation picker.
-export async function searchGameBundles(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategory(searchQuery, page, 3, 'BUNDLE', 'bundlesOnly');
+export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  return searchGamesByCategory(searchQuery, signal, page, 3, 'BUNDLE', 'bundlesOnly');
 }
 
 // IGDB category 10 (expanded_game) — the "Contains" relation picker, since
 // a game can "contain" its own expanded edition as a bundled sub-item.
-export async function searchGameExpandedEditions(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategory(searchQuery, page, 10, 'EXPANDED_GAME', 'expandedOnly');
+export async function searchGameExpandedEditions(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  return searchGamesByCategory(searchQuery, signal, page, 10, 'EXPANDED_GAME', 'expandedOnly');
 }
 
 async function searchGamesLocal(
