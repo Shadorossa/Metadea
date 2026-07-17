@@ -1,0 +1,54 @@
+{
+  "media_catalog": {
+    "id": "7009b8c177ecbcef7009b8c177ecbcef",
+    "external_id": "game:41037",
+    "parent_id": "game:375",
+    "type": "game",
+    "format": "EXPANDED_GAME",
+    "source": "igdb",
+    "title_main": "Metal Gear Solid: Integral",
+    "title_romaji": null,
+    "title_native": "Metal Gear Solid Integral",
+    "synopsis": "Metal Gear Solid: Integral is an expanded version of the original game. It includes most of the changes and additions that were made in the NTSC-U/C version of the original Metal Gear Solid as well as new features unique to this release, including a third disc consisting almost entirely of VR training missions.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpal.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/scj0vu.jpg",
+    "release_year": 1999,
+    "release_month": 6,
+    "release_day": 24,
+    "time_length": null,
+    "status": null,
+    "score_global": 9,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Shooter,Tactical,Adventure",
+    "genres_tag_csv": null,
+    "platforms_csv": "PlayStation 3,PocketStation,PlayStation,PlayStation Portable",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Konami Computer Entertainment Japan,Konami",
+    "authors_csv": null,
+    "manually_edited_at": null,
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:375",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Metal Gear Solid",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpak.jpg",
+      "media_external_id": "game:41037"
+    },
+    {
+      "related_media_external_id": "game:250635",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Metal Gear Solid Master : Volume 1",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cocdmb.jpg",
+      "media_external_id": "game:41037"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
