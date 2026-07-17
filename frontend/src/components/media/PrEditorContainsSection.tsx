@@ -11,9 +11,8 @@ interface Props {
 }
 
 // The "Contains" panel — the reverse of Bundled In: things that have *this*
-// entry as their Bundled In (this entry is the container). Only rendered
-// when there's at least one, so an entry that isn't a container never shows
-// an empty section for it (see PrEditorModal.tsx's caller).
+// entry as their Bundled In (this entry is the container). Always rendered,
+// same as Bundled In, so a container relation can be added from scratch.
 export function PrEditorContainsSection({ containedRelations, onRemove, onOpenSearch }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>

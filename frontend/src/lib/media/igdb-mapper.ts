@@ -63,6 +63,7 @@ interface IgdbDetailGame {
 const GAME_TYPE_FORMAT: Record<number, string> = {
   0: 'GAME',
   1: 'DLC',
+  3: 'BUNDLE',
   2: 'EXPANSION',
   4: 'EXPANSION',
   5: 'MOD',

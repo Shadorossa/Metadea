@@ -22,6 +22,51 @@ export async function searchGames(
   return { results: data.results ?? [], hasMore: data.hasMore ?? false };
 }
 
+// IGDB category 3 (bundle) — plain search deliberately excludes these (a
+// bundle isn't a playable title on its own), but the "Bundled In" relation
+// picker needs exactly this category, so it's a separate query rather than
+// a flag on the normal SEARCHABLE_TYPES fan-out.
+export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  if (isTauri()) {
+    const cfg = await readEnvConfig().catch(() => ({}));
+    if (!cfg.igdb_client_id || !cfg.igdb_client_secret) return { results: [], hasMore: false };
+
+    let pageResult;
+    try {
+      pageResult = await igdbSearch(searchQuery, false, page, true);
+    } catch {
+      return { results: [], hasMore: false };
+    }
+
+    const results = pageResult.games.map(g => {
+      const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
+      const coverUrl = g.cover?.image_id ? igdbImageUrl(g.cover.image_id, 'cover_big') : null;
+      return {
+        externalId:   `game:${g.id}`,
+        type:         'game' as MediaType,
+        format:       'BUNDLE',
+        source:       'igdb' as const,
+        titleMain:    cleanEditionTitle(g.name),
+        titleRomaji:  null,
+        titleNative:  null,
+        coverUrl,
+        releaseYear:  dateParts?.year ?? null,
+        releaseMonth: dateParts?.month ?? null,
+        releaseDay:   dateParts?.day ?? null,
+        scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
+      };
+    });
+
+    return { results, hasMore: pageResult.hasMore };
+  }
+
+  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=game&page=${page}&bundlesOnly=true`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) return { results: [], hasMore: false };
+  const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
+  return { results: data.results ?? [], hasMore: data.hasMore ?? false };
+}
+
 async function searchGamesLocal(
   searchQuery: string,
   mediaType: MediaType,

@@ -1,5 +1,5 @@
 import { searchAniList, searchAniListCharacters } from './providers/anilist';
-import { searchGames }                 from './providers/igdb';
+import { searchGames, searchGameBundles } from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics }                from './providers/comicvine';
@@ -7,6 +7,7 @@ import { MissingApiKeyError }          from './errors';
 import { searchCatalog, type MediaCatalogEntry } from '../tauri/catalog';
 
 export { MissingApiKeyError };
+export { searchGameBundles };
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
@@ -107,7 +108,7 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
 // synced from the community catalog, or fetched before format tracking
 // existed) and without this it'd not-so-quietly reappear here even though
 // the live path was specifically made to hide it.
-const EXCLUDED_LOCAL_FORMATS = new Set(['REMASTER', 'EXPANDED_GAME', 'UPDATE', 'DLC', 'MOD', 'PORT', 'FORK']);
+const EXCLUDED_LOCAL_FORMATS = new Set(['REMASTER', 'EXPANDED_GAME', 'UPDATE', 'DLC', 'MOD', 'PORT', 'FORK', 'BUNDLE']);
 
 // Whole-word match only — mirrors name_has_edition_word in igdb.rs so
 // "Expedition 33" isn't caught by a plain "edition" substring check.

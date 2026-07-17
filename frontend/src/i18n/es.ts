@@ -209,7 +209,7 @@ export const es = {
       GAME: 'Juego', DLC: 'DLC', EXPANSION: 'Expansión de contenido', MOD: 'Mod',
       EPISODE: 'Episodio', SEASON: 'Temporada', REMAKE: 'Remake', REMASTER: 'Remaster',
       EXPANDED_GAME: 'Edición expandida', PORT: 'Port', FORK: 'Fork', UPDATE: 'Actualización',
-      VISUAL_NOVEL: 'Novela visual',
+      VISUAL_NOVEL: 'Novela visual', BUNDLE: 'Bundle',
       // Formato de número de cómic (comicvine-mapper.ts)
       ISSUE: 'Número',
     },

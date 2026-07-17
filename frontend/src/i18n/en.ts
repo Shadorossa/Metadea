@@ -209,7 +209,7 @@ export const en = {
       GAME: 'Game', DLC: 'DLC', EXPANSION: 'Content Expansion', MOD: 'Mod',
       EPISODE: 'Episode', SEASON: 'Season', REMAKE: 'Remake', REMASTER: 'Remaster',
       EXPANDED_GAME: 'Expanded Edition', PORT: 'Port', FORK: 'Fork', UPDATE: 'Update',
-      VISUAL_NOVEL: 'Visual Novel',
+      VISUAL_NOVEL: 'Visual Novel', BUNDLE: 'Bundle',
       // Comic Vine issue format (comicvine-mapper.ts)
       ISSUE: 'Issue',
     },

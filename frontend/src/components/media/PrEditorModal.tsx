@@ -1000,16 +1000,12 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
                 onOpenSearch={() => setSearchPopupMode('bundled')}
               />
 
-              {containedRelations.length > 0 && (
-                <>
-                  <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
-                  <PrEditorContainsSection
-                    containedRelations={containedRelations}
-                    onRemove={removeContainedRelation}
-                    onOpenSearch={() => setSearchPopupMode('contains')}
-                  />
-                </>
-              )}
+              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
+              <PrEditorContainsSection
+                containedRelations={containedRelations}
+                onRemove={removeContainedRelation}
+                onOpenSearch={() => setSearchPopupMode('contains')}
+              />
             </div>
           </div>
         </div>
@@ -1039,6 +1035,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
           closeOnSelect={false}
+          includeIgdbBundles
         />
       )}
 

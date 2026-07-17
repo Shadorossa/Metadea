@@ -1110,6 +1110,7 @@ pub async fn igdb_search(
     query: String,
     is_visual_novel: bool,
     page: Option<u32>,
+    bundles_only: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     if query.is_empty() {
         return Ok(serde_json::json!({ "games": [], "hasMore": false }));
@@ -1154,11 +1155,27 @@ pub async fn igdb_search(
     // signal available without a second request — worst case, one "Load
     // more" click comes back empty and the UI just stops offering it.
     let has_more = items.len() == PAGE_SIZE;
+    let bundles_only = bundles_only.unwrap_or(false);
 
     let mut games: Vec<serde_json::Value> = Vec::new();
     for item in items {
         // Cancelled status is 6 in IGDB API
         if item["status"].as_i64() == Some(6) {
+            continue;
+        }
+
+        // Used only by the "Bundled In" search popup, which needs the
+        // opposite of the normal allowlist below (category 3 is exactly
+        // what plain search excludes) — every other filter (edition-word
+        // names, version_parent dedup) doesn't apply to bundles.
+        if bundles_only {
+            if get_game_category(&item) != 3 {
+                continue;
+            }
+            let vn = detect_vn(&item);
+            if is_visual_novel == vn {
+                games.push(item);
+            }
             continue;
         }
 
