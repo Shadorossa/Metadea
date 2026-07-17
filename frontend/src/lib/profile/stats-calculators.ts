@@ -38,24 +38,36 @@ function getEditionChildIds(items: Items): Set<string> {
   return childIds;
 }
 
-export function getNonEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
-  const childIds = getEditionChildIds(items);
-  return items.filter(item => {
-    if (childIds.has(item.external_id)) return false;
-    if (catalogMap) {
-      const entry = catalogMap.get(item.external_id);
-      if (entry?.format === 'SEASON') return false;
-    }
-    return true;
-  });
+// Formats that describe a sub-unit of a work rather than a standalone work
+// of their own — a TV/anime season, a game update, or a single comic issue.
+// Unlike REMAKE/REMASTER/etc. (linked to their base via the version-log
+// system's `selected_version`), these are identified purely by their own
+// catalog format tag — no linking needed, since there's no "pick which
+// season/update/issue this belongs to" UI, each is just its own library
+// entry tagged with one of these formats.
+const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE']);
+
+function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: Map<string, MediaCatalogEntry>): boolean {
+  if (childIds.has(item.external_id)) return true;
+  if (catalogMap) {
+    const format = catalogMap.get(item.external_id)?.format;
+    if (format && SUB_WORK_FORMATS.has(format)) return true;
+  }
+  return false;
 }
 
-// Complement of getNonEditionItems: only the version-log child entries
-// themselves — used where a stat wants to break those down separately
-// instead of just excluding them.
-export function getEditionItems(items: Items): Items {
+export function getNonEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
   const childIds = getEditionChildIds(items);
-  return items.filter(item => childIds.has(item.external_id));
+  return items.filter(item => !isSubWorkItem(item, childIds, catalogMap));
+}
+
+// Complement of getNonEditionItems: only the sub-work entries themselves
+// (edition/version-log children, seasons, updates, comic issues) — used
+// where a stat wants to break those down separately instead of just
+// excluding them.
+export function getEditionItems(items: Items, catalogMap?: Map<string, MediaCatalogEntry>): Items {
+  const childIds = getEditionChildIds(items);
+  return items.filter(item => isSubWorkItem(item, childIds, catalogMap));
 }
 
 // media_catalog.time_length is the runtime in minutes of one unit of the
@@ -115,7 +127,7 @@ export interface TypeBreakdownEntry {
 // logged works, so the "time by category" block always shows the full
 // two-column list instead of only whichever types happen to be in the library.
 export function computeTypeBreakdown(items: Items, catalogMap: Map<string, MediaCatalogEntry>): TypeBreakdownEntry[] {
-  const nonEditionItems = getNonEditionItems(items);
+  const nonEditionItems = getNonEditionItems(items, catalogMap);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
 
   for (const type of Object.keys(TYPE_LABELS)) {
@@ -142,7 +154,7 @@ export function computeTypeBreakdown(items: Items, catalogMap: Map<string, Media
 // ── Genre breakdown ──────────────────────────────────────────────────────────
 
 export function computeTopGenres(items: Items, catalogMap: Map<string, MediaCatalogEntry>, limit = 10): [string, number][] {
-  const nonEditionItems = getNonEditionItems(items);
+  const nonEditionItems = getNonEditionItems(items, catalogMap);
   const genreCount: Record<string, number> = {};
   for (const item of nonEditionItems) {
     const entry = catalogMap.get(item.external_id);

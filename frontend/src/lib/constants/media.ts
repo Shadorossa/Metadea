@@ -33,21 +33,6 @@ export const TYPE_LABELS: Record<string, string> = {
   comic:  'Comic',
 };
 
-// media_catalog.format values for games (see GAME_TYPE_FORMAT in igdb-mapper.ts)
-export const GAME_FORMAT_LABELS: Record<string, string> = {
-  GAME:          'Juego base',
-  REMAKE:        'Remake',
-  REMASTER:      'Remaster',
-  EXPANDED_GAME: 'Edición extendida',
-  PORT:          'Port',
-  FORK:          'Fork',
-  EXPANSION:     'Expansión',
-  MOD:           'Mod',
-  EPISODE:       'Episodio',
-  SEASON:        'Temporada',
-  UPDATE:        'Actualización',
-};
-
 const FAV_LABELS: Record<string, string> = {
   anime_fav:     'Anime',
   manga_fav:     'Manga',

@@ -210,6 +210,8 @@ export const es = {
       EPISODE: 'Episodio', SEASON: 'Temporada', REMAKE: 'Remake', REMASTER: 'Remaster',
       EXPANDED_GAME: 'Edición expandida', PORT: 'Port', FORK: 'Fork', UPDATE: 'Actualización',
       VISUAL_NOVEL: 'Novela visual',
+      // Formato de número de cómic (comicvine-mapper.ts)
+      ISSUE: 'Número',
     },
     // Canonical release-status vocabulary shared by every provider mapper
     // (see lib/media/media-status.ts) — AniList's own enum plus UNAVAILABLE

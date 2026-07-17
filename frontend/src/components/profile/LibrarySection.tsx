@@ -235,8 +235,8 @@ function LibraryCard({ item, grouped, catalogMap, p }: {
   );
 }
 
-// media_catalog.format values this filter cares about (see GAME_FORMAT_LABELS
-// in constants/media.ts) — a fixed subset, not every possible format, so an
+// media_catalog.format values this filter cares about (see i18n's
+// media.formats for their display labels) — a fixed subset, not every possible format, so an
 // item whose format is something else entirely (or unset, for non-game
 // types) is left alone by this filter rather than hidden by it. 'GAME' (the
 // base entry, no edition) is surfaced to the user as "Main".
