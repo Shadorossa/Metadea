@@ -103,6 +103,11 @@ export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] 
 const FULL_EDITION_FORMATS = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']);
 const FULL_EDITION_ALLOWED_RELATION_TYPES = new Set([
   'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
+  // Saga-chain edges (PrEditorModal's Saga Order) are explicit, user-set
+  // relations, never IGDB-inherited noise — a remake/remaster/etc. with its
+  // own saga chain must keep showing its prequels/sequels/alt versions
+  // regardless of format.
+  'PREQUEL', 'SEQUEL', 'ALTERNATIVE',
 ]);
 
 export interface RelationBuckets {
