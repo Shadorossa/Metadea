@@ -25,6 +25,7 @@ export interface IgdbSubGame {
 interface IgdbDetailGame {
   id: number;
   name: string;
+  url?: string;
   summary?: string;
   cover?: { image_id: string };
   banner_image_id?: string | null;
@@ -310,6 +311,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     // Catalog fields
     format,
     source: 'igdb',
+    sourceUrl: game.url,
     releaseYear,
     releaseMonth,
     releaseDay,

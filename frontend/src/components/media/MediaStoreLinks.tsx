@@ -13,7 +13,7 @@ const LOGO_MAP: Record<string, string> = {
   ea: 'EA_logo.png',
 };
 
-function openLink(url: string) {
+export function openLink(url: string) {
   const tauri = window.__TAURI__;
   if (tauri?.opener?.openUrl) tauri.opener.openUrl(url);
   else window.open(url, '_blank');

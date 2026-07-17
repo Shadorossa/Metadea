@@ -90,7 +90,8 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     authors,
     companies,
     totalCount:   volume.count_of_issues ?? undefined,
-    source:       'ComicVine',
+    source:       'comicvine',
+    sourceUrl:    volume.site_detail_url ?? undefined,
     releaseYear:  startParts?.year ?? undefined,
     releaseMonth: startParts?.month ?? undefined,
     releaseDay:   startParts?.day ?? undefined,
@@ -164,7 +165,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     progressLabel:  getT().profile.status_reading,
     authors,
     format:       'ISSUE',
-    source:       'ComicVine',
+    source:       'comicvine',
     parentGame:   issue.volume
       ? { title: issue.volume.name, externalId: `comic:${issue.volume.id}` }
       : undefined,

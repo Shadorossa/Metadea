@@ -190,6 +190,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     progressLabel,
     // Catalog metadata
     source:       'anilist',
+    sourceUrl:    raw.siteUrl ?? undefined,
     format:       raw.format ?? undefined,
     releaseYear:  raw.startDate?.year  ?? undefined,
     releaseMonth: raw.startDate?.month ?? undefined,

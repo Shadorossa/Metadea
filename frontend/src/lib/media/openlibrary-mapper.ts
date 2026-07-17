@@ -59,5 +59,7 @@ export function mapOpenLibToMedia(
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
     authors,
+    source:       'openlibrary',
+    sourceUrl:    `https://openlibrary.org/works/${externalId.slice(externalId.indexOf(':') + 1)}`,
   };
 }

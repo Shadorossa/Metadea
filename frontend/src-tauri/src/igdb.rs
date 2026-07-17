@@ -1278,7 +1278,7 @@ pub async fn igdb_get_game_detail(
     let client = get_http_client();
 
     let games_query = format!(
-        "fields id,name,cover.image_id,summary,first_release_date,rating,total_rating,status,\
+        "fields id,name,url,cover.image_id,summary,first_release_date,rating,total_rating,status,\
          genres.name,involved_companies.company.name,\
          involved_companies.developer,involved_companies.publisher,platforms.name,\
          alternative_names.name,alternative_names.comment,game_type,\

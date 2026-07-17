@@ -44,6 +44,7 @@ export interface AniListStaffEdge {
 
 export interface AniListMediaDetail {
   id: number;
+  siteUrl: string | null;
   title: { romaji: string | null; english: string | null; native: string | null };
   bannerImage: string | null;
   coverImage: { extraLarge: string | null; large: string | null; color: string | null } | null;
@@ -78,6 +79,7 @@ const DETAIL_QUERY = `
   query Media($id: Int!) {
     Media(id: $id) {
       id
+      siteUrl
       title { romaji english native }
       bannerImage
       coverImage { extraLarge large color }

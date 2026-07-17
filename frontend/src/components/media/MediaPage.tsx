@@ -14,6 +14,7 @@ import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
 import { MediaStoreLinks } from './MediaStoreLinks';
+import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 
@@ -772,6 +773,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 <div className="media-section-header-row">
                   <p className="section-label">{tm.section_data}</p>
                   <div className="media-section-header-line" />
+                  <MediaSourceLink source={data.source} sourceUrl={data.sourceUrl} />
                 </div>
 
                 {data.authors && data.authors.length > 0 && (

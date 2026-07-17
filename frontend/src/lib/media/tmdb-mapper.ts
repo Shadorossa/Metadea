@@ -132,6 +132,7 @@ export function mapTmdbToMedia(
     progressLabel: getT().profile.status_watching,
     // Catalog metadata
     source: 'tmdb',
+    sourceUrl: `https://www.themoviedb.org/${isTv ? 'tv' : 'movie'}/${rawId.slice(rawId.indexOf(':') + 1)}`,
     releaseYear,
     releaseMonth,
     releaseDay,

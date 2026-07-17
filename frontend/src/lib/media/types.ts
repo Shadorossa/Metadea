@@ -65,7 +65,8 @@ export interface MediaPageData {
   progressLabel: string;       // label i18n del botón de progreso en el tray
   // Catalog metadata
   format?: string;             // GAME, REMAKE, REMASTER, EXPANSION...
-  source?: string;             // igdb, anilist, openlibrary, tmdb
+  source?: string;             // igdb, anilist, openlibrary, tmdb, comicvine
+  sourceUrl?: string;          // this work's own page on that provider's website
   releaseYear?: number;
   releaseMonth?: number;
   releaseDay?: number;
