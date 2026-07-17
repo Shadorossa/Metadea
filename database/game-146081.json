@@ -1,0 +1,45 @@
+{
+  "media_catalog": {
+    "id": "ad76245edaa5b20bad76245edaa5b20b",
+    "external_id": "game:146081",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "The Great Ace Attorney 2: Resolve",
+    "title_romaji": null,
+    "title_native": "Dai Gyakuten Saiban 2: Naruhodou Ryuunosuke no Kakugo",
+    "synopsis": "The Great Ace Attorney 2: Resolve is the eleventh installment of the Ace Attorney series of text adventure video games.\nNew gameplay mechanics introduced to the series include Dance of Deduction, in which Ryunosuke must deduce mistakes and oversights in Herlock's overboard logic and uncover new facts, and Summation Examination, in which players must point out discrepancies among jurors' arguments to make their defendant's case and ultimately secure a \"Not Guilty\" verdict.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9su.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/sc9eli.jpg",
+    "release_year": 2017,
+    "release_month": 8,
+    "release_day": 3,
+    "time_length": null,
+    "status": null,
+    "score_global": 9,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Puzzle,Adventure,Visual Novel",
+    "genres_tag_csv": "Point-and-click",
+    "platforms_csv": "PlayStation 4,Nintendo 3DS,Android,PC (Microsoft Windows),iOS,Nintendo Switch",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Capcom",
+    "authors_csv": "",
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:146075",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "The Great Ace Attorney Chronicles",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2ylx.jpg",
+      "media_external_id": "game:146081"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
