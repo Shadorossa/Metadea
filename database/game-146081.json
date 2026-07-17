@@ -29,16 +29,7 @@
     "created_at": "",
     "updated_at": ""
   },
-  "media_relations": [
-    {
-      "related_media_external_id": "game:146075",
-      "relation_type": "PART_OF",
-      "type_label": "Part of",
-      "title": "The Great Ace Attorney Chronicles",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2ylx.jpg",
-      "media_external_id": "game:146081"
-    }
-  ],
+  "media_relations": [],
   "characters": [],
   "media_authors": [],
   "saga_groups": {}
