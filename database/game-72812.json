@@ -1,0 +1,535 @@
+{
+  "media_catalog": {
+    "id": "110a8191e53baddf110a8191e53baddf",
+    "external_id": "game:72812",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Inazuma Eleven: Victory Road",
+    "title_romaji": null,
+    "title_native": "闪电十一人 英雄们的胜利之路",
+    "synopsis": "The latest entry in the character collection and football simulation RPG series, \"Inazuma Eleven!\" With an original story featuring new main characters, over 4,500 players from across the series' history to collect and train, as well as exciting online tournaments, you can play the game your way!",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co9nsw.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar4lpk.jpg",
+    "release_year": 2025,
+    "release_month": 11,
+    "release_day": 14,
+    "time_length": null,
+    "status": null,
+    "score_global": 7.7,
+    "favorites_count": null,
+    "ratings_count": null,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Role-playing (RPG),Sports",
+    "genres_tag_csv": null,
+    "platforms_csv": "Xbox Series X|S,PlayStation 4,Nintendo Switch 2,Android,PC (Microsoft Windows),iOS,PlayStation 5,Nintendo Switch",
+    "shop_links_csv": "steam|https://store.steampowered.com/app/2799860,playstation|https://store.playstation.com/en-us/concept/231308",
+    "companies_cache_csv": "LEVEL-5",
+    "authors_csv": "",
+    "last_synced_at": "2026-07-17T07:30:28.479Z",
+    "sync_failed_count": 0,
+    "last_sync_error": null,
+    "created_at": "2026-07-07T14:41:36.797Z",
+    "updated_at": "2026-07-17T07:30:28.479952300+00:00"
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:72812",
+      "related_media_external_id": "game:134112",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven Go Galaxy: Supernova",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    },
+    {
+      "media_external_id": "game:72812",
+      "related_media_external_id": "game:62739",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    },
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:47835",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:22688",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2ukm.jpg"
+    },
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:47716",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:22688",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2ukm.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47676",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47675",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47674",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47835",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47676",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47716",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47675",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47716",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47674",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47716",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47673",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:47676",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:9685",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:47676",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47673",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:47675",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:9685",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:47675",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47673",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:47674",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:9685",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:47674",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:9693",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:9693",
+      "related_media_external_id": "game:47673",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:23220",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:23220",
+      "related_media_external_id": "game:47673",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:9693",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:9693",
+      "related_media_external_id": "game:9685",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:23220",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:23220",
+      "related_media_external_id": "game:9685",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9693",
+      "related_media_external_id": "game:134112",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Go Galaxy: Supernova",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:9693",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:9693",
+      "related_media_external_id": "game:62739",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "game:9693",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:23220",
+      "related_media_external_id": "game:134112",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven Go Galaxy: Supernova",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:23220",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:23220",
+      "related_media_external_id": "game:62739",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "game:23220",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:72812",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven: Victory Road",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9nsw.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "game:72812",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven: Victory Road",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9nsw.jpg"
+    },
+    {
+      "media_external_id": "game:47835",
+      "related_media_external_id": "game:47716",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:47716",
+      "related_media_external_id": "game:47835",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47675",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
+    },
+    {
+      "media_external_id": "game:47675",
+      "related_media_external_id": "game:47676",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47676",
+      "related_media_external_id": "game:47674",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407s.jpg"
+    },
+    {
+      "media_external_id": "game:47674",
+      "related_media_external_id": "game:47676",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven 3: Bomb Blast",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407q.jpg"
+    },
+    {
+      "media_external_id": "game:47673",
+      "related_media_external_id": "game:9685",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven GO: Shadow",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
+    },
+    {
+      "media_external_id": "game:9685",
+      "related_media_external_id": "game:47673",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven Go: Light",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
+    },
+    {
+      "media_external_id": "game:9693",
+      "related_media_external_id": "game:23220",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:23220",
+      "related_media_external_id": "game:9693",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:62739",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "game:134112",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Inazuma Eleven Go Galaxy: Supernova",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:47835": "IE2",
+    "game:47716": "IE2",
+    "game:47676": "IE3",
+    "game:47675": "IE3",
+    "game:47674": "IE3",
+    "game:47673": "IEGO",
+    "game:9685": "IEGO",
+    "game:9693": "IEGOCS",
+    "game:23220": "IEGOCS",
+    "game:134112": "IEGOGX",
+    "game:62739": "IEGOGX",
+    "game:72812": "IEVR"
+  }
+}
