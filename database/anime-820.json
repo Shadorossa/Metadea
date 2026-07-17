@@ -26,6 +26,7 @@
     "shop_links_csv": null,
     "companies_cache_csv": "Kitty Film,T.P.O,K-Factory",
     "authors_csv": "Yoshiki Tanaka",
+    "manually_edited_at": null,
     "created_at": "",
     "updated_at": ""
   },
@@ -103,22 +104,6 @@
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
     },
     {
-      "media_external_id": "anime:3371",
-      "related_media_external_id": "anime:3665",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/n3665-cX3SS5lcumOZ.png"
-    },
-    {
-      "media_external_id": "anime:3665",
-      "related_media_external_id": "anime:3371",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/n3371-rgefk9MUco58.png"
-    },
-    {
       "media_external_id": "anime:3665",
       "related_media_external_id": "anime:3014",
       "relation_type": "SEQUEL",
@@ -132,15 +117,23 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/n3665-cX3SS5lcumOZ.png"
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
     },
     {
       "media_external_id": "anime:3014",
-      "related_media_external_id": "anime:820",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Ginga Eiyuu Densetsu",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+      "related_media_external_id": "anime:3371",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
     },
     {
       "media_external_id": "anime:3014",
@@ -157,6 +150,30 @@
       "type_label": "Prequel",
       "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:820",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3665",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
     },
     {
       "media_external_id": "anime:3016",
@@ -1110,8 +1127,11 @@
     }
   ],
   "saga_groups": {
-    "anime:3016": "Group 1",
+    "anime:3015": "Gaiden",
     "anime:820": "Group 1",
+    "anime:3016": "Group 1",
+    "anime:3665": "Gaiden",
+    "anime:3371": "Gaiden",
     "anime:170816": "Group 1",
     "manga:41941": "Group 1",
     "manga:87134": "Group 1",
@@ -1120,5 +1140,5 @@
     "anime:124032": "Group 1",
     "anime:148970": "Group 1"
   },
-  "saga_name": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai"
+  "saga_name": "Ginga Eiyuu Densetsu"
 }
