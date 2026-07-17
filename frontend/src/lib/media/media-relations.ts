@@ -290,7 +290,16 @@ export async function mergeAndPersistRelations(
     const editedYear = new Date(effectiveManuallyEditedAt!).getFullYear();
     const isNewEnough = await Promise.all(candidateNew.map(async r => {
       const relatedEntry = await getCatalogEntry(r.relatedExternalId!).catch(() => null);
-      return (relatedEntry?.release_year ?? 0) > editedYear;
+      // Never cataloged locally at all (not just "no release year on file")
+      // means there's no prior row this could be a deliberately-deleted
+      // relation *to* — the only way something ends up in this "candidate"
+      // list with zero local history is if it's genuinely new, so it must
+      // be let through rather than blocked. Only an entry that DOES exist
+      // locally (something the user could plausibly have seen and removed)
+      // falls back to year 0 when its release_year is unknown, keeping the
+      // conservative "block if in doubt" behavior for that case.
+      if (!relatedEntry) return true;
+      return (relatedEntry.release_year ?? 0) > editedYear;
     }));
     candidateNew = candidateNew.filter((_, i) => isNewEnough[i]);
   }

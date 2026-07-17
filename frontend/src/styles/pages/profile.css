@@ -741,21 +741,27 @@
 }
 
 .hof-card {
+  /* Exposed as custom properties (not just bare px below) so
+     HofSection.tsx's custom-image background-size can reference the exact
+     same expanded-box dimensions via var() instead of a hardcoded '285px
+     380px' duplicate that would silently drift out of sync with these. */
+  --hof-card-h: 380px;
+  --hof-card-w-hover: 285px; /* Altura 380px * 0.75 = 285px de ancho exacto de la carátula */
   position: relative;
   overflow: hidden;
   flex: 1 1 110px; /* Ancho base estable de 110px para que encaje compacto sin huecos */
-  height: 380px;
+  height: var(--hof-card-h);
   width: 110px;
   min-width: 32px;
-  max-width: 285px;
+  max-width: var(--hof-card-w-hover);
   cursor: default;
   transition: flex 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s ease;
   border-radius: var(--radius-sm);
 }
 
 .hof-card:hover {
-  flex: 0 0 285px; /* Altura 380px * 0.75 = 285px de ancho exacto de la carátula */
-  width: 285px;
+  flex: 0 0 var(--hof-card-w-hover);
+  width: var(--hof-card-w-hover);
   z-index: 2;
 }
 

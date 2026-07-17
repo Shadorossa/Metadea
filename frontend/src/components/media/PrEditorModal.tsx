@@ -708,7 +708,16 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       // every owner, not just this entry's — so a removed film's stale
       // reciprocal edge alone was enough to pull it right back into the saga
       // the next time this (or any other chain member's) editor reopened.
-      const otherChainIds = [...new Set([...fullChain, ...originalSagaOrder].filter(id => id !== externalId))];
+      // Only runs when the saga itself actually changed — otherwise this
+      // used to fire on every single save (even a plain synopsis edit),
+      // doing a round trip per chain member and re-stamping every other
+      // member's manually_edited_at for no reason.
+      const sagaChangeDiff = getDiff();
+      const sagaChanged = sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
+        || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
+      const otherChainIds = sagaChanged
+        ? [...new Set([...fullChain, ...originalSagaOrder].filter(id => id !== externalId))]
+        : [];
       for (const otherId of otherChainIds) {
         try {
           const existing = await getMediaRelations(otherId);
