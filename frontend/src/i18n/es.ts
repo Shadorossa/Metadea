@@ -175,6 +175,7 @@ export const es = {
     add_to_library: 'Añadir a\nbiblioteca',
     in_library:     'En\nbiblioteca',
     is_version_of:  'Este juego es una versión de {title}',
+    is_bundle:      'Esta versión es un bundle',
     saga_button:    'Orden de la saga',
     saga_title:     'Orden de la saga',
     saga_loading:   'Buscando precuelas y secuelas...',

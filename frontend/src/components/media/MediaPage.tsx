@@ -17,6 +17,7 @@ import { MediaStoreLinks } from './MediaStoreLinks';
 import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -465,6 +466,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // and blocked from being logged separately — remakes/remasters are their
   // own standalone releases and stay fully trackable in the library.
   const isBlockedEdition = !!data.parentGame && (data.format === 'EXPANSION' || data.format === 'EXPANDED_GAME');
+  // A bundle (e.g. "The Great Ace Attorney Chronicles") isn't a playable
+  // title on its own — its contained works are — so it gets the same
+  // "can't be logged/edited here" treatment as a blocked edition, just with
+  // its own banner text instead of "is a version of {title}" (a bundle
+  // doesn't have one single parent to point back to). Detected from having
+  // at least two CONTAINS (EPISODE) relations of its own rather than from
+  // `data.format === 'BUNDLE'` — an already-cataloged container can be stuck
+  // with a stale format from before that value existed (persistToCatalog
+  // preserves an existing format rather than recomputing it), so the
+  // relation itself is the only reliable signal.
+  const isBundle = data.relations.filter(r => !!r.relationType && CONTAINS_RELATION_TYPES.includes(r.relationType)).length >= 2;
+  const isUneditable = isBlockedEdition || isBundle;
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
@@ -579,11 +592,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               </button>
             )}
             <div
-              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isBlockedEdition ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
+              className={`media-cover-wrap${inLibrary ? ' in-library' : ''}${isUneditable ? ' is-edition' : ''}${previewMode ? ' is-preview' : ''}`}
               role={previewMode ? undefined : 'button'}
               tabIndex={previewMode ? undefined : 0}
               aria-label={isBlockedEdition
                 ? tm.is_version_of.replace('{title}', data.parentGame!.title)
+                : isBundle
+                ? tm.is_bundle
                 : tm.add_to_library.replace('\n', ' ')}
               onClick={() => {
                 if (previewMode) return;
@@ -591,11 +606,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`;
                   return;
                 }
+                if (isBundle) return;
                 handleCoverClick();
               }}
               onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
                 isBlockedEdition
                   ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`)
+                  : isBundle
+                  ? undefined
                   : handleCoverClick()
               )}
             >
@@ -608,6 +626,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     <span className="media-cover-overlay-label">
                       {tm.is_version_of.replace('{title}', data.parentGame!.title)}
                     </span>
+                  ) : isBundle ? (
+                    <span className="media-cover-overlay-label">{tm.is_bundle}</span>
                   ) : (
                     <>
                       <span className="media-cover-overlay-icon">
@@ -625,7 +645,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               </div>
             </div>
 
-            {!previewMode && !isBlockedEdition && (
+            {!previewMode && !isUneditable && (
             <div className="media-library-widget-box">
               <div className="media-library-row-horizontal">
                 <StatusDropdown

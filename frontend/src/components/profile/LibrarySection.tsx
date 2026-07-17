@@ -9,6 +9,7 @@ import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
+import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -135,22 +136,98 @@ function groupEditions<T extends { external_id: string; selected_version: string
   return out;
 }
 
+// Second pass, on top of groupEditions' output: collapses the root-groups
+// for whatever a CONTAINS relation (EPISODE, from the container's own row —
+// e.g. "Chronicles" containing "Adventures" and "2: Resolve") groups
+// together into one card showing the container's own cover/title instead of
+// either work's. Deliberately not gated on the container's own catalog
+// `format` being 'BUNDLE' — an already-cataloged container can be stuck
+// with a stale format from before that value existed (persistToCatalog
+// preserves an existing format rather than recomputing it), so the
+// relation itself is the only reliable signal here. Needs at least two of
+// the container's contents actually present in the library, and the
+// container itself already cataloged (for its cover/title) — a bundle with
+// only one owned part, or one never added to the local catalog at all,
+// isn't worth collapsing into.
+function groupBundles<T extends { external_id: string }>(
+  groups: Array<{ item: T; grouped: T[] }>,
+  catalogMap: Map<string, MediaCatalogEntry>,
+  relations: DbMediaRelation[],
+): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }> {
+  const rootIndexOf = new Map<string, number>();
+  groups.forEach((g, i) => {
+    rootIndexOf.set(g.item.external_id, i);
+    for (const child of g.grouped) rootIndexOf.set(child.external_id, i);
+  });
+
+  const childIdsByContainer = new Map<string, string[]>();
+  for (const rel of relations) {
+    if (!rel.media_external_id || !CONTAINS_RELATION_TYPES.includes(rel.relation_type)) continue;
+    const list = childIdsByContainer.get(rel.media_external_id) ?? [];
+    list.push(rel.related_media_external_id);
+    childIdsByContainer.set(rel.media_external_id, list);
+  }
+
+  const consumed = new Set<number>();
+  const bundleGroups: Array<{ item: T; grouped: T[]; bundleMeta: MediaCatalogEntry }> = [];
+
+  for (const [containerId, childIds] of childIdsByContainer) {
+    const catalogEntry = catalogMap.get(containerId);
+    if (!catalogEntry) continue;
+
+    // Counted by matched *children*, not by distinct root-group indices —
+    // a saga (SEQUEL/PREQUEL) pass earlier can already have fused two
+    // contained works into a single root group (one "item" + the other in
+    // its own "grouped"), which would otherwise look like only one match.
+    const matchedChildIds = new Set(
+      childIds.filter(id => {
+        const idx = rootIndexOf.get(id);
+        return idx !== undefined && !consumed.has(idx);
+      })
+    );
+    if (matchedChildIds.size < 2) continue;
+
+    const matchedRootIndices = new Set([...matchedChildIds].map(id => rootIndexOf.get(id)!));
+
+    const merged: T[] = [];
+    let representative: T | null = null;
+    for (const idx of matchedRootIndices) {
+      const g = groups[idx];
+      if (!representative) representative = g.item;
+      merged.push(g.item, ...g.grouped);
+      consumed.add(idx);
+    }
+    bundleGroups.push({ item: representative!, grouped: merged, bundleMeta: catalogEntry });
+  }
+
+  const remaining = groups.filter((_, i) => !consumed.has(i));
+  return [...remaining, ...bundleGroups];
+}
+
 const STATUS_KEYS = ['', 'planning', 'in_progress', 'completed', 'paused', 'dropped'] as const;
 
-function LibraryCard({ item, grouped, catalogMap, p }: {
+// Averages the ratings of every work a bundle groups together, ignoring
+// unrated ones — e.g. Adventures rated 8, Resolve unrated → the bundle
+// shows 8, not a skewed average against a missing score.
+function averageRating(entries: LibraryEntry[]): number | null {
+  const rated = entries.map(e => e.rating).filter((r): r is number => r != null);
+  if (rated.length === 0) return null;
+  return rated.reduce((a, b) => a + b, 0) / rated.length;
+}
+
+function LibraryCard({ item, grouped, bundleMeta, catalogMap, p }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
+  bundleMeta?: MediaCatalogEntry;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
 }) {
   const meta = catalogMap.get(item.external_id);
-  const title = meta?.title_main ?? item.external_id;
-  const cover = meta?.cover_url ?? '';
+  const title = bundleMeta?.title_main ?? meta?.title_main ?? item.external_id;
+  const cover = bundleMeta?.cover_url ?? meta?.cover_url ?? '';
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
-  const mediaUrl = `/media?id=${encodeURIComponent(item.external_id)}`;
-  const ratingHtml = formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
+  const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
-  const dateStr = [fmtDate(item.started_at), fmtDate(item.finished_at)].filter(Boolean).join(' → ');
 
   // Chronological, earliest first — so a saga's flyout reads left to right
   // in release order (SH1, SH2, SH3, ...) instead of whatever order the
@@ -161,7 +238,24 @@ function LibraryCard({ item, grouped, catalogMap, p }: {
   );
   const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
 
+  // A bundle card merges every contained work's own rating/dates instead of
+  // showing just one work's — the bundle itself was never individually
+  // played/rated, so there's no single "item" to read those from.
+  const ratingHtml = bundleMeta
+    ? formatRatingHtml(averageRating(orderedGrouped), getActiveRatingSystem(), 'library-card-rating')
+    : formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
+  const dateStr = bundleMeta
+    ? [fmtDate(orderedGrouped[0]?.started_at), fmtDate(orderedGrouped[orderedGrouped.length - 1]?.finished_at)].filter(Boolean).join(' → ')
+    : [fmtDate(item.started_at), fmtDate(item.finished_at)].filter(Boolean).join(' → ');
+
   const openEditor = () => {
+    if (bundleMeta) {
+      // The bundle itself has no library log of its own (it's not something
+      // you "play" — its contents are), so there's nothing to open the
+      // editor for; go to its media page instead, same as clicking the cover.
+      window.location.href = mediaUrl;
+      return;
+    }
     window.dispatchEvent(new CustomEvent('open-profile-editor', {
       detail: { externalId: item.external_id, libraryEntry: item, catalogEntry: meta },
     }));
@@ -394,7 +488,34 @@ export function LibrarySection() {
       // Saga (prequel/sequel) grouping always runs — see groupEditions' own
       // doc — only the edition-specific signals are gated behind the
       // "Agrupar por ediciones" toggle.
-      .map(sec => ({ title: sec.title, cards: groupEditions(sec.items, catalogMap, sagaRelations, groupByEdition) }));
+      .map(sec => {
+        const editionGroups = groupEditions(sec.items, catalogMap, sagaRelations, groupByEdition);
+        let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry }> = editionGroups;
+        if (groupByEdition) {
+          cards = groupBundles(editionGroups, catalogMap, sagaRelations);
+          // groupBundles appends merged bundle cards at the end regardless
+          // of date/rating — re-sort by the same criteria as the section
+          // itself, using the bundle's own aggregate (every contained
+          // work's rating/duration, latest finished_at) in place of a
+          // single item's fields.
+          cards = [...cards].sort((a, b) => {
+            const aWorks = a.bundleMeta ? a.grouped : [a.item];
+            const bWorks = b.bundleMeta ? b.grouped : [b.item];
+            if (sortBy === 'rating') return (averageRating(bWorks) ?? 0) - (averageRating(aWorks) ?? 0);
+            if (sortBy === 'duration') {
+              const sum = (arr: Items[number][]) => arr.reduce((acc, it) => acc + getItemMinutes(it, catalogMap), 0);
+              return sum(bWorks) - sum(aWorks);
+            }
+            const latestFinished = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it.finished_at ? new Date(it.finished_at).getTime() : 0));
+            const dateA = latestFinished(aWorks);
+            const dateB = latestFinished(bWorks);
+            if (dateA === 0 && dateB !== 0) return 1;
+            if (dateB === 0 && dateA !== 0) return -1;
+            return dateB - dateA;
+          });
+        }
+        return { title: sec.title, cards };
+      });
   }, [items, catalogMap, sagaRelations, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
 
   if (items === null) return null;
@@ -512,8 +633,8 @@ export function LibrarySection() {
             <div className="library-section" key={sec.title}>
               <h3 className="library-section-title">{sec.title}</h3>
               <div className="library-grid">
-                {sec.cards.map(({ item, grouped }) => (
-                  <LibraryCard item={item} grouped={grouped} catalogMap={catalogMap} p={p} key={item.external_id} />
+                {sec.cards.map(({ item, grouped, bundleMeta }) => (
+                  <LibraryCard item={item} grouped={grouped} bundleMeta={bundleMeta} catalogMap={catalogMap} p={p} key={bundleMeta?.external_id ?? item.external_id} />
                 ))}
               </div>
             </div>

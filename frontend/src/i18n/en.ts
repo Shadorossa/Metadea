@@ -175,6 +175,7 @@ export const en = {
     add_to_library: 'Add to\nlibrary',
     in_library:     'In\nlibrary',
     is_version_of:  'This game is a version of {title}',
+    is_bundle:      'This version is a bundle',
     saga_button:    'Saga order',
     saga_title:     'Saga order',
     saga_loading:   'Looking up prequels and sequels...',
