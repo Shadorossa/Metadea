@@ -361,30 +361,65 @@
       "character_name": null
     },
     {
-      "external_id": "character:70015",
-      "name": "Patricken",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70015-AaD8MRpKhwKv.png",
+      "external_id": "character:69921",
+      "name": "Hans Eduard Bergengrün",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69921-EFwFEcouZRbp.png",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
     {
-      "external_id": "character:70027",
-      "name": "Jochen von Remscheid",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70027.jpg",
+      "external_id": "character:27979",
+      "name": "Helmut Lennenkampf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27979.jpg",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
     {
-      "external_id": "character:70119",
-      "name": "Birolinen",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70119.jpg",
+      "external_id": "character:21713",
+      "name": "August Samuel Wahlen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b21713-JOU7PWi9qhBQ.jpg",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
     {
-      "external_id": "character:69945",
-      "name": "Dunckel",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69945.jpg",
+      "external_id": "character:27954",
+      "name": "Paetta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27954.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70029",
+      "name": "Eugen Richter",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70029-wAyKTHI2gRA2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70167",
+      "name": "Dawson",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70167-LCCbpb1mgGxe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70031",
+      "name": "Konrad Rinnesal",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70031.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69905",
+      "name": "Welner Aldringen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69905.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69955",
+      "name": "Ernst von Falstrong",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69955.jpg",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
@@ -466,72 +501,9 @@
       "character_name": null
     },
     {
-      "external_id": "character:69921",
-      "name": "Hans Eduard Bergengrün",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69921-EFwFEcouZRbp.png",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:27979",
-      "name": "Helmut Lennenkampf",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27979.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:21713",
-      "name": "August Samuel Wahlen",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b21713-JOU7PWi9qhBQ.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:27954",
-      "name": "Paetta",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27954.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:70029",
-      "name": "Eugen Richter",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70029-wAyKTHI2gRA2.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:70167",
-      "name": "Dawson",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70167-LCCbpb1mgGxe.png",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:70031",
-      "name": "Konrad Rinnesal",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70031.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:69905",
-      "name": "Welner Aldringen",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69905.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:69955",
-      "name": "Ernst von Falstrong",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69955.jpg",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
-      "external_id": "character:40448",
-      "name": "Gregor von Muckenberger",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b40448-iYUMznzvXbE2.png",
+      "external_id": "character:12895",
+      "name": "Fritz Joseph Bittenfeld",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12895-7zzSAcdPR5kk.png",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
@@ -746,13 +718,6 @@
       "character_name": null
     },
     {
-      "external_id": "character:12895",
-      "name": "Fritz Joseph Bittenfeld",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12895-7zzSAcdPR5kk.png",
-      "relation_type": "SUPPORTING",
-      "character_name": null
-    },
-    {
       "external_id": "character:69947",
       "name": "Ehrenberg",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69947-9aWNqAMyKigF.jpg",
@@ -949,6 +914,13 @@
       "character_name": null
     },
     {
+      "external_id": "character:70015",
+      "name": "Patricken",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70015-AaD8MRpKhwKv.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
       "external_id": "character:69949",
       "name": "Eihendorf",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69949-fOAGsflj4qDG.png",
@@ -987,6 +959,13 @@
       "external_id": "character:70025",
       "name": "Emil von Reckendorf",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70025.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70027",
+      "name": "Jochen von Remscheid",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70027.jpg",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
@@ -1033,6 +1012,13 @@
       "character_name": null
     },
     {
+      "external_id": "character:70119",
+      "name": "Birolinen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70119.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
       "external_id": "character:69911",
       "name": "Arle Heinessen",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69911.jpg",
@@ -1071,6 +1057,13 @@
       "external_id": "character:70169",
       "name": "Desch",
       "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70169.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69945",
+      "name": "Dunckel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69945.jpg",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
@@ -1127,11 +1120,11 @@
     }
   ],
   "saga_groups": {
-    "anime:3016": "Group 1",
-    "anime:3015": "Gaiden",
     "anime:3665": "Gaiden",
-    "anime:3371": "Gaiden",
     "anime:820": "Group 1",
+    "anime:3015": "Gaiden",
+    "anime:3016": "Group 1",
+    "anime:3371": "Gaiden",
     "anime:170816": "Group 1",
     "manga:41941": "Group 1",
     "manga:87134": "Group 1",
