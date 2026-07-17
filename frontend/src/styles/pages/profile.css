@@ -782,6 +782,14 @@
 
 .hof-card-bg--custom {
   background-repeat: no-repeat;
+  /* Same fix as .library-card-thumb img / .library-card-stack-extra-item
+     img — a saved crop shrunk down into this card's small box can make
+     Chromium/WebView2 fall back to a jaggier ("dientes de sierra") scaling
+     path unless the layer gets its own GPU compositing. background-image
+     doesn't take image-rendering the way an <img> does, but promoting the
+     div itself still forces the higher-quality downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .hof-card-overlay {
