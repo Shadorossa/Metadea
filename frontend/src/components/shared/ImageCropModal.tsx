@@ -46,6 +46,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const aspectRatio = opts.aspectRatio ?? 3 / 4;
 
   const [imageUrl, setImageUrl] = useState(opts.initialUrl);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [bgSize, setBgSize] = useState(opts.initialBgSize ?? DEFAULT_MIN_ZOOM);
   const [posX, setPosX] = useState(opts.initialPosX ?? 50);
   const [posY, setPosY] = useState(opts.initialPosY ?? 50);
@@ -128,6 +129,38 @@ function ImageCropModal({ opts, onResolve }: Props) {
   };
 
   const close = (result: ImageCropModalResult) => onResolve(result);
+
+  // Custom images end up saved to disk locally regardless of where they
+  // came from (see favorite-image-editor.ts/save_favorite_custom_image) —
+  // a file dragged straight from the desktop doesn't need to go through a
+  // URL at all first. Read as a data: URL (not the file's OS path, which
+  // the browser's File object doesn't expose): the rest of this component
+  // — the natural-size probe, the live preview <img>, buildCroppedResult's
+  // save-time draw — already treats imageUrl as an opaque src string via
+  // wrapAssetUrl, which passes a data: URL straight through untouched.
+  const loadDroppedFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    hasCustomBgSizeRef.current = false;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setImageUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // An image dragged from a *webpage* (not the desktop/file explorer) never
+  // populates dataTransfer.files at all — browsers only do that for actual
+  // local files. What it does carry is the image's own URL, as
+  // text/uri-list (the standard MIME type for a dragged link/image src) or
+  // plain text depending on the source site — same effect as pasting that
+  // URL into the text field above.
+  const loadDroppedUrl = (dataTransfer: DataTransfer) => {
+    const url = (dataTransfer.getData('text/uri-list') || dataTransfer.getData('text/plain')).trim();
+    if (!url || !/^https?:\/\//i.test(url)) return false;
+    hasCustomBgSizeRef.current = false;
+    setImageUrl(url);
+    return true;
+  };
 
   // Renders exactly what's visible in the viewport (same box the user was
   // just looking at) onto a canvas and exports it — the file that actually
@@ -214,12 +247,21 @@ function ImageCropModal({ opts, onResolve }: Props) {
         />
         <div
           ref={viewportRef}
-          className="img-crop-viewport"
+          className={`img-crop-viewport${isDraggingFile ? ' img-crop-viewport--drag-over' : ''}`}
           style={{ aspectRatio: String(aspectRatio) }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={stopDrag}
           onPointerCancel={stopDrag}
+          onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
+          onDragLeave={() => setIsDraggingFile(false)}
+          onDrop={e => {
+            e.preventDefault();
+            setIsDraggingFile(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) { loadDroppedFile(file); return; }
+            loadDroppedUrl(e.dataTransfer);
+          }}
         >
           <img
             className="img-crop-preview"
@@ -233,7 +275,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
               transform: `translate(-${posX}%, -${posY}%)`,
             } : { visibility: 'hidden' }}
           />
-          {!imageUrl && <div className="img-crop-empty">Pega una URL de imagen arriba</div>}
+          {!imageUrl && <div className="img-crop-empty">Pega una URL de imagen arriba o arrastra un archivo aquí</div>}
         </div>
         <label className="img-crop-zoom-label">
           Zoom

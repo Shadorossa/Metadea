@@ -384,6 +384,14 @@
   cursor: grabbing;
 }
 
+/* Feedback while a file from outside the browser (desktop/explorer) is
+   dragged over the picker — distinct from .dragging above, which is the
+   pointer-based pan-to-reposition state instead. */
+.img-crop-viewport--drag-over {
+  border-color: var(--accent, #7c6af7);
+  box-shadow: inset 0 0 0 2px var(--accent, #7c6af7);
+}
+
 /* A plain <img> (not a background-image div) — CSS background-image set
    via JS was silently invisible in the packaged production build. Position
    is reproduced with the standard left/top(%) + translate(-%) trick, which
