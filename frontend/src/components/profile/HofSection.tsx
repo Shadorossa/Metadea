@@ -47,7 +47,16 @@ function coverStyle(rawCover: string, customImg: FavoriteCustomImage | undefined
           className="hof-card-bg hof-card-bg--custom"
           style={{
             backgroundImage: `url('${wrapAssetUrl(customImg.image_url)}')`,
-            backgroundSize: `${customImg.bg_size}% auto`,
+            // Fixed to the *expanded* hover box's own pixel size (285×380,
+            // see .hof-card:hover in profile.css) rather than 'cover' or a
+            // percentage — 'cover' recomputes the fill/crop on every frame
+            // of the 110→285px hover width transition, which reads as the
+            // image visibly zooming as it expands. Anchoring the background
+            // to one fixed size means the rest state (110px wide) is just
+            // .hof-card's own overflow:hidden clipping a slice of that same
+            // fixed-scale image — hovering reveals more of it without ever
+            // rescaling the image itself, so there's nothing left to "zoom".
+            backgroundSize: '285px 380px',
             backgroundPosition: `${customImg.pos_x}% ${customImg.pos_y}%`,
           }}
         />
