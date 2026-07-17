@@ -1,0 +1,1144 @@
+{
+  "media_catalog": {
+    "id": "4316bc7aa3e2722b4316bc7aa3e2722b",
+    "external_id": "anime:820",
+    "parent_id": null,
+    "type": "anime",
+    "format": "OVA",
+    "source": "anilist",
+    "title_main": "Ginga Eiyuu Densetsu",
+    "title_romaji": "Legend of the Galactic Heroes",
+    "title_native": "銀河英雄伝説",
+    "synopsis": "<p>For decades, the Galactic Empire has been locked in an interstellar war with the Free Planets Alliance, a conflict that involves thousands of spaceships and millions of soldiers on both sides. Two new commanders enter the conflict with great hopes: Imperial Admiral Reinhard von Lohengramm and the FPA's Yang Wen-Li. As they deal with superiors and subordinates, maneuver through complicated political arrangements, plot strategies, and win battles, each will be tested, and ultimately, changed, by the reality of war.<br><span class=\"media-description-source\">&nbsp;&nbsp;—&nbsp;Source: Anime News Network</span></p>",
+    "cover_url": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png",
+    "banners_csv": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/820-FcKc3kvg60z8.jpg",
+    "release_year": 1988,
+    "release_month": 1,
+    "release_day": 8,
+    "time_length": 26,
+    "status": "FINISHED",
+    "score_global": 8.8,
+    "total_count": 110,
+    "total_count_2": null,
+    "genres_csv": "Drama,Sci-Fi",
+    "genres_tag_csv": null,
+    "platforms_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": "Kitty Film,T.P.O,K-Factory",
+    "authors_csv": "Yoshiki Tanaka",
+    "manually_edited_at": null,
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "anime:170816",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These (Zoku-hen)",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx170816-YDgi6rrC8Jel.jpg",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "manga:41941",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/small/11941.jpg",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "manga:87134",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/small/bx87134-ezExNenXPUOv.jpg",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "anime:20628",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Kaikou",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/nx20628-46V7oj6rr9Ma.jpg",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "anime:100780",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Seiran",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx100780-0umTIigEolK8.jpg",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "anime:124032",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Gekitotsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx124032-li8JjJdJvDVb.png",
+      "media_external_id": "anime:820"
+    },
+    {
+      "related_media_external_id": "anime:148970",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Sakubou",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/b148970-2gLwQ9Bso5r7.png",
+      "media_external_id": "anime:820"
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3665",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx3016-ubCyMga7qCq6.png"
+    },
+    {
+      "media_external_id": "anime:3016",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3014",
+      "related_media_external_id": "anime:820",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png"
+    },
+    {
+      "media_external_id": "anime:3371",
+      "related_media_external_id": "anime:3665",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3665-cX3SS5lcumOZ.png"
+    },
+    {
+      "media_external_id": "anime:3016",
+      "related_media_external_id": "anime:820",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx820-x5dNLNFeKb8B.png"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:12898",
+      "name": "Paul von Oberstein",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12898-x9pnZic0uZjZ.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12778",
+      "name": "Wolfgang Mittermeyer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12778-JBkV46RACdf5.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:3869",
+      "name": "Dusty Attenborough",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/n3869-bbAt9rac2s3H.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12779",
+      "name": "Julian Mintz",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12779-Knn7DNX5bxbD.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12911",
+      "name": "Hildegard von Mariendorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12911-QXpGihTiSSJM.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:2780",
+      "name": "Wenli Yang",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2780-4S84iiE9LyIY.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12550",
+      "name": "Siegfried Kircheis",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12550-96zZ4MIvuprI.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:6026",
+      "name": "Oskar von Reuenthal",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b6026-JN6eL036UiyU.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:17789",
+      "name": "Frederica Greenhill",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b17789-1MMW4uRFD7Qp.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:3066",
+      "name": "Reinhard von Lohengramm",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b3066-bq8s1DooZyTJ.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:5897",
+      "name": "Walter von Schönkopf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b5897-8NIMQ45FQqbb.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:13857",
+      "name": "Katerose von Kreutzer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b13857-hYQEihMthJKZ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12896",
+      "name": "Adalbert von Fahrenheit",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12896-PnH14FI2mq5d.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:24317",
+      "name": "Bruno von Knapfstein",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/24317.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69909",
+      "name": "Armsdorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69909-90DTRG82xcNC.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:6717",
+      "name": "Willibald Joachim von Merkatz",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b6717-jhQUhw1ab8JX.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:13101",
+      "name": "Olivier Poplan",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b13101-NAKpQLhmZnqs.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70103",
+      "name": "Sandle Alarcon",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70103-PZiwzNcrP5iC.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:74171",
+      "name": "Soun Soulszzcuaritter",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/74171.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70033",
+      "name": "Sahm",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70033-k0ppTvJolVzf.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:23849",
+      "name": "Ernst von Eisenach",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/23849.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70107",
+      "name": "Appleton",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70107-1w2qoh1MyYti.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:24315",
+      "name": "Alfred Grillpalzer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/24315.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70173",
+      "name": "Ed",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70173-UfIxwFzSfGnk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69961",
+      "name": "Fogel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69961-rH7PT3dkurRb.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70015",
+      "name": "Patricken",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70015-AaD8MRpKhwKv.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70027",
+      "name": "Jochen von Remscheid",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70027.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70119",
+      "name": "Birolinen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70119.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69945",
+      "name": "Dunckel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69945.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70045",
+      "name": "Bruno von Silberberch",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70045-UMryFM9rX3WT.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19469",
+      "name": "Sidney Sitolet",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19469-xKXA5UvvnDkA.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:25672",
+      "name": "Louis Mashengo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b25672-YIvi0ilreV83.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27958",
+      "name": "Cary Willock",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27958-ZN6uPCHqkICU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69989",
+      "name": "Elfriede von Kohlrausch",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69989-x5H9FHmeekg6.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19468",
+      "name": "Jessica Edwards",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19468-kxacdDDtbFBd.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27980",
+      "name": "Karl Robert Steinmetz",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27980-5FoDGZyL2xnM.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69987",
+      "name": "Günther Kisling",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69987-zWw96P37i616.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69971",
+      "name": "Rudolf von Goldenbaum",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69971-rs87NW9reObD.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70109",
+      "name": "Hamdi Ashur",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70109-pU6KhOo0bQxT.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70001",
+      "name": "Evangelin Mittermeyer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70001-z2RPkvW5jPgq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69921",
+      "name": "Hans Eduard Bergengrün",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69921-EFwFEcouZRbp.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27979",
+      "name": "Helmut Lennenkampf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27979.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:21713",
+      "name": "August Samuel Wahlen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b21713-JOU7PWi9qhBQ.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27954",
+      "name": "Paetta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27954.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70029",
+      "name": "Eugen Richter",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70029-wAyKTHI2gRA2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70167",
+      "name": "Dawson",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70167-LCCbpb1mgGxe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70031",
+      "name": "Konrad Rinnesal",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70031.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69905",
+      "name": "Welner Aldringen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69905.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69955",
+      "name": "Ernst von Falstrong",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69955.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:40448",
+      "name": "Gregor von Muckenberger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b40448-iYUMznzvXbE2.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69915",
+      "name": "Hildesheim",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69915-PRczSFPh13P4.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69967",
+      "name": "Gerlach",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69967-9CiKD5NrBVFM.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70041",
+      "name": "Hans Dietrich von Seeckt",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70041-vg27PQx23GQ8.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70013",
+      "name": "Ovlesser",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70013-FziD1OguIldz.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:13100",
+      "name": "Annerose von Grünewald",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b13100-VCvuUtKrGSHR.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69985",
+      "name": "Karl Gustav Kempff",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69985-8Ul2QBXettZb.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70123",
+      "name": "Borodin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70123-x99vI5LnxqOF.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70023",
+      "name": "Ratzel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70023-kTbOF18haxvN.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69997",
+      "name": "Mainhof",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69997-nTmaD9fPkOQE.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:21615",
+      "name": "Heinrich von Kunmel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b21615-ivhcDgNUcj4a.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27978",
+      "name": "Lazar Lobos",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/27978.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27952",
+      "name": "Fyodor Patorichev",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27952-mFu0rx4lODJo.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:22635",
+      "name": "Alex Cazellnu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b22635-kkOgB1UXLPYQ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27983",
+      "name": "Rainer Blumhardt",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27983-2O6mJ0qqVo88.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69939",
+      "name": "Maximilian von Castrop",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69939-PaUqhaLs1t3r.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:40294",
+      "name": "Dominique Saint-Pierré",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/40294.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70171",
+      "name": "Ebense",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70171-P6pULreLo1Qw.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69907",
+      "name": "Ansbach",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69907.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70149",
+      "name": "Hortense Cazellnu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70149-0aFHTQemE6v9.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69973",
+      "name": "Gräbner",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69973-UALUAjBXwDqW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70049",
+      "name": "Staden",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70049-ttAsAeE64tKt.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69999",
+      "name": "Franz von Mariendorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69999-kEsutZBV1IXA.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70039",
+      "name": "Bernhard von Schneider",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70039-EPhVPBOK2WJc.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70035",
+      "name": "Sanders",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70035-HFYTgVdR1rlj.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70175",
+      "name": "Emerson",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70175-9XMRwGtm34tN.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:14506",
+      "name": "Neidhardt Müller",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b14506-dUsdQWTV4N22.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69993",
+      "name": "Wilhelm von Littenheim",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69993-bsyOwsZ2KD5k.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69977",
+      "name": "Grünemann",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69977.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:37185",
+      "name": "Alfred von Lansberg",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b37185-1ySOcqpqLuFo.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70055",
+      "name": "Arthur von Streit",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70055-H51RrUBSCgUR.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:12895",
+      "name": "Fritz Joseph Bittenfeld",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b12895-7zzSAcdPR5kk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69947",
+      "name": "Ehrenberg",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69947-9aWNqAMyKigF.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69951",
+      "name": "Erlache",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69951.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19477",
+      "name": "Ernest Mecklinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19477-auT27c6JJ0Dq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:24153",
+      "name": "Tonio",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b24153-m4v4jLho9LIa.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:24154",
+      "name": "Kurt",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b24154-P2IlFeij5p4j.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70021",
+      "name": "Raft",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70021.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70157",
+      "name": "Asadora Chartian",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70157-pHgcXMDRw7If.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70053",
+      "name": "Thoma von Stockhausen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70053-tbkqvKw7xNOF.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:19475",
+      "name": "Alexander Bucock",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b19475-rUb8GTaMCb0E.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69931",
+      "name": "Minister Bruckdorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69931-Z33WyOxForoC.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70017",
+      "name": "Paumann",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70017-mD4FZHf98cG9.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27953",
+      "name": "Edwin Fischer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27953-zsJkgmunS9qk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70101",
+      "name": "Al-Salem",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70101-vTlHau940Eog.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69953",
+      "name": "Erwin Josef II von Goldenbaum",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69953-FuLqUlBhlhTg.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69943",
+      "name": "Drewentz",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69943-wxwSqk4tgUGl.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70059",
+      "name": "Isaak Fernand von Thurneysen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70059-urholAACl8uH.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69991",
+      "name": "Klaus von Lichtenlade",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69991-eHVNjxzj79QM.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:30476",
+      "name": "Magdalena von Westpfahle",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b30476-W6VeWbv5OpaJ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69941",
+      "name": "Clara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69941-gvi48VlYBjcA.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69935",
+      "name": "Baron Carnap",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69935-ms9oDSuyI9FG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70019",
+      "name": "Raabenard",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70019-SPHKsRPahCYQ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:27956",
+      "name": "Otto von Braunschweig",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b27956-0btSaBk0Gwhu.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:39122",
+      "name": "Nikolas Boltik",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b39122-wYq3tqjrYgBi.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69969",
+      "name": "Glaeser",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69969.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69927",
+      "name": "Karl Braque",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69927-J1C84TWGW9BH.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70047",
+      "name": "Sombart",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70047.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69923",
+      "name": "Bernheim",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69923-xgV63tpTwdnL.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69965",
+      "name": "Fusseneger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69965-JyyYflvzKvXI.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69949",
+      "name": "Eihendorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69949-fOAGsflj4qDG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70131",
+      "name": "Ralph Carlsen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b70131-OVxKAQtaGTBi.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:150863",
+      "name": "João Rebelo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b150863-BiRTMhWh0fGe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:36309",
+      "name": "Narrator",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b36309-6KM0riV4lqfN.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69937",
+      "name": "Carnap",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b69937-EfjKbWjISOY3.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70025",
+      "name": "Emil von Reckendorf",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70025.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70061",
+      "name": "Welner",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70061.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70115",
+      "name": "Mrs Bucock",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70115.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69929",
+      "name": "Rolf Otto Brauhitch",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69929.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70043",
+      "name": "Seeferd",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70043.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70051",
+      "name": "Joachim von Neue Stauffen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70051.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70111",
+      "name": "Baunsgoal",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70111.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69911",
+      "name": "Arle Heinessen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69911.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69913",
+      "name": "Herbert",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69913.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69917",
+      "name": "Alexander Barthauser",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69917.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69925",
+      "name": "Bohlen",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69925.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69933",
+      "name": "Buxtehude",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69933.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70169",
+      "name": "Desch",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70169.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69963",
+      "name": "Udo Dater Fummel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69963.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:69995",
+      "name": "Alexander Siegfried von Lohengramm",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/69995.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70009",
+      "name": "Nguyen Kim Hua",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70009.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:70011",
+      "name": "Osmayer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/70011.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:192800",
+      "name": "Legrange",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b192800-pPIp3TSxAIR4.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:251556",
+      "name": "Admiral",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b251556-NxYY8DH3VcNe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "staff:101044",
+      "name": "Yoshiki Tanaka",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/medium/6044.jpg",
+      "role": "Original Creator",
+      "url": "/author?id=staff:101044"
+    }
+  ],
+  "saga_groups": {
+    "anime:3015": "Gaiden",
+    "anime:820": "Group 1",
+    "anime:3016": "Group 1",
+    "anime:3665": "Gaiden",
+    "anime:3371": "Gaiden",
+    "anime:170816": "Group 1",
+    "manga:41941": "Group 1",
+    "manga:87134": "Group 1",
+    "anime:20628": "Group 1",
+    "anime:100780": "Group 1",
+    "anime:124032": "Group 1",
+    "anime:148970": "Group 1"
+  },
+  "saga_name": "Ginga Eiyuu Densetsu"
+}
