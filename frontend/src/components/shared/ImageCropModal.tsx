@@ -58,6 +58,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const draggingRef = useRef(false);
   const lastRef = useRef({ x: 0, y: 0 });
   const loadTokenRef = useRef(0);
+  const naturalSizeRef = useRef({ w: 0, h: 0 });
 
   // Recomputes the zoom range from the image's own natural resolution
   // whenever the URL changes, so:
@@ -74,6 +75,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
       const naturalW = probe.naturalWidth || 0;
       const naturalH = probe.naturalHeight || 0;
       if (!naturalW || !naturalH) return;
+      naturalSizeRef.current = { w: naturalW, h: naturalH };
 
       const rect = viewportRef.current?.getBoundingClientRect();
       const viewportW = rect?.width || 300;
@@ -126,6 +128,74 @@ function ImageCropModal({ opts, onResolve }: Props) {
   };
 
   const close = (result: ImageCropModalResult) => onResolve(result);
+
+  // Renders exactly what's visible in the viewport (same box the user was
+  // just looking at) onto a canvas and exports it — the file that actually
+  // gets saved is the cropped result itself, not the full original image
+  // plus position/size numbers applied live via CSS at every render.
+  // Draws from a freshly-loaded crossOrigin copy of the image rather than
+  // the visible <img> (which has no crossOrigin attribute, so it stays
+  // exactly as reliable as before for plain display) — isolates the CORS
+  // attempt to this one save-time request, so a host that doesn't send
+  // permissive CORS headers only fails *this* load, not the live preview.
+  // Falls back to the raw source + crop numbers (the pre-cropping behavior)
+  // if anything here fails.
+  const buildCroppedResult = (): Promise<Extract<ImageCropModalResult, { action: 'saved' }>> => {
+    const fallback = { action: 'saved' as const, imageUrl, bgSize, posX, posY };
+    return new Promise(resolve => {
+      const viewportEl = viewportRef.current;
+      const { w: naturalW, h: naturalH } = naturalSizeRef.current;
+      if (!viewportEl || !naturalW || !naturalH) { resolve(fallback); return; }
+
+      const rect = viewportEl.getBoundingClientRect();
+      const viewportW = rect.width;
+      const viewportH = rect.height;
+      if (!viewportW || !viewportH) { resolve(fallback); return; }
+
+      const source = new Image();
+      source.crossOrigin = 'anonymous';
+      source.onerror = () => resolve(fallback);
+      source.onload = () => {
+        try {
+          const displayedW = viewportW * (bgSize / 100);
+          const displayedH = displayedW * (naturalH / naturalW);
+          const imgLeft = (posX / 100) * (viewportW - displayedW);
+          const imgTop = (posY / 100) * (viewportH - displayedH);
+
+          // Output at the crop's own native resolution (how many real image
+          // pixels the viewport spans) instead of a fixed size — avoids
+          // both inventing detail (upscaling a small zoomed-in region) and
+          // wasting it (downscaling a large one).
+          const scale = displayedW / naturalW;
+          const canvasW = Math.max(1, Math.round(viewportW / scale));
+          const canvasH = Math.max(1, Math.round(viewportH / scale));
+          const outScale = canvasW / viewportW;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { resolve(fallback); return; }
+
+          ctx.drawImage(
+            source,
+            imgLeft * outScale, imgTop * outScale,
+            displayedW * outScale, displayedH * outScale,
+          );
+
+          const croppedDataUrl = canvas.toDataURL('image/png');
+          // The saved file now *is* the crop — reset to neutral so a
+          // re-render (or a later re-edit session) doesn't apply the old
+          // pan/zoom on top of an image that's already framed correctly.
+          resolve({ action: 'saved', imageUrl: croppedDataUrl, bgSize: 100, posX: 50, posY: 50 });
+        } catch (err) {
+          console.warn('[ImageCropModal] Falling back to uncropped save:', err);
+          resolve(fallback);
+        }
+      };
+      source.src = wrapAssetUrl(imageUrl);
+    });
+  };
 
   return (
     <div className="img-crop-overlay" onClick={e => { if (e.target === e.currentTarget) close({ action: 'cancelled' }); }}>
@@ -188,9 +258,9 @@ function ImageCropModal({ opts, onResolve }: Props) {
             <button
               type="button"
               className="list-btn list-btn--primary"
-              onClick={() => {
+              onClick={async () => {
                 if (!imageUrl) { urlInputRef.current?.focus(); return; }
-                close({ action: 'saved', imageUrl, bgSize, posX, posY });
+                close(await buildCroppedResult());
               }}
             >
               {opts.saveLabel ?? 'Guardar'}
