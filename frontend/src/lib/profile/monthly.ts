@@ -97,4 +97,34 @@ export function initMonthlyHistoryListeners(container: HTMLElement): void {
   rightBtn.addEventListener('click', () => scrollEl.scrollBy({ left: SCROLL_STEP, behavior: 'smooth' }));
   scrollEl.addEventListener('scroll', updateArrows);
   updateArrows();
+
+  // Click-and-drag scrolling for mouse users — touch already scrolls the
+  // row natively via overflow-x:auto's own momentum, so this only engages
+  // for pointerType 'mouse' to avoid fighting that.
+  let isDragging = false;
+  let dragStartX = 0;
+  let scrollStartLeft = 0;
+
+  scrollEl.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    isDragging = true;
+    dragStartX = e.clientX;
+    scrollStartLeft = scrollEl.scrollLeft;
+    scrollEl.classList.add('mh-scroll--dragging');
+    scrollEl.setPointerCapture(e.pointerId);
+  });
+
+  scrollEl.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!isDragging) return;
+    scrollEl.scrollLeft = scrollStartLeft - (e.clientX - dragStartX);
+  });
+
+  const endDrag = (e: PointerEvent) => {
+    if (!isDragging) return;
+    isDragging = false;
+    scrollEl.classList.remove('mh-scroll--dragging');
+    if (scrollEl.hasPointerCapture(e.pointerId)) scrollEl.releasePointerCapture(e.pointerId);
+  };
+  scrollEl.addEventListener('pointerup', endDrag);
+  scrollEl.addEventListener('pointercancel', endDrag);
 }

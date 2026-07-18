@@ -933,6 +933,7 @@
   margin-top: -2rem;
   scroll-behavior: smooth;
   scrollbar-width: none;
+  cursor: grab;
   --mh-fade: 40px;
   /* Both edges fade by default; .at-start/.at-end (toggled in monthly.ts
      alongside the arrows' disabled state) drop whichever side's fade would
@@ -943,6 +944,12 @@
 
 .mh-scroll::-webkit-scrollbar {
   display: none;
+}
+
+.mh-scroll--dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+  user-select: none;
 }
 
 .mh-scroll.at-start {
@@ -974,7 +981,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: translateY(-0.75rem);
+  /* Nudged up from dead-center (flex align-items:center on .monthly-history)
+     to land in the visual gap between the zigzagged top/bottom card rows
+     instead of the middle of the whole two-row block. */
+  transform: translateY(-1.75rem);
   transition: color var(--anim-fast), border-color var(--anim-fast);
 }
 
