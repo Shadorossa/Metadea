@@ -10,6 +10,27 @@ export const isTauri = (): boolean => {
   return false;
 };
 
+// isTauri() checks for window.__TAURI_IPC__/__TAURI__, both injected by
+// Tauri's own init scripts — normally present before any page JS runs, but
+// right after the app's auto-updater relaunches the process (a slower-than-
+// usual cold start: fresh WebView2 profile, antivirus scanning the just-
+// written binary, etc.) that injection can land after this page's scripts
+// start firing. Any invoke() call that races ahead of it used to fail
+// immediately with "Tauri not available" and get silently swallowed by
+// callers' own .catch(() => []) fallbacks — empty UI, no error, no retry,
+// until a full reload (F5) gave the bridge enough time to attach for real.
+// Polling briefly instead of deciding off one synchronous check fixes that
+// without meaningfully affecting real browser (non-Tauri) usage, where this
+// just resolves "false" a few hundred ms later than before.
+export async function waitForTauriBridge(timeoutMs = 1500, intervalMs = 50): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (!isTauri()) {
+    if (Date.now() >= deadline) return false;
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+  return true;
+}
+
 let dbReadyPromise: Promise<void> | null = null;
 let resolveDbReady: (() => void) | null = null;
 
@@ -28,7 +49,7 @@ export function markDbReady() {
 }
 
 export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri()) {
+  if (!isTauri() && !(await waitForTauriBridge())) {
     console.warn(`[Tauri] "${cmd}" called outside Tauri`);
     throw new Error('Tauri not available');
   }
@@ -43,27 +64,38 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
   return tauriInvoke<T>(cmd, args);
 }
 
+// These helpers used to gate on a single synchronous isTauri() check, same
+// as invoke() itself did before the waitForTauriBridge() fix above — same
+// race, same silent-empty-fallback symptom, since a fallback returned here
+// never even reaches invoke()'s own (now-fixed) wait. Awaiting the bridge
+// here too means a caller genuinely running in a browser (no Tauri ever)
+// just waits out the same ~1.5s once before getting its fallback, same as
+// before this fix existed.
+async function isTauriReady(): Promise<boolean> {
+  return isTauri() || waitForTauriBridge();
+}
+
 // No-op when not in Tauri
 export async function tauriRun(cmd: string, args?: Record<string, unknown>): Promise<void> {
-  if (!isTauri()) return;
+  if (!(await isTauriReady())) return;
   return invoke<void>(cmd, args);
 }
 
 // Returns fallback when not in Tauri
 export async function tauriCmd<T>(cmd: string, fallback: T, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri()) return fallback;
+  if (!(await isTauriReady())) return fallback;
   return invoke<T>(cmd, args);
 }
 
 // Returns fallback when not in Tauri or on error
 export async function tauriTry<T>(cmd: string, fallback: T, args?: Record<string, unknown>): Promise<T> {
-  if (!isTauri()) return fallback;
+  if (!(await isTauriReady())) return fallback;
   try { return await invoke<T>(cmd, args); } catch { return fallback; }
 }
 
 // Read a JSON-string file from Tauri, or localStorage in browser
 export async function readStoredJson<T>(cmd: string, localKey: string, fallback: T): Promise<T> {
-  if (!isTauri()) {
+  if (!(await isTauriReady())) {
     try {
       const s = localStorage.getItem(localKey);
       return s ? JSON.parse(s) : fallback;
@@ -75,7 +107,7 @@ export async function readStoredJson<T>(cmd: string, localKey: string, fallback:
 // Write a value as a JSON-string file to Tauri, or localStorage in browser
 export async function writeStoredJson<T>(cmd: string, localKey: string, value: T, argKey = 'content'): Promise<void> {
   const content = JSON.stringify(value, null, 2);
-  if (!isTauri()) { localStorage.setItem(localKey, content); return; }
+  if (!(await isTauriReady())) { localStorage.setItem(localKey, content); return; }
   return invoke<void>(cmd, { [argKey]: content });
 }
 
