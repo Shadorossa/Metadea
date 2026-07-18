@@ -135,7 +135,14 @@ const t    = useTranslations(lang);
 
   async function switchTab(tab: Tab) {
     activeTab = tab;
-    history.replaceState(null, '', tab === 'overview' ? '/profile' : `/profile#${tab}`);
+    // Preserves whatever state object Astro's ClientRouter already attached
+    // to this history entry ({index, scrollX, scrollY} — see
+    // node_modules/astro/dist/transitions/router.js) instead of clobbering
+    // it to null. A null state makes the router's own popstate handler
+    // silently no-op on that entry (`if (ev.state === null) return;`),
+    // which made browser Back appear to skip straight past Profile/Search
+    // to whatever entry before them still had real state.
+    history.replaceState(history.state, '', tab === 'overview' ? '/profile' : `/profile#${tab}`);
 
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tab);

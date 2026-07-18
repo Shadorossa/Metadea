@@ -140,7 +140,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('type', type);
         currentUrl.searchParams.set('q', searchQuery);
-        history.replaceState(null, '', currentUrl.toString());
+        // Preserves Astro ClientRouter's own state object on this entry
+        // instead of nulling it out — see profile.astro's switchTab() for
+        // the full explanation of why a null state breaks browser Back.
+        history.replaceState(history.state, '', currentUrl.toString());
       }
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
@@ -190,7 +193,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
     currentUrl.searchParams.delete('q');
-    history.replaceState(null, '', currentUrl.toString());
+    // See executeSearch's replaceState above for why history.state (not
+    // null) has to be passed through here.
+    history.replaceState(history.state, '', currentUrl.toString());
   };
 
   const handleSearchSubmit = () => {
