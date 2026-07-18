@@ -90,13 +90,21 @@
   flex: 1;
 }
 
+/* No flex-grow — this column stays sized to its own content (just the
+   56px-wide swatch/reset button now, since the hex text and full-width
+   button are gone), instead of claiming an equal share of the row like
+   Biografía/Fondo dinámico and then leaving that share as empty space
+   inside a now-too-wide box. min-width is only a floor sized to that
+   actual content (56px swatch + 1rem padding on each side), not an
+   arbitrary wider one that outgrows it and leaves visible dead space. */
 .settings-section--color {
-  flex: 1;
-  min-width: 250px;
+  flex: 0 0 auto;
+  min-width: 88px;
 }
 
+/* Grows to absorb whatever width Color Personalizado no longer claims. */
 .settings-section--theme {
-  flex: 2;
+  flex: 3;
   min-width: 320px;
 }
 
@@ -139,6 +147,15 @@
   font-family: inherit;
   font-size: 0.85rem;
   resize: vertical;
+  /* Grows to match whichever sibling in the Biografía/Color/Fondo row ends
+     up tallest (Fondo dinámico's two rows of theme previews, generally) —
+     .settings-section already stretches to that height by default flex
+     behavior, but a plain rows="5" textarea doesn't fill it on its own,
+     leaving empty space below that reads as "the boxes aren't the same
+     height" even though their outer containers already match. */
+  flex: 1;
+  min-height: 120px;
+  box-sizing: border-box;
 }
 
 .settings-bio-count {
@@ -346,10 +363,14 @@
 }
 
 /* ── Theme picker ─────────────────────────────────────────────────────────── */
+/* Single row, no scrollbar — every card shrinks/grows (flex: 1 1 0, not a
+   fixed width) to divide the column's actual available width evenly
+   between however many themes there are, instead of overflowing into a
+   scrollbar or wrapping into a second line. */
 .theme-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
   margin-top: 0.5rem;
 }
 
@@ -360,6 +381,8 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
   gap: 0.45rem;
   border-radius: var(--radius-lg);
   transition: transform var(--anim-fast);
@@ -367,7 +390,7 @@
 .theme-card:hover { transform: translateY(-3px); }
 
 .theme-card-preview {
-  height: 84px;
+  height: 46px;
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
@@ -701,28 +724,46 @@
 
 /* ── Color Picker ──────────────────────────────────────────────────────── */
 .color-input {
-  width: 80px;
-  height: 80px;
+  width: 56px;
+  height: 56px;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
 }
 
-.color-picker-container {
+/* Stacked below the swatch, same width as it (56px) — the parent is
+   align-items:center now, so this (and the swatch above it) center
+   naturally instead of needing an align-self override. */
+.color-reset-btn {
+  width: 56px;
+  height: 32px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
+  justify-content: center;
+  padding: 0;
+  gap: 0;
+}
+
+.color-picker-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
   background: var(--bg-card);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
-}
-
-.settings-hex-display {
-  font-family: monospace;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  margin-bottom: 0.5rem;
+  /* Deliberately no flex-grow (unlike .settings-textarea below, where a
+     bigger textarea is genuinely more room to type in) — this parent
+     column is a flex-direction:column container, so *that* axis (flex-
+     grow/height) is what needed capping, not align-self (which is the
+     *cross* axis here, i.e. width — setting that instead, as a previous
+     pass here did, stopped this from filling the column's own width too,
+     leaving a gap on the right instead of a merely-shorter box). Default
+     align-items:stretch from the parent still fills the full width. */
+  box-sizing: border-box;
 }
 
 /* Service logos hover effect */

@@ -14,23 +14,20 @@ function applyCustomColor(color: string) {
 // DB is the source of truth; localStorage is kept as a fast read cache.
 export async function initCustomColor(showToast: (msg?: string) => void) {
   const colorInput = byId<HTMLInputElement>('custom-color-input');
-  const colorHexDisplay = document.getElementById('color-hex-display');
   const colorResetBtn = document.getElementById('color-reset-btn');
-  if (!colorInput || !colorHexDisplay) return;
+  if (!colorInput) return;
 
   const info = await getUserInfo().catch(() => ({} as Record<string, unknown>));
   const savedColor = (info.custom_color as string)
     || localStorage.getItem(STORAGE_KEYS.customColor)
     || DEFAULT_COLOR;
   colorInput.value = savedColor;
-  colorHexDisplay.textContent = `Actual: ${savedColor}`;
   localStorage.setItem(STORAGE_KEYS.customColor, savedColor);
   applyCustomColor(savedColor);
 
   let colorTimer: ReturnType<typeof setTimeout>;
   colorInput.addEventListener('input', (e) => {
     const color = (e.target as HTMLInputElement).value;
-    colorHexDisplay.textContent = `Actual: ${color}`;
     localStorage.setItem(STORAGE_KEYS.customColor, color);
     applyCustomColor(color);
     clearTimeout(colorTimer);
@@ -44,7 +41,6 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
 
   colorResetBtn?.addEventListener('click', async () => {
     colorInput.value = DEFAULT_COLOR;
-    colorHexDisplay.textContent = `Actual: ${DEFAULT_COLOR}`;
     localStorage.setItem(STORAGE_KEYS.customColor, DEFAULT_COLOR);
     applyCustomColor(DEFAULT_COLOR);
     try {

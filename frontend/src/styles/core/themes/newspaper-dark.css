@@ -192,6 +192,29 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-style: italic;
 }
 
+/* Library section titles ("En curso", "Completadas", ...) — the generic
+   h2/h3 rule above gives every heading a full-width bottom border, which
+   for a short label like this just reads as the text sitting flush on top
+   of a line stretching under a lot of empty space to its right. Turned
+   into a flex row instead: the label keeps its own natural width on the
+   left, and a pseudo-element line fills the remaining space — same "label
+   left, rule continuing right" look as the Datos/media-page section
+   headers already use elsewhere in this theme. */
+[data-theme="newspaper-dark"] .library-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .library-section-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+}
+
 /* Check badges style */
 [data-theme="newspaper-dark"] .card-rating-badge,
 [data-theme="newspaper-dark"] .theme-card-check {

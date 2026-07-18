@@ -9,8 +9,10 @@ import {
   ICON_SETTINGS_ENVIRONMENT,
   ICON_SETTINGS_NOVEDADES,
   ICON_SETTINGS_ADMIN,
+  ICON_SETTINGS_PREFERENCES,
 } from "../lib/shared/icon-strings";
 import ProfileTab from "../components/settings/ProfileTab.astro";
+import PreferencesTab from "../components/settings/PreferencesTab.astro";
 import EnvironmentTab from "../components/settings/EnvironmentTab.astro";
 import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
 import NovedadesTab from "../components/settings/NovedadesTab.astro";
@@ -31,6 +33,10 @@ const version = pkg.version;
         <button class="settings-tab active" data-tab="profile">
           <Fragment set:html={ICON_SETTINGS_APPEARANCE} />
           {t.settings.section_appearance}
+        </button>
+        <button class="settings-tab" data-tab="preferences">
+          <Fragment set:html={ICON_SETTINGS_PREFERENCES} />
+          {t.settings.tab_preferences}
         </button>
         <button class="settings-tab" data-tab="application">
           <Fragment set:html={ICON_SETTINGS_CONNECTIONS} />
@@ -66,6 +72,7 @@ const version = pkg.version;
       <!-- Contenido -->
       <div class="settings-content">
         <ProfileTab t={t} />
+        <PreferencesTab t={t} />
         <EnvironmentTab t={t} />
         <ConnectionsTab t={t} />
         <NovedadesTab t={t} version={version} />

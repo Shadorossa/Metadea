@@ -10,6 +10,7 @@
     "core:path:default",
     "core:app:default",
     "core:webview:default",
+    "core:webview:allow-create-webview-window",
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
