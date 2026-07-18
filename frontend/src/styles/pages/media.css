@@ -776,17 +776,26 @@
   flex: 1;
 }
 
+/* Pinned to the card's top-right corner as a hanging bookmark ribbon
+   (same notched-bottom shape as .library-card-tag-badge elsewhere in the
+   app) instead of sitting inline above the title. */
 .media-relation-type {
+  position: absolute;
+  top: 0;
+  right: 0.35rem;
+  z-index: 2;
   font-size: 0.58rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  padding: 0.1rem 0.35rem;
-  border-radius: var(--radius-sm);
+  color: #fff;
+  background: var(--accent);
+  padding: 0.3rem 0.55rem 0.65rem;
   width: max-content;
+  /* A real triangular point (not a subtle notch), but shallow enough it
+     doesn't hang halfway down the card. */
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .media-relation-title {

@@ -163,9 +163,10 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
 [data-theme="synthwave"] .card-rating-badge,
 [data-theme="synthwave"] .theme-card-check,
 [data-theme="synthwave"] .media-char-role,
+/* Hangs as a notched ribbon (clip-path, see media.css) — a border doesn't
+   render cleanly along a clipped diagonal edge, so this drops the border
+   and relies on the glow + solid fill instead. */
 [data-theme="synthwave"] .media-relation-type {
-  border-radius: var(--radius-sm) !important;
-  border: 1px solid var(--text-muted) !important;
   background: var(--bg-primary) !important;
   color: var(--text-muted) !important;
   box-shadow: 0 0 5px rgba(0, 240, 255, 0.2) !important;

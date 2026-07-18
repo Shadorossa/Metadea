@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mapMediaDataToCatalogEntry } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
@@ -19,6 +20,15 @@ import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
+
+// Breaks a "Prefix: Rest" relation title onto two lines after the colon
+// (e.g. "Alan Wake II: The Lake House") instead of letting it wrap wherever
+// it happens to run out of width — titles without a colon render unchanged.
+function splitTitleAfterColon(title: string): ReactNode {
+  const colonIdx = title.indexOf(':');
+  if (colonIdx === -1) return title;
+  return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
+}
 
 // ── StarRating ─────────────────────────────────────────────────────────────
 
@@ -803,13 +813,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         {r.cover && <img src={r.cover} alt="" loading="lazy" />}
                       </div>
                       <div className="media-relation-card-overlay" />
+                      <span className="media-relation-type">{r.typeLabel}</span>
                       <div className="media-relation-card-content">
                         <div className="media-relation-thumb">
                           {r.cover && <img src={r.cover} alt={r.title} loading="lazy" />}
                         </div>
                         <div className="media-relation-info">
-                          <span className="media-relation-type">{r.typeLabel}</span>
-                          <span className="media-relation-title">{r.title}</span>
+                          <span className="media-relation-title">{splitTitleAfterColon(r.title)}</span>
                         </div>
                       </div>
                     </a>

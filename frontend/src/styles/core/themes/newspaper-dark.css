@@ -260,11 +260,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 }
 
 /* Role and relation type badges */
-[data-theme="newspaper-dark"] .media-char-role,
-[data-theme="newspaper-dark"] .media-relation-type {
+[data-theme="newspaper-dark"] .media-char-role {
   border-radius: 0px !important;
   border: 1px dashed var(--border-color) !important;
   background: transparent !important;
+  color: var(--text-muted) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+/* .media-relation-type hangs as a notched ribbon (clip-path, see media.css)
+   — a border doesn't render cleanly along a clipped diagonal edge, so this
+   uses a solid fill instead of the dashed-border look above. */
+[data-theme="newspaper-dark"] .media-relation-type {
+  background: var(--bg-elevated) !important;
   color: var(--text-muted) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }

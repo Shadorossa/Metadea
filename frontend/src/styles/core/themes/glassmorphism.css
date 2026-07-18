@@ -146,9 +146,11 @@ body[data-theme="glassmorphism"], html[data-theme="glassmorphism"] body {
 [data-theme="glassmorphism"] .card-rating-badge,
 [data-theme="glassmorphism"] .theme-card-check,
 [data-theme="glassmorphism"] .media-char-role,
+/* Hangs as a notched ribbon (clip-path, see media.css) — a border doesn't
+   render cleanly along a clipped diagonal edge, so this drops the border
+   and relies on the frosted-glass fill alone. */
 [data-theme="glassmorphism"] .media-relation-type {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
   color: #fff !important;
   backdrop-filter: blur(8px) !important;
 }

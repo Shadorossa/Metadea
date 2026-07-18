@@ -170,11 +170,12 @@ html[data-theme="pipboy"]::after {
 [data-theme="pipboy"] .card-rating-badge,
 [data-theme="pipboy"] .theme-card-check,
 [data-theme="pipboy"] .media-char-role,
+/* Hangs as a notched ribbon (clip-path, see media.css) — a border doesn't
+   render cleanly along a clipped diagonal edge, so this is a solid fill
+   instead of the outlined terminal-box look used elsewhere in this theme. */
 [data-theme="pipboy"] .media-relation-type {
-  border-radius: 0px !important;
-  border: 1px solid var(--border-color) !important;
-  background: var(--bg-primary) !important;
-  color: var(--text-main) !important;
+  background: var(--accent) !important;
+  color: var(--bg-primary) !important;
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;
 }
 
