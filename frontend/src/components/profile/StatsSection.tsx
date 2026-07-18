@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, readUserJourney } from '../../lib/tauri';
+import { getAllLibraryEntries, readUserJourney } from '../../lib/tauri';
 import type { MediaCatalogEntry } from '../../lib/tauri';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
@@ -32,9 +33,8 @@ export function StatsSection() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [items, catalogEntries, system, journey] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as Items),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      const [{ items, catalog: catalogEntries }, system, journey] = await Promise.all([
+        getCachedLibraryAndCatalog(),
         syncActiveRatingSystem(),
         readUserJourney().catch(() => []),
       ]);

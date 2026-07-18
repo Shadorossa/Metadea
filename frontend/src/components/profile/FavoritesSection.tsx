@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { openFavoriteImageEditor } from '../../lib/profile/favorite-image-editor';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -44,9 +45,8 @@ export function FavoritesSection() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [libItems, catalogEntries, characterEntries, customImages, rawFavData] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as Items),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      const [{ items: libItems, catalog: catalogEntries }, characterEntries, customImages, rawFavData] = await Promise.all([
+        getCachedLibraryAndCatalog(),
         getAllCharacters().catch(err => {
           console.error('[Favorites] Failed to load characters — is the Tauri backend rebuilt?', err);
           return [] as CharacterEntry[];

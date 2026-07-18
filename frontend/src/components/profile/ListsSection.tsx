@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  getAllLibraryEntries, getAllCatalogEntries, getUserInfo,
+  getAllLibraryEntries, getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
 } from '../../lib/tauri';
 import type { MediaCatalogEntry, ListInfo, ListItemFull, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 import { TYPE_LABELS } from '../../lib/constants/media';
 
@@ -411,9 +412,8 @@ export function ListsSection() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [libItems, catalogEntries, allLists, profile] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as Items),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      const [{ items: libItems, catalog: catalogEntries }, allLists, profile] = await Promise.all([
+        getCachedLibraryAndCatalog(),
         getAllUserLists().catch(() => [] as ListInfo[]),
         getUserInfo().catch(() => ({} as Record<string, unknown>)),
       ]);

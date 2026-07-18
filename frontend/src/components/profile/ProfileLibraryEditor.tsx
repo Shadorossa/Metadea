@@ -92,13 +92,12 @@ export function ProfileLibraryEditor({ i18n }: Props) {
       i18n={t}
       initialEntry={state.libraryEntry}
       onClose={() => setState(null)}
-      onSaved={() => {
-        window.dispatchEvent(new CustomEvent('refresh-profile-library'));
-      }}
-      onDeleted={() => {
-        setState(null);
-        window.dispatchEvent(new CustomEvent('refresh-profile-library'));
-      }}
+      // refresh-profile-library is now dispatched centrally by
+      // saveLibraryEntry/deleteLibraryEntry themselves (lib/tauri/library.ts)
+      // — every save/delete path invalidates the shared cache, not just this
+      // one, so nothing extra needs dispatching here.
+      onSaved={() => {}}
+      onDeleted={() => setState(null)}
     />
   );
 }

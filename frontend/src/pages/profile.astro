@@ -117,6 +117,7 @@ const t    = useTranslations(lang);
   import { getImage } from '../lib/storage/images';
   import { getFontFile } from '../lib/settings/fonts';
   import { STORAGE_KEYS } from '../lib/shared/storage-keys';
+  import { getCachedLibraryAndCatalog } from '../lib/profile/library-data-cache';
 
   (document.getElementById('auth-modal') as HTMLDialogElement | null)?.close();
 
@@ -174,14 +175,18 @@ const t    = useTranslations(lang);
     // A custom display name set in Settings > Apariencia takes priority over
     // the raw username picked at login — fetched here (not just below for the
     // font) so every use of "the user's name" on this page reflects it,
-    // not just the login-time username.
-    const { getUserInfo } = await import('../lib/tauri');
-    const userInfo = await getUserInfo().catch(() => ({} as Record<string, unknown>));
+    // not just the login-time username. Runs in parallel with the banner/
+    // avatar image lookups below since none of these three depend on each
+    // other's result.
+    const [userInfo, customBanner, customAvatar] = await Promise.all([
+      import('../lib/tauri').then(m => m.getUserInfo()).catch(() => ({} as Record<string, unknown>)),
+      getImage(STORAGE_KEYS.profileBannerCustom),
+      getImage(STORAGE_KEYS.profileAvatarCustom),
+    ]);
     const username = (userInfo.display_name as string | undefined)?.trim() || session.username;
 
     // Custom banner image
     const bannerEl = document.querySelector('.profile-banner') as HTMLElement | null;
-    const customBanner = await getImage(STORAGE_KEYS.profileBannerCustom);
     if (bannerEl && customBanner) {
       bannerEl.style.backgroundImage = `url('${customBanner}')`;
       bannerEl.style.backgroundSize = 'cover';
@@ -193,7 +198,6 @@ const t    = useTranslations(lang);
     }
 
     // Custom avatar takes priority over Google avatar
-    const customAvatar = await getImage(STORAGE_KEYS.profileAvatarCustom);
     const avatarSrc = customAvatar || avatar;
     if (avatarSrc) {
       localStorage.setItem('profile_avatar_cache', avatarSrc);
@@ -230,10 +234,7 @@ const t    = useTranslations(lang);
       btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));
     });
 
-    [cachedItems, cachedCatalog] = await Promise.all([
-      getAllLibraryEntries().catch(() => []),
-      getAllCatalogEntries().catch(() => [])
-    ]);
+    ({ items: cachedItems, catalog: cachedCatalog } = await getCachedLibraryAndCatalog());
     await switchTab(activeTab);
 
     // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
@@ -265,7 +266,11 @@ const t    = useTranslations(lang);
     // the click-to-open-editor lookup below, independent of which tab (if
     // any) is currently showing the library.
     window.addEventListener('refresh-profile-library', async () => {
-      cachedItems = await getAllLibraryEntries().catch(() => []);
+      // library-data-cache.ts's own listener (registered on import, above
+      // this one) already invalidated the shared cache by the time this
+      // runs, so this repopulates it with a fresh fetch rather than issuing
+      // a second, redundant one.
+      ({ items: cachedItems } = await getCachedLibraryAndCatalog());
     });
   }
 

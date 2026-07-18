@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries } from '../../lib/tauri';
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { TYPE_LABELS } from '../../lib/constants/media';
 
 type SortMode = 'date' | 'rating';
@@ -24,10 +24,7 @@ export function ReviewsSection() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [items, catalogEntries] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as LibraryEntry[]),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
-      ]);
+      const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
       // Refreshes the localStorage cache read by getActiveRatingSystem() below.
       await syncActiveRatingSystem();
       if (cancelled) return;

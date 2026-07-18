@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllMediaRelations, getCatalogEntry, getSagaNames } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
+import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../../lib/shared/icon-strings';
@@ -469,9 +470,8 @@ export function LibrarySection() {
     let cancelled = false;
 
     const load = async () => {
-      const [rawItems, catalogEntries, relations] = await Promise.all([
-        getAllLibraryEntries().catch(() => [] as Items),
-        getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
+      const [{ items: rawItems, catalog: catalogEntries }, relations] = await Promise.all([
+        getCachedLibraryAndCatalog(),
         getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
       ]);
       // Refreshes the localStorage cache read by getActiveRatingSystem()

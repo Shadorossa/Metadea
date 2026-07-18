@@ -23,9 +23,22 @@ export interface LibraryEntry {
   finished_at: string | null;
 }
 
+// Fired after any write below, from wherever it happens (Profile's own
+// editor, the media detail page, local library import, AniList import,
+// admin panel, ...) — this is the single point every path funnels through,
+// so the Profile tabs' shared cache (lib/profile/library-data-cache.ts)
+// stays correct without every caller having to remember to invalidate it
+// itself. Cheap no-op when the Profile page isn't even open (just an event
+// with no listeners).
+function notifyLibraryChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('refresh-profile-library'));
+}
+
 export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<LibraryEntry>('save_library_entry', { entry });
+  const saved = await invoke<LibraryEntry>('save_library_entry', { entry });
+  notifyLibraryChanged();
+  return saved;
 }
 
 export async function getLibraryEntry(externalId: string): Promise<LibraryEntry | null> {
@@ -33,7 +46,8 @@ export async function getLibraryEntry(externalId: string): Promise<LibraryEntry 
 }
 
 export async function deleteLibraryEntry(externalId: string): Promise<void> {
-  return tauriRun('delete_library_entry', { externalId });
+  await tauriRun('delete_library_entry', { externalId });
+  notifyLibraryChanged();
 }
 
 export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
