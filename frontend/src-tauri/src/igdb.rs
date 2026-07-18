@@ -404,13 +404,120 @@ async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path:
     let _ = img.save_with_format(dest, image::ImageFormat::WebP);
 }
 
+type IgdbGameMatch = (String, Option<u64>, serde_json::Value);
+
+// Stage 1 of resolve_igdb_game: Steam's own external-game link (category=1
+// is Steam in IGDB) — the most reliable match when it hits, since it's an
+// explicit id mapping rather than a name guess.
+async fn try_steam_id_match(
+    client: &reqwest::Client,
+    client_id: &str,
+    token: &str,
+    app_id: &str,
+) -> Option<IgdbGameMatch> {
+    let ext = igdb_query(
+        client,
+        client_id,
+        token,
+        IGDB_API_EXTERNAL_GAMES,
+        &format!("fields game; where uid = \"{app_id}\" & category = 1; limit 1;"),
+    )
+    .await
+    .ok()?;
+
+    let igdb_id = ext.as_array().and_then(|a| a.first()).and_then(|r| r["game"].as_u64());
+    let Some(igdb_id) = igdb_id else {
+        eprintln!("[IGDB] Steam ID miss for app_id={}", app_id);
+        return None;
+    };
+    eprintln!("[IGDB] Steam ID hit: igdb_id={}", igdb_id);
+
+    let games = igdb_query(
+        client,
+        client_id,
+        token,
+        IGDB_API_GAMES,
+        &format!("fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;", igdb_id),
+    )
+    .await
+    .ok()?;
+
+    let entry = games
+        .as_array()
+        .and_then(|a| a.iter().find(|g| !is_non_game(g)))
+        .unwrap_or(&serde_json::json!(null));
+    let (cover_id, game_id, igdb_game) = extract_cover_and_game(entry);
+    let id = cover_id?;
+    eprintln!("[IGDB] Steam ID resolved cover={}", id);
+    Some((id, game_id, igdb_game))
+}
+
+// Stage 2: among the fuzzy-search results, a normalized-name exact match
+// (ignoring DLC/addons) beats trusting raw search relevance. Steam's own
+// release year disambiguates when more than one title normalizes the same.
+fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
+    let norm_matches: Vec<_> = arr
+        .iter()
+        .filter(|r| !is_non_game(r))
+        .filter(|r| r["name"].as_str().map(|n| normalize_name(n) == name_norm).unwrap_or(false))
+        .collect();
+
+    if norm_matches.is_empty() {
+        return None;
+    }
+    let game = if norm_matches.len() == 1 {
+        norm_matches[0]
+    } else if let Some(year) = steam_year {
+        pick_by_year(&norm_matches, year).unwrap_or(norm_matches[0])
+    } else {
+        norm_matches[0]
+    };
+
+    let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+    eprintln!("[IGDB] Normalized match: {:?} date={}", game["name"].as_str(), get_release_timestamp(game));
+    let id = cover_id?;
+    Some((id, igdb_game_id, igdb_game))
+}
+
+// Stage 3, last resort: fuzzy string similarity against the cleaned query,
+// with a bonus for matching Steam's release year, only accepted above a
+// minimum confidence threshold.
+fn try_similarity_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
+    let best = arr
+        .iter()
+        .filter_map(|r| {
+            let n = r["name"].as_str()?;
+            let mut score = score_candidate(name_norm, n);
+            if let Some(year) = steam_year {
+                let igdb_year = chrono::DateTime::from_timestamp(get_release_timestamp(r), 0)
+                    .map(|dt| dt.year())
+                    .unwrap_or(0);
+                let diff = (igdb_year - year).abs();
+                if diff == 0 {
+                    score += 0.3;
+                } else if diff <= 1 {
+                    score += 0.1;
+                }
+            }
+            eprintln!("[IGDB]   candidate {:?} score={:.2} date={}", n, score, get_release_timestamp(r));
+            if score > 0.5 { Some((score, r)) } else { None }
+        })
+        .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))?;
+
+    let (score, game) = best;
+    let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
+    eprintln!("[IGDB] Score match: {:?} score={:.2}", game["name"].as_str(), score);
+    let id = cover_id?;
+    Some((id, igdb_game_id, igdb_game))
+}
+
 async fn resolve_igdb_game(
     client: &reqwest::Client,
     client_id: &str,
     token: &str,
     app_id: &str,
     game_name: &str,
-) -> Result<(String, Option<u64>, serde_json::Value), String> {
+) -> Result<IgdbGameMatch, String> {
     // For IGDB search: remove symbols AND replace problematic punctuation with spaces
     // "NieR:Automata™" → "NieR Automata", "STEINS;GATE" → "STEINS GATE"
     let search_query = game_name
@@ -436,47 +543,8 @@ async fn resolve_igdb_game(
         game_name, app_id, steam_year, name_norm
     );
 
-    // Try Steam ID lookup (category=1 is Steam in IGDB)
-    if let Ok(ext) = igdb_query(
-        client,
-        client_id,
-        token,
-        IGDB_API_EXTERNAL_GAMES,
-        &format!("fields game; where uid = \"{app_id}\" & category = 1; limit 1;"),
-    )
-    .await
-    {
-        if let Some(igdb_id) = ext
-            .as_array()
-            .and_then(|a| a.first())
-            .and_then(|r| r["game"].as_u64())
-        {
-            eprintln!("[IGDB] Steam ID hit: igdb_id={}", igdb_id);
-            if let Ok(games) = igdb_query(
-                client,
-                client_id,
-                token,
-                IGDB_API_GAMES,
-                &format!(
-                    "fields {IGDB_GAME_FIELDS}; where id = {} & cover != null; limit 1;",
-                    igdb_id
-                ),
-            )
-            .await
-            {
-                let entry = games
-                    .as_array()
-                    .and_then(|a| a.iter().find(|g| !is_non_game(g)))
-                    .unwrap_or(&serde_json::json!(null));
-                let (cover_id, game_id, igdb_game) = extract_cover_and_game(entry);
-                if let Some(id) = cover_id {
-                    eprintln!("[IGDB] Steam ID resolved cover={}", id);
-                    return Ok((id, game_id, igdb_game));
-                }
-            }
-        } else {
-            eprintln!("[IGDB] Steam ID miss for app_id={}", app_id);
-        }
+    if let Some(m) = try_steam_id_match(client, client_id, token, app_id).await {
+        return Ok(m);
     }
 
     // Fallback: fuzzy search with cleaned query
@@ -494,87 +562,14 @@ async fn resolve_igdb_game(
     if let Some(arr) = fuzzy.as_array() {
         eprintln!(
             "[IGDB] Fuzzy results: {:?}",
-            arr.iter()
-                .filter_map(|r| r["name"].as_str())
-                .collect::<Vec<_>>()
+            arr.iter().filter_map(|r| r["name"].as_str()).collect::<Vec<_>>()
         );
 
-        // Normalized exact match: collect all (excluding DLC/addons), then pick by Steam year
-        let norm_matches: Vec<_> = arr
-            .iter()
-            .filter(|r| !is_non_game(r))
-            .filter(|r| {
-                r["name"]
-                    .as_str()
-                    .map(|n| normalize_name(n) == name_norm)
-                    .unwrap_or(false)
-            })
-            .collect();
-
-        if !norm_matches.is_empty() {
-            let game = if norm_matches.len() == 1 {
-                norm_matches[0]
-            } else if let Some(year) = steam_year {
-                // Multiple matches: pick the one with closest release year to Steam
-                pick_by_year(&norm_matches, year).unwrap_or(norm_matches[0])
-            } else {
-                // No year info: trust IGDB relevance ordering
-                norm_matches[0]
-            };
-
-            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
-            eprintln!(
-                "[IGDB] Normalized match: {:?} date={}",
-                game["name"].as_str(),
-                get_release_timestamp(game)
-            );
-            if let Some(id) = cover_id {
-                return Ok((id, igdb_game_id, igdb_game));
-            }
+        if let Some(m) = try_normalized_match(arr, &name_norm, steam_year) {
+            return Ok(m);
         }
-
-        // Similarity scoring as last resort — year proximity as tiebreaker
-        let best = arr
-            .iter()
-            .filter_map(|r| {
-                let n = r["name"].as_str()?;
-                let mut score = score_candidate(&name_norm, n);
-                // Bonus for matching Steam release year
-                if let Some(year) = steam_year {
-                    let igdb_year = chrono::DateTime::from_timestamp(get_release_timestamp(r), 0)
-                        .map(|dt| dt.year())
-                        .unwrap_or(0);
-                    let diff = (igdb_year - year).abs();
-                    if diff == 0 {
-                        score += 0.3;
-                    } else if diff <= 1 {
-                        score += 0.1;
-                    }
-                }
-                eprintln!(
-                    "[IGDB]   candidate {:?} score={:.2} date={}",
-                    n,
-                    score,
-                    get_release_timestamp(r)
-                );
-                if score > 0.5 {
-                    Some((score, r))
-                } else {
-                    None
-                }
-            })
-            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
-        if let Some((score, game)) = best {
-            let (cover_id, igdb_game_id, igdb_game) = extract_cover_and_game(game);
-            eprintln!(
-                "[IGDB] Score match: {:?} score={:.2}",
-                game["name"].as_str(),
-                score
-            );
-            if let Some(id) = cover_id {
-                return Ok((id, igdb_game_id, igdb_game));
-            }
+        if let Some(m) = try_similarity_match(arr, &name_norm, steam_year) {
+            return Ok(m);
         }
     }
 

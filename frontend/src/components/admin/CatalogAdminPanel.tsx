@@ -14,7 +14,7 @@ import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposa
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
 import { AdminAddSearch } from './AdminAddSearch';
-import { IconPencil, IconTrash } from '../local/ui/icons';
+import { CatalogEntryCard } from './CatalogEntryCard';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -241,25 +241,16 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!loading && visibleEntries.length > 0 && (
             <div className="pr-editor-search-grid">
               {visibleEntries.map(entry => (
-                <div key={entry.external_id} className="catalog-admin-card">
-                  <div className="catalog-admin-card-cover">
-                    {entry.cover_url
-                      ? <img src={entry.cover_url} alt="" loading="lazy" />
-                      : <span className="catalog-admin-card-no-cover">—</span>}
-                  </div>
-                  <div className="pr-editor-search-result-info">
-                    <div className="pr-editor-search-result-id">{entry.external_id}</div>
-                    <div className="pr-editor-search-result-title">{entry.title_main || entry.external_id}</div>
-                  </div>
-                  <div className="catalog-admin-card-actions">
-                    <button type="button" className="catalog-admin-icon-btn" onClick={() => setEditingId(entry.external_id)} aria-label={t.edit_button} title={t.edit_button}>
-                      <IconPencil size={13} />
-                    </button>
-                    <button type="button" className="catalog-admin-icon-btn catalog-admin-icon-btn--delete" onClick={() => setDeleteTarget(entry)} aria-label={t.delete_button} title={t.delete_button}>
-                      <IconTrash size={13} />
-                    </button>
-                  </div>
-                </div>
+                <CatalogEntryCard
+                  key={entry.external_id}
+                  id={entry.external_id}
+                  title={entry.title_main || entry.external_id}
+                  cover={entry.cover_url}
+                  editLabel={t.edit_button}
+                  deleteLabel={t.delete_button}
+                  onEdit={() => setEditingId(entry.external_id)}
+                  onDelete={() => setDeleteTarget(entry)}
+                />
               ))}
             </div>
           )}
@@ -286,25 +277,17 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 const fileExternalId = externalIdFromDatabaseFilename(file.name);
                 const info = catalogInfoMap[fileExternalId];
                 return (
-                  <div key={file.path} className="catalog-admin-card">
-                    <div className="catalog-admin-card-cover">
-                      {info?.cover
-                        ? <img src={info.cover} alt="" loading="lazy" />
-                        : <span className="catalog-admin-card-no-cover">—</span>}
-                    </div>
-                    <div className="pr-editor-search-result-info">
-                      <div className="pr-editor-search-result-id">{fileExternalId}</div>
-                      <div className="pr-editor-search-result-title">{info?.title || fileExternalId}</div>
-                    </div>
-                    <div className="catalog-admin-card-actions">
-                      <button type="button" className="catalog-admin-icon-btn" disabled={githubBusy} onClick={() => openGithubEntry(file)} aria-label={t.edit_button} title={t.edit_button}>
-                        <IconPencil size={13} />
-                      </button>
-                      <button type="button" className="catalog-admin-icon-btn catalog-admin-icon-btn--delete" onClick={() => setGithubDeleteTarget(file)} aria-label={t.delete_button} title={t.delete_button}>
-                        <IconTrash size={13} />
-                      </button>
-                    </div>
-                  </div>
+                  <CatalogEntryCard
+                    key={file.path}
+                    id={fileExternalId}
+                    title={info?.title || fileExternalId}
+                    cover={info?.cover}
+                    editLabel={t.edit_button}
+                    deleteLabel={t.delete_button}
+                    editDisabled={githubBusy}
+                    onEdit={() => openGithubEntry(file)}
+                    onDelete={() => setGithubDeleteTarget(file)}
+                  />
                 );
               })}
             </div>

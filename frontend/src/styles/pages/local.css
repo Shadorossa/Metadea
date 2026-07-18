@@ -579,54 +579,6 @@
   color: var(--text-dim);
 }
 
-/* ── Launcher badge (on card) ────────────────────────────────────────────────── */
-
-.local-game-badge {
-  display: none;
-}
-
-.local-game-badge--steam {
-  background: rgba(23, 32, 47, 0.92);
-  color: #c7d5e0;
-  border: 1px solid rgba(199, 213, 224, 0.3);
-}
-
-.local-game-badge--epic {
-  background: rgba(0, 0, 0, 0.85);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.local-game-badge--xbox {
-  background: rgba(16, 124, 16, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.local-game-badge--gog {
-  background: rgba(104, 71, 255, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.local-game-badge--ea {
-  background: rgba(255, 71, 15, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.local-game-badge--nintendo {
-  background: rgba(230, 0, 18, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.local-game-badge--playstation {
-  background: rgba(0, 55, 145, 0.9);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 .local-game-name {
   font-size: 0.72rem;
   font-weight: 600;

@@ -4,6 +4,18 @@ use tauri::Manager;
 use crate::platform_scanning::steam_root;
 use crate::db::ToStringErr;
 
+/// Reads the user's configured Steam Web API key, if any — shared by every
+/// endpoint that needs it instead of each repeating the same lookup query.
+fn steam_api_key(db: &crate::db::MetadeaDb) -> Result<Option<String>, String> {
+    use rusqlite::OptionalExtension;
+    let conn = db.conn.lock().str_err()?;
+    Ok(conn
+        .query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
+        .optional()
+        .str_err()?
+        .filter(|s| !s.is_empty()))
+}
+
 /// Downloads achievement icons (both locked and unlocked) and saves achievements.json.
 /// Always refreshes progress from Steam; only skips icon files that already exist on disk.
 /// Re-saves achievements.json whenever the unlock state has changed.
@@ -14,16 +26,9 @@ pub async fn download_achievements(
     lang: &str,
 ) {
     let db = app_handle.state::<crate::db::MetadeaDb>();
-    let api_key = {
-        use rusqlite::OptionalExtension;
-        let conn = match db.conn.lock() { Ok(c) => c, Err(_) => return };
-        let val: Option<String> = conn
-            .query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get(0))
-            .optional()
-            .ok()
-            .flatten()
-            .filter(|s: &String| !s.is_empty());
-        match val { Some(k) => k, None => return }
+    let api_key = match steam_api_key(&db) {
+        Ok(Some(k)) => k,
+        _ => return,
     };
     let steam_id = match detect_steam_user_id() {
         Some(id) => id,
@@ -240,16 +245,8 @@ pub async fn steam_achievement_icon(
 pub async fn steam_get_owned_games(
     app_handle: tauri::AppHandle,
 ) -> Result<serde_json::Value, String> {
-    let api_key = {
-        use rusqlite::OptionalExtension;
-        let db = app_handle.state::<crate::db::MetadeaDb>();
-        let conn = db.conn.lock().str_err()?;
-        conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
-            .optional()
-            .str_err()?
-            .filter(|s| !s.is_empty())
-            .ok_or("No Steam API key configured")?
-    };
+    let api_key = steam_api_key(&app_handle.state::<crate::db::MetadeaDb>())?
+        .ok_or("No Steam API key configured")?;
 
     let steam_id =
         detect_steam_user_id().ok_or("Could not detect Steam user ID from loginusers.vdf")?;
@@ -278,16 +275,8 @@ pub async fn steam_get_player_achievements(
     app_id: u32,
     lang: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let api_key = {
-        use rusqlite::OptionalExtension;
-        let db = app_handle.state::<crate::db::MetadeaDb>();
-        let conn = db.conn.lock().str_err()?;
-        conn.query_row("SELECT value FROM app_env WHERE name = 'steam_api_key'", [], |r| r.get::<_, String>(0))
-            .optional()
-            .str_err()?
-            .filter(|s| !s.is_empty())
-            .ok_or("No Steam API key")?
-    };
+    let api_key = steam_api_key(&app_handle.state::<crate::db::MetadeaDb>())?
+        .ok_or("No Steam API key")?;
     let steam_id = detect_steam_user_id().ok_or("Could not detect Steam user ID")?;
     let language = lang.unwrap_or_else(|| "spanish".to_string());
 

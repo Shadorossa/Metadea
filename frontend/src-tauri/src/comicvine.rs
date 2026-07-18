@@ -36,8 +36,13 @@ const ISSUE_ENRICHMENT_FIELD_LIST: &str = "cover_date,character_credits,concept_
 const VOLUME_RESOURCE_PREFIX: &str = "4050";
 
 fn get_http_client() -> reqwest::Result<reqwest::Client> {
+    // Comic Vine rejects requests with no User-Agent — set once as a default
+    // header here instead of every call site repeating its own .header(...).
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("Metadea (github.com/Shadorossa/Metadea)"));
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
+        .default_headers(headers)
         .build()
 }
 
@@ -152,8 +157,6 @@ pub async fn comicvine_search(
             ("offset", offset_str.as_str()),
             ("field_list", FIELD_LIST),
         ])
-        // Comic Vine rejects requests with no User-Agent.
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
         .map_err(|e| format!("Comic Vine request failed: {e}"))?;
@@ -193,7 +196,6 @@ pub async fn comicvine_get_volume(
             ("format", "json"),
             ("field_list", VOLUME_DETAIL_FIELD_LIST),
         ])
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
         .map_err(|e| format!("Comic Vine request failed: {e}"))?;
@@ -279,7 +281,6 @@ async fn fetch_images_by_ids(client: &reqwest::Client, api_key: &str, resource_p
             ("field_list", "id,image"),
             ("limit", "100"),
         ])
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
     {
@@ -352,7 +353,6 @@ async fn fetch_issue_enrichment(client: &reqwest::Client, api_key: &str, issue_i
             ("format", "json"),
             ("field_list", ISSUE_ENRICHMENT_FIELD_LIST),
         ])
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
         .ok()?;
@@ -420,7 +420,6 @@ async fn fetch_issue_cover_date(client: &reqwest::Client, api_key: &str, issue_i
             ("format", "json"),
             ("field_list", ISSUE_DATE_FIELD_LIST),
         ])
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
         .ok()?;
@@ -507,7 +506,6 @@ pub async fn comicvine_get_issues(
                 ("sort", "issue_number:asc"),
                 ("field_list", ISSUE_FIELD_LIST),
             ])
-            .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
             .send()
             .await
             .map_err(|e| format!("Comic Vine request failed: {e}"))?;
@@ -598,7 +596,6 @@ pub async fn comicvine_get_issue(
             ("format", "json"),
             ("field_list", ISSUE_DETAIL_FIELD_LIST),
         ])
-        .header("User-Agent", "Metadea (github.com/Shadorossa/Metadea)")
         .send()
         .await
         .map_err(|e| format!("Comic Vine request failed: {e}"))?;

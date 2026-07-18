@@ -1152,14 +1152,11 @@ pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
     Ok(())
 }
 
-pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle) -> Result<(), String> {
-    let mut conn = db.conn.lock().str_err()?;
-    let tx = conn.transaction().str_err()?;
-
-    let now = Utc::now().to_rfc3339();
-
-    // 1. Save media_catalog
-    let entry = bundle.media_catalog;
+// import_proposal_bundle used to be one 275-line function covering all five
+// bundle sections inline — split into one helper per section (still run
+// inside the same transaction, so the whole import stays atomic) purely for
+// readability; no behavior changes from the original SQL.
+fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogEntry) -> Result<(), String> {
     let exists_val: i64 = tx
         .query_row(
             "SELECT COUNT(*) FROM media_catalog WHERE external_id = ?1",
@@ -1251,19 +1248,27 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         )
         .str_err()?;
     }
+    Ok(())
+}
 
-    // 2. Save media_relations. Owners are the distinct media_external_id
-    // each row is tagged for (defaulting to this entry's own id when
-    // untagged) — only *their* existing relations get cleared before
-    // re-inserting the bundle's rows for them, in one statement instead of
-    // the previous O(owners × targets) DELETE-per-pair. Scoping the DELETE
-    // to owners also fixes a correctness bug: the old pairwise delete wiped
-    // *any* existing relation between two ids merely mentioned here, even
-    // if a different, unrelated PR had contributed it and this bundle never
-    // touches that owner at all.
+// Owners are the distinct media_external_id each row is tagged for
+// (defaulting to this entry's own id when untagged) — only *their* existing
+// relations get cleared before re-inserting the bundle's rows for them, in
+// one statement instead of the previous O(owners × targets) DELETE-per-pair.
+// Scoping the DELETE to owners also fixes a correctness bug: the old
+// pairwise delete wiped *any* existing relation between two ids merely
+// mentioned here, even if a different, unrelated PR had contributed it and
+// this bundle never touches that owner at all. Returns the owner list since
+// the saga_name section later needs it too.
+fn replace_bundle_relations(
+    tx: &rusqlite::Transaction,
+    entry: &MediaCatalogEntry,
+    relations: &[DbMediaRelation],
+    now: &str,
+) -> Result<Vec<String>, String> {
     let owners: Vec<String> = {
         let mut set = std::collections::HashSet::new();
-        for rel in &bundle.media_relations {
+        for rel in relations {
             set.insert(rel.media_external_id.clone().unwrap_or_else(|| entry.external_id.clone()));
         }
         set.into_iter().collect()
@@ -1279,10 +1284,10 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
     // existing_catalog_ids was written to fix elsewhere in this file) — kept
     // mutable so a related id appearing more than once in the same bundle
     // still only gets its stub catalog row inserted once.
-    let related_ids: Vec<String> = bundle.media_relations.iter().map(|r| r.related_media_external_id.clone()).collect();
+    let related_ids: Vec<String> = relations.iter().map(|r| r.related_media_external_id.clone()).collect();
     let mut known_ids = existing_catalog_ids(&tx, &related_ids)?;
 
-    for rel in &bundle.media_relations {
+    for rel in relations {
         let parent_id = rel.media_external_id.as_deref().unwrap_or(&entry.external_id);
 
         // A media can't be related to itself.
@@ -1324,8 +1329,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                     &rel_type,
                     &rel.title,
                     &rel.cover,
-                    &now,
-                    &now,
+                    now,
+                    now,
                 ],
             )
             .str_err()?;
@@ -1333,14 +1338,22 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         }
     }
 
-    // 3. Save characters
+    Ok(owners)
+}
+
+fn replace_bundle_characters(
+    tx: &rusqlite::Transaction,
+    entry: &MediaCatalogEntry,
+    characters: &[crate::characters::SkeletonCharacter],
+    now: &str,
+) -> Result<(), String> {
     tx.execute(
         "DELETE FROM character_appearances WHERE media_external_id = ?1",
         [&entry.external_id],
     )
     .str_err()?;
 
-    for char in &bundle.characters {
+    for char in characters {
         tx.execute(
             "INSERT OR IGNORE INTO characters (id, external_id, name, image_url, reaction, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -1350,8 +1363,8 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 &char.name,
                 &char.image_url,
                 None::<String>,
-                &now,
-                &now,
+                now,
+                now,
             ],
         )
         .str_err()?;
@@ -1364,20 +1377,27 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 &entry.external_id,
                 &char.relation_type,
                 &char.character_name,
-                &now,
+                now,
             ],
         )
         .str_err()?;
     }
+    Ok(())
+}
 
-    // 4. Save authors
+fn replace_bundle_authors(
+    tx: &rusqlite::Transaction,
+    entry: &MediaCatalogEntry,
+    authors: &[DbMediaAuthor],
+    now: &str,
+) -> Result<(), String> {
     tx.execute(
         "DELETE FROM media_by_author WHERE media_external_id = ?1",
         [&entry.external_id],
     )
     .str_err()?;
 
-    for auth in &bundle.media_authors {
+    for auth in authors {
         tx.execute(
             "INSERT OR REPLACE INTO media_author (external_id, name, author_image_url, author_url, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -1386,7 +1406,7 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
                 &auth.name,
                 &auth.image,
                 &auth.url,
-                &now,
+                now,
             ],
         )
         .str_err()?;
@@ -1402,26 +1422,49 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
         )
         .str_err()?;
     }
+    Ok(())
+}
+
+fn upsert_bundle_saga_name(
+    tx: &rusqlite::Transaction,
+    entry: &MediaCatalogEntry,
+    owners: &[String],
+    saga_name: &str,
+) -> Result<(), String> {
+    let saga_id = owners.iter().min().cloned().unwrap_or_else(|| entry.external_id.clone());
+    tx.execute(
+        "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
+        rusqlite::params![&saga_id, saga_name],
+    )
+    .str_err()?;
+
+    for owner in owners {
+        tx.execute(
+            "INSERT OR REPLACE INTO saga_relations (saga_id, media_external_id) VALUES (?1, ?2)",
+            rusqlite::params![&saga_id, owner],
+        )
+        .str_err()?;
+    }
+    Ok(())
+}
+
+pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle) -> Result<(), String> {
+    let mut conn = db.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+
+    let now = Utc::now().to_rfc3339();
+    let entry = bundle.media_catalog;
+
+    upsert_bundle_catalog_entry(&tx, &entry)?;
+    let owners = replace_bundle_relations(&tx, &entry, &bundle.media_relations, &now)?;
+    replace_bundle_characters(&tx, &entry, &bundle.characters, &now)?;
+    replace_bundle_authors(&tx, &entry, &bundle.media_authors, &now)?;
 
     if let Some(saga_groups) = &bundle.saga_groups {
         upsert_saga_groups(&tx, saga_groups)?;
     }
-
     if let Some(saga_name) = &bundle.saga_name {
-        let saga_id = owners.iter().min().cloned().unwrap_or_else(|| entry.external_id.clone());
-        tx.execute(
-            "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
-            rusqlite::params![&saga_id, saga_name],
-        )
-        .str_err()?;
-
-        for owner in &owners {
-            tx.execute(
-                "INSERT OR REPLACE INTO saga_relations (saga_id, media_external_id) VALUES (?1, ?2)",
-                rusqlite::params![&saga_id, owner],
-            )
-            .str_err()?;
-        }
+        upsert_bundle_saga_name(&tx, &entry, &owners, saga_name)?;
     }
 
     tx.commit().str_err()?;
