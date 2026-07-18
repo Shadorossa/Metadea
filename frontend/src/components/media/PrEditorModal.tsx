@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelations, saveMediaRelations, getMediaAuthors } from '../../lib/tauri/catalog';
+import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelations, saveMediaRelations, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../lib/media/mediaService';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
@@ -239,7 +239,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
         // sagaGroups back into a display/relation structure).
         const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
           Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
-          invoke<Record<string, string>>('get_media_saga_groups', { mediaExternalIds: sortedIds }).catch(() => ({} as Record<string, string>)),
+          getMediaSagaGroups(sortedIds).catch(() => ({} as Record<string, string>)),
           invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
         ]);
         // Reconstructs the manually-saved order (if any) from SEQUEL edges

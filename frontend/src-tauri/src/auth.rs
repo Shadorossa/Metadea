@@ -61,18 +61,3 @@ pub async fn clear_auth_token(
         .str_err()?;
     Ok("ok".to_string())
 }
-
-#[tauri::command]
-pub async fn save_library_item() -> Result<String, String> {
-    Ok("ok".to_string())
-}
-
-#[tauri::command]
-pub async fn get_library_items() -> Result<Vec<String>, String> {
-    Ok(vec![])
-}
-
-#[tauri::command]
-pub async fn get_library_stats() -> Result<String, String> {
-    Ok("{}".to_string())
-}
