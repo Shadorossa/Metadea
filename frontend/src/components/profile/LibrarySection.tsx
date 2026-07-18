@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { notifyNewEpisode } from '../../lib/shared/notifications';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { typeIconMap, CALENDAR_ICON, SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../../lib/shared/icon-strings';
@@ -509,11 +510,22 @@ export function LibrarySection() {
 
       for (const item of dueForResync) {
         if (cancelled) return;
+        const before = catalogEntries.find(e => e.external_id === item.external_id);
         await fetchMediaData(item.external_id).catch(() => null);
         const fresh = await getCatalogEntry(item.external_id).catch(() => null);
         if (cancelled) return;
         if (fresh) {
           setCatalogMap(prev => new Map(prev).set(fresh.external_id, fresh));
+          // total_count went up since the last known value — a new episode/
+          // chapter aired for something the user is actively watching/reading.
+          const beforeCount = before?.total_count ?? 0;
+          const afterCount = fresh.total_count ?? 0;
+          if (beforeCount > 0 && afterCount > beforeCount) {
+            const label = item.type === 'manga' || item.type === 'lnovel'
+              ? `Capítulo ${afterCount}`
+              : `Episodio ${afterCount}`;
+            notifyNewEpisode(fresh.title_main || item.external_id, label).catch(() => {});
+          }
         }
         await new Promise(resolve => setTimeout(resolve, 400));
       }

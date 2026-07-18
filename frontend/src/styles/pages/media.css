@@ -1113,6 +1113,20 @@
   background: var(--bg-elevated);
 }
 
+.media-banner-pr-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.media-banner-pr-btn--spinning svg {
+  animation: media-retry-spin 0.9s linear infinite;
+}
+
+@keyframes media-retry-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .media-banner-developer-badge {
   position: absolute;
   top: 19rem;
@@ -2468,6 +2482,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
   padding: 1.5rem;
 }
 
@@ -2494,6 +2509,75 @@
   height: 200px;
   justify-content: center;
   align-items: center;
+}
+
+/* Narrower than the default 97vw — leaves room for
+   .pr-editor-changelog-panel to sit beside it (only PrEditorModal, the
+   collaborative catalog editor, uses this modifier; CharacterPrEditorModal
+   reuses the same base .pr-editor-modal class but not this one). */
+.pr-editor-modal--narrow {
+  width: 74vw;
+  max-width: 1500px;
+}
+
+.pr-editor-changelog-panel {
+  width: 280px;
+  flex-shrink: 0;
+  height: 90vh;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: 4px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  animation: pr-editor-in var(--anim-medium, 220ms) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pr-editor-changelog-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.pr-editor-changelog-empty {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.pr-editor-changelog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pr-editor-changelog-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-changelog-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pr-editor-changelog-item-text {
+  font-size: 0.74rem;
+  color: var(--text-main);
+}
+
+.pr-editor-changelog-item-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
 }
 
 .pr-editor-header {

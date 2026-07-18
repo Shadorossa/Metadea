@@ -140,6 +140,8 @@ const t = useTranslations(lang);
           const { syncCommunityCatalog: sync } = await import(/* @vite-ignore */ '../lib/tauri');
           const imported = await sync();
           localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
+          const { recordCommunitySyncResult } = await import(/* @vite-ignore */ '../lib/shared/community-sync-log');
+          recordCommunitySyncResult(imported);
           if (imported > 0) {
             console.info(`[CommunityCatalog] Imported ${imported} new entries from the shared catalog.`);
           }

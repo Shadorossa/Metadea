@@ -105,6 +105,7 @@ const version = pkg.version;
   import { initBio } from "../lib/settings/bio";
   import { initUpdater } from "../lib/settings/updater";
   import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
+  import { initCatalogHealthCheck } from "../lib/settings/catalog-health";
   import { initSettingsTabs } from "../lib/settings/tabs";
   import { isConnectedAsOwner } from "../lib/github/ownership";
   import { getT } from "../i18n/client";
@@ -223,6 +224,7 @@ const version = pkg.version;
       (document.querySelector(".app-curr-ver") as HTMLElement | null)?.dataset.version || "0.1.9";
     initUpdater(defaultVersion);
     initCommunityCatalogSync();
+    initCatalogHealthCheck();
     initSettingsTabs();
 
     isConnectedAsOwner().then(isOwner => {

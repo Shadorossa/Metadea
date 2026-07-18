@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mapMediaDataToCatalogEntry } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -10,7 +10,7 @@ import { SagaViewerModal } from './SagaViewerModal';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, type RatingSystem } from '../../lib/media/rating-utils';
-import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart } from '../local/ui/icons';
+import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
@@ -163,6 +163,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
   const [characterPage,      setCharacterPage]      = useState(1);
   const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
+  const [retryingSync,       setRetryingSync]       = useState(false);
   const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const [isFavorited,        setIsFavorited]        = useState(false);
@@ -505,6 +506,22 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     applyDeleted();
   }, [applyDeleted]);
 
+  // Manual "retry sync" — bypasses the in-memory session cache
+  // fetchMediaData(WithFallback) would otherwise short-circuit on, forcing
+  // a genuine live re-fetch right now instead of waiting for needsResync()'s
+  // own cadence to consider this entry due again.
+  const handleRetrySync = useCallback(() => {
+    if (!currentId || retryingSync) return;
+    setRetryingSync(true);
+    invalidateCachedMediaData(currentId);
+    fetchMediaDataWithFallback(
+      currentId,
+      partial => setData(partial),
+      full => { setData(full); setRetryingSync(false); },
+      () => setRetryingSync(false),
+    );
+  }, [currentId, retryingSync]);
+
   // Closing without saving: roll back any optimistic quick-click draft to
   // the last confirmed DB state, so a re-open (or the hero widget) doesn't
   // keep showing changes that were never actually persisted.
@@ -662,6 +679,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               title="Proponer cambios o añadir datos en GitHub"
             >
               <IconPlus />
+            </button>
+          )}
+          {!previewMode && (
+            <button
+              type="button"
+              className={`media-banner-pr-btn${retryingSync ? ' media-banner-pr-btn--spinning' : ''}`}
+              onClick={handleRetrySync}
+              disabled={retryingSync}
+              title="Reintentar sincronización"
+            >
+              <IconRefresh />
             </button>
           )}
         </div>

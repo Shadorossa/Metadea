@@ -224,4 +224,18 @@ const { t } = Astro.props;
     </button>
   </div>
 
+  <!-- Catalog maintenance -->
+  <div class="settings-section" style="margin-top: 2rem;">
+    <h3 class="settings-section-title">{t.settings.catalog_health_title}</h3>
+    <p class="settings-hint">{t.settings.catalog_health_hint}</p>
+    <button class="btn btn--sm btn--ghost" id="catalog-health-btn" style="margin-top: 0.75rem;">
+      🔍 {t.settings.catalog_health_btn}
+    </button>
+    <div
+      id="catalog-health-results"
+      class="settings-modal"
+      style="margin-top: 1rem; align-items: stretch; text-align: left; max-height: 320px; overflow-y: auto;"
+    ></div>
+  </div>
+
 </div>

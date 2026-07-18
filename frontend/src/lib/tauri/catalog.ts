@@ -66,6 +66,21 @@ export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
 }
 
+export interface CatalogHealthEntry {
+  external_id: string;
+  title_main: string;
+  type: string;
+}
+
+export interface CatalogHealthReport {
+  orphans: CatalogHealthEntry[];
+  duplicates: CatalogHealthEntry[];
+}
+
+export async function findCatalogHealthIssues(): Promise<CatalogHealthReport> {
+  return tauriCmd<CatalogHealthReport>('find_catalog_health_issues', { orphans: [], duplicates: [] });
+}
+
 export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('search_catalog', [], { query });
 }

@@ -1,6 +1,7 @@
 import { getT } from '../../i18n/client';
 import { byId } from '../shared/dom';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { recordCommunitySyncResult } from '../shared/community-sync-log';
 
 function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' &&
@@ -36,6 +37,7 @@ export function initCommunityCatalogSync() {
       const { syncCommunityCatalog } = await import('../tauri');
       const imported = await syncCommunityCatalog();
       localStorage.setItem(STORAGE_KEYS.communityCatalogLastSync, String(Date.now()));
+      recordCommunitySyncResult(imported);
 
       if (statusText) {
         statusText.textContent = imported > 0

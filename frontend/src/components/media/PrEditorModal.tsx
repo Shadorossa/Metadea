@@ -26,6 +26,7 @@ import { PrEditorCharactersSection } from './PrEditorCharactersSection';
 import { PrEditorRelationCardList } from './PrEditorRelationCardList';
 import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
 import { PrEditorRelationsSection } from './PrEditorRelationsSection';
+import { PrEditorChangelogPanel } from './PrEditorChangelogPanel';
 import { getT } from '../../i18n/client';
 import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
 
@@ -912,7 +913,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
 
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
-      <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
+      <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
             <span className="pr-editor-title">Edit Collaborative Catalog Entry</span>
@@ -1088,6 +1089,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
           </button>
         </div>
       </div>
+
+      <PrEditorChangelogPanel />
 
       {searchPopupMode === 'saga' && (
         <MediaSearchPopup

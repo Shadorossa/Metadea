@@ -29,6 +29,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir().expect("no app data dir");
             std::fs::create_dir_all(&data_dir).ok();
@@ -122,6 +123,7 @@ pub fn run() {
             media_catalog::update_catalog_genres,
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
+            media_catalog::find_catalog_health_issues,
             media_catalog::search_catalog,
             media_catalog::get_cached_saga,
             media_catalog::save_cached_saga,

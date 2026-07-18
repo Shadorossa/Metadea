@@ -550,7 +550,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   <div className="me-header-progress-pair">
                     <NumberField label={progLabel} value={activeLog.progress} step={progStep}
                       max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
-                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { progress: v } })} />
+                      onChange={v => {
+                        const updates: Partial<LogState> = { progress: v };
+                        // Reaching the known total auto-completes the entry,
+                        // the same way picking "Completed" already auto-fills
+                        // progress to the total (see the status buttons
+                        // above) — this just closes the loop the other way.
+                        if (data.totalCount && data.totalCount > 0 && v >= data.totalCount && activeLog.status !== 'completed') {
+                          updates.status = 'completed';
+                        }
+                        dispatchEntry({ type: 'UPDATE_LOG', updates });
+                      }} />
                     {label2 && data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0 && (
                       <NumberField label={label2} value={activeLog.progressCount2} step={1}
                         max={data.totalCount_2}
