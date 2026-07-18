@@ -172,12 +172,15 @@
   margin: 0;
 }
 
-/* Scoped to the Apariencia tab only (not every other settings tab that
-   reuses .settings-section-title, e.g. the GitHub/AniList auth block
-   titles in Conexiones, where a centered title reads oddly next to a
-   left-aligned avatar+name row) — each section's title centers over its
-   own column/box instead of hugging the left edge. */
-#panel-profile .settings-section-title {
+/* Scoped to tabs whose sections are full-width blocks (Apariencia,
+   Preferencias, Entorno) — NOT Conexiones, where .settings-section-title
+   is reused for the GitHub/AniList auth block titles sitting next to a
+   left-aligned avatar+name row, and a centered title there reads oddly.
+   Each section's title centers over its own column/box instead of
+   hugging the left edge. */
+#panel-profile .settings-section-title,
+#panel-preferences .settings-section-title,
+#panel-environment .settings-section-title {
   text-align: center;
 }
 
@@ -750,6 +753,7 @@
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .rating-system-btn {
@@ -842,12 +846,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 2rem;
+  justify-content: center;
 }
 
 .settings-checkbox-group {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
+}
+
+.settings-checkbox-group .settings-hint {
+  text-align: center;
 }
 
 .settings-checkbox-label {

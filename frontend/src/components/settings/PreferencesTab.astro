@@ -12,9 +12,9 @@ const { t } = Astro.props;
 <div class="settings-panel hidden" id="panel-preferences">
   <h2 class="settings-panel-title">{t.settings.tab_preferences}</h2>
 
-  <!-- Sistema de Calificación -->
-  <div class="settings-divider">
-    <div class="settings-section">
+  <!-- Sistema de Calificación + Actividad -->
+  <div class="settings-divider settings-divider--row">
+    <div class="settings-section" style="flex: 1;">
       <h3 class="settings-section-title">
         {t.settings.rating_system_title}
       </h3>
@@ -53,44 +53,43 @@ const { t } = Astro.props;
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- Sección de Actividad -->
-  <div class="settings-divider">
-    <h3 class="settings-section-title">
-      {t.settings.activity_section}
-    </h3>
-    <div class="settings-checkbox-row">
-      <div class="settings-checkbox-group">
-        <label class="settings-checkbox-label">
-          <input
-            type="checkbox"
-            id="activity-batch-episodes"
-            class="settings-checkbox"
-          />
-          <span class="checkbox-label-text"
-            >{t.settings.activity_batch_episodes}</span
-          >
-        </label>
-        <p class="settings-hint">
-          {t.settings.activity_batch_episodes_hint}
-        </p>
-      </div>
+    <div class="settings-section" style="flex: 1;">
+      <h3 class="settings-section-title">
+        {t.settings.activity_section}
+      </h3>
+      <div class="settings-checkbox-row">
+        <div class="settings-checkbox-group">
+          <label class="settings-checkbox-label">
+            <input
+              type="checkbox"
+              id="activity-batch-episodes"
+              class="settings-checkbox"
+            />
+            <span class="checkbox-label-text"
+              >{t.settings.activity_batch_episodes}</span
+            >
+          </label>
+          <p class="settings-hint">
+            {t.settings.activity_batch_episodes_hint}
+          </p>
+        </div>
 
-      <div class="settings-checkbox-group">
-        <label class="settings-checkbox-label">
-          <input
-            type="checkbox"
-            id="activity-adult-content"
-            class="settings-checkbox"
-          />
-          <span class="checkbox-label-text"
-            >{t.settings.activity_adult_content}</span
-          >
-        </label>
-        <p class="settings-hint">
-          {t.settings.activity_adult_content_hint}
-        </p>
+        <div class="settings-checkbox-group">
+          <label class="settings-checkbox-label">
+            <input
+              type="checkbox"
+              id="activity-adult-content"
+              class="settings-checkbox"
+            />
+            <span class="checkbox-label-text"
+              >{t.settings.activity_adult_content}</span
+            >
+          </label>
+          <p class="settings-hint">
+            {t.settings.activity_adult_content_hint}
+          </p>
+        </div>
       </div>
     </div>
   </div>
