@@ -1,5 +1,6 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
 import { byId } from '../shared/dom';
+import { debouncedSave } from './autosave';
 
 // Previously only ever read/wrote localStorage — it never persisted to
 // user_metadata (the 'bio' column getUserInfo/saveUserInfo already support,
@@ -16,21 +17,11 @@ export async function initBio(showToast: (msg?: string) => void) {
   bioTextarea.value = savedBio;
   bioCharCount.textContent = savedBio.length.toString();
 
-  let saveTimer: ReturnType<typeof setTimeout>;
-  async function saveBio() {
-    const newBio = bioTextarea!.value;
-    try {
-      await saveUserInfo({ bio: newBio });
-      showToast('Bio guardada');
-    } catch (err) {
-      console.error('Failed to save bio:', err);
-      showToast('Error al guardar la bio');
-    }
-  }
+  const save = () => saveUserInfo({ bio: bioTextarea.value });
+  const { trigger } = debouncedSave(1500, save, showToast, 'Failed to save bio:');
 
   bioTextarea.addEventListener('input', () => {
     bioCharCount!.textContent = bioTextarea!.value.length.toString();
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveBio, 1500);
+    trigger();
   });
 }

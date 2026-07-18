@@ -8,7 +8,7 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     batchEpisodesCheckbox.checked = localStorage.getItem(STORAGE_KEYS.activityBatchEpisodes) === 'true';
     batchEpisodesCheckbox.addEventListener('change', () => {
       localStorage.setItem(STORAGE_KEYS.activityBatchEpisodes, batchEpisodesCheckbox.checked.toString());
-      showToast('Preferencias de actividad guardadas');
+      showToast();
     });
   }
 
@@ -17,7 +17,7 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     adultContentCheckbox.checked = isAdultContentEnabled();
     adultContentCheckbox.addEventListener('change', () => {
       setAdultContentEnabled(adultContentCheckbox.checked);
-      showToast('Preferencias de actividad guardadas');
+      showToast();
     });
   }
 }

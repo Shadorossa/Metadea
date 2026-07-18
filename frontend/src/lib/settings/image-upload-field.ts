@@ -16,8 +16,6 @@ export interface ImageUploadFieldOptions {
   onlyImagesMessage?: string;
   tooLargeMessage: string;
   saveErrorMessage: string;
-  updatedMessage: string;
-  removedMessage: string;
   showToast: (msg?: string) => void;
   /** Called with the saved data URL, or null once removed/never set. */
   renderPreview: (src: string | null) => void;
@@ -50,7 +48,13 @@ export function initImageUploadField(opts: ImageUploadFieldOptions): void {
     dataUrl = await compressImage(dataUrl, opts.compressTo.width, opts.compressTo.quality);
     if (!await saveImage(opts.storageKey, dataUrl)) { opts.showToast(opts.saveErrorMessage); return; }
     await refreshPreview();
-    opts.showToast(opts.updatedMessage);
+    // Generic "Cambios guardados" (showToast with no message — see
+    // autosave.ts) — was a per-field "Avatar actualizado"/"Banner
+    // actualizado" before, unified with every other settings field's
+    // success toast. The error paths above stay specific/informative,
+    // since those aren't "saved" confirmations, they're explaining why it
+    // *didn't* save.
+    opts.showToast();
   }
 
   uploadBtn?.addEventListener('click', () => input.click());
@@ -65,7 +69,7 @@ export function initImageUploadField(opts: ImageUploadFieldOptions): void {
   removeBtn?.addEventListener('click', async () => {
     await removeImage(opts.storageKey);
     await refreshPreview();
-    opts.showToast(opts.removedMessage);
+    opts.showToast();
   });
 
   if (dropZone) {

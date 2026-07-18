@@ -4,6 +4,7 @@ import {
   ICON_CHEVRON_LEFT,
   ICON_CHEVRON_RIGHT,
   ICON_RESET_ARROW,
+  ICON_TRASH,
 } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
 
@@ -19,22 +20,38 @@ const { t } = Astro.props;
 
   <!-- Avatar + Banner en la misma fila -->
   <div class="profile-media-row">
-    <!-- Nombre en la app -->
+    <!-- Nombre en la app + Fuente del nombre, fusionados: el input del
+         nombre ES el preview de la fuente, en vez de dos controles que
+         mostraban/editaban el mismo nombre por separado. -->
     <div class="settings-section settings-section--display-name">
-      <h3 class="settings-section-title">Nombre en la app</h3>
-      <input
-        type="text"
-        id="display-name-input"
-        class="env-input"
-        placeholder="Tu nombre..."
-        maxlength="40"
-        autocomplete="off"
-        spellcheck="false"
-        style="width: 100%; margin-top: 0.5rem;"
-      />
-      <p class="settings-hint" style="margin-top: 0.5rem;">
-        Se muestra en tu perfil.
-      </p>
+      <h3 class="settings-section-title">{t.settings.display_name_title}</h3>
+      <div class="font-picker">
+        <input
+          type="text"
+          id="display-name-input"
+          class="font-preview-input"
+          placeholder="Tu nombre..."
+          maxlength="40"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <h3 class="settings-section-title font-picker-title">{t.settings.font_title}</h3>
+        <div class="font-picker-controls">
+          <button
+            class="font-arrow"
+            id="font-prev"
+            aria-label={t.settings.font_prev}
+            set:html={ICON_CHEVRON_LEFT}
+          />
+          <span class="font-name-label" id="font-name-label"></span>
+          <button
+            class="font-arrow"
+            id="font-next"
+            aria-label={t.settings.font_next}
+            set:html={ICON_CHEVRON_RIGHT}
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Avatar -->
@@ -44,12 +61,20 @@ const { t } = Astro.props;
         <!-- populated by script -->
       </div>
       <div class="avatar-upload-btns">
-        <button class="btn btn--sm btn--secondary" id="avatar-upload-btn"
-          >{t.settings.avatar_upload}</button
-        >
-        <button class="btn btn--sm btn--ghost" id="avatar-remove-btn"
-          >{t.settings.avatar_remove}</button
-        >
+        <button
+          class="btn btn--sm btn--secondary btn--icon-only"
+          id="avatar-upload-btn"
+          title={t.settings.avatar_upload}
+          aria-label={t.settings.avatar_upload}
+          set:html={ICON_UPLOAD_IMAGE}
+        ></button>
+        <button
+          class="btn btn--sm btn--ghost btn--icon-only"
+          id="avatar-remove-btn"
+          title={t.settings.avatar_remove}
+          aria-label={t.settings.avatar_remove}
+          set:html={ICON_TRASH}
+        ></button>
       </div>
       <input type="file" id="avatar-input" accept="image/*" hidden />
     </div>
@@ -72,29 +97,6 @@ const { t } = Astro.props;
         >
       </div>
       <input type="file" id="banner-input" accept="image/*" hidden />
-    </div>
-
-    <!-- Fuente del nombre -->
-    <div class="settings-section settings-section--font">
-      <h3 class="settings-section-title">{t.settings.font_title}</h3>
-      <div class="font-picker">
-        <div class="font-preview" id="font-preview-name"></div>
-        <div class="font-picker-controls">
-          <button
-            class="font-arrow"
-            id="font-prev"
-            aria-label={t.settings.font_prev}
-            set:html={ICON_CHEVRON_LEFT}
-          />
-          <span class="font-name-label" id="font-name-label"></span>
-          <button
-            class="font-arrow"
-            id="font-next"
-            aria-label={t.settings.font_next}
-            set:html={ICON_CHEVRON_RIGHT}
-          />
-        </div>
-      </div>
     </div>
   </div>
 

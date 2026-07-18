@@ -15,8 +15,6 @@ export function initBanner(showToast: (msg?: string) => void) {
     onlyImagesMessage: t.banner_only_images,
     tooLargeMessage: t.banner_too_large,
     saveErrorMessage: t.banner_save_error,
-    updatedMessage: t.banner_updated,
-    removedMessage: t.banner_removed,
     showToast,
     renderPreview: (src) => {
       dropZone.querySelector('img')?.remove();

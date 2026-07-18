@@ -1,4 +1,5 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
+import { runSave } from './autosave';
 
 const PROFILE_FONTS = [
   { id: 'inter',            name: 'Inter',             file: 'inter/Inter-VariableFont_opsz,wght.woff2' },
@@ -19,11 +20,18 @@ export function getFontFile(fontId: string): string | undefined {
   return PROFILE_FONTS.find(f => f.id === fontId)?.file;
 }
 
-export async function initFontPicker(username: string, showToast: (msg?: string) => void) {
-  const preview = document.getElementById('font-preview-name')!;
+export async function initFontPicker(_username: string, showToast: (msg?: string) => void) {
+  // The font preview and the display-name field are the same element now
+  // (#display-name-input) — this only ever touches its font-family style,
+  // never its value/text, which display-name.ts owns exclusively (loads
+  // the saved name, saves edits). Doing both from here used to fight over
+  // the same textContent on a plain <div>; now that it's a real <input>,
+  // there isn't even a textContent to fight over.
+  const preview = document.getElementById('display-name-input') as HTMLInputElement;
   const label   = document.getElementById('font-name-label')!;
   const btnPrev = document.getElementById('font-prev')!;
   const btnNext = document.getElementById('font-next')!;
+  if (!preview) return;
 
   const info    = await getUserInfo();
   const savedId = (info.font as string | undefined) ?? 'inter';
@@ -39,7 +47,6 @@ export async function initFontPicker(username: string, showToast: (msg?: string)
 
   function render() {
     const f = PROFILE_FONTS[idx];
-    preview.textContent = username;
     preview.style.fontFamily = `"pf-${f.id}", sans-serif`;
     label.textContent = f.name;
   }
@@ -47,15 +54,13 @@ export async function initFontPicker(username: string, showToast: (msg?: string)
   btnPrev.addEventListener('click', async () => {
     idx = (idx - 1 + PROFILE_FONTS.length) % PROFILE_FONTS.length;
     render();
-    await saveUserInfo({ font: PROFILE_FONTS[idx].id });
-    showToast('Fuente guardada');
+    await runSave(() => saveUserInfo({ font: PROFILE_FONTS[idx].id }), showToast, 'Failed to save font:');
   });
 
   btnNext.addEventListener('click', async () => {
     idx = (idx + 1) % PROFILE_FONTS.length;
     render();
-    await saveUserInfo({ font: PROFILE_FONTS[idx].id });
-    showToast('Fuente guardada');
+    await runSave(() => saveUserInfo({ font: PROFILE_FONTS[idx].id }), showToast, 'Failed to save font:');
   });
 
   render();

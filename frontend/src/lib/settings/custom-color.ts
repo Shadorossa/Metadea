@@ -1,6 +1,7 @@
 import { saveUserInfo, getUserInfo } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { byId } from '../shared/dom';
+import { debouncedSave, runSave } from './autosave';
 
 const DEFAULT_COLOR = '#c084fc';
 
@@ -25,30 +26,23 @@ export async function initCustomColor(showToast: (msg?: string) => void) {
   localStorage.setItem(STORAGE_KEYS.customColor, savedColor);
   applyCustomColor(savedColor);
 
-  let colorTimer: ReturnType<typeof setTimeout>;
+  const { trigger } = debouncedSave(
+    800,
+    () => saveUserInfo({ custom_color: colorInput.value }),
+    showToast,
+    'Failed to save custom color:',
+  );
   colorInput.addEventListener('input', (e) => {
     const color = (e.target as HTMLInputElement).value;
     localStorage.setItem(STORAGE_KEYS.customColor, color);
     applyCustomColor(color);
-    clearTimeout(colorTimer);
-    colorTimer = setTimeout(() => {
-      // No toast here (this is a debounced autosave, not a user action), but
-      // still log — the DB write silently failing would otherwise be
-      // indistinguishable from it succeeding.
-      saveUserInfo({ custom_color: color }).catch(err => console.error('Failed to save custom color:', err));
-    }, 800);
+    trigger();
   });
 
   colorResetBtn?.addEventListener('click', async () => {
     colorInput.value = DEFAULT_COLOR;
     localStorage.setItem(STORAGE_KEYS.customColor, DEFAULT_COLOR);
     applyCustomColor(DEFAULT_COLOR);
-    try {
-      await saveUserInfo({ custom_color: DEFAULT_COLOR });
-      showToast('Color restaurado');
-    } catch (err) {
-      console.error('Failed to save custom color:', err);
-      showToast('Error al guardar el color');
-    }
+    await runSave(() => saveUserInfo({ custom_color: DEFAULT_COLOR }), showToast, 'Failed to save custom color:');
   });
 }

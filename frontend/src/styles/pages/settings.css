@@ -172,6 +172,15 @@
   margin: 0;
 }
 
+/* Scoped to the Apariencia tab only (not every other settings tab that
+   reuses .settings-section-title, e.g. the GitHub/AniList auth block
+   titles in Conexiones, where a centered title reads oddly next to a
+   left-aligned avatar+name row) — each section's title centers over its
+   own column/box instead of hugging the left edge. */
+#panel-profile .settings-section-title {
+  text-align: center;
+}
+
 .settings-hint {
   font-size: 0.7rem;
   color: var(--text-dim);
@@ -183,7 +192,26 @@
 .profile-media-row {
   display: flex;
   gap: 2rem;
-  align-items: flex-start;
+  /* stretch (not flex-start) — the four columns hold very different
+     amounts of content (a portrait avatar + 2 buttons vs. a single text
+     input), so top-aligning them left a jagged, different-height bottom
+     edge across the row. Stretching makes every column the same height;
+     combined with margin-top:auto on the action-button groups below, their
+     buttons land on one shared baseline instead of wherever their own
+     column's content happened to end. */
+  align-items: stretch;
+}
+
+/* Same fixed width as .settings-section--font — the only two "simple
+   single control" columns in this row, so they read as a matching pair
+   bookending Avatar/Banner instead of the arbitrary auto-sized column this
+   was before (the row's only column with no explicit width at all, next
+   to three that all had one — that mismatch was the actual asymmetry). */
+.settings-section--display-name {
+  flex-shrink: 0;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-section--avatar {
@@ -200,13 +228,6 @@
   flex-direction: column;
 }
 
-.settings-section--font {
-  flex-shrink: 0;
-  width: 190px;
-  display: flex;
-  flex-direction: column;
-}
-
 .font-picker {
   display: flex;
   flex-direction: column;
@@ -217,16 +238,32 @@
   padding: 1rem 0.85rem 0.85rem;
 }
 
-.font-preview {
+/* Same look .font-preview (a plain, uneditable div) used to have — now an
+   actual <input> doing double duty as the display-name field, so clicking
+   the big previewed name edits it directly instead of needing a separate
+   text field above this whole picker. */
+.font-preview-input {
+  width: 100%;
   min-height: 2.5rem;
   font-size: 1.3rem;
   font-weight: 700;
+  font-family: inherit;
   color: var(--text-main);
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.3;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0;
+  transition: background var(--anim-fast);
+}
+.font-preview-input:hover,
+.font-preview-input:focus {
+  background: rgba(255, 255, 255, 0.05);
+  outline: none;
 }
 
 .font-picker-controls {
@@ -290,7 +327,28 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: 0.75rem;
+  /* Centered under the avatar preview instead of left-aligned — the
+     avatar column is much narrower than its two icon buttons' combined
+     footprint would otherwise leave off-center against the round/square
+     preview above them. */
+  justify-content: center;
+  /* auto (not a fixed 0.75rem) — pins this row to the bottom of the
+     (now stretch-height, see .profile-media-row) Avatar column, landing on
+     the exact same baseline as .banner-actions below regardless of how
+     tall .avatar-preview-wrap ends up relative to .banner-drop-zone. */
+  margin-top: auto;
+}
+
+/* Square, icon-only variant for the avatar's action buttons — same
+   vertical padding as .btn--sm (which .banner-actions' text buttons use)
+   so both rows end up exactly the same height, just with less horizontal
+   padding since there's no text label to fit. */
+.btn--icon-only {
+  padding: 0.45rem 0.6rem;
+  gap: 0;
+}
+.btn--icon-only svg {
+  display: block;
 }
 
 /* ── Banner upload ────────────────────────────────────────────────────────── */
@@ -359,7 +417,9 @@
 .banner-actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  /* auto — see .avatar-upload-btns' own comment; same reasoning, keeps both
+     rows on one shared baseline. */
+  margin-top: auto;
 }
 
 /* ── Theme picker ─────────────────────────────────────────────────────────── */

@@ -99,7 +99,7 @@ export function initThemePicker(showToast: (msg?: string) => void) {
       }
       grid.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
-      showToast('Tema aplicado');
+      showToast();
     });
   });
 }

@@ -16,8 +16,6 @@ export function initAvatar(
     ids: { input: 'avatar-input', uploadBtn: 'avatar-upload-btn', removeBtn: 'avatar-remove-btn' },
     tooLargeMessage: 'La imagen supera los 8 MB',
     saveErrorMessage: 'Error: no se pudo guardar',
-    updatedMessage: 'Avatar actualizado',
-    removedMessage: 'Avatar eliminado',
     showToast,
     renderPreview: (custom) => {
       const src = custom || googleAvatar;
