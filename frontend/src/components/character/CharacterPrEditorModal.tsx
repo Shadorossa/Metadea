@@ -14,6 +14,14 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { TagsInput } from '../shared/TagsInput';
+import {
+  isFieldChanged,
+  characteristicsChanged as characteristicsChangedPure,
+  appearancesChanged as appearancesChangedPure,
+  hasChanged as hasChangedPure,
+  buildChangeSummary as buildChangeSummaryPure,
+  type AppearanceRow, type CharacterDiffFields,
+} from '../../lib/character/prEditorDiff';
 
 const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
 const getRelationTypeLabels = () => {
@@ -24,16 +32,6 @@ const getRelationTypeLabels = () => {
     BACKGROUND: t.character.role_background,
   };
 };
-
-interface AppearanceRow {
-  media_external_id: string;
-  relation_type: string | null;
-  title: string;
-  cover: string | null;
-}
-
-const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>
-  `${a.media_external_id}::${a.relation_type ?? ''}`;
 
 interface CachedCharacterData {
   character: CharacterEntry;
@@ -307,46 +305,17 @@ export function CharacterPrEditorModal() {
     loadCharacter();
   }, [isOpen, currentId, loadNonce]);
 
-  const isFieldChanged = (current: string, original: string | null | undefined) =>
-    current !== (original || '');
-
-  const characteristicsChanged = () =>
-    JSON.stringify(characteristics) !== JSON.stringify(originalCharacteristics);
-
-  const appearancesChanged = () => {
-    const a = new Set(appearances.map(appearanceKey));
-    const b = new Set(originalAppearances.map(appearanceKey));
-    if (a.size !== b.size) return true;
-    for (const k of a) if (!b.has(k)) return true;
-    return false;
+  // Thin per-render wrappers around the pure diff helpers in
+  // lib/character/prEditorDiff.ts, so every existing call site below
+  // (hasChanged(), characteristicsChanged(), etc.) keeps working unchanged.
+  const diffFields: CharacterDiffFields = {
+    name, nameNative, aliases, imageUrl, cleanBiography, originalCleanBiography,
+    characteristics, originalCharacteristics, appearances, originalAppearances,
   };
-
-  const hasChanged = () => {
-    if (!originalCharacter) return false;
-    return (
-      isFieldChanged(name, originalCharacter.name) ||
-      isFieldChanged(nameNative, originalCharacter.name_native) ||
-      aliases.join(',') !== (originalCharacter?.aliases_csv || '') ||
-      isFieldChanged(imageUrl, originalCharacter.image_url) ||
-      isFieldChanged(cleanBiography, originalCleanBiography) ||
-      characteristicsChanged() ||
-      appearancesChanged()
-    );
-  };
-
-  const buildChangeSummary = () => {
-    const changes: string[] = [];
-    if (originalCharacter) {
-      if (isFieldChanged(name, originalCharacter.name)) changes.push(`Nombre: ${name}`);
-      if (isFieldChanged(nameNative, originalCharacter.name_native)) changes.push(`Nombre nativo: ${nameNative || '(vacío)'}`);
-      if (aliases.join(',') !== (originalCharacter?.aliases_csv || '')) changes.push(`Aliases: ${aliases.length ? aliases.join(', ') : '(vacío)'}`);
-      if (isFieldChanged(imageUrl, originalCharacter.image_url)) changes.push(`Imagen: ${imageUrl || '(vacío)'}`);
-      if (isFieldChanged(cleanBiography, originalCleanBiography)) changes.push('Biografía: Actualizada');
-      if (characteristicsChanged()) changes.push(`Características: ${characteristics.length} campo(s)`);
-      if (appearancesChanged()) changes.push(`Apariciones: ${appearances.length} obra(s)`);
-    }
-    return changes.length > 0 ? changes.join('\n- ') : 'Sin cambios detectados';
-  };
+  const characteristicsChanged = () => characteristicsChangedPure(characteristics, originalCharacteristics);
+  const appearancesChanged = () => appearancesChangedPure(appearances, originalAppearances);
+  const hasChanged = () => hasChangedPure(originalCharacter, diffFields);
+  const buildChangeSummary = () => buildChangeSummaryPure(originalCharacter, diffFields);
 
   const addCharacteristic = () => setCharacteristics([...characteristics, { label: '', value: '' }]);
   const removeCharacteristic = (idx: number) => setCharacteristics(characteristics.filter((_, i) => i !== idx));
@@ -616,7 +585,7 @@ export function CharacterPrEditorModal() {
           <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={handleClose} disabled={submitting}>
             {t.cancel}
           </button>
-          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanges()}>
+          <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleSubmit} disabled={submitting || !hasChanged()}>
             {submitting ? t.submitting : t.submit}
           </button>
         </div>

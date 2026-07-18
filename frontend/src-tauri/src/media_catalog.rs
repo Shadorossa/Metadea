@@ -986,41 +986,20 @@ pub async fn sync_community_catalog(
             // where the local value is still empty, so a manual edit already
             // present locally (or a fresher live-synced value) is never
             // clobbered.
-            changes += conn.execute(
-                "UPDATE media_catalog
-                 SET banners_csv = (SELECT c.banners_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                 WHERE (banners_csv IS NULL OR banners_csv = '')
-                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.banners_csv IS NOT NULL AND c.banners_csv != '')",
-                [],
-            ).str_err()? as i64;
-            changes += conn.execute(
-                "UPDATE media_catalog
-                 SET genres_csv = (SELECT c.genres_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                 WHERE (genres_csv IS NULL OR genres_csv = '')
-                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_csv IS NOT NULL AND c.genres_csv != '')",
-                [],
-            ).str_err()? as i64;
-            changes += conn.execute(
-                "UPDATE media_catalog
-                 SET genres_tag_csv = (SELECT c.genres_tag_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                 WHERE (genres_tag_csv IS NULL OR genres_tag_csv = '')
-                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_tag_csv IS NOT NULL AND c.genres_tag_csv != '')",
-                [],
-            ).str_err()? as i64;
-            changes += conn.execute(
-                "UPDATE media_catalog
-                 SET companies_cache_csv = (SELECT c.companies_cache_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                 WHERE (companies_cache_csv IS NULL OR companies_cache_csv = '')
-                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.companies_cache_csv IS NOT NULL AND c.companies_cache_csv != '')",
-                [],
-            ).str_err()? as i64;
-            changes += conn.execute(
-                "UPDATE media_catalog
-                 SET authors_csv = (SELECT c.authors_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                 WHERE (authors_csv IS NULL OR authors_csv = '')
-                   AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.authors_csv IS NOT NULL AND c.authors_csv != '')",
-                [],
-            ).str_err()? as i64;
+            // Same "fill gaps only" shape for every gap-fillable column —
+            // built as one parameterized statement instead of five
+            // hand-copied UPDATEs that used to drift if only one got edited.
+            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "companies_cache_csv", "authors_csv"] {
+                changes += conn.execute(
+                    &format!(
+                        "UPDATE media_catalog
+                         SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                         WHERE ({col} IS NULL OR {col} = '')
+                           AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.{col} IS NOT NULL AND c.{col} != '')"
+                    ),
+                    [],
+                ).str_err()? as i64;
+            }
 
             // Characters a PR carried over from the entry's already-cached
             // appearances (see PrEditorModal's bundle export) — merge both
