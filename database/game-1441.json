@@ -1,0 +1,54 @@
+{
+  "media_catalog": {
+    "id": "2ee4b0631f7fef132ee4b0631f7fef13",
+    "external_id": "game:1441",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Fire Emblem: Path of Radiance",
+    "title_romaji": null,
+    "title_native": "Fire Emblem: Souen no Kiseki",
+    "synopsis": "Fire Emblem: Path of Radiance is a tactical role-playing video game developed by Intelligent Systems and Nintendo SPD, and published by Nintendo for the GameCube home console in 2005. It is the ninth main installment in the Fire Emblem series,[c] and the third to be released in the west. As with previous installments, gameplay revolves around positioning characters on a battlefield to defeat an opposing force. If characters are defeated in battle, they are removed from the rest of the game.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co1ofh.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/ar21z1.jpg",
+    "release_year": 2005,
+    "release_month": 4,
+    "release_day": 20,
+    "time_length": null,
+    "status": null,
+    "score_global": 8.2,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": "Role-playing (RPG),Strategy,Turn-Based Strategy (TBS),Tactical",
+    "genres_tag_csv": null,
+    "platforms_csv": "Nintendo GameCube",
+    "shop_links_csv": null,
+    "companies_cache_csv": "Nintendo,Intelligent Systems",
+    "authors_csv": null,
+    "manually_edited_at": null,
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:1441",
+      "related_media_external_id": "game:1442",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Fire Emblem: Radiant Dawn",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobb09.jpg"
+    },
+    {
+      "media_external_id": "game:1442",
+      "related_media_external_id": "game:1441",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fire Emblem: Path of Radiance",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1ofh.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
