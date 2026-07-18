@@ -809,9 +809,182 @@
   -webkit-box-orient: vertical;
 }
 
-/* Characters — full-width below the 3-col grid */
-.media-chars-section {
+/* Characters + Users share one row below the 3-col grid — Users pinned to
+   the same width as the Datos column (.media-body's 1.1fr / 3fr / 0.9fr
+   ratio: 4.1fr here is the synopsis+related share combined, 0.9fr matches
+   Datos exactly), so a much shorter friends list doesn't have to stretch
+   across the whole page width the way Characters does. */
+.media-chars-users-row {
+  display: grid;
+  grid-template-columns: 4.1fr 0.9fr;
+  gap: 2.5rem;
   padding: 0 15% 3rem;
+  align-items: start;
+}
+
+.media-chars-section,
+.media-users-section {
+  min-width: 0;
+}
+
+/* No friends-scores data to show next to it — Characters takes the row's
+   full width instead of leaving the reserved Users column empty. */
+.media-chars-section--full {
+  grid-column: 1 / -1;
+}
+
+/* Caps the Users grid to exactly 3 rows (max-height set in JS, measured off
+   the real card height — see MediaPage.tsx) and scrolls internally for the
+   rest, instead of growing the page indefinitely. No visible scrollbar;
+   a top/bottom fade (same mask-image technique as .mh-scroll in
+   profile.css) signals whether there's more content in that direction,
+   toggled via the .at-top/.at-bottom classes JS adds on scroll. */
+.media-users-grid-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  --uf-fade: 20px;
+  mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent);
+}
+
+.media-users-grid-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.media-users-grid-scroll.at-top {
+  mask-image: linear-gradient(to bottom, black, black calc(100% - var(--uf-fade)), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, black, black calc(100% - var(--uf-fade)), transparent);
+}
+
+.media-users-grid-scroll.at-bottom {
+  mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black);
+}
+
+.media-users-grid-scroll.at-top.at-bottom {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.media-users-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.85rem;
+  /* Leaves room for the hover name tooltip above the first row without it
+     getting clipped by the scroll container. */
+  padding-top: 0.5rem;
+}
+
+.media-user-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.media-user-avatar {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  transition: border-color var(--anim-fast), transform var(--anim-fast);
+  /* It's a <button> now (opens the user's AniList profile) — strip the
+     native button chrome so it still looks like a plain avatar tile. */
+  display: block;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.media-user-card:hover .media-user-avatar {
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.media-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.media-user-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.media-user-score {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Name only shows on hover, as a tooltip (same mechanism as
+   .heatmap-cell's data-tooltip in profile.css) — the avatar + score below
+   it are the only always-visible content. Anchored below the card, not
+   above: .media-users-grid-scroll clips/fades its own overflow, so a
+   tooltip above the first row got clipped out (rendered but invisible)
+   before it ever reached the visible area. */
+.media-user-card::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: #fff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+}
+
+.media-user-card:hover::after {
+  opacity: 1;
+}
+
+/* IntersectionObserver anchor only (see MediaPage.tsx) — reveals 3 more
+   rows once it scrolls into view, no visible height of its own. */
+.media-users-sentinel {
+  height: 1px;
+}
+
+/* formatRatingHtml's own <span class="media-user-score"> — sized down from
+   its default (built for the bigger rating-input widget) to fit a compact
+   5-column grid. */
+.media-user-score {
+  font-size: 0.62rem !important;
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* The star system renders 5 raw <svg> siblings inside .media-user-score at
+   their hardcoded 14px size — too wide for a 5-per-row grid, forcing them
+   onto two lines. Shrink them down instead of letting them wrap. */
+.media-user-score svg {
+  width: 9px !important;
+  height: 9px !important;
+}
+
+.media-user-score.emoji-rating {
+  font-size: 0.85rem !important;
 }
 
 /* Characters grid */
@@ -823,26 +996,6 @@
 }
 
 /* Load more button */
-.media-load-more-btn {
-  display: block;
-  margin: 0 auto;
-  padding: 0.625rem 1.5rem;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--anim-base) var(--anim-ease);
-}
-
-.media-load-more-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
 .media-section-header-row {
   display: flex;
   align-items: center;

@@ -185,6 +185,7 @@ export const en = {
     section_related: 'Related',
     section_data: 'Data',
     section_characters: 'Characters',
+    section_users: 'Users',
     stat_episodes: 'Episodes',
     stat_issues: 'Issues',
     stat_seasons: 'Seasons',

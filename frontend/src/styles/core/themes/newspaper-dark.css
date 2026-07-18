@@ -295,6 +295,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   background-color: rgba(28, 26, 23, 0.65) !important;
 }
 
+/* Store link logos (Xbox/Epic/PlayStation/...) are flattened to solid white
+   by default (.media-store-icon's own brightness(0) invert(1)) — stark
+   white silhouettes read out of place against this theme's sepia/gold
+   palette, so this tints them the same warm parchment tone instead. */
+[data-theme="newspaper-dark"] .media-store-icon {
+  filter: brightness(0) invert(1) sepia(1) saturate(2) brightness(0.85) !important;
+}
+
 /* Vintage style for monthly history cards */
 [data-theme="newspaper-dark"] .mh-card {
   border: 1px solid var(--border-color) !important;

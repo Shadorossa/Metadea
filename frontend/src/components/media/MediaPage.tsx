@@ -9,17 +9,18 @@ import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
-import { dbRatingToStars5 } from '../../lib/media/rating-utils';
+import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, type RatingSystem } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
 import { useDiscordPresence } from './hooks/useDiscordPresence';
-import { MediaStoreLinks } from './MediaStoreLinks';
+import { MediaStoreLinks, openLink } from './MediaStoreLinks';
 import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
+import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
 
 // Breaks a "Prefix: Rest" relation title onto two lines after the colon
 // (e.g. "Alan Wake II: The Lake House") instead of letting it wrap wherever
@@ -160,10 +161,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
-  const [displayedCharacters, setDisplayedCharacters] = useState(12);
+  const [characterPage,      setCharacterPage]      = useState(1);
+  const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
+  const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
   const [isFavorited,        setIsFavorited]        = useState(false);
   const savedToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const usersScrollRef = useRef<HTMLDivElement | null>(null);
+  const usersGridRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useAutoShrinkTitle(data?.titleMain);
   const descriptionRef = useRef<HTMLDivElement>(null);
   const [descriptionOverflows, setDescriptionOverflows] = useState(false);
@@ -192,6 +197,52 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       }
     }
   }, []);
+
+  useEffect(() => {
+    syncActiveRatingSystem().then(setRatingSystem);
+  }, []);
+
+  // Caps the Usuarios grid to exactly 3 rows of real, measured height
+  // instead of a guessed max-height in px (avatars are fluid — sized off
+  // the column's own width via aspect-ratio — so a fixed px guess drifted
+  // out of sync and clipped mid-row). Recomputed on resize since that
+  // column width, and therefore row height, can change.
+  useEffect(() => {
+    const scrollEl = usersScrollRef.current;
+    const gridEl = usersGridRef.current;
+    if (!scrollEl || !gridEl) return;
+
+    const PER_ROW = 5; // matches .media-users-grid's grid-template-columns
+    const ROWS_VISIBLE = 3;
+
+    const updateFade = () => {
+      const atTop = scrollEl.scrollTop <= 0;
+      const atBottom = scrollEl.scrollTop >= scrollEl.scrollHeight - scrollEl.clientHeight - 1;
+      scrollEl.classList.toggle('at-top', atTop);
+      scrollEl.classList.toggle('at-bottom', atBottom);
+    };
+
+    const recompute = () => {
+      const cards = Array.from(gridEl.children) as HTMLElement[];
+      const cutoffIndex = ROWS_VISIBLE * PER_ROW;
+      if (cards.length <= cutoffIndex) {
+        scrollEl.style.maxHeight = '';
+      } else {
+        const scrollTop = scrollEl.getBoundingClientRect().top;
+        const cutoffTop = cards[cutoffIndex].getBoundingClientRect().top;
+        scrollEl.style.maxHeight = `${cutoffTop - scrollTop + scrollEl.scrollTop}px`;
+      }
+      updateFade();
+    };
+
+    recompute();
+    scrollEl.addEventListener('scroll', updateFade);
+    window.addEventListener('resize', recompute);
+    return () => {
+      scrollEl.removeEventListener('scroll', updateFade);
+      window.removeEventListener('resize', recompute);
+    };
+  }, [friendsScores]);
 
   // Escuchar cambios de navegación (Astro View Transitions y Popstate)
   useEffect(() => {
@@ -261,6 +312,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setIsFetchingFull(true);
     setRelationPage(1);
     setRelationsTab('related');
+    setCharacterPage(1);
+    setFriendsScores([]);
 
     let cancelled = false;
 
@@ -283,6 +336,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           const isCastRole = full.type === 'movie' || full.type === 'series';
           const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
           saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
+        }
+
+        // "Usuarios" section — followed AniList friends' own scores for this
+        // exact entry, one query via Page.mediaList(isFollowing: true).
+        // Only meaningful for AniList-sourced entries (anime/manga/lnovel);
+        // silently empty (no section rendered) without a connected AniList
+        // account, since fetchFollowedFriendsScores itself no-ops then.
+        if (full.source === 'anilist') {
+          const anilistId = parseInt(currentId.split(':')[1], 10);
+          if (anilistId) {
+            fetchFollowedFriendsScores(anilistId).then(scores => {
+              if (!cancelled) setFriendsScores(scores);
+            }).catch(() => {});
+          }
         }
 
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
@@ -525,6 +592,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     ? editionRelations
     : relatedRelations;
   const pageSize = relationsTab === 'recommended' ? 8 : 12;
+  const CHARACTER_PAGE_SIZE = 12;
 
   return (
     <>
@@ -911,40 +979,79 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           </div>
       </div>
 
-      {/* Personajes */}
-      {data.characters.length > 0 && (
-        <div className="media-chars-section">
-          <div className="media-section-header-row">
-            <p className="section-label">{tm.section_characters}</p>
-            <div className="media-section-header-line" />
-          </div>
-          <div className="media-chars-grid">
-            {data.characters.slice(0, displayedCharacters).map((c, i) => (
-              <div key={i} className="media-char-card">
-                <div className="media-char-bg-layer">
-                  {c.image && <img src={c.image} alt="" loading="lazy" />}
-                </div>
-                <div className="media-char-card-overlay" />
-                <div className="media-char-card-content">
-                  <div className="media-char-thumb">
-                    {c.image && <img src={c.image} alt={c.name} loading="lazy" />}
+      {/* Personajes + Usuarios — side by side, Usuarios pinned to the same
+          width as the Datos column above (.media-body's 0.9fr share) since
+          it's a much shorter list than the characters grid next to it. */}
+      {(data.characters.length > 0 || friendsScores.length > 0) && (
+        <div className="media-chars-users-row">
+          {data.characters.length > 0 && (
+            <div className={`media-chars-section${friendsScores.length === 0 ? ' media-chars-section--full' : ''}`}>
+              <div className="media-section-header-row">
+                <p className="section-label">{tm.section_characters}</p>
+                <div className="media-section-header-line" />
+              </div>
+              <div className="media-chars-grid">
+                {data.characters
+                  .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
+                  .map((c, i) => (
+                  <div key={i} className="media-char-card">
+                    <div className="media-char-bg-layer">
+                      {c.image && <img src={c.image} alt="" loading="lazy" />}
+                    </div>
+                    <div className="media-char-card-overlay" />
+                    <div className="media-char-card-content">
+                      <div className="media-char-thumb">
+                        {c.image && <img src={c.image} alt={c.name} loading="lazy" />}
+                      </div>
+                      <div className="media-char-info">
+                        {c.role && <span className="media-char-role">{c.role}</span>}
+                        <span className="media-char-name">{c.name}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="media-char-info">
-                    {c.role && <span className="media-char-role">{c.role}</span>}
-                    <span className="media-char-name">{c.name}</span>
-                  </div>
+                ))}
+              </div>
+              {data.characters.length > CHARACTER_PAGE_SIZE && (
+                <Pagination
+                  currentPage={characterPage}
+                  totalPages={Math.ceil(data.characters.length / CHARACTER_PAGE_SIZE)}
+                  onChange={setCharacterPage}
+                />
+              )}
+            </div>
+          )}
+
+          {friendsScores.length > 0 && (
+            <div className="media-users-section">
+              <div className="media-section-header-row">
+                <p className="section-label">{tm.section_users}</p>
+                <div className="media-section-header-line" />
+              </div>
+              <div className="media-users-grid-scroll" ref={usersScrollRef}>
+                <div className="media-users-grid" ref={usersGridRef}>
+                  {friendsScores.map((f, i) => (
+                    <div key={i} className="media-user-card" data-tooltip={f.name}>
+                      <button
+                        type="button"
+                        className="media-user-avatar"
+                        onClick={() => openLink(f.profileUrl)}
+                        title={f.name}
+                      >
+                        {f.avatar
+                          ? <img src={f.avatar} alt="" loading="lazy" />
+                          : <div className="media-user-avatar-placeholder">{f.name[0]?.toUpperCase()}</div>}
+                      </button>
+                      {/* f.score is always 0-100 (POINT_100, see friends.ts) —
+                          ÷10 to match this app's 0-10 DB rating scale before
+                          formatting it per the user's own configured system.
+                          formatRatingHtml already returns its own <span
+                          class="media-user-score">, so no wrapper class here. */}
+                      <span dangerouslySetInnerHTML={{ __html: formatRatingHtml(f.score / 10, ratingSystem, 'media-user-score') }} />
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-          {data.characters.length > displayedCharacters && (
-            <button
-              type="button"
-              className="media-load-more-btn"
-              onClick={() => setDisplayedCharacters(prev => prev + 12)}
-            >
-              {tm.load_more}
-            </button>
+            </div>
           )}
         </div>
       )}
