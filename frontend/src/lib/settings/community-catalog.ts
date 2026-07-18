@@ -39,7 +39,7 @@ export function initCommunityCatalogSync() {
 
       if (statusText) {
         statusText.textContent = imported > 0
-          ? t.community_catalog_sync_done.replace('{count}', String(imported))
+          ? t.community_catalog_sync_done
           : t.community_catalog_sync_none;
         statusText.style.display = 'block';
       }

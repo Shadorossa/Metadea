@@ -901,12 +901,15 @@ pub async fn sync_community_catalog(
     let imported = (|| -> Result<i64, String> {
         let conn = state.conn.lock().str_err()?;
 
-        let before: i64 = conn
-            .query_row("SELECT COUNT(*) FROM media_catalog", [], |r| r.get(0))
-            .str_err()?;
-
         conn.execute("ATTACH DATABASE ?1 AS community", rusqlite::params![temp_path_str])
             .str_err()?;
+        // Counts every row actually inserted/updated across the whole merge
+        // below (new catalog entries, relations, characters, authors, sagas,
+        // and the gap-filled banners/genres/etc.) — not just brand new
+        // media_catalog rows — so the UI can tell "the community added
+        // something for you" from "nothing changed" even when every title
+        // involved was already in your local catalog.
+        let mut changes: i64 = 0;
         let merge_result = (|| -> Result<(), String> {
             // Column list is explicit (not `SELECT *`) on purpose: DBs upgraded
             // via the `ALTER TABLE ... ADD COLUMN authors_csv` migration in
@@ -930,7 +933,7 @@ pub async fn sync_community_catalog(
                 .unwrap_or(false);
 
             if has_manually_edited_col {
-                conn.execute(
+                changes += conn.execute(
                     "INSERT OR IGNORE INTO media_catalog (
                         id, external_id, parent_id, type, format, source,
                         title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
@@ -948,9 +951,9 @@ pub async fn sync_community_catalog(
                         last_synced_at, sync_failed_count, last_sync_error, manually_edited_at, created_at, updated_at
                      FROM community.media_catalog",
                     [],
-                ).str_err()?;
+                ).str_err()? as i64;
             } else {
-                conn.execute(
+                changes += conn.execute(
                     "INSERT OR IGNORE INTO media_catalog (
                         id, external_id, parent_id, type, format, source,
                         title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
@@ -968,7 +971,7 @@ pub async fn sync_community_catalog(
                         last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
                      FROM community.media_catalog",
                     [],
-                ).str_err()?;
+                ).str_err()? as i64;
             }
 
             // The INSERT OR IGNORE above only benefits entries the user's
@@ -983,56 +986,56 @@ pub async fn sync_community_catalog(
             // where the local value is still empty, so a manual edit already
             // present locally (or a fresher live-synced value) is never
             // clobbered.
-            conn.execute(
+            changes += conn.execute(
                 "UPDATE media_catalog
                  SET banners_csv = (SELECT c.banners_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                  WHERE (banners_csv IS NULL OR banners_csv = '')
                    AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.banners_csv IS NOT NULL AND c.banners_csv != '')",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "UPDATE media_catalog
                  SET genres_csv = (SELECT c.genres_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                  WHERE (genres_csv IS NULL OR genres_csv = '')
                    AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_csv IS NOT NULL AND c.genres_csv != '')",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "UPDATE media_catalog
                  SET genres_tag_csv = (SELECT c.genres_tag_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                  WHERE (genres_tag_csv IS NULL OR genres_tag_csv = '')
                    AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.genres_tag_csv IS NOT NULL AND c.genres_tag_csv != '')",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "UPDATE media_catalog
                  SET companies_cache_csv = (SELECT c.companies_cache_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                  WHERE (companies_cache_csv IS NULL OR companies_cache_csv = '')
                    AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.companies_cache_csv IS NOT NULL AND c.companies_cache_csv != '')",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "UPDATE media_catalog
                  SET authors_csv = (SELECT c.authors_csv FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                  WHERE (authors_csv IS NULL OR authors_csv = '')
                    AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.authors_csv IS NOT NULL AND c.authors_csv != '')",
                 [],
-            ).str_err()?;
+            ).str_err()? as i64;
 
             // Characters a PR carried over from the entry's already-cached
             // appearances (see PrEditorModal's bundle export) — merge both
             // the character rows and their media links the same "fill gaps
             // only" way.
-            conn.execute(
+            changes += conn.execute(
                 "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
                  SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
                  SELECT character_external_id, media_external_id, relation_type, character_name, added_at FROM community.character_appearances",
                 [],
-            ).str_err()?;
+            ).str_err()? as i64;
 
             // Relations (bundled-in episodes/updates, saga-derived prequel/
             // sequel, and any other relation a PR carried over) — same
@@ -1044,7 +1047,7 @@ pub async fn sync_community_catalog(
             // pair) that the user has since deliberately deleted here — the
             // exact same "can't tell a deletion from never-synced" problem a
             // live API resync has, so it gets the same guard.
-            conn.execute(
+            changes += conn.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
                  FROM community.media_relations c
@@ -1054,19 +1057,19 @@ pub async fn sync_community_catalog(
                      WHERE mc.external_id = c.media_external_id AND mc.manually_edited_at IS NOT NULL
                    )",
                 [],
-            ).str_err()?;
+            ).str_err()? as i64;
 
             // Authors carried over the same "fill gaps only" way.
-            conn.execute(
+            changes += conn.execute(
                 "INSERT OR IGNORE INTO media_author (external_id, name, author_image_url, author_url, created_at, updated_at)
                  SELECT external_id, name, author_image_url, author_url, created_at, updated_at FROM community.media_author",
                 [],
-            ).str_err()?;
-            conn.execute(
+            ).str_err()? as i64;
+            changes += conn.execute(
                 "INSERT OR IGNORE INTO media_by_author (media_external_id, author_external_id, role)
                  SELECT media_external_id, author_external_id, role FROM community.media_by_author",
                 [],
-            ).str_err()?;
+            ).str_err()? as i64;
 
             // Custom saga display name and per-entry saga sub-group labels
             // (both editable in PrEditorModal, both exported in every PR
@@ -1085,21 +1088,21 @@ pub async fn sync_community_catalog(
                 .unwrap_or(false);
 
             if has_saga_tables {
-                conn.execute(
+                changes += conn.execute(
                     "INSERT OR IGNORE INTO media_saga_groups (media_external_id, group_name)
                      SELECT media_external_id, group_name FROM community.media_saga_groups",
                     [],
-                ).str_err()?;
-                conn.execute(
+                ).str_err()? as i64;
+                changes += conn.execute(
                     "INSERT OR IGNORE INTO sagas (id, name)
                      SELECT id, name FROM community.sagas",
                     [],
-                ).str_err()?;
-                conn.execute(
+                ).str_err()? as i64;
+                changes += conn.execute(
                     "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
                      SELECT media_external_id, saga_id FROM community.saga_relations",
                     [],
-                ).str_err()?;
+                ).str_err()? as i64;
             }
 
             Ok(())
@@ -1107,11 +1110,7 @@ pub async fn sync_community_catalog(
         conn.execute("DETACH DATABASE community", []).str_err()?;
         merge_result?;
 
-        let after: i64 = conn
-            .query_row("SELECT COUNT(*) FROM media_catalog", [], |r| r.get(0))
-            .str_err()?;
-
-        Ok(after - before)
+        Ok(changes)
     })();
 
     let _ = std::fs::remove_file(&temp_path);
