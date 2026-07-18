@@ -917,12 +917,19 @@
   min-width: 0;
 }
 
+.settings-auth-name-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .settings-auth-text .settings-auth-name {
   display: block;
 }
 
-.settings-auth-text .settings-help-btn {
-  align-self: flex-start;
+.settings-auth-name-row .settings-help-btn {
+  flex-shrink: 0;
 }
 
 .settings-auth-avatar-img {

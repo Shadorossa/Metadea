@@ -24,10 +24,12 @@ const { t } = Astro.props;
             <Fragment set:html={ICON_GITHUB} />
           </div>
           <div class="settings-auth-text">
-            <span class="settings-auth-name">GitHub</span>
-            <button class="settings-help-btn" data-help="github" title="¿Qué es GitHub?">
-              <Fragment set:html={ICON_HELP_CIRCLE} />
-            </button>
+            <div class="settings-auth-name-row">
+              <span class="settings-auth-name">GitHub</span>
+              <button class="settings-help-btn" data-help="github" title="¿Qué es GitHub?">
+                <Fragment set:html={ICON_HELP_CIRCLE} />
+              </button>
+            </div>
             <span id="github-user-status" class="settings-auth-status"
               >No conectado</span
             >
@@ -45,10 +47,12 @@ const { t } = Astro.props;
             <img src="/API/Anilist_logo.png" class="settings-auth-avatar-img" />
           </div>
           <div class="settings-auth-text">
-            <span class="settings-auth-name">AniList</span>
-            <button class="settings-help-btn" data-help="anilist" title="¿Qué es AniList?">
-              <Fragment set:html={ICON_HELP_CIRCLE} />
-            </button>
+            <div class="settings-auth-name-row">
+              <span class="settings-auth-name">AniList</span>
+              <button class="settings-help-btn" data-help="anilist" title="¿Qué es AniList?">
+                <Fragment set:html={ICON_HELP_CIRCLE} />
+              </button>
+            </div>
             <span id="anilist-user-status" class="settings-auth-status"
               >No conectado</span
             >
@@ -200,45 +204,6 @@ const { t } = Astro.props;
           id="anilist-cancel-token-btn"
           >Cancelar</button
         >
-      </div>
-    </div>
-
-    <!-- Help modals -->
-    <div id="github-help-modal" class="settings-help-modal hidden">
-      <div class="settings-help-modal-overlay"></div>
-      <div class="settings-help-modal-content">
-        <div class="settings-help-modal-header">
-          <h3>¿Qué es GitHub?</h3>
-          <button class="settings-help-modal-close" data-modal="github-help-modal">&times;</button>
-        </div>
-        <div class="settings-help-modal-body">
-          <p><strong>GitHub</strong> es una plataforma de control de versiones que permite colaborar en proyectos de código.</p>
-          <p>En Metadea, se usa para:</p>
-          <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
-            <li><strong>Contribuir cambios:</strong> Proponer ediciones a los datos de animes, mangas y personajes de forma colaborativa</li>
-            <li><strong>Ver historial:</strong> Revisar todas las contribuciones y cambios realizados al proyecto</li>
-            <li><strong>Colaboración segura:</strong> Los cambios se revisan antes de aplicarse, manteniendo la calidad de los datos</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <div id="anilist-help-modal" class="settings-help-modal hidden">
-      <div class="settings-help-modal-overlay"></div>
-      <div class="settings-help-modal-content">
-        <div class="settings-help-modal-header">
-          <h3>¿Qué es AniList?</h3>
-          <button class="settings-help-modal-close" data-modal="anilist-help-modal">&times;</button>
-        </div>
-        <div class="settings-help-modal-body">
-          <p><strong>AniList</strong> es una base de datos comunitaria de animes, mangas y personajes muy popular en internet.</p>
-          <p>En Metadea, se usa para:</p>
-          <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
-            <li><strong>Datos de animes y mangas:</strong> Sincronizar información como títulos, géneros, sinopsis y fechas</li>
-            <li><strong>Datos de personajes:</strong> Cargar información detallada de personajes, sus apareamientos y características</li>
-            <li><strong>Sincronizar biblioteca:</strong> Importar tu lista personal de animes y mangas desde AniList</li>
-          </ul>
-        </div>
       </div>
     </div>
   </div>

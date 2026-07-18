@@ -16,6 +16,7 @@ import PreferencesTab from "../components/settings/PreferencesTab.astro";
 import EnvironmentTab from "../components/settings/EnvironmentTab.astro";
 import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
 import NovedadesTab from "../components/settings/NovedadesTab.astro";
+import HelpModals from "../components/settings/HelpModals.astro";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -79,6 +80,8 @@ const version = pkg.version;
       </div>
     </div>
   </div>
+
+  <HelpModals />
 
   <!-- Toast -->
   <div class="settings-toast" id="settings-toast">{t.settings.env_saved}</div>
