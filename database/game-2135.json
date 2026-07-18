@@ -11,7 +11,7 @@
     "title_native": null,
     "synopsis": "The witching hour strikes again. Brimming with intricate battles that take place in, on and all over epic set pieces, Bayonetta 2 finds our sassy heroine battling angels and demons in unearthly beautiful HD. You’re bound to love how it feels to string together combos with unimaginable weapons and to summon demons using Bayonetta’s Umbran Weave in this frantic stylized action game.",
     "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9e9.jpg",
-    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/omtdwiafwepixc7ven9i.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_720p/zw8acobiw81iwvpstq0t.webp",
     "release_year": 2014,
     "release_month": 9,
     "release_day": 20,
@@ -37,7 +37,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Bayonetta",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8nf4.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8nf4.jpg"
     },
     {
       "media_external_id": "game:2135",
@@ -45,7 +45,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Bayonetta 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4z2i.jpg"
     },
     {
       "media_external_id": "game:2136",
@@ -69,7 +69,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Bayonetta Origins: Cereza and the Lost Demon",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5vch.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5vch.jpg"
     },
     {
       "media_external_id": "game:228528",
@@ -77,7 +77,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Bayonetta 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4z2i.jpg"
     }
   ],
   "characters": [],
