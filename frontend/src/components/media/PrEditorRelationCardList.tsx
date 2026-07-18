@@ -1,34 +1,41 @@
-interface ContainedRelation {
+interface RelationCard {
   external_id: string;
   title?: string | null;
   cover?: string | null;
 }
 
 interface Props {
-  containedRelations: ContainedRelation[];
+  label: string;
+  addLabel: string;
+  /** Matches the `data-{attr}` the parent's useDragReorder(datasetName, ...)
+   *  call was configured with, e.g. "bundled-index" / "contained-index". */
+  dataAttr: string;
+  relations: RelationCard[];
   draggedIndex: number | null;
   onStartDrag: (index: number) => void;
   onRemove: (externalId: string) => void;
   onOpenSearch: () => void;
 }
 
-// The "Contains" panel — the reverse of Bundled In: things that have *this*
-// entry as their Bundled In (this entry is the container). Always rendered,
-// same as Bundled In, so a container relation can be added from scratch.
+// Generic "grid of draggable cards with a remove button and an Add trigger"
+// panel — the Bundled In and Contains sections used to be two near-identical
+// copies of this differing only in label text and the data-* attribute name.
 // Drag reordering itself lives in useDragReorder, in the parent — same
 // pattern as the Saga order list.
-export function PrEditorContainsSection({ containedRelations, draggedIndex, onStartDrag, onRemove, onOpenSearch }: Props) {
+export function PrEditorRelationCardList({
+  label, addLabel, dataAttr, relations, draggedIndex, onStartDrag, onRemove, onOpenSearch,
+}: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Contains</label>
-        <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>+ Add</button>
+        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>{label}</label>
+        <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>{addLabel}</button>
       </div>
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
-        {containedRelations.map((r, index) => (
+        {relations.map((r, index) => (
           <div
             key={r.external_id}
-            data-contained-index={index}
+            {...{ [`data-${dataAttr}`]: index }}
             className={`pr-editor-media-card${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
             onPointerDown={e => {
               e.preventDefault();

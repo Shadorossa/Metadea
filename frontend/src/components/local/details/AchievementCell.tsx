@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { steamAchievementIcon, type SteamAchievement } from '../../../lib/tauri';
+import { formatDateShort } from '../../../lib/shared/formatDate';
 
 interface AchievementCellProps {
   ach:   SteamAchievement;
@@ -19,7 +20,7 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
   }, [appId, localFile, ach.icon]);
 
   const unlockDate = ach.achieved && ach.unlocktime > 0
-    ? new Date(ach.unlocktime * 1000).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? formatDateShort(new Date(ach.unlocktime * 1000))
     : null;
 
   return (

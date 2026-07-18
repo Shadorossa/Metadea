@@ -7,6 +7,7 @@ import { TYPE_LABELS } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import type { getT } from '../../i18n/client';
+import { formatDateLong } from '../../lib/shared/formatDate';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -23,7 +24,7 @@ function formatDay(dateStr: string | null | undefined): string {
   if (parts.length !== 3) return dateStr;
   const [year, month, day] = parts;
   const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  return formatDateLong(date);
 }
 
 function interpolate(template: string, vars: Record<string, string | number>): string {

@@ -13,6 +13,7 @@ import {
   computeCompletedByYear,
   computeActivityHeatmap,
 } from '../../lib/profile/stats-calculators';
+import { formatDateShort } from '../../lib/shared/formatDate';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -230,7 +231,7 @@ export function StatsSection() {
         <h3 className="stats-block-title">{p.stats_heatmap}</h3>
         <div className="stats-heatmap-grid">
           {heatmapData.map(({ date, dateKey, count, level }) => {
-            const formattedDate = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            const formattedDate = formatDateShort(date);
             const tooltipText = `${formattedDate}: ${count} ${count === 1 ? 'actividad' : 'actividades'}`;
             return <div className={`heatmap-cell level-${level}`} key={dateKey} data-date={dateKey} data-tooltip={tooltipText} />;
           })}

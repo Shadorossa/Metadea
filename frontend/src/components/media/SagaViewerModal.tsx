@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
 import { compareByReleaseDate, lookupLabel } from '../../lib/media/mapper-utils';
 import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
+import { useClosingTransition } from '../../lib/shared/useClosingTransition';
 
 import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
@@ -22,7 +23,7 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const [entries, setEntries] = useState<SagaEntry[]>([]);
   const [sagaTitle, setSagaTitle] = useState<string>('');
   const [loadState, setLoadState] = useState<LoadState>('loading');
-  const [isClosing, setIsClosing] = useState(false);
+  const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
   useEffect(() => {
     const numericId = parseInt(externalId.slice(externalId.indexOf(':') + 1), 10);
@@ -163,11 +164,6 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
 
     return () => { cancelled = true; };
   }, [externalId]);
-
-  const handleClose = useCallback(() => {
-    setIsClosing(true);
-    setTimeout(onClose, 180);
-  }, [onClose]);
 
   const firstEntry = entries[0];
 

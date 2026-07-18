@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
 // relation isn't guaranteed to share the current entry's own type (e.g. a
@@ -77,47 +78,28 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
-  const [results, setResults] = useState<ApiSearchResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const typesToQuery = typeFilter === 'all' ? SEARCHABLE_TYPES : [typeFilter];
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      setIsLoading(true);
+  const { results, isLoading } = useDebouncedSearch<ApiSearchResult>(
+    query,
+    (q, signal) => {
+      const typesToQuery = typeFilter === 'all' ? SEARCHABLE_TYPES : [typeFilter];
       const searchPromises = typesToQuery.map(t =>
-        search(query, t, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+        search(q, t, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
       );
       if (includeIgdbBundles && (typeFilter === 'all' || typeFilter === 'game')) {
         searchPromises.push(
-          searchGameBundles(query, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+          searchGameBundles(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
       if (includeIgdbExpandedEditions && (typeFilter === 'all' || typeFilter === 'game')) {
         searchPromises.push(
-          searchGameExpandedEditions(query, controller.signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+          searchGameExpandedEditions(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
-      Promise.all(searchPromises)
-        .then(perType => {
-          if (controller.signal.aborted) return;
-          setResults(perType.flat().slice(0, 60));
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setIsLoading(false);
-        });
-    }, 400);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, typeFilter, includeIgdbBundles, includeIgdbExpandedEditions]);
+      return Promise.all(searchPromises).then(perType => perType.flat().slice(0, 60));
+    },
+    [typeFilter, includeIgdbBundles, includeIgdbExpandedEditions],
+  );
 
   const handleSelect = async (result: ApiSearchResult) => {
     if (closeOnSelect) onClose();
@@ -131,7 +113,10 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
   };
 
   const sortedResults = [...results].sort(SORT_FNS[sortBy]);
-  const filteredResults = sortedResults.filter(r => !excludeIds.includes(r.externalId));
+  const filteredResults = dedupeByKey(
+    sortedResults.filter(r => !excludeIds.includes(r.externalId)),
+    r => r.externalId,
+  );
 
   return (
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
@@ -179,31 +164,22 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             <div className="pr-editor-search-empty">No results</div>
           )}
           <div className="pr-editor-search-grid">
-             {(() => {
-               const seen = new Set();
-               return filteredResults
-                 .filter(r => {
-                   if (seen.has(r.externalId)) return false;
-                   seen.add(r.externalId);
-                   return true;
-                 })
-                 .map(r => (
-                   <button
-                     key={r.externalId}
-                     type="button"
-                     className="pr-editor-search-result-card"
-                     onClick={() => handleSelect(r)}
-                   >
-                     {r.coverUrl && (
-                       <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
-                     )}
-                     <div className="pr-editor-search-result-info">
-                       <div className="pr-editor-search-result-id">{r.externalId}</div>
-                       <div className="pr-editor-search-result-title">{r.titleMain || '—'}</div>
-                     </div>
-                   </button>
-                 ));
-             })()}
+            {filteredResults.map(r => (
+              <button
+                key={r.externalId}
+                type="button"
+                className="pr-editor-search-result-card"
+                onClick={() => handleSelect(r)}
+              >
+                {r.coverUrl && (
+                  <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
+                )}
+                <div className="pr-editor-search-result-info">
+                  <div className="pr-editor-search-result-id">{r.externalId}</div>
+                  <div className="pr-editor-search-result-title">{r.titleMain || '—'}</div>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>

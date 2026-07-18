@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { igdbSearchUnfiltered, igdbImageUrl } from '../../lib/tauri';
 import { graphqlPost, fetchJson } from '../../lib/api/client';
 import { API_ENDPOINTS } from '../../lib/api/endpoints';
 import { getTmdbAuth, tmdbLocale } from '../../lib/search/providers/tmdb';
 import { bookIdFromWorkKey } from '../../lib/search/providers/openlibrary';
+import { useDebouncedSearch } from '../../lib/shared/useDebouncedSearch';
 
 type ApiProvider = 'igdb' | 'anilist' | 'tmdb' | 'openlibrary' | 'comicvine';
 
@@ -158,40 +159,22 @@ interface AdminAddSearchProps {
 export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
   const [provider, setProvider] = useState<ApiProvider>('igdb');
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<RawResult[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-
-    const controller = new AbortController();
-    timerRef.current = setTimeout(() => {
-      setIsLoading(true);
-      const search = provider === 'igdb'        ? searchIgdbRaw(query)
-                    : provider === 'anilist'     ? searchAniListRaw(query, controller.signal)
-                    : provider === 'tmdb'        ? searchTmdbRaw(query, controller.signal)
-                    : provider === 'openlibrary' ? searchOpenLibraryRaw(query, controller.signal)
-                    : searchComicVineRaw(query, controller.signal);
-      search
-        .then(raw => { if (!controller.signal.aborted) setResults(raw); })
-        .catch(err => {
-          console.error('[AdminAddSearch] Search error:', err);
-          if (!controller.signal.aborted) setResults([]);
-        })
-        .finally(() => { if (!controller.signal.aborted) setIsLoading(false); });
-    }, 400);
-
-    return () => {
-      clearTimeout(timerRef.current!);
-      controller.abort();
-    };
-  }, [query, provider]);
+  const { results, isLoading } = useDebouncedSearch<RawResult>(
+    query,
+    (q, signal) => {
+      const search = provider === 'igdb'        ? searchIgdbRaw(q)
+                    : provider === 'anilist'     ? searchAniListRaw(q, signal)
+                    : provider === 'tmdb'        ? searchTmdbRaw(q, signal)
+                    : provider === 'openlibrary' ? searchOpenLibraryRaw(q, signal)
+                    : searchComicVineRaw(q, signal);
+      return search.catch(err => {
+        console.error('[AdminAddSearch] Search error:', err);
+        return [] as RawResult[];
+      });
+    },
+    [provider],
+  );
 
   return (
     <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide pr-editor-search-popup-content--inline">
@@ -207,7 +190,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
         <select
           className="pr-editor-search-select"
           value={provider}
-          onChange={e => { setProvider(e.target.value as ApiProvider); setResults([]); setQuery(''); }}
+          onChange={e => { setProvider(e.target.value as ApiProvider); setQuery(''); }}
         >
           {(Object.entries(PROVIDER_LABELS) as [ApiProvider, string][]).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>

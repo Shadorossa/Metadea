@@ -1,3 +1,5 @@
+import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
+
 export function formatPlaytime(minutes?: number): string {
   if (!minutes || minutes === 0) return '—';
   const h = Math.floor(minutes / 60);
@@ -9,15 +11,13 @@ export function formatPlaytime(minutes?: number): string {
 
 export function formatLastPlayed(ts?: number): string {
   if (!ts || ts === 0) return '—';
-  return new Date(ts * 1000).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatUnixTimestampShort(ts) ?? '—';
 }
 
 export function formatDate(timestamp?: number): string | null {
   if (!timestamp) return null;
   try {
-    return new Date(timestamp * 1000).toLocaleDateString('es-ES', {
-      year: 'numeric', month: 'long', day: 'numeric',
-    });
+    return formatDateLong(new Date(timestamp * 1000));
   } catch { return null; }
 }
 

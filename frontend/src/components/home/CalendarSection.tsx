@@ -10,6 +10,7 @@ import {
   type CalendarDay,
 } from '../../lib/profile/stats-calculators';
 import { fetchGeneralUpcomingReleases } from '../../lib/home/upcoming-general';
+import { formatMonthYear } from '../../lib/shared/formatDate';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type CalendarMode = 'mine' | 'general';
@@ -102,7 +103,7 @@ export function CalendarSection() {
   const now = useMemo(() => new Date(), []);
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-indexed
-  const currentMonthName = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const currentMonthName = formatMonthYear(now);
   // Covers the whole current month, not just today onward — a release
   // calendar should show what already came out earlier this month too.
   const startOfMonth = useMemo(() => new Date(currentYear, currentMonth, 1), [currentYear, currentMonth]);

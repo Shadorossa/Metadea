@@ -23,8 +23,7 @@ import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './PrEditorCharactersSection';
-import { PrEditorBundledSection } from './PrEditorBundledSection';
-import { PrEditorContainsSection } from './PrEditorContainsSection';
+import { PrEditorRelationCardList } from './PrEditorRelationCardList';
 import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
 import { PrEditorRelationsSection } from './PrEditorRelationsSection';
 import { getT } from '../../i18n/client';
@@ -1054,8 +1053,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
 
-              <PrEditorBundledSection
-                bundledRelations={bundledRelations}
+              <PrEditorRelationCardList
+                label="Bundled In"
+                addLabel="+ Add"
+                dataAttr="bundled-index"
+                relations={bundledRelations}
                 draggedIndex={draggedBundledIndex}
                 onStartDrag={setDraggedBundledIndex}
                 onRemove={removeBundledRelation}
@@ -1063,8 +1065,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
               />
 
               <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
-              <PrEditorContainsSection
-                containedRelations={containedRelations}
+              <PrEditorRelationCardList
+                label="Contains"
+                addLabel="+ Add"
+                dataAttr="contained-index"
+                relations={containedRelations}
                 draggedIndex={draggedContainedIndex}
                 onStartDrag={setDraggedContainedIndex}
                 onRemove={removeContainedRelation}

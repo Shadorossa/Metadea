@@ -10,6 +10,7 @@ import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import { formatDateNumeric } from '../../lib/shared/formatDate';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
@@ -20,7 +21,7 @@ function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return formatDateNumeric(d);
 }
 
 // Matches a single leading emoji (plus an optional variation selector) at the

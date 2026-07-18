@@ -16,6 +16,7 @@ import {
   createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
+import { MODAL_CLOSE_TRANSITION_MS } from '../../lib/shared/useClosingTransition';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -233,7 +234,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
   const handleClose = useCallback(() => {
     dispatchUi({ type: 'SET_CLOSING' });
-    setTimeout(onClose, 180);
+    setTimeout(onClose, MODAL_CLOSE_TRANSITION_MS);
   }, [onClose]);
 
   const handleImportFromAniList = useCallback(async () => {
