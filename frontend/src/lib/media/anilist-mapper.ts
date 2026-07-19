@@ -37,6 +37,10 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const titleMain   = raw.title.romaji ?? raw.title.english ?? raw.title.native ?? '—';
   const titleNative = raw.title.native   && raw.title.native   !== titleMain ? raw.title.native   : undefined;
   const titleEnglish = raw.title.english && raw.title.english !== titleMain ? raw.title.english : undefined;
+  // Always the real romaji, even when it's also titleMain — the catalog row
+  // needs its own copy independent of whichever title got picked as the
+  // page's headline.
+  const titleRomaji = raw.title.romaji ?? undefined;
 
   const cover      = raw.coverImage?.extraLarge ?? raw.coverImage?.large ?? undefined;
   const coverColor = raw.coverImage?.color ?? '#1a1a2e';
@@ -211,6 +215,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     type: resolvedType,
     titleMain,
     titleNative,
+    titleRomaji,
     titleEnglish,
     cover,
     bannerImage:  raw.bannerImage ?? undefined,

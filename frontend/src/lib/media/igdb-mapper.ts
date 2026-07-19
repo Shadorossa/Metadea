@@ -294,7 +294,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     type: mediaType,
     titleMain: game.name,
     titleNative: titleNative,
-    titleEnglish: titleRomaji,   // romaji plays the "english" slot in MediaPageData
+    titleRomaji: titleRomaji,
     cover: coverUrl,
     bannerImage: bannerUrl,
     bannerColor: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',

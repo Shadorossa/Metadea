@@ -1,6 +1,6 @@
 import type { ComicVineVolume, ComicVineIssueDetail } from '../tauri';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, type DateParts } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
@@ -10,6 +10,20 @@ import { canonicalizeAlwaysFinished } from './media-status';
 // since MediaPageData.description is rendered as plain text elsewhere.
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Comic Vine's person_credits (writer, penciler, inker, colorist, ...) is
+// the same underlying data `authors` is built from below — this is the
+// unfiltered version for the media page's own "Staff" tab (next to
+// Personajes), mirroring how AniList/TMDB share one crew list between their
+// authors pick and their full staff roster.
+function personCreditsToStaff(credits: { id: number; name: string; role: string | null; image?: { medium_url?: string | null; small_url?: string | null } | null }[]): MediaStaffMember[] {
+  return credits.map(p => ({
+    id: `staff:comicvine:${p.id}`,
+    name: p.name,
+    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
+    role: p.role ?? undefined,
+  }));
 }
 
 // Comic Vine dates are plain "YYYY-MM-DD" strings.
@@ -53,6 +67,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
+  const staff = personCreditsToStaff(volume.person_credits);
 
   const companies = volume.publisher?.name ? [volume.publisher.name] : undefined;
 
@@ -86,6 +101,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     description,
     stats,
     characters,
+    staff,
     relations:    [],
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,
@@ -122,6 +138,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
+  const staff = personCreditsToStaff(issue.person_credits);
 
   const description = issue.description
     ? stripHtml(issue.description)
@@ -163,6 +180,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     description,
     stats: [],
     characters,
+    staff,
     relations,
     progressStatus: 'reading',
     progressLabel:  getT().profile.status_reading,

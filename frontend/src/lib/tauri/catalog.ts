@@ -8,7 +8,11 @@ export interface MediaCatalogEntry {
   format?:              string | null;
   source?:              string | null;
   title_main?:          string | null;
+  /** Romanized title, when the source provider actually has one (AniList,
+   *  IGDB's alternative_names) — see MediaPageData.titleRomaji. */
   title_romaji?:        string | null;
+  /** Title in its original-language script (e.g. Japanese kanji/kana) — see
+   *  MediaPageData.titleNative. */
   title_native?:        string | null;
   synopsis?:            string | null;
   cover_url?:           string | null;
@@ -37,6 +41,13 @@ export interface MediaCatalogEntry {
    *  touching this entry's relations (see mediaService.ts's fetchMediaData)
    *  so a manual deletion/reorder there can't get silently re-added. */
   manually_edited_at?:  string | null;
+  /** Set via PrEditorModal to reserve this external_id (so it can never be
+   *  re-added as "new" from a live search result) while hiding the row
+   *  everywhere else — search, relations, saga chains — for remasters/
+   *  editions the curator considers unwanted noise. Proposed to GitHub like
+   *  any other collaborative-catalog field (see submitCollaborativeProposal.ts),
+   *  so a block reaches every other user's install once merged. */
+  blocked_at?:          string | null;
   created_at:           string;
   updated_at:           string;
 }

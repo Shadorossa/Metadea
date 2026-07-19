@@ -75,6 +75,27 @@ body[data-theme="steampunk"], html[data-theme="steampunk"] body {
   box-shadow: 0 1px 0px #4d331c, 0 2px 4px rgba(0,0,0,0.5) !important;
 }
 
+/* "Eliminar de Metadea" — same riveted-metal look as every other steampunk
+   button, but a red warning-plate variant instead of brass, since this one
+   is a destructive/danger action (see media.css's .pr-editor-block-btn). */
+[data-theme="steampunk"] .pr-editor-block-btn {
+  border: 3px double #8c2f22 !important;
+  background: linear-gradient(180deg, #4a1f18 0%, #240f0b 100%) !important;
+  color: #f0b8a8 !important;
+  box-shadow: 0 4px 0px #5c1f16, 0 6px 10px rgba(0,0,0,0.5) !important;
+  text-shadow: 1px 1px 2px #000;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+[data-theme="steampunk"] .pr-editor-block-btn:hover,
+[data-theme="steampunk"] .pr-editor-block-btn--active {
+  background: linear-gradient(180deg, #6b281c 0%, #2e1310 100%) !important;
+  border-color: #d4552f !important;
+  box-shadow: 0 4px 0px #5c1f16, 0 8px 15px rgba(212, 85, 47, 0.3) !important;
+}
+
 /* Placas de metal victoriano para tarjetas */
 [data-theme="steampunk"] .media-card,
 [data-theme="steampunk"] .media-relation-card {

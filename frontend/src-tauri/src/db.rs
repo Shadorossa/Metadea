@@ -200,6 +200,16 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN manually_edited_at TEXT", []);
         mark_migration(conn, 10)?;
     }
+    if v < 11 {
+        // Set via PrEditorModal to reserve an external_id (so it can never be
+        // re-added as "new" from a live search result) while hiding the row
+        // itself everywhere else — search, relations, saga chains, browse
+        // lists — for remasters/editions the user considers noise. The row
+        // itself is never deleted, only excluded from every read path that
+        // isn't a direct "does this id already exist" lookup.
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN blocked_at TEXT", []);
+        mark_migration(conn, 11)?;
+    }
 
     Ok(())
 }
@@ -443,6 +453,15 @@ CREATE INDEX IF NOT EXISTS idx_media_relations_related ON media_relations(relate
 CREATE TABLE IF NOT EXISTS media_saga_groups (
     media_external_id TEXT NOT NULL PRIMARY KEY,
     group_name        TEXT NOT NULL
+);
+
+-- Snapshot of external_ids seen in the last downloaded community catalog
+-- (sync_community_catalog) — diffed against the newly downloaded set on the
+-- next sync to detect entries removed upstream (e.g. deleted via a merged
+-- collaborative-editor PR), so the client can clean those up locally instead
+-- of keeping them forever (the merge itself is INSERT OR IGNORE only).
+CREATE TABLE IF NOT EXISTS community_synced_ids (
+    external_id TEXT PRIMARY KEY
 );
 
 CREATE TABLE IF NOT EXISTS monthly_history (

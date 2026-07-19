@@ -26,8 +26,12 @@ export function mapTmdbToMedia(
   const isTv = isTvDetail(raw);
 
   const titleMain = isTv ? raw.name : raw.title;
+  // original_title/original_name is the title in the work's original
+  // production language and script (e.g. Japanese kanji for a Japanese
+  // movie) — that's the "native" slot, not an English alternate. TMDB has
+  // no romanization concept of its own, so titleRomaji stays unset here.
   const originalTitle = isTv ? raw.original_name : raw.original_title;
-  const titleEnglish = originalTitle && originalTitle !== titleMain ? originalTitle : undefined;
+  const titleNative = originalTitle && originalTitle !== titleMain ? originalTitle : undefined;
 
   const cover = raw.poster_path ? API_ENDPOINTS.TMDB_IMAGE(raw.poster_path, 'w780') : undefined;
   const bannerImage = raw.backdrop_path ? API_ENDPOINTS.TMDB_IMAGE(raw.backdrop_path, 'w1280') : undefined;
@@ -88,13 +92,19 @@ export function mapTmdbToMedia(
   // square) — it must not also repeat here, under the studios/companies line.
   const metaLines = [companies.join(', ')].filter(Boolean);
 
+  // Cards here represent the in-fiction character, not the actor — the
+  // photo is necessarily the actor's own (TMDB has no separate character
+  // art), but the name/identity must be the character's. credit_id (unique
+  // per casting) keys each card instead of the actor's person id, so an
+  // actor playing two different roles gets two distinct character cards
+  // instead of colliding into one. Actor identity/credits are a separate
+  // concern for later (an actor page or dedicated section), not this list.
   const characters: MediaCharacter[] = (raw.credits?.cast ?? [])
     .slice(0, CAST_LIMIT)
     .map(c => ({
-      id: `person:${c.id}`,
-      name: c.name,
+      id: `character:tmdb:${c.credit_id ?? `${c.id}-${c.character ?? ''}`}`,
+      name: c.character || c.name,
       image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
-      role: c.character || undefined,
     }));
 
   // Crew for the media page's own "Staff" tab — a person credited for more
@@ -176,7 +186,7 @@ export function mapTmdbToMedia(
     externalId: rawId,
     type: mediaType,
     titleMain,
-    titleEnglish,
+    titleNative,
     cover,
     bannerImage,
     bannerColor: 'linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%)',

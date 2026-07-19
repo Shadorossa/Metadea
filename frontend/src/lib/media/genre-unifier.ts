@@ -68,12 +68,17 @@ const GENRE_DEFS: GenreDef[] = [
   { name: 'Comedy', aliases: ['Comedy'] },
   { name: 'Drama', aliases: ['Drama'] },
   { name: 'History', aliases: ['Historical', 'History'] },
-  { name: 'War', aliases: ['War', 'Warfare'] },
+  { name: 'War', aliases: ['War', 'Warfare', 'War & Politics'] },
   { name: 'Western', aliases: ['Western'] },
   { name: 'Crime', aliases: ['Crime'] },
   { name: 'Animation', aliases: ['Animation'] },
   { name: 'Documentary', aliases: ['Documentary'] },
   { name: 'Family', aliases: ['Family'] },
+  { name: 'TV Movie', aliases: ['TV Movie'] },
+  { name: 'News', aliases: ['News'] },
+  { name: 'Reality', aliases: ['Reality'] },
+  { name: 'Soap Opera', aliases: ['Soap'] },
+  { name: 'Talk Show', aliases: ['Talk'] },
 
   // ── Aesthetic subgenres ──────────────────────────────────────────────────
   { name: 'Cyberpunk', aliases: ['Cyberpunk'] },
@@ -119,7 +124,10 @@ const GENRE_DEFS: GenreDef[] = [
   { name: 'Magical Realism', aliases: ['Magical realism', 'Magical Realism'] },
 
   // ── Additional tags ────────────────────────────────────────────────────────
-  { name: 'Action & Adventure', aliases: ['Action & Adventure'], isTag: true },
+  // "Action & Adventure" is TMDB's own genre name and already maps to the
+  // core Action genre (see its aliases above) — no separate tag entry here,
+  // since Object.fromEntries below keeps only the last definition per raw
+  // string and this used to silently shadow that core mapping.
   { name: 'Young Adult', aliases: ['Young Adult', 'YA fiction', 'Young adult fiction'], isTag: true },
   { name: 'Urban', aliases: ['Urban', 'Urban fiction'], isTag: true },
   { name: 'Paranormal', aliases: ['Paranormal', 'Paranormal romance'], isTag: true },

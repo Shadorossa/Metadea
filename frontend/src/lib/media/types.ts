@@ -55,7 +55,14 @@ export interface MediaPageData {
   externalId: string;          // "anime:918", "book:OL12345W"
   type: string;                // "anime" | "manga" | "lnovel" | "book"
   titleMain: string;
+  /** Title in its original-language script (e.g. Japanese kanji/kana) — maps
+   *  to media_catalog.title_native. */
   titleNative?: string;
+  /** Romanized title, when the provider actually distinguishes one from the
+   *  main title (currently only AniList/IGDB) — maps to media_catalog.title_romaji.
+   *  Not the same as titleEnglish, which is just a display-only alternate
+   *  title with no dedicated catalog column. */
+  titleRomaji?: string;
   titleEnglish?: string;
   cover?: string;
   bannerImage?: string;

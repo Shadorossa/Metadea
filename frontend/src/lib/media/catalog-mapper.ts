@@ -66,7 +66,10 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     type:          c.type,
     titleMain:     c.title_main   ?? c.external_id,
     titleNative:   c.title_native ?? undefined,
-    titleEnglish:  c.title_romaji ?? undefined,
+    titleRomaji:   c.title_romaji ?? undefined,
+    // No dedicated catalog column for an "English" alternate title — this
+    // partial/cached render just leaves it unset until the live API refetch
+    // (which computes it fresh per provider) fills it back in.
     cover:         c.cover_url    ?? undefined,
     bannerImage:   c.banners_csv?.split(',')[0] ?? undefined,
     bannerColor:   'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
@@ -116,7 +119,7 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
     source:                data.source,
     title_main:            data.titleMain   || undefined,
     title_native:          data.titleNative || undefined,
-    title_romaji:          data.titleEnglish || undefined,
+    title_romaji:          data.titleRomaji || undefined,
     synopsis:              data.description || undefined,
     cover_url:             data.cover       || undefined,
     banners_csv:           data.bannerImage || undefined,

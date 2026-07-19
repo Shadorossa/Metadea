@@ -358,6 +358,23 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--text-main) !important;
 }
 
+/* "Eliminar de Metadea" — flat, square-cornered "stamped" red rectangle
+   instead of the rounded box used elsewhere, matching this theme's vintage
+   underlined/flat aesthetic (see media.css's .pr-editor-block-btn for the
+   shared base rule this overrides). */
+[data-theme="newspaper-dark"] .pr-editor-block-btn {
+  border-radius: 0 !important;
+  border: 2px solid #b91c1c !important;
+  background: transparent !important;
+  color: #dc2626 !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-block-btn:hover,
+[data-theme="newspaper-dark"] .pr-editor-block-btn--active {
+  background: #b91c1c !important;
+  color: #f5f0e6 !important;
+}
+
 [data-theme="newspaper-dark"] .rel-type-select-chevron {
   color: var(--text-main) !important;
 }

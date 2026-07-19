@@ -15,6 +15,7 @@ import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
+import { getMediaStaff } from '../tauri/staff';
 import { parseExternalId } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
@@ -23,7 +24,7 @@ import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidat
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
-  mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
+  dbStaffToMediaStaff, mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 
@@ -228,7 +229,20 @@ export async function fetchComicIssues(
 // `existing` is passed in (not re-fetched here) — fetchMediaData, this
 // function's only caller, already needs the same row for its own banner-
 // fallback/manually_edited_at checks just before calling this.
-async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null): Promise<void> {
+// Fields worth diffing to decide "did this live fetch actually bring
+// anything new" — deliberately excludes the ones that are sticky-once-set
+// by design (format/release_year/month/day/banners_csv all prefer the
+// existing value once present, so they'd never register as "changed"
+// anyway) and pure bookkeeping columns (last_synced_at/sync_failed_count/
+// last_sync_error/created_at/updated_at).
+const NEW_DATA_COMPARE_FIELDS: (keyof MediaCatalogEntry)[] = [
+  'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
+  'status', 'score_global', 'total_count', 'total_count_2',
+  'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
+  'companies_cache_csv', 'authors_csv',
+];
+
+async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
 
@@ -251,7 +265,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       source: data.source || 'igdb',
       title_main: data.titleMain,
       title_native: data.titleNative || null,
-      title_romaji: data.titleEnglish || null,
+      title_romaji: data.titleRomaji || null,
       synopsis: data.description || null,
       cover_url: data.cover || null,
       banners_csv: data.bannerImage || existing?.banners_csv || null,
@@ -274,14 +288,31 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       // NOT_YET_RELEASED/HIATUS entry is due for another check yet, instead
       // of every page view unconditionally re-fetching forever.
       last_synced_at: new Date().toISOString(),
+      // Placeholder — computed below once `entry` exists, so it can be
+      // diffed against `existing` field by field (see hasNewData).
       sync_failed_count: 0,
       last_sync_error: null,
       // Never set here — only PrEditorModal ever stamps this, and once set
       // it must survive every future live resync untouched.
       manually_edited_at: existing?.manually_edited_at ?? null,
+      // Same reasoning as manually_edited_at — only PrEditorModal's block
+      // toggle ever sets this, and a live resync must never silently clear
+      // it back to visible.
+      blocked_at: existing?.blocked_at ?? null,
       created_at: '',
       updated_at: '',
     };
+
+    // A successful fetch that brings nothing new counts toward the same
+    // backoff needsResync() already applies to genuine provider errors — a
+    // title whose provider keeps reporting the exact same data widens its
+    // own resync interval passively instead of relying on a hardcoded "this
+    // field must be filled" barrier to ever stop re-checking it. Any real
+    // change (including a new/removed relation, checked by the caller)
+    // resets the counter back to a normal cadence.
+    const hasNewData = !existing || relationsChanged ||
+      NEW_DATA_COMPARE_FIELDS.some(f => (entry[f] ?? null) !== (existing[f] ?? null));
+    entry.sync_failed_count = hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1;
 
     await saveCatalogEntry(entry).catch(console.error);
   } catch (e) {
@@ -304,7 +335,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
-    const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
+    const { authors: dbAuthors, relations: dbRelsBefore } = await loadDbRelationsAndAuthors(rawId);
 
     // persistToCatalog preserves an existing banner in the DB, but this same
     // `data` object also gets shown on screen — patch it too so a live fetch
@@ -323,8 +354,14 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // gets in) — see its own doc and MediaCatalogEntry.manually_edited_at.
     await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
 
+    // Relation count before vs. after this fetch's merge — one of the
+    // signals persistToCatalog uses to decide whether anything new actually
+    // showed up (see its own doc).
+    const { relations: dbRelsAfter } = await loadDbRelationsAndAuthors(rawId);
+    const relationsChanged = dbRelsAfter.length !== dbRelsBefore.length;
+
     // Persist to local SQLite cache so F5 or next visit loads instantly
-    await persistToCatalog(data, existing);
+    await persistToCatalog(data, existing, relationsChanged);
 
     // Only save API authors if we don't have any in the DB yet, or the ones
     // we do have are missing an image — e.g. saved before Comic Vine author
@@ -379,7 +416,6 @@ export function fetchMediaDataWithFallback(
   let hasLocalData = false;
   let localData: MediaPageData | null = null;
   let catalogEntry: MediaCatalogEntry | null = null;
-  let dbCharacterCount = 0;
 
   getCatalogEntry(rawId)
     .then(async catalog => {
@@ -391,7 +427,7 @@ export function fetchMediaDataWithFallback(
         try {
           const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
           const dbChars = await getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]);
-          dbCharacterCount = dbChars.length;
+          const dbStaff = await getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>);
 
           if (dbRels.length > 0) {
             const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
@@ -406,6 +442,10 @@ export function fetchMediaDataWithFallback(
           if (dbChars.length > 0) {
             localData.characters = dbChars.map(dbCharacterToMediaCharacter);
           }
+
+          if (dbStaff.length > 0) {
+            localData.staff = dbStaff.map(dbStaffToMediaStaff);
+          }
         } catch (e) {
           console.error("Failed to load local media relations, authors or characters", e);
         }
@@ -417,50 +457,20 @@ export function fetchMediaDataWithFallback(
     })
     .catch(() => {})
     .finally(() => {
-      // If the catalog entry is a thin skeleton or missing basic columns
-      // (like synopsis, source, format, release date, genres, or companies),
-      // we do not skip the live API fetch — we fetch from the network to enrich it.
-      // Anime/manga/lnovel entries always have characters on AniList, so a
-      // fully-enriched catalog row with zero locally-cached characters still
-      // forces a live re-fetch instead of permanently showing none.
-      const isAniListType = catalogEntry ? (ANILIST_TYPES as readonly string[]).includes(catalogEntry.type) : false;
-      const isSkeleton = !catalogEntry ||
-        !catalogEntry.format ||
-        !catalogEntry.source ||
-        !catalogEntry.synopsis ||
-        !catalogEntry.release_year ||
-        !catalogEntry.genres_csv ||
-        !catalogEntry.companies_cache_csv ||
-        (isAniListType && dbCharacterCount === 0);
-
-      if (hasLocalData && localData && !isSkeleton) {
+      // No more hardcoded "is this field empty" checks — needsResync()
+      // (media-status.ts) is the single source of truth for whether a live
+      // fetch is due, driven purely by its own per-status cadence + the
+      // sync_failed_count backoff. That backoff now grows the same way when
+      // a live fetch succeeds but comes back with nothing new to persist
+      // (see persistToCatalog), not just on genuine provider errors — so a
+      // title that keeps returning the same data passively backs off
+      // instead of needing a permanent "this field must be filled" barrier
+      // to ever stop re-fetching. A brand-new/never-synced row always has
+      // needsResync() = true (no last_synced_at yet), so first-visit
+      // enrichment still happens exactly as before.
+      if (hasLocalData && localData && catalogEntry && !needsResync(catalogEntry)) {
         fullArrived = true;
         onFull(localData);
-        // A "fully enriched" catalog row (synopsis/genres/companies all
-        // present) skips the live IGDB fetch entirely for speed — but that
-        // also means fetchMediaData's relation-merge-and-save step (new
-        // DLCs/expansions/remasters IGDB has added since this row was last
-        // synced) never runs for already-visited titles. Kick it off in the
-        // background so relations catch up without delaying the initial
-        // render — but only when needsResync() says this entry is actually
-        // due (see media-status.ts's per-status cadence), instead of
-        // unconditionally hitting the live API on every single page view
-        // forever. Delay by 1 second to avoid database locks.
-        //
-        // The refreshed data (e.g. a remake/remaster's Fuente relation,
-        // absent from the stale DB snapshot shown above) must actually reach
-        // the page once this resolves — a fire-and-forget call here used to
-        // silently update media_relations with nothing on screen reflecting
-        // it, so the correct data only ever showed up on a *later* visit
-        // (once it was already saved from the previous one), never on the
-        // page load that triggered the resync.
-        if (needsResync(catalogEntry)) {
-          setTimeout(() => {
-            fetchMediaData(rawId).then(freshData => {
-              if (freshData) onFull(freshData);
-            }).catch(() => {});
-          }, 1000);
-        }
         return;
       }
 

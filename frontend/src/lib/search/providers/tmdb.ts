@@ -42,6 +42,11 @@ export interface TmdbCastMember {
   character?: string;
   profile_path: string | null;
   order?: number;
+  /** Unique per casting (not per actor) — the same actor playing two
+   *  different roles (or the same role across a dual-cast credit) gets two
+   *  distinct credit_ids, unlike `id` which is the actor's own person id and
+   *  would collide. Used to key each character card. */
+  credit_id?: string;
 }
 
 export interface TmdbCrewMember {

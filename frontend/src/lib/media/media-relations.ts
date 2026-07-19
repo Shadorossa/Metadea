@@ -4,7 +4,7 @@
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, getCatalogEntry, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
-import type { SkeletonStaffMember } from '../tauri/staff';
+import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/staff';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';
@@ -168,6 +168,20 @@ export function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter
     name: c.name,
     image: c.image_url || undefined,
     role: c.relation_type || c.character_name || undefined,
+  };
+}
+
+// Same shape conversion as dbCharacterToMediaCharacter, for the separate
+// staff list read back from media_staff/staff_appearances — used by
+// fetchMediaDataWithFallback's catalog-only fast path so a title that
+// already has locally-saved staff still shows/keeps it instead of only ever
+// getting it from a live API fetch.
+export function dbStaffToMediaStaff(s: DbMediaStaffMember): MediaStaffMember {
+  return {
+    id: s.external_id,
+    name: s.name,
+    image: s.image_url || undefined,
+    role: s.role || undefined,
   };
 }
 

@@ -938,12 +938,22 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             <span className="pr-editor-title">Edit Collaborative Catalog Entry</span>
             <span className="pr-editor-subtitle">ID: {externalId}</span>
           </div>
-          {statusMsg && (
-            <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
-              <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              <span>{statusMsg}</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {statusMsg && (
+              <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
+                <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <span>{statusMsg}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className={`pr-editor-block-btn${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
+              title="Oculta esta entrada de búsqueda/relaciones/sagas para todos los usuarios — reserva el ID sin borrarlo. Vuelve a pulsar para deshacer."
+              onClick={() => handleChange('blocked_at', entry.blocked_at ? null : new Date().toISOString())}
+            >
+              Eliminar de Metadea
+            </button>
+          </div>
         </div>
 
         <div className="pr-editor-body pr-editor-body--grid">

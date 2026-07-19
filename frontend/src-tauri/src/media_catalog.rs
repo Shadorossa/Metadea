@@ -84,6 +84,23 @@ fn infer_type_from_id(external_id: &str) -> String {
         .to_string()
 }
 
+// A skeleton stub row (created for a relation/author target not yet
+// cataloged locally) still knows exactly where it came from — the provider
+// is implied by the external_id's own type prefix, same as cover/title/
+// source are implied for any other skeleton entry. Mirrors the source
+// string each mapper itself writes (anilist-mapper.ts, tmdb-mapper.ts,
+// igdb-mapper.ts, openlibrary-mapper.ts, comicvine-mapper.ts).
+fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
+    match infer_type_from_id(external_id).as_str() {
+        "anime" | "manga" | "lnovel" => Some("anilist"),
+        "movie" | "series" => Some("tmdb"),
+        "game" | "vnovel" => Some("igdb"),
+        "book" => Some("openlibrary"),
+        "comic" => Some("comicvine"),
+        _ => None,
+    }
+}
+
 // Shared by save_media_saga_groups and import_proposal_bundle's bundle.saga_groups
 // handling — both used to carry their own copy of this exact upsert-or-delete loop.
 fn upsert_saga_groups(
@@ -113,7 +130,10 @@ pub struct MediaCatalogEntry {
     pub format: Option<String>,
     pub source: Option<String>,
     pub title_main: Option<String>,
+    /// Romanized title, when the source provider actually has one (AniList,
+    /// IGDB's alternative_names) — never an "English title" of convenience.
     pub title_romaji: Option<String>,
+    /// Title in its original-language script (e.g. Japanese kanji/kana).
     pub title_native: Option<String>,
     pub synopsis: Option<String>,
     pub cover_url: Option<String>,
@@ -143,6 +163,12 @@ pub struct MediaCatalogEntry {
     /// re-merging in whatever the live provider still reports (see
     /// mediaService.ts's fetchMediaData).
     pub manually_edited_at: Option<String>,
+    /// Set via PrEditorModal to reserve this external_id (so it can never be
+    /// re-added as "new" from a live search result) while hiding the row
+    /// everywhere else — search, relations, saga chains, browse lists. Used
+    /// for remasters/editions the user considers unwanted noise, without
+    /// losing the ability to unblock later. See SELECT_VISIBLE below.
+    pub blocked_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -155,8 +181,24 @@ const SELECT_ALL: &str = "
            ratings_count, total_count, total_count_2, genres_csv,
            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           manually_edited_at, created_at, updated_at
+           manually_edited_at, blocked_at, created_at, updated_at
     FROM media_catalog";
+
+// Same as SELECT_ALL but excluding blocked rows — used by every read path
+// that isn't a direct "look up this exact id" lookup (search, browse,
+// relations, saga chains) so a blocked entry stays invisible everywhere
+// except the editor used to block/unblock it.
+const SELECT_VISIBLE: &str = "
+    SELECT external_id, id, parent_id, type, format, source,
+           title_main, title_romaji, title_native, synopsis, cover_url,
+           banners_csv, release_year, release_month, release_day,
+           time_length, status, score_global, favorites_count,
+           ratings_count, total_count, total_count_2, genres_csv,
+           genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
+           authors_csv, last_synced_at, sync_failed_count, last_sync_error,
+           manually_edited_at, blocked_at, created_at, updated_at
+    FROM media_catalog
+    WHERE blocked_at IS NULL";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
     Ok(MediaCatalogEntry {
@@ -192,8 +234,9 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         sync_failed_count:   row.get(29)?,
         last_sync_error:     row.get(30)?,
         manually_edited_at:  row.get(31)?,
-        created_at:          row.get::<_, Option<String>>(32)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
+        blocked_at:          row.get(32)?,
+        created_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
     })
 }
 
@@ -231,8 +274,8 @@ pub async fn save_catalog_entry(
             ratings_count, total_count, total_count_2, genres_csv,
             genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
             authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-            manually_edited_at, created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34)",
+            manually_edited_at, blocked_at, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35)",
         rusqlite::params![
             &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
             &entry.format, &entry.source,
@@ -246,7 +289,7 @@ pub async fn save_catalog_entry(
             &entry.platforms_csv, &entry.shop_links_csv, &entry.companies_cache_csv,
             &entry.authors_csv,
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
-            &entry.manually_edited_at,
+            &entry.manually_edited_at, &entry.blocked_at,
             &entry.created_at, &entry.updated_at,
         ],
     ).str_err()?;
@@ -433,7 +476,7 @@ pub async fn search_catalog(
     let conn = state.conn.lock().str_err()?;
     let pattern = format!("%{}%", query.to_lowercase());
     let mut stmt = conn.prepare(
-        &format!("{} WHERE lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1", SELECT_ALL),
+        &format!("{} AND (lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1)", SELECT_VISIBLE),
     ).str_err()?;
     let entries = stmt
         .query_map([&pattern], row_to_entry)
@@ -485,7 +528,7 @@ pub async fn get_cached_saga(
             "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.format, mc.type, mc.release_year, mc.release_month, mc.release_day
              FROM saga_relations sr
              JOIN media_catalog mc ON mc.external_id = sr.media_external_id
-             WHERE sr.saga_id = ?1",
+             WHERE sr.saga_id = ?1 AND mc.blocked_at IS NULL",
         )
         .str_err()?;
 
@@ -593,12 +636,13 @@ pub async fn save_cached_saga(
         if !existing_ids.contains(&entry.external_id) {
             tx.execute(
                 "INSERT INTO media_catalog (
-                    id, external_id, type, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    id, external_id, type, source, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &entry.external_id,
                     &entry.media_type,
+                    infer_source_from_id(&entry.external_id),
                     &entry.format,
                     &entry.title,
                     &entry.cover,
@@ -693,12 +737,13 @@ pub async fn save_media_relations(
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
                 "INSERT INTO media_catalog (
-                    id, external_id, type, title_main, cover_url, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    id, external_id, type, source, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &rel.related_media_external_id,
                     &rel_type,
+                    infer_source_from_id(&rel.related_media_external_id),
                     &rel.title,
                     &rel.cover,
                     &now,
@@ -724,7 +769,7 @@ pub async fn get_media_relations(
             "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
              JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mr.media_external_id = ?1
+             WHERE mr.media_external_id = ?1 AND mc.blocked_at IS NULL
              ORDER BY mr.rowid",
         )
         .str_err()?;
@@ -760,7 +805,8 @@ pub async fn get_all_media_relations(
         .prepare(
             "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
-             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id",
+             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
+             WHERE mc.blocked_at IS NULL",
         )
         .str_err()?;
 
@@ -930,9 +976,9 @@ pub async fn save_author_profile_and_relations(
         if !existing_ids.contains(&rel.media_external_id) {
             let rel_type = infer_type_from_id(&rel.media_external_id);
             tx.execute(
-                "INSERT INTO media_catalog (id, external_id, type, title_main, cover_url, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-                rusqlite::params![crate::db::generate_id(), &rel.media_external_id, &rel_type, &rel.title, &rel.cover, &now, &now],
+                "INSERT INTO media_catalog (id, external_id, type, source, title_main, cover_url, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                rusqlite::params![crate::db::generate_id(), &rel.media_external_id, &rel_type, infer_source_from_id(&rel.media_external_id), &rel.title, &rel.cover, &now, &now],
             ).str_err()?;
         }
     }
@@ -1005,36 +1051,35 @@ pub async fn sync_community_catalog(
                 )
                 .map(|c: i64| c > 0)
                 .unwrap_or(false);
-
-            if has_manually_edited_col {
-                changes += conn.execute(
-                    "INSERT OR IGNORE INTO media_catalog (
-                        id, external_id, parent_id, type, format, source,
-                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                        release_year, release_month, release_day, time_length, status, score_global,
-                        favorites_count, ratings_count, total_count, total_count_2,
-                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error, manually_edited_at, created_at, updated_at
-                     )
-                     SELECT
-                        id, external_id, parent_id, type, format, source,
-                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                        release_year, release_month, release_day, time_length, status, score_global,
-                        favorites_count, ratings_count, total_count, total_count_2,
-                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error, manually_edited_at, created_at, updated_at
-                     FROM community.media_catalog",
+            // blocked_at is a curator flag ("hide this remaster/edition
+            // everywhere") that IS meant to propagate community-wide —
+            // unlike manually_edited_at, which is purely this-install-local —
+            // so a blocked entry someone proposed reaches every other user's
+            // catalog the same way any other collaborative-catalog field
+            // does. Same existence-guard reasoning: an older community.db
+            // predating this column would otherwise fail the whole query.
+            let has_blocked_col: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('media_catalog', 'community') WHERE name = 'blocked_at'",
                     [],
-                ).str_err()? as i64;
-            } else {
-                changes += conn.execute(
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+
+            let mut extra_cols = String::new();
+            if has_manually_edited_col { extra_cols.push_str(", manually_edited_at"); }
+            if has_blocked_col { extra_cols.push_str(", blocked_at"); }
+
+            changes += conn.execute(
+                &format!(
                     "INSERT OR IGNORE INTO media_catalog (
                         id, external_id, parent_id, type, format, source,
                         title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
                         release_year, release_month, release_day, time_length, status, score_global,
                         favorites_count, ratings_count, total_count, total_count_2,
                         genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
+                        last_synced_at, sync_failed_count, last_sync_error{extra_cols}, created_at, updated_at
                      )
                      SELECT
                         id, external_id, parent_id, type, format, source,
@@ -1042,8 +1087,25 @@ pub async fn sync_community_catalog(
                         release_year, release_month, release_day, time_length, status, score_global,
                         favorites_count, ratings_count, total_count, total_count_2,
                         genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error, created_at, updated_at
-                     FROM community.media_catalog",
+                        last_synced_at, sync_failed_count, last_sync_error{extra_cols}, created_at, updated_at
+                     FROM community.media_catalog"
+                ),
+                [],
+            ).str_err()? as i64;
+
+            // For entries that already existed locally (the INSERT OR IGNORE
+            // above only benefits brand-new rows), adopt a community block
+            // that isn't reflected here yet — same "fill gaps only" shape as
+            // the columns below, so a local unblock decision (blocked_at
+            // already NULL after the user re-enabled it) is never
+            // overwritten, but a fresh community-wide block still reaches
+            // every other user's install once it merges.
+            if has_blocked_col {
+                changes += conn.execute(
+                    "UPDATE media_catalog
+                     SET blocked_at = (SELECT c.blocked_at FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                     WHERE blocked_at IS NULL
+                       AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.blocked_at IS NOT NULL)",
                     [],
                 ).str_err()? as i64;
             }
@@ -1069,6 +1131,7 @@ pub async fn sync_community_catalog(
                         "UPDATE media_catalog
                          SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
                          WHERE ({col} IS NULL OR {col} = '')
+                           AND blocked_at IS NULL
                            AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.{col} IS NOT NULL AND c.{col} != '')"
                     ),
                     [],
@@ -1086,7 +1149,11 @@ pub async fn sync_community_catalog(
             ).str_err()? as i64;
             changes += conn.execute(
                 "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
-                 SELECT character_external_id, media_external_id, relation_type, character_name, added_at FROM community.character_appearances",
+                 SELECT c.character_external_id, c.media_external_id, c.relation_type, c.character_name, c.added_at
+                 FROM community.character_appearances c
+                 WHERE NOT EXISTS (
+                   SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
+                 )",
                 [],
             ).str_err()? as i64;
 
@@ -1108,6 +1175,10 @@ pub async fn sync_community_catalog(
                    AND NOT EXISTS (
                      SELECT 1 FROM media_catalog mc
                      WHERE mc.external_id = c.media_external_id AND mc.manually_edited_at IS NOT NULL
+                   )
+                   AND NOT EXISTS (
+                     SELECT 1 FROM media_catalog mc
+                     WHERE mc.external_id IN (c.media_external_id, c.related_media_external_id) AND mc.blocked_at IS NOT NULL
                    )",
                 [],
             ).str_err()? as i64;
@@ -1120,7 +1191,10 @@ pub async fn sync_community_catalog(
             ).str_err()? as i64;
             changes += conn.execute(
                 "INSERT OR IGNORE INTO media_by_author (media_external_id, author_external_id, role)
-                 SELECT media_external_id, author_external_id, role FROM community.media_by_author",
+                 SELECT media_external_id, author_external_id, role FROM community.media_by_author c
+                 WHERE NOT EXISTS (
+                   SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
+                 )",
                 [],
             ).str_err()? as i64;
 
@@ -1143,7 +1217,10 @@ pub async fn sync_community_catalog(
             if has_saga_tables {
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO media_saga_groups (media_external_id, group_name)
-                     SELECT media_external_id, group_name FROM community.media_saga_groups",
+                     SELECT c.media_external_id, c.group_name FROM community.media_saga_groups c
+                     WHERE NOT EXISTS (
+                       SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
+                     )",
                     [],
                 ).str_err()? as i64;
                 changes += conn.execute(
@@ -1153,10 +1230,56 @@ pub async fn sync_community_catalog(
                 ).str_err()? as i64;
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
-                     SELECT media_external_id, saga_id FROM community.saga_relations",
+                     SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
+                     WHERE NOT EXISTS (
+                       SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
+                     )",
                     [],
                 ).str_err()? as i64;
             }
+
+            // ── Community-side deletions ────────────────────────────────
+            // The downloaded database.db is a full, current snapshot of the
+            // community catalog — anything in community_synced_ids (this
+            // client's snapshot from the *previous* sync) but missing from
+            // community.media_catalog now was removed upstream (e.g. via a
+            // merged collaborative-editor PR that deleted a saga entry).
+            // Only actually deleted locally when the user doesn't have it in
+            // their own library — a community removal must never touch
+            // something the user is tracking. On a first-ever sync,
+            // community_synced_ids is still empty, so nothing here matches
+            // and nothing gets deleted — only the snapshot refresh below runs.
+            let removed_ids: Vec<String> = {
+                let mut stmt = conn.prepare(
+                    "SELECT s.external_id FROM community_synced_ids s
+                     WHERE NOT EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = s.external_id)
+                       AND NOT EXISTS (SELECT 1 FROM user_library l WHERE l.external_id = s.external_id)"
+                ).str_err()?;
+                let rows = stmt.query_map([], |r| r.get::<_, String>(0)).str_err()?;
+                rows.collect::<Result<Vec<_>, _>>().str_err()?
+            };
+
+            for id in &removed_ids {
+                conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [id]).str_err()?;
+                conn.execute(
+                    "DELETE FROM media_relations WHERE media_external_id = ?1 OR related_media_external_id = ?1",
+                    [id],
+                ).str_err()?;
+                conn.execute("DELETE FROM character_appearances WHERE media_external_id = ?1", [id]).str_err()?;
+                conn.execute("DELETE FROM staff_appearances WHERE media_external_id = ?1", [id]).str_err()?;
+                conn.execute("DELETE FROM media_by_author WHERE media_external_id = ?1", [id]).str_err()?;
+                conn.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [id]).str_err()?;
+                conn.execute("DELETE FROM saga_relations WHERE media_external_id = ?1", [id]).str_err()?;
+            }
+            changes += removed_ids.len() as i64;
+
+            // Refresh the snapshot to the current community set so the next
+            // sync's diff is against what's actually live now.
+            conn.execute("DELETE FROM community_synced_ids", []).str_err()?;
+            conn.execute(
+                "INSERT INTO community_synced_ids (external_id) SELECT external_id FROM community.media_catalog",
+                [],
+            ).str_err()?;
 
             Ok(())
         })();
@@ -1395,12 +1518,13 @@ fn replace_bundle_relations(
 
             tx.execute(
                 "INSERT INTO media_catalog (
-                    id, external_id, type, title_main, cover_url, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    id, external_id, type, source, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &rel.related_media_external_id,
                     &rel_type,
+                    infer_source_from_id(&rel.related_media_external_id),
                     &rel.title,
                     &rel.cover,
                     now,
@@ -1558,7 +1682,8 @@ pub async fn get_transitive_relation_ids(
             SELECT mr.related_media_external_id
             FROM media_relations mr
             JOIN saga_graph sg ON sg.id = mr.media_external_id
-            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL')
+            JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
+            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL') AND mc.blocked_at IS NULL
         )
         SELECT id FROM saga_graph"
     ).str_err()?;

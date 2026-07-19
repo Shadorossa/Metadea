@@ -3473,6 +3473,34 @@
   cursor: not-allowed;
 }
 
+/* "Eliminar de Metadea" — sets media_catalog.blocked_at, hiding the entry
+   from search/relations/sagas for every user without deleting its row (see
+   PrEditorModal.tsx). Deliberately styled as a destructive/danger action
+   even though it's reversible (click again to unblock), since it's meant to
+   read as "get this off the site", not a casual toggle. */
+.pr-editor-block-btn {
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 120ms ease;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid #dc2626;
+  color: #dc2626;
+}
+
+.pr-editor-block-btn:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.pr-editor-block-btn--active {
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+}
+
 .pr-editor-slot-pill {
   display: inline-flex;
   align-items: center;
