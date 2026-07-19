@@ -1,0 +1,26 @@
+{
+  "media_catalog": {
+    "id": "6f188a8460bb15af6f188a8460bb15af",
+    "external_id": "game:228530",
+    "type": "game",
+    "title_main": "Death Stranding 2: On the Beach",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:228530",
+      "related_media_external_id": "game:19564",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Death Stranding",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksf.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Death Stranding"
+}
