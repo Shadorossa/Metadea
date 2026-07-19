@@ -9,7 +9,12 @@ export interface DateParts {
 /** Convert a Unix timestamp (seconds) to a { year, month, day } triple (UTC). */
 export function unixToDateParts(unixSeconds: number): DateParts {
   const d = new Date(unixSeconds * 1000);
-  return { year: d.getFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+  // All three fields must come from the same clock — year used to be read
+  // via getFullYear() (local time) while month/day used getUTCMonth()/
+  // getUTCDate(), so for any timezone other than UTC+0, a release date near
+  // a year boundary (e.g. Dec 31 UTC) could pair the wrong year with the
+  // right month/day, or vice versa.
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
 /** Format a date triple using the active UI locale. */

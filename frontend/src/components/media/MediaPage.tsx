@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -192,9 +192,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     if (typeof window !== 'undefined') {
       const navs = window.performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
       if (navs.length > 0 && navs[0].type === 'reload') {
+        // Was checking for 'media_data:'/'cached_saga:' — stale key prefixes
+        // from before media-cache.ts's cache was renamed/versioned to
+        // CACHE_PREFIX ('media_cache_v3:'). Neither ever matched, so this
+        // purge-on-reload safety net has been a silent no-op.
         for (let i = sessionStorage.length - 1; i >= 0; i--) {
           const key = sessionStorage.key(i);
-          if (key && (key.startsWith('media_data:') || key.startsWith('cached_saga:'))) {
+          if (key && key.startsWith(CACHE_PREFIX)) {
             sessionStorage.removeItem(key);
           }
         }
@@ -324,8 +328,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
     fetchMediaDataWithFallback(
       currentId,
-      partial => { setData(partial); setPageState('ready'); },
+      partial => {
+        // A never-synced skeleton's first visit kicks off a full live fetch
+        // that can take a moment — if the user has already navigated to a
+        // different page (or back to this same one) by the time it resolves,
+        // this late result must not overwrite whatever's on screen now.
+        // Every other callback below already guards on `cancelled`; this one
+        // and `full` below didn't, letting a stale fetch clobber the current
+        // page's state instead of just being silently dropped.
+        if (cancelled) return;
+        setData(partial);
+        setPageState('ready');
+      },
       full    => {
+        if (cancelled) return;
         setData(full);
         setPageState('ready');
         setIsFetchingFull(false);

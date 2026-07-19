@@ -146,8 +146,13 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const genreDots = coreGenres.join(' · ') || undefined;
   const genreTagDots = genreTags.join(' · ') || undefined;
 
-  // Score (prefer total_rating, fallback to rating — IGDB is /100)
-  const scoreGlobal = normalizeScore100(game.total_rating ?? game.rating);
+  // Score (prefer total_rating, fallback to rating — IGDB is /100). `||` (not
+  // `??`) on purpose: normalizeScore100 already treats 0 as "no score" (see
+  // its own doc), so a total_rating of exactly 0 (no critic reviews
+  // contributing yet) must still fall back to `rating` instead of `??`
+  // treating that 0 as a present-and-final value and discarding a real
+  // user rating.
+  const scoreGlobal = normalizeScore100(game.total_rating || game.rating);
 
   const canonicalStatus = canonicalizeIgdbStatus(game.status);
   const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;

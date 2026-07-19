@@ -20,7 +20,7 @@ import { parseExternalId } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 
-import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData } from './media-cache';
+import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
@@ -34,7 +34,7 @@ import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 // page", even though the cache/relations/catalog-mapping concerns now live
 // in their own files (media-cache.ts, media-relations.ts, catalog-mapper.ts).
 export {
-  getCachedMediaData, patchCachedRelations, invalidateCachedMediaData,
+  getCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
 };

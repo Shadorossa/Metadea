@@ -5,7 +5,7 @@
 // relations, metaLines) are empty until then.
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
-import { formatDateParts } from './mapper-utils';
+import { formatDateParts, lookupLabel } from './mapper-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -17,9 +17,29 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 }
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
+  const tm = getT().media;
   const authorList = c.authors_csv ? c.authors_csv.split(',').filter(Boolean) : [];
   const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
   const stats: MediaStat[] = [];
+  // Same "Formato | Estado" and score stats every live mapper builds — this
+  // catalog-only fast path (shown whenever needsResync() says a live fetch
+  // isn't due yet, i.e. most visits after the first) used to only ever
+  // rebuild the author stat, silently dropping score/format/status from the
+  // Datos section on every subsequent visit even though they were already
+  // saved to the catalog row.
+  if (c.score_global != null) {
+    stats.push({ label: tm.stat_score, value: String(c.score_global), isScore: true });
+  }
+  if (c.format || c.status) {
+    const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
+    const statusLabel = c.status ? lookupLabel(tm.statuses, c.status, c.status) : undefined;
+    const formatStat: MediaStat = { label: tm.stat_format, value: formatLabel ?? '' };
+    if (statusLabel) {
+      formatStat.label2 = tm.stat_status;
+      formatStat.value2 = statusLabel;
+    }
+    stats.push(formatStat);
+  }
   if (authorList.length > 0) {
     stats.push({
       label: authorList.length > 1 ? 'Autores' : 'Autor',

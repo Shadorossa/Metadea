@@ -3,7 +3,7 @@
 // readable on its own, separate from provider dispatch/fetch orchestration.
 import type { MediaPageData } from './types';
 
-const CACHE_PREFIX = 'media_cache_v3:';
+export const CACHE_PREFIX = 'media_cache_v3:';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 interface CacheEntry { data: MediaPageData; ts: number; }
