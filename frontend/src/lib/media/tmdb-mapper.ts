@@ -17,6 +17,31 @@ function isTvDetail(d: TmdbMovieDetail | TmdbTvDetail): d is TmdbTvDetail {
   return 'name' in d;
 }
 
+// TMDB's own `type` field on a TV detail response — always present, no
+// append_to_response needed — is a much more reliable "what kind of show is
+// this" signal than inferring it from season/episode counts. "Scripted" (a
+// normal show) maps to the same 'TV' key AniList uses; "Video" covers
+// specials/direct-to-video content, closest to AniList's SPECIAL.
+const TMDB_TV_TYPE_TO_FORMAT: Record<string, string> = {
+  Scripted: 'TV',
+  Miniseries: 'MINISERIES',
+  Documentary: 'DOCUMENTARY',
+  Reality: 'REALITY',
+  'Talk Show': 'TALK_SHOW',
+  News: 'NEWS',
+  Video: 'SPECIAL',
+};
+
+// Movies have no equivalent `type` field — the closest signals TMDB exposes
+// are runtime (a short film) and the "TV Movie" genre (already unified by
+// genre-unifier.ts), checked in that order since a short TV movie should
+// still read as a short film first.
+function movieFormat(runtimeMinutes: number | undefined, coreGenres: string[]): string {
+  if (runtimeMinutes != null && runtimeMinutes > 0 && runtimeMinutes < 40) return 'SHORT_FILM';
+  if (coreGenres.includes('TV Movie')) return 'TV_MOVIE';
+  return 'MOVIE';
+}
+
 export function mapTmdbToMedia(
   raw: TmdbMovieDetail | TmdbTvDetail,
   mediaType: 'movie' | 'series',
@@ -59,6 +84,13 @@ export function mapTmdbToMedia(
   const scoreGlobal = raw.vote_average ? Math.round(raw.vote_average * 10) / 10 : undefined;
   const timeLength = isTv ? raw.episode_run_time?.[0] : raw.runtime ?? undefined;
 
+  const format = isTv
+    ? (raw.type ? TMDB_TV_TYPE_TO_FORMAT[raw.type] : undefined)
+        // Falls back to the season/episode heuristic only when TMDB's own
+        // `type` field is missing or unrecognized, not as the primary signal.
+        ?? (raw.number_of_seasons === 1 && (raw.number_of_episodes ?? 0) <= 12 ? 'MINISERIES' : 'TV')
+    : movieFormat(raw.runtime ?? undefined, coreGenres);
+
   const stats: MediaStat[] = [];
   if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
   if (isTv) {
@@ -76,7 +108,15 @@ export function mapTmdbToMedia(
   } else if (timeLength) {
     stats.push({ label: tm.stat_duration, value: `${timeLength} min` });
   }
-  if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
+  const formatLabel = format ? lookupLabel(tm.formats, format, format) : undefined;
+  if (formatLabel || statusLabel) {
+    const formatStat: MediaStat = { label: tm.stat_format, value: formatLabel ?? '' };
+    if (statusLabel) {
+      formatStat.label2 = tm.stat_status;
+      formatStat.value2 = statusLabel;
+    }
+    stats.push(formatStat);
+  }
 
   // Prefer a US certification (most consistently populated across TMDB
   // entries) and fall back to whichever country's rating is present first.
@@ -103,7 +143,10 @@ export function mapTmdbToMedia(
     .slice(0, CAST_LIMIT)
     .map(c => ({
       id: `character:tmdb:${c.credit_id ?? `${c.id}-${c.character ?? ''}`}`,
-      name: c.character || c.name,
+      // TMDB appends "(voice)"/"(voice)  " to animated/dubbed roles right in
+      // the character string itself (e.g. "Woody (voice)") — stripped since
+      // this card is the character's name, not a credit annotation.
+      name: (c.character || c.name).replace(/\s*\(voice\)\s*$/i, ''),
       image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
     }));
 
@@ -119,7 +162,10 @@ export function mapTmdbToMedia(
     })
     .slice(0, CAST_LIMIT)
     .map(c => ({
-      id: `person:${c.id}`,
+      // "person:t{id}" — shares the person: namespace with AniList's own
+      // staff (person:a{id}), the "a"/"t" prefix keeping the two providers'
+      // otherwise-independent numeric ids from colliding.
+      id: `person:t${c.id}`,
       name: c.name,
       image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
       role: c.job || c.department || undefined,
@@ -145,7 +191,7 @@ export function mapTmdbToMedia(
   function tvAuthors(tv: TmdbTvDetail): MediaAuthor[] {
     if (tv.created_by?.length) {
       return tv.created_by.map(c => ({
-        external_id: `person:${c.id}`,
+        external_id: `person:t${c.id}`,
         name: c.name,
         image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
         role: 'Creator',
@@ -155,7 +201,7 @@ export function mapTmdbToMedia(
     const execProducers = crew.filter(m => m.job === 'Executive Producer');
     if (execProducers.length) {
       return execProducers.map(m => ({
-        external_id: `person:${m.id}`,
+        external_id: `person:t${m.id}`,
         name: m.name,
         image: m.profile_path ? API_ENDPOINTS.TMDB_IMAGE(m.profile_path, 'w185') : undefined,
         role: 'Executive Producer',
@@ -164,7 +210,7 @@ export function mapTmdbToMedia(
     const topByEpisodes = crew.reduce<typeof crew[number] | undefined>((top, m) =>
       (m.episode_count ?? 0) > (top?.episode_count ?? 0) ? m : top, undefined);
     return topByEpisodes ? [{
-      external_id: `person:${topByEpisodes.id}`,
+      external_id: `person:t${topByEpisodes.id}`,
       name: topByEpisodes.name,
       image: topByEpisodes.profile_path ? API_ENDPOINTS.TMDB_IMAGE(topByEpisodes.profile_path, 'w185') : undefined,
       role: topByEpisodes.job || topByEpisodes.department || 'Staff',
@@ -176,7 +222,7 @@ export function mapTmdbToMedia(
     : (raw.credits?.crew ?? [])
         .filter(m => m.job === 'Director')
         .map(m => ({
-          external_id: `person:${m.id}`,
+          external_id: `person:t${m.id}`,
           name: m.name,
           image: m.profile_path ? API_ENDPOINTS.TMDB_IMAGE(m.profile_path, 'w185') : undefined,
           role: 'Director',
@@ -216,5 +262,6 @@ export function mapTmdbToMedia(
     totalCount: isTv ? raw.number_of_episodes ?? undefined : 1,
     totalCount_2: isTv ? raw.number_of_seasons ?? undefined : undefined,
     companies,
+    format,
   };
 }

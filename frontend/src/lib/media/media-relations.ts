@@ -267,12 +267,15 @@ export async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relati
 // that fix is safe to drop once the live fetch no longer reports it.
 const STALE_INHERITED_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'FORK']);
 
+// Returns whether it actually wrote anything new/changed — callers use this
+// as a cheap "did this bring anything new" signal instead of re-reading
+// relations back from the DB afterward just to diff a count.
 export async function mergeAndPersistRelations(
   rawId: string,
   fetchedRelations: MediaPageData['relations'],
   format?: string,
   manuallyEditedAt?: string | null,
-): Promise<void> {
+): Promise<boolean> {
   const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
 
   const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
@@ -345,7 +348,9 @@ export async function mergeAndPersistRelations(
     cover: r.cover || null,
   }));
 
-  if (newFromApi.length > 0 || changedLegacyTypes || prunedStale) {
+  const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale;
+  if (changed) {
     await saveMediaRelations(rawId, [...prunedDbRels, ...newFromApi]).catch(console.error);
   }
+  return changed;
 }

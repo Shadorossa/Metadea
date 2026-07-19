@@ -76,6 +76,21 @@ fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, &'static st
     }
 }
 
+// The downloaded community.db is a rebuilt-in-place, unversioned file — a
+// stale download from just before some column existed would otherwise fail
+// a query referencing it with "no such column". Shared by every optional-
+// column guard in sync_community_catalog instead of each repeating its own
+// `pragma_table_info` query.
+fn attached_db_has_column(conn: &rusqlite::Connection, db: &str, table: &str, column: &str) -> bool {
+    conn.query_row(
+        &format!("SELECT COUNT(*) FROM pragma_table_info('{table}', '{db}') WHERE name = '{column}'"),
+        [],
+        |r| r.get::<_, i64>(0),
+    )
+    .map(|c| c > 0)
+    .unwrap_or(false)
+}
+
 fn infer_type_from_id(external_id: &str) -> String {
     external_id
         .split_once(':')
@@ -187,7 +202,10 @@ const SELECT_ALL: &str = "
 // Same as SELECT_ALL but excluding blocked rows — used by every read path
 // that isn't a direct "look up this exact id" lookup (search, browse,
 // relations, saga chains) so a blocked entry stays invisible everywhere
-// except the editor used to block/unblock it.
+// except the editor used to block/unblock it. Backed by the
+// visible_media_catalog view (db.rs) rather than repeating "blocked_at IS
+// NULL" here and in every query that joins against media_catalog elsewhere
+// in this file.
 const SELECT_VISIBLE: &str = "
     SELECT external_id, id, parent_id, type, format, source,
            title_main, title_romaji, title_native, synopsis, cover_url,
@@ -197,8 +215,7 @@ const SELECT_VISIBLE: &str = "
            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
            manually_edited_at, blocked_at, created_at, updated_at
-    FROM media_catalog
-    WHERE blocked_at IS NULL";
+    FROM visible_media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
     Ok(MediaCatalogEntry {
@@ -476,7 +493,7 @@ pub async fn search_catalog(
     let conn = state.conn.lock().str_err()?;
     let pattern = format!("%{}%", query.to_lowercase());
     let mut stmt = conn.prepare(
-        &format!("{} AND (lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1)", SELECT_VISIBLE),
+        &format!("{} WHERE lower(title_main) LIKE ?1 OR lower(title_romaji) LIKE ?1 OR lower(title_native) LIKE ?1", SELECT_VISIBLE),
     ).str_err()?;
     let entries = stmt
         .query_map([&pattern], row_to_entry)
@@ -527,8 +544,8 @@ pub async fn get_cached_saga(
         .prepare(
             "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.format, mc.type, mc.release_year, mc.release_month, mc.release_day
              FROM saga_relations sr
-             JOIN media_catalog mc ON mc.external_id = sr.media_external_id
-             WHERE sr.saga_id = ?1 AND mc.blocked_at IS NULL",
+             JOIN visible_media_catalog mc ON mc.external_id = sr.media_external_id
+             WHERE sr.saga_id = ?1",
         )
         .str_err()?;
 
@@ -768,8 +785,8 @@ pub async fn get_media_relations(
         .prepare(
             "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
-             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mr.media_external_id = ?1 AND mc.blocked_at IS NULL
+             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
+             WHERE mr.media_external_id = ?1
              ORDER BY mr.rowid",
         )
         .str_err()?;
@@ -805,8 +822,7 @@ pub async fn get_all_media_relations(
         .prepare(
             "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
-             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
-             WHERE mc.blocked_at IS NULL",
+             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id",
         )
         .str_err()?;
 
@@ -1038,34 +1054,15 @@ pub async fn sync_community_catalog(
             // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
             // would silently shift every column after the mismatch into the
             // wrong field.
-            // manually_edited_at is guarded by an existence check the same
-            // way media_saga_groups is below — the community catalog is a
-            // rebuilt-in-place, unversioned file, so a stale download from
-            // just before this column existed would otherwise fail this
-            // whole query with "no such column".
-            let has_manually_edited_col: bool = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM pragma_table_info('media_catalog', 'community') WHERE name = 'manually_edited_at'",
-                    [],
-                    |r| r.get(0),
-                )
-                .map(|c: i64| c > 0)
-                .unwrap_or(false);
-            // blocked_at is a curator flag ("hide this remaster/edition
-            // everywhere") that IS meant to propagate community-wide —
-            // unlike manually_edited_at, which is purely this-install-local —
-            // so a blocked entry someone proposed reaches every other user's
-            // catalog the same way any other collaborative-catalog field
-            // does. Same existence-guard reasoning: an older community.db
-            // predating this column would otherwise fail the whole query.
-            let has_blocked_col: bool = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM pragma_table_info('media_catalog', 'community') WHERE name = 'blocked_at'",
-                    [],
-                    |r| r.get(0),
-                )
-                .map(|c: i64| c > 0)
-                .unwrap_or(false);
+            // manually_edited_at is purely this-install-local. blocked_at is
+            // a curator flag ("hide this remaster/edition everywhere") that
+            // IS meant to propagate community-wide, so a blocked entry
+            // someone proposed reaches every other user's catalog the same
+            // way any other collaborative-catalog field does. Both are
+            // guarded by attached_db_has_column in case this community.db
+            // predates either column.
+            let has_manually_edited_col = attached_db_has_column(&conn, "community", "media_catalog", "manually_edited_at");
+            let has_blocked_col = attached_db_has_column(&conn, "community", "media_catalog", "blocked_at");
 
             let mut extra_cols = String::new();
             if has_manually_edited_col { extra_cols.push_str(", manually_edited_at"); }
@@ -1151,9 +1148,7 @@ pub async fn sync_community_catalog(
                 "INSERT OR IGNORE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
                  SELECT c.character_external_id, c.media_external_id, c.relation_type, c.character_name, c.added_at
                  FROM community.character_appearances c
-                 WHERE NOT EXISTS (
-                   SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
-                 )",
+                 WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                 [],
             ).str_err()? as i64;
 
@@ -1177,8 +1172,8 @@ pub async fn sync_community_catalog(
                      WHERE mc.external_id = c.media_external_id AND mc.manually_edited_at IS NOT NULL
                    )
                    AND NOT EXISTS (
-                     SELECT 1 FROM media_catalog mc
-                     WHERE mc.external_id IN (c.media_external_id, c.related_media_external_id) AND mc.blocked_at IS NOT NULL
+                     SELECT 1 FROM blocked_media_catalog mc
+                     WHERE mc.external_id IN (c.media_external_id, c.related_media_external_id)
                    )",
                 [],
             ).str_err()? as i64;
@@ -1192,9 +1187,7 @@ pub async fn sync_community_catalog(
             changes += conn.execute(
                 "INSERT OR IGNORE INTO media_by_author (media_external_id, author_external_id, role)
                  SELECT media_external_id, author_external_id, role FROM community.media_by_author c
-                 WHERE NOT EXISTS (
-                   SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
-                 )",
+                 WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                 [],
             ).str_err()? as i64;
 
@@ -1218,9 +1211,7 @@ pub async fn sync_community_catalog(
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO media_saga_groups (media_external_id, group_name)
                      SELECT c.media_external_id, c.group_name FROM community.media_saga_groups c
-                     WHERE NOT EXISTS (
-                       SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
-                     )",
+                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                     [],
                 ).str_err()? as i64;
                 changes += conn.execute(
@@ -1231,9 +1222,7 @@ pub async fn sync_community_catalog(
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
                      SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
-                     WHERE NOT EXISTS (
-                       SELECT 1 FROM media_catalog mc WHERE mc.external_id = c.media_external_id AND mc.blocked_at IS NOT NULL
-                     )",
+                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                     [],
                 ).str_err()? as i64;
             }
@@ -1259,17 +1248,30 @@ pub async fn sync_community_catalog(
                 rows.collect::<Result<Vec<_>, _>>().str_err()?
             };
 
-            for id in &removed_ids {
-                conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [id]).str_err()?;
+            if !removed_ids.is_empty() {
+                // One DELETE per table for the whole batch instead of one
+                // per table *per id* — same end result, a fraction of the
+                // round trips against the connection.
+                let placeholders = removed_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+                let ids_params = rusqlite::params_from_iter(removed_ids.iter());
+                conn.execute(&format!("DELETE FROM media_catalog WHERE external_id IN ({placeholders})"), ids_params).str_err()?;
+
+                let ids_params = rusqlite::params_from_iter(removed_ids.iter().chain(removed_ids.iter()));
                 conn.execute(
-                    "DELETE FROM media_relations WHERE media_external_id = ?1 OR related_media_external_id = ?1",
-                    [id],
+                    &format!("DELETE FROM media_relations WHERE media_external_id IN ({placeholders}) OR related_media_external_id IN ({placeholders})"),
+                    ids_params,
                 ).str_err()?;
-                conn.execute("DELETE FROM character_appearances WHERE media_external_id = ?1", [id]).str_err()?;
-                conn.execute("DELETE FROM staff_appearances WHERE media_external_id = ?1", [id]).str_err()?;
-                conn.execute("DELETE FROM media_by_author WHERE media_external_id = ?1", [id]).str_err()?;
-                conn.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [id]).str_err()?;
-                conn.execute("DELETE FROM saga_relations WHERE media_external_id = ?1", [id]).str_err()?;
+
+                for (table, column) in [
+                    ("character_appearances", "media_external_id"),
+                    ("media_staff_relation", "media_external_id"),
+                    ("media_by_author", "media_external_id"),
+                    ("media_saga_groups", "media_external_id"),
+                    ("saga_relations", "media_external_id"),
+                ] {
+                    let ids_params = rusqlite::params_from_iter(removed_ids.iter());
+                    conn.execute(&format!("DELETE FROM {table} WHERE {column} IN ({placeholders})"), ids_params).str_err()?;
+                }
             }
             changes += removed_ids.len() as i64;
 
@@ -1682,8 +1684,8 @@ pub async fn get_transitive_relation_ids(
             SELECT mr.related_media_external_id
             FROM media_relations mr
             JOIN saga_graph sg ON sg.id = mr.media_external_id
-            JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
-            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL') AND mc.blocked_at IS NULL
+            JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
+            WHERE mr.relation_type IN ('PREQUEL', 'SEQUEL')
         )
         SELECT id FROM saga_graph"
     ).str_err()?;

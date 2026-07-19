@@ -120,6 +120,20 @@ struct ComicVineSearchResponse {
     results: Vec<ComicVineVolume>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ComicVineCharacterSearchPage {
+    pub characters: Vec<ComicVineCharacterCredit>,
+    pub has_more:    bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct ComicVineCharacterSearchResponse {
+    #[serde(default)]
+    number_of_total_results: i64,
+    #[serde(default)]
+    results: Vec<ComicVineCharacterCredit>,
+}
+
 async fn comicvine_api_key(app_handle: &tauri::AppHandle) -> Result<String, String> {
     let cfg = crate::igdb::read_env_config(app_handle.clone()).await?;
     cfg.comicvine_api_key
@@ -174,6 +188,59 @@ pub async fn comicvine_search(
 
     let has_more = offset + (parsed.results.len() as i64) < parsed.number_of_total_results;
     Ok(ComicVineSearchPage { volumes: parsed.results, has_more })
+}
+
+// Comic Vine characters are real, independently-searchable entities (unlike
+// TMDB, which only has "character" as a text field on a cast credit, not its
+// own resource) — same /search/ endpoint as comicvine_search above, just
+// asking for the "character" resource instead of "volume".
+#[tauri::command]
+pub async fn comicvine_search_characters(
+    app_handle: tauri::AppHandle,
+    query: String,
+    page: Option<u32>,
+) -> Result<ComicVineCharacterSearchPage, String> {
+    if query.trim().is_empty() {
+        return Ok(ComicVineCharacterSearchPage { characters: vec![], has_more: false });
+    }
+
+    let api_key = comicvine_api_key(&app_handle).await?;
+    let client = get_http_client().str_err()?;
+
+    const PAGE_SIZE: i64 = 50;
+    let page = page.unwrap_or(1).max(1) as i64;
+    let offset = (page - 1) * PAGE_SIZE;
+    let limit_str = PAGE_SIZE.to_string();
+    let offset_str = offset.to_string();
+
+    let resp = client
+        .get(format!("{COMICVINE_BASE}/search/"))
+        .query(&[
+            ("api_key", api_key.as_str()),
+            ("format", "json"),
+            ("query", query.as_str()),
+            ("resources", "character"),
+            ("limit", limit_str.as_str()),
+            ("offset", offset_str.as_str()),
+            ("field_list", "id,name,image"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("Comic Vine request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Comic Vine error (HTTP {status}): {body}"));
+    }
+
+    let parsed = resp
+        .json::<ComicVineCharacterSearchResponse>()
+        .await
+        .map_err(|e| format!("Comic Vine parse failed: {e}"))?;
+
+    let has_more = offset + (parsed.results.len() as i64) < parsed.number_of_total_results;
+    Ok(ComicVineCharacterSearchPage { characters: parsed.results, has_more })
 }
 
 #[derive(Debug, Deserialize)]

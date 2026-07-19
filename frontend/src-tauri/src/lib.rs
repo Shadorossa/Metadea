@@ -93,6 +93,7 @@ pub fn run() {
             igdb::read_metadata_index,
             igdb::read_game_info,
             comicvine::comicvine_search,
+            comicvine::comicvine_search_characters,
             comicvine::comicvine_get_volume,
             comicvine::comicvine_get_issues,
             comicvine::comicvine_get_issue,

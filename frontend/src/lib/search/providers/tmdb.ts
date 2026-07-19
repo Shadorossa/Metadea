@@ -125,6 +125,12 @@ export interface TmdbTvDetail extends TmdbDetailBase {
   episode_run_time?: number[];
   created_by?: TmdbCreator[];
   content_ratings?: TmdbContentRatings;
+  /** TMDB's own show-type classification, always present on the detail
+   *  response (no append_to_response needed) — a much more reliable source
+   *  for "what kind of show is this" than inferring it from season/episode
+   *  counts. One of: Documentary, News, Miniseries, Reality, Scripted,
+   *  Talk Show, Video. */
+  type?: string;
 }
 
 export function buildPosterUrl(posterPath: string | null): string | null {

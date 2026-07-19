@@ -2,7 +2,7 @@ import { searchAniList, searchAniListCharacters } from './providers/anilist';
 import { searchGames, searchGameBundles, searchGameExpandedEditions } from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
-import { searchComics }                from './providers/comicvine';
+import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, type MediaCatalogEntry } from '../tauri/catalog';
 
@@ -81,9 +81,25 @@ function fetchFromApi(
     case 'series':    return searchSeries(searchQuery, signal, page);
     case 'book':      return searchBooks(searchQuery, signal, page);
     case 'comic':     return searchComics(searchQuery, signal, page);
-    case 'character': return searchAniListCharacters(searchQuery, signal, page);
+    case 'character': return searchCharacters(searchQuery, signal, page);
     default:          return Promise.resolve({ results: [], hasMore: false });
   }
+}
+
+// Fans out to every provider with real, independently-searchable character
+// entities — AniList and Comic Vine both have these; TMDB doesn't (a TMDB
+// "character" is just a text field on a cast credit, not its own searchable
+// resource), so it has no equivalent branch here. A provider erroring
+// (missing API key, network) doesn't take the other one down with it.
+async function searchCharacters(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
+  const [anilistPage, comicvinePage] = await Promise.all([
+    searchAniListCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
+    searchComicVineCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
+  ]);
+  return {
+    results: [...anilistPage.results, ...comicvinePage.results],
+    hasMore: anilistPage.hasMore || comicvinePage.hasMore,
+  };
 }
 
 function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {

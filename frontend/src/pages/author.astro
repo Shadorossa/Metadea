@@ -103,8 +103,19 @@ const lang = getLang(Astro.url);
       const provider = parts[0];
       const idVal = parts.slice(1).join(':');
 
-      if (provider === 'staff') {
-        const staffId = parseInt(idVal, 10);
+      // "person:a{id}" (AniList staff) / "person:t{id}" (TMDB staff) share
+      // the person: namespace — the leading letter is what keeps the two
+      // providers' otherwise-independent numeric ids from colliding, and
+      // decides which provider's detail fetch runs below.
+      if (provider === 'person' && idVal.startsWith('t')) {
+        // TMDB doesn't have its own person-detail page/fetch built yet —
+        // fail clearly instead of falling through to the AniList branch
+        // below with a mismatched id.
+        throw new Error('La ficha de personal de TMDB aún no está disponible.');
+      }
+
+      if (provider === 'person' && idVal.startsWith('a')) {
+        const staffId = parseInt(idVal.slice(1), 10);
         if (isNaN(staffId)) throw new Error('Invalid AniList staff numerical ID');
 
         const staff = await fetchAniListStaffDetail(staffId);

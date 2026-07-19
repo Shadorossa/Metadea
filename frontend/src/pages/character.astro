@@ -176,6 +176,20 @@ const translations = useTranslations(lang);
 
     const urlParams = new URLSearchParams(window.location.search);
     const idParam = urlParams.get('id') ?? '';
+
+    // This page only knows how to render AniList's rich character detail
+    // (biography, alt/spoiler names, media appearances). A Comic Vine result
+    // (id like "comicvine:123") would otherwise have its digits silently
+    // stripped by the parseInt below and get looked up as if it were an
+    // AniList numeric id — showing a real but entirely wrong character
+    // instead of an error. Bail out clearly instead.
+    if (idParam.startsWith('comicvine:')) {
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = 'La ficha de personajes de Comic Vine aún no está disponible.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
     const cleanIdParam = idParam.replace(/\D/g, '');
     const characterId = parseInt(cleanIdParam, 10);
 

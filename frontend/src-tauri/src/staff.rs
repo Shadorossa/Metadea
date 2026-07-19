@@ -26,7 +26,7 @@ pub async fn get_media_staff(
     let mut stmt = conn
         .prepare(
             "SELECT s.external_id, s.name, s.image_url, sa.role
-             FROM staff_appearances sa
+             FROM media_staff_relation sa
              JOIN media_staff s ON s.external_id = sa.staff_external_id
              WHERE sa.media_external_id = ?1",
         )
@@ -72,7 +72,7 @@ pub async fn save_staff_skeleton(
     let mut seen = std::collections::HashSet::new();
 
     tx.execute(
-        "DELETE FROM staff_appearances WHERE media_external_id = ?1",
+        "DELETE FROM media_staff_relation WHERE media_external_id = ?1",
         [&media_external_id],
     ).str_err()?;
 
@@ -95,7 +95,7 @@ pub async fn save_staff_skeleton(
         ).str_err()?;
 
         tx.execute(
-            "INSERT OR REPLACE INTO staff_appearances (staff_external_id, media_external_id, role, added_at)
+            "INSERT OR REPLACE INTO media_staff_relation (staff_external_id, media_external_id, role, added_at)
              VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![
                 &member.external_id,

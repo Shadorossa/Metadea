@@ -235,16 +235,47 @@ export async function fetchComicIssues(
 // existing value once present, so they'd never register as "changed"
 // anyway) and pure bookkeeping columns (last_synced_at/sync_failed_count/
 // last_sync_error/created_at/updated_at).
-const NEW_DATA_COMPARE_FIELDS: (keyof MediaCatalogEntry)[] = [
+const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
   'companies_cache_csv', 'authors_csv',
-];
+] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
+
+    // Computed up front (rather than read back off `entry` after the fact)
+    // so hasNewData below can diff against `existing` without needing the
+    // full entry object to exist first.
+    const contentFields: Pick<MediaCatalogEntry, typeof NEW_DATA_COMPARE_FIELDS[number]> = {
+      title_main: data.titleMain,
+      title_native: data.titleNative || null,
+      title_romaji: data.titleRomaji || null,
+      synopsis: data.description || null,
+      cover_url: data.cover || null,
+      status: data.status || null,
+      score_global: data.scoreGlobal || null,
+      total_count: data.totalCount || null,
+      total_count_2: data.totalCount_2 || null,
+      genres_csv: data.genreDots ? data.genreDots.split(' · ').join(',') : null,
+      genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
+      platforms_csv: data.platforms ? data.platforms.join(',') : null,
+      shop_links_csv: shopLinks || null,
+      companies_cache_csv: data.companies ? data.companies.join(',') : null,
+      authors_csv: (data.authors ?? []).map(a => a.name).join(','),
+    };
+
+    // A successful fetch that brings nothing new counts toward the same
+    // backoff needsResync() already applies to genuine provider errors — a
+    // title whose provider keeps reporting the exact same data widens its
+    // own resync interval passively instead of relying on a hardcoded "this
+    // field must be filled" barrier to ever stop re-checking it. Any real
+    // change (including a new/removed relation, checked by the caller)
+    // resets the counter back to a normal cadence.
+    const hasNewData = !existing || relationsChanged ||
+      NEW_DATA_COMPARE_FIELDS.some(f => (contentFields[f] ?? null) !== (existing[f] ?? null));
 
     const entry: MediaCatalogEntry = {
       id: '', // Will be filled/matched by Rust if already exists
@@ -263,34 +294,18 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       // manually (re-open in the editor, or the admin panel's "Add work").
       format: existing?.format ?? (data.format || null),
       source: data.source || 'igdb',
-      title_main: data.titleMain,
-      title_native: data.titleNative || null,
-      title_romaji: data.titleRomaji || null,
-      synopsis: data.description || null,
-      cover_url: data.cover || null,
+      ...contentFields,
       banners_csv: data.bannerImage || existing?.banners_csv || null,
       release_year: existing?.release_year ?? (data.releaseYear || null),
       release_month: existing?.release_month ?? (data.releaseMonth || null),
       release_day: existing?.release_day ?? (data.releaseDay || null),
       time_length: data.timeLength || null,
-      status: data.status || null,
-      score_global: data.scoreGlobal || null,
-      total_count: data.totalCount || null,
-      total_count_2: data.totalCount_2 || null,
-      genres_csv: data.genreDots ? data.genreDots.split(' · ').join(',') : null,
-      genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
-      platforms_csv: data.platforms ? data.platforms.join(',') : null,
-      shop_links_csv: shopLinks || null,
-      companies_cache_csv: data.companies ? data.companies.join(',') : null,
-      authors_csv: (data.authors ?? []).map(a => a.name).join(','),
       // Marks "we just checked the live provider" — needsResync() (see
       // media-status.ts) reads this to decide whether a RELEASING/
       // NOT_YET_RELEASED/HIATUS entry is due for another check yet, instead
       // of every page view unconditionally re-fetching forever.
       last_synced_at: new Date().toISOString(),
-      // Placeholder — computed below once `entry` exists, so it can be
-      // diffed against `existing` field by field (see hasNewData).
-      sync_failed_count: 0,
+      sync_failed_count: hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1,
       last_sync_error: null,
       // Never set here — only PrEditorModal ever stamps this, and once set
       // it must survive every future live resync untouched.
@@ -302,17 +317,6 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       created_at: '',
       updated_at: '',
     };
-
-    // A successful fetch that brings nothing new counts toward the same
-    // backoff needsResync() already applies to genuine provider errors — a
-    // title whose provider keeps reporting the exact same data widens its
-    // own resync interval passively instead of relying on a hardcoded "this
-    // field must be filled" barrier to ever stop re-checking it. Any real
-    // change (including a new/removed relation, checked by the caller)
-    // resets the counter back to a normal cadence.
-    const hasNewData = !existing || relationsChanged ||
-      NEW_DATA_COMPARE_FIELDS.some(f => (entry[f] ?? null) !== (existing[f] ?? null));
-    entry.sync_failed_count = hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1;
 
     await saveCatalogEntry(entry).catch(console.error);
   } catch (e) {
@@ -335,7 +339,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
-    const { authors: dbAuthors, relations: dbRelsBefore } = await loadDbRelationsAndAuthors(rawId);
+    const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
     // persistToCatalog preserves an existing banner in the DB, but this same
     // `data` object also gets shown on screen — patch it too so a live fetch
@@ -352,13 +356,10 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // reports the same relation graph again. mergeAndPersistRelations itself
     // does the actual year-based filtering (existing/newer content still
     // gets in) — see its own doc and MediaCatalogEntry.manually_edited_at.
-    await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
-
-    // Relation count before vs. after this fetch's merge — one of the
-    // signals persistToCatalog uses to decide whether anything new actually
-    // showed up (see its own doc).
-    const { relations: dbRelsAfter } = await loadDbRelationsAndAuthors(rawId);
-    const relationsChanged = dbRelsAfter.length !== dbRelsBefore.length;
+    // Its return value doubles as one of the signals persistToCatalog uses
+    // to decide whether anything new actually showed up (see its own doc) —
+    // no need to re-read relations back from the DB just to diff a count.
+    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
 
     // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data, existing, relationsChanged);
@@ -425,9 +426,14 @@ export function fetchMediaDataWithFallback(
         localData = mapCatalogEntryToPartialData(catalog);
 
         try {
-          const { relations: dbRels, authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-          const dbChars = await getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]);
-          const dbStaff = await getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>);
+          // Three independent reads for the same rawId — no data dependency
+          // between them, so they run concurrently instead of one round trip
+          // after another.
+          const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff] = await Promise.all([
+            loadDbRelationsAndAuthors(rawId),
+            getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
+            getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
+          ]);
 
           if (dbRels.length > 0) {
             const { relations, hasSaga } = sortRelationsForDisplay(dbRels);

@@ -29,6 +29,7 @@ commands.allow = [
   "read_metadata_index",
   "read_game_info",
   "comicvine_search",
+  "comicvine_search_characters",
   "comicvine_get_volume",
   "comicvine_get_issues",
   "comicvine_get_issue",

@@ -218,6 +218,10 @@ export const es = {
       VISUAL_NOVEL: 'Novela visual', BUNDLE: 'Bundle',
       // Formato de número de cómic (comicvine-mapper.ts)
       ISSUE: 'Número',
+      // Formato TMDB (ver TMDB_TV_TYPE_TO_FORMAT/movieFormat en tmdb-mapper.ts)
+      MINISERIES: 'Miniserie', DOCUMENTARY: 'Documental', REALITY: 'Reality',
+      TALK_SHOW: 'Talk Show', NEWS: 'Noticias', TV_MOVIE: 'Película para TV',
+      SHORT_FILM: 'Cortometraje',
     },
     // Canonical release-status vocabulary shared by every provider mapper
     // (see lib/media/media-status.ts) — AniList's own enum plus UNAVAILABLE

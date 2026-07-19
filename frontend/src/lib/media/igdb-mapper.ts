@@ -153,9 +153,18 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
   const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
 
+  const formatLabel = lookupLabel(tm.formats, format, format);
+
   const stats: MediaStat[] = [];
   if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
-  if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
+  if (formatLabel || statusLabel) {
+    const formatStat: MediaStat = { label: tm.stat_format, value: formatLabel };
+    if (statusLabel) {
+      formatStat.label2 = tm.stat_status;
+      formatStat.value2 = statusLabel;
+    }
+    stats.push(formatStat);
+  }
 
   // Platforms have their own dedicated block in the Datos section now (see
   // MediaPage.tsx) instead of showing here next to the cover — that used to

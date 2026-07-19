@@ -7,8 +7,8 @@
 // the same pattern, same underlying reason: IGDB requires a bearer token
 // browser JS can't safely hold anyway, Comic Vine just blocks browser
 // fetches outright).
-import { comicVineSearch, comicVineGetVolume, comicVineGetIssues, comicVineGetIssue, comicVineGetIssuesCast, isTauri, type ComicVineVolume, type ComicVineIssue, type ComicVineIssueDetail, type ComicVineVolumeCast } from '../../tauri';
-import type { SearchResult, SearchPage } from '../index';
+import { comicVineSearch, comicVineSearchCharacters, comicVineGetVolume, comicVineGetIssues, comicVineGetIssue, comicVineGetIssuesCast, isTauri, type ComicVineVolume, type ComicVineIssue, type ComicVineIssueDetail, type ComicVineVolumeCast } from '../../tauri';
+import type { SearchResult, SearchPage, MediaType } from '../index';
 import { MissingApiKeyError } from '../errors';
 
 function coverUrlFrom(volume: ComicVineVolume): string | null {
@@ -60,6 +60,44 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
     results: pageResult.volumes.filter(v => coverUrlFrom(v)).map(mapVolume),
     hasMore: pageResult.has_more,
   };
+}
+
+// Comic Vine characters are real, independently-searchable entities (unlike
+// TMDB, which only has a "character" text field on a cast credit, not its
+// own resource) — so unlike movies/series/games, character search is
+// actually possible here.
+export async function searchComicVineCharacters(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
+  if (!isTauri()) return { results: [], hasMore: false };
+
+  let pageResult;
+  try {
+    pageResult = await comicVineSearchCharacters(searchQuery, page);
+  } catch (e) {
+    const message = typeof e === 'string' ? e : String(e);
+    if (message.includes('Missing Comic Vine API key')) {
+      throw new MissingApiKeyError(['comicvine']);
+    }
+    throw new Error(message);
+  }
+
+  const results: SearchResult[] = pageResult.characters
+    .filter(c => c.image?.medium_url || c.image?.small_url)
+    .map(c => ({
+      externalId: `character:comicvine:${c.id}`,
+      type: 'character' as MediaType,
+      format: '',
+      source: 'comicvine' as const,
+      titleMain: c.name,
+      titleRomaji: null,
+      titleNative: null,
+      coverUrl: c.image?.medium_url ?? c.image?.small_url ?? null,
+      releaseYear: null,
+      releaseMonth: null,
+      releaseDay: null,
+      scoreGlobal: null,
+    }));
+
+  return { results, hasMore: pageResult.has_more };
 }
 
 export async function fetchComicVineVolume(volumeId: number): Promise<ComicVineVolume | null> {

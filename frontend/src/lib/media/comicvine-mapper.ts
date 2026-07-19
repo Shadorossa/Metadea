@@ -13,16 +13,17 @@ function stripHtml(html: string): string {
 }
 
 // Comic Vine's person_credits (writer, penciler, inker, colorist, ...) is
-// the same underlying data `authors` is built from below — this is the
-// unfiltered version for the media page's own "Staff" tab (next to
-// Personajes), mirroring how AniList/TMDB share one crew list between their
-// authors pick and their full staff roster.
-function personCreditsToStaff(credits: { id: number; name: string; role: string | null; image?: { medium_url?: string | null; small_url?: string | null } | null }[]): MediaStaffMember[] {
-  return credits.map(p => ({
-    id: `staff:comicvine:${p.id}`,
-    name: p.name,
-    image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
-    role: p.role ?? undefined,
+// the same underlying data `authors` is built from — this just re-keys the
+// already-computed authors list for the media page's own "Staff" tab (next
+// to Personajes), mirroring how AniList/TMDB share one crew list between
+// their authors pick and their full staff roster, instead of re-deriving
+// name/image/role from person_credits a second time.
+function authorsToStaff(authors: MediaAuthor[]): MediaStaffMember[] {
+  return authors.map(a => ({
+    id: `staff:${a.external_id.replace(/^author:/, '')}`,
+    name: a.name,
+    image: a.image,
+    role: a.role,
   }));
 }
 
@@ -67,7 +68,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
-  const staff = personCreditsToStaff(volume.person_credits);
+  const staff = authorsToStaff(authors);
 
   const companies = volume.publisher?.name ? [volume.publisher.name] : undefined;
 
@@ -138,7 +139,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
     image: p.image?.medium_url ?? p.image?.small_url ?? undefined,
     url: `/author?id=author:comicvine:${p.id}`,
   }));
-  const staff = personCreditsToStaff(issue.person_credits);
+  const staff = authorsToStaff(authors);
 
   const description = issue.description
     ? stripHtml(issue.description)

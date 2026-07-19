@@ -63,6 +63,15 @@ export async function comicVineSearch(query: string, page = 1): Promise<ComicVin
   return invoke<ComicVineSearchPage>('comicvine_search', { query, page });
 }
 
+export interface ComicVineCharacterSearchPage {
+  characters: ComicVineCharacterCredit[];
+  has_more:   boolean;
+}
+
+export async function comicVineSearchCharacters(query: string, page = 1): Promise<ComicVineCharacterSearchPage> {
+  return invoke<ComicVineCharacterSearchPage>('comicvine_search_characters', { query, page });
+}
+
 export async function comicVineGetVolume(volumeId: number): Promise<ComicVineVolume | null> {
   return invoke<ComicVineVolume | null>('comicvine_get_volume', { volumeId });
 }

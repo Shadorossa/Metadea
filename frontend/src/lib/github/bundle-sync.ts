@@ -45,25 +45,33 @@ export async function hydrateSagaChainFromGithub(token: string, startExternalId:
   let hops = 0;
   while (frontier.length > 0 && hops < 25) {
     hops++;
-    const next: string[] = [];
-    for (const id of frontier) {
+    // Every id in a frontier level is an independent GitHub fetch — run the
+    // whole level concurrently instead of one round trip after another.
+    const hopResults = await Promise.all(frontier.map(async id => {
       const path = `database/${id.replace(':', '-')}.json`;
       try {
         const content = await fetchFileAtRef(token, path, 'main');
-        const bundle = JSON.parse(content) as ProposalBundle;
-        await hydrateBundleIntoLocalCatalog(bundle);
-        for (const rel of bundle.media_relations) {
-          if (!ALL_CHAIN_RELATION_TYPES.includes(rel.relation_type)) continue;
-          const targetId = rel.related_media_external_id;
-          if (!visited.has(targetId)) {
-            visited.add(targetId);
-            next.push(targetId);
-          }
-        }
+        return JSON.parse(content) as ProposalBundle;
       } catch {
         // No proposal file for this id (only merged into local DB via a
         // different sync path, or simply doesn't exist upstream) — not
         // fatal, just nothing more to hydrate from this hop.
+        return null;
+      }
+    }));
+
+    const bundles = hopResults.filter((b): b is ProposalBundle => b !== null);
+    await Promise.all(bundles.map(hydrateBundleIntoLocalCatalog));
+
+    const next: string[] = [];
+    for (const bundle of bundles) {
+      for (const rel of bundle.media_relations) {
+        if (!ALL_CHAIN_RELATION_TYPES.includes(rel.relation_type)) continue;
+        const targetId = rel.related_media_external_id;
+        if (!visited.has(targetId)) {
+          visited.add(targetId);
+          next.push(targetId);
+        }
       }
     }
     frontier = next;

@@ -33,6 +33,15 @@ impl MetadeaDb {
             );"
         )?;
         run_migrations(&conn)?;
+        // Shared "is this row hidden by a curator block" predicate, defined
+        // once here instead of repeating "blocked_at IS NULL"/"IS NOT NULL"
+        // in every query that joins against media_catalog — created after
+        // run_migrations so blocked_at is guaranteed to exist by the time
+        // these views reference it, even on a fresh upgrade's very first run.
+        conn.execute_batch(
+            "CREATE VIEW IF NOT EXISTS visible_media_catalog AS SELECT * FROM media_catalog WHERE blocked_at IS NULL;
+             CREATE VIEW IF NOT EXISTS blocked_media_catalog AS SELECT * FROM media_catalog WHERE blocked_at IS NOT NULL;"
+        )?;
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         conn.pragma_update(None, "journal_mode", &"WAL")?;
         Ok(Self { conn: Mutex::new(conn) })
@@ -210,6 +219,16 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN blocked_at TEXT", []);
         mark_migration(conn, 11)?;
     }
+    if v < 12 {
+        // Renamed for a clearer, consistent name alongside media_relations/
+        // media_by_author — an install that already created staff_appearances
+        // (before this rename) gets its existing rows carried over; a fresh
+        // install never had the old name, so METADEA_SCHEMA's own
+        // `CREATE TABLE IF NOT EXISTS media_staff_relation` above already
+        // covers it and this is a silent no-op there.
+        let _ = conn.execute("ALTER TABLE staff_appearances RENAME TO media_staff_relation", []);
+        mark_migration(conn, 12)?;
+    }
 
     Ok(())
 }
@@ -327,7 +346,7 @@ CREATE TABLE IF NOT EXISTS media_staff (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS media_staff_external_idx ON media_staff(external_id);
 
-CREATE TABLE IF NOT EXISTS staff_appearances (
+CREATE TABLE IF NOT EXISTS media_staff_relation (
     staff_external_id TEXT NOT NULL,
     media_external_id TEXT NOT NULL,
     role               TEXT,

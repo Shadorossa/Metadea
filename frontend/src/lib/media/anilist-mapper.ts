@@ -124,11 +124,14 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const staffEdges = raw.staff?.edges || [];
   const mapStaffEdges = (edges: AniListStaffEdge[], role: string): MediaAuthor[] =>
     edges.filter(e => e.role === role).map(e => ({
-      external_id: `staff:${e.node.id}`,
+      // "person:a{id}" — shares the person: namespace with TMDB's own staff/
+      // authors (person:t{id}), the "a"/"t" prefix keeping the two providers'
+      // otherwise-independent numeric ids from colliding.
+      external_id: `person:a${e.node.id}`,
       name: e.node.name.full,
       image: e.node.image?.medium || undefined,
       role,
-      url: `/author?id=staff:${e.node.id}`,
+      url: `/author?id=person:a${e.node.id}`,
     }));
 
   const rolePriority: string[][] = resolvedType === 'anime'
@@ -159,7 +162,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       return true;
     })
     .map(e => ({
-      id: `staff:${e.node.id}`,
+      id: `person:a${e.node.id}`,
       name: e.node.name.full,
       image: e.node.image?.medium || undefined,
       role: e.role,

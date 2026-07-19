@@ -62,6 +62,34 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
+// Builds a self-contained GitHub proposal file for a saga member other than
+// the one actually open in the editor — same shape as the primary entry's
+// own bundle (see handleSubmit), just carrying only that member's own
+// relations instead of a snapshot of the whole saga. Named and pulled out of
+// the save handler since "given an already-updated catalog entry + its
+// relations, produce a proposal file" is a generalizable operation any
+// future "propagate an edit to N related entries" feature would also need,
+// not something specific to this one save flow.
+function buildRelatedProposalBundle(
+  externalId: string,
+  catalogEntry: MediaCatalogEntry,
+  relations: DbMediaRelation[],
+  sagaGroups: Record<string, string>,
+  sagaName: string,
+): { externalId: string; bundle: ProposalBundle } {
+  return {
+    externalId,
+    bundle: {
+      media_catalog: catalogEntry,
+      media_relations: relations.map(r => ({ ...r, media_external_id: externalId })),
+      characters: [],
+      media_authors: [],
+      saga_groups: sagaGroups,
+      saga_name: sagaName || undefined,
+    },
+  };
+}
+
 export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' }: Props) {
   const t = getT();
   const tm = t.media;
@@ -747,17 +775,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             const stampedOtherEntry = { ...otherEntry, manually_edited_at: new Date().toISOString() };
             await saveCatalogEntry(stampedOtherEntry).catch(() => {});
             if (mode !== 'local') {
-              otherProposalEntries.push({
-                externalId: otherId,
-                bundle: {
-                  media_catalog: stampedOtherEntry,
-                  media_relations: otherRelations.map(r => ({ ...r, media_external_id: otherId })),
-                  characters: [],
-                  media_authors: [],
-                  saga_groups: sagaGroups,
-                  saga_name: sagaName || undefined,
-                },
-              });
+              otherProposalEntries.push(
+                buildRelatedProposalBundle(otherId, stampedOtherEntry, otherRelations, sagaGroups, sagaName),
+              );
             }
           }
         } catch (err) {
