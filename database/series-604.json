@@ -1,0 +1,250 @@
+{
+  "media_catalog": {
+    "id": "d250825cef72708fd250825cef72708f",
+    "external_id": "series:604",
+    "parent_id": null,
+    "type": "series",
+    "format": null,
+    "source": "tmdb",
+    "title_main": "Teen Titans",
+    "title_romaji": null,
+    "title_native": null,
+    "synopsis": "La serie gira en torno a un grupo de superhéroes adolescentes llamado los Teen Titans formado por Robin, Cyborg, Raven, Starfire, Chico Bestia y Terra (se unió al equipo sólo por un breve tiempo). El equipo tiene sus cuarteles generales en la Torre de los Titanes (un edificio con forma de T) y protegen Jump City, una ciudad que tiene un vago parecido con San Francisco y que está en la costa oeste de Estados Unidos.",
+    "cover_url": "https://image.tmdb.org/t/p/w780/7DCq6XbJx5WGKPvSMBxYK9uJQWQ.jpg",
+    "banners_csv": "https://image.tmdb.org/t/p/w1280/ilKbbbCYjerHXQr6NRuKPu9DBsJ.jpg",
+    "release_year": 2003,
+    "release_month": 7,
+    "release_day": 19,
+    "time_length": 23,
+    "status": "FINISHED",
+    "score_global": 8.4,
+    "total_count": 65,
+    "total_count_2": 5,
+    "genres_csv": "Fantasy",
+    "genres_tag_csv": "Action & Adventure",
+    "platforms_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": "DC,Warner Bros. Animation",
+    "authors_csv": null,
+    "manually_edited_at": null,
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "series:127635",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Spidey y su Superequipo",
+      "cover": "https://image.tmdb.org/t/p/w300/p9tgZcQKpaAxs0auXWLNvN1m0o3.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:84200",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Liga de la Justicia Ilimitada",
+      "cover": "https://image.tmdb.org/t/p/w300/vRRvCUREeqqnp3hHdqep83eQjdP.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:4028",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La legión de superhéroes",
+      "cover": "https://image.tmdb.org/t/p/w300/bz92ox9DKUTJr1Or1CqJ8zWffi2.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:15804",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El intrépido Batman",
+      "cover": "https://image.tmdb.org/t/p/w300/tv2mOIRcPP4H0DhOH84xPgqui7d.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:33623",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los Vengadores: Los Super Héroes más poderosos de la Tierra",
+      "cover": "https://image.tmdb.org/t/p/w300/m4xJb9O6Hc3C1Kt0vE6hZRaE9BE.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:40044",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Hulk Y Los Agentes De S.M.A.S.H",
+      "cover": "https://image.tmdb.org/t/p/w300/sPe9KTADqXFoAfSruep8Dfg4uDS.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:59427",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los Vengadores unidos",
+      "cover": "https://image.tmdb.org/t/p/w300/r7C5c5Un1zsiAfixa8HEd5ebYmM.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:63181",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Guardianes de la Galaxia",
+      "cover": "https://image.tmdb.org/t/p/w300/aSr0IfRApuhRYzhLY7RWhUB6jCn.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:34391",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Ultimate Spider-Man",
+      "cover": "https://image.tmdb.org/t/p/w300/eXtlDP6kgUyYw0G2L9AxSWUp14Q.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:68837",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Justice League Action",
+      "cover": "https://image.tmdb.org/t/p/w300/AdTh5kAXYwo0dwHONqCFO7y8Jmf.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:3578",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los Herculoides",
+      "cover": "https://image.tmdb.org/t/p/w300/uoNk7Lkt44lIaosI2clzQZMAqgY.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:1487",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Descarga estática",
+      "cover": "https://image.tmdb.org/t/p/w300/c4bMyE2SZv9B6rS0Anvlwej14R1.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:138503",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Tu amigo y vecino Spider-Man",
+      "cover": "https://image.tmdb.org/t/p/w300/aSe4aB8tiPQMoQt9B4SKFgIymwL.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:3973",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Las Nuevas Aventuras del Hombre Araña",
+      "cover": "https://image.tmdb.org/t/p/w300/5xZac4wWUlXQmEBqIIKJ9rqXnUh.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:2309",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Danny Phantom",
+      "cover": "https://image.tmdb.org/t/p/w300/pBUOFBmZLaIxzjDjQP7d3QZrd4w.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:2901",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los 4 Fantásticos",
+      "cover": "https://image.tmdb.org/t/p/w300/8ZnnVgar6YTZyR8XAkJSvzTSj9.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:513",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman del futuro",
+      "cover": "https://image.tmdb.org/t/p/w300/qAcF9tpWip7BGNad0NtUdt2ZWAz.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:3097",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Iron Man, La serie animada",
+      "cover": "https://image.tmdb.org/t/p/w300/4SdlLIkUQYylkgivWRlSqIHhasy.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:81026",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El ascenso de las tortugas ninja",
+      "cover": "https://image.tmdb.org/t/p/w300/4LZxcn6nWG1yWBKG0RD98HY13b4.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "related_media_external_id": "series:254653",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los Thunderman: Infiltrados",
+      "cover": "https://image.tmdb.org/t/p/w300/lXl3c6CHZvbzuyLo38xScwtru0X.jpg",
+      "media_external_id": "series:604"
+    },
+    {
+      "media_external_id": "series:604",
+      "related_media_external_id": "comic:11258",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Teen Titans Go!",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/0/4/65859-11258-98856-1-teen-titans-go.jpg"
+    },
+    {
+      "media_external_id": "comic:11258",
+      "related_media_external_id": "series:604",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Teen Titans",
+      "cover": "https://image.tmdb.org/t/p/w780/7DCq6XbJx5WGKPvSMBxYK9uJQWQ.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "person:60227",
+      "name": "Greg Cipes",
+      "image_url": "https://image.tmdb.org/t/p/w185/x6kE9Ox4sR3HnrF6qtnjGNgujzV.jpg",
+      "relation_type": null,
+      "character_name": "Beast Boy (voice)"
+    },
+    {
+      "external_id": "person:113916",
+      "name": "Scott Menville",
+      "image_url": "https://image.tmdb.org/t/p/w185/iLoApH8LbyJSKFmdgWxNR314GGa.jpg",
+      "relation_type": null,
+      "character_name": "Robin (voice)"
+    },
+    {
+      "external_id": "person:65640",
+      "name": "Khary Payton",
+      "image_url": "https://image.tmdb.org/t/p/w185/4PgEGuAb2KkaRb7P9PdK40pPeVH.jpg",
+      "relation_type": null,
+      "character_name": "Cyborg (voice)"
+    },
+    {
+      "external_id": "person:15762",
+      "name": "Tara Strong",
+      "image_url": "https://image.tmdb.org/t/p/w185/y9S3QzI3L5aARP8GYYO86rREKxU.jpg",
+      "relation_type": null,
+      "character_name": "Raven (voice)"
+    },
+    {
+      "external_id": "person:113919",
+      "name": "Hynden Walch",
+      "image_url": "https://image.tmdb.org/t/p/w185/oFfZaFF1o724BuZ3cLK6tl9L03.jpg",
+      "relation_type": null,
+      "character_name": "Starfire (voice)"
+    }
+  ],
+  "media_authors": [],
+  "saga_groups": {}
+}
