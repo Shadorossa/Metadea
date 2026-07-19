@@ -4,7 +4,7 @@ import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuth
 import { unifyGenres } from './genre-unifier';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
-import { formatDateParts, lookupLabel } from './mapper-utils';
+import { formatDateParts, lookupLabel, countryName, pickPreferredCountry } from './mapper-utils';
 import { canonicalizeTmdbStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
@@ -68,10 +68,21 @@ export function mapTmdbToMedia(
       episodesStat.value2 = String(raw.number_of_seasons);
     }
     stats.push(episodesStat);
+    if (timeLength) stats.push({ label: tm.stat_duration, value: `${timeLength} min` });
   } else if (timeLength) {
     stats.push({ label: tm.stat_duration, value: `${timeLength} min` });
   }
   if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
+
+  // Prefer a US certification (most consistently populated across TMDB
+  // entries) and fall back to whichever country's rating is present first.
+  const ageRating = isTv
+    ? pickPreferredCountry(raw.content_ratings?.results)?.rating
+    : pickPreferredCountry(raw.release_dates?.results)?.release_dates.find(r => r.certification)?.certification;
+  if (ageRating) stats.push({ label: tm.stat_age_rating, value: ageRating });
+
+  const originCountry = raw.origin_country?.[0];
+  if (originCountry) stats.push({ label: tm.stat_country, value: countryName(originCountry) ?? originCountry });
 
   // The date already shows in the banner's own dateBadge overlay (top-right
   // square) — it must not also repeat here, under the studios/companies line.
@@ -84,6 +95,24 @@ export function mapTmdbToMedia(
       name: c.name,
       image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
       role: c.character || undefined,
+    }));
+
+  // Crew for the media page's own "Staff" tab — a person credited for more
+  // than one job (e.g. Director + Writer) only gets one card, with their
+  // first listed job.
+  const seenCrewIds = new Set<number>();
+  const staff: MediaPageData['staff'] = (raw.credits?.crew ?? [])
+    .filter(c => {
+      if (seenCrewIds.has(c.id)) return false;
+      seenCrewIds.add(c.id);
+      return true;
+    })
+    .slice(0, CAST_LIMIT)
+    .map(c => ({
+      id: `person:${c.id}`,
+      name: c.name,
+      image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
+      role: c.job || c.department || undefined,
     }));
 
   // "Similar/recommended" titles double as this media's Related section —
@@ -100,14 +129,40 @@ export function mapTmdbToMedia(
     }));
 
   // Series credit their showrunner(s) directly on the TV detail response
-  // (created_by); movies only surface it buried in the crew credits list.
-  const authors: MediaAuthor[] = isTv
-    ? (raw.created_by ?? []).map(c => ({
+  // (created_by); when that's empty, fall back to Executive Producer credits,
+  // then to whichever crew member worked the most episodes. Movies only
+  // surface authorship buried in the crew credits list (Director).
+  function tvAuthors(tv: TmdbTvDetail): MediaAuthor[] {
+    if (tv.created_by?.length) {
+      return tv.created_by.map(c => ({
         external_id: `person:${c.id}`,
         name: c.name,
         image: c.profile_path ? API_ENDPOINTS.TMDB_IMAGE(c.profile_path, 'w185') : undefined,
         role: 'Creator',
-      }))
+      }));
+    }
+    const crew = tv.credits?.crew ?? [];
+    const execProducers = crew.filter(m => m.job === 'Executive Producer');
+    if (execProducers.length) {
+      return execProducers.map(m => ({
+        external_id: `person:${m.id}`,
+        name: m.name,
+        image: m.profile_path ? API_ENDPOINTS.TMDB_IMAGE(m.profile_path, 'w185') : undefined,
+        role: 'Executive Producer',
+      }));
+    }
+    const topByEpisodes = crew.reduce<typeof crew[number] | undefined>((top, m) =>
+      (m.episode_count ?? 0) > (top?.episode_count ?? 0) ? m : top, undefined);
+    return topByEpisodes ? [{
+      external_id: `person:${topByEpisodes.id}`,
+      name: topByEpisodes.name,
+      image: topByEpisodes.profile_path ? API_ENDPOINTS.TMDB_IMAGE(topByEpisodes.profile_path, 'w185') : undefined,
+      role: topByEpisodes.job || topByEpisodes.department || 'Staff',
+    }] : [];
+  }
+
+  const authors: MediaAuthor[] = isTv
+    ? tvAuthors(raw)
     : (raw.credits?.crew ?? [])
         .filter(m => m.job === 'Director')
         .map(m => ({
@@ -134,6 +189,7 @@ export function mapTmdbToMedia(
     description: raw.overview || undefined,
     stats,
     characters,
+    staff,
     relations,
     authors,
     progressStatus: 'watching',

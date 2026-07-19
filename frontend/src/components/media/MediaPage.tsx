@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData } from '../../lib/media/mediaService';
+import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -18,6 +18,7 @@ import { MediaStoreLinks, openLink } from './MediaStoreLinks';
 import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
+import { saveStaffSkeleton } from '../../lib/tauri/staff';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
@@ -163,6 +164,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [relationPage,       setRelationPage]       = useState(1);
   const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
   const [characterPage,      setCharacterPage]      = useState(1);
+  const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
   const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
   const [retryingSync,       setRetryingSync]       = useState(false);
   const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
@@ -315,6 +317,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setRelationPage(1);
     setRelationsTab('related');
     setCharacterPage(1);
+    setCharTab('characters');
     setFriendsScores([]);
 
     let cancelled = false;
@@ -338,6 +341,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           const isCastRole = full.type === 'movie' || full.type === 'series';
           const skeletonChars = mediaCharactersToSkeleton(full.characters, isCastRole);
           saveCharactersSkeleton(currentId, skeletonChars).catch(console.error);
+        }
+        if (full.staff && full.staff.length > 0) {
+          saveStaffSkeleton(currentId, mediaStaffToSkeleton(full.staff)).catch(console.error);
         }
 
         // "Usuarios" section — followed AniList friends' own scores for this
@@ -611,6 +617,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     : relatedRelations;
   const pageSize = relationsTab === 'recommended' ? 8 : 12;
   const CHARACTER_PAGE_SIZE = 12;
+  const hasStaff = !!(data.staff && data.staff.length > 0);
+  const activeCharList = charTab === 'staff' ? (data.staff ?? []) : data.characters;
 
   return (
     <>
@@ -1051,11 +1059,38 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           {data.characters.length > 0 && (
             <div className={`media-chars-section${friendsScores.length === 0 ? ' media-chars-section--full' : ''}`}>
               <div className="media-section-header-row">
-                <p className="section-label">{tm.section_characters}</p>
-                <div className="media-section-header-line" />
+                {/* Staff (director, writer, composer, ...) rides the same
+                    grid as Personajes, switched via a tab — same pattern as
+                    Related/Editions/Recommended above. Only shown when the
+                    provider actually returned staff data (AniList/TMDB). */}
+                {hasStaff ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`section-label section-label--tab${charTab === 'characters' ? ' active' : ''}`}
+                      onClick={() => { setCharTab('characters'); setCharacterPage(1); }}
+                    >
+                      {tm.section_characters}
+                    </button>
+                    <div className="media-section-header-line media-section-header-line--short" />
+                    <button
+                      type="button"
+                      className={`section-label section-label--tab${charTab === 'staff' ? ' active' : ''}`}
+                      onClick={() => { setCharTab('staff'); setCharacterPage(1); }}
+                    >
+                      {tm.section_staff}
+                    </button>
+                    <div className="media-section-header-line" />
+                  </>
+                ) : (
+                  <>
+                    <p className="section-label">{tm.section_characters}</p>
+                    <div className="media-section-header-line" />
+                  </>
+                )}
               </div>
               <div className="media-chars-grid">
-                {data.characters
+                {activeCharList
                   .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
                   .map((c, i) => (
                   <div key={i} className="media-char-card">
@@ -1075,10 +1110,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   </div>
                 ))}
               </div>
-              {data.characters.length > CHARACTER_PAGE_SIZE && (
+              {activeCharList.length > CHARACTER_PAGE_SIZE && (
                 <Pagination
                   currentPage={characterPage}
-                  totalPages={Math.ceil(data.characters.length / CHARACTER_PAGE_SIZE)}
+                  totalPages={Math.ceil(activeCharList.length / CHARACTER_PAGE_SIZE)}
                   onChange={setCharacterPage}
                 />
               )}

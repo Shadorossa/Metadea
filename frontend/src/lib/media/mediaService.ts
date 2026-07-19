@@ -23,7 +23,7 @@ import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidat
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
-  mediaCharactersToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
+  mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 
@@ -35,7 +35,7 @@ import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 export {
   getCachedMediaData, patchCachedRelations, invalidateCachedMediaData,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
-  sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mergeAndPersistRelations,
+  sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
 };
 
 // ── Fetch interno ─────────────────────────────────────────────────────────

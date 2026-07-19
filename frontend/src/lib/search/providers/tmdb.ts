@@ -50,6 +50,10 @@ export interface TmdbCrewMember {
   job?: string;
   department?: string;
   profile_path: string | null;
+  /** TV crew only — how many episodes this person actually worked on, used
+   *  as a fallback "who's the real author" signal when neither created_by
+   *  nor an Executive Producer credit is present. */
+  episode_count?: number;
 }
 
 export interface TmdbCredits {
@@ -67,6 +71,20 @@ export interface TmdbRecommendations {
   results?: TmdbMovie[];
 }
 
+// TV's age rating (content_ratings) is per-country, no single global value —
+// same shape idea as movies' release_dates below, just without the nested
+// per-release array.
+export interface TmdbContentRatings {
+  results?: { iso_3166_1: string; rating: string }[];
+}
+
+// Movies' age rating (release_dates) nests certification one level deeper
+// than TV's content_ratings, since a country can have multiple releases
+// (theatrical/digital/etc.) each with their own certification.
+export interface TmdbReleaseDates {
+  results?: { iso_3166_1: string; release_dates: { certification: string }[] }[];
+}
+
 // Shared fields between /movie/{id} and /tv/{id} detail responses.
 interface TmdbDetailBase {
   id: number;
@@ -77,7 +95,9 @@ interface TmdbDetailBase {
   status?: string;
   genres?: TmdbGenre[];
   production_companies?: TmdbCompany[];
-  // Populated via append_to_response=credits,recommendations on the detail fetch.
+  origin_country?: string[];
+  original_language?: string;
+  // Populated via append_to_response=credits,recommendations,... on the detail fetch.
   credits?: TmdbCredits;
   recommendations?: TmdbRecommendations;
 }
@@ -87,6 +107,7 @@ export interface TmdbMovieDetail extends TmdbDetailBase {
   original_title?: string;
   release_date?: string;
   runtime?: number | null;
+  release_dates?: TmdbReleaseDates;
 }
 
 export interface TmdbTvDetail extends TmdbDetailBase {
@@ -98,6 +119,7 @@ export interface TmdbTvDetail extends TmdbDetailBase {
   number_of_seasons?: number;
   episode_run_time?: number[];
   created_by?: TmdbCreator[];
+  content_ratings?: TmdbContentRatings;
 }
 
 export function buildPosterUrl(posterPath: string | null): string | null {
@@ -205,9 +227,12 @@ export async function fetchTmdbDetail(
   if (!auth) return null;
 
   const path = mediaType === 'movie' ? 'movie' : 'tv';
-  // append_to_response rides cast/crew (credits) and similar titles
-  // (recommendations) along on the same request instead of two more round-trips.
-  let url = `${API_ENDPOINTS.TMDB}/${path}/${id}?language=${tmdbLocale()}&append_to_response=credits,recommendations`;
+  // append_to_response rides cast/crew (credits), similar titles
+  // (recommendations), and the age rating (content_ratings for TV,
+  // release_dates for movies — different endpoint names for the same idea)
+  // along on the same request instead of extra round-trips.
+  const ratingsField = mediaType === 'movie' ? 'release_dates' : 'content_ratings';
+  let url = `${API_ENDPOINTS.TMDB}/${path}/${id}?language=${tmdbLocale()}&append_to_response=credits,recommendations,${ratingsField}`;
   const headers: Record<string, string> = {};
 
   if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;

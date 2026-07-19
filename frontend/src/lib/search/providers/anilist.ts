@@ -55,6 +55,7 @@ export interface AniListMediaDetail {
   chapters: number | null;
   volumes: number | null;
   duration: number | null;
+  countryOfOrigin: string | null;
   // Only present while status is RELEASING — AniList doesn't know the final
   // episode count yet, but this tells us how many have aired so far
   // (nextAiringEpisode.episode - 1), which is what a RELEASING anime's own
@@ -84,7 +85,7 @@ const DETAIL_QUERY = `
       bannerImage
       coverImage { extraLarge large color }
       description(asHtml: true)
-      format status episodes chapters volumes duration
+      format status episodes chapters volumes duration countryOfOrigin
       nextAiringEpisode { episode }
       averageScore popularity favourites genres
       season seasonYear

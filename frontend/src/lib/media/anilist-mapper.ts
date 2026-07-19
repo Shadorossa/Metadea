@@ -2,7 +2,7 @@ import type { AniListMediaDetail, AniListStaffEdge } from '../search/providers/a
 import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation, MediaAuthor } from './types';
 import { unifyGenres } from './genre-unifier';
-import { formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
+import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
@@ -149,12 +149,37 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     }
   }
 
+  // Full staff list for the media page's own "Staff" tab (next to
+  // Personajes) — every credited role, not just whichever tier won the
+  // "Author" pick above. A person credited for more than one role (e.g.
+  // Director + Series Composition) only gets one card, with their first
+  // listed role.
+  const seenStaffIds = new Set<number>();
+  const staff: MediaPageData['staff'] = staffEdges
+    .filter(e => {
+      if (seenStaffIds.has(e.node.id)) return false;
+      seenStaffIds.add(e.node.id);
+      return true;
+    })
+    .map(e => ({
+      id: `staff:${e.node.id}`,
+      name: e.node.name.full,
+      image: e.node.image?.medium || undefined,
+      role: e.role,
+    }));
+
   const stats: MediaPageData['stats'] = [];
   if (authors.length > 0) {
     stats.push({
       label: authors[0].role || 'Author',
       value: authors.map(a => a.name).join(', '),
     });
+  }
+  if (resolvedType === 'anime' && raw.duration) {
+    stats.push({ label: tm.stat_duration, value: `${raw.duration} min` });
+  }
+  if (raw.countryOfOrigin) {
+    stats.push({ label: tm.stat_country, value: countryName(raw.countryOfOrigin) ?? raw.countryOfOrigin });
   }
 
   // SagaViewer only makes sense when there's at least one direct prequel/sequel
@@ -185,6 +210,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     description:  formatDescription(raw.description),
     stats,
     characters,
+    staff,
     relations,
     progressStatus,
     progressLabel,

@@ -303,6 +303,28 @@ CREATE TABLE IF NOT EXISTS character_appearances (
     PRIMARY KEY (character_external_id, media_external_id)
 );
 
+-- Staff (director, writer, composer, ...) — deliberately its own table
+-- rather than reusing `characters`, since it's a different kind of person
+-- (a real-world credit, not an in-universe character) even though both are
+-- rendered with the same card layout on the media page.
+CREATE TABLE IF NOT EXISTS media_staff (
+    id           TEXT PRIMARY KEY,
+    external_id  TEXT UNIQUE NOT NULL,
+    name         TEXT NOT NULL DEFAULT '',
+    image_url    TEXT,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS media_staff_external_idx ON media_staff(external_id);
+
+CREATE TABLE IF NOT EXISTS staff_appearances (
+    staff_external_id TEXT NOT NULL,
+    media_external_id TEXT NOT NULL,
+    role               TEXT,
+    added_at           TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (staff_external_id, media_external_id)
+);
+
 CREATE TABLE IF NOT EXISTS local_folders (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     label      TEXT NOT NULL DEFAULT '',

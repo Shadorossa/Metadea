@@ -1,5 +1,6 @@
 mod auth;
 mod characters;
+mod staff;
 mod comicvine;
 mod db;
 mod episode_history;
@@ -147,6 +148,8 @@ pub fn run() {
             characters::get_character_appearances,
             characters::save_characters_skeleton,
             characters::get_media_characters,
+            staff::save_staff_skeleton,
+            staff::get_media_staff,
             favorite_images::save_favorite_custom_image,
             favorite_images::get_all_favorite_custom_images,
             favorite_images::delete_favorite_custom_image,

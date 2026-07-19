@@ -1,9 +1,10 @@
 // Relation sorting, legacy-label normalization, and DB↔UI shape conversion
 // for media relations/authors/characters — extracted from mediaService.ts
 // (still re-exported from there).
-import type { MediaPageData, MediaAuthor, MediaCharacter, MediaRelation } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, getCatalogEntry, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
+import type { SkeletonStaffMember } from '../tauri/staff';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';
@@ -191,6 +192,24 @@ export function mediaCharactersToSkeleton(characters: MediaCharacter[], isCastRo
     .filter(char => {
       if (seen.has(char.external_id)) return false;
       seen.add(char.external_id);
+      return true;
+    });
+}
+
+// Same shape/dedup logic as mediaCharactersToSkeleton, for the separate
+// staff list (media_staff/staff_appearances tables, not characters).
+export function mediaStaffToSkeleton(staff: MediaStaffMember[]): SkeletonStaffMember[] {
+  const seen = new Set<string>();
+  return staff
+    .map(member => ({
+      external_id: member.id || `staff:${member.name}`,
+      name: member.name,
+      image_url: member.image || null,
+      role: member.role || null,
+    }))
+    .filter(member => {
+      if (seen.has(member.external_id)) return false;
+      seen.add(member.external_id);
       return true;
     });
 }

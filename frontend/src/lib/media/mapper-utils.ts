@@ -39,6 +39,29 @@ export function lookupLabel(dict: Record<string, string>, key: string | null | u
   return (key ? dict[key] : undefined) ?? fallback;
 }
 
+/** Turn an ISO 3166-1 country code (e.g. "JP") into its localized display
+ *  name via the platform's own Intl data, instead of maintaining our own
+ *  code→name map. Falls back to the raw code if Intl can't resolve it. */
+export function countryName(code: string | null | undefined): string | undefined {
+  if (!code) return undefined;
+  try {
+    return new Intl.DisplayNames([getLangCode()], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/** Pick the entry matching a preferred country code (default "US"), or the
+ *  first entry if no match — used for TMDB's per-country age ratings, which
+ *  have no single global value. */
+export function pickPreferredCountry<T extends { iso_3166_1: string }>(
+  entries: T[] | undefined,
+  preferred = 'US',
+): T | undefined {
+  if (!entries?.length) return undefined;
+  return entries.find(e => e.iso_3166_1 === preferred) ?? entries[0];
+}
+
 /** Collapses same-family platform entries that only differ by a trailing
  *  generation number — ["PlayStation 4", "PlayStation 5"] becomes
  *  "PlayStation 4/5", ["PlayStation 2", "PlayStation 4", "PlayStation 5"]

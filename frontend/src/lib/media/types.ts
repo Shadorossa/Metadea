@@ -23,6 +23,11 @@ export interface MediaCharacter {
   role?: string;
 }
 
+/** Real-world crew (director, writer, composer, ...) — same card shape as
+ *  MediaCharacter but a semantically distinct list, persisted to its own
+ *  `media_staff`/`staff_appearances` tables rather than `characters`. */
+export type MediaStaffMember = MediaCharacter;
+
 export interface MediaRelation {
   typeLabel: string;
   /** Machine-readable relation kind (SEQUEL, PREQUEL, ADAPTATION, RECOMMENDATION, Remaster, ...) —
@@ -68,6 +73,7 @@ export interface MediaPageData {
   description?: string;
   stats: MediaStat[];
   characters: MediaCharacter[];
+  staff?: MediaStaffMember[];
   relations: MediaRelation[];
   parentGame?: { title: string; externalId: string; cover?: string }; // base game this edition/expansion belongs to
   progressStatus: typeof IN_PROGRESS_STATUSES[number];

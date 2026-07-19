@@ -185,6 +185,7 @@ export const es = {
     section_related: 'Relacionados',
     section_data: 'Datos',
     section_characters: 'Personajes',
+    section_staff: 'Staff',
     section_users: 'Usuarios',
     stat_platforms: 'Plataformas',
     stat_episodes: 'Episodios',
@@ -202,6 +203,8 @@ export const es = {
     stat_status: 'Estado',
     stat_start_date: 'Fecha de inicio',
     stat_end_date: 'Fecha de finalización',
+    stat_age_rating: 'Clasificación',
+    stat_country: 'País de origen',
     formats: {
       TV: 'TV', TV_SHORT: 'TV Corto', MOVIE: 'Película', OVA: 'OVA',
       ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música',
