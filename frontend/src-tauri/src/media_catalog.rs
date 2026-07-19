@@ -1118,30 +1118,40 @@ pub async fn sync_community_catalog(
             // catalog the same way any other collaborative-catalog field
             // does. Guarded by attached_db_has_column in case this
             // community.db predates the column.
-            let has_blocked_col = attached_db_has_column(&conn, "community", "media_catalog", "blocked_at");
+            let possible_cols = [
+                "id", "external_id", "authors_csv", "banners_csv", "cover_url",
+                "developer_badge", "favorites_count", "format", "genres_csv", "genres_tag_csv",
+                "last_sync_error", "last_synced_at", "parent_id", "platforms_csv", "publishers_csv",
+                "ratings_count", "release_day", "release_month", "release_year", "score_global",
+                "shop_links_csv", "source", "source_url", "status", "sync_failed_count", "synopsis",
+                "time_length", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
+                "type"
+            ];
 
-            let mut extra_cols = String::new();
-            if has_blocked_col { extra_cols.push_str(", blocked_at"); }
+            let mut select_cols = Vec::new();
+            for col in possible_cols {
+                if attached_db_has_column(&conn, "community", "media_catalog", col) {
+                    select_cols.push(col);
+                }
+            }
+
+            let has_blocked_col = attached_db_has_column(&conn, "community", "media_catalog", "blocked_at");
+            
+            let mut insert_cols_str = select_cols.join(", ");
+            let mut select_cols_str = select_cols.join(", ");
+
+            if has_blocked_col {
+                insert_cols_str.push_str(", blocked_at");
+                select_cols_str.push_str(", blocked_at");
+            }
+
+            insert_cols_str.push_str(", created_at, updated_at");
+            select_cols_str.push_str(", created_at, updated_at");
 
             changes += conn.execute(
                 &format!(
-                    "INSERT OR IGNORE INTO media_catalog (
-                        id, external_id, authors_csv, banners_csv, cover_url,
-                        developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
-                        last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
-                        ratings_count, release_day, release_month, release_year, score_global,
-                        shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-                        time_length, title_main, title_native, title_romaji, total_count, total_count_2,
-                        type{extra_cols}, created_at, updated_at
-                     )
-                     SELECT
-                        id, external_id, authors_csv, banners_csv, cover_url,
-                        developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
-                        last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
-                        ratings_count, release_day, release_month, release_year, score_global,
-                        shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-                        time_length, title_main, title_native, title_romaji, total_count, total_count_2,
-                        type{extra_cols}, created_at, updated_at
+                    "INSERT OR IGNORE INTO media_catalog ({insert_cols_str})
+                     SELECT {select_cols_str}
                      FROM community.media_catalog"
                 ),
                 [],
@@ -1180,16 +1190,18 @@ pub async fn sync_community_catalog(
             // built as one parameterized statement instead of five
             // hand-copied UPDATEs that used to drift if only one got edited.
             for col in ["banners_csv", "genres_csv", "genres_tag_csv", "publishers_csv", "authors_csv"] {
-                changes += conn.execute(
-                    &format!(
-                        "UPDATE media_catalog
-                         SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
-                         WHERE ({col} IS NULL OR {col} = '')
-                           AND blocked_at IS NULL
-                           AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.{col} IS NOT NULL AND c.{col} != '')"
-                    ),
-                    [],
-                ).str_err()? as i64;
+                if attached_db_has_column(&conn, "community", "media_catalog", col) {
+                    changes += conn.execute(
+                        &format!(
+                            "UPDATE media_catalog
+                             SET {col} = (SELECT c.{col} FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id)
+                             WHERE ({col} IS NULL OR {col} = '')
+                               AND blocked_at IS NULL
+                               AND EXISTS (SELECT 1 FROM community.media_catalog c WHERE c.external_id = media_catalog.external_id AND c.{col} IS NOT NULL AND c.{col} != '')"
+                        ),
+                        [],
+                    ).str_err()? as i64;
+                }
             }
 
             // Characters a PR carried over from the entry's already-cached
