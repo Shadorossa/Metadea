@@ -250,9 +250,9 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
     // so hasNewData below can diff against `existing` without needing the
     // full entry object to exist first.
     const contentFields: Pick<MediaCatalogEntry, typeof NEW_DATA_COMPARE_FIELDS[number]> = {
-      title_main: data.titleMain,
-      title_native: data.titleNative || null,
-      title_romaji: data.titleRomaji || null,
+      title_main: data.titleMain || existing?.title_main || '',
+      title_native: data.titleNative || existing?.title_native || null,
+      title_romaji: data.titleRomaji || existing?.title_romaji || null,
       synopsis: data.description || null,
       cover_url: data.cover || null,
       status: data.status || null,

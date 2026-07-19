@@ -82,8 +82,17 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
     const quickBits: string[] = [];
-    if (c.format) quickBits.push(c.format);
-    if (c.total_count) quickBits.push(`${c.total_count} ${c.type === 'anime' ? 'ep' : 'cap'}`);
+    const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
+    if (formatLabel) quickBits.push(formatLabel);
+    if (c.type === 'anime') {
+      if (c.total_count) quickBits.push(`${c.total_count} ep`);
+    } else {
+      if (c.total_count_2) {
+        quickBits.push(`${c.total_count_2} vol`);
+      } else if (c.total_count) {
+        quickBits.push(`${c.total_count} cap`);
+      }
+    }
     if (quickBits.length > 0) metaLines.push(quickBits.join(' · '));
   }
 
