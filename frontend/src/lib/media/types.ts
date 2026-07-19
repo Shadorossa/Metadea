@@ -99,6 +99,7 @@ export interface MediaPageData {
   totalCount?: number;
   totalCount_2?: number;
   companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
+  publishers?: string[];       // games only (IGDB) — publisher subset of `companies`, persisted separately to media_catalog.publishers_csv so the catalog-only fast path can show a publisher-only line without guessing which of `companies` that is
   authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table
   hasSaga?: boolean;           // AniList entry has a direct PREQUEL/SEQUEL relation — shows the SagaViewer button
 }

@@ -241,6 +241,38 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN developer_badge TEXT", []);
         mark_migration(conn, 13)?;
     }
+    if v < 14 {
+        // Replaced by deleted_relations: manually_edited_at was an all-or-
+        // nothing per-row gate — once a live resync's relation merge saw it
+        // set, it stopped adding *any* new relation to that entry (even a
+        // genuinely new sequel released afterward), not just the specific
+        // one the user had deleted. deleted_relations is a per-pair
+        // tombstone instead — a resync/community merge skips re-adding
+        // exactly the (media, related) pair recorded here, and nothing else
+        // is blocked. See save_media_relations / mergeAndPersistRelations.
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN manually_edited_at", []);
+        let _ = conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS deleted_relations (
+                media_external_id         TEXT NOT NULL,
+                related_media_external_id TEXT NOT NULL,
+                deleted_at                TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (media_external_id, related_media_external_id)
+             );"
+        );
+        mark_migration(conn, 14)?;
+    }
+    if v < 15 {
+        // companies_cache_csv merges developers+publishers into one flat
+        // list (also directly editable via PrEditorModal) — a game where
+        // the same company is both (e.g. self-published) can't be told
+        // apart once flattened, so the catalog-only fast path had no way to
+        // reproduce the live fetch's publisher-only meta line without
+        // wrongly subtracting a company that legitimately belongs in both.
+        // publishers_csv is persisted separately, verbatim, purely for that
+        // display line — see igdb-mapper.ts / catalog-mapper.ts.
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN publishers_csv TEXT", []);
+        mark_migration(conn, 15)?;
+    }
 
     Ok(())
 }
@@ -396,22 +428,21 @@ CREATE TABLE IF NOT EXISTS local_anime_folders (
 
 CREATE TABLE IF NOT EXISTS media_catalog (
     id                   TEXT PRIMARY KEY,
+    external_id          TEXT UNIQUE NOT NULL,
     authors_csv          TEXT DEFAULT '',
     banners_csv          TEXT DEFAULT '',
     blocked_at           TEXT,
-    companies_cache_csv  TEXT DEFAULT '',
     cover_url            TEXT,
     developer_badge      TEXT,
-    external_id          TEXT UNIQUE NOT NULL,
     favorites_count      INTEGER DEFAULT 0,
     format               TEXT DEFAULT '',
     genres_csv           TEXT DEFAULT '',
     genres_tag_csv       TEXT DEFAULT '',
     last_sync_error      TEXT,
     last_synced_at       TEXT,
-    manually_edited_at   TEXT,
     parent_id            TEXT,
     platforms_csv        TEXT DEFAULT '',
+    publishers_csv       TEXT DEFAULT '',
     ratings_count        INTEGER DEFAULT 0,
     release_day          INTEGER,
     release_month        INTEGER,
@@ -421,8 +452,8 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     source               TEXT DEFAULT '',
     source_url           TEXT,
     status               TEXT,
-    synopsis             TEXT,
     sync_failed_count    INTEGER DEFAULT 0,
+    synopsis             TEXT,
     time_length          INTEGER,
     title_main           TEXT DEFAULT '',
     title_native         TEXT DEFAULT '',
@@ -484,6 +515,20 @@ CREATE TABLE IF NOT EXISTS media_relations (
 -- the PK's leading column (media_external_id) doesn't cover that side of
 -- the join, so it fell back to a full scan without this.
 CREATE INDEX IF NOT EXISTS idx_media_relations_related ON media_relations(related_media_external_id);
+
+-- Per-pair tombstone: a live API resync or community-catalog merge must
+-- never silently re-add a relation the user deliberately deleted here — but
+-- unlike a per-row 'manually edited' flag, this only ever blocks the exact
+-- (media, related) pair recorded, so a genuinely new relation (a sequel
+-- released afterward, say) still comes through normally. See
+-- save_media_relations (writes tombstones for anything dropped from the
+-- full list it's given) and mergeAndPersistRelations (reads them back).
+CREATE TABLE IF NOT EXISTS deleted_relations (
+    media_external_id         TEXT NOT NULL,
+    related_media_external_id TEXT NOT NULL,
+    deleted_at                TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (media_external_id, related_media_external_id)
+);
 
 CREATE TABLE IF NOT EXISTS media_saga_groups (
     group_name        TEXT NOT NULL,

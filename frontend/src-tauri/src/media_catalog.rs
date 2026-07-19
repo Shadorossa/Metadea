@@ -140,70 +140,50 @@ fn upsert_saga_groups(
 pub struct MediaCatalogEntry {
     pub id: String,
     pub external_id: String,
-    pub parent_id: Option<String>,
-    pub r#type: String,
-    pub format: Option<String>,
-    pub source: Option<String>,
-    pub title_main: Option<String>,
-    /// Romanized title, when the source provider actually has one (AniList,
-    /// IGDB's alternative_names) — never an "English title" of convenience.
-    pub title_romaji: Option<String>,
-    /// Title in its original-language script (e.g. Japanese kanji/kana).
-    pub title_native: Option<String>,
-    pub synopsis: Option<String>,
-    pub cover_url: Option<String>,
+    pub authors_csv: Option<String>,
     pub banners_csv: Option<String>,
-    pub release_year: Option<i32>,
-    pub release_month: Option<i32>,
-    pub release_day: Option<i32>,
-    pub time_length: Option<i32>,
-    pub status: Option<String>,
-    pub score_global: Option<f64>,
+    pub blocked_at: Option<String>,
+    pub cover_url: Option<String>,
+    pub developer_badge: Option<String>,
     pub favorites_count: Option<i32>,
-    pub ratings_count: Option<i32>,
-    pub total_count: Option<i32>,
-    pub total_count_2: Option<i32>,
+    pub format: Option<String>,
     pub genres_csv: Option<String>,
     pub genres_tag_csv: Option<String>,
-    pub platforms_csv: Option<String>,
-    /// CSV of "platform|url" pairs — IGDB's store links (Steam, GOG, ...) for this game.
-    pub shop_links_csv: Option<String>,
-    pub companies_cache_csv: Option<String>,
-    pub authors_csv: Option<String>,
-    pub last_synced_at: Option<String>,
-    pub sync_failed_count: Option<i32>,
     pub last_sync_error: Option<String>,
-    /// Set once by PrEditorModal on save — a live resync checks this and,
-    /// if present, leaves this entry's relations untouched instead of
-    /// re-merging in whatever the live provider still reports (see
-    /// mediaService.ts's fetchMediaData).
-    pub manually_edited_at: Option<String>,
-    /// Set via PrEditorModal to reserve this external_id (so it can never be
-    /// re-added as "new" from a live search result) while hiding the row
-    /// everywhere else — search, relations, saga chains, browse lists. Used
-    /// for remasters/editions the user considers unwanted noise, without
-    /// losing the ability to unblock later. See SELECT_VISIBLE below.
-    pub blocked_at: Option<String>,
-    /// This work's own page on its source provider's website — recomputed on
-    /// every live fetch, but persisted too so the catalog-only fast path
-    /// (most visits) can still show the source logo/link without one.
+    pub last_synced_at: Option<String>,
+    pub parent_id: Option<String>,
+    pub platforms_csv: Option<String>,
+    pub publishers_csv: Option<String>,
+    pub ratings_count: Option<i32>,
+    pub release_day: Option<i32>,
+    pub release_month: Option<i32>,
+    pub release_year: Option<i32>,
+    pub score_global: Option<f64>,
+    pub shop_links_csv: Option<String>,
+    pub source: Option<String>,
     pub source_url: Option<String>,
-    /// Lead developer name, overlaid on a game's banner (IGDB only) — same
-    /// "persist so the fast path has it too" reasoning as source_url.
-    pub developer_badge: Option<String>,
+    pub status: Option<String>,
+    pub sync_failed_count: Option<i32>,
+    pub synopsis: Option<String>,
+    pub time_length: Option<i32>,
+    pub title_main: Option<String>,
+    pub title_native: Option<String>,
+    pub title_romaji: Option<String>,
+    pub total_count: Option<i32>,
+    pub total_count_2: Option<i32>,
+    pub r#type: String,
     pub created_at: String,
     pub updated_at: String,
 }
 
 const SELECT_ALL: &str = "
-    SELECT external_id, id, parent_id, type, format, source,
-           title_main, title_romaji, title_native, synopsis, cover_url,
-           banners_csv, release_year, release_month, release_day,
-           time_length, status, score_global, favorites_count,
-           ratings_count, total_count, total_count_2, genres_csv,
-           genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
-           authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
+    SELECT id, external_id, authors_csv, banners_csv, blocked_at, cover_url,
+           developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+           last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+           ratings_count, release_day, release_month, release_year, score_global,
+           shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+           time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+           type, created_at, updated_at
     FROM media_catalog";
 
 // Same as SELECT_ALL but excluding blocked rows — used by every read path
@@ -214,55 +194,53 @@ const SELECT_ALL: &str = "
 // NULL" here and in every query that joins against media_catalog elsewhere
 // in this file.
 const SELECT_VISIBLE: &str = "
-    SELECT external_id, id, parent_id, type, format, source,
-           title_main, title_romaji, title_native, synopsis, cover_url,
-           banners_csv, release_year, release_month, release_day,
-           time_length, status, score_global, favorites_count,
-           ratings_count, total_count, total_count_2, genres_csv,
-           genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
-           authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
+    SELECT id, external_id, authors_csv, banners_csv, blocked_at, cover_url,
+           developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+           last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+           ratings_count, release_day, release_month, release_year, score_global,
+           shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+           time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+           type, created_at, updated_at
     FROM visible_media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
     Ok(MediaCatalogEntry {
-        external_id:         row.get::<_, Option<String>>(0)?.unwrap_or_default(),
-        id:                  row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-        parent_id:           row.get(2)?,
-        r#type:              row.get::<_, Option<String>>(3)?.unwrap_or_default(),
-        format:              row.get(4)?,
-        source:              row.get(5)?,
-        title_main:          row.get(6)?,
-        title_romaji:        row.get(7)?,
-        title_native:        row.get(8)?,
-        synopsis:            row.get(9)?,
-        cover_url:           row.get(10)?,
-        banners_csv:         row.get(11)?,
-        release_year:        row.get(12)?,
-        release_month:       row.get(13)?,
-        release_day:         row.get(14)?,
-        time_length:         row.get(15)?,
-        status:              row.get(16)?,
-        score_global:        row.get(17)?,
-        favorites_count:     row.get(18)?,
-        ratings_count:       row.get(19)?,
-        total_count:         row.get(20)?,
-        total_count_2:       row.get(21)?,
-        genres_csv:          row.get(22)?,
-        genres_tag_csv:      row.get(23)?,
-        platforms_csv:       row.get(24)?,
-        shop_links_csv:      row.get(25)?,
-        companies_cache_csv: row.get(26)?,
-        authors_csv:         row.get(27)?,
-        last_synced_at:      row.get(28)?,
-        sync_failed_count:   row.get(29)?,
-        last_sync_error:     row.get(30)?,
-        manually_edited_at:  row.get(31)?,
-        blocked_at:          row.get(32)?,
-        source_url:          row.get(33)?,
-        developer_badge:     row.get(34)?,
-        created_at:          row.get::<_, Option<String>>(35)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(36)?.unwrap_or_default(),
+        id:                  row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+        external_id:         row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+        authors_csv:         row.get(2)?,
+        banners_csv:         row.get(3)?,
+        blocked_at:          row.get(4)?,
+        cover_url:           row.get(5)?,
+        developer_badge:     row.get(6)?,
+        favorites_count:     row.get(7)?,
+        format:              row.get(8)?,
+        genres_csv:          row.get(9)?,
+        genres_tag_csv:      row.get(10)?,
+        last_sync_error:     row.get(11)?,
+        last_synced_at:      row.get(12)?,
+        parent_id:           row.get(13)?,
+        platforms_csv:       row.get(14)?,
+        publishers_csv:      row.get(15)?,
+        ratings_count:       row.get(16)?,
+        release_day:         row.get(17)?,
+        release_month:       row.get(18)?,
+        release_year:        row.get(19)?,
+        score_global:        row.get(20)?,
+        shop_links_csv:      row.get(21)?,
+        source:              row.get(22)?,
+        source_url:          row.get(23)?,
+        status:              row.get(24)?,
+        sync_failed_count:   row.get(25)?,
+        synopsis:            row.get(26)?,
+        time_length:         row.get(27)?,
+        title_main:          row.get(28)?,
+        title_native:        row.get(29)?,
+        title_romaji:        row.get(30)?,
+        total_count:         row.get(31)?,
+        total_count_2:       row.get(32)?,
+        r#type:              row.get::<_, Option<String>>(33)?.unwrap_or_default(),
+        created_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(35)?.unwrap_or_default(),
     })
 }
 
@@ -293,31 +271,51 @@ pub async fn save_catalog_entry(
 
     conn.execute(
         "INSERT OR REPLACE INTO media_catalog (
-            external_id, id, parent_id, type, format, source,
-            title_main, title_romaji, title_native, synopsis, cover_url,
-            banners_csv, release_year, release_month, release_day,
-            time_length, status, score_global, favorites_count,
-            ratings_count, total_count, total_count_2, genres_csv,
-            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
-            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-            manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37)",
+            id, external_id, authors_csv, banners_csv, blocked_at, cover_url,
+            developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+            last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+            ratings_count, release_day, release_month, release_year, score_global,
+            shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+            time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+            type, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36)",
         rusqlite::params![
-            &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
-            &entry.format, &entry.source,
-            &entry.title_main, &entry.title_romaji, &entry.title_native,
-            &entry.synopsis, &entry.cover_url, &entry.banners_csv,
-            &entry.release_year, &entry.release_month, &entry.release_day,
-            &entry.time_length, &entry.status, &entry.score_global,
-            &entry.favorites_count, &entry.ratings_count,
-            &entry.total_count, &entry.total_count_2,
-            &entry.genres_csv, &entry.genres_tag_csv,
-            &entry.platforms_csv, &entry.shop_links_csv, &entry.companies_cache_csv,
+            &entry.id,
+            &entry.external_id,
             &entry.authors_csv,
-            &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
-            &entry.manually_edited_at, &entry.blocked_at,
-            &entry.source_url, &entry.developer_badge,
-            &entry.created_at, &entry.updated_at,
+            &entry.banners_csv,
+            &entry.blocked_at,
+            &entry.cover_url,
+            &entry.developer_badge,
+            &entry.favorites_count,
+            &entry.format,
+            &entry.genres_csv,
+            &entry.genres_tag_csv,
+            &entry.last_sync_error,
+            &entry.last_synced_at,
+            &entry.parent_id,
+            &entry.platforms_csv,
+            &entry.publishers_csv,
+            &entry.ratings_count,
+            &entry.release_day,
+            &entry.release_month,
+            &entry.release_year,
+            &entry.score_global,
+            &entry.shop_links_csv,
+            &entry.source,
+            &entry.source_url,
+            &entry.status,
+            &entry.sync_failed_count,
+            &entry.synopsis,
+            &entry.time_length,
+            &entry.title_main,
+            &entry.title_native,
+            &entry.title_romaji,
+            &entry.total_count,
+            &entry.total_count_2,
+            &entry.r#type,
+            &entry.created_at,
+            &entry.updated_at,
         ],
     ).str_err()?;
 
@@ -720,6 +718,17 @@ pub async fn save_media_relations(
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
 
+    // Snapshot of related ids before the replace below, to diff against the
+    // incoming list and keep deleted_relations in sync with what the caller
+    // actually removed vs. kept/re-added.
+    let previous_related_ids: HashSet<String> = {
+        let mut stmt = tx.prepare(
+            "SELECT related_media_external_id FROM media_relations WHERE media_external_id = ?1"
+        ).str_err()?;
+        let rows = stmt.query_map([&media_external_id], |r| r.get::<_, String>(0)).str_err()?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+
     tx.execute(
         "DELETE FROM media_relations WHERE media_external_id = ?1",
         [&media_external_id],
@@ -730,6 +739,29 @@ pub async fn save_media_relations(
 
     let all_ids: Vec<String> = relations.iter().map(|r| r.related_media_external_id.clone()).collect();
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
+
+    let new_related_ids: HashSet<String> = relations.iter()
+        .filter(|r| r.related_media_external_id != media_external_id)
+        .map(|r| r.related_media_external_id.clone())
+        .collect();
+
+    // A pair that existed before this save but is absent from the new list
+    // was deliberately removed by whoever called this — tombstone it so a
+    // future live/community relation merge doesn't silently bring it back.
+    // Anything now present (kept or deliberately re-added) must not stay
+    // tombstoned from an earlier deletion.
+    for removed_id in previous_related_ids.difference(&new_related_ids) {
+        tx.execute(
+            "INSERT OR REPLACE INTO deleted_relations (media_external_id, related_media_external_id, deleted_at) VALUES (?1, ?2, ?3)",
+            rusqlite::params![&media_external_id, removed_id, &now],
+        ).str_err()?;
+    }
+    for kept_id in &new_related_ids {
+        tx.execute(
+            "DELETE FROM deleted_relations WHERE media_external_id = ?1 AND related_media_external_id = ?2",
+            rusqlite::params![&media_external_id, kept_id],
+        ).str_err()?;
+    }
 
     for rel in relations {
         // A media can't be related to itself — silently drop rather than
@@ -783,6 +815,22 @@ pub async fn save_media_relations(
 
     tx.commit().str_err()?;
     Ok(())
+}
+
+// Read side of the deleted_relations tombstone table — mergeAndPersistRelations
+// (TS) calls this before merging a live/community relation list back in, so
+// it can skip re-adding any pair the user deliberately removed here.
+#[tauri::command]
+pub async fn get_deleted_relations(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT related_media_external_id FROM deleted_relations WHERE media_external_id = ?1"
+    ).str_err()?;
+    let rows = stmt.query_map([&media_external_id], |r| r.get::<_, String>(0)).str_err()?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
 #[tauri::command]
@@ -1064,37 +1112,36 @@ pub async fn sync_community_catalog(
             // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
             // would silently shift every column after the mismatch into the
             // wrong field.
-            // manually_edited_at is purely this-install-local. blocked_at is
-            // a curator flag ("hide this remaster/edition everywhere") that
-            // IS meant to propagate community-wide, so a blocked entry
-            // someone proposed reaches every other user's catalog the same
-            // way any other collaborative-catalog field does. Both are
-            // guarded by attached_db_has_column in case this community.db
-            // predates either column.
-            let has_manually_edited_col = attached_db_has_column(&conn, "community", "media_catalog", "manually_edited_at");
+            // blocked_at is a curator flag ("hide this remaster/edition
+            // everywhere") that IS meant to propagate community-wide, so a
+            // blocked entry someone proposed reaches every other user's
+            // catalog the same way any other collaborative-catalog field
+            // does. Guarded by attached_db_has_column in case this
+            // community.db predates the column.
             let has_blocked_col = attached_db_has_column(&conn, "community", "media_catalog", "blocked_at");
 
             let mut extra_cols = String::new();
-            if has_manually_edited_col { extra_cols.push_str(", manually_edited_at"); }
             if has_blocked_col { extra_cols.push_str(", blocked_at"); }
 
             changes += conn.execute(
                 &format!(
                     "INSERT OR IGNORE INTO media_catalog (
-                        id, external_id, parent_id, type, format, source,
-                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                        release_year, release_month, release_day, time_length, status, score_global,
-                        favorites_count, ratings_count, total_count, total_count_2,
-                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error{extra_cols}, created_at, updated_at
+                        id, external_id, authors_csv, banners_csv, cover_url,
+                        developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+                        last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+                        ratings_count, release_day, release_month, release_year, score_global,
+                        shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+                        time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+                        type{extra_cols}, created_at, updated_at
                      )
                      SELECT
-                        id, external_id, parent_id, type, format, source,
-                        title_main, title_romaji, title_native, synopsis, cover_url, banners_csv,
-                        release_year, release_month, release_day, time_length, status, score_global,
-                        favorites_count, ratings_count, total_count, total_count_2,
-                        genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv,
-                        last_synced_at, sync_failed_count, last_sync_error{extra_cols}, created_at, updated_at
+                        id, external_id, authors_csv, banners_csv, cover_url,
+                        developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+                        last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+                        ratings_count, release_day, release_month, release_year, score_global,
+                        shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+                        time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+                        type{extra_cols}, created_at, updated_at
                      FROM community.media_catalog"
                 ),
                 [],
@@ -1132,7 +1179,7 @@ pub async fn sync_community_catalog(
             // Same "fill gaps only" shape for every gap-fillable column —
             // built as one parameterized statement instead of five
             // hand-copied UPDATEs that used to drift if only one got edited.
-            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "companies_cache_csv", "authors_csv"] {
+            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "publishers_csv", "authors_csv"] {
                 changes += conn.execute(
                     &format!(
                         "UPDATE media_catalog
@@ -1166,20 +1213,20 @@ pub async fn sync_community_catalog(
             // sequel, and any other relation a PR carried over) — same
             // fill-gaps merge, keyed by the table's own composite PK so this
             // never overwrites a relation the user's own API sync produced.
-            // Excludes any media_external_id already hand-edited locally via
-            // PrEditorModal: the community catalog can carry an older
-            // relation (e.g. from a different, earlier PR touching the same
-            // pair) that the user has since deliberately deleted here — the
-            // exact same "can't tell a deletion from never-synced" problem a
-            // live API resync has, so it gets the same guard.
+            // Excludes any pair the user has deliberately deleted locally:
+            // the community catalog can carry an older relation (e.g. from a
+            // different, earlier PR touching the same pair) that's since
+            // been removed here — the exact same "can't tell a deletion
+            // from never-synced" problem a live API resync has, so it gets
+            // the same per-pair tombstone guard (see deleted_relations).
             changes += conn.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
                  FROM community.media_relations c
                  WHERE c.media_external_id != c.related_media_external_id
                    AND NOT EXISTS (
-                     SELECT 1 FROM media_catalog mc
-                     WHERE mc.external_id = c.media_external_id AND mc.manually_edited_at IS NOT NULL
+                     SELECT 1 FROM deleted_relations dr
+                     WHERE dr.media_external_id = c.media_external_id AND dr.related_media_external_id = c.related_media_external_id
                    )
                    AND NOT EXISTS (
                      SELECT 1 FROM blocked_media_catalog mc
@@ -1377,40 +1424,49 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
     if exists_val == 0 {
         tx.execute(
             "INSERT INTO media_catalog (
-                id, external_id, parent_id, type, format, source, title_main, title_romaji, title_native,
-                synopsis, cover_url, banners_csv, release_year, release_month, release_day, time_length,
-                status, score_global, favorites_count, ratings_count, total_count, total_count_2,
-                genres_csv, genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv, authors_csv, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30)",
+                id, external_id, authors_csv, banners_csv, blocked_at, cover_url,
+                developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
+                last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+                ratings_count, release_day, release_month, release_year, score_global,
+                shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+                time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+                type, created_at, updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &entry.external_id,
-                &entry.parent_id,
-                &entry.r#type,
-                &entry.format,
-                &entry.source,
-                &entry.title_main,
-                &entry.title_romaji,
-                &entry.title_native,
-                &entry.synopsis,
-                &entry.cover_url,
+                &entry.authors_csv,
                 &entry.banners_csv,
-                &entry.release_year,
-                &entry.release_month,
-                &entry.release_day,
-                &entry.time_length,
-                &entry.status,
-                &entry.score_global,
+                &entry.blocked_at,
+                &entry.cover_url,
+                &entry.developer_badge,
                 &entry.favorites_count,
-                &entry.ratings_count,
-                &entry.total_count,
-                &entry.total_count_2,
+                &entry.format,
                 &entry.genres_csv,
                 &entry.genres_tag_csv,
+                &entry.last_sync_error,
+                &entry.last_synced_at,
+                &entry.parent_id,
                 &entry.platforms_csv,
+                &entry.publishers_csv,
+                &entry.ratings_count,
+                &entry.release_day,
+                &entry.release_month,
+                &entry.release_year,
+                &entry.score_global,
                 &entry.shop_links_csv,
-                &entry.companies_cache_csv,
-                &entry.authors_csv,
+                &entry.source,
+                &entry.source_url,
+                &entry.status,
+                &entry.sync_failed_count,
+                &entry.synopsis,
+                &entry.time_length,
+                &entry.title_main,
+                &entry.title_native,
+                &entry.title_romaji,
+                &entry.total_count,
+                &entry.total_count_2,
+                &entry.r#type,
                 &entry.created_at,
                 &entry.updated_at,
             ],
@@ -1419,38 +1475,49 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
     } else {
         tx.execute(
             "UPDATE media_catalog SET
-                parent_id = ?1, type = ?2, format = ?3, source = ?4, title_main = ?5, title_romaji = ?6, title_native = ?7,
-                synopsis = ?8, cover_url = ?9, banners_csv = ?10, release_year = ?11, release_month = ?12, release_day = ?13, time_length = ?14,
-                status = ?15, score_global = ?16, favorites_count = ?17, ratings_count = ?18, total_count = ?19, total_count_2 = ?20,
-                genres_csv = ?21, genres_tag_csv = ?22, platforms_csv = ?23, shop_links_csv = ?24, companies_cache_csv = ?25, authors_csv = ?26, updated_at = ?27
-             WHERE external_id = ?28",
+                authors_csv = ?1, banners_csv = ?2, blocked_at = ?3, cover_url = ?4,
+                developer_badge = ?5, favorites_count = ?6, format = ?7, genres_csv = ?8,
+                genres_tag_csv = ?9, last_sync_error = ?10, last_synced_at = ?11, parent_id = ?12,
+                platforms_csv = ?13, publishers_csv = ?14, ratings_count = ?15, release_day = ?16,
+                release_month = ?17, release_year = ?18, score_global = ?19, shop_links_csv = ?20,
+                source = ?21, source_url = ?22, status = ?23, sync_failed_count = ?24,
+                synopsis = ?25, time_length = ?26, title_main = ?27, title_native = ?28,
+                title_romaji = ?29, total_count = ?30, total_count_2 = ?31, type = ?32,
+                updated_at = ?33
+             WHERE external_id = ?34",
             rusqlite::params![
-                &entry.parent_id,
-                &entry.r#type,
-                &entry.format,
-                &entry.source,
-                &entry.title_main,
-                &entry.title_romaji,
-                &entry.title_native,
-                &entry.synopsis,
-                &entry.cover_url,
+                &entry.authors_csv,
                 &entry.banners_csv,
-                &entry.release_year,
-                &entry.release_month,
-                &entry.release_day,
-                &entry.time_length,
-                &entry.status,
-                &entry.score_global,
+                &entry.blocked_at,
+                &entry.cover_url,
+                &entry.developer_badge,
                 &entry.favorites_count,
-                &entry.ratings_count,
-                &entry.total_count,
-                &entry.total_count_2,
+                &entry.format,
                 &entry.genres_csv,
                 &entry.genres_tag_csv,
+                &entry.last_sync_error,
+                &entry.last_synced_at,
+                &entry.parent_id,
                 &entry.platforms_csv,
+                &entry.publishers_csv,
+                &entry.ratings_count,
+                &entry.release_day,
+                &entry.release_month,
+                &entry.release_year,
+                &entry.score_global,
                 &entry.shop_links_csv,
-                &entry.companies_cache_csv,
-                &entry.authors_csv,
+                &entry.source,
+                &entry.source_url,
+                &entry.status,
+                &entry.sync_failed_count,
+                &entry.synopsis,
+                &entry.time_length,
+                &entry.title_main,
+                &entry.title_native,
+                &entry.title_romaji,
+                &entry.total_count,
+                &entry.total_count_2,
+                &entry.r#type,
                 &entry.updated_at,
                 &entry.external_id,
             ],

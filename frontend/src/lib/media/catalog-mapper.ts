@@ -47,7 +47,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     });
   }
 
-  const companies = c.companies_cache_csv ? c.companies_cache_csv.split(',').filter(Boolean) : [];
+  const companies = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : [];
   const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
   const isGameType = c.type === 'game' || c.type === 'vnovel';
 
@@ -70,14 +70,15 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   } else if (isGameType) {
     // Platforms get their own dedicated block in the Datos section (see
     // MediaPage.tsx / data.platforms) instead of this line. Publisher(s)
-    // only, matching igdb-mapper.ts's own live-fetch metaLines exactly — the
-    // developer is already shown as its own banner overlay badge (see
-    // data.developerBadge), so repeating it here too would be redundant.
-    // `companies` itself has no dev/publisher distinction once flattened
-    // into companies_cache_csv, hence filtering the known developer out
-    // rather than only including "publishers".
-    const publisherOnly = c.developer_badge ? companies.filter(name => name !== c.developer_badge) : companies;
-    if (publisherOnly.length > 0) metaLines.push(publisherOnly.join(', '));
+    // only, matching igdb-mapper.ts's own live-fetch metaLines exactly —
+    // read straight from publishers_csv (persisted separately, verbatim)
+    // rather than derived by subtracting the developer's name out of the
+    // merged `companies` list. That subtraction used to hide a company that
+    // legitimately is both developer and publisher (e.g. a self-published
+    // title), since companies_cache_csv can't tell the two roles apart once
+    // flattened.
+    const publishers = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : companies;
+    if (publishers.length > 0) metaLines.push(publishers.join(', '));
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
     const quickBits: string[] = [];
@@ -118,6 +119,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     developerBadge: c.developer_badge ?? undefined,
     platforms:     platforms.length > 0 ? platforms : undefined,
     companies:     companies.length > 0 ? companies : undefined,
+    publishers:    c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : undefined,
     storeLinks,
     metaLines,
     stats,
@@ -176,7 +178,7 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
       : data.storeLinks?.length
         ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
         : undefined,
-    companies_cache_csv:   data.companies?.length ? data.companies.join(',') : undefined,
+    publishers_csv:        data.publishers?.length ? data.publishers.join(',') : (data.companies?.length ? data.companies.join(',') : undefined),
     // Names only, same convention as companies_cache_csv — this is a flat
     // display cache for the instant partial-load path (mapCatalogEntryToPartialData),
     // not a relation store. The real author relations (id, image, role, url)

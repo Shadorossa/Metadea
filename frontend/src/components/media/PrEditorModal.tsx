@@ -62,6 +62,36 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
+// Every user's local catalog can carry a different, auto-fetched snapshot of
+// the same work (synopsis/genres/platforms/score are all just whatever the
+// live API happened to return whenever this install last synced) — none of
+// that is a curator decision worth proposing, and different users uploading
+// their own random subset of it would make the shared catalog inconsistent
+// for no reason (every install re-fetches those fields from the live API on
+// its own anyway). A proposal's media_catalog only ever needs enough to
+// identify the row (id/external_id/type/title_main/source) plus whichever
+// fields the user actually hand-edited — `editedFields` — so the GitHub diff
+// reads as "here's what I curated", not "here's my whole local cache".
+function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: readonly (keyof MediaCatalogEntry)[]): MediaCatalogEntry {
+  const minimal: MediaCatalogEntry = {
+    id: entry.id,
+    external_id: entry.external_id,
+    type: entry.type,
+    title_main: entry.title_main,
+    source: entry.source,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+    // A block decision is always a deliberate curator action, never
+    // auto-fetched — carried over unconditionally like the identity fields,
+    // independent of whether it happens to be in `editedFields`.
+    blocked_at: entry.blocked_at,
+  };
+  for (const field of editedFields) {
+    (minimal as any)[field] = entry[field];
+  }
+  return minimal;
+}
+
 // Builds a self-contained GitHub proposal file for a saga member other than
 // the one actually open in the editor — same shape as the primary entry's
 // own bundle (see handleSubmit), just carrying only that member's own
@@ -69,7 +99,9 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
 // the save handler since "given an already-updated catalog entry + its
 // relations, produce a proposal file" is a generalizable operation any
 // future "propagate an edit to N related entries" feature would also need,
-// not something specific to this one save flow.
+// not something specific to this one save flow. Never edited by hand here —
+// only its relations were touched — so its own media_catalog carries no
+// scalar fields at all beyond identity.
 function buildRelatedProposalBundle(
   externalId: string,
   catalogEntry: MediaCatalogEntry,
@@ -80,7 +112,7 @@ function buildRelatedProposalBundle(
   return {
     externalId,
     bundle: {
-      media_catalog: catalogEntry,
+      media_catalog: minimalProposalCatalogEntry(catalogEntry, []),
       media_relations: relations.map(r => ({ ...r, media_external_id: externalId })),
       characters: [],
       media_authors: [],
@@ -100,6 +132,12 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   const canonicalRelationLabels = CANONICAL_RELATION_LABELS;
 
   const [loading, setLoading] = useState(true);
+  // Every 'proposal'-mode edit ends in a GitHub submission — checked up
+  // front instead of only at the very end of handleSubmit, so a signed-out
+  // user isn't let in to spend time filling out an edit that can only fail
+  // once they hit save. 'local' mode (the admin catalog panel) never
+  // submits upstream, so it has nothing to gate here.
+  const [githubGate, setGithubGate] = useState<'checking' | 'ok' | 'signed-out'>(mode === 'local' ? 'ok' : 'checking');
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -160,6 +198,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | null>(null);
+
+  useEffect(() => {
+    if (mode === 'local') return;
+    let cancelled = false;
+    invoke<string | null>('get_github_token').catch(() => null).then(token => {
+      if (!cancelled) setGithubGate(token ? 'ok' : 'signed-out');
+    });
+    return () => { cancelled = true; };
+  }, [mode]);
 
   useEffect(() => {
     const load = async () => {
@@ -581,11 +628,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
     setErrorMsg('');
 
     try {
-      // Marks this entry as hand-curated — a live resync (mediaService.ts's
-      // fetchMediaData) checks this and leaves its relations alone from now
-      // on, so a deletion or saga reorder made here can't be silently
-      // undone by the next automatic re-fetch.
-      await saveCatalogEntry({ ...entry, manually_edited_at: new Date().toISOString() });
+      await saveCatalogEntry(entry);
 
       const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
 
@@ -738,8 +781,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       // the next time this (or any other chain member's) editor reopened.
       // Only runs when the saga itself actually changed — otherwise this
       // used to fire on every single save (even a plain synopsis edit),
-      // doing a round trip per chain member and re-stamping every other
-      // member's manually_edited_at for no reason.
+      // doing a needless round trip per chain member.
       const sagaChangeDiff = getDiff();
       const sagaChanged = sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
         || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
@@ -763,22 +805,16 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
           const otherRelations = [...kept, ...newRows];
           await saveMediaRelations(otherId, otherRelations);
 
-          // Editing the saga's structure is really an edit of every member's
-          // relations, not just this one's own entry — without stamping this
-          // on every chain member too, visiting one of the *others* directly
-          // (e.g. opening its own prequel/sequel page) still ran a normal
-          // live resync there, since that entry's own manually_edited_at was
-          // never set, and the API's still-unaware-of-the-removal relation
-          // graph reintroduced exactly what was just removed here.
+          // saveMediaRelations above already tombstoned (in deleted_relations)
+          // any pair that was in `existing` but dropped from `otherRelations`
+          // — that's what stops a live resync on this member from silently
+          // reintroducing exactly what was just removed here, so there's
+          // nothing left to stamp on the catalog row itself.
           const otherEntry = await getCatalogEntry(otherId).catch(() => null);
-          if (otherEntry) {
-            const stampedOtherEntry = { ...otherEntry, manually_edited_at: new Date().toISOString() };
-            await saveCatalogEntry(stampedOtherEntry).catch(() => {});
-            if (mode !== 'local') {
-              otherProposalEntries.push(
-                buildRelatedProposalBundle(otherId, stampedOtherEntry, otherRelations, sagaGroups, sagaName),
-              );
-            }
+          if (otherEntry && mode !== 'local') {
+            otherProposalEntries.push(
+              buildRelatedProposalBundle(otherId, otherEntry, otherRelations, sagaGroups, sagaName),
+            );
           }
         } catch (err) {
           console.error(`Failed to propagate saga relation to ${otherId}:`, err);
@@ -860,9 +896,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       // database (see scripts/build-database.js). Saga-chain edges pointing
       // at *other* members no longer ride along here — each affected member
       // gets its own self-contained file instead (see otherProposalEntries
-      // above), so this file only carries this entry's own data.
+      // above), so this file only carries this entry's own data. Only the
+      // catalog fields actually hand-edited in this session (per DIFF_FIELDS)
+      // go along — see minimalProposalCatalogEntry's own doc for why the
+      // rest of the locally-cached row never rides along too.
+      const editedFields = DIFF_FIELDS.filter(([field]) => isFieldChanged(field)).map(([field]) => field);
       const bundle: ProposalBundle = {
-        media_catalog: entry,
+        media_catalog: minimalProposalCatalogEntry(entry, editedFields),
         media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
         characters,
         media_authors: mediaAuthors,
@@ -884,6 +924,39 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       setSubmitting(false);
     }
   };
+
+  if (githubGate === 'checking') {
+    return (
+      <div className="pr-editor-overlay">
+        <div className="pr-editor-modal pr-editor-modal--loading">
+          <div className="spinner" />
+        </div>
+      </div>
+    );
+  }
+
+  if (githubGate === 'signed-out') {
+    return createPortal(
+      <div className="pr-editor-overlay" onClick={onClose}>
+        <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
+          <div className="pr-editor-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', textAlign: 'center', padding: '3rem 2rem' }}>
+            <p className="pr-editor-title">Inicia sesión con GitHub para editar</p>
+            <p className="pr-editor-subtitle">
+              Cualquier edición aquí se propone como una Pull Request al catálogo comunitario —
+              inicia sesión con GitHub en Settings antes de continuar.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose}>Cerrar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
+                Ir a Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   if (loading) {
     return (
@@ -1059,13 +1132,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             </div>
 
             <div className="pr-editor-section">
-              {sectionTitle('Classification & Metadata', ['format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'companies_cache_csv', 'authors_csv'])}
+              {sectionTitle('Classification & Metadata', ['format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'publishers_csv', 'authors_csv'])}
               <div className="pr-editor-classification-grid">
                 {formatField('format', 'Format')}
                 {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
                 {slotField('genres_tag_csv', 'Themes / Tags')}
                 {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
-                {slotField('companies_cache_csv', 'Companies / Studios')}
+                {slotField('publishers_csv', 'Companies / Studios')}
                 {slotField('authors_csv', 'Authors / Staff')}
               </div>
             </div>

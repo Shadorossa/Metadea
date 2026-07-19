@@ -3,44 +3,8 @@ import { invoke, tauriCmd, tauriRun, isTauri } from './core';
 export interface MediaCatalogEntry {
   id:                   string;
   external_id:          string;
-  parent_id?:           string | null;
-  type:                 string;
-  format?:              string | null;
-  source?:              string | null;
-  title_main?:          string | null;
-  /** Romanized title, when the source provider actually has one (AniList,
-   *  IGDB's alternative_names) — see MediaPageData.titleRomaji. */
-  title_romaji?:        string | null;
-  /** Title in its original-language script (e.g. Japanese kanji/kana) — see
-   *  MediaPageData.titleNative. */
-  title_native?:        string | null;
-  synopsis?:            string | null;
-  cover_url?:           string | null;
-  banners_csv?:         string | null;
-  release_year?:        number | null;
-  release_month?:       number | null;
-  release_day?:         number | null;
-  time_length?:         number | null;
-  status?:              string | null;
-  score_global?:        number | null;
-  favorites_count?:     number | null;
-  ratings_count?:       number | null;
-  total_count?:         number | null;
-  total_count_2?:       number | null;
-  genres_csv?:          string | null;
-  genres_tag_csv?:      string | null;
-  platforms_csv?:       string | null;
-  /** CSV of "platform|url" pairs — IGDB's store links (Steam, GOG, ...) for this game. */
-  shop_links_csv?:      string | null;
-  companies_cache_csv?: string | null;
   authors_csv?:         string | null;
-  last_synced_at?:      string | null;
-  sync_failed_count?:   number | null;
-  last_sync_error?:     string | null;
-  /** Set once by PrEditorModal on save — a live resync checks this before
-   *  touching this entry's relations (see mediaService.ts's fetchMediaData)
-   *  so a manual deletion/reorder there can't get silently re-added. */
-  manually_edited_at?:  string | null;
+  banners_csv?:         string | null;
   /** Set via PrEditorModal to reserve this external_id (so it can never be
    *  re-added as "new" from a live search result) while hiding the row
    *  everywhere else — search, relations, saga chains — for remasters/
@@ -48,14 +12,49 @@ export interface MediaCatalogEntry {
    *  any other collaborative-catalog field (see submitCollaborativeProposal.ts),
    *  so a block reaches every other user's install once merged. */
   blocked_at?:          string | null;
+  cover_url?:           string | null;
+  /** Lead developer name, overlaid on a game's banner (IGDB only) — same
+   *  "persist so the fast path has it too" reasoning as source_url. */
+  developer_badge?:     string | null;
+  favorites_count?:     number | null;
+  format?:              string | null;
+  genres_csv?:          string | null;
+  genres_tag_csv?:      string | null;
+  last_sync_error?:     string | null;
+  last_synced_at?:      string | null;
+  parent_id?:           string | null;
+  platforms_csv?:       string | null;
+  /** Publisher subset of companies_cache_csv (IGDB only) — kept separate
+   *  since a company can be both developer and publisher, which the merged
+   *  companies_cache_csv can't tell apart once flattened. */
+  publishers_csv?:      string | null;
+  ratings_count?:       number | null;
+  release_day?:         number | null;
+  release_month?:       number | null;
+  release_year?:        number | null;
+  score_global?:        number | null;
+  /** CSV of "platform|url" pairs — IGDB's store links (Steam, GOG, ...) for this game. */
+  shop_links_csv?:      string | null;
+  source?:              string | null;
   /** This work's own page on its source provider's website — recomputed on
    *  every live fetch, but persisted too so the catalog-only fast path
    *  (most visits — see mediaService.ts/needsResync) can still show the
    *  source logo/link without one. */
   source_url?:          string | null;
-  /** Lead developer name, overlaid on a game's banner (IGDB only) — same
-   *  "persist so the fast path has it too" reasoning as source_url. */
-  developer_badge?:     string | null;
+  status?:              string | null;
+  sync_failed_count?:   number | null;
+  synopsis?:            string | null;
+  time_length?:         number | null;
+  title_main?:          string | null;
+  /** Title in its original-language script (e.g. Japanese kanji/kana) — see
+   *  MediaPageData.titleNative. */
+  title_native?:        string | null;
+  /** Romanized title, when the source provider actually has one (AniList,
+   *  IGDB's alternative_names) — see MediaPageData.titleRomaji. */
+  title_romaji?:        string | null;
+  total_count?:         number | null;
+  total_count_2?:       number | null;
+  type:                 string;
   created_at:           string;
   updated_at:           string;
 }
@@ -143,6 +142,15 @@ export async function saveMediaRelations(mediaExternalId: string, relations: DbM
 
 export async function getMediaRelations(mediaExternalId: string): Promise<DbMediaRelation[]> {
   return tauriCmd<DbMediaRelation[]>('get_media_relations', [], { mediaExternalId });
+}
+
+// Per-pair tombstones (deleted_relations) — related_media_external_ids the
+// user has deliberately removed from mediaExternalId's relations, that a
+// live/community relation merge must not silently re-add. Written
+// automatically by save_media_relations whenever a previously-saved pair is
+// missing from the new list it's given.
+export async function getDeletedRelations(mediaExternalId: string): Promise<string[]> {
+  return tauriCmd<string[]>('get_deleted_relations', [], { mediaExternalId });
 }
 
 // Bulk fetch across every media — used by the library grid's saga grouping,

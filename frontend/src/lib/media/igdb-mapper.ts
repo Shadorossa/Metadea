@@ -338,6 +338,14 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     scoreGlobal,
     status: canonicalStatus,
     companies: [...new Set([...developers, ...publishers])],
+    // Persisted separately from `companies` (the full dev+publisher list,
+    // also directly editable via PrEditorModal's own "Companies / Studios"
+    // field) so the catalog-only fast path can show exactly the same
+    // publisher-only line this live fetch's own metaLines does — a company
+    // that's both developer and publisher (e.g. a self-published title)
+    // must still show in this list; subtracting `developerBadge` by name
+    // from the merged `companies` on the fast path used to hide it wrongly.
+    publishers: [...new Set(publishers)],
   };
 }
 

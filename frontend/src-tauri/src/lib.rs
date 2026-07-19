@@ -136,6 +136,7 @@ pub fn run() {
             media_catalog::get_media_saga_groups,
             media_catalog::save_media_relations,
             media_catalog::get_media_relations,
+            media_catalog::get_deleted_relations,
             media_catalog::get_all_media_relations,
             media_catalog::save_media_authors,
             media_catalog::get_media_authors,

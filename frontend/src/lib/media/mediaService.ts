@@ -227,8 +227,8 @@ export async function fetchComicIssues(
 // Comprueba caché primero; si no está, fetcha y guarda
 // Helper to persist live API data back to SQLite media_catalog cache.
 // `existing` is passed in (not re-fetched here) — fetchMediaData, this
-// function's only caller, already needs the same row for its own banner-
-// fallback/manually_edited_at checks just before calling this.
+// function's only caller, already needs the same row for its own
+// banner-fallback check just before calling this.
 // Fields worth diffing to decide "did this live fetch actually bring
 // anything new" — deliberately excludes the ones that are sticky-once-set
 // by design (format/release_year/month/day/banners_csv all prefer the
@@ -239,7 +239,7 @@ const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
-  'companies_cache_csv', 'authors_csv', 'source_url', 'developer_badge',
+  'publishers_csv', 'authors_csv', 'source_url', 'developer_badge',
 ] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
@@ -263,7 +263,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
       platforms_csv: data.platforms ? data.platforms.join(',') : null,
       shop_links_csv: shopLinks || null,
-      companies_cache_csv: data.companies ? data.companies.join(',') : null,
+      publishers_csv: data.publishers ? data.publishers.join(',') : null,
       authors_csv: (data.authors ?? []).map(a => a.name).join(','),
       source_url: data.sourceUrl || null,
       developer_badge: data.developerBadge || null,
@@ -309,12 +309,8 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       last_synced_at: new Date().toISOString(),
       sync_failed_count: hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1,
       last_sync_error: null,
-      // Never set here — only PrEditorModal ever stamps this, and once set
-      // it must survive every future live resync untouched.
-      manually_edited_at: existing?.manually_edited_at ?? null,
-      // Same reasoning as manually_edited_at — only PrEditorModal's block
-      // toggle ever sets this, and a live resync must never silently clear
-      // it back to visible.
+      // Never set here — only PrEditorModal's block toggle ever sets this,
+      // and a live resync must never silently clear it back to visible.
       blocked_at: existing?.blocked_at ?? null,
       created_at: '',
       updated_at: '',
@@ -351,17 +347,15 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
       data.bannerImage = existing.banners_csv.split(',')[0];
     }
 
-    // Once hand-edited via the collaborative catalog editor (PrEditorModal),
-    // a relation to media that already existed back then (an old prequel/
-    // sequel the user deliberately removed) must never be silently re-added
-    // — the live provider has no idea the removal was deliberate, it just
-    // reports the same relation graph again. mergeAndPersistRelations itself
-    // does the actual year-based filtering (existing/newer content still
-    // gets in) — see its own doc and MediaCatalogEntry.manually_edited_at.
-    // Its return value doubles as one of the signals persistToCatalog uses
-    // to decide whether anything new actually showed up (see its own doc) —
-    // no need to re-read relations back from the DB just to diff a count.
-    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format, existing?.manually_edited_at);
+    // A relation the user deliberately removed via the collaborative catalog
+    // editor (PrEditorModal) must never be silently re-added — the live
+    // provider has no idea the removal was deliberate, it just reports the
+    // same relation graph again. mergeAndPersistRelations itself checks the
+    // deleted_relations tombstone table for that (see its own doc). Its
+    // return value doubles as one of the signals persistToCatalog uses to
+    // decide whether anything new actually showed up (see its own doc) — no
+    // need to re-read relations back from the DB just to diff a count.
+    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format);
 
     // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data, existing, relationsChanged);

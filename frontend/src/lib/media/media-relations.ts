@@ -2,7 +2,7 @@
 // for media relations/authors/characters — extracted from mediaService.ts
 // (still re-exported from there).
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation } from './types';
-import { getMediaRelations, getMediaAuthors, saveMediaRelations, getCatalogEntry, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
+import { getMediaRelations, getMediaAuthors, saveMediaRelations, getDeletedRelations, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
 import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/staff';
 import { getT } from '../../i18n/client';
@@ -274,7 +274,6 @@ export async function mergeAndPersistRelations(
   rawId: string,
   fetchedRelations: MediaPageData['relations'],
   format?: string,
-  manuallyEditedAt?: string | null,
 ): Promise<boolean> {
   const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
 
@@ -292,52 +291,19 @@ export async function mergeAndPersistRelations(
   let candidateNew = (fetchedRelations ?? [])
     .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId));
 
-  // Once this entry has been hand-edited via PrEditorModal, a relation to
-  // something that already existed back then (an old prequel/sequel the
-  // user deliberately removed) must never be silently re-added. But a
-  // common failure mode: P was not yet in the catalog when the saga edit
-  // ran, so the manually_edited_at stamp was never propagated to P. When P
-  // is visited for the first time, its manuallyEditedAt is null — and the
-  // removed entry leaks back through P into the transitive chain.
-  //
-  // Fix: if P has existing PREQUEL/SEQUEL relations to chain members that
-  // *are* manually edited, inherit the most recent of those timestamps as
-  // the effective cutoff. P is clearly part of that edited saga chain, so
-  // the same "don't re-add old content" rule should apply to P too.
-  let effectiveManuallyEditedAt = manuallyEditedAt;
-  if (!effectiveManuallyEditedAt && candidateNew.length > 0) {
-    const chainDbRels = prunedDbRels.filter(
-      r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL',
-    );
-    if (chainDbRels.length > 0) {
-      const chainEntries = await Promise.all(
-        chainDbRels.map(r => getCatalogEntry(r.related_media_external_id).catch(() => null)),
-      );
-      const editDates = chainEntries
-        .filter((e): e is NonNullable<typeof e> => e !== null && !!e.manually_edited_at)
-        .map(e => e.manually_edited_at!);
-      if (editDates.length > 0) {
-        effectiveManuallyEditedAt = editDates.sort().at(-1) ?? null;
-      }
+  // A pair the user deliberately deleted via PrEditorModal must never be
+  // silently re-added by a live resync — save_media_relations tombstones
+  // exactly that (media, related) pair in deleted_relations when it
+  // disappears from a saved list, so filtering candidates against it only
+  // ever blocks the specific relation that was removed, not every relation
+  // this entry could ever gain (a genuinely new sequel released afterward
+  // still comes through normally, unlike the old per-row manually_edited_at
+  // gate this replaced).
+  if (candidateNew.length > 0) {
+    const deletedIds = new Set(await getDeletedRelations(rawId).catch(() => [] as string[]));
+    if (deletedIds.size > 0) {
+      candidateNew = candidateNew.filter(r => !deletedIds.has(r.relatedExternalId!));
     }
-  }
-
-  if (effectiveManuallyEditedAt && candidateNew.length > 0) {
-    const editedYear = new Date(effectiveManuallyEditedAt!).getFullYear();
-    const isNewEnough = await Promise.all(candidateNew.map(async r => {
-      const relatedEntry = await getCatalogEntry(r.relatedExternalId!).catch(() => null);
-      // Never cataloged locally at all (not just "no release year on file")
-      // means there's no prior row this could be a deliberately-deleted
-      // relation *to* — the only way something ends up in this "candidate"
-      // list with zero local history is if it's genuinely new, so it must
-      // be let through rather than blocked. Only an entry that DOES exist
-      // locally (something the user could plausibly have seen and removed)
-      // falls back to year 0 when its release_year is unknown, keeping the
-      // conservative "block if in doubt" behavior for that case.
-      if (!relatedEntry) return true;
-      return (relatedEntry.release_year ?? 0) > editedYear;
-    }));
-    candidateNew = candidateNew.filter((_, i) => isNewEnough[i]);
   }
 
   const newFromApi = candidateNew.map(r => ({

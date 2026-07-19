@@ -18,6 +18,26 @@ export interface ProposalFileEntry {
   bundle: ProposalBundle;
 }
 
+// Overlays onto `upstream` only the media_catalog fields where `local`
+// actually differs from what's already published — so editing just the
+// release date proposes a diff of just the release date, not a full re-copy
+// of every other column (synopsis, genres, score, ...) at whatever value
+// happened to be cached locally, which could just as easily be staler than
+// what's already on `main` as it could be newer. id/created_at/updated_at
+// are excluded — those are always reset in sharableBundleFor regardless.
+function overlayChangedCatalogFields(local: MediaCatalogEntry, upstream: MediaCatalogEntry): MediaCatalogEntry {
+  const merged: MediaCatalogEntry = { ...upstream };
+  for (const key of Object.keys(local) as (keyof MediaCatalogEntry)[]) {
+    if (key === 'id' || key === 'created_at' || key === 'updated_at') continue;
+    const localVal = local[key] ?? null;
+    const upstreamVal = upstream[key] ?? null;
+    if (JSON.stringify(localVal) !== JSON.stringify(upstreamVal)) {
+      (merged as any)[key] = local[key];
+    }
+  }
+  return merged;
+}
+
 function sharableBundleFor(bundle: ProposalBundle): ProposalBundle {
   // Strip fields that only make sense on this user's own local install
   // before they leave the machine — the shared community catalog every
@@ -113,9 +133,39 @@ export async function submitCollaborativeProposal(
   // own relations, not a copy of every other file's data) in one PR.
   for (const { externalId, bundle } of entries) {
     onStatus(`Uploading data for ${bundle.media_catalog.title_main || externalId}...`);
-    const jsonContent = JSON.stringify(sharableBundleFor(bundle), null, 2);
-    const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
     const filePath = `database/${externalId.replace(':', '-')}.json`;
+
+    // If a file for this id is already published on `main`, propose a real
+    // diff against it instead of a full re-upload: media_catalog only
+    // carries the fields that actually changed (see overlayChangedCatalogFields).
+    // A non-primary entry (a saga member touched only via relation
+    // propagation, not opened in the editor) additionally keeps upstream's
+    // characters/authors untouched — this proposal never claims to have
+    // edited those, only the relation.
+    let outgoingBundle = bundle;
+    const existingRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=main`, {
+      headers: { 'Authorization': `token ${token}` },
+    });
+    if (existingRes.ok) {
+      try {
+        const existingData = await existingRes.json();
+        const existingBundle = JSON.parse(decodeURIComponent(escape(atob(existingData.content)))) as ProposalBundle;
+        outgoingBundle = {
+          ...bundle,
+          media_catalog: overlayChangedCatalogFields(bundle.media_catalog, existingBundle.media_catalog),
+          ...(externalId !== primaryExternalId ? {
+            characters: existingBundle.characters ?? [],
+            media_authors: existingBundle.media_authors ?? [],
+          } : {}),
+        };
+      } catch {
+        // Malformed/unparseable upstream file — fall back to this
+        // proposal's own local snapshot rather than blocking the submit.
+      }
+    }
+
+    const jsonContent = JSON.stringify(sharableBundleFor(outgoingBundle), null, 2);
+    const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
 
     let fileSha: string | undefined;
     const fileCheckRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}?ref=${branchName}`, {
@@ -133,7 +183,7 @@ export async function submitCollaborativeProposal(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: `Update catalog entry for ${bundle.media_catalog.title_main || externalId}`,
+        message: `Update catalog entry for ${outgoingBundle.media_catalog.title_main || externalId}`,
         content: base64Content,
         branch: branchName,
         sha: fileSha,
