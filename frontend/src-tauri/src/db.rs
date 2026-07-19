@@ -44,6 +44,13 @@ impl MetadeaDb {
         )?;
         conn.execute("PRAGMA foreign_keys = ON", [])?;
         conn.pragma_update(None, "journal_mode", &"WAL")?;
+        // Several Tauri commands fire near-simultaneously on page load
+        // (persistToCatalog, save_media_relations, save_media_authors...).
+        // They queue safely on the Mutex, but WAL can still hit a brief
+        // SQLITE_BUSY (e.g. mid-checkpoint) — without a busy_timeout that
+        // fails instantly as "database is locked" instead of just waiting
+        // the few ms it takes to clear.
+        conn.busy_timeout(std::time::Duration::from_secs(5))?;
         Ok(Self { conn: Mutex::new(conn) })
     }
 }
