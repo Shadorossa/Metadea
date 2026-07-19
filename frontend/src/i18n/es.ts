@@ -186,6 +186,7 @@ export const es = {
     section_data: 'Datos',
     section_characters: 'Personajes',
     section_users: 'Usuarios',
+    stat_platforms: 'Plataformas',
     stat_episodes: 'Episodios',
     stat_issues: 'Números',
     stat_seasons: 'Temporadas',

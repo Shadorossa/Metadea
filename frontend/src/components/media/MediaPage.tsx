@@ -21,6 +21,7 @@ import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
+import { mergePlatformVersions } from '../../lib/media/mapper-utils';
 
 // Breaks a "Prefix: Rest" relation title onto two lines after the colon
 // (e.g. "Alan Wake II: The Lake House") instead of letting it wrap wherever
@@ -847,59 +848,61 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           )}
         </div>
 
-        {/* Relacionados */}
+        {/* Relacionados — header bar always renders (even with zero
+            relations) so this column isn't just blank space next to
+            Sinopsis/Datos; only the grid+pagination are conditional. */}
         <div className="media-col-related">
-          {(relatedRelations.length > 0 || hasRecommendedRelations || hasEditionRelations) && (
+          <div className="media-section-header-row">
+            {/* TMDB recommendations ride in the same list as real
+                relations (saga/adaptation/etc) — when both are present,
+                each label becomes a tab switching which subset the grid
+                below shows, instead of mixing recommendations into
+                "Related". */}
+            {hasTabs ? (
+              <>
+                <button
+                  type="button"
+                  className={`section-label section-label--tab${relationsTab === 'related' ? ' active' : ''}`}
+                  onClick={() => { setRelationsTab('related'); setRelationPage(1); }}
+                >
+                  {tm.section_related}
+                </button>
+                <div className="media-section-header-line media-section-header-line--short" />
+                {hasEditionRelations && (
+                  <button
+                    type="button"
+                    className={`section-label section-label--tab${relationsTab === 'editions' ? ' active' : ''}`}
+                    onClick={() => { setRelationsTab('editions'); setRelationPage(1); }}
+                  >
+                    {editionsLabel}
+                  </button>
+                )}
+                {hasEditionRelations && hasRecommendedRelations && (
+                  <div className="media-section-header-line media-section-header-line--short" />
+                )}
+                {hasRecommendedRelations && (
+                  <button
+                    type="button"
+                    className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
+                    onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
+                  >
+                    {tm.relations.RECOMMENDATION}
+                  </button>
+                )}
+                <div className="media-section-header-line" />
+              </>
+            ) : (
+              <>
+                <p className="section-label">{tm.section_related}</p>
+                <div className="media-section-header-line" />
+              </>
+            )}
+            {data.storeLinks && data.storeLinks.length > 0 && (
+              <MediaStoreLinks links={data.storeLinks} />
+            )}
+          </div>
+          {visibleRelations.length > 0 && (
             <>
-              <div className="media-section-header-row">
-                {/* TMDB recommendations ride in the same list as real
-                    relations (saga/adaptation/etc) — when both are present,
-                    each label becomes a tab switching which subset the grid
-                    below shows, instead of mixing recommendations into
-                    "Related". */}
-                {hasTabs ? (
-                  <>
-                    <button
-                      type="button"
-                      className={`section-label section-label--tab${relationsTab === 'related' ? ' active' : ''}`}
-                      onClick={() => { setRelationsTab('related'); setRelationPage(1); }}
-                    >
-                      {tm.section_related}
-                    </button>
-                    <div className="media-section-header-line media-section-header-line--short" />
-                    {hasEditionRelations && (
-                      <button
-                        type="button"
-                        className={`section-label section-label--tab${relationsTab === 'editions' ? ' active' : ''}`}
-                        onClick={() => { setRelationsTab('editions'); setRelationPage(1); }}
-                      >
-                        {editionsLabel}
-                      </button>
-                    )}
-                    {hasEditionRelations && hasRecommendedRelations && (
-                      <div className="media-section-header-line media-section-header-line--short" />
-                    )}
-                    {hasRecommendedRelations && (
-                      <button
-                        type="button"
-                        className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
-                        onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
-                      >
-                        {tm.relations.RECOMMENDATION}
-                      </button>
-                    )}
-                    <div className="media-section-header-line" />
-                  </>
-                ) : (
-                  <>
-                    <p className="section-label">{tm.section_related}</p>
-                    <div className="media-section-header-line" />
-                  </>
-                )}
-                {data.storeLinks && data.storeLinks.length > 0 && (
-                  <MediaStoreLinks links={data.storeLinks} />
-                )}
-              </div>
               <div className="media-relations-grid">
                 {visibleRelations
                   .slice((relationPage - 1) * pageSize, relationPage * pageSize)
@@ -1024,6 +1027,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         </div>
                       )
                     ))}
+
+                  {data.platforms && data.platforms.length > 0 && (
+                    <div className="media-stat-item media-stat-item--platforms">
+                      <span className="media-stat-label">{tm.stat_platforms}</span>
+                      <span className="media-stat-divider" />
+                      <span className="media-stat-value media-stat-platforms-value">
+                        {mergePlatformVersions(data.platforms).map((p, i) => (
+                          <span key={i}>{p}</span>
+                        ))}
+                      </span>
+                    </div>
+                  )}
                 </div>
           </div>
       </div>

@@ -39,6 +39,37 @@ export function lookupLabel(dict: Record<string, string>, key: string | null | u
   return (key ? dict[key] : undefined) ?? fallback;
 }
 
+/** Collapses same-family platform entries that only differ by a trailing
+ *  generation number — ["PlayStation 4", "PlayStation 5"] becomes
+ *  "PlayStation 4/5", ["PlayStation 2", "PlayStation 4", "PlayStation 5"]
+ *  becomes "PlayStation 2/4/5" — instead of listing each generation as its
+ *  own separate line. Platforms without a trailing number (e.g. "PC
+ *  (Windows)", "Nintendo Switch") pass through unchanged. Order follows
+ *  each group's first appearance in the input. */
+export function mergePlatformVersions(platforms: string[]): string[] {
+  const order: string[] = [];
+  const numbersByBase = new Map<string, string[]>();
+  const passthrough: string[] = [];
+
+  for (const p of platforms) {
+    const match = p.match(/^(.*\S)\s+(\d+)$/);
+    if (!match) {
+      passthrough.push(p);
+      continue;
+    }
+    const [, base, num] = match;
+    if (!numbersByBase.has(base)) {
+      numbersByBase.set(base, []);
+      order.push(base);
+    }
+    const nums = numbersByBase.get(base)!;
+    if (!nums.includes(num)) nums.push(num);
+  }
+
+  const merged = order.map(base => `${base} ${numbersByBase.get(base)!.sort((a, b) => Number(a) - Number(b)).join('/')}`);
+  return [...merged, ...passthrough];
+}
+
 // Parse external_id (e.g. "anime:123") into type and numeric ID
 export function parseExternalId(externalId: string): { type: string; id: number } {
   const colonIdx = externalId.indexOf(':');

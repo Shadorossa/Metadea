@@ -453,6 +453,34 @@
   border-top: 1px solid var(--border-color);
 }
 
+/* Platforms — label on the left like every other stat row, but the value
+   side is a real vertical list (one platform per line, left-aligned)
+   instead of a comma-joined string that wraps wherever it runs out of
+   width. Unlike Episodios | Temporadas, the divider isn't centered — the
+   label column is sized to its own content (auto, not 1fr) so the divider
+   sits right after "Plataformas" instead of at the row's midpoint, leaving
+   the rest of the width for the platform list. */
+.media-stat-item--platforms {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.media-stat-item--platforms .media-stat-value {
+  /* Overrides .media-stat-value's own text-align:right (same specificity,
+     but that rule comes later in this file so it would otherwise win) —
+     platform names read left-to-right starting right after the divider. */
+  text-align: left;
+}
+
+.media-stat-platforms-value {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
 .media-stat-label {
   color: var(--text-dim);
   font-weight: 500;
@@ -1040,6 +1068,12 @@
   gap: 1rem;
   margin-bottom: 0.75rem;
   width: 100%;
+  /* Fixed to the tallest possible content (the store-link icon row) so
+     Sinopsis/Relacionados/Datos's header lines all sit at the same Y
+     position — without this, a header row with no icons is shorter than
+     one with them, and each row's own vertical centering then puts its
+     line at a different absolute height across the 3 columns. */
+  min-height: 24px;
 }
 
 .media-section-header-row .section-label {

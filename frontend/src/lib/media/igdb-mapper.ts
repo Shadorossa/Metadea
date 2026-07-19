@@ -157,8 +157,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
   if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
 
+  // Platforms have their own dedicated block in the Datos section now (see
+  // MediaPage.tsx) instead of showing here next to the cover — that used to
+  // read as inconsistent since this same metaLines slot means something
+  // different per content type (studios for anime/movies, platforms for
+  // games).
   const metaLines: string[] = [];
-  if (platforms.length) metaLines.push(platforms.join(' · '));
   if (publishers.length) metaLines.push(publishers.join(', '));
 
   // Agrupamiento y mapeo de las relaciones de IGDB en secciones

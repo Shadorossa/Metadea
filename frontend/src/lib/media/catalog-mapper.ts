@@ -48,7 +48,8 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   if (c.type === 'book' || c.type === 'comic') {
     if (authorList.length > 0) metaLines.push(authorList.join(', '));
   } else if (isGameType) {
-    if (platforms.length > 0) metaLines.push(platforms.join(' · '));
+    // Platforms get their own dedicated block in the Datos section (see
+    // MediaPage.tsx / data.platforms) instead of this line.
     if (companies.length > 0) metaLines.push(companies.join(', '));
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
