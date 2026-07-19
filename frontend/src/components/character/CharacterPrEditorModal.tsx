@@ -397,7 +397,7 @@ export function CharacterPrEditorModal() {
       };
 
       const changeSummary = `- ${buildChangeSummary()}`;
-      const prUrl = await submitCollaborativeProposal(currentId, bundle, changeSummary, setStatusMsg);
+      const prUrl = await submitCollaborativeProposal(currentId, [{ externalId: currentId, bundle }], changeSummary, setStatusMsg);
 
       if (prUrl) {
         setStatusMsg(t.pr_success);

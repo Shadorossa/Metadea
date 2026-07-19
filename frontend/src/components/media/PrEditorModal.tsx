@@ -718,6 +718,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       const otherChainIds = sagaChanged
         ? [...new Set([...fullChain, ...originalSagaOrder].filter(id => id !== externalId))]
         : [];
+
+      // Each saga member gets its own self-contained proposal file (see the
+      // primary bundle below) — collected here as the loop touches each one
+      // locally, so the same GitHub PR that edits "IE GO Luz" also carries
+      // "Inazuma Eleven 2"'s own updated relations, instead of only the entry
+      // that was actually opened in the editor.
+      const otherProposalEntries: { externalId: string; bundle: ProposalBundle }[] = [];
       for (const otherId of otherChainIds) {
         try {
           const existing = await getMediaRelations(otherId);
@@ -725,7 +732,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && originalSagaOrder.includes(r.related_media_external_id))
           );
           const newRows = chainRelations.filter(r => r.media_external_id === otherId);
-          await saveMediaRelations(otherId, [...kept, ...newRows]);
+          const otherRelations = [...kept, ...newRows];
+          await saveMediaRelations(otherId, otherRelations);
 
           // Editing the saga's structure is really an edit of every member's
           // relations, not just this one's own entry — without stamping this
@@ -736,7 +744,21 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
           // graph reintroduced exactly what was just removed here.
           const otherEntry = await getCatalogEntry(otherId).catch(() => null);
           if (otherEntry) {
-            await saveCatalogEntry({ ...otherEntry, manually_edited_at: new Date().toISOString() }).catch(() => {});
+            const stampedOtherEntry = { ...otherEntry, manually_edited_at: new Date().toISOString() };
+            await saveCatalogEntry(stampedOtherEntry).catch(() => {});
+            if (mode !== 'local') {
+              otherProposalEntries.push({
+                externalId: otherId,
+                bundle: {
+                  media_catalog: stampedOtherEntry,
+                  media_relations: otherRelations.map(r => ({ ...r, media_external_id: otherId })),
+                  characters: [],
+                  media_authors: [],
+                  saga_groups: sagaGroups,
+                  saga_name: sagaName || undefined,
+                },
+              });
+            }
           }
         } catch (err) {
           console.error(`Failed to propagate saga relation to ${otherId}:`, err);
@@ -812,20 +834,16 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
         return;
       }
 
-      // The PR touches more than the flat catalog row — it's a bundle so a
-      // single collaborative-catalog file can also carry the entry's
-      // characters, authors, and relations (bundled-in episodes/updates plus
-      // the whole saga chain's edges — tagged per-media since the chain spans
-      // more than just this entry) into the shared community database (see
-      // scripts/build-database.js, which fans each field out into its own
-      // table by that tag instead of assuming everything belongs to this
-      // file's own entry).
+      // The PR touches more than the flat catalog row — it's a bundle so
+      // this entry's own collaborative-catalog file also carries its
+      // characters, authors, and relations into the shared community
+      // database (see scripts/build-database.js). Saga-chain edges pointing
+      // at *other* members no longer ride along here — each affected member
+      // gets its own self-contained file instead (see otherProposalEntries
+      // above), so this file only carries this entry's own data.
       const bundle: ProposalBundle = {
         media_catalog: entry,
-        media_relations: [
-          ...currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
-          ...chainRelations.filter(r => r.media_external_id !== externalId),
-        ],
+        media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
         characters,
         media_authors: mediaAuthors,
         saga_groups: sagaGroups,
@@ -833,7 +851,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       };
       const changeSummary = buildChangeSummary(resolveMeta);
 
-      const prUrl = await submitCollaborativeProposal(externalId, bundle, changeSummary, setStatusMsg);
+      const proposalEntries = [{ externalId, bundle }, ...otherProposalEntries];
+      const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, changeSummary, setStatusMsg);
       if (prUrl) openUrlInBrowser(prUrl);
 
       setTimeout(() => onClose(), 1500);

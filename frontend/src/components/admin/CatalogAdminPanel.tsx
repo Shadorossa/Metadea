@@ -9,7 +9,7 @@ import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
 } from '../../lib/github/api';
-import { hydrateBundleIntoLocalCatalog } from '../../lib/github/bundle-sync';
+import { hydrateBundleIntoLocalCatalog, hydrateSagaChainFromGithub } from '../../lib/github/bundle-sync';
 import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
@@ -158,8 +158,13 @@ export function CatalogAdminPanel({ i18n }: Props) {
       // Imports the merged entry into the local DB so the rich editor has
       // something to show/edit — the actual save still goes out as a new
       // proposal PR (see the shared PrEditorModal below), not a direct
-      // overwrite of this file.
+      // overwrite of this file. Saga data is now split one-file-per-member
+      // upstream, so the rest of the chain (if any) needs hydrating too —
+      // otherwise the editor would only see this one entry instead of the
+      // whole saga, like it did back when everything lived in one file.
       await hydrateBundleIntoLocalCatalog(bundle);
+      await hydrateSagaChainFromGithub(token, bundle.media_catalog.external_id).catch(err =>
+        console.error('[CatalogAdminPanel] Failed to hydrate saga chain:', err));
       setEditingId(bundle.media_catalog.external_id);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);

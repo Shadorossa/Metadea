@@ -10,27 +10,15 @@ export interface ProposalBundle {
   characters: DbMediaCharacter[];
   media_authors: DbMediaAuthor[];
   saga_groups: Record<string, string>;
+  saga_name?: string;
 }
 
-// Handles the workflow of creating a branch, committing catalog JSON data, and opening a GitHub PR.
-export async function submitCollaborativeProposal(
-  externalId: string,
-  bundle: ProposalBundle,
-  changeSummary: string,
-  onStatus: (message: string) => void,
-): Promise<string | null> {
-  const entry = bundle.media_catalog;
+export interface ProposalFileEntry {
+  externalId: string;
+  bundle: ProposalBundle;
+}
 
-  onStatus('Checking GitHub token...');
-  const token = await invoke<string | null>('get_github_token').catch(() => null);
-  if (!token) {
-    throw new Error('Please log in with GitHub in Metadea Settings to submit proposals.');
-  }
-
-  onStatus('Fetching GitHub profile...');
-  const user = await invoke<GitHubUserProfile>('get_github_user_profile', { token });
-  const username = user.login;
-
+function sharableBundleFor(bundle: ProposalBundle): ProposalBundle {
   // Strip fields that only make sense on this user's own local install
   // before they leave the machine — the shared community catalog every
   // other user pulls from has no business carrying one person's sync
@@ -43,15 +31,38 @@ export async function submitCollaborativeProposal(
   const {
     last_synced_at, sync_failed_count, last_sync_error, favorites_count, ratings_count,
     ...sharableCatalogEntry
-  } = entry;
+  } = bundle.media_catalog;
   sharableCatalogEntry.created_at = '';
   sharableCatalogEntry.updated_at = '';
-  const sharableBundle: ProposalBundle = { ...bundle, media_catalog: sharableCatalogEntry };
+  return { ...bundle, media_catalog: sharableCatalogEntry };
+}
 
-  const jsonContent = JSON.stringify(sharableBundle, null, 2);
-  const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
-  const filePath = `database/${externalId.replace(':', '-')}.json`;
-  const branchName = `proposal-${externalId.replace(':', '-')}-${username}`;
+// Handles the workflow of creating a branch, committing one JSON file per
+// affected media entry, and opening a single GitHub PR covering all of them —
+// e.g. adding a saga to "IE GO Luz" also touches "Inazuma Eleven 2"'s own
+// file with its reciprocal relation, so both commits ride the same branch/PR
+// instead of only the entry that was actually opened in the editor.
+export async function submitCollaborativeProposal(
+  primaryExternalId: string,
+  entries: ProposalFileEntry[],
+  changeSummary: string,
+  onStatus: (message: string) => void,
+): Promise<string | null> {
+  if (entries.length === 0) return null;
+  const primary = entries.find(e => e.externalId === primaryExternalId) ?? entries[0];
+  const entry = primary.bundle.media_catalog;
+
+  onStatus('Checking GitHub token...');
+  const token = await invoke<string | null>('get_github_token').catch(() => null);
+  if (!token) {
+    throw new Error('Please log in with GitHub in Metadea Settings to submit proposals.');
+  }
+
+  onStatus('Fetching GitHub profile...');
+  const user = await invoke<GitHubUserProfile>('get_github_user_profile', { token });
+  const username = user.login;
+
+  const branchName = `proposal-${primaryExternalId.replace(':', '-')}-${username}`;
 
   const isOwner = isRepoOwner(username);
   const headRef = isOwner ? branchName : `${username}:${branchName}`;
@@ -97,36 +108,46 @@ export async function submitCollaborativeProposal(
     throw new Error('Failed to create proposal branch.');
   }
 
-  let fileSha: string | undefined;
-  const fileCheckRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}?ref=${branchName}`, {
-    headers: { 'Authorization': `token ${token}` },
-  });
-  if (fileCheckRes.ok) {
-    const fileCheckData = await fileCheckRes.json();
-    fileSha = fileCheckData.sha;
-  }
+  // One commit per affected entry, all on the same branch — a saga edit that
+  // touches N works ends up as N self-contained files (each with just its
+  // own relations, not a copy of every other file's data) in one PR.
+  for (const { externalId, bundle } of entries) {
+    onStatus(`Uploading data for ${bundle.media_catalog.title_main || externalId}...`);
+    const jsonContent = JSON.stringify(sharableBundleFor(bundle), null, 2);
+    const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
+    const filePath = `database/${externalId.replace(':', '-')}.json`;
 
-  onStatus('Uploading data to GitHub...');
-  const commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `token ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: `Update catalog entry for ${entry.title_main || externalId}`,
-      content: base64Content,
-      branch: branchName,
-      sha: fileSha,
-    }),
-  });
-  if (!commitRes.ok) {
-    throw new Error('Failed to commit JSON file to GitHub.');
+    let fileSha: string | undefined;
+    const fileCheckRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}?ref=${branchName}`, {
+      headers: { 'Authorization': `token ${token}` },
+    });
+    if (fileCheckRes.ok) {
+      const fileCheckData = await fileCheckRes.json();
+      fileSha = fileCheckData.sha;
+    }
+
+    const commitRes = await fetch(`https://api.github.com/repos/${targetRepoOwner}/${REPO_NAME}/contents/${filePath}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: `Update catalog entry for ${bundle.media_catalog.title_main || externalId}`,
+        content: base64Content,
+        branch: branchName,
+        sha: fileSha,
+      }),
+    });
+    if (!commitRes.ok) {
+      throw new Error(`Failed to commit JSON file for ${externalId} to GitHub.`);
+    }
   }
 
   // Always open a PR to keep the workflow consistent and provide a review URL.
   onStatus('Opening Pull Request...');
-  const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for **${entry.title_main || externalId}** (\`${externalId}\`).\n\n### Changes\n${changeSummary}`;
+  const affectedList = entries.map(({ externalId, bundle }) => `- **${bundle.media_catalog.title_main || externalId}** (\`${externalId}\`)`).join('\n');
+  const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for:\n${affectedList}\n\n### Changes\n${changeSummary}`;
   const prRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls`, {
     method: 'POST',
     headers: {
@@ -134,7 +155,7 @@ export async function submitCollaborativeProposal(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      title: `[Proposal] Catalog data for ${entry.title_main || externalId}`,
+      title: `[Proposal] Catalog data for ${entry.title_main || primaryExternalId}`,
       head: headRef,
       base: 'main',
       body: prBody,
