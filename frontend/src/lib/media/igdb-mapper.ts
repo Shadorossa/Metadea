@@ -1,6 +1,6 @@
 import { igdbImageUrl } from '../tauri';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation } from './types';
+import type { MediaPageData, MediaRelation, MediaStat } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
 import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
@@ -153,8 +153,8 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
   const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
 
-  const stats: { label: string; value: string }[] = [];
-  if (scoreGlobal) stats.push({ label: tm.stat_score, value: scoreGlobal.toFixed(1) + ' / 10' });
+  const stats: MediaStat[] = [];
+  if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
   if (statusLabel) stats.push({ label: tm.stat_status, value: statusLabel });
 
   const metaLines: string[] = [];

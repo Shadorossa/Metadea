@@ -5,6 +5,15 @@ import type { IN_PROGRESS_STATUSES } from '../constants/media';
 export interface MediaStat {
   label: string;
   value: string;
+  /** Optional second label/value pair rendered in the same row, divided by
+   *  a vertical rule — e.g. a TV series' "Episodios 65 | Temporadas 5"
+   *  instead of two separate stat rows. */
+  label2?: string;
+  value2?: string;
+  /** The provider's own global score (0-10 scale, in `value`) — rendered
+   *  centered, label-less, formatted per the user's own configured rating
+   *  system (stars/decimal/emoji/...) instead of a plain "X.X / 10" string. */
+  isScore?: boolean;
 }
 
 export interface MediaCharacter {

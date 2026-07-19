@@ -465,6 +465,44 @@
   text-align: right;
 }
 
+/* Two real columns (e.g. "Episodios 65 | Temporadas 5") instead of one
+   label + a crammed value string — each half is its own label/value pair,
+   styled identically, split by a subtle centered divider. */
+.media-stat-item--split {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.media-stat-col {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.media-stat-divider {
+  width: 1px;
+  height: 0.7em;
+  background: var(--border-color);
+  opacity: 0.5;
+  justify-self: center;
+}
+
+/* Provider global score — centered, label-less, formatted per the user's
+   own rating system (see formatRatingHtml in MediaPage.tsx) instead of a
+   plain "Puntuación  X.X / 10" row. */
+.media-stat-item--score {
+  justify-content: center;
+  border-top: none !important;
+}
+
+.media-stat-item--score .media-stat-score-value {
+  font-size: 0.95rem;
+}
+
 
 /* Description — capped to the related column's own height and scrollable
    internally (wheel/drag) instead of growing the whole row; scrollbar is

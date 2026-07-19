@@ -56,10 +56,18 @@ export function mapTmdbToMedia(
   const timeLength = isTv ? raw.episode_run_time?.[0] : raw.runtime ?? undefined;
 
   const stats: MediaStat[] = [];
-  if (scoreGlobal) stats.push({ label: tm.stat_score, value: `${scoreGlobal.toFixed(1)} / 10` });
+  if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
   if (isTv) {
-    if (raw.number_of_episodes) stats.push({ label: tm.stat_episodes, value: String(raw.number_of_episodes) });
-    if (raw.number_of_seasons) stats.push({ label: tm.stat_seasons, value: String(raw.number_of_seasons) });
+    // Always shown (not gated on a truthy count) — and when seasons are
+    // known too, folded into the same stat row via label2/value2 ("Episodios
+    // 65 | Temporadas 5", each half styled the same way) instead of two
+    // separate rows.
+    const episodesStat: MediaStat = { label: tm.stat_episodes, value: String(raw.number_of_episodes ?? 0) };
+    if (raw.number_of_seasons) {
+      episodesStat.label2 = tm.stat_seasons;
+      episodesStat.value2 = String(raw.number_of_seasons);
+    }
+    stats.push(episodesStat);
   } else if (timeLength) {
     stats.push({ label: tm.stat_duration, value: `${timeLength} min` });
   }

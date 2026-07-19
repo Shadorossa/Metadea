@@ -9,7 +9,7 @@ import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
-import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, type RatingSystem } from '../../lib/media/rating-utils';
+import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { IconPlus, IconCheck, IconTrayStatus, IconLayers, IconHeart, IconRefresh } from '../local/ui/icons';
 import { useLibraryEntry } from './hooks/useLibraryEntry';
 import { useAutoShrinkTitle } from './hooks/useAutoShrinkTitle';
@@ -998,10 +998,31 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                       return !isAuthorStat;
                     })
                     .map((s, i) => (
-                      <div key={i} className="media-stat-item">
-                        <span className="media-stat-label">{s.label}</span>
-                        <span className="media-stat-value">{s.value}</span>
-                      </div>
+                      s.isScore ? (
+                        <div key={i} className="media-stat-item media-stat-item--score">
+                          <span
+                            title={`${formatAverageScore(Number(s.value), ratingSystem)}${averageScoreSuffix(ratingSystem)}`}
+                            dangerouslySetInnerHTML={{ __html: formatRatingHtml(Number(s.value), ratingSystem, 'media-stat-score-value') }}
+                          />
+                        </div>
+                      ) : s.label2 ? (
+                        <div key={i} className="media-stat-item media-stat-item--split">
+                          <span className="media-stat-col">
+                            <span className="media-stat-label">{s.label}</span>
+                            <span className="media-stat-value">{s.value}</span>
+                          </span>
+                          <span className="media-stat-divider" />
+                          <span className="media-stat-col">
+                            <span className="media-stat-label">{s.label2}</span>
+                            <span className="media-stat-value">{s.value2}</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <div key={i} className="media-stat-item">
+                          <span className="media-stat-label">{s.label}</span>
+                          <span className="media-stat-value">{s.value}</span>
+                        </div>
+                      )
                     ))}
                 </div>
           </div>

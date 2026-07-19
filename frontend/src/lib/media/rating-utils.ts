@@ -35,9 +35,27 @@ export function ratingToEmoji(rating: number): { emoji: string; color: string } 
   return { emoji: '😐', color: '#f59e0b' };
 }
 
-const STAR_FULL  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="${STAR_PATH}"/></svg>`;
-const STAR_HALF  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="${STAR_PATH}" clip-path="polygon(0 0, 50% 0, 50% 100%, 0 100%)"/><path d="${STAR_PATH}" fill="none"/></svg>`;
-const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="${STAR_PATH}"/></svg>`;
+// display:inline-block + vertical-align:middle explicitly on every star
+// (full/empty/partial alike) — a bare <svg> defaults to vertical-align:
+// baseline, which sits lower than the wrapper span buildPartialStarHtml
+// uses for a partial fill, so without this the one star in a row that
+// happens to be partial visibly drops relative to its full/empty siblings.
+// Same stroke-width on both (was 1 on the full star vs 1.5 on the empty
+// one) — a mismatched stroke-width changes the glyph's effective visual
+// footprint at this tiny 14px size, which reads as a size/position mismatch
+// between full and empty stars regardless of vertical-align.
+const STAR_BASE_STYLE = 'display:inline-block;vertical-align:middle;line-height:0;';
+const STAR_STROKE_WIDTH = 1.25;
+const STAR_FULL  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}"><path d="${STAR_PATH}"/></svg>`;
+const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}"><path d="${STAR_PATH}"/></svg>`;
+
+// Same STAR_FULL markup but with an extra clip-path — built directly
+// (never via string-replace on STAR_FULL) so there's only ever one `style`
+// attribute on the tag; a duplicated attribute is invalid HTML and browsers
+// keep only the first one, silently dropping whichever half got appended.
+function starFullClipped(clipRightPct: string): string {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}clip-path:inset(0 ${clipRightPct}% 0 0);"><path d="${STAR_PATH}"/></svg>`;
+}
 
 /** Formats an average rating value (DB 0-10 scale) per the active rating system, with no unit suffix. */
 export function formatAverageScore(avgVal: number, system: RatingSystem): string {
@@ -56,14 +74,33 @@ export function averageScoreSuffix(system: RatingSystem): string {
   return system === '10-dec' || system === '10' ? ' / 10' : ' / 5';
 }
 
+// Fills each star to its exact fraction (e.g. a 4.25-star rating fills the
+// 5th star to 25%, not just rounded to the nearest half) — an empty-star
+// outline sits underneath, with a full star laid directly on top of it and
+// clip-path:inset() cutting off the right (1-fill) share. clip-path's own
+// percentages resolve against that element's own border box (14x14px here)
+// regardless of ancestor sizing, which a previous width%+overflow:hidden
+// wrapper approach turned out not to reliably clip at all.
+function buildPartialStarHtml(fill: number): string {
+  if (fill <= 0) return STAR_EMPTY;
+  if (fill >= 1) return STAR_FULL;
+  const clipRight = (100 - fill * 100).toFixed(1);
+  const clippedFull = starFullClipped(clipRight);
+  return (
+    `<span style="position:relative;display:inline-block;width:14px;height:14px;vertical-align:middle;line-height:0;">` +
+      `<span style="position:absolute;top:0;left:0;">${STAR_EMPTY}</span>` +
+      `<span style="position:absolute;top:0;left:0;">${clippedFull}</span>` +
+    `</span>`
+  );
+}
+
 function buildStarHtml(rating: number, cssClass: string, wrapperStyle = ''): string {
   if (!rating) return '';
   const stars5 = dbRatingToStars5(rating);
   let html = '';
   for (let i = 1; i <= 5; i++) {
-    if (stars5 >= i)             html += STAR_FULL;
-    else if (stars5 >= i - 0.5) html += STAR_HALF;
-    else                         html += STAR_EMPTY;
+    const fill = Math.max(0, Math.min(1, stars5 - (i - 1)));
+    html += buildPartialStarHtml(fill);
   }
   const style = wrapperStyle ? ` style="${wrapperStyle}"` : '';
   return `<span class="${cssClass}"${style}>${html}</span>`;
