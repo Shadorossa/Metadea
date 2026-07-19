@@ -35,24 +35,17 @@ export function ratingToEmoji(rating: number): { emoji: string; color: string } 
   return { emoji: '😐', color: '#f59e0b' };
 }
 
-// display:inline-block + vertical-align:middle explicitly on every star
-// (full/empty/partial alike) — a bare <svg> defaults to vertical-align:
-// baseline, which sits lower than the wrapper span buildPartialStarHtml
-// uses for a partial fill, so without this the one star in a row that
-// happens to be partial visibly drops relative to its full/empty siblings.
-// Same stroke-width on both (was 1 on the full star vs 1.5 on the empty
-// one) — a mismatched stroke-width changes the glyph's effective visual
-// footprint at this tiny 14px size, which reads as a size/position mismatch
-// between full and empty stars regardless of vertical-align.
+// Consistent alignment/stroke across full, empty, and partial stars — a
+// bare <svg> defaults to vertical-align:baseline, which sits lower than an
+// inline-block sibling, and a mismatched stroke-width between the full and
+// empty variants changes their effective visual size at this tiny 14px.
 const STAR_BASE_STYLE = 'display:inline-block;vertical-align:middle;line-height:0;';
 const STAR_STROKE_WIDTH = 1.25;
 const STAR_FULL  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}"><path d="${STAR_PATH}"/></svg>`;
 const STAR_EMPTY = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}"><path d="${STAR_PATH}"/></svg>`;
 
-// Same STAR_FULL markup but with an extra clip-path — built directly
-// (never via string-replace on STAR_FULL) so there's only ever one `style`
-// attribute on the tag; a duplicated attribute is invalid HTML and browsers
-// keep only the first one, silently dropping whichever half got appended.
+// Built directly rather than derived from STAR_FULL via string
+// manipulation, so there's only ever one `style` attribute on the tag.
 function starFullClipped(clipRightPct: string): string {
   return `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}clip-path:inset(0 ${clipRightPct}% 0 0);"><path d="${STAR_PATH}"/></svg>`;
 }
@@ -77,10 +70,7 @@ export function averageScoreSuffix(system: RatingSystem): string {
 // Fills each star to its exact fraction (e.g. a 4.25-star rating fills the
 // 5th star to 25%, not just rounded to the nearest half) — an empty-star
 // outline sits underneath, with a full star laid directly on top of it and
-// clip-path:inset() cutting off the right (1-fill) share. clip-path's own
-// percentages resolve against that element's own border box (14x14px here)
-// regardless of ancestor sizing, which a previous width%+overflow:hidden
-// wrapper approach turned out not to reliably clip at all.
+// clip-path:inset() cutting off the right (1-fill) share.
 function buildPartialStarHtml(fill: number): string {
   if (fill <= 0) return STAR_EMPTY;
   if (fill >= 1) return STAR_FULL;
