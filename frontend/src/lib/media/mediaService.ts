@@ -239,7 +239,7 @@ const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
-  'companies_cache_csv', 'authors_csv',
+  'companies_cache_csv', 'authors_csv', 'source_url', 'developer_badge',
 ] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
@@ -265,6 +265,8 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       shop_links_csv: shopLinks || null,
       companies_cache_csv: data.companies ? data.companies.join(',') : null,
       authors_csv: (data.authors ?? []).map(a => a.name).join(','),
+      source_url: data.sourceUrl || null,
+      developer_badge: data.developerBadge || null,
     };
 
     // A successful fetch that brings nothing new counts toward the same
@@ -429,10 +431,21 @@ export function fetchMediaDataWithFallback(
           // Three independent reads for the same rawId — no data dependency
           // between them, so they run concurrently instead of one round trip
           // after another.
-          const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff] = await Promise.all([
+          const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
             loadDbRelationsAndAuthors(rawId),
             getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
             getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
+            // catalog.parent_id only ever stores the parent's own id (see
+            // mapMediaDataToCatalogEntry) — mapCatalogEntryToPartialData has
+            // no way to turn that into the {externalId, title, cover} object
+            // data.parentGame needs, so this fast path used to always render
+            // as if the entry had no parent at all. That's what let
+            // isBlockedEdition (MediaPage.tsx) — which requires a truthy
+            // parentGame — flip on/off between visits depending on whether
+            // this fast path or a live fetch happened to answer that visit,
+            // showing the rating/editor UI on an expansion/expanded edition
+            // it should always be hidden on.
+            catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
           ]);
 
           if (dbRels.length > 0) {
@@ -451,6 +464,14 @@ export function fetchMediaDataWithFallback(
 
           if (dbStaff.length > 0) {
             localData.staff = dbStaff.map(dbStaffToMediaStaff);
+          }
+
+          if (parentEntry) {
+            localData.parentGame = {
+              externalId: parentEntry.external_id,
+              title: parentEntry.title_main || parentEntry.external_id,
+              cover: parentEntry.cover_url ?? undefined,
+            };
           }
         } catch (e) {
           console.error("Failed to load local media relations, authors or characters", e);

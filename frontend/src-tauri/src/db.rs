@@ -229,6 +229,18 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE staff_appearances RENAME TO media_staff_relation", []);
         mark_migration(conn, 12)?;
     }
+    if v < 13 {
+        // Every mapper computes these on each live fetch (the provider's own
+        // page URL, a game's lead developer for the banner overlay) but
+        // neither was ever persisted — the catalog-only fast path shown on
+        // most visits (see mediaService.ts/needsResync) had no column to
+        // read them back from, so the source logo/link and "Main Developer"
+        // badge flickered in and out depending on whether that visit
+        // happened to trigger a live fetch or not.
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN source_url TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN developer_badge TEXT", []);
+        mark_migration(conn, 13)?;
+    }
 
     Ok(())
 }
@@ -286,8 +298,8 @@ pub fn generate_id() -> String {
 const METADEA_SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS app_env (
     name       TEXT PRIMARY KEY,
-    value      TEXT NOT NULL DEFAULT '',
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    value      TEXT NOT NULL DEFAULT ''
 );
 
 -- Local-only cover override, used exclusively by the profile Favorites tab
@@ -301,9 +313,9 @@ CREATE TABLE IF NOT EXISTS app_env (
 -- rather than re-fetched from image_url at render time.
 CREATE TABLE IF NOT EXISTS favorite_custom_images (
     external_id TEXT PRIMARY KEY,
-    list_name   TEXT NOT NULL,
-    file_name   TEXT NOT NULL,
     bg_size     REAL NOT NULL DEFAULT 100,
+    file_name   TEXT NOT NULL,
+    list_name   TEXT NOT NULL,
     pos_x       REAL NOT NULL DEFAULT 50,
     pos_y       REAL NOT NULL DEFAULT 50,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
@@ -311,12 +323,12 @@ CREATE TABLE IF NOT EXISTS favorite_custom_images (
 
 CREATE TABLE IF NOT EXISTS characters (
     id           TEXT PRIMARY KEY,
-    external_id  TEXT UNIQUE NOT NULL,
-    name         TEXT NOT NULL DEFAULT '',
-    name_native  TEXT,
     aliases_csv  TEXT DEFAULT '',
     biography    TEXT,
+    external_id  TEXT UNIQUE NOT NULL,
     image_url    TEXT,
+    name         TEXT NOT NULL DEFAULT '',
+    name_native  TEXT,
     reaction     TEXT,
     created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
@@ -325,9 +337,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS characters_external_idx ON characters(external
 
 CREATE TABLE IF NOT EXISTS character_appearances (
     character_external_id TEXT NOT NULL,
+    character_name        TEXT,
     media_external_id     TEXT NOT NULL,
     relation_type         TEXT,
-    character_name        TEXT,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
 );
@@ -339,17 +351,17 @@ CREATE TABLE IF NOT EXISTS character_appearances (
 CREATE TABLE IF NOT EXISTS media_staff (
     id           TEXT PRIMARY KEY,
     external_id  TEXT UNIQUE NOT NULL,
-    name         TEXT NOT NULL DEFAULT '',
     image_url    TEXT,
+    name         TEXT NOT NULL DEFAULT '',
     created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS media_staff_external_idx ON media_staff(external_id);
 
 CREATE TABLE IF NOT EXISTS media_staff_relation (
-    staff_external_id TEXT NOT NULL,
     media_external_id TEXT NOT NULL,
     role               TEXT,
+    staff_external_id TEXT NOT NULL,
     added_at           TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (staff_external_id, media_external_id)
 );
@@ -362,9 +374,9 @@ CREATE TABLE IF NOT EXISTS local_folders (
 );
 
 CREATE TABLE IF NOT EXISTS local_game_links (
+    external_id TEXT NOT NULL,
     launcher    TEXT NOT NULL,
     link_key    TEXT NOT NULL DEFAULT '',
-    external_id TEXT NOT NULL,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (launcher, link_key)
 );
@@ -377,43 +389,47 @@ CREATE TABLE IF NOT EXISTS local_routes (
 
 CREATE TABLE IF NOT EXISTS local_anime_folders (
     anilist_id   INTEGER PRIMARY KEY,
-    folder_path  TEXT NOT NULL,
     episode_count INTEGER DEFAULT 0,
+    folder_path  TEXT NOT NULL,
     updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS media_catalog (
     id                   TEXT PRIMARY KEY,
-    external_id          TEXT UNIQUE NOT NULL,
-    parent_id            TEXT,
-    type                 TEXT,
-    format               TEXT DEFAULT '',
-    source               TEXT DEFAULT '',
-    title_main           TEXT DEFAULT '',
-    title_romaji         TEXT DEFAULT '',
-    title_native         TEXT DEFAULT '',
-    synopsis             TEXT,
-    cover_url            TEXT,
+    authors_csv          TEXT DEFAULT '',
     banners_csv          TEXT DEFAULT '',
-    release_year         INTEGER,
-    release_month        INTEGER,
-    release_day          INTEGER,
-    time_length          INTEGER,
-    status               TEXT,
-    score_global         REAL,
+    blocked_at           TEXT,
+    companies_cache_csv  TEXT DEFAULT '',
+    cover_url            TEXT,
+    developer_badge      TEXT,
+    external_id          TEXT UNIQUE NOT NULL,
     favorites_count      INTEGER DEFAULT 0,
-    ratings_count        INTEGER DEFAULT 0,
-    total_count          INTEGER,
-    total_count_2        INTEGER,
+    format               TEXT DEFAULT '',
     genres_csv           TEXT DEFAULT '',
     genres_tag_csv       TEXT DEFAULT '',
-    platforms_csv        TEXT DEFAULT '',
-    shop_links_csv       TEXT DEFAULT '',
-    companies_cache_csv  TEXT DEFAULT '',
-    authors_csv          TEXT DEFAULT '',
-    last_synced_at       TEXT,
-    sync_failed_count    INTEGER DEFAULT 0,
     last_sync_error      TEXT,
+    last_synced_at       TEXT,
+    manually_edited_at   TEXT,
+    parent_id            TEXT,
+    platforms_csv        TEXT DEFAULT '',
+    ratings_count        INTEGER DEFAULT 0,
+    release_day          INTEGER,
+    release_month        INTEGER,
+    release_year         INTEGER,
+    score_global         REAL,
+    shop_links_csv       TEXT DEFAULT '',
+    source               TEXT DEFAULT '',
+    source_url           TEXT,
+    status               TEXT,
+    synopsis             TEXT,
+    sync_failed_count    INTEGER DEFAULT 0,
+    time_length          INTEGER,
+    title_main           TEXT DEFAULT '',
+    title_native         TEXT DEFAULT '',
+    title_romaji         TEXT DEFAULT '',
+    total_count          INTEGER,
+    total_count_2        INTEGER,
+    type                 TEXT,
     created_at           TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at           TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -421,16 +437,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS media_catalog_external_idx ON media_catalog(ex
 
 CREATE TABLE IF NOT EXISTS media_author (
     external_id      TEXT PRIMARY KEY,
-    name             TEXT NOT NULL,
     author_image_url TEXT,
     author_url       TEXT,
+    name             TEXT NOT NULL,
     created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS media_by_author (
-    media_external_id  TEXT NOT NULL,
     author_external_id TEXT NOT NULL,
+    media_external_id  TEXT NOT NULL,
     role               TEXT,
     PRIMARY KEY (media_external_id, author_external_id),
     FOREIGN KEY (author_external_id) REFERENCES media_author(external_id) ON DELETE CASCADE
@@ -438,8 +454,8 @@ CREATE TABLE IF NOT EXISTS media_by_author (
 
 CREATE TABLE IF NOT EXISTS sagas (
     id          TEXT PRIMARY KEY,
-    name        TEXT NOT NULL DEFAULT '',
     description TEXT,
+    name        TEXT NOT NULL DEFAULT '',
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -470,8 +486,8 @@ CREATE TABLE IF NOT EXISTS media_relations (
 CREATE INDEX IF NOT EXISTS idx_media_relations_related ON media_relations(related_media_external_id);
 
 CREATE TABLE IF NOT EXISTS media_saga_groups (
-    media_external_id TEXT NOT NULL PRIMARY KEY,
-    group_name        TEXT NOT NULL
+    group_name        TEXT NOT NULL,
+    media_external_id TEXT NOT NULL PRIMARY KEY
 );
 
 -- Snapshot of external_ids seen in the last downloaded community catalog
@@ -484,8 +500,8 @@ CREATE TABLE IF NOT EXISTS community_synced_ids (
 );
 
 CREATE TABLE IF NOT EXISTS monthly_history (
-    month        TEXT NOT NULL,
     external_id  TEXT NOT NULL,
+    month        TEXT NOT NULL,
     position     INTEGER NOT NULL DEFAULT 0,
     added_at     TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (month, external_id)
@@ -496,17 +512,17 @@ CREATE TABLE IF NOT EXISTS monthly_history (
 CREATE INDEX IF NOT EXISTS idx_monthly_history_month_position ON monthly_history(month, position);
 
 CREATE TABLE IF NOT EXISTS tier_list_items (
-    tier_list_id TEXT NOT NULL,
     external_id  TEXT NOT NULL,
-    tier_key     TEXT NOT NULL DEFAULT 'pool',
     position     INTEGER NOT NULL DEFAULT 0,
+    tier_key     TEXT NOT NULL DEFAULT 'pool',
+    tier_list_id TEXT NOT NULL,
     PRIMARY KEY (tier_list_id, external_id)
 );
 
 CREATE TABLE IF NOT EXISTS tier_lists (
     id         TEXT PRIMARY KEY,
-    name       TEXT NOT NULL DEFAULT '',
     list_type  TEXT NOT NULL DEFAULT 'works',
+    name       TEXT NOT NULL DEFAULT '',
     tiers      TEXT NOT NULL DEFAULT '[]',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -515,39 +531,39 @@ CREATE TABLE IF NOT EXISTS tier_lists (
 CREATE TABLE IF NOT EXISTS user_activity (
     id             TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
     date           TEXT NOT NULL,
-    external_id    TEXT NOT NULL,
     event_type     TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
     media_type     TEXT,
-    progress_start INTEGER,
     progress_end   INTEGER,
+    progress_start INTEGER,
     timestamp      TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS user_library (
     id                TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
-    user_id           TEXT NOT NULL,
     external_id       TEXT NOT NULL UNIQUE,
-    type              TEXT NOT NULL,
-    status            TEXT DEFAULT 'planning',
-    rating            REAL,
-    progress          REAL DEFAULT 0,
-    progress_2        REAL DEFAULT 0,
-    minutes_spent     REAL DEFAULT 0,
+    finished_at       TEXT,
     is_favorite       INTEGER DEFAULT 0,
     is_platinum       INTEGER DEFAULT 0,
-    tags              TEXT,
+    minutes_spent     REAL DEFAULT 0,
     notes             TEXT,
-    added_at          TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+    progress          REAL DEFAULT 0,
+    progress_2        REAL DEFAULT 0,
+    rating            REAL,
     selected_platform TEXT,
     selected_version  TEXT,
     started_at        TEXT,
-    finished_at       TEXT
+    status            TEXT DEFAULT 'planning',
+    tags              TEXT,
+    type              TEXT NOT NULL,
+    user_id           TEXT NOT NULL,
+    added_at          TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS user_list_items (
-    list_key    TEXT NOT NULL,
     external_id TEXT NOT NULL,
+    list_key    TEXT NOT NULL,
     position    INTEGER NOT NULL DEFAULT 0,
     added_at    TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (list_key, external_id)
@@ -559,9 +575,9 @@ CREATE INDEX IF NOT EXISTS idx_user_list_items_list_key_position ON user_list_it
 
 CREATE TABLE IF NOT EXISTS user_lists (
     key         TEXT PRIMARY KEY,
-    name        TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     is_fav      INTEGER NOT NULL DEFAULT 0,
+    name        TEXT NOT NULL DEFAULT '',
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );

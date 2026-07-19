@@ -48,6 +48,14 @@ export interface MediaCatalogEntry {
    *  any other collaborative-catalog field (see submitCollaborativeProposal.ts),
    *  so a block reaches every other user's install once merged. */
   blocked_at?:          string | null;
+  /** This work's own page on its source provider's website — recomputed on
+   *  every live fetch, but persisted too so the catalog-only fast path
+   *  (most visits — see mediaService.ts/needsResync) can still show the
+   *  source logo/link without one. */
+  source_url?:          string | null;
+  /** Lead developer name, overlaid on a game's banner (IGDB only) — same
+   *  "persist so the fast path has it too" reasoning as source_url. */
+  developer_badge?:     string | null;
   created_at:           string;
   updated_at:           string;
 }

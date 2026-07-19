@@ -184,6 +184,13 @@ pub struct MediaCatalogEntry {
     /// for remasters/editions the user considers unwanted noise, without
     /// losing the ability to unblock later. See SELECT_VISIBLE below.
     pub blocked_at: Option<String>,
+    /// This work's own page on its source provider's website — recomputed on
+    /// every live fetch, but persisted too so the catalog-only fast path
+    /// (most visits) can still show the source logo/link without one.
+    pub source_url: Option<String>,
+    /// Lead developer name, overlaid on a game's banner (IGDB only) — same
+    /// "persist so the fast path has it too" reasoning as source_url.
+    pub developer_badge: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -196,7 +203,7 @@ const SELECT_ALL: &str = "
            ratings_count, total_count, total_count_2, genres_csv,
            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           manually_edited_at, blocked_at, created_at, updated_at
+           manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
     FROM media_catalog";
 
 // Same as SELECT_ALL but excluding blocked rows — used by every read path
@@ -214,7 +221,7 @@ const SELECT_VISIBLE: &str = "
            ratings_count, total_count, total_count_2, genres_csv,
            genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
            authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-           manually_edited_at, blocked_at, created_at, updated_at
+           manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
     FROM visible_media_catalog";
 
 fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> {
@@ -252,8 +259,10 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         last_sync_error:     row.get(30)?,
         manually_edited_at:  row.get(31)?,
         blocked_at:          row.get(32)?,
-        created_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
+        source_url:          row.get(33)?,
+        developer_badge:     row.get(34)?,
+        created_at:          row.get::<_, Option<String>>(35)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(36)?.unwrap_or_default(),
     })
 }
 
@@ -291,8 +300,8 @@ pub async fn save_catalog_entry(
             ratings_count, total_count, total_count_2, genres_csv,
             genres_tag_csv, platforms_csv, shop_links_csv, companies_cache_csv,
             authors_csv, last_synced_at, sync_failed_count, last_sync_error,
-            manually_edited_at, blocked_at, created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35)",
+            manually_edited_at, blocked_at, source_url, developer_badge, created_at, updated_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37)",
         rusqlite::params![
             &entry.external_id, &entry.id, &entry.parent_id, &entry.r#type,
             &entry.format, &entry.source,
@@ -307,6 +316,7 @@ pub async fn save_catalog_entry(
             &entry.authors_csv,
             &entry.last_synced_at, &entry.sync_failed_count, &entry.last_sync_error,
             &entry.manually_edited_at, &entry.blocked_at,
+            &entry.source_url, &entry.developer_badge,
             &entry.created_at, &entry.updated_at,
         ],
     ).str_err()?;
