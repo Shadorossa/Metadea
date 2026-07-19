@@ -1134,10 +1134,11 @@ pub async fn sync_community_catalog(
             // does. Guarded by attached_db_has_column in case this
             // community.db predates the column.
             let possible_cols = [
-                "id", "external_id", "authors_csv", "banners_csv", "cover_url",
+                "id", "external_id", "authors_csv", "banners_csv", "country_code", "cover_url",
                 "developer_badge", "favorites_count", "format", "genres_csv", "genres_tag_csv",
                 "last_sync_error", "last_synced_at", "parent_id", "platforms_csv", "publishers_csv",
-                "ratings_count", "release_day", "release_month", "release_year", "score_global",
+                "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
+                "release_month", "release_year", "score_global",
                 "shop_links_csv", "source", "source_url", "status", "sync_failed_count", "synopsis",
                 "time_length", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
                 "type"
