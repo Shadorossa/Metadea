@@ -965,6 +965,18 @@
   gap: 0.35rem;
 }
 
+.media-user-card--skeleton {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  animation: media-user-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes media-user-skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
 .media-user-avatar {
   width: 100%;
   aspect-ratio: 1 / 1;

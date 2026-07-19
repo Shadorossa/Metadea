@@ -5,7 +5,7 @@
 // relations, metaLines) are empty until then.
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaStat } from './types';
-import { formatDateParts, lookupLabel } from './mapper-utils';
+import { formatDateParts, lookupLabel, countryName } from './mapper-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -27,8 +27,39 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   // rebuild the author stat, silently dropping score/format/status from the
   // Datos section on every subsequent visit even though they were already
   // saved to the catalog row.
+  // Order matters here — it must match each live mapper's own stats push
+  // order (anilist-mapper: score, author, episodes/chapters, format|status,
+  // country; igdb/tmdb-mapper follow their own equivalent order), or the
+  // Datos section visibly reorders itself the instant a live/full fetch
+  // replaces this fast-path render with the live mapper's stats array.
   if (c.score_global != null) {
     stats.push({ label: tm.stat_score, value: String(c.score_global), isScore: true });
+  }
+  if (authorList.length > 0) {
+    stats.push({
+      label: authorList.length > 1 ? 'Autores' : 'Autor',
+      value: authorList.join(', '),
+    });
+  }
+  if (c.type === 'anime' || c.type === 'series') {
+    if (c.total_count) {
+      stats.push({ label: tm.stat_episodes, value: String(c.total_count), label2: tm.stat_seasons, value2: String(c.total_count_2 ?? 1) });
+    }
+  } else if (c.type === 'manga' || c.type === 'lnovel') {
+    if (c.total_count || c.total_count_2) {
+      const chaptersStat: MediaStat = { label: tm.stat_chapters, value: String(c.total_count ?? 0) };
+      if (c.total_count_2) {
+        chaptersStat.label2 = tm.stat_volumes;
+        chaptersStat.value2 = String(c.total_count_2);
+      }
+      stats.push(chaptersStat);
+    }
+  }
+  // Same slot anilist-mapper (anime only) / tmdb-mapper (movie, or tv when
+  // known) use for duration — right after episodes/chapters, before
+  // format|status. Never persisted before, so it was silently dropped here.
+  if (c.time_length && (c.type === 'anime' || c.type === 'movie' || c.type === 'series')) {
+    stats.push({ label: tm.stat_duration, value: `${c.time_length} min` });
   }
   if (c.format || c.status) {
     const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
@@ -40,11 +71,8 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     }
     stats.push(formatStat);
   }
-  if (authorList.length > 0) {
-    stats.push({
-      label: authorList.length > 1 ? 'Autores' : 'Autor',
-      value: authorList.join(', '),
-    });
+  if (c.country_code) {
+    stats.push({ label: tm.stat_country, value: countryName(c.country_code) ?? c.country_code });
   }
 
   const companies = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : [];
@@ -81,22 +109,20 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     if (publishers.length > 0) metaLines.push(publishers.join(', '));
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
-    const quickBits: string[] = [];
+    // Chapter/volume/episode counts already have their own dedicated stat
+    // row (Capítulos | Volúmenes / Episodios | Temporadas, built above) —
+    // repeating them here too was redundant with that row.
     const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
-    if (formatLabel) quickBits.push(formatLabel);
-    if (c.type === 'anime') {
-      if (c.total_count) quickBits.push(`${c.total_count} ep`);
-    } else {
-      if (c.total_count_2) {
-        quickBits.push(`${c.total_count_2} vol`);
-      } else if (c.total_count) {
-        quickBits.push(`${c.total_count} cap`);
-      }
-    }
-    if (quickBits.length > 0) metaLines.push(quickBits.join(' · '));
+    if (formatLabel) metaLines.push(formatLabel);
   }
 
-  const dateBadge = formatDateParts({ year: c.release_year, month: c.release_month, day: c.release_day }) || undefined;
+  // Mirrors anilist-mapper's own dateBadge: "start - end" once an end date
+  // exists, not just the start — the fast path used to only ever persist/
+  // rebuild the start date, so a finished series' range would only show up
+  // once (if ever) a live fetch actually ran.
+  const startFmt = formatDateParts({ year: c.release_year, month: c.release_month, day: c.release_day });
+  const endFmt = formatDateParts({ year: c.release_end_year, month: c.release_end_month, day: c.release_end_day });
+  const dateBadge = startFmt ? (endFmt ? `${startFmt} - ${endFmt}` : startFmt) : undefined;
 
   return {
     externalId:    c.external_id,
@@ -116,10 +142,14 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     dateBadge,
     totalCount:    c.total_count   ?? undefined,
     totalCount_2:  c.total_count_2 ?? undefined,
+    countryOfOrigin: c.country_code ?? undefined,
     scoreGlobal:   c.score_global  ?? undefined,
     releaseYear:   c.release_year  ?? undefined,
     releaseMonth:  c.release_month ?? undefined,
     releaseDay:    c.release_day   ?? undefined,
+    releaseEndYear:  c.release_end_year  ?? undefined,
+    releaseEndMonth: c.release_end_month ?? undefined,
+    releaseEndDay:   c.release_end_day   ?? undefined,
     timeLength:    c.time_length   ?? undefined,
     status:        c.status        ?? undefined,
     format:        c.format        ?? undefined,
@@ -168,11 +198,15 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
     release_year:          data.releaseYear,
     release_month:         data.releaseMonth,
     release_day:           data.releaseDay,
+    release_end_year:      data.releaseEndYear,
+    release_end_month:     data.releaseEndMonth,
+    release_end_day:       data.releaseEndDay,
     score_global:          data.scoreGlobal,
     time_length:           data.timeLength,
     status:                data.status,
     total_count:           data.totalCount,
     total_count_2:         data.totalCount_2,
+    country_code:          data.countryOfOrigin || undefined,
     genres_csv:            data.genreDots    ? data.genreDots.split(' · ').join(',')    : undefined,
     genres_tag_csv:        data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : undefined,
     platforms_csv:         data.platforms?.join(',') || undefined,

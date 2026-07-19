@@ -67,8 +67,10 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     ? (endFmt ? `${startFmt} - ${endFmt}` : startFmt)
     : undefined;
 
-  let quickMeta = formatLabel;
-  if (resolvedType !== 'anime' && raw.volumes) quickMeta += ` · ${raw.volumes} vol`;
+  // Chapter/volume/episode counts have their own dedicated stat row
+  // (Capítulos | Volúmenes) — repeating them here in the format meta line
+  // was redundant with that row.
+  const quickMeta = formatLabel;
 
   const studiosList = raw.studios.nodes.map(n => n.name).join(', ');
   const metaLines   = [studiosList, quickMeta].filter(Boolean);
@@ -168,7 +170,14 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       role: e.role,
     }));
 
+  const scoreGlobal = normalizeScore100(raw.averageScore);
+
   const stats: MediaPageData['stats'] = [];
+  // Every other provider mapper (igdb-mapper, tmdb-mapper) pushes this score
+  // stat — this one never did, so it only ever showed up via the catalog-only
+  // fast path (mapCatalogEntryToPartialData) and vanished again once a live
+  // AniList fetch replaced that data with this mapper's own stats array.
+  if (scoreGlobal) stats.push({ label: tm.stat_score, value: String(scoreGlobal), isScore: true });
   if (authors.length > 0) {
     stats.push({
       label: authors[0].role || 'Author',
@@ -243,7 +252,11 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     releaseYear:  raw.startDate?.year  ?? undefined,
     releaseMonth: raw.startDate?.month ?? undefined,
     releaseDay:   raw.startDate?.day   ?? undefined,
-    scoreGlobal:  normalizeScore100(raw.averageScore),
+    releaseEndYear:  raw.endDate?.year  ?? undefined,
+    releaseEndMonth: raw.endDate?.month ?? undefined,
+    releaseEndDay:   raw.endDate?.day   ?? undefined,
+    scoreGlobal,
+    countryOfOrigin: raw.countryOfOrigin ?? undefined,
     platforms:    undefined,
     timeLength:   resolvedType === 'anime' ? (raw.duration ?? undefined) : undefined,
     status:       canonicalStatus,

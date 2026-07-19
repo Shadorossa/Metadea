@@ -280,6 +280,27 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN publishers_csv TEXT", []);
         mark_migration(conn, 15)?;
     }
+    if v < 17 {
+        // AniList's countryOfOrigin / TMDB's origin_country ("País de
+        // origen" stat) was only ever built live, never persisted — the
+        // catalog-only fast path had no way to show it, so it'd flash in
+        // only once the live fetch resolved. See catalog-mapper.ts.
+        // (Was migration 16 — renumbered because an earlier, since-reverted
+        // migration 16 already got applied and marked on dev databases,
+        // which made run_migrations silently skip this one.)
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN country_code TEXT", []);
+        mark_migration(conn, 17)?;
+    }
+    if v < 18 {
+        // AniList's raw.endDate — only release_year/month/day (the *start*
+        // date) was ever persisted, so the catalog-only fast path could only
+        // ever rebuild a single-date dateBadge, never the "start - end"
+        // range anilist-mapper builds live for finished series.
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN release_end_year INTEGER", []);
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN release_end_month INTEGER", []);
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN release_end_day INTEGER", []);
+        mark_migration(conn, 18)?;
+    }
 
     Ok(())
 }
@@ -439,6 +460,7 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     authors_csv          TEXT DEFAULT '',
     banners_csv          TEXT DEFAULT '',
     blocked_at           TEXT,
+    country_code         TEXT,
     cover_url            TEXT,
     developer_badge      TEXT,
     favorites_count      INTEGER DEFAULT 0,
@@ -452,6 +474,9 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     publishers_csv       TEXT DEFAULT '',
     ratings_count        INTEGER DEFAULT 0,
     release_day          INTEGER,
+    release_end_day      INTEGER,
+    release_end_month    INTEGER,
+    release_end_year     INTEGER,
     release_month        INTEGER,
     release_year         INTEGER,
     score_global         REAL,

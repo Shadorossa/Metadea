@@ -92,12 +92,16 @@ export interface MediaPageData {
   releaseYear?: number;
   releaseMonth?: number;
   releaseDay?: number;
+  releaseEndYear?: number;
+  releaseEndMonth?: number;
+  releaseEndDay?: number;    // AniList raw.endDate — persisted so the catalog-only fast path can show the "start - end" dateBadge range instead of just the start date
   platforms?: string[];
   scoreGlobal?: number;
   timeLength?: number;
   status?: string;
   totalCount?: number;
   totalCount_2?: number;
+  countryOfOrigin?: string;    // ISO-ish country code (AniList/TMDB) — persisted to media_catalog.country_code so the catalog-only fast path can show "País de origen" without a live fetch
   companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
   publishers?: string[];       // games only (IGDB) — publisher subset of `companies`, persisted separately to media_catalog.publishers_csv so the catalog-only fast path can show a publisher-only line without guessing which of `companies` that is
   authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table

@@ -261,6 +261,7 @@ export function mapTmdbToMedia(
     status: canonicalStatus,
     totalCount: isTv ? raw.number_of_episodes ?? undefined : 1,
     totalCount_2: isTv ? raw.number_of_seasons ?? undefined : undefined,
+    countryOfOrigin: originCountry ?? undefined,
     companies,
     format,
   };

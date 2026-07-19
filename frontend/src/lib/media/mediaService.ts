@@ -239,7 +239,7 @@ const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
-  'publishers_csv', 'authors_csv', 'source_url', 'developer_badge',
+  'publishers_csv', 'authors_csv', 'source_url', 'developer_badge', 'country_code',
 ] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
@@ -267,6 +267,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       authors_csv: (data.authors ?? []).map(a => a.name).join(','),
       source_url: data.sourceUrl || null,
       developer_badge: data.developerBadge || null,
+      country_code: data.countryOfOrigin || null,
     };
 
     // A successful fetch that brings nothing new counts toward the same
@@ -301,6 +302,9 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       release_year: existing?.release_year ?? (data.releaseYear || null),
       release_month: existing?.release_month ?? (data.releaseMonth || null),
       release_day: existing?.release_day ?? (data.releaseDay || null),
+      release_end_year: existing?.release_end_year ?? (data.releaseEndYear || null),
+      release_end_month: existing?.release_end_month ?? (data.releaseEndMonth || null),
+      release_end_day: existing?.release_end_day ?? (data.releaseEndDay || null),
       time_length: data.timeLength || null,
       // Marks "we just checked the live provider" — needsResync() (see
       // media-status.ts) reads this to decide whether a RELEASING/
@@ -421,9 +425,9 @@ export function fetchMediaDataWithFallback(
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
 
-        // Render basic catalog fields (titles, score, format, cover...)
-        // immediately instead of waiting for database reads of secondary
-        // resources (relations, characters, staff...) to resolve.
+        // Paint the base catalog data immediately instead of waiting on the
+        // relations/characters/staff/parent reads below — otherwise the page
+        // shows nothing until 4 concurrent DB round trips finish.
         if (!fullArrived) {
           onPartial(localData);
         }

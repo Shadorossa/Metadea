@@ -12,6 +12,10 @@ export interface MediaCatalogEntry {
    *  any other collaborative-catalog field (see submitCollaborativeProposal.ts),
    *  so a block reaches every other user's install once merged. */
   blocked_at?:          string | null;
+  /** ISO-ish country code (AniList countryOfOrigin / TMDB origin_country) —
+   *  persisted so the catalog-only fast path can show "País de origen"
+   *  without a live fetch. */
+  country_code?:        string | null;
   cover_url?:           string | null;
   /** Lead developer name, overlaid on a game's banner (IGDB only) — same
    *  "persist so the fast path has it too" reasoning as source_url. */
@@ -30,6 +34,11 @@ export interface MediaCatalogEntry {
   publishers_csv?:      string | null;
   ratings_count?:       number | null;
   release_day?:         number | null;
+  /** AniList raw.endDate — persisted so the catalog-only fast path can
+   *  rebuild the "start - end" dateBadge range instead of just the start. */
+  release_end_day?:     number | null;
+  release_end_month?:   number | null;
+  release_end_year?:    number | null;
   release_month?:       number | null;
   release_year?:        number | null;
   score_global?:        number | null;

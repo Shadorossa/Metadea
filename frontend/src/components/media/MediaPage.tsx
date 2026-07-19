@@ -23,6 +23,7 @@ import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
 import { mergePlatformVersions } from '../../lib/media/mapper-utils';
+import { ANILIST_TYPES } from '../../lib/constants/media';
 
 // Breaks a "Prefix: Rest" relation title onto two lines after the colon
 // (e.g. "Alan Wake II: The Lake House") instead of letting it wrap wherever
@@ -166,6 +167,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
   const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
+  const [friendsLoading,     setFriendsLoading]     = useState(false);
   const [retryingSync,       setRetryingSync]       = useState(false);
   const [ratingSystem,       setRatingSystem]       = useState<RatingSystem>(getActiveRatingSystem());
   const [savedToast,         setSavedToast]         = useState<'hidden' | 'visible' | 'leaving'>('hidden');
@@ -326,6 +328,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
     let cancelled = false;
 
+    // "Usuarios" (followed AniList friends' own scores for this exact entry)
+    // only needs the numeric id from the URL — not any of the media data
+    // itself — so it's fired here in parallel with the main fetch instead of
+    // nested inside the `full` callback below, where it used to wait on the
+    // live/catalog fetch to fully resolve first even though it has no real
+    // dependency on that data.
+    const [currentType, currentNumericIdStr] = currentId.split(':');
+    if ((ANILIST_TYPES as readonly string[]).includes(currentType)) {
+      const anilistId = parseInt(currentNumericIdStr, 10);
+      if (anilistId) {
+        setFriendsLoading(true);
+        fetchFollowedFriendsScores(anilistId).then(scores => {
+          if (!cancelled) setFriendsScores(scores);
+        }).catch(() => {}).finally(() => {
+          if (!cancelled) setFriendsLoading(false);
+        });
+      }
+    }
+
     fetchMediaDataWithFallback(
       currentId,
       partial => {
@@ -360,20 +381,6 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         }
         if (full.staff && full.staff.length > 0) {
           saveStaffSkeleton(currentId, mediaStaffToSkeleton(full.staff)).catch(console.error);
-        }
-
-        // "Usuarios" section — followed AniList friends' own scores for this
-        // exact entry, one query via Page.mediaList(isFollowing: true).
-        // Only meaningful for AniList-sourced entries (anime/manga/lnovel);
-        // silently empty (no section rendered) without a connected AniList
-        // account, since fetchFollowedFriendsScores itself no-ops then.
-        if (full.source === 'anilist') {
-          const anilistId = parseInt(currentId.split(':')[1], 10);
-          if (anilistId) {
-            fetchFollowedFriendsScores(anilistId).then(scores => {
-              if (!cancelled) setFriendsScores(scores);
-            }).catch(() => {});
-          }
         }
 
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,
@@ -726,7 +733,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           {/* Izquierda: títulos */}
           <div className="media-hero-left">
             <h1 className="media-title-main" ref={titleRef}>{data.titleMain}</h1>
-            {data.titleNative  && <p className="media-title-native">{data.titleNative}</p>}
+            {/* Prefer the native-script title (Japanese kanji/kana, ...) —
+                fall back to the romaji title only when it's missing and
+                actually differs from the main heading above (titleMain is
+                usually the romaji itself, so showing it again as a subtitle
+                would just repeat the same text). Both come straight from the
+                catalog row (title_native/title_romaji), no live fetch needed. */}
+            {data.titleNative
+              ? <p className="media-title-native">{data.titleNative}</p>
+              : (data.titleRomaji && data.titleRomaji !== data.titleMain)
+                ? <p className="media-title-native">{data.titleRomaji}</p>
+                : null}
             {data.titleEnglish && <p className="media-title-english">{data.titleEnglish}</p>}
           </div>
 
@@ -1069,11 +1086,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
       {/* Personajes + Usuarios — side by side, Usuarios pinned to the same
           width as the Datos column above (.media-body's 0.9fr share) since
-          it's a much shorter list than the characters grid next to it. */}
-      {(data.characters.length > 0 || friendsScores.length > 0) && (
+          it's a much shorter list than the characters grid next to it.
+          Usuarios always reserves its slot for AniList-typed entries (even
+          before the friends fetch — which runs independently of the main
+          media fetch, see above — resolves) so the layout doesn't jump once
+          it comes back with real cards. */}
+      {(() => {
+        const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
+        const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
+        return (data.characters.length > 0 || showUsers) && (
         <div className="media-chars-users-row">
           {data.characters.length > 0 && (
-            <div className={`media-chars-section${friendsScores.length === 0 ? ' media-chars-section--full' : ''}`}>
+            <div className={`media-chars-section${!showUsers ? ' media-chars-section--full' : ''}`}>
               <div className="media-section-header-row">
                 {/* Staff (director, writer, composer, ...) rides the same
                     grid as Personajes, switched via a tab — same pattern as
@@ -1136,7 +1160,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             </div>
           )}
 
-          {friendsScores.length > 0 && (
+          {showUsers && (
             <div className="media-users-section">
               <div className="media-section-header-row">
                 <p className="section-label">{tm.section_users}</p>
@@ -1144,7 +1168,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               </div>
               <div className="media-users-grid-scroll" ref={usersScrollRef}>
                 <div className="media-users-grid" ref={usersGridRef}>
-                  {friendsScores.map((f, i) => (
+                  {friendsLoading && friendsScores.length === 0
+                    // 5 per row × 3 rows — matches PER_ROW/ROWS_VISIBLE in the
+                    // fade/cutoff effect above, so the skeleton fills exactly
+                    // the same 3 rows the real grid caps itself to (instead of
+                    // a half-filled row that looked broken).
+                    ? Array.from({ length: 15 }).map((_, i) => (
+                        <div key={i} className="media-user-card media-user-card--skeleton" />
+                      ))
+                    : friendsScores.map((f, i) => (
                     <div key={i} className="media-user-card" data-tooltip={f.name}>
                       <button
                         type="button"
@@ -1169,7 +1201,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }
