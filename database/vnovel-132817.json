@@ -1,0 +1,34 @@
+{
+  "media_catalog": {
+    "id": "7c5af1ef6ce85fab7c5af1ef6ce85fab",
+    "external_id": "vnovel:132817",
+    "type": "vnovel",
+    "title_main": "Full Metal Daemon Muramasa",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null,
+    "format": "VISUAL_NOVEL"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:170502",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Soukou Akki Muramasa: Janen-hen",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3txx.jpg",
+      "media_external_id": "vnovel:132817"
+    },
+    {
+      "related_media_external_id": "game:166485",
+      "relation_type": "EXPANSION",
+      "type_label": "Content Expansion",
+      "title": "Soukou Akki Muramasa: Shokuzai-hen",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ssw.jpg",
+      "media_external_id": "vnovel:132817"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
