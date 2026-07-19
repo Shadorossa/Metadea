@@ -1,0 +1,50 @@
+{
+  "media_catalog": {
+    "id": "6f188a8460bb15af6f188a8460bb15af",
+    "external_id": "game:228530",
+    "parent_id": null,
+    "type": "game",
+    "format": "GAME",
+    "source": "igdb",
+    "title_main": "Death Stranding 2: On the Beach",
+    "title_romaji": null,
+    "title_native": null,
+    "synopsis": null,
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ipx.jpg",
+    "banners_csv": null,
+    "release_year": 2025,
+    "release_month": 6,
+    "release_day": 26,
+    "time_length": null,
+    "status": null,
+    "score_global": 9.1,
+    "total_count": null,
+    "total_count_2": null,
+    "genres_csv": null,
+    "genres_tag_csv": null,
+    "platforms_csv": null,
+    "shop_links_csv": null,
+    "companies_cache_csv": null,
+    "authors_csv": null,
+    "manually_edited_at": "2026-07-19T15:22:16.757Z",
+    "blocked_at": null,
+    "source_url": null,
+    "developer_badge": null,
+    "created_at": "",
+    "updated_at": ""
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:228530",
+      "related_media_external_id": "game:19564",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Death Stranding",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksf.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Death Stranding"
+}
