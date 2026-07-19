@@ -1,6 +1,6 @@
 import type { AniListMediaDetail, AniListStaffEdge } from '../search/providers/anilist';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation, MediaAuthor } from './types';
+import type { MediaPageData, MediaRelation, MediaAuthor, MediaStat } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
@@ -64,14 +64,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     : undefined;
 
   let quickMeta = formatLabel;
-  if (resolvedType === 'anime') {
-    const episodeCount = raw.episodes ?? airedEpisodes;
-    if (episodeCount) quickMeta += ` · ${episodeCount} ep`;
-    if (raw.duration) quickMeta += ` · ${raw.duration} min`;
-  } else {
-    if (raw.chapters) quickMeta += ` · ${raw.chapters} cap`;
-    if (raw.volumes)  quickMeta += ` · ${raw.volumes} vol`;
-  }
+  if (resolvedType !== 'anime' && raw.volumes) quickMeta += ` · ${raw.volumes} vol`;
 
   const studiosList = raw.studios.nodes.map(n => n.name).join(', ');
   const metaLines   = [studiosList, quickMeta].filter(Boolean);
@@ -175,8 +168,29 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       value: authors.map(a => a.name).join(', '),
     });
   }
-  if (resolvedType === 'anime' && raw.duration) {
-    stats.push({ label: tm.stat_duration, value: `${raw.duration} min` });
+  if (resolvedType === 'anime') {
+    const episodeCount = raw.episodes ?? airedEpisodes;
+    // AniList has no season concept of its own — every entry is its own
+    // single "season" for consistency with TMDB's Episodios | Temporadas stat.
+    stats.push({ label: tm.stat_episodes, value: String(episodeCount ?? 0), label2: tm.stat_seasons, value2: '1' });
+    if (raw.duration) stats.push({ label: tm.stat_duration, value: `${raw.duration} min` });
+  } else if (resolvedType === 'manga' || resolvedType === 'lnovel') {
+    if (raw.chapters || raw.volumes) {
+      const chaptersStat: MediaStat = { label: tm.stat_chapters, value: String(raw.chapters ?? 0) };
+      if (raw.volumes) {
+        chaptersStat.label2 = tm.stat_volumes;
+        chaptersStat.value2 = String(raw.volumes);
+      }
+      stats.push(chaptersStat);
+    }
+  }
+  if (formatLabel || statusLabel) {
+    const statusStat: MediaStat = { label: tm.stat_format, value: formatLabel };
+    if (statusLabel) {
+      statusStat.label2 = tm.stat_status;
+      statusStat.value2 = statusLabel;
+    }
+    stats.push(statusStat);
   }
   if (raw.countryOfOrigin) {
     stats.push({ label: tm.stat_country, value: countryName(raw.countryOfOrigin) ?? raw.countryOfOrigin });
