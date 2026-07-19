@@ -69,8 +69,15 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     if (authorList.length > 0) metaLines.push(authorList.join(', '));
   } else if (isGameType) {
     // Platforms get their own dedicated block in the Datos section (see
-    // MediaPage.tsx / data.platforms) instead of this line.
-    if (companies.length > 0) metaLines.push(companies.join(', '));
+    // MediaPage.tsx / data.platforms) instead of this line. Publisher(s)
+    // only, matching igdb-mapper.ts's own live-fetch metaLines exactly — the
+    // developer is already shown as its own banner overlay badge (see
+    // data.developerBadge), so repeating it here too would be redundant.
+    // `companies` itself has no dev/publisher distinction once flattened
+    // into companies_cache_csv, hence filtering the known developer out
+    // rather than only including "publishers".
+    const publisherOnly = c.developer_badge ? companies.filter(name => name !== c.developer_badge) : companies;
+    if (publisherOnly.length > 0) metaLines.push(publisherOnly.join(', '));
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
     const quickBits: string[] = [];
