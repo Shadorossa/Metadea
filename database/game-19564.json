@@ -11,20 +11,12 @@
   },
   "media_relations": [
     {
-      "related_media_external_id": "game:152063",
-      "relation_type": "EXPANDED_GAME",
-      "type_label": "Expanded Edition",
-      "title": "Death Stranding: Director's Cut",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobksg.jpg",
-      "media_external_id": "game:19564"
-    },
-    {
       "media_external_id": "game:19564",
       "related_media_external_id": "game:228530",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Death Stranding 2: On the Beach",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9ipx.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ipx.jpg"
     }
   ],
   "characters": [],
