@@ -154,7 +154,16 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // user rating.
   const scoreGlobal = normalizeScore100(game.total_rating || game.rating);
 
-  const canonicalStatus = canonicalizeIgdbStatus(game.status);
+  let canonicalStatus = canonicalizeIgdbStatus(game.status);
+  if (game.first_release_date) {
+    const hasReleased = game.first_release_date * 1000 <= Date.now();
+    if (!hasReleased) {
+      canonicalStatus = 'NOT_YET_RELEASED';
+    } else if (hasReleased && (canonicalStatus === 'NOT_YET_RELEASED' || !canonicalStatus)) {
+      canonicalStatus = 'FINISHED';
+    }
+  }
+
   const statusLabel = canonicalStatus ? lookupLabel(tm.statuses, canonicalStatus, canonicalStatus) : undefined;
   const statusClass = canonicalStatus ? (STATUS_BADGE_CLASS[canonicalStatus] ?? '') : '';
 
