@@ -421,6 +421,13 @@ export function fetchMediaDataWithFallback(
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
 
+        // Render basic catalog fields (titles, score, format, cover...)
+        // immediately instead of waiting for database reads of secondary
+        // resources (relations, characters, staff...) to resolve.
+        if (!fullArrived) {
+          onPartial(localData);
+        }
+
         try {
           // Three independent reads for the same rawId — no data dependency
           // between them, so they run concurrently instead of one round trip
