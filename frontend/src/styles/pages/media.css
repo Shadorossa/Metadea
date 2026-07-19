@@ -788,10 +788,16 @@
   opacity: 0.08;
   filter: blur(2px);
   transition: transform var(--anim-base) var(--anim-ease), opacity var(--anim-base) var(--anim-ease);
+  /* Same GPU-layer fix as .media-relation-thumb img below — this is also a
+     large cover downscaled to fill the card, just blurred on top. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .media-relation-card:hover .media-relation-bg-layer img {
-  transform: scale(1.05);
+  /* translateZ(0) kept alongside the hover scale — a single `transform`
+     declaration replaces the base rule's GPU-layer hack entirely otherwise. */
+  transform: scale(1.05) translateZ(0);
   opacity: 0.15;
 }
 
@@ -832,6 +838,15 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Same fix as .library-card-thumb img (profile.css): covers are saved at
+     their largest available size and shown here at 52x78 — a large enough
+     downscale that Chromium/WebView2 can fall back to a cheaper, jaggier
+     ("dientes de sierra") scaling path instead of properly filtering.
+     Promoting the image to its own GPU layer forces the higher-quality
+     raster/downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
 }
 
 .media-relation-info {
