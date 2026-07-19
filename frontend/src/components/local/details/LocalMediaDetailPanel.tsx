@@ -36,13 +36,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const [subLoading, setSubLoading] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [justMarked, setJustMarked] = useState<number | null>(null);
   const [history, setHistory] = useState<EpisodeHistoryEntry[]>([]);
 
   // Which episode number the auto-mark already fired for, so a stray extra
   // poll tick (or VLC staying open past the threshold) can't save twice.
   const markedForRef = useRef<number | null>(null);
   const lastPresenceStartRef = useRef<number | null>(null);
+  const lastKnownPositionRef = useRef(0);
   // The episode this VLC session is playing, captured once when "Reproducir"
   // is pressed — NOT recomputed from nextNumber while playing. nextNumber
   // advances the instant markWatched() saves progress, and the poll effect
@@ -74,9 +74,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   useEffect(() => {
     setPlayError(null);
     setIsPlaying(false);
-    setJustMarked(null);
     markedForRef.current = null;
     lastPresenceStartRef.current = null;
+    lastKnownPositionRef.current = 0;
     getEpisodeHistory(item.externalId).then(setHistory).catch(() => setHistory([]));
   }, [item.externalId]);
 
@@ -117,9 +117,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const handlePlay = () => {
     if (!playPath) return;
     setPlayError(null);
-    setJustMarked(null);
     sessionEpisodeRef.current = nextNumber;
     markedForRef.current = null;
+    lastKnownPositionRef.current = 0;
     playFileWithVlc(playPath)
       .then(() => setIsPlaying(true))
       .catch(err => setPlayError(String(err)));
@@ -140,7 +140,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         status:     nextStatus,
         started_at: item.libraryEntry.started_at ?? new Date().toISOString(),
       });
-      setJustMarked(episodeNumber);
       onProgressSaved();
       saveEpisodeHistoryEntry(item.externalId, episodeNumber)
         .then(() => getEpisodeHistory(item.externalId))
@@ -166,14 +165,20 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
     const interval = setInterval(() => {
       getVlcPlaybackStatus().then(status => {
-        if (!status) {
+        if (!status || (status.state !== 'playing' && status.state !== 'paused')) {
+          // VLC stopped responding (closed) or moved to "stopped"/ended —
+          // this is exactly the tick that would observe "episode finished",
+          // so it can't just bail without checking: use the last position
+          // seen while still playing/paused, since a "stopped" status often
+          // no longer reports a meaningful position of its own.
+          if (lastKnownPositionRef.current >= AUTO_MARK_THRESHOLD) {
+            markWatched(episodeNumber);
+          }
           setIsPlaying(false);
           return;
         }
-        if (status.state !== 'playing' && status.state !== 'paused') {
-          setIsPlaying(false);
-          return;
-        }
+
+        lastKnownPositionRef.current = status.position;
 
         // Live Discord Rich Presence updates with time remaining countdown
         if (status.state === 'playing') {
@@ -283,12 +288,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           <p className="local-media-play-error">No se pudo abrir VLC: {playError}</p>
         )}
 
-        {justMarked != null && (
-          <p className="local-media-play-status local-media-play-status--ok">
-            <IconCheck /> Episodio/capítulo {justMarked} marcado como visto.
-          </p>
-        )}
-
         {!rootFolder ? (
           <div className="local-state-placeholder">
             <IconFolder />
@@ -298,13 +297,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           <div className="local-state-placeholder"><div className="spinner" /></div>
         ) : (
           <div className="local-media-match-row">
-            <span className={`local-media-match-chip${matchedFolder ? ' ok' : ' fail'}`}>
-              {matchedFolder ? <IconCheck /> : <IconAlertCircle />}
-              {matchedFolder
-                ? <>Carpeta encontrada: <strong>{matchedFolder.name}</strong></>
-                : 'Carpeta no encontrada'}
-            </span>
-
             {matchedFolder && (
               subLoading ? (
                 <span className="local-media-match-chip">
