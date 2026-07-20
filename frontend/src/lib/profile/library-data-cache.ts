@@ -21,7 +21,7 @@ export function getCachedLibraryAndCatalog(): Promise<{ items: LibraryEntry[]; c
   return cache;
 }
 
-export function invalidateLibraryDataCache() {
+function invalidateLibraryDataCache() {
   cache = null;
 }
 

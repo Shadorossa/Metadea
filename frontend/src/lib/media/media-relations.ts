@@ -76,7 +76,7 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
   };
 }
 
-export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
+function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
   return [...relations].sort((a, b) => {
     const rTypeA = a.relationType?.toUpperCase() ?? '';
     const rTypeB = b.relationType?.toUpperCase() ?? '';

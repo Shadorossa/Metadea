@@ -5,11 +5,6 @@ export function typeLabel(t: string): string {
   return types[t] ?? t;
 }
 
-export function statusLabel(s: string): string {
-  const p = getT().profile as Record<string, string>;
-  return p[`status_${s}`] ?? s;
-}
-
 export function pad(n: number): string {
   if (n < 10)  return '00' + n;
   if (n < 100) return '0'  + n;

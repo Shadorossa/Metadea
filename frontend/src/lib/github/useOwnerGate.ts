@@ -3,7 +3,7 @@ import { invoke } from '../tauri';
 import type { GitHubUserProfile } from '../settings/github';
 import { isRepoOwner } from './ownership';
 
-export type OwnerGateState = 'loading' | 'owner' | 'not-owner' | 'signed-out';
+type OwnerGateState = 'loading' | 'owner' | 'not-owner' | 'signed-out';
 
 export interface OwnerGateResult {
   state: OwnerGateState;

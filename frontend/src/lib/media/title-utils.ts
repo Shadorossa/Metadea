@@ -13,7 +13,7 @@ export function cleanEditionTitle(title: string): string {
     .trim() || title;
 }
 
-export function isEditionVariant(title: string): boolean {
+function isEditionVariant(title: string): boolean {
   EDITION_WORDS.lastIndex = 0; // stateful due to /g — reset before each test
   return EDITION_WORDS.test(title);
 }

@@ -8,7 +8,7 @@
 import { getAllCatalogEntries, getCatalogEntry, type MediaCatalogEntry } from '../tauri/catalog';
 import { fetchMediaData } from '../media/mediaService';
 
-export const BACKFILL_FIELDS = [
+const BACKFILL_FIELDS = [
   ['country_code', 'País de origen'],
   ['release_end_year', 'Año de fin'],
   ['release_end_month', 'Mes de fin'],

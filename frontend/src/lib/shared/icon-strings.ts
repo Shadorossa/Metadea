@@ -79,7 +79,7 @@ function fill(size: number, inner: string): string {
 
 const MEDIA_TYPES = ['game', 'anime', 'manga', 'lnovel', 'vnovel', 'series', 'movie', 'book', 'comic'] as const;
 
-export function getBaseMediaType(type: string): string {
+function getBaseMediaType(type: string): string {
   // Extract base type from formats like "anime_tv", "manga_ongoing", etc.
   return type.split('_')[0] || 'book';
 }

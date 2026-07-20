@@ -13,7 +13,7 @@ export interface AppearanceRow {
   cover: string | null;
 }
 
-export const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>
+const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>
   `${a.media_external_id}::${a.relation_type ?? ''}`;
 
 export const isFieldChanged = (current: string, original: string | null | undefined) =>

@@ -256,7 +256,7 @@ export async function syncToAniList(params: AniListSyncParams): Promise<AniListS
   }
 }
 
-export interface AniListFetchedLog {
+interface AniListFetchedLog {
   status:          string;
   rating:          number;
   progress:        number;

@@ -28,7 +28,7 @@ export const ALL_CHAIN_RELATION_TYPES: string[] = [
 // compartir un Concept Group, no esta etiqueta.
 export type SagaRelationType = 'main' | 'source' | 'episode' | 'update';
 
-export const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label: string }> = [
+const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label: string }> = [
   { value: 'main', label: 'Main' },
   { value: 'source', label: 'Source Material' },
   { value: 'episode', label: 'Episode' },

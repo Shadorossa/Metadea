@@ -5,23 +5,23 @@ import { graphqlPost } from '../../api/client';
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
-export interface AniListCharacter {
+interface AniListCharacter {
   id: number;
   name: { full: string };
   image: { medium: string | null };
 }
 
-export interface AniListCharacterEdge {
+interface AniListCharacterEdge {
   role: string;
   node: AniListCharacter;
 }
 
-export interface AniListStudio {
+interface AniListStudio {
   name: string;
   siteUrl: string | null;
 }
 
-export interface AniListRelationEdge {
+interface AniListRelationEdge {
   relationType: string;
   node: {
     id: number;

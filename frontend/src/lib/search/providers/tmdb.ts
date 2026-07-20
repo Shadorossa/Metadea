@@ -33,10 +33,10 @@ interface TmdbPageResponse {
   total_pages?: number;
 }
 
-export interface TmdbGenre { id: number; name: string }
-export interface TmdbCompany { id: number; name: string }
+interface TmdbGenre { id: number; name: string }
+interface TmdbCompany { id: number; name: string }
 
-export interface TmdbCastMember {
+interface TmdbCastMember {
   id: number;
   name: string;
   character?: string;
@@ -49,7 +49,7 @@ export interface TmdbCastMember {
   credit_id?: string;
 }
 
-export interface TmdbCrewMember {
+interface TmdbCrewMember {
   id: number;
   name: string;
   job?: string;
@@ -61,32 +61,32 @@ export interface TmdbCrewMember {
   episode_count?: number;
 }
 
-export interface TmdbCredits {
+interface TmdbCredits {
   cast?: TmdbCastMember[];
   crew?: TmdbCrewMember[];
 }
 
-export interface TmdbCreator {
+interface TmdbCreator {
   id: number;
   name: string;
   profile_path: string | null;
 }
 
-export interface TmdbRecommendations {
+interface TmdbRecommendations {
   results?: TmdbMovie[];
 }
 
 // TV's age rating (content_ratings) is per-country, no single global value —
 // same shape idea as movies' release_dates below, just without the nested
 // per-release array.
-export interface TmdbContentRatings {
+interface TmdbContentRatings {
   results?: { iso_3166_1: string; rating: string }[];
 }
 
 // Movies' age rating (release_dates) nests certification one level deeper
 // than TV's content_ratings, since a country can have multiple releases
 // (theatrical/digital/etc.) each with their own certification.
-export interface TmdbReleaseDates {
+interface TmdbReleaseDates {
   results?: { iso_3166_1: string; release_dates: { certification: string }[] }[];
 }
 

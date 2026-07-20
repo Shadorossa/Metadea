@@ -9,7 +9,7 @@ export interface GitHubPull {
   created_at: string;
 }
 
-export async function githubFetch<T>(token: string, path: string, init?: RequestInit): Promise<T> {
+async function githubFetch<T>(token: string, path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`https://api.github.com${path}`, {
     ...init,
     headers: {

@@ -23,7 +23,7 @@ import { needsResync } from './media-status';
 import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
-  sortRelationsForDisplay, sortMediaRelations, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
+  sortRelationsForDisplay, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
   dbStaffToMediaStaff, mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
@@ -31,9 +31,9 @@ import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 // Re-exported so callers keep one import path even though these concerns
 // now live in their own files (media-cache/media-relations/catalog-mapper).
 export {
-  getCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
+  patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
-  sortMediaRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
+  bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
 };
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
@@ -384,14 +384,12 @@ export function fetchMediaDataWithFallback(
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
 
-        // Paint the base catalog data immediately rather than waiting on the
-        // relations/characters/staff/parent reads below.
-        if (!fullArrived) {
-          onPartial(localData);
-        }
-
         try {
-          // Independent reads for the same rawId — run concurrently.
+          // All local IPC reads — no network involved, so gathering them
+          // before the first paint (instead of painting an empty characters/
+          // relations/staff grid that pops in a beat later) still lands fast.
+          // Only an actual live API fetch is slow enough to justify painting
+          // ahead of it.
           const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
             loadDbRelationsAndAuthors(rawId),
             getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),

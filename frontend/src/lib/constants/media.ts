@@ -1,7 +1,7 @@
 // ─── Media type groupings ─────────────────────────────────────────────────────
 
 export const ANILIST_TYPES = ['anime', 'manga', 'lnovel'] as const;
-export type AniListMediaType = typeof ANILIST_TYPES[number];
+type AniListMediaType = typeof ANILIST_TYPES[number];
 
 export const IGDB_TYPES = ['game', 'vnovel'] as const;
 
