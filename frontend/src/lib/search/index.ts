@@ -220,7 +220,24 @@ async function searchAll(searchQuery: string, signal: AbortSignal, page: number)
     throw new MissingApiKeyError([...missingKeyProviders]);
   }
 
-  return { results, hasMore };
+  return { results: dedupeByExternalId(results), hasMore };
+}
+
+// searchOne() already merges a type's own local-catalog hits against that
+// same type's live API results without duplicating an externalId — but
+// searchAll() fans out to every type in parallel and just concatenates each
+// type's own already-deduped list, so a work that (for whatever reason) has
+// a catalog row filed under one type but a live hit under another one for
+// the same query would still reach the UI twice. Keeps first occurrence
+// (API results are pushed before any type's local-only extras, so a live
+// hit always wins over a local-only one for the same id).
+function dedupeByExternalId(results: SearchResult[]): SearchResult[] {
+  const seen = new Set<string>();
+  return results.filter(r => {
+    if (seen.has(r.externalId)) return false;
+    seen.add(r.externalId);
+    return true;
+  });
 }
 
 export async function search(
