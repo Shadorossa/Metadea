@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "8dccffc46e7ef21f8dccffc46e7ef21f",
+    "external_id": "game:391780",
+    "type": "game",
+    "title_main": "Metal Gear Solid 4: Guns of the Patriots - Master Collection Version",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-07-20T10:46:58.763Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:380",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Metal Gear Solid 4: Guns of the Patriots",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eju.jpg",
+      "media_external_id": "game:391780"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
