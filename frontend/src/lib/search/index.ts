@@ -4,7 +4,7 @@ import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
-import { searchCatalog, type MediaCatalogEntry } from '../tauri/catalog';
+import { searchCatalog, getBlockedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions };
@@ -126,10 +126,15 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
 // the live path was specifically made to hide it.
 const EXCLUDED_LOCAL_FORMATS = new Set(['REMASTER', 'EXPANDED_GAME', 'UPDATE', 'DLC', 'MOD', 'PORT', 'FORK', 'BUNDLE']);
 
-// Whole-word match only — mirrors name_has_edition_word in igdb.rs so
-// "Expedition 33" isn't caught by a plain "edition" substring check.
+// Whole-word match only — mirrors name_has_edition_word in igdb.rs (same
+// word list) so "Expedition 33" isn't caught by a plain "edition" substring
+// check. Catches a locally-cataloged remaster/expanded-edition/DLC whose own
+// `format` column is missing or wrong (e.g. an old import from before format
+// tracking existed) — EXCLUDED_LOCAL_FORMATS above only helps when that
+// column is actually correct.
+const NON_GAME_NAME_WORDS = ['edition', 'remaster', 'remastered', 'dlc'];
 function titleHasEditionWord(title: string): boolean {
-  return title.split(/[^a-zA-Z0-9]+/).some(tok => tok.toLowerCase() === 'edition');
+  return title.split(/[^a-zA-Z0-9]+/).some(tok => NON_GAME_NAME_WORDS.includes(tok.toLowerCase()));
 }
 
 // Local catalog entries the live API doesn't surface (IGDB's normal search
@@ -240,12 +245,24 @@ function dedupeByExternalId(results: SearchResult[]): SearchResult[] {
   });
 }
 
+// search_catalog (Rust) already excludes blocked_at rows for the local-
+// catalog half of a result — but a live API hit for that same title has no
+// idea it was blocked locally, so it'd still show up on its own.
+async function filterBlocked(page: SearchPage): Promise<SearchPage> {
+  const blocked = await getBlockedExternalIds().catch(() => [] as string[]);
+  if (blocked.length === 0) return page;
+  const blockedSet = new Set(blocked);
+  return { ...page, results: page.results.filter(r => !blockedSet.has(r.externalId)) };
+}
+
 export async function search(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
   page = 1,
 ): Promise<SearchPage> {
-  if (mediaType === 'all') return searchAll(searchQuery, signal, page);
-  return searchOne(mediaType, searchQuery, signal, page);
+  const page_ = mediaType === 'all'
+    ? await searchAll(searchQuery, signal, page)
+    : await searchOne(mediaType, searchQuery, signal, page);
+  return mediaType === 'character' ? page_ : filterBlocked(page_);
 }

@@ -111,6 +111,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
         cover: e.node.coverImage?.medium ?? undefined,
         url:   `/media?id=${relatedExternalId}`,
         relatedExternalId,
+        format: e.node.format ?? undefined,
       };
     });
 

@@ -741,6 +741,10 @@ pub struct DbMediaRelation {
     pub type_label: String,
     pub title: String,
     pub cover: Option<String>,
+    /// The related media's own format — only used to give the skeleton
+    /// media_catalog row this same command creates for a not-yet-cataloged
+    /// related title a real format, instead of leaving that column blank.
+    pub format: Option<String>,
 }
 
 #[tauri::command]
@@ -830,13 +834,14 @@ pub async fn save_media_relations(
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
                 "INSERT INTO media_catalog (
-                    id, external_id, type, source, title_main, cover_url, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    id, external_id, type, source, format, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &rel.related_media_external_id,
                     &rel_type,
                     infer_source_from_id(&rel.related_media_external_id),
+                    &rel.format,
                     &rel.title,
                     &rel.cover,
                     &now,
@@ -892,6 +897,7 @@ pub async fn get_media_relations(
                 type_label: row.get(2)?,
                 title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
                 cover: row.get(4)?,
+                format: None,
             })
         })
         .str_err()?
@@ -932,6 +938,7 @@ pub async fn get_media_relations_for_editor(
                 type_label: row.get(2)?,
                 title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
                 cover: row.get(4)?,
+                format: None,
             })
         })
         .str_err()?
@@ -967,6 +974,7 @@ pub async fn get_all_media_relations(
                 type_label: row.get(3)?,
                 title: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
                 cover: row.get(5)?,
+                format: None,
             })
         })
         .str_err()?

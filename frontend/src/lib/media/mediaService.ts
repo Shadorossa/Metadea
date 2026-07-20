@@ -28,11 +28,8 @@ import {
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 
-// Re-exported so existing callers (MediaPage.tsx, ProfileLibraryEditor.tsx,
-// etc.) don't need to change their import path — mediaService.ts stays the
-// single public entry point for "everything about loading/caching a media
-// page", even though the cache/relations/catalog-mapping concerns now live
-// in their own files (media-cache.ts, media-relations.ts, catalog-mapper.ts).
+// Re-exported so callers keep one import path even though these concerns
+// now live in their own files (media-cache/media-relations/catalog-mapper).
 export {
   getCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
@@ -55,21 +52,15 @@ async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | nu
   if (IGDB_TYPES.includes(type)) {
     if (!numericId) return null;
 
-    // Single request: banner image and store links ride along as Game
-    // sub-fields in the core IGDB query (see igdb_get_game_detail).
+    // Banner/store links ride along as Game sub-fields in one request.
     const game = await igdbGetGameDetail(numericId);
     if (!game) return null;
     let data = mapIgdbToMedia(game, rawId);
-
-    // Remakes/remasters base games (PARENT) are slow because they require a reverse query.
-    // We defer this lookup to the asynchronous fetchExtraRelations so the initial page renders instantly.
-
     data.relations = dedupeRelationsByTarget(data.relations);
 
-    // The transitive relation graph (remaster-of-an-expansion, port-of-a-
-    // remaster, etc.) needs up to 4 sequential IGDB requests — too slow to
-    // block the initial page render. Fetched separately and merged in the
-    // background (see fetchExtraRelations), not awaited here.
+    // Base-game (PARENT) and transitive relation graph both need slow
+    // reverse/multi-hop queries — deferred to fetchExtraRelations so they
+    // don't block the initial render.
 
     return data;
   }
@@ -148,9 +139,8 @@ function editionsToRelations(editions: OpenLibEdition[], label: string): MediaPa
   return result;
 }
 
-// Background fetch: loads all editions for a book and returns them merged with
-// any existing relations. Called after the page already has data, same pattern
-// as fetchExtraRelations for games.
+// Background fetch: all editions for a book, merged with existing relations.
+// Same pattern as fetchExtraRelations for games.
 export async function fetchBookEditions(
   rawId: string,
   currentRelations: MediaPageData['relations'],
@@ -188,15 +178,11 @@ export interface ComicIssuesResult {
   genreTagDots?: string;
 }
 
-// Background fetch: loads all issues for a comic volume (for the 'Issues'
-// tab) and separately aggregates the full cast/genres across every one of
-// those issues via their own singular /issue/ detail resource — the volume's
-// own character_credits/concept_credits (used for the initial quick display,
-// see comicvine-mapper.ts) is usually just a first-issue sample, since Comic
-// Vine editors rarely fill in the volume-level field. This is the "give me
-// the real, complete cast" pass: one extra request per issue plus one per
-// unique character (for images), so it only runs once per comic (results get
-// persisted) rather than being paid on every page view.
+// Background fetch: all issues for a comic volume ('Issues' tab), plus the
+// full cast/genres aggregated across every issue — the volume's own
+// character_credits (used for the quick initial display) is usually just a
+// first-issue sample, since Comic Vine editors rarely fill the volume-level
+// field. Runs once per comic; results get persisted.
 export async function fetchComicIssues(
   rawId: string,
   currentRelations: MediaPageData['relations'],
@@ -224,17 +210,9 @@ export async function fetchComicIssues(
   return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };
 }
 
-// Comprueba caché primero; si no está, fetcha y guarda
-// Helper to persist live API data back to SQLite media_catalog cache.
-// `existing` is passed in (not re-fetched here) — fetchMediaData, this
-// function's only caller, already needs the same row for its own
-// banner-fallback check just before calling this.
-// Fields worth diffing to decide "did this live fetch actually bring
-// anything new" — deliberately excludes the ones that are sticky-once-set
-// by design (format/release_year/month/day/banners_csv all prefer the
-// existing value once present, so they'd never register as "changed"
-// anyway) and pure bookkeeping columns (last_synced_at/sync_failed_count/
-// last_sync_error/created_at/updated_at).
+// Fields worth diffing for "did this fetch bring anything new" — excludes
+// sticky-once-set fields (format/release date/banner, which never register
+// as changed once already present) and bookkeeping columns.
 const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'title_english', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
@@ -246,9 +224,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
 
-    // Computed up front (rather than read back off `entry` after the fact)
-    // so hasNewData below can diff against `existing` without needing the
-    // full entry object to exist first.
+    // Computed up front so hasNewData can diff against `existing` directly.
     const contentFields: Pick<MediaCatalogEntry, typeof NEW_DATA_COMPARE_FIELDS[number]> = {
       title_main: data.titleMain || existing?.title_main || '',
       title_native: data.titleNative || existing?.title_native || null,
@@ -271,13 +247,8 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       country_code: data.countryOfOrigin || null,
     };
 
-    // A successful fetch that brings nothing new counts toward the same
-    // backoff needsResync() already applies to genuine provider errors — a
-    // title whose provider keeps reporting the exact same data widens its
-    // own resync interval passively instead of relying on a hardcoded "this
-    // field must be filled" barrier to ever stop re-checking it. Any real
-    // change (including a new/removed relation, checked by the caller)
-    // resets the counter back to a normal cadence.
+    // A fetch that brings nothing new widens needsResync()'s backoff the
+    // same way a genuine provider error does, instead of retrying forever.
     const hasNewData = !existing || relationsChanged ||
       NEW_DATA_COMPARE_FIELDS.some(f => (contentFields[f] ?? null) !== (existing[f] ?? null));
 
@@ -286,17 +257,11 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       external_id: data.externalId,
       parent_id: data.parentGame?.externalId || null,
       type: data.type,
-      // Same "don't overwrite a manual correction with a live re-fetch"
-      // fallback as banners_csv below — format/release date are exactly the
-      // fields the collaborative catalog editor exists to correct (a
-      // provider miscategorizing something as e.g. PORT when it's really
-      // VISUAL_NOVEL, or a wrong release year), and every live re-fetch used
-      // to silently reset that correction back to whatever the API says,
-      // since this function otherwise always wins with the freshest fetch.
-      // Once a local value exists, only the collaborative editor changes it
-      // from here on — a genuine upstream correction can still be pulled in
-      // manually (re-open in the editor, or the admin panel's "Add work").
-      format: existing?.format ?? (data.format || null),
+      // Sticky: once set, only the collaborative editor changes format/
+      // release date again — a live re-fetch must not reset a manual
+      // correction back to whatever the API says. `||` not `??` since a
+      // legacy row can have format stored as '' rather than null.
+      format: existing?.format || data.format || null,
       source: data.source || 'igdb',
       ...contentFields,
       banners_csv: data.bannerImage || existing?.banners_csv || null,
@@ -307,10 +272,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       release_end_month: existing?.release_end_month ?? (data.releaseEndMonth || null),
       release_end_day: existing?.release_end_day ?? (data.releaseEndDay || null),
       time_length: data.timeLength || null,
-      // Marks "we just checked the live provider" — needsResync() (see
-      // media-status.ts) reads this to decide whether a RELEASING/
-      // NOT_YET_RELEASED/HIATUS entry is due for another check yet, instead
-      // of every page view unconditionally re-fetching forever.
+      // Read by needsResync() to decide when this entry is next due a check.
       last_synced_at: new Date().toISOString(),
       sync_failed_count: hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1,
       last_sync_error: null,
@@ -327,28 +289,20 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
   }
 }
 
-// Comprueba caché primero; si no está, fetcha y guarda
+// Live fetch, blocked-relation filtering, and full DB persistence.
 export async function fetchMediaData(rawId: string): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
   if (cached) return cached;
 
   const data = await fetchMediaDataInternal(rawId);
   if (!data) {
-    // No-ops in Rust if this id has no catalog row yet (a cold first-visit
-    // failure has nothing to attach a failure count to) — otherwise bumps
-    // sync_failed_count/last_sync_error without touching any other column,
-    // so needsResync() can back off a title whose provider keeps failing
-    // instead of retrying it on every single visit forever.
+    // No-ops if there's no catalog row yet; otherwise bumps sync_failed_count
+    // so needsResync() can back off a title whose provider keeps failing.
     markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
-    // The live provider has no idea a related title was blocked (hidden)
-    // locally via the collaborative-catalog editor — it just reports the
-    // same relation/recommendation graph every time. Without this, a
-    // blocked title could still show up in "Relacionados" on the very fetch
-    // that brought it back, before get_media_relations' own
-    // visible_media_catalog filtering ever got a chance to exclude it (that
-    // only applies to relations already persisted to the DB).
+    // The live provider doesn't know a related title was blocked locally —
+    // strip those out before they ever reach the screen or get persisted.
     const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
     if (blockedIds.length > 0 && data.relations) {
       const blocked = new Set(blockedIds);
@@ -357,39 +311,27 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
-    // persistToCatalog preserves an existing banner in the DB, but this same
-    // `data` object also gets shown on screen — patch it too so a live fetch
-    // with no banner doesn't flash "no banner" before the DB write lands.
+    // persistToCatalog preserves an existing banner, but `data` is also shown
+    // on screen — patch it too so a bannerless fetch doesn't flash empty.
     const existing = await getCatalogEntry(rawId).catch(() => null);
     if (!data.bannerImage && existing?.banners_csv) {
       data.bannerImage = existing.banners_csv.split(',')[0];
     }
 
-    // A relation the user deliberately removed via the collaborative catalog
-    // editor (PrEditorModal) must never be silently re-added — the live
-    // provider has no idea the removal was deliberate, it just reports the
-    // same relation graph again. mergeAndPersistRelations itself checks the
-    // deleted_relations tombstone table for that (see its own doc). Its
-    // return value doubles as one of the signals persistToCatalog uses to
-    // decide whether anything new actually showed up (see its own doc) — no
-    // need to re-read relations back from the DB just to diff a count.
+    // mergeAndPersistRelations checks deleted_relations so a relation the
+    // user deliberately removed isn't silently re-added by this same fetch.
     const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format);
 
-    // Persist to local SQLite cache so F5 or next visit loads instantly
     await persistToCatalog(data, existing, relationsChanged);
 
-    // Only save API authors if we don't have any in the DB yet, or the ones
-    // we do have are missing an image — e.g. saved before Comic Vine author
-    // images existed, or from a provider that never supplied one. Otherwise
-    // leave locally-curated authors (added/edited via the collaborative
-    // catalog editor) alone rather than silently overwriting them on every
-    // re-fetch.
+    // Only overwrite API authors if we have none locally yet, or the ones we
+    // do have are missing an image — otherwise leave curated authors alone.
     const authorsMissingImage = dbAuthors.length > 0 && dbAuthors.every(a => !a.image);
     if ((dbAuthors.length === 0 || authorsMissingImage) && data.authors && data.authors.length > 0) {
       await saveMediaAuthors(rawId, data.authors!).catch(console.error);
     }
 
-    // Reload from database to ensure local curated relations/authors are used in the final UI data object!
+    // Reload so the final data object reflects curated relations/authors.
     const { relations: finalRels, authors: finalAuthors } = await loadDbRelationsAndAuthors(rawId);
 
     if (finalRels.length > 0) {
@@ -407,10 +349,10 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   return data;
 }
 
-// Fire-and-forget: llamar en hover para precalentar la caché
+// Fire-and-forget: call on hover to warm the cache.
 export function prefetchMediaData(rawId: string): void {
-  if (getCachedMediaData(rawId)) return; // ya está en caché
-  fetchMediaData(rawId).catch(() => {}); // silencioso — es prefetch
+  if (getCachedMediaData(rawId)) return;
+  fetchMediaData(rawId).catch(() => {});
 }
 
 // Catalog-first fetch: shows catalog data immediately while API loads in background.
@@ -420,10 +362,8 @@ export function fetchMediaDataWithFallback(
   onPartial: (data: MediaPageData) => void,
   onFull:    (data: MediaPageData) => void,
   onError:   () => void,
-  // Lets the caller (MediaPage.tsx, which already tracks its own
-  // per-navigation `cancelled` flag) skip the silent background refresh
-  // below once the user has moved to a different page — that fetch/persist
-  // no longer serves any purpose once nothing will read its result.
+  // Lets the caller skip the background refresh below once the user has
+  // navigated away — that fetch/persist no longer serves any purpose.
   isCancelled: () => boolean = () => false,
 ): void {
   const cached = getCachedMediaData(rawId);
@@ -444,31 +384,21 @@ export function fetchMediaDataWithFallback(
         hasLocalData = true;
         localData = mapCatalogEntryToPartialData(catalog);
 
-        // Paint the base catalog data immediately instead of waiting on the
-        // relations/characters/staff/parent reads below — otherwise the page
-        // shows nothing until 4 concurrent DB round trips finish.
+        // Paint the base catalog data immediately rather than waiting on the
+        // relations/characters/staff/parent reads below.
         if (!fullArrived) {
           onPartial(localData);
         }
 
         try {
-          // Three independent reads for the same rawId — no data dependency
-          // between them, so they run concurrently instead of one round trip
-          // after another.
+          // Independent reads for the same rawId — run concurrently.
           const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
             loadDbRelationsAndAuthors(rawId),
             getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
             getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
-            // catalog.parent_id only ever stores the parent's own id (see
-            // mapMediaDataToCatalogEntry) — mapCatalogEntryToPartialData has
-            // no way to turn that into the {externalId, title, cover} object
-            // data.parentGame needs, so this fast path used to always render
-            // as if the entry had no parent at all. That's what let
-            // isBlockedEdition (MediaPage.tsx) — which requires a truthy
-            // parentGame — flip on/off between visits depending on whether
-            // this fast path or a live fetch happened to answer that visit,
-            // showing the rating/editor UI on an expansion/expanded edition
-            // it should always be hidden on.
+            // catalog.parent_id is just the id — resolved to a full
+            // {externalId, title, cover} object so isBlockedEdition
+            // (MediaPage.tsx) sees a parentGame here too, not just on live fetch.
             catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
           ]);
 
@@ -508,20 +438,10 @@ export function fetchMediaDataWithFallback(
     })
     .catch(() => {})
     .finally(() => {
-      // Whenever the catalog already has usable data, that's the final
-      // answer for THIS render — full stop. It used to be final only when
-      // needsResync() said a live check wasn't due yet; otherwise the page
-      // would paint the catalog data via onPartial and then, moments later,
-      // swap in whatever the live fetch returned via onFull, visibly
-      // changing text/stats/dates on screen (the "aparecen datos y cambian
-      // al cargar / con F5" symptom) even though nothing was actually wrong
-      // with the catalog data being shown.
-      //
-      // needsResync() still decides whether a live check happens at all —
-      // just silently now, in the background, purely to refresh the catalog
-      // row for the *next* visit (fetchMediaData persists via
-      // persistToCatalog as a side effect) — never to replace what's already
-      // on screen this visit.
+      // Catalog data, if usable, is always the final answer for this render
+      // — a live re-fetch (if needsResync() says one is due) only happens
+      // silently in the background to refresh the row for next time, never
+      // to replace what's already on screen.
       if (hasLocalData && localData) {
         fullArrived = true;
         onFull(localData);
@@ -531,9 +451,7 @@ export function fetchMediaDataWithFallback(
         return;
       }
 
-      // No local catalog data at all (brand-new/never-synced entry) — the
-      // live fetch is the only source, so its result (or its absence) must
-      // drive the visible render.
+      // Brand-new/never-synced entry — the live fetch is the only source.
       fetchMediaData(rawId)
         .then(data => {
           fullArrived = true;
@@ -550,28 +468,19 @@ export function fetchMediaDataWithFallback(
     });
 }
 
-// Background enrichment: walks the transitive IGDB relation graph (up to a
-// few sequential requests) and returns the merged relations list. Meant to
-// be called *after* the page already has full data, so the slow multi-hop
-// walk never blocks the initial render.
-//
-// Deliberately does NOT call patchCachedRelations() itself: this is a
-// multi-request round trip, so by the time it resolves the user may have
-// already navigated to a different page (possibly one whose external_id
-// happens to be `rawId` here, e.g. a parent game). Writing to the cache
-// unconditionally used to let a stale response computed from *this* call's
-// currentData land in a different, now-current page's cache entry —
-// corrupting it with relations that don't belong to it (reported as a
-// title showing itself, or the wrong title, as its own prequel/sequel).
-// Callers must call patchCachedRelations() themselves, gated behind
-// whatever "is this fetch still relevant" check they already use for
-// setData (see MediaPage.tsx's `cancelled` flag).
+// Background enrichment: walks the transitive IGDB relation graph (a few
+// sequential requests) after the page already has full data, so this never
+// blocks the initial render. Does NOT call patchCachedRelations() itself —
+// by the time this resolves the user may have navigated away, and writing
+// unconditionally could corrupt a different, now-current page's cache entry.
+// Callers must patch the cache themselves, gated on their own "still
+// relevant" check (see MediaPage.tsx's `cancelled` flag).
 export async function fetchExtraRelations(rawId: string, currentData: MediaPageData): Promise<MediaPageData['relations'] | null> {
   const { type, id: numericId } = parseExternalId(rawId);
   if (!IGDB_TYPES.includes(type)) return null;
   if (!numericId) return null;
 
-  // Run the relation graph and optional base game (PARENT) lookup in parallel to minimize latency.
+  // Relation graph and optional base-game (PARENT) lookup, in parallel.
   const isRemake = currentData.format === 'REMAKE';
   const isRemaster = currentData.format === 'REMASTER';
 
@@ -584,12 +493,10 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
 
   let updatedData = { ...currentData };
 
-  // 1. Merge parent relation (source game) if found
   if (baseGames && baseGames.length > 0) {
     updatedData = mergeBaseGameRelation(updatedData, baseGames as IgdbSubGame[]);
   }
 
-  // 2. Merge transitively discovered relation graph nodes
   if (graphNodes.length > 0) {
     const gameType = currentData.format === 'EXPANDED_GAME' ? 10 : undefined;
     updatedData = mergeRelationGraph(updatedData, graphNodes as RelationGraphNode[], gameType);
@@ -597,9 +504,7 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
 
   if (updatedData.relations.length === currentData.relations.length) return null; // nothing new
 
-  // Same as fetchMediaData's own filter — this transitive-relation walk
-  // pulls fresh titles straight from IGDB, which has no idea some of them
-  // were blocked locally.
+  // Same blocked-relation filter as fetchMediaData.
   const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
   if (blockedIds.length > 0) {
     const blocked = new Set(blockedIds);

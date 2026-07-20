@@ -58,16 +58,9 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     if (priorityA !== priorityB) return priorityA - priorityB;
     return 0;
   });
-  // relation_type is the single source of truth for what a relation IS and
-  // how it's labeled — r.type_label (a persisted column) is never read here.
-  // It's whatever locale happened to be active when the row was first saved
-  // and is never rewritten afterward, so trusting it as a fallback would
-  // mean two competing answers for "what does this relation display as"
-  // that can silently drift apart (a language switch, a canonical-label
-  // fix, a legacy row saved before some format existed). The English
-  // canonical label is the only fallback when the *current* locale's
-  // dictionary doesn't have this key — still derived from relation_type
-  // alone, never from stored data.
+  // relation_type is the only source of truth for the label — r.type_label
+  // (persisted, locale-frozen at save time) is never read, since trusting it
+  // would drift from the current locale after a language switch.
   const tm = getT().media;
   return {
     relations: sorted.map(r => ({
@@ -76,11 +69,7 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
       title: r.title,
       cover: r.cover || undefined,
       url: `/media?id=${r.related_media_external_id}`,
-      // Without this, mergeRelationGraph's "already have this id" dedup Set
-      // (built by reading relatedExternalId off whatever's already in
-      // data.relations) never sees DB-sourced rows — since they only had
-      // `url` set — so the transitive relation-graph walk could rediscover
-      // and re-add an already-saved relation under a second, different type.
+      // Needed so mergeRelationGraph's dedup Set sees DB-sourced rows too.
       relatedExternalId: r.related_media_external_id,
     })),
     hasSaga: rels.some(r => r.relation_type === 'PREQUEL' || r.relation_type === 'SEQUEL'),
@@ -98,27 +87,16 @@ export function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] 
   });
 }
 
-// A "full edition" of a base game (remake/remaster/expanded edition/port/
-// fork) tends to inherit the base game's whole sibling-editions web in
-// IGDB's own data — e.g. a remaster's own relations pointing at the
-// *original, non-remastered* content — so those only ever show their
-// Fuente/parent relation. Content attached to a specific release (DLC,
-// expansion, standalone expansion, episode, season, mod, update) doesn't
-// have that inheritance problem, so those keep their full relations.
+// A "full edition" of a base game inherits IGDB's whole sibling-editions web
+// (e.g. a remaster's relations pointing at the original) — so it only shows
+// its Fuente/parent relation. Content tied to one release (DLC, expansion,
+// ...) doesn't have that problem and keeps its full relations.
 const FULL_EDITION_FORMATS = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']);
 const FULL_EDITION_ALLOWED_RELATION_TYPES = new Set([
   'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
-  // Saga-chain edges (PrEditorModal's Saga Order) are explicit, user-set
-  // relations, never IGDB-inherited noise — a remake/remaster/etc. with its
-  // own saga chain must keep showing its prequels/sequels/alt versions
-  // regardless of format.
-  'PREQUEL', 'SEQUEL', 'ALTERNATIVE',
-  // Bundled In (PrEditorModal's own "Bundled In" picker) is the same kind of
-  // explicit, user-set relation — a full edition placed inside a bundle
-  // (e.g. an EXPANDED_GAME that's also one of a Chronicles-style bundle's
-  // contents) must still show that link, not have it silently dropped for
-  // being format=EXPANDED_GAME.
-  'PART_OF',
+  // Saga-chain edges and Bundled In are explicit, user-set relations, never
+  // IGDB-inherited noise — always kept regardless of format.
+  'PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'PART_OF',
 ]);
 
 export interface RelationBuckets {
@@ -127,14 +105,9 @@ export interface RelationBuckets {
   editions: MediaRelation[];
 }
 
-// Splits a media page's relations into the three tabs MediaPage.tsx renders
-// (Related / Recommended / Editions-or-Issues). Always keys off the stable
-// relationType, never typeLabel — typeLabel is locale-translated text (either
-// the currently-active locale, for freshly-fetched data, or whatever locale
-// was active when a row was first saved to media_relations/session cache),
-// so comparing it against the *current* locale's translated string silently
-// breaks this split after a language switch or for any relation loaded from
-// an older cached/DB row. relationType never changes with locale.
+// Splits relations into the three tabs MediaPage.tsx renders. Always keys off
+// the stable relationType, never typeLabel (locale-translated, so comparing
+// it would break after a language switch).
 export function bucketRelations(
   relations: MediaRelation[],
   format: string | undefined,
@@ -171,11 +144,8 @@ export function dbCharacterToMediaCharacter(c: DbMediaCharacter): MediaCharacter
   };
 }
 
-// Same shape conversion as dbCharacterToMediaCharacter, for the separate
-// staff list read back from media_staff/staff_appearances — used by
-// fetchMediaDataWithFallback's catalog-only fast path so a title that
-// already has locally-saved staff still shows/keeps it instead of only ever
-// getting it from a live API fetch.
+// Same conversion as dbCharacterToMediaCharacter, for the staff list
+// (media_staff/staff_appearances).
 export function dbStaffToMediaStaff(s: DbMediaStaffMember): MediaStaffMember {
   return {
     id: s.external_id,
@@ -185,14 +155,10 @@ export function dbStaffToMediaStaff(s: DbMediaStaffMember): MediaStaffMember {
   };
 }
 
-// Inverse of dbCharacterToMediaCharacter — used before persisting a freshly-
-// fetched cast (MediaPage.tsx calls this both for the initial full.characters
-// and for a comic's later full-cast aggregation). char.role is overloaded per
-// source: TMDB (movie/series) puts the actual character name played there,
-// while AniList (anime/manga/etc.) puts the MAIN/SUPPORTING relation kind —
-// they need to land in different DB columns instead of both piling into
-// relation_type. Dedupes by external_id since a cast can list the same
-// character more than once (e.g. AniList's multi-voice-actor edges).
+// Inverse of dbCharacterToMediaCharacter, before persisting a fetched cast.
+// char.role is overloaded per source (TMDB: actual character name; AniList:
+// MAIN/SUPPORTING kind), so isCastRole picks which DB column it lands in.
+// Dedupes by external_id (a cast can list the same character twice).
 export function mediaCharactersToSkeleton(characters: MediaCharacter[], isCastRole: boolean): SkeletonCharacter[] {
   const seen = new Set<string>();
   return characters
@@ -210,8 +176,7 @@ export function mediaCharactersToSkeleton(characters: MediaCharacter[], isCastRo
     });
 }
 
-// Same shape/dedup logic as mediaCharactersToSkeleton, for the separate
-// staff list (media_staff/staff_appearances tables, not characters).
+// Same shape/dedup logic as mediaCharactersToSkeleton, for staff.
 export function mediaStaffToSkeleton(staff: MediaStaffMember[]): SkeletonStaffMember[] {
   const seen = new Set<string>();
   return staff
@@ -228,10 +193,8 @@ export function mediaStaffToSkeleton(staff: MediaStaffMember[]): SkeletonStaffMe
     });
 }
 
-// Shared by fetchMediaData and fetchMediaDataWithFallback (mediaService.ts)
-// — both need "load whatever's already curated in the DB for this media"
-// before deciding whether to trust it as-is or enrich it with a live API
-// fetch.
+// Shared by fetchMediaData and fetchMediaDataWithFallback — loads whatever's
+// already curated in the DB before deciding to trust it or enrich it live.
 export async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relations: DbMediaRelation[]; authors: DbMediaAuthor[] }> {
   const [relations, authors] = await Promise.all([
     getMediaRelations(rawId).catch(() => []),
@@ -240,31 +203,15 @@ export async function loadDbRelationsAndAuthors(rawId: string): Promise<{ relati
   return { relations, authors };
 }
 
-// Merges freshly-fetched relations (from any source — the direct IGDB
-// fetch, or the transitive relation-graph walk) into whatever's already
-// saved, instead of only ever syncing once per title. IGDB keeps adding
-// DLCs/standalone expansions/etc. to a game's entry over time, and a plain
-// "skip if dbRels isn't empty" gate meant any title that already had one
-// curated/synced relation (e.g. a manually-added PREQUEL) would never pick
-// up newly-listed ones again — they'd render fine on that one page load
-// (from live memory) but silently never reach media_relations, so they
-// never showed up as an editable relation in the collaborative catalog
-// editor. Existing DB rows always win on id conflicts since they may have
-// been hand-edited (saga grouping, relation-type fixes) via PrEditorModal
-// and must not be clobbered by a fresh IGDB fetch.
+// Merges freshly-fetched relations into whatever's already saved, instead of
+// only ever syncing once per title (IGDB keeps adding DLCs/expansions/etc.
+// over time). Existing DB rows always win on id conflicts since they may
+// carry hand-edits (saga grouping, relation-type fixes) via PrEditorModal.
 //
-// Also normalizes any legacy-labeled DB rows even when there's nothing new
-// to merge — that must not be gated behind "there's something to add", or a
-// title whose relations were all saved under the old raw-label scheme (and
-// whose live fetch happens to add nothing new) would never get corrected.
-// IGDB full editions (remake/remaster/expanded_game/port/fork, see
-// FULL_EDITION_FORMATS above) used to have their REMAKE/REMASTER/
-// EXPANDED_GAME/FORK relations derived straight from IGDB's inherited-from-
-// the-base-game fields (see igdb-mapper.ts) — those rows are always fully
-// re-derived from the live fetch for these formats, never something a user
-// adds by hand for these specific types (manual additions go through
-// PrEditorModal's own relation types), so a stale one left over from before
-// that fix is safe to drop once the live fetch no longer reports it.
+// Also normalizes legacy-labeled DB rows even with nothing new to merge, and
+// drops stale REMAKE/REMASTER/EXPANDED_GAME/FORK rows (see
+// FULL_EDITION_FORMATS) that are always IGDB-derived, never hand-added, so a
+// live fetch no longer reporting one means it's safe to remove.
 const STALE_INHERITED_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'FORK']);
 
 // Returns whether it actually wrote anything new/changed — callers use this
@@ -291,14 +238,9 @@ export async function mergeAndPersistRelations(
   let candidateNew = (fetchedRelations ?? [])
     .filter(r => r.relatedExternalId && !dbIds.has(r.relatedExternalId));
 
-  // A pair the user deliberately deleted via PrEditorModal must never be
-  // silently re-added by a live resync — save_media_relations tombstones
-  // exactly that (media, related) pair in deleted_relations when it
-  // disappears from a saved list, so filtering candidates against it only
-  // ever blocks the specific relation that was removed, not every relation
-  // this entry could ever gain (a genuinely new sequel released afterward
-  // still comes through normally, unlike the old per-row manually_edited_at
-  // gate this replaced).
+  // A pair the user deliberately deleted must never be silently re-added —
+  // save_media_relations tombstones it in deleted_relations, so only that
+  // specific pair is blocked, not every future relation this entry could gain.
   if (candidateNew.length > 0) {
     const deletedIds = new Set(await getDeletedRelations(rawId).catch(() => [] as string[]));
     if (deletedIds.size > 0) {
@@ -312,6 +254,7 @@ export async function mergeAndPersistRelations(
     type_label: r.typeLabel,
     title: r.title,
     cover: r.cover || null,
+    format: r.format || null,
   }));
 
   const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale;

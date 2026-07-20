@@ -12,13 +12,12 @@ export interface IgdbSubGame {
   name: string;
   cover?: { image_id: string };
   first_release_date?: number;
-  /** Own-genre VN classification computed backend-side (see igdb.rs's
-   *  detect_vn) — a related title (remake, DLC, base game, ...) can be a
-   *  visual novel even when the game being viewed isn't, or vice versa, so
-   *  the relation's external_id prefix can't just inherit the current page's
-   *  type. Without this, every relation used to get hardcoded to "game:",
-   *  which created duplicate catalog stubs of the same title under both
-   *  "game:" and "vnovel:" prefixes. */
+  /** IGDB's edition/version category (0 game, 1 dlc_addon, 8 remake, 9
+   *  remaster, 10 expanded_game, 14 update, ...). */
+  game_type?: number;
+  /** Own-genre VN classification (igdb.rs's detect_vn) — a related title can
+   *  be a VN even when the current page isn't, so its external_id prefix
+   *  can't just inherit the page's own type. */
   is_vn?: boolean;
 }
 
@@ -106,7 +105,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   const coverUrl = game.cover?.image_id ? igdbImageUrl(game.cover.image_id, '1080p') : undefined;
   const bannerUrl = game.banner_image_id ? igdbImageUrl(game.banner_image_id, '1080p') : undefined;
 
-  // Release date breakdown
   const releaseDateParts = game.first_release_date ? unixToDateParts(game.first_release_date) : undefined;
   const releaseYear = releaseDateParts?.year ?? undefined;
   const releaseMonth = releaseDateParts?.month ?? undefined;
@@ -130,28 +128,17 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Type from rawId prefix (e.g. "vnovel:12345" → "vnovel")
   const mediaType = rawId.split(':')[0].split('_')[0] as 'game' | 'vnovel';
 
-  // Format: a plain (game_type 0) VN is VISUAL_NOVEL; every other game_type
-  // (remake, remaster, DLC, ...) uses the same GAME_TYPE_FORMAT label
-  // regardless of vnovel/game — a VN's remake is still a REMAKE. Forcing
-  // every vnovel-typed entry to VISUAL_NOVEL unconditionally used to erase
-  // that distinction: the format badge showed "Visual Novel" instead of
-  // "Remake"/"Remaster" on those pages, and the FULL_EDITION_FORMATS-based
-  // stale-relation pruning in media-relations.ts silently never applied to
-  // any VN (its `format` never matched REMAKE/REMASTER/etc).
+  // Only a plain (game_type 0) VN is VISUAL_NOVEL — a VN's remake is still a
+  // REMAKE, so other game_types keep the same GAME_TYPE_FORMAT label.
   const gameType = game.game_type ?? 0;
   const format = gameType === 0 && mediaType === 'vnovel' ? 'VISUAL_NOVEL' : (GAME_TYPE_FORMAT[gameType] ?? 'GAME');
 
-  // Genre split: core genres → genreDots, tags → genreTagDots
   const { core: coreGenres, tags: genreTags } = unifyGenres(genres);
   const genreDots = coreGenres.join(' · ') || undefined;
   const genreTagDots = genreTags.join(' · ') || undefined;
 
-  // Score (prefer total_rating, fallback to rating — IGDB is /100). `||` (not
-  // `??`) on purpose: normalizeScore100 already treats 0 as "no score" (see
-  // its own doc), so a total_rating of exactly 0 (no critic reviews
-  // contributing yet) must still fall back to `rating` instead of `??`
-  // treating that 0 as a present-and-final value and discarding a real
-  // user rating.
+  // `||` not `??`: total_rating of exactly 0 (no reviews yet) must still
+  // fall back to `rating`, not be treated as a real, final score.
   const scoreGlobal = normalizeScore100(game.total_rating || game.rating);
 
   let canonicalStatus = canonicalizeIgdbStatus(game.status);
@@ -180,42 +167,23 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     stats.push(formatStat);
   }
 
-  // Platforms have their own dedicated block in the Datos section now (see
-  // MediaPage.tsx) instead of showing here next to the cover — that used to
-  // read as inconsistent since this same metaLines slot means something
-  // different per content type (studios for anime/movies, platforms for
-  // games).
+  // Platforms get their own Datos block (MediaPage.tsx) — this slot is
+  // publisher-only, for consistency with other content types.
   const metaLines: string[] = [];
   if (publishers.length) metaLines.push(publishers.join(', '));
 
-  // Agrupamiento y mapeo de las relaciones de IGDB en secciones
   const relations: MediaRelation[] = [];
 
-  // `relationType` must be the same canonical key used everywhere else in the
-  // system (EDITABLE_RELATION_OPTIONS, the i18n `relations` table, the saved
-  // DB row) — it used to be the raw English display label itself (e.g.
-  // "Expanded Edition"), which meant it never matched EDITABLE_RELATION_OPTIONS
-  // and the collaborative-catalog editor rendered it as an extra, unlocalized
-  // duplicate option alongside the real (localized) "EXPANDED_GAME" entry.
-  //
-  // IGDB sometimes lists the exact same title under more than one of these
-  // categories (e.g. both `expansions` and `standalone_expansions`) — a work
-  // can only relate to another one way, so the first category to claim an id
-  // wins and later calls silently skip it, rather than pushing a second
-  // relation object IGDB itself considers the same underlying game.
+  // relationType must stay the canonical key (EDITABLE_RELATION_OPTIONS/i18n/
+  // DB), never IGDB's raw label. IGDB can list the same title under more than
+  // one category — first one to claim an id wins.
   const seenRelatedIds = new Set<string>();
   const addRelations = (subGames: IgdbSubGame[] | undefined, defaultRelationType: keyof typeof canonicalRelationLabels) => {
     if (!subGames) return;
     for (const sg of dedupeEditionVariants(subGames)) {
       const relatedExternalId = `${sg.is_vn ? 'vnovel' : 'game'}:${sg.id}`;
-      // IGDB occasionally lists a game among its own remakes/remasters/etc.
-      // (a self-reference in its data, not a bug on our end) — never turn
-      // that into a relation pointing a media at itself. Compared by the raw
-      // numeric IGDB id, not the computed "type:id" string — `is_vn` is
-      // derived per-record and can disagree with how the *current* page
-      // classified the same underlying game, so two references to the same
-      // id can end up with different type prefixes ("game:79848" vs
-      // "vnovel:79848") and slip past a plain string comparison.
+      // IGDB occasionally self-references a game as its own remake/remaster.
+      // Compared by numeric id, not "type:id" — is_vn can disagree per-record.
       if (sg.id === game.id) continue;
       if (seenRelatedIds.has(relatedExternalId)) continue;
       seenRelatedIds.add(relatedExternalId);
@@ -227,7 +195,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       queryParams.set('t', title);
       if (cover) queryParams.set('c', cover);
 
-      // Dynamically detect updates (game_type 14) so they are grouped under "REL_UPDATE"
+      // Updates (game_type 14) get grouped under REL_UPDATE dynamically.
       const relationType = sg.game_type === 14 ? 'REL_UPDATE' : defaultRelationType;
 
       relations.push({
@@ -237,14 +205,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
         cover,
         url: `/media?${queryParams.toString()}`,
         relatedExternalId,
+        format: sg.game_type != null ? GAME_TYPE_FORMAT[sg.game_type] : undefined,
       });
     }
   };
 
-  // IGDB has been seen returning a game as its own parent_game/version_parent
-  // (a self-reference in its data) — ignore that instead of rendering the
-  // page's own "Fuente"/parent card as itself. Compared by numeric id, same
-  // reasoning as addRelations() above.
+  // Same self-reference guard as addRelations().
   const rawParentSub = game.parent_game || game.version_parent;
   const parentSub = rawParentSub && rawParentSub.id !== game.id
     ? rawParentSub
@@ -257,46 +223,26 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
       }
     : undefined;
 
-  // IGDB tends to copy/inherit the base game's whole sibling-editions web
-  // onto a "full edition" of that game (remake/remaster/expanded edition/
-  // port/fork) — e.g. a remaster's own "standalone_expansions" field
-  // pointing at the *original, non-remastered* expansion, rendering as if
-  // it belonged to the remaster. So those types only ever get their
-  // Fuente/parent relation (set below, unconditionally) — nothing else from
-  // their own IGDB record.
-  //
-  // Content attached to a specific release (DLC/expansion/standalone
-  // expansion/episode/season/mod/update) doesn't have that inheritance
-  // problem — its own remakes/remasters/etc. genuinely describe *that*
-  // piece of content (e.g. an expansion's own remaster), so those types
-  // keep their full direct relations alongside their Fuente.
+  // IGDB inherits the base game's whole sibling-editions web onto a "full
+  // edition" (remake/remaster/expanded/port/fork) — e.g. a remaster's own
+  // standalone_expansions pointing at the original's expansion. So those
+  // types only get their Fuente relation below, nothing from their own
+  // record. DLC/expansion/standalone genuinely belong to whichever specific
+  // game IGDB links them to, so they keep their full relations regardless.
   const IS_FULL_EDITION_TYPE = new Set([8, 9, 10, 11, 12]); // remake, remaster, expanded_game, port, fork
   if (!IS_FULL_EDITION_TYPE.has(gameType)) {
-    // Sibling editions are only shown on the base game — IGDB tends to inherit
-    // the base game's whole edition web onto remakes/remasters, so we block them there.
     addRelations(game.remakes, 'REMAKE');
     addRelations(game.remasters, 'REMASTER');
     addRelations(game.expanded_games, 'EXPANDED_GAME');
     addRelations(game.forks, 'FORK');
   }
-  // Full editions (remake/remaster/expanded_game/port/fork) get nothing here
-  // beyond their Fuente relation below — their own remasters/expanded_games
-  // fields are just as inherited-from-the-base-game as standalone_expansions
-  // was (see comment above), so a remake showing "its own remaster" was
-  // actually always the *base game's* remaster, not one made from the remake.
-  // Content (DLCs/expansions/standalone) is genuinely attached to whichever
-  // specific game IGDB links it to — a remake's exclusive DLC should appear
-  // on the remake's page, not only on the base game's page.
   addRelations(game.dlcs, 'DLC');
   addRelations(game.expansions, 'EXPANSION');
   addRelations(game.standalone_expansions, 'STANDALONE');
 
-  // Unlike remakes/remasters (which need a reverse `where remakes/remasters
-  // = id` lookup — see mediaService.ts — because IGDB doesn't reliably set a
-  // forward parent field on those), DLCs/expansions/standalone expansions
-  // usually DO have `parent_game`/`version_parent` pointing at the base game
-  // directly, so their Fuente relation can be added right here without an
-  // extra request.
+  // Unlike remakes/remasters (which need a reverse lookup — see
+  // mediaService.ts), DLC/expansion/standalone usually have parent_game/
+  // version_parent pointing at the base game directly.
   if (parentSub) {
     const relatedExternalId = `${parentSub.is_vn ? 'vnovel' : 'game'}:${parentSub.id}`;
     if (!seenRelatedIds.has(relatedExternalId)) {
@@ -308,6 +254,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
         cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
         url: `/media?id=${relatedExternalId}`,
         relatedExternalId,
+        format: parentSub.game_type != null ? GAME_TYPE_FORMAT[parentSub.game_type] : undefined,
       });
     }
   }
@@ -347,13 +294,9 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     scoreGlobal,
     status: canonicalStatus,
     companies: [...new Set([...developers, ...publishers])],
-    // Persisted separately from `companies` (the full dev+publisher list,
-    // also directly editable via PrEditorModal's own "Companies / Studios"
-    // field) so the catalog-only fast path can show exactly the same
-    // publisher-only line this live fetch's own metaLines does — a company
-    // that's both developer and publisher (e.g. a self-published title)
-    // must still show in this list; subtracting `developerBadge` by name
-    // from the merged `companies` on the fast path used to hide it wrongly.
+    // Kept separate from `companies` so a self-published title (both
+    // developer and publisher) still shows correctly in the publisher-only
+    // metaLines/fast-path line.
     publishers: [...new Set(publishers)],
   };
 }
@@ -364,8 +307,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
 
 export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGame[]): MediaPageData {
   if (!baseGames.length) return data;
-  // Same IGDB self-reference quirk as elsewhere in this file — compared by
-  // numeric id, not the "type:id" string (see addRelations()'s comment).
+  // Same self-reference guard as mapIgdbToMedia's addRelations().
   const currentNumericId = parseInt(data.externalId.split(':')[1], 10);
   const baseRelations: MediaRelation[] = dedupeEditionVariants(baseGames)
     .filter(sg => sg.id !== currentNumericId)
@@ -405,12 +347,7 @@ export interface RelationGraphNode {
 }
 
 // IGDB relation-array field name -> the same canonical relation_type key
-// addRelations() above uses. This used to map straight to a raw English
-// label ("Expanded Edition") instead, which — since this graph-walk result
-// merges into the same `data.relations` array the direct fetch already
-// populated with the canonical key — meant the *same* related game could
-// show up twice: once correctly labeled from the direct fetch, once again
-// here under its old, unlocalized, un-deduped-against-DB label.
+// addRelations() uses (must match, since this merges into the same array).
 const VIA_TO_RELATION_TYPE: Record<string, string> = {
   remakes: 'REMAKE',
   remasters: 'REMASTER',
@@ -433,14 +370,11 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
     if (r.relatedExternalId) seen.add(r.relatedExternalId);
   }
 
-  // Group by "via" so edition/collection SKU duplicates are deduped within
-  // their own relation category, same as the direct-relation path.
+  // Group by "via" so edition/SKU duplicates dedupe within their own category.
   const byVia = new Map<string, RelationGraphNode[]>();
   for (const n of nodes) {
-    // Ports never show as related versions.
-    if (n.via === 'ports') continue;
-    // Expanded editions (game_type 10) commonly turn up unrelated remasters
-    // of the base game rather than a remaster of the edition itself — skip.
+    if (n.via === 'ports') continue; // ports never show as related versions
+    // An expanded edition's "remasters" is usually the base game's, not its own.
     if (n.via === 'remasters' && gameType === 10) continue;
     const group = byVia.get(n.via);
     if (group) group.push(n); else byVia.set(n.via, [n]);
@@ -474,14 +408,8 @@ export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode
   return { ...data, relations: dedupeRelationsByTarget([...data.relations, ...extra]) };
 }
 
-// Final safety net: even with every merge step deduping against what it's
-// about to append, three independent relation sources feed the same
-// `data.relations` array (direct IGDB fetch, this transitive graph walk,
-// DB-persisted rows) — collapsing by target id here guarantees the same
-// related work can never render twice regardless of which upstream step
-// let one slip through. Keeps the first occurrence (direct fetch / DB rows
-// are merged in before this graph walk runs, so they take priority over a
-// less-specific transitively-discovered duplicate).
+// Final safety net across the three relation sources (direct fetch, graph
+// walk, DB rows) — keeps the first occurrence (direct fetch/DB rows win).
 export function dedupeRelationsByTarget(relations: MediaRelation[]): MediaRelation[] {
   const seen = new Set<string>();
   const result: MediaRelation[] = [];

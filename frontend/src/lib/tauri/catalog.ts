@@ -154,6 +154,11 @@ export interface DbMediaRelation {
   type_label: string;
   title: string;
   cover?: string | null;
+  /** The related media's own format — only used to give the skeleton
+   *  media_catalog row save_media_relations (Rust) creates for a not-yet-
+   *  cataloged related title a real format, instead of leaving that column
+   *  blank until (if ever) someone visits it directly. */
+  format?: string | null;
 }
 
 export async function saveMediaRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {

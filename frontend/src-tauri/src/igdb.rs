@@ -47,9 +47,14 @@ fn get_game_category(game: &serde_json::Value) -> u64 {
 
 /// Whole-word match only — "Definitive Edition" is excluded, "Expedition 33"
 /// is not (a substring `contains("edition")` check would wrongly catch it).
+/// Category/game_type alone isn't reliable for catching these — IGDB very
+/// often tags a remaster/expanded-edition/DLC entry as plain category=0
+/// main_game with nothing in game_type either, so it'd otherwise slip past
+/// the category-based EXCLUDED/allowlist checks in igdb_search entirely.
+const NON_GAME_NAME_WORDS: &[&str] = &["edition", "remaster", "remastered", "dlc"];
 fn name_has_edition_word(name: &str) -> bool {
     name.split(|c: char| !c.is_alphanumeric())
-        .any(|tok| tok.eq_ignore_ascii_case("edition"))
+        .any(|tok| NON_GAME_NAME_WORDS.iter().any(|w| tok.eq_ignore_ascii_case(w)))
 }
 
 /// Returns true if the game is a DLC/addon/non-game entry that should be excluded.

@@ -41,6 +41,13 @@ export interface MediaRelation {
    *  the mapper that produced this relation, so consumers never need to
    *  extract it by parsing `url`. */
   relatedExternalId?: string;
+  /** The related media's own format (e.g. "REMASTER", "TV", "MOVIE") — the
+   *  skeleton row save_media_relations (Rust) creates for a related title
+   *  that isn't cataloged locally yet used to only ever get title+cover, so
+   *  format stayed blank on that row until (if ever) someone visited it
+   *  directly. Set by the mapper that produced this relation so that
+   *  skeleton row can carry format too. */
+  format?: string;
 }
 
 export interface MediaAuthor {
