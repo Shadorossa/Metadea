@@ -3197,6 +3197,23 @@
   grid-column: span 3;
 }
 
+/* Value came from local media_catalog enrichment, not from the GitHub
+   bundle that was actually opened (see PrEditorModal's nonGithubFields
+   prop) — dimmed so it's visually clear this isn't already on GitHub. */
+.pr-editor-field--dim label,
+.pr-editor-field--dim input,
+.pr-editor-field--dim textarea,
+.pr-editor-field--dim select {
+  opacity: 0.55;
+}
+
+.pr-editor-field--dim:focus-within label,
+.pr-editor-field--dim:focus-within input,
+.pr-editor-field--dim:focus-within textarea,
+.pr-editor-field--dim:focus-within select {
+  opacity: 1;
+}
+
 .pr-editor-field-row {
   display: flex;
   flex-wrap: wrap;

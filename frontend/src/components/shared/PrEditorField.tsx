@@ -10,11 +10,17 @@ export function ChangedDot({ show, className = 'pr-editor-changed-dot' }: { show
   return show ? <span className={className} /> : null;
 }
 
-export function Field({ label, changed, small, full, children }: {
-  label: string; changed: boolean; small?: boolean; full?: boolean; children: ReactNode;
+export function Field({ label, changed, small, full, dim, children }: {
+  label: string; changed: boolean; small?: boolean; full?: boolean;
+  // True when this value came from local media_catalog enrichment, not from
+  // the GitHub proposal bundle that was actually opened — dimmed so it
+  // reads as "already known locally, not yet part of what's on GitHub"
+  // rather than looking like real, submittable content.
+  dim?: boolean;
+  children: ReactNode;
 }) {
   return (
-    <div className={`pr-editor-field${small ? ' pr-editor-field--small' : ''}${full ? ' pr-editor-field--full' : ''}`}>
+    <div className={`pr-editor-field${small ? ' pr-editor-field--small' : ''}${full ? ' pr-editor-field--full' : ''}${dim ? ' pr-editor-field--dim' : ''}`}>
       <label>
         {label}
         <ChangedDot show={changed} />

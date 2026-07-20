@@ -15,6 +15,8 @@ import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
+import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
+import { DIFF_FIELDS } from '../../lib/media/constants';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -50,6 +52,26 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // "Add work" state
   const [addBusy, setAddBusy] = useState(false);
 
+  // One-off backfill sweep (see catalog-backfill.ts) for rows missing the
+  // fields added this session (country_code, release_end_*, title_english).
+  const [backfillRunning, setBackfillRunning] = useState(false);
+  const [backfillProgress, setBackfillProgress] = useState<BackfillProgress | null>(null);
+  const [backfillResults, setBackfillResults] = useState<BackfillEntryResult[] | null>(null);
+
+  const runBackfill = async () => {
+    if (backfillRunning) return;
+    setBackfillRunning(true);
+    setBackfillResults(null);
+    setBackfillProgress(null);
+    try {
+      const results = await backfillMissingCatalogFields(p => setBackfillProgress(p));
+      setBackfillResults(results);
+      loadEntries();
+    } finally {
+      setBackfillRunning(false);
+    }
+  };
+
   // Editor state, shared across all three sources — every edit (whether it
   // started from the local catalog, an already-merged GitHub entry, or a
   // brand-new "Add work" pick) goes through PrEditorModal's default
@@ -57,6 +79,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // every change here is meant to reach the shared catalog for every user,
   // not just stay on this machine.
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Field names present locally but absent from the GitHub bundle that was
+  // actually opened — passed to PrEditorModal so it can dim them. Cleared
+  // whenever the editor is opened from anywhere other than the GitHub tab
+  // (local entries, "Add work"), where the concept doesn't apply.
+  const [editingNonGithubFields, setEditingNonGithubFields] = useState<Set<string> | undefined>(undefined);
 
   const isOwner = gate.state === 'owner';
   const token = gate.token;
@@ -162,9 +189,30 @@ export function CatalogAdminPanel({ i18n }: Props) {
       // upstream, so the rest of the chain (if any) needs hydrating too —
       // otherwise the editor would only see this one entry instead of the
       // whole saga, like it did back when everything lived in one file.
+      // hydrateBundleIntoLocalCatalog now also live-enriches this (and every
+      // saga member below) when core content is still missing — see its own
+      // doc comment in bundle-sync.ts.
       await hydrateBundleIntoLocalCatalog(bundle);
       await hydrateSagaChainFromGithub(token, bundle.media_catalog.external_id).catch(err =>
         console.error('[CatalogAdminPanel] Failed to hydrate saga chain:', err));
+
+      // Diffed against DIFF_FIELDS (the same list the editor's own "changed"
+      // dots use) — a field the bundle never mentioned at all, but the local
+      // row now has a real value for (from before this open, or from the
+      // enrichment fetch above), is data that exists locally without being
+      // on GitHub yet.
+      const finalEntry = await getCatalogEntry(bundle.media_catalog.external_id).catch(() => null);
+      const bundleFields = bundle.media_catalog as any;
+      const localOnly = new Set<string>();
+      if (finalEntry) {
+        for (const [field] of DIFF_FIELDS) {
+          const inBundle = bundleFields[field] !== undefined;
+          const hasLocalValue = (finalEntry as any)[field];
+          if (!inBundle && hasLocalValue) localOnly.add(field);
+        }
+      }
+      setEditingNonGithubFields(localOnly);
+
       setEditingId(bundle.media_catalog.external_id);
     } catch (err) {
       console.error('[CatalogAdminPanel] Failed to open GitHub entry:', err);
@@ -188,7 +236,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
-  const handleEditorClose = () => setEditingId(null);
+  const handleEditorClose = () => { setEditingId(null); setEditingNonGithubFields(undefined); };
 
   const handleEditorSaved = () => {
     loadEntries();
@@ -253,7 +301,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   cover={entry.cover_url}
                   editLabel={t.edit_button}
                   deleteLabel={t.delete_button}
-                  onEdit={() => setEditingId(entry.external_id)}
+                  onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(entry.external_id); }}
                   onDelete={() => setDeleteTarget(entry)}
                 />
               ))}
@@ -265,6 +313,46 @@ export function CatalogAdminPanel({ i18n }: Props) {
       {source === 'github' && (
         <>
           <p className="catalog-admin-hint">{t.github_hint}</p>
+
+          <div className="catalog-backfill">
+            <button
+              type="button"
+              className="catalog-admin-source-btn"
+              onClick={runBackfill}
+              disabled={backfillRunning}
+            >
+              {backfillRunning ? 'Revisando catálogo…' : 'Revisar cambios de catálogo'}
+            </button>
+            {backfillRunning && backfillProgress && (
+              <p className="catalog-admin-status">
+                {backfillProgress.done} / {backfillProgress.total} — {backfillProgress.current}
+              </p>
+            )}
+            {!backfillRunning && backfillResults && (
+              <div className="catalog-backfill-results">
+                {backfillResults.length === 0 ? (
+                  <p className="catalog-admin-status">No había nada que actualizar.</p>
+                ) : (
+                  backfillResults.map(entry => (
+                    <div key={entry.externalId} className="catalog-backfill-entry">
+                      <p className="catalog-backfill-entry-title">{entry.titleMain}</p>
+                      <div className="catalog-backfill-fields">
+                        {entry.fields.map(f => (
+                          <span
+                            key={f.field}
+                            className={`catalog-backfill-field${f.changed ? ' catalog-backfill-field--changed' : ''}`}
+                          >
+                            {f.label}: {f.after == null || f.after === '' ? '—' : String(f.after)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           <input
             type="text"
             className="catalog-admin-search"
@@ -348,6 +436,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   setAddBusy(false);
                 }
               }
+              setEditingNonGithubFields(undefined);
               setEditingId(externalId);
             }}
           />
@@ -359,6 +448,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
           externalId={editingId}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
+          nonGithubFields={editingNonGithubFields}
         />
       )}
 

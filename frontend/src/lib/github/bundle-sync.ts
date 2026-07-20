@@ -1,9 +1,10 @@
 import { invoke } from '../tauri';
-import { saveCatalogEntry, saveMediaRelations, saveMediaAuthors, type DbMediaRelation } from '../tauri/catalog';
+import { saveCatalogEntry, getCatalogEntry, saveMediaRelations, saveMediaAuthors, type DbMediaRelation } from '../tauri/catalog';
 import { saveCharactersSkeleton, type SkeletonCharacter } from '../tauri/characters';
 import type { ProposalBundle } from './submitCollaborativeProposal';
 import { fetchFileAtRef } from './api';
 import { ALL_CHAIN_RELATION_TYPES } from '../media/sagaTypes';
+import { fetchMediaData } from '../media/mediaService';
 
 // Imports a merged GitHub catalog file into the local DB so the existing rich
 // editor (PrEditorModal) has something to show/edit before submitting the
@@ -12,7 +13,29 @@ import { ALL_CHAIN_RELATION_TYPES } from '../media/sagaTypes';
 // does on save.
 export async function hydrateBundleIntoLocalCatalog(bundle: ProposalBundle): Promise<void> {
   const externalId = bundle.media_catalog.external_id;
-  await saveCatalogEntry(bundle.media_catalog);
+  // bundle.media_catalog is deliberately sparse — a proposal only ever
+  // carries identity fields plus whatever a curator actually hand-edited
+  // (see minimalProposalCatalogEntry, PrEditorModal.tsx), not a full
+  // snapshot. save_catalog_entry (Rust) is INSERT OR REPLACE, so passing
+  // that sparse object straight through used to wipe out every richer field
+  // (synopsis, cover, format, genres, platforms, ...) this same row already
+  // had locally from its own live API sync — merge onto the existing local
+  // row instead of replacing it outright.
+  const existing = await getCatalogEntry(externalId).catch(() => null);
+  await saveCatalogEntry(existing ? { ...existing, ...bundle.media_catalog } : bundle.media_catalog);
+
+  // Same gap for every hydrated entry, not just the one actually opened —
+  // a saga member nobody has visited as a full media page on this install
+  // has no cover/synopsis/etc. of its own to merge onto (the bundle only
+  // ever carries identity + hand-curated fields), so it'd stay visibly
+  // blank (no cover art) in the saga order list forever. One live fetch
+  // (same path "Add work" already uses for a brand-new id), only when core
+  // content is still missing, so an install that already has the real data
+  // is never silently overwritten.
+  const hydrated = await getCatalogEntry(externalId).catch(() => null);
+  if (hydrated && !hydrated.cover_url && !hydrated.synopsis) {
+    await fetchMediaData(externalId).catch(() => null);
+  }
 
   const byMedia = new Map<string, DbMediaRelation[]>();
   for (const rel of bundle.media_relations) {

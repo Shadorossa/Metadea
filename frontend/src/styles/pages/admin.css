@@ -38,6 +38,56 @@
   margin-bottom: 0.75rem;
 }
 
+.catalog-backfill {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.catalog-backfill-results {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.catalog-backfill-entry {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.catalog-backfill-entry-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+  color: var(--text-primary, #f0f0f5);
+}
+
+.catalog-backfill-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+}
+
+/* Unchanged (already had data, or the live provider still has nothing for
+   it) — dimmed so the eye goes straight to what's new. */
+.catalog-backfill-field {
+  font-size: 0.78rem;
+  color: var(--text-dim, #7a726a);
+}
+
+/* Actually changed by this sweep — full brightness, same "highlight what's
+   different" convention as .pr-editor-changed-dot elsewhere in the editor. */
+.catalog-backfill-field--changed {
+  color: var(--text-primary, #f0f0f5);
+  font-weight: 600;
+}
+
 .catalog-admin-search {
   width: 100%;
   padding: 0.65rem 1rem;

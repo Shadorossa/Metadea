@@ -47,6 +47,13 @@ interface Props {
   // already writes locally regardless of mode, so this only gates the
   // GitHub submission step below it.
   mode?: 'proposal' | 'local';
+  // Set when opened from an already-merged GitHub entry (CatalogAdminPanel's
+  // "GitHub" tab) — field names present locally (media_catalog, possibly via
+  // a live-fetch enrichment) but absent from the actual GitHub bundle that
+  // was opened. Dimmed in the form so it's visually clear which values are
+  // already on GitHub vs. which are just known locally and haven't been
+  // proposed yet.
+  nonGithubFields?: Set<string>;
 }
 
 
@@ -122,7 +129,7 @@ function buildRelatedProposalBundle(
   };
 }
 
-export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' }: Props) {
+export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
   // Shown in the editor, in the UI's own language.
@@ -980,14 +987,16 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
 
   // ── Render helpers (close over entry/handleChange/isFieldChanged) ─────────
 
+  const isLocalOnly = (field: keyof MediaCatalogEntry) => nonGithubFields?.has(field) ?? false;
+
   const textField = (field: keyof MediaCatalogEntry, label: string) => (
-    <Field label={label} changed={isFieldChanged(field)}>
+    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
       <input type="text" value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value)} />
     </Field>
   );
 
   const numberField = (field: keyof MediaCatalogEntry, label: string) => (
-    <Field label={label} changed={isFieldChanged(field)} small>
+    <Field label={label} changed={isFieldChanged(field)} small dim={isLocalOnly(field)}>
       <input type="number" value={(entry[field] as number) || ''}
         onChange={e => handleChange(field, e.target.value ? parseInt(e.target.value, 10) : null)} />
     </Field>
@@ -998,7 +1007,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   // IGDB (GAME/REMAKE/REMASTER/.../VISUAL_NOVEL) mappers can produce, so this
   // never drifts out of sync with what a live fetch would set automatically.
   const formatField = (field: keyof MediaCatalogEntry, label: string) => (
-    <Field label={label} changed={isFieldChanged(field)}>
+    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
       <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
         <option value="">—</option>
         {Object.keys(tm.formats)
@@ -1013,7 +1022,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   const slotField = (field: keyof MediaCatalogEntry, label: string, opts?: {
     allowed?: string[]; restrict?: boolean; preview?: boolean; fullWidth?: boolean; dotClass?: string;
   }) => (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} className={isLocalOnly(field) ? 'pr-editor-field--dim' : undefined}>
       <SlotInput label={label} value={entry[field] as string | undefined} onChange={v => handleChange(field, v)}
         allowedSuggestions={opts?.allowed} restrictToSuggestions={opts?.restrict}
         preview={opts?.preview} fullWidth={opts?.fullWidth} />
@@ -1068,7 +1077,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
                 {textField('title_main', 'Main Title')}
                 {textField('title_romaji', 'Romaji Title')}
                 {textField('title_native', 'Native Title')}
-                <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full>
+                <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full dim={isLocalOnly('synopsis')}>
                   <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
                 </Field>
               </div>
@@ -1111,7 +1120,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
             <div className="pr-editor-section">
               {sectionTitle('Media Assets', ['cover_url', 'banners_csv'])}
               <div className="pr-editor-assets-box">
-                <div className="pr-editor-field pr-editor-cover-section">
+                <div className={`pr-editor-field pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
                   <label>
                     Cover URL
                     <ChangedDot show={isFieldChanged('cover_url')} />
