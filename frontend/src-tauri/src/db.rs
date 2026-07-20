@@ -301,6 +301,14 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN release_end_day INTEGER", []);
         mark_migration(conn, 18)?;
     }
+    if v < 19 {
+        // Display-only alternate title (AniList's title.english when it
+        // differs from the main romaji/native title) had no catalog column
+        // at all — the fast path could never show it, only a live fetch
+        // could, so it always flashed in after the rest of the page.
+        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN title_english TEXT", []);
+        mark_migration(conn, 19)?;
+    }
 
     Ok(())
 }
@@ -487,6 +495,7 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     sync_failed_count    INTEGER DEFAULT 0,
     synopsis             TEXT,
     time_length          INTEGER,
+    title_english        TEXT,
     title_main           TEXT DEFAULT '',
     title_native         TEXT DEFAULT '',
     title_romaji         TEXT DEFAULT '',

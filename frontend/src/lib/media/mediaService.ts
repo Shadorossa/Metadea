@@ -236,7 +236,7 @@ export async function fetchComicIssues(
 // anyway) and pure bookkeeping columns (last_synced_at/sync_failed_count/
 // last_sync_error/created_at/updated_at).
 const NEW_DATA_COMPARE_FIELDS = [
-  'title_main', 'title_native', 'title_romaji', 'synopsis', 'cover_url',
+  'title_main', 'title_native', 'title_romaji', 'title_english', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
   'publishers_csv', 'authors_csv', 'source_url', 'developer_badge', 'country_code',
@@ -253,6 +253,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       title_main: data.titleMain || existing?.title_main || '',
       title_native: data.titleNative || existing?.title_native || null,
       title_romaji: data.titleRomaji || existing?.title_romaji || null,
+      title_english: data.titleEnglish || existing?.title_english || null,
       synopsis: data.description || null,
       cover_url: data.cover || null,
       status: data.status || null,

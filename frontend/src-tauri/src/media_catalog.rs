@@ -170,6 +170,7 @@ pub struct MediaCatalogEntry {
     pub sync_failed_count: Option<i32>,
     pub synopsis: Option<String>,
     pub time_length: Option<i32>,
+    pub title_english: Option<String>,
     pub title_main: Option<String>,
     pub title_native: Option<String>,
     pub title_romaji: Option<String>,
@@ -187,7 +188,7 @@ const SELECT_ALL: &str = "
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
            release_month, release_year, score_global,
            shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-           time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+           time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
            type, created_at, updated_at
     FROM media_catalog";
 
@@ -205,7 +206,7 @@ const SELECT_VISIBLE: &str = "
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
            release_month, release_year, score_global,
            shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-           time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+           time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
            type, created_at, updated_at
     FROM visible_media_catalog";
 
@@ -243,14 +244,15 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         sync_failed_count:   row.get(29)?,
         synopsis:            row.get(30)?,
         time_length:         row.get(31)?,
-        title_main:          row.get(32)?,
-        title_native:        row.get(33)?,
-        title_romaji:        row.get(34)?,
-        total_count:         row.get(35)?,
-        total_count_2:       row.get(36)?,
-        r#type:              row.get::<_, Option<String>>(37)?.unwrap_or_default(),
-        created_at:          row.get::<_, Option<String>>(38)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(39)?.unwrap_or_default(),
+        title_english:       row.get(32)?,
+        title_main:          row.get(33)?,
+        title_native:        row.get(34)?,
+        title_romaji:        row.get(35)?,
+        total_count:         row.get(36)?,
+        total_count_2:       row.get(37)?,
+        r#type:              row.get::<_, Option<String>>(38)?.unwrap_or_default(),
+        created_at:          row.get::<_, Option<String>>(39)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(40)?.unwrap_or_default(),
     })
 }
 
@@ -287,9 +289,9 @@ pub async fn save_catalog_entry(
             ratings_count, release_day, release_end_day, release_end_month, release_end_year,
             release_month, release_year, score_global,
             shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-            time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+            time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
             type, created_at, updated_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38,?39,?40)",
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,?30,?31,?32,?33,?34,?35,?36,?37,?38,?39,?40,?41)",
         rusqlite::params![
             &entry.id,
             &entry.external_id,
@@ -323,6 +325,7 @@ pub async fn save_catalog_entry(
             &entry.sync_failed_count,
             &entry.synopsis,
             &entry.time_length,
+            &entry.title_english,
             &entry.title_main,
             &entry.title_native,
             &entry.title_romaji,
@@ -1140,7 +1143,7 @@ pub async fn sync_community_catalog(
                 "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
                 "release_month", "release_year", "score_global",
                 "shop_links_csv", "source", "source_url", "status", "sync_failed_count", "synopsis",
-                "time_length", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
+                "time_length", "title_english", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
                 "type"
             ];
 
@@ -1458,9 +1461,9 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 ratings_count, release_day, release_end_day, release_end_month, release_end_year,
                 release_month, release_year, score_global,
                 shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
-                time_length, title_main, title_native, title_romaji, total_count, total_count_2,
+                time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
                 type, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40, ?41)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &entry.external_id,
@@ -1494,6 +1497,7 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 &entry.sync_failed_count,
                 &entry.synopsis,
                 &entry.time_length,
+                &entry.title_english,
                 &entry.title_main,
                 &entry.title_native,
                 &entry.title_romaji,
@@ -1515,10 +1519,10 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 release_end_day = ?18, release_end_month = ?19, release_end_year = ?20,
                 release_month = ?21, release_year = ?22, score_global = ?23, shop_links_csv = ?24,
                 source = ?25, source_url = ?26, status = ?27, sync_failed_count = ?28,
-                synopsis = ?29, time_length = ?30, title_main = ?31, title_native = ?32,
-                title_romaji = ?33, total_count = ?34, total_count_2 = ?35, type = ?36,
-                updated_at = ?37
-             WHERE external_id = ?38",
+                synopsis = ?29, time_length = ?30, title_english = ?31, title_main = ?32, title_native = ?33,
+                title_romaji = ?34, total_count = ?35, total_count_2 = ?36, type = ?37,
+                updated_at = ?38
+             WHERE external_id = ?39",
             rusqlite::params![
                 &entry.authors_csv,
                 &entry.banners_csv,
@@ -1550,6 +1554,7 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 &entry.sync_failed_count,
                 &entry.synopsis,
                 &entry.time_length,
+                &entry.title_english,
                 &entry.title_main,
                 &entry.title_native,
                 &entry.title_romaji,

@@ -238,9 +238,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       if (cards.length <= cutoffIndex) {
         scrollEl.style.maxHeight = '';
       } else {
+        // cards[cutoffIndex - 1] (the last card of row 3, always present
+        // since cards.length > cutoffIndex here) instead of cards[cutoffIndex]
+        // (the first card of row 4) — measuring the bottom of the last
+        // visible row directly needs one fewer assumption about what comes
+        // after it, and avoids relying on gap math to convert a "top of next
+        // row" position into "bottom of this row".
         const scrollTop = scrollEl.getBoundingClientRect().top;
-        const cutoffTop = cards[cutoffIndex].getBoundingClientRect().top;
-        scrollEl.style.maxHeight = `${cutoffTop - scrollTop + scrollEl.scrollTop}px`;
+        const lastVisibleBottom = cards[cutoffIndex - 1].getBoundingClientRect().bottom;
+        scrollEl.style.maxHeight = `${lastVisibleBottom - scrollTop + scrollEl.scrollTop}px`;
       }
       updateFade();
     };
@@ -248,9 +254,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     recompute();
     scrollEl.addEventListener('scroll', updateFade);
     window.addEventListener('resize', recompute);
+
+    // The [friendsScores] dependency below used to be the only trigger for
+    // recompute() — fine when the fetch was always a real network request
+    // (plenty of time between the empty-array reset and the real data
+    // landing), but now that fetchFollowedFriendsScores can resolve near-
+    // instantly from its own 10-minute cache, the card count can change
+    // faster than this effect re-fires, leaving a stale (or no) maxHeight
+    // and showing the whole list uncapped. A MutationObserver reacts to the
+    // grid's actual DOM children instead, so it can't miss a swap.
+    // rAF-deferred so the browser has committed layout for the swapped-in
+    // cards before recompute() measures them (a MutationObserver callback
+    // can otherwise fire in the same microtask the DOM mutation happened in).
+    const observer = new MutationObserver(() => requestAnimationFrame(recompute));
+    observer.observe(gridEl, { childList: true });
+
     return () => {
       scrollEl.removeEventListener('scroll', updateFade);
       window.removeEventListener('resize', recompute);
+      observer.disconnect();
     };
   }, [friendsScores]);
 

@@ -54,6 +54,9 @@ export interface MediaCatalogEntry {
   sync_failed_count?:   number | null;
   synopsis?:            string | null;
   time_length?:         number | null;
+  /** Display-only alternate title (AniList title.english) — no other
+   *  purpose than showing up in the fast path without a live fetch. */
+  title_english?:       string | null;
   title_main?:          string | null;
   /** Title in its original-language script (e.g. Japanese kanji/kana) — see
    *  MediaPageData.titleNative. */

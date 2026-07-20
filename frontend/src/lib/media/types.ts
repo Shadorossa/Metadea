@@ -63,6 +63,11 @@ export interface MediaPageData {
    *  Not the same as titleEnglish, which is just a display-only alternate
    *  title with no dedicated catalog column. */
   titleRomaji?: string;
+  /** Display-only alternate title — maps to media_catalog.title_english so
+   *  the catalog-only fast path can show it without waiting on a live fetch
+   *  (it used to have no dedicated column at all, so it only ever appeared
+   *  once a live/full fetch resolved, flashing in after the rest of the
+   *  page). */
   titleEnglish?: string;
   cover?: string;
   bannerImage?: string;

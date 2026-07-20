@@ -45,11 +45,44 @@ interface FriendsScoresResponse {
   };
 }
 
+// sessionStorage (not just an in-memory Map) — an F5 reloads the whole
+// webview, which would otherwise reset any in-memory cache along with it.
+// This survives that reload but not a full app restart, same tradeoff as
+// media-cache.ts's own page-data cache.
+const TTL_MS = 10 * 60 * 1000;
+const CACHE_PREFIX = 'anilist_friends_scores_v1:';
+
+function readCache(mediaId: number): FriendScore[] | null {
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${mediaId}`);
+    if (!raw) return null;
+    const entry: { scores: FriendScore[]; expiresAt: number } = JSON.parse(raw);
+    if (entry.expiresAt <= Date.now()) {
+      sessionStorage.removeItem(`${CACHE_PREFIX}${mediaId}`);
+      return null;
+    }
+    return entry.scores;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(mediaId: number, scores: FriendScore[]): void {
+  try {
+    sessionStorage.setItem(`${CACHE_PREFIX}${mediaId}`, JSON.stringify({ scores, expiresAt: Date.now() + TTL_MS }));
+  } catch {
+    // sessionStorage full/unavailable — cache is a pure optimization, safe to skip
+  }
+}
+
 // Returns [] (not an error) whenever this genuinely can't be shown — no
 // token connected, request failure, or nobody followed has scored it — so
 // callers can just skip rendering the section rather than handle a
 // separate error state for what's an optional, best-effort feature.
 export async function fetchFollowedFriendsScores(mediaId: number): Promise<FriendScore[]> {
+  const cached = readCache(mediaId);
+  if (cached) return cached;
+
   const token = getAniListToken();
   if (!token) return [];
 
@@ -60,7 +93,7 @@ export async function fetchFollowedFriendsScores(mediaId: number): Promise<Frien
 
   const viewerId = result?.data?.Viewer?.id;
 
-  return (result?.data?.Page?.mediaList ?? [])
+  const scores = (result?.data?.Page?.mediaList ?? [])
     .filter(entry => entry.score > 0 && entry.user.id !== viewerId)
     .map(entry => ({
       name: entry.user.name,
@@ -68,4 +101,7 @@ export async function fetchFollowedFriendsScores(mediaId: number): Promise<Frien
       score: entry.score,
       profileUrl: `https://anilist.co/user/${entry.user.name}`,
     }));
+
+  writeCache(mediaId, scores);
+  return scores;
 }
