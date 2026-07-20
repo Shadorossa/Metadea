@@ -1,0 +1,57 @@
+{
+  "media_catalog": {
+    "id": "dd4dd38aeeab1ebfdd4dd38aeeab1ebf",
+    "external_id": "game:250635",
+    "type": "game",
+    "title_main": "Metal Gear Solid Master Collection: Volume 1",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:374",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3ogc.jpg",
+      "media_external_id": "game:250635"
+    },
+    {
+      "related_media_external_id": "game:377",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear 2: Solid Snake",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg",
+      "media_external_id": "game:250635"
+    },
+    {
+      "related_media_external_id": "game:41037",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear Solid: Integral",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobpal.jpg",
+      "media_external_id": "game:250635"
+    },
+    {
+      "related_media_external_id": "game:474",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear Solid 2: Substance",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eg1.jpg",
+      "media_external_id": "game:250635"
+    },
+    {
+      "related_media_external_id": "game:479",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Metal Gear Solid 3: Subsistence",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1vd6.jpg",
+      "media_external_id": "game:250635"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
