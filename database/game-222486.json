@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "7cb44bd3a2ebcc4f7cb44bd3a2ebcc4f",
+    "external_id": "game:222486",
+    "type": "game",
+    "title_main": "Silent Hill 3",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-07-20T01:29:22.053Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:482",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Silent Hill 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3kol.jpg",
+      "media_external_id": "game:222486"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
