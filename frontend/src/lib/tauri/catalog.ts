@@ -80,6 +80,14 @@ export async function getCatalogEntry(externalId: string): Promise<MediaCatalogE
   return tauriCmd<MediaCatalogEntry | null>('get_catalog_entry', null, { externalId });
 }
 
+// Used to filter a live API fetch's raw relations/recommendations — the
+// provider has no idea a related title was blocked (hidden) locally via the
+// collaborative-catalog editor, so this must be checked client-side before
+// ever showing such a title anywhere on the page.
+export async function getBlockedExternalIds(): Promise<string[]> {
+  return tauriCmd<string[]>('get_blocked_external_ids', []);
+}
+
 export async function deleteCatalogEntry(externalId: string): Promise<void> {
   return tauriRun('delete_catalog_entry', { externalId });
 }
@@ -154,6 +162,15 @@ export async function saveMediaRelations(mediaExternalId: string, relations: DbM
 
 export async function getMediaRelations(mediaExternalId: string): Promise<DbMediaRelation[]> {
   return tauriCmd<DbMediaRelation[]>('get_media_relations', [], { mediaExternalId });
+}
+
+// Same as getMediaRelations but never drops a relation just because the
+// related entry is blocked_at — use this inside PrEditorModal (the
+// collaborative-catalog editor), where a curator specifically needs to see
+// and manage relations to/from blocked entries, not have them silently
+// disappear the way they correctly do everywhere else on the site.
+export async function getMediaRelationsForEditor(mediaExternalId: string): Promise<DbMediaRelation[]> {
+  return tauriCmd<DbMediaRelation[]>('get_media_relations_for_editor', [], { mediaExternalId });
 }
 
 // Per-pair tombstones (deleted_relations) — related_media_external_ids the

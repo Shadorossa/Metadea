@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelations, saveMediaRelations, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
+import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelationsForEditor, saveMediaRelations, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../lib/media/mediaService';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
@@ -227,7 +227,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       }
 
       try {
-        const rels = await getMediaRelations(externalId).catch(() => [] as DbMediaRelation[]);
+        const rels = await getMediaRelationsForEditor(externalId).catch(() => [] as DbMediaRelation[]);
 
         // Bundled In (this entry belongs to something else — PART_OF/UPDATE)
         // vs. Contains (something else belongs to this entry — EPISODE) are
@@ -313,7 +313,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
         // classifySagaChain (which turns already-known sagaRelationTypes/
         // sagaGroups back into a display/relation structure).
         const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
-          Promise.all(sortedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))),
+          Promise.all(sortedIds.map(id => getMediaRelationsForEditor(id).catch(() => [] as DbMediaRelation[]))),
           getMediaSagaGroups(sortedIds).catch(() => ({} as Record<string, string>)),
           invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
         ]);
@@ -805,7 +805,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       const otherProposalEntries: { externalId: string; bundle: ProposalBundle }[] = [];
       for (const otherId of otherChainIds) {
         try {
-          const existing = await getMediaRelations(otherId);
+          const existing = await getMediaRelationsForEditor(otherId);
           const kept = (existing || []).filter(r =>
             !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && originalSagaOrder.includes(r.related_media_external_id))
           );
@@ -836,7 +836,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       const bundledTargetsToSync = new Set([...currentBundledIds, ...originalBundledIds]);
       for (const targetId of bundledTargetsToSync) {
         try {
-          const existing = await getMediaRelations(targetId);
+          const existing = await getMediaRelationsForEditor(targetId);
           const kept = (existing || []).filter(r =>
             !(r.relation_type === 'EPISODE' && r.related_media_external_id === externalId)
           );
@@ -862,7 +862,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
       const containedTargetsToSync = new Set([...currentContainedIds, ...originalContainedIds]);
       for (const childId of containedTargetsToSync) {
         try {
-          const existing = await getMediaRelations(childId);
+          const existing = await getMediaRelationsForEditor(childId);
           const kept = (existing || []).filter(r =>
             !(r.relation_type === 'PART_OF' && r.related_media_external_id === externalId)
           );

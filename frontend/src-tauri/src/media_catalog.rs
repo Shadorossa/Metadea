@@ -397,6 +397,22 @@ pub async fn update_catalog_genres(
     Ok(())
 }
 
+// Lightweight id-only set for filtering — a live API fetch's raw
+// relations/recommendations have no idea a given related title was blocked
+// (hidden) locally via the collaborative-catalog editor, so the frontend
+// needs this to strip blocked entries out of `data.relations` before ever
+// showing them, not just rely on DB-backed reads (get_media_relations)
+// already excluding them via visible_media_catalog.
+#[tauri::command]
+pub async fn get_blocked_external_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare("SELECT external_id FROM blocked_media_catalog").str_err()?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(0)).str_err()?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
 #[tauri::command]
 pub async fn get_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -871,6 +887,46 @@ pub async fn get_media_relations(
         .query_map([&media_external_id], |row| {
             Ok(DbMediaRelation {
                 media_external_id: None, // this query is already scoped to one media_external_id param
+                related_media_external_id: row.get(0)?,
+                relation_type: row.get(1)?,
+                type_label: row.get(2)?,
+                title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                cover: row.get(4)?,
+            })
+        })
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(rows)
+}
+
+// Same as get_media_relations but joined against the plain media_catalog
+// table (not visible_media_catalog) — the collaborative-catalog editor
+// (PrEditorModal) is exactly where a curator needs to see/manage a relation
+// pointing at a blocked entry (e.g. the "is a version of" link to the base
+// game it was blocked in favor of), so it must never have blocked rows
+// filtered out the way every other read path deliberately does.
+#[tauri::command]
+pub async fn get_media_relations_for_editor(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<DbMediaRelation>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
+             FROM media_relations mr
+             JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
+             WHERE mr.media_external_id = ?1
+             ORDER BY mr.rowid",
+        )
+        .str_err()?;
+
+    let rows = stmt
+        .query_map([&media_external_id], |row| {
+            Ok(DbMediaRelation {
+                media_external_id: None,
                 related_media_external_id: row.get(0)?,
                 relation_type: row.get(1)?,
                 type_label: row.get(2)?,

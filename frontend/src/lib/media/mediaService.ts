@@ -10,7 +10,7 @@ import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
-import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed } from '../tauri';
+import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed, getBlockedExternalIds } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
@@ -342,6 +342,19 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
+    // The live provider has no idea a related title was blocked (hidden)
+    // locally via the collaborative-catalog editor — it just reports the
+    // same relation/recommendation graph every time. Without this, a
+    // blocked title could still show up in "Relacionados" on the very fetch
+    // that brought it back, before get_media_relations' own
+    // visible_media_catalog filtering ever got a chance to exclude it (that
+    // only applies to relations already persisted to the DB).
+    const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+    if (blockedIds.length > 0 && data.relations) {
+      const blocked = new Set(blockedIds);
+      data.relations = data.relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
+    }
+
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
 
     // persistToCatalog preserves an existing banner in the DB, but this same
@@ -583,6 +596,16 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   }
 
   if (updatedData.relations.length === currentData.relations.length) return null; // nothing new
+
+  // Same as fetchMediaData's own filter — this transitive-relation walk
+  // pulls fresh titles straight from IGDB, which has no idea some of them
+  // were blocked locally.
+  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  if (blockedIds.length > 0) {
+    const blocked = new Set(blockedIds);
+    updatedData.relations = updatedData.relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
+    if (updatedData.relations.length === currentData.relations.length) return null;
+  }
 
   return updatedData.relations;
 }
