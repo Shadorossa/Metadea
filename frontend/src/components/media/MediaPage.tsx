@@ -212,11 +212,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     syncActiveRatingSystem().then(setRatingSystem);
   }, []);
 
-  // Caps the Usuarios grid to exactly 3 rows of real, measured height
-  // instead of a guessed max-height in px (avatars are fluid — sized off
-  // the column's own width via aspect-ratio — so a fixed px guess drifted
-  // out of sync and clipped mid-row). Recomputed on resize since that
-  // column width, and therefore row height, can change.
+  // Caps the Usuarios grid to exactly 3 rows — computed purely from the
+  // grid's own box width via ResizeObserver, never by measuring/counting
+  // child cards. Every previous version of this effect keyed off the card
+  // count (via the friendsScores dependency, then a MutationObserver on the
+  // grid's children) and kept breaking the same way: whenever
+  // fetchFollowedFriendsScores resolves fast enough (its own 10-minute
+  // cache, or just a quick network response), the "how many cards are
+  // there" signal and "did the effect actually re-measure yet" signal could
+  // race, silently leaving max-height unset and showing the whole list
+  // uncapped. A ResizeObserver on the container has nothing to race — it
+  // fires once synchronously on observe() and then only on genuine width
+  // changes, regardless of how or when the cards inside it change.
   useEffect(() => {
     const scrollEl = usersScrollRef.current;
     const gridEl = usersGridRef.current;
@@ -233,46 +240,41 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     };
 
     const recompute = () => {
-      const cards = Array.from(gridEl.children) as HTMLElement[];
       const cutoffIndex = ROWS_VISIBLE * PER_ROW;
-      if (cards.length <= cutoffIndex) {
+      if (gridEl.children.length <= cutoffIndex) {
         scrollEl.style.maxHeight = '';
-      } else {
-        // cards[cutoffIndex - 1] (the last card of row 3, always present
-        // since cards.length > cutoffIndex here) instead of cards[cutoffIndex]
-        // (the first card of row 4) — measuring the bottom of the last
-        // visible row directly needs one fewer assumption about what comes
-        // after it, and avoids relying on gap math to convert a "top of next
-        // row" position into "bottom of this row".
-        const scrollTop = scrollEl.getBoundingClientRect().top;
-        const lastVisibleBottom = cards[cutoffIndex - 1].getBoundingClientRect().bottom;
-        scrollEl.style.maxHeight = `${lastVisibleBottom - scrollTop + scrollEl.scrollTop}px`;
+        updateFade();
+        return;
       }
+      const style = getComputedStyle(gridEl);
+      const gap = parseFloat(style.columnGap || style.gap || '0') || 0;
+      const paddingTop = parseFloat(style.paddingTop || '0') || 0;
+      // Cards are square (aspect-ratio 1/1 on .media-user-avatar, and the
+      // card itself is just that avatar plus a name/score line below it of
+      // roughly fixed height) — cardWidth from the grid's own box width is
+      // all that's needed, no child measurement required.
+      const cardWidth = (gridEl.clientWidth - gap * (PER_ROW - 1)) / PER_ROW;
+      const nameLineHeight = 34; // approx height of the star-rating line under each avatar
+      const rowHeight = cardWidth + nameLineHeight;
+      scrollEl.style.maxHeight = `${paddingTop + ROWS_VISIBLE * rowHeight + (ROWS_VISIBLE - 1) * gap}px`;
       updateFade();
     };
 
     recompute();
     scrollEl.addEventListener('scroll', updateFade);
-    window.addEventListener('resize', recompute);
 
-    // The [friendsScores] dependency below used to be the only trigger for
-    // recompute() — fine when the fetch was always a real network request
-    // (plenty of time between the empty-array reset and the real data
-    // landing), but now that fetchFollowedFriendsScores can resolve near-
-    // instantly from its own 10-minute cache, the card count can change
-    // faster than this effect re-fires, leaving a stale (or no) maxHeight
-    // and showing the whole list uncapped. A MutationObserver reacts to the
-    // grid's actual DOM children instead, so it can't miss a swap.
-    // rAF-deferred so the browser has committed layout for the swapped-in
-    // cards before recompute() measures them (a MutationObserver callback
-    // can otherwise fire in the same microtask the DOM mutation happened in).
-    const observer = new MutationObserver(() => requestAnimationFrame(recompute));
-    observer.observe(gridEl, { childList: true });
+    const resizeObserver = new ResizeObserver(recompute);
+    resizeObserver.observe(gridEl);
+    // Card count can still change (skeleton → real data, or a friend's
+    // score loading) without the grid's own width changing at all — a
+    // MutationObserver on childList catches that case too.
+    const mutationObserver = new MutationObserver(recompute);
+    mutationObserver.observe(gridEl, { childList: true });
 
     return () => {
       scrollEl.removeEventListener('scroll', updateFade);
-      window.removeEventListener('resize', recompute);
-      observer.disconnect();
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [friendsScores]);
 

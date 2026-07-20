@@ -490,44 +490,44 @@ export function fetchMediaDataWithFallback(
     })
     .catch(() => {})
     .finally(() => {
-      // No more hardcoded "is this field empty" checks — needsResync()
-      // (media-status.ts) is the single source of truth for whether a live
-      // fetch is due, driven purely by its own per-status cadence + the
-      // sync_failed_count backoff. That backoff now grows the same way when
-      // a live fetch succeeds but comes back with nothing new to persist
-      // (see persistToCatalog), not just on genuine provider errors — so a
-      // title that keeps returning the same data passively backs off
-      // instead of needing a permanent "this field must be filled" barrier
-      // to ever stop re-fetching. A brand-new/never-synced row always has
-      // needsResync() = true (no last_synced_at yet), so first-visit
-      // enrichment still happens exactly as before.
-      if (hasLocalData && localData && catalogEntry && !needsResync(catalogEntry)) {
+      // Whenever the catalog already has usable data, that's the final
+      // answer for THIS render — full stop. It used to be final only when
+      // needsResync() said a live check wasn't due yet; otherwise the page
+      // would paint the catalog data via onPartial and then, moments later,
+      // swap in whatever the live fetch returned via onFull, visibly
+      // changing text/stats/dates on screen (the "aparecen datos y cambian
+      // al cargar / con F5" symptom) even though nothing was actually wrong
+      // with the catalog data being shown.
+      //
+      // needsResync() still decides whether a live check happens at all —
+      // just silently now, in the background, purely to refresh the catalog
+      // row for the *next* visit (fetchMediaData persists via
+      // persistToCatalog as a side effect) — never to replace what's already
+      // on screen this visit.
+      if (hasLocalData && localData) {
         fullArrived = true;
         onFull(localData);
+        if (catalogEntry && needsResync(catalogEntry)) {
+          fetchMediaData(rawId).catch(() => {});
+        }
         return;
       }
 
+      // No local catalog data at all (brand-new/never-synced entry) — the
+      // live fetch is the only source, so its result (or its absence) must
+      // drive the visible render.
       fetchMediaData(rawId)
         .then(data => {
           fullArrived = true;
           if (data) {
-            if (!data.bannerImage && localData?.bannerImage) {
-              data.bannerImage = localData.bannerImage;
-            }
             onFull(data);
-          } else if (hasLocalData && localData) {
-            onFull(localData);
           } else {
             onError();
           }
         })
         .catch(() => {
           fullArrived = true;
-          if (hasLocalData && localData) {
-            onFull(localData);
-          } else {
-            onError();
-          }
+          onError();
         });
     });
 }
