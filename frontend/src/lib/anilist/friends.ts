@@ -1,6 +1,7 @@
 import { getAniListToken } from '../tauri';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
+import { sessionCacheGet, sessionCacheSet } from '../cache/session-ttl-cache';
 
 // AniList's own site uses this exact query shape ("who I follow has scored
 // this") — Page.mediaList's isFollowing filter resolves relative to the
@@ -52,35 +53,12 @@ interface FriendsScoresResponse {
 const TTL_MS = 10 * 60 * 1000;
 const CACHE_PREFIX = 'anilist_friends_scores_v1:';
 
-function readCache(mediaId: number): FriendScore[] | null {
-  try {
-    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${mediaId}`);
-    if (!raw) return null;
-    const entry: { scores: FriendScore[]; expiresAt: number } = JSON.parse(raw);
-    if (entry.expiresAt <= Date.now()) {
-      sessionStorage.removeItem(`${CACHE_PREFIX}${mediaId}`);
-      return null;
-    }
-    return entry.scores;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(mediaId: number, scores: FriendScore[]): void {
-  try {
-    sessionStorage.setItem(`${CACHE_PREFIX}${mediaId}`, JSON.stringify({ scores, expiresAt: Date.now() + TTL_MS }));
-  } catch {
-    // sessionStorage full/unavailable — cache is a pure optimization, safe to skip
-  }
-}
-
 // Returns [] (not an error) whenever this genuinely can't be shown — no
 // token connected, request failure, or nobody followed has scored it — so
 // callers can just skip rendering the section rather than handle a
 // separate error state for what's an optional, best-effort feature.
 export async function fetchFollowedFriendsScores(mediaId: number): Promise<FriendScore[]> {
-  const cached = readCache(mediaId);
+  const cached = sessionCacheGet<FriendScore[]>(CACHE_PREFIX, mediaId);
   if (cached) return cached;
 
   const token = getAniListToken();
@@ -102,6 +80,6 @@ export async function fetchFollowedFriendsScores(mediaId: number): Promise<Frien
       profileUrl: `https://anilist.co/user/${entry.user.name}`,
     }));
 
-  writeCache(mediaId, scores);
+  sessionCacheSet(CACHE_PREFIX, mediaId, scores, TTL_MS);
   return scores;
 }

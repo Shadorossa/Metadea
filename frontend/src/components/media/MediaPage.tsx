@@ -263,18 +263,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     recompute();
     scrollEl.addEventListener('scroll', updateFade);
 
+    // ResizeObserver watches the grid's whole content-box, not just its
+    // width — adding/removing cards changes its height too (more rows), so
+    // this alone already re-fires recompute() on a card-count change; no
+    // separate MutationObserver needed to catch that case.
     const resizeObserver = new ResizeObserver(recompute);
     resizeObserver.observe(gridEl);
-    // Card count can still change (skeleton → real data, or a friend's
-    // score loading) without the grid's own width changing at all — a
-    // MutationObserver on childList catches that case too.
-    const mutationObserver = new MutationObserver(recompute);
-    mutationObserver.observe(gridEl, { childList: true });
 
     return () => {
       scrollEl.removeEventListener('scroll', updateFade);
       resizeObserver.disconnect();
-      mutationObserver.disconnect();
     };
   }, [friendsScores]);
 
@@ -482,6 +480,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
+      ()      => cancelled,
     );
 
     return () => { cancelled = true; };
@@ -666,6 +665,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const CHARACTER_PAGE_SIZE = 12;
   const hasStaff = !!(data.staff && data.staff.length > 0);
   const activeCharList = charTab === 'staff' ? (data.staff ?? []) : data.characters;
+  const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
+  const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
 
   return (
     <>
@@ -1115,10 +1116,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           before the friends fetch — which runs independently of the main
           media fetch, see above — resolves) so the layout doesn't jump once
           it comes back with real cards. */}
-      {(() => {
-        const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
-        const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
-        return (data.characters.length > 0 || showUsers) && (
+      {(data.characters.length > 0 || showUsers) && (
         <div className="media-chars-users-row">
           {data.characters.length > 0 && (
             <div className={`media-chars-section${!showUsers ? ' media-chars-section--full' : ''}`}>
@@ -1225,8 +1223,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             </div>
           )}
         </div>
-        );
-      })()}
+      )}
     </>
   );
 }

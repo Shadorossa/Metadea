@@ -552,6 +552,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
 
   const hasChanges = () => {
     if (!entry || !originalEntry) return false;
+    // Not in DIFF_FIELDS — it's a curator flag toggled by its own dedicated
+    // "Eliminar de Metadea" button, not a regular diffable field with a
+    // label, but flipping it is still a real change that must enable Submit.
+    if (entry.blocked_at !== originalEntry.blocked_at) return true;
     if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
@@ -568,6 +572,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal' 
   const buildChangeSummary = (resolveMeta: (id: string) => MediaMeta): string => {
     if (!entry) return '';
     const lines: string[] = [];
+
+    if (entry.blocked_at !== originalEntry?.blocked_at) {
+      lines.push(entry.blocked_at ? '- Blocked (hidden from Metadea)' : '- Unblocked (restored to Metadea)');
+    }
 
     for (const [field, label] of DIFF_FIELDS) {
       if (!isFieldChanged(field)) continue;

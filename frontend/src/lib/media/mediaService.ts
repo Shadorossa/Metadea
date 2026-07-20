@@ -407,6 +407,11 @@ export function fetchMediaDataWithFallback(
   onPartial: (data: MediaPageData) => void,
   onFull:    (data: MediaPageData) => void,
   onError:   () => void,
+  // Lets the caller (MediaPage.tsx, which already tracks its own
+  // per-navigation `cancelled` flag) skip the silent background refresh
+  // below once the user has moved to a different page — that fetch/persist
+  // no longer serves any purpose once nothing will read its result.
+  isCancelled: () => boolean = () => false,
 ): void {
   const cached = getCachedMediaData(rawId);
   if (cached) {
@@ -507,7 +512,7 @@ export function fetchMediaDataWithFallback(
       if (hasLocalData && localData) {
         fullArrived = true;
         onFull(localData);
-        if (catalogEntry && needsResync(catalogEntry)) {
+        if (catalogEntry && needsResync(catalogEntry) && !isCancelled()) {
           fetchMediaData(rawId).catch(() => {});
         }
         return;
