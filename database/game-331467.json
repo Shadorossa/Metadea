@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "9f0b88c01bca44b39f0b88c01bca44b3",
+    "external_id": "game:331467",
+    "type": "game",
+    "title_main": "Metal Gear Solid Delta: Snake Eater - Sneaking DLC Pack",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-07-20T10:07:31.868Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:250634",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Metal Gear Solid Delta: Snake Eater",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coac1n.jpg",
+      "media_external_id": "game:331467"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
