@@ -1,0 +1,42 @@
+{
+  "media_catalog": {
+    "id": "bbdf88d7497120dbbbdf88d7497120db",
+    "external_id": "game:222341",
+    "type": "game",
+    "title_main": "Silent Hill 2",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:222341",
+      "related_media_external_id": "game:481",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Silent Hill 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vyg.jpg"
+    },
+    {
+      "media_external_id": "game:222341",
+      "related_media_external_id": "game:483",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Silent Hill 4: The Room",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vyk.jpg"
+    },
+    {
+      "media_external_id": "game:222341",
+      "related_media_external_id": "game:483",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Silent Hill 4: The Room",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vyk.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Silent Hill"
+}

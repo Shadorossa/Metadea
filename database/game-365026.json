@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "19666ac25877cc5719666ac25877cc57",
+    "external_id": "game:365026",
+    "type": "game",
+    "title_main": "Metal Gear Solid Delta: Snake Eater - Tactical Edition",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-07-20T02:10:51.811Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:379",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Metal Gear Solid 3: Snake Eater",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5ei5.jpg",
+      "media_external_id": "game:365026"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
