@@ -117,6 +117,30 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
   };
 }
 
+function isMangaCharacter(c: ComicVineCharacterCredit): boolean {
+  const pubName = c.publisher?.name?.toLowerCase().trim();
+  if (pubName) {
+    if (MANGA_PUBLISHERS.has(pubName) || pubName.includes('manga')) {
+      return true;
+    }
+  }
+
+  const name = c.name.toLowerCase();
+  const mangaWordRegex = /\b(manga|light novel|manhua|manhwa|shonen|shoujo|seinen|josei)\b/;
+  if (mangaWordRegex.test(name)) {
+    return true;
+  }
+
+  const desc = (c.description ?? '').toLowerCase();
+  const deck = (c.deck ?? '').toLowerCase();
+  const mangaPhraseRegex = /\b(is a|the|original|english|translated|published) manga\b|\b(manga|light novel) (character|series|adaptation|version|by)\b/;
+  if (mangaPhraseRegex.test(desc) || mangaPhraseRegex.test(deck)) {
+    return true;
+  }
+
+  return false;
+}
+
 // Comic Vine characters are real, independently-searchable entities (unlike
 // TMDB, which only has a "character" text field on a cast credit, not its
 // own resource) — so unlike movies/series/games, character search is
@@ -136,7 +160,7 @@ export async function searchComicVineCharacters(searchQuery: string, _signal: Ab
   }
 
   const results: SearchResult[] = pageResult.characters
-    .filter(c => c.image?.medium_url || c.image?.small_url)
+    .filter(c => (c.image?.medium_url || c.image?.small_url) && !isMangaCharacter(c))
     .map(c => ({
       externalId: `character:comicvine:${c.id}`,
       type: 'character' as MediaType,

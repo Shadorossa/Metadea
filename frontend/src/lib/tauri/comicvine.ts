@@ -39,9 +39,12 @@ export interface ComicVineSearchPage {
 }
 
 export interface ComicVineCharacterCredit {
-  id:    number;
-  name:  string;
-  image: ComicVineImage | null;
+  id:          number;
+  name:        string;
+  image:       ComicVineImage | null;
+  publisher?:  ComicVinePublisher | null;
+  deck?:       string | null;
+  description?: string | null;
 }
 
 export interface ComicVineConceptCredit {

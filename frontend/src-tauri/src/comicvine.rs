@@ -222,7 +222,7 @@ pub async fn comicvine_search_characters(
             ("resources", "character"),
             ("limit", limit_str.as_str()),
             ("offset", offset_str.as_str()),
-            ("field_list", "id,name,image"),
+            ("field_list", "id,name,image,publisher,deck,description"),
         ])
         .send()
         .await
@@ -506,10 +506,13 @@ const ISSUE_FIELD_LIST: &str = "id,name,issue_number,image,cover_date,character_
 // /character/{id}/ resource does.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComicVineCharacterCredit {
-    pub id:    u64,
-    pub name:  String,
+    pub id:          u64,
+    pub name:        String,
     #[serde(default)]
-    pub image: Option<ComicVineImage>,
+    pub image:       Option<ComicVineImage>,
+    pub publisher:   Option<ComicVinePublisher>,
+    pub deck:        Option<String>,
+    pub description: Option<String>,
 }
 
 // Comic Vine's "concepts" are broad recurring themes (Time Travel, Multiverse,
