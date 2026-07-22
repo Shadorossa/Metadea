@@ -352,6 +352,15 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // persistToCatalog preserves an existing banner, but `data` is also shown
     // on screen — patch it too so a bannerless fetch doesn't flash empty.
     const existing = await getCatalogEntry(rawId).catch(() => null);
+    if (existing) {
+      if (existing.type) data.type = existing.type;
+      if (existing.format) data.format = existing.format;
+      if (existing.title_main) data.titleMain = existing.title_main;
+      if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
+      if (existing.title_native) data.titleNative = existing.title_native;
+      if (existing.title_english) data.titleEnglish = existing.title_english;
+      if (existing.synopsis) data.description = existing.synopsis;
+    }
     if (!data.bannerImage && existing?.banners_csv) {
       data.bannerImage = existing.banners_csv.split(',')[0];
     }

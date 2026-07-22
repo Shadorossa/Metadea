@@ -263,17 +263,31 @@ pub async fn save_catalog_entry(
 ) -> Result<MediaCatalogEntry, String> {
     let conn = state.conn.lock().str_err()?;
 
-    let existing: Option<(String, String)> = conn
-        .query_row(
-            "SELECT id, created_at FROM media_catalog WHERE external_id = ?1",
-            [&entry.external_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+    let numeric_suffix = entry.external_id.split_once(':').map(|(_, id)| id);
+
+    let existing: Option<(String, String, String)> = if let Some(num_id) = numeric_suffix {
+        let vnovel_id = format!("vnovel:{num_id}");
+        let game_id = format!("game:{num_id}");
+        conn.query_row(
+            "SELECT id, external_id, created_at FROM media_catalog WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3",
+            [&entry.external_id, &vnovel_id, &game_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
         .optional()
-        .str_err()?;
+        .str_err()?
+    } else {
+        conn.query_row(
+            "SELECT id, external_id, created_at FROM media_catalog WHERE external_id = ?1",
+            [&entry.external_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()
+        .str_err()?
+    };
 
-    if let Some((eid, eat)) = existing {
+    if let Some((eid, orig_ext_id, eat)) = existing {
         if entry.id.is_empty() { entry.id = eid; }
+        entry.external_id = orig_ext_id;
         entry.created_at = eat;
     }
 
@@ -419,13 +433,25 @@ pub async fn get_catalog_entry(
     external_id: String,
 ) -> Result<Option<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().str_err()?;
-    conn.query_row(
-        &format!("{} WHERE external_id = ?1", SELECT_ALL),
-        [&external_id],
-        row_to_entry,
-    )
-    .optional()
-    .str_err()
+    if let Some((_, num_id)) = external_id.split_once(':') {
+        let vnovel_id = format!("vnovel:{num_id}");
+        let game_id = format!("game:{num_id}");
+        conn.query_row(
+            &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_ALL),
+            [&external_id, &vnovel_id, &game_id],
+            row_to_entry,
+        )
+        .optional()
+        .str_err()
+    } else {
+        conn.query_row(
+            &format!("{} WHERE external_id = ?1", SELECT_ALL),
+            [&external_id],
+            row_to_entry,
+        )
+        .optional()
+        .str_err()
+    }
 }
 
 #[tauri::command]
@@ -434,9 +460,20 @@ pub async fn delete_catalog_entry(
     external_id: String,
 ) -> Result<(), String> {
     let conn = state.conn.lock().str_err()?;
-    conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
+    if let Some((_, num_id)) = external_id.split_once(':') {
+        let vnovel_id = format!("vnovel:{num_id}");
+        let game_id = format!("game:{num_id}");
+        conn.execute(
+            "DELETE FROM media_catalog WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3",
+            [&external_id, &vnovel_id, &game_id],
+        )
         .map(|_| ())
         .str_err()
+    } else {
+        conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
+            .map(|_| ())
+            .str_err()
+    }
 }
 
 #[derive(Debug, Serialize)]

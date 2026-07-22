@@ -528,14 +528,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
-    if (field === 'type' && value && typeof value === 'string') {
-      const currentId = entry.external_id;
-      const parts = currentId.split(':');
-      const newExternalId = parts.length > 1 ? `${value}:${parts.slice(1).join(':')}` : `${value}:${currentId}`;
-      setEntry({ ...entry, type: value, external_id: newExternalId });
-    } else {
-      setEntry({ ...entry, [field]: value === '' ? null : value });
-    }
+    setEntry({ ...entry, [field]: value === '' ? null : value });
   };
 
   const [isResyncing, setIsResyncing] = useState(false);
@@ -1118,19 +1111,27 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     comic: 'Cómic',
   }) as Record<string, string>;
 
-  const typeField = (field: keyof MediaCatalogEntry, label: string) => (
-    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
-      <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
-        <option value="">—</option>
-        {Object.keys(mediaTypesDict)
-          .filter(k => k !== 'all' && k !== 'character')
-          .sort((a, b) => mediaTypesDict[a].localeCompare(mediaTypesDict[b]))
-          .map(key => (
-            <option key={key} value={key}>{mediaTypesDict[key]}</option>
-          ))}
-      </select>
-    </Field>
-  );
+  const typeField = (field: keyof MediaCatalogEntry, label: string) => {
+    const currentType = entry[field] as string;
+    const isGameOrVn = currentType === 'game' || currentType === 'vnovel';
+
+    if (!isGameOrVn) {
+      return (
+        <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+          <input type="text" value={mediaTypesDict[currentType] || currentType || ''} disabled style={{ opacity: 0.7 }} />
+        </Field>
+      );
+    }
+
+    return (
+      <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+        <select value={currentType || ''} onChange={e => handleChange(field, e.target.value || null)}>
+          <option value="game">{mediaTypesDict.game || 'Videojuego'}</option>
+          <option value="vnovel">{mediaTypesDict.vnovel || 'Novela Visual'}</option>
+        </select>
+      </Field>
+    );
+  };
 
   const formatField = (field: keyof MediaCatalogEntry, label: string) => (
     <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
