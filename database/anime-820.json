@@ -1,0 +1,110 @@
+{
+  "media_catalog": {
+    "id": "02d44e32132d561302d44e32132d5613",
+    "external_id": "anime:820",
+    "type": "anime",
+    "title_main": "Ginga Eiyuu Densetsu",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:170816",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These (Zoku-hen)",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx170816-YDgi6rrC8Jel.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "manga:41941",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/small/11941.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "manga:87134",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/small/bx87134-ezExNenXPUOv.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:20628",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Kaikou",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/nx20628-46V7oj6rr9Ma.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:100780",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Seiran",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx100780-0umTIigEolK8.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:124032",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Gekitotsu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx124032-li8JjJdJvDVb.png",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:148970",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Ginga Eiyuu Densetsu: Die Neue These - Sakubou",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/b148970-2gLwQ9Bso5r7.png",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:820",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version #1",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx3016-ubCyMga7qCq6.png"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "anime:170816": "Group 1",
+    "anime:820": "Group 1",
+    "manga:41941": "Group 1",
+    "anime:3016": "Group 1",
+    "manga:87134": "Group 1",
+    "anime:20628": "Group 1",
+    "anime:100780": "Group 1",
+    "anime:124032": "Group 1",
+    "anime:148970": "Group 1",
+    "anime:3015": "Group 1",
+    "anime:3371": "Group 1",
+    "anime:3665": "Group 1"
+  },
+  "saga_name": "Ginga Eiyuu Densetsu"
+}
