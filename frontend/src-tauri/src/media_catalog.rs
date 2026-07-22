@@ -2146,40 +2146,134 @@ pub async fn get_saga_names(
     Ok(map)
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct SagaMemberEntry {
+    pub external_id: String,
+    pub title: String,
+    pub cover: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct SagaListEntry {
     pub id: String,
     pub name: String,
     pub anchor_title: Option<String>,
     pub anchor_cover: Option<String>,
-    pub member_count: i64,
+    // Embedded rather than fetched separately per row — the admin panel's
+    // Sagas tab is an expandable text list (member works shown inline on
+    // expand, no editor modal), and for github's case this whole list
+    // already came from one community.db download, so there's nothing to
+    // save by deferring the member query to a second round trip.
+    pub members: Vec<SagaMemberEntry>,
+}
+
+// Groups (saga_id, saga_name, member_external_id, member_title, member_cover)
+// flat rows into one SagaListEntry per saga_id, preserving first-seen order.
+// Shared by get_all_sagas and get_community_sagas — same shape, different DB.
+fn group_saga_rows(rows: Vec<(String, String, String, Option<String>, Option<String>)>) -> Vec<SagaListEntry> {
+    let mut order: Vec<String> = Vec::new();
+    let mut by_id: std::collections::HashMap<String, SagaListEntry> = std::collections::HashMap::new();
+
+    for (saga_id, saga_name, member_id, member_title, member_cover) in rows {
+        let entry = by_id.entry(saga_id.clone()).or_insert_with(|| {
+            order.push(saga_id.clone());
+            SagaListEntry { id: saga_id.clone(), name: saga_name, anchor_title: None, anchor_cover: None, members: Vec::new() }
+        });
+        if member_id == entry.id {
+            entry.anchor_title = member_title.clone();
+            entry.anchor_cover = member_cover.clone();
+        }
+        entry.members.push(SagaMemberEntry {
+            external_id: member_id,
+            title: member_title.unwrap_or_else(|| saga_id.clone()),
+            cover: member_cover,
+        });
+    }
+
+    order.into_iter().filter_map(|id| by_id.remove(&id)).collect()
 }
 
 // Admin catalog editor's Sagas tab — sagas.id doubles as the anchor member's
-// own external_id (see save_cached_saga's anchoring), so a plain join gets a
-// representative title/cover for the card without a separate lookup.
+// own external_id (see save_cached_saga's anchoring).
 #[tauri::command]
 pub async fn get_all_sagas(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<SagaListEntry>, String> {
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
-        "SELECT s.id, s.name, mc.title_main, mc.cover_url,
-                (SELECT COUNT(*) FROM saga_relations sr WHERE sr.saga_id = s.id)
+        "SELECT s.id, s.name, sr.media_external_id, mc.title_main, mc.cover_url
          FROM sagas s
-         LEFT JOIN visible_media_catalog mc ON mc.external_id = s.id
-         ORDER BY COALESCE(NULLIF(s.name, ''), mc.title_main, s.id)"
+         JOIN saga_relations sr ON sr.saga_id = s.id
+         LEFT JOIN visible_media_catalog mc ON mc.external_id = sr.media_external_id
+         ORDER BY COALESCE(NULLIF(s.name, ''), s.id), sr.media_external_id"
     ).str_err()?;
     let rows = stmt.query_map([], |row| {
-        Ok(SagaListEntry {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            anchor_title: row.get(2)?,
-            anchor_cover: row.get(3)?,
-            member_count: row.get(4)?,
-        })
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
     }).str_err()?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    Ok(group_saga_rows(rows.filter_map(|r| r.ok()).collect()))
+}
+
+// GitHub > Sagas — read-only peek at the community database.db's own
+// sagas/saga_relations, same download-and-attach pattern as
+// get_community_characters, so only sagas actually published to the shared
+// catalog show up here (not whatever the local install happens to have).
+#[tauri::command]
+pub async fn get_community_sagas(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<SagaListEntry>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .str_err()?;
+    let resp = client.get(COMMUNITY_DB_URL).send().await.str_err()?;
+    if !resp.status().is_success() {
+        return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));
+    }
+    let bytes = resp.bytes().await.str_err()?;
+
+    let cache_dir = app_handle.path().app_cache_dir().str_err()?;
+    std::fs::create_dir_all(&cache_dir).str_err()?;
+    let temp_path = cache_dir.join("community_sagas_tmp.db");
+    std::fs::write(&temp_path, &bytes).str_err()?;
+    let temp_path_str = temp_path.to_string_lossy().to_string();
+
+    let result = (|| -> Result<Vec<SagaListEntry>, String> {
+        let conn = state.conn.lock().str_err()?;
+        conn.execute("ATTACH DATABASE ?1 AS ghsagas", rusqlite::params![temp_path_str]).str_err()?;
+
+        let read = (|| -> Result<Vec<SagaListEntry>, String> {
+            let has_saga_tables: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM ghsagas.sqlite_master WHERE type = 'table' AND name = 'sagas'",
+                    [],
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+            if !has_saga_tables {
+                return Ok(Vec::new());
+            }
+
+            let mut stmt = conn.prepare(
+                "SELECT s.id, s.name, sr.media_external_id, mc.title_main, mc.cover_url
+                 FROM ghsagas.sagas s
+                 JOIN ghsagas.saga_relations sr ON sr.saga_id = s.id
+                 LEFT JOIN ghsagas.media_catalog mc ON mc.external_id = sr.media_external_id
+                 ORDER BY COALESCE(NULLIF(s.name, ''), s.id), sr.media_external_id"
+            ).str_err()?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
+            }).str_err()?;
+            Ok(group_saga_rows(rows.filter_map(|r| r.ok()).collect()))
+        })();
+
+        conn.execute("DETACH DATABASE ghsagas", []).str_err()?;
+        read
+    })();
+
+    let _ = std::fs::remove_file(&temp_path);
+    result
 }
 
 // Only unlinks the saga itself (cascades to saga_relations) — never touches

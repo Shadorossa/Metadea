@@ -143,19 +143,30 @@ export async function getSagaNames(mediaExternalIds: string[]): Promise<Record<s
   return tauriCmd<Record<string, string>>('get_saga_names', {}, { mediaExternalIds });
 }
 
+export interface SagaMemberEntry {
+  external_id: string;
+  title: string;
+  cover: string | null;
+}
+
 export interface SagaListEntry {
   id: string;
   name: string;
   anchor_title: string | null;
   anchor_cover: string | null;
-  member_count: number;
+  members: SagaMemberEntry[];
 }
 
 // Admin catalog editor's Sagas tab — id doubles as the anchor member's own
-// external_id, so opening the full editor for a saga just means opening
-// PrEditorModal on that id (its Saga Order section IS the saga editor).
+// external_id. Members are embedded (not a separate per-row fetch) since the
+// list is a text list that expands in place to show them, no editor modal.
 export async function getAllSagas(): Promise<SagaListEntry[]> {
   return tauriCmd<SagaListEntry[]>('get_all_sagas', []);
+}
+
+// GitHub's own sagas (community database.db), not the local install's.
+export async function getCommunitySagas(): Promise<SagaListEntry[]> {
+  return tauriCmd<SagaListEntry[]>('get_community_sagas', []);
 }
 
 export async function deleteSaga(sagaId: string): Promise<void> {

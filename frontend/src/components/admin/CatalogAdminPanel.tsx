@@ -3,7 +3,7 @@ import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
 import {
   getAllCatalogEntries, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
-  getAllSagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
+  getAllSagas, getCommunitySagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
 } from '../../lib/tauri/catalog';
 import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
 import {
@@ -17,6 +17,7 @@ import { PrEditorModal } from '../media/PrEditorModal';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
+import { IconTrash } from '../local/ui/icons';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
 import { DIFF_FIELDS } from '../../lib/media/constants';
 
@@ -25,11 +26,10 @@ interface Props {
 }
 
 type Source = 'local' | 'github' | 'add';
-// Sagas and characters have no separate GitHub-native listing (a saga isn't
-// its own file the way a media entry is, and characters only ever live in
-// the local `characters` table) — so this only changes what's browsable
-// under 'media'; 'saga'/'character' show the same local data regardless of
-// which source tab is active.
+// Neither saga nor character has its own per-file GitHub representation the
+// way a media entry does (one database/*.json each) — 'github' instead reads
+// a one-shot download of the community database.db for both (get_community_
+// characters/get_community_sagas), read-only, never merged into local.
 type Entity = 'media' | 'saga' | 'character';
 
 export function CatalogAdminPanel({ i18n }: Props) {
@@ -45,11 +45,19 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<MediaCatalogEntry | null>(null);
 
-  // Sagas state
+  // Sagas state — a text list that expands in place to show member works
+  // (see visibleSagas' render below), not a card grid with an edit modal.
   const [sagaQuery, setSagaQuery] = useState('');
   const [sagas, setSagas] = useState<SagaListEntry[]>([]);
   const [sagaLoading, setSagaLoading] = useState(true);
   const [sagaDeleteTarget, setSagaDeleteTarget] = useState<SagaListEntry | null>(null);
+  const [expandedSagaId, setExpandedSagaId] = useState<string | null>(null);
+
+  // GitHub's own sagas (read-only peek at the community database.db, not the
+  // local one) — fetched on demand, same reasoning as githubCharacters below.
+  const [githubSagas, setGithubSagas] = useState<SagaListEntry[]>([]);
+  const [githubSagasLoading, setGithubSagasLoading] = useState(false);
+  const [githubSagasError, setGithubSagasError] = useState(false);
 
   // Characters state
   const [characterQuery, setCharacterQuery] = useState('');
@@ -205,6 +213,21 @@ export function CatalogAdminPanel({ i18n }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, entity, source]);
 
+  useEffect(() => {
+    if (!isOwner || entity !== 'saga' || source !== 'github') return;
+    if (githubSagas.length > 0 || githubSagasLoading) return;
+    setGithubSagasLoading(true);
+    setGithubSagasError(false);
+    getCommunitySagas()
+      .then(setGithubSagas)
+      .catch(err => {
+        console.error('[CatalogAdminPanel] Failed to load GitHub sagas:', err);
+        setGithubSagasError(true);
+      })
+      .finally(() => setGithubSagasLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, entity, source]);
+
   // Deferred so fast typing doesn't force a full re-filter/re-render of a
   // (potentially large) catalog on every single keystroke — the input itself
   // stays instantly responsive, the list just settles a beat behind it.
@@ -228,9 +251,10 @@ export function CatalogAdminPanel({ i18n }: Props) {
   })();
 
   const visibleSagas = (() => {
+    const list = source === 'github' ? githubSagas : sagas;
     const q = deferredSagaQuery.trim().toLowerCase();
-    if (!q) return sagas;
-    return sagas.filter(s =>
+    if (!q) return list;
+    return list.filter(s =>
       s.name.toLowerCase().includes(q) || s.anchor_title?.toLowerCase().includes(q)
     );
   })();
@@ -417,6 +441,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
       {entity === 'saga' && (
         <>
+          {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
+
           <input
             type="text"
             className="catalog-admin-search"
@@ -425,23 +451,63 @@ export function CatalogAdminPanel({ i18n }: Props) {
             onChange={e => setSagaQuery(e.target.value)}
           />
 
-          {sagaLoading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!sagaLoading && visibleSagas.length === 0 && <p className="catalog-admin-status">{t.no_sagas}</p>}
+          {(source === 'github' ? githubSagasLoading : sagaLoading) && <p className="catalog-admin-status">{t.loading}</p>}
+          {source === 'github' && githubSagasError && <p className="catalog-admin-status">{t.github_open_error}</p>}
+          {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length === 0 && (
+            <p className="catalog-admin-status">{t.no_sagas}</p>
+          )}
 
-          {!sagaLoading && visibleSagas.length > 0 && (
-            <div className="pr-editor-search-grid">
-              {visibleSagas.map(saga => (
-                <CatalogEntryCard
-                  key={saga.id}
-                  id={saga.id}
-                  title={`${saga.name || saga.anchor_title || saga.id} (${saga.member_count})`}
-                  cover={saga.anchor_cover}
-                  editLabel={t.edit_button}
-                  deleteLabel={t.delete_button}
-                  onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(saga.id); }}
-                  onDelete={() => setSagaDeleteTarget(saga)}
-                />
-              ))}
+          {!(source === 'github' ? githubSagasLoading : sagaLoading) && visibleSagas.length > 0 && (
+            <div className="catalog-admin-saga-list">
+              {visibleSagas.map(saga => {
+                const isExpanded = expandedSagaId === saga.id;
+                return (
+                  <div className="catalog-admin-saga-row" key={saga.id}>
+                    <div className="catalog-admin-saga-row-main">
+                      <button
+                        type="button"
+                        className="catalog-admin-saga-row-toggle"
+                        onClick={() => setExpandedSagaId(isExpanded ? null : saga.id)}
+                        aria-expanded={isExpanded}
+                      >
+                        <span className="catalog-admin-saga-row-name">
+                          {saga.name || saga.anchor_title || saga.id} ({saga.members.length})
+                        </span>
+                        <span className="catalog-admin-saga-row-cover">
+                          {saga.anchor_cover ? <img src={saga.anchor_cover} alt="" loading="lazy" /> : null}
+                        </span>
+                      </button>
+                      {source !== 'github' && (
+                        <button
+                          type="button"
+                          className="catalog-admin-icon-btn catalog-admin-icon-btn--delete"
+                          aria-label={t.delete_button}
+                          title={t.delete_button}
+                          onClick={() => setSagaDeleteTarget(saga)}
+                        >
+                          <IconTrash size={13} />
+                        </button>
+                      )}
+                    </div>
+                    {isExpanded && (
+                      <div className="catalog-admin-saga-members">
+                        {saga.members.map(member => (
+                          <a
+                            key={member.external_id}
+                            className="catalog-admin-saga-member"
+                            href={`/media?id=${encodeURIComponent(member.external_id)}`}
+                          >
+                            <span className="catalog-admin-saga-member-cover">
+                              {member.cover ? <img src={member.cover} alt="" loading="lazy" /> : null}
+                            </span>
+                            <span className="catalog-admin-saga-member-title">{member.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>

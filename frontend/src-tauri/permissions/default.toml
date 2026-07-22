@@ -67,6 +67,7 @@ commands.allow = [
   "get_saga_name",
   "get_saga_names",
   "get_all_sagas",
+  "get_community_sagas",
   "delete_saga",
   "save_media_saga_groups",
   "get_media_saga_groups",
