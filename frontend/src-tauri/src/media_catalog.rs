@@ -69,7 +69,7 @@ fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, &'static st
         "SEQUEL"     => Some(("PREQUEL", "Prequel")),
         "PREQUEL"    => Some(("SEQUEL", "Sequel")),
         "SOURCE"     => Some(("ADAPTATION", "Adaptation")),
-        "ADAPTATION" => Some(("SOURCE", "Source Material")),
+        "ADAPTATION" => Some(("ADAPTATION", "Adaptation")),
         "EPISODE"    => Some(("PART_OF", "Part of")),
         "UPDATE"     => Some(("PART_OF", "Part of")),
         _ => None,

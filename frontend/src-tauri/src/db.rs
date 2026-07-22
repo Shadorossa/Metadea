@@ -309,6 +309,17 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN title_english TEXT", []);
         mark_migration(conn, 19)?;
     }
+    if v < 20 {
+        // Fix inverted reciprocal relation for ADAPTATION (previously mapped to SOURCE,
+        // which erroneously marked anime adaptations as the "Source Material" of their original manga).
+        let _ = conn.execute(
+            "UPDATE media_relations 
+             SET relation_type = 'ADAPTATION', type_label = 'Adaptation' 
+             WHERE relation_type = 'SOURCE' AND (related_media_external_id LIKE 'anime:%' OR related_media_external_id LIKE 'movie:%' OR related_media_external_id LIKE 'series:%')",
+            [],
+        );
+        mark_migration(conn, 20)?;
+    }
 
     Ok(())
 }
