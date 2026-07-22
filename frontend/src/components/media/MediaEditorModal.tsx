@@ -28,6 +28,7 @@ interface Props {
   onSaved: (entry: LibraryEntry) => void;
   onDeleted: () => void;
   initialEntry?: LibraryEntry;
+  initialActiveLogId?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -104,12 +105,12 @@ function NumberField({ label, value, max, step, onChange }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry }: Props) {
+export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry, initialActiveLogId }: Props) {
   const t  = i18n;
   const te = t.editor;
   const isMovie = data.type === 'movie' || (data.type === 'anime' && data.format === 'MOVIE');
 
-  const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: id }));
+  const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: initialActiveLogId || id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {
     // If we already have the entry from the caller, skip loading state entirely
     loading: !initialEntry, saving: false, isClosing: false,
@@ -187,6 +188,9 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             const ev = await getLibraryEntry(versionId);
             dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
           }));
+        }
+        if (initialActiveLogId) {
+          dispatchEntry({ type: 'SET_ACTIVE_LOG', id: initialActiveLogId });
         }
       } catch (err) {
         console.error('Failed to load base and versions', err);

@@ -540,12 +540,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
   useDiscordPresence(data, t.discord);
 
+  const [activeLogIdOverride, setActiveLogIdOverride] = useState<string | undefined>(undefined);
+
   useEffect(() => {
     if (pageState === 'ready' && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('openEditor') === 'true') {
+        const subId = params.get('subId');
+        if (subId) setActiveLogIdOverride(subId);
         setShowEditor(true);
         params.delete('openEditor');
+        params.delete('subId');
         const newSearch = params.toString() ? `?${params.toString()}` : '';
         window.history.replaceState({}, '', `${window.location.pathname}${newSearch}`);
       }
@@ -700,6 +705,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           data={data}
           i18n={tm}
           initialEntry={libEntry ?? undefined}
+          initialActiveLogId={activeLogIdOverride}
           onClose={handleEditorClose}
           onSaved={handleEditorSaved}
           onDeleted={handleEditorDeleted}
@@ -804,7 +810,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               onClick={() => {
                 if (previewMode) return;
                 if (isBlockedEdition) {
-                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true`;
+                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`;
                   return;
                 }
                 if (isBundle) return;
@@ -812,7 +818,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               }}
               onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
                 isBlockedEdition
-                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true`)
+                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true&subId=${encodeURIComponent(currentId)}`)
                   : isBundle
                   ? undefined
                   : handleCoverClick()
