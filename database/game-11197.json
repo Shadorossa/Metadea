@@ -1,0 +1,39 @@
+{
+  "media_catalog": {
+    "id": "21063b2460dd635f21063b2460dd635f",
+    "external_id": "game:11197",
+    "type": "game",
+    "title_main": "Yo-kai Watch",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:11197",
+      "related_media_external_id": "game:11658",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Yo-Kai Watch 2: Bony Spirits",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co24jl.jpg"
+    },
+    {
+      "media_external_id": "game:11197",
+      "related_media_external_id": "game:24470",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Yo-Kai Watch 2: Fleshy Souls",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6o27.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:222295": "YW3",
+    "game:136889": "YW3",
+    "game:96246": "",
+    "game:24470": "YW2",
+    "game:11658": "YW2"
+  }
+}

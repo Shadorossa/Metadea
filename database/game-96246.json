@@ -1,0 +1,57 @@
+{
+  "media_catalog": {
+    "id": "f8ff1161a0156dabf8ff1161a0156dab",
+    "external_id": "game:96246",
+    "type": "game",
+    "title_main": "Yo-kai Watch 4",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:96246",
+      "related_media_external_id": "game:222295",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yo-Kai Watch 3: Tempura",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87am.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:96246",
+      "related_media_external_id": "game:136889",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yo-Kai Watch 3: Sushi",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87al.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:96246",
+      "related_media_external_id": "game:222295",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yo-Kai Watch 3: Tempura",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87am.jpg"
+    },
+    {
+      "media_external_id": "game:96246",
+      "related_media_external_id": "game:136889",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yo-Kai Watch 3: Sushi",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87al.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:222295": "YW3",
+    "game:136889": "YW3",
+    "game:96246": "",
+    "game:24470": "YW2",
+    "game:11658": "YW2"
+  }
+}
