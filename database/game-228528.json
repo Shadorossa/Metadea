@@ -1,0 +1,35 @@
+{
+  "media_catalog": {
+    "id": "9e42bc860fdd589b9e42bc860fdd589b",
+    "external_id": "game:228528",
+    "type": "game",
+    "title_main": "Bayonetta Origins: Cereza and the Lost Demon",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:228528",
+      "related_media_external_id": "game:76888",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Bayonetta 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:228528",
+      "related_media_external_id": "game:76888",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Bayonetta 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4z2i.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Bayonetta"
+}
