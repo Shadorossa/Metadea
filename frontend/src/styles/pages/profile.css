@@ -1873,6 +1873,10 @@
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 5;
+  /* Purely decorative (title label) — without this it sits above
+     .fav-card-link (z-index 2) at full card size and swallows every click
+     before the anchor underneath ever sees it, breaking click-to-navigate. */
+  pointer-events: none;
 }
 
 .fav-card:hover .fav-overlay {
