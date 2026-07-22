@@ -68,7 +68,7 @@ fn mark_migration(conn: &Connection, version: i64) -> SqlResult<()> {
     Ok(())
 }
 
-fn union_find_root(parent: &mut std::collections::HashMap<String, String>, x: &str) -> String {
+pub(crate) fn union_find_root(parent: &mut std::collections::HashMap<String, String>, x: &str) -> String {
     let mut root = x.to_string();
     while let Some(p) = parent.get(&root) {
         if p == &root { break; }
@@ -83,7 +83,7 @@ fn union_find_root(parent: &mut std::collections::HashMap<String, String>, x: &s
     root
 }
 
-fn union_find_merge(parent: &mut std::collections::HashMap<String, String>, a: &str, b: &str) {
+pub(crate) fn union_find_merge(parent: &mut std::collections::HashMap<String, String>, a: &str, b: &str) {
     parent.entry(a.to_string()).or_insert_with(|| a.to_string());
     parent.entry(b.to_string()).or_insert_with(|| b.to_string());
     let ra = union_find_root(parent, a);

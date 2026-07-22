@@ -2209,56 +2209,127 @@ pub struct SagaListEntry {
     pub members: Vec<SagaMemberEntry>,
 }
 
-// Groups (saga_id, saga_name, member_external_id, member_title, member_cover)
-// flat rows into one SagaListEntry per saga_id, preserving first-seen order.
-// Shared by get_all_sagas and get_community_sagas — same shape, different DB.
-fn group_saga_rows(rows: Vec<(String, String, String, Option<String>, Option<String>)>) -> Vec<SagaListEntry> {
-    let mut order: Vec<String> = Vec::new();
-    let mut by_id: std::collections::HashMap<String, SagaListEntry> = std::collections::HashMap::new();
-
-    for (saga_id, saga_name, member_id, member_title, member_cover) in rows {
-        let entry = by_id.entry(saga_id.clone()).or_insert_with(|| {
-            order.push(saga_id.clone());
-            SagaListEntry { id: saga_id.clone(), name: saga_name, anchor_title: None, anchor_cover: None, members: Vec::new() }
-        });
-        if member_id == entry.id {
-            entry.anchor_title = member_title.clone();
-            entry.anchor_cover = member_cover.clone();
+// Shared by get_all_sagas (table_prefix "") and get_community_sagas
+// (table_prefix "ghsagas.") — both read the saga list the exact same way:
+// computed from the real, always-reciprocal PREQUEL/SEQUEL/ALTERNATIVE graph
+// in media_relations, never from sagas/saga_relations directly, since that
+// bookkeeping can be fragmented into one single-member row per work (see
+// merge_fragmented_sagas in db.rs for why). A downloaded community.db is
+// exactly as likely to still carry that fragmentation as the local install
+// was before migration 22, so github's own listing needs the same fix, not
+// just a trust-the-file read the way the media/character tabs get away with.
+fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite::Result<Vec<SagaListEntry>> {
+    let mut parent: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    {
+        let sql = format!(
+            "SELECT media_external_id, related_media_external_id FROM {table_prefix}media_relations
+             WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+        for (a, b) in rows.filter_map(|r| r.ok()) {
+            crate::db::union_find_merge(&mut parent, &a, &b);
         }
-        entry.members.push(SagaMemberEntry {
-            external_id: member_id,
-            title: member_title.unwrap_or_else(|| saga_id.clone()),
-            cover: member_cover,
-        });
+    }
+    if parent.is_empty() {
+        return Ok(Vec::new());
     }
 
-    order.into_iter().filter_map(|id| by_id.remove(&id)).collect()
+    let mut components: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for id in parent.keys().cloned().collect::<Vec<_>>() {
+        let root = crate::db::union_find_root(&mut parent, &id);
+        components.entry(root).or_default().push(id);
+    }
+    components.retain(|_, members| members.len() >= 2);
+    if components.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Two batched queries covering every kept component's members at once,
+    // instead of one query per component or per member.
+    let all_member_ids: Vec<String> = components.values().flatten().cloned().collect();
+    let placeholders = all_member_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+
+    let mut info: std::collections::HashMap<String, (Option<String>, Option<String>)> = std::collections::HashMap::new();
+    {
+        // Excludes locally-blocked entries here (not from `components` itself)
+        // so a blocked member just quietly drops out of the list below, the
+        // same way visible_media_catalog used to filter get_all_sagas.
+        let sql = format!(
+            "SELECT mc.external_id, mc.title_main, mc.cover_url
+             FROM {table_prefix}media_catalog mc
+             WHERE mc.external_id IN ({placeholders})
+               AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog b WHERE b.external_id = mc.external_id)"
+        );
+        let mut stmt = conn.prepare(&sql)?;
+        let params = rusqlite::params_from_iter(all_member_ids.iter());
+        let rows = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?)))?;
+        for (id, title, cover) in rows.filter_map(|r| r.ok()) {
+            info.insert(id, (title, cover));
+        }
+    }
+
+    let mut names: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    {
+        // sagas is a newer table than media_relations in some older community
+        // snapshots — a missing-table prepare error just leaves `names` empty
+        // rather than failing the whole list.
+        let sql = format!("SELECT id, name FROM {table_prefix}sagas WHERE id IN ({placeholders}) AND name != ''");
+        if let Ok(mut stmt) = conn.prepare(&sql) {
+            let params = rusqlite::params_from_iter(all_member_ids.iter());
+            if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))) {
+                for (id, name) in rows.filter_map(|r| r.ok()) {
+                    names.insert(id, name);
+                }
+            }
+        }
+    }
+
+    let mut result = Vec::new();
+    for members in components.values() {
+        let mut visible: Vec<&String> = members.iter().filter(|id| info.contains_key(*id)).collect();
+        if visible.len() < 2 { continue; }
+        visible.sort();
+
+        let canonical = visible[0].clone();
+        let name = visible.iter().find_map(|id| names.get(*id).cloned()).unwrap_or_default();
+
+        let mut entry = SagaListEntry { id: canonical.clone(), name, anchor_title: None, anchor_cover: None, members: Vec::new() };
+        for member_id in &visible {
+            let (title, cover) = info.get(*member_id).cloned().unwrap_or((None, None));
+            if **member_id == canonical {
+                entry.anchor_title = title.clone();
+                entry.anchor_cover = cover.clone();
+            }
+            entry.members.push(SagaMemberEntry {
+                external_id: (*member_id).clone(),
+                title: title.unwrap_or_else(|| (*member_id).clone()),
+                cover,
+            });
+        }
+        result.push(entry);
+    }
+
+    result.sort_by(|a, b| {
+        let key = |e: &SagaListEntry| if !e.name.is_empty() { e.name.clone() } else { e.anchor_title.clone().unwrap_or_else(|| e.id.clone()) };
+        key(a).cmp(&key(b))
+    });
+    Ok(result)
 }
 
-// Admin catalog editor's Sagas tab — sagas.id doubles as the anchor member's
-// own external_id (see save_cached_saga's anchoring).
+// Admin catalog editor's Sagas tab (local catalog).
 #[tauri::command]
 pub async fn get_all_sagas(
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<SagaListEntry>, String> {
     let conn = state.conn.lock().str_err()?;
-    let mut stmt = conn.prepare(
-        "SELECT s.id, s.name, sr.media_external_id, mc.title_main, mc.cover_url
-         FROM sagas s
-         JOIN saga_relations sr ON sr.saga_id = s.id
-         LEFT JOIN visible_media_catalog mc ON mc.external_id = sr.media_external_id
-         ORDER BY COALESCE(NULLIF(s.name, ''), s.id), sr.media_external_id"
-    ).str_err()?;
-    let rows = stmt.query_map([], |row| {
-        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
-    }).str_err()?;
-    Ok(group_saga_rows(rows.filter_map(|r| r.ok()).collect()))
+    build_saga_list(&conn, "").str_err()
 }
 
-// GitHub > Sagas — read-only peek at the community database.db's own
-// sagas/saga_relations, same download-and-attach pattern as
-// get_community_characters, so only sagas actually published to the shared
-// catalog show up here (not whatever the local install happens to have).
+// GitHub > Sagas — read-only peek at the community database.db, same
+// download-and-attach pattern as get_community_characters, so only sagas
+// actually published to the shared catalog show up here (not whatever the
+// local install happens to have).
 #[tauri::command]
 pub async fn get_community_sagas(
     app_handle: tauri::AppHandle,
@@ -2283,33 +2354,7 @@ pub async fn get_community_sagas(
     let result = (|| -> Result<Vec<SagaListEntry>, String> {
         let conn = state.conn.lock().str_err()?;
         conn.execute("ATTACH DATABASE ?1 AS ghsagas", rusqlite::params![temp_path_str]).str_err()?;
-
-        let read = (|| -> Result<Vec<SagaListEntry>, String> {
-            let has_saga_tables: bool = conn
-                .query_row(
-                    "SELECT COUNT(*) FROM ghsagas.sqlite_master WHERE type = 'table' AND name = 'sagas'",
-                    [],
-                    |r| r.get(0),
-                )
-                .map(|c: i64| c > 0)
-                .unwrap_or(false);
-            if !has_saga_tables {
-                return Ok(Vec::new());
-            }
-
-            let mut stmt = conn.prepare(
-                "SELECT s.id, s.name, sr.media_external_id, mc.title_main, mc.cover_url
-                 FROM ghsagas.sagas s
-                 JOIN ghsagas.saga_relations sr ON sr.saga_id = s.id
-                 LEFT JOIN ghsagas.media_catalog mc ON mc.external_id = sr.media_external_id
-                 ORDER BY COALESCE(NULLIF(s.name, ''), s.id), sr.media_external_id"
-            ).str_err()?;
-            let rows = stmt.query_map([], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?))
-            }).str_err()?;
-            Ok(group_saga_rows(rows.filter_map(|r| r.ok()).collect()))
-        })();
-
+        let read = build_saga_list(&conn, "ghsagas.").str_err();
         conn.execute("DETACH DATABASE ghsagas", []).str_err()?;
         read
     })();
