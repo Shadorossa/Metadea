@@ -1184,7 +1184,10 @@ pub async fn save_author_profile_and_relations(
 // collaborative-catalog PRs) and merges its rows into the local media_catalog.
 // Uses INSERT OR IGNORE via ATTACH DATABASE so it only fills in ids the user
 // doesn't already have locally — never overwrites a user's own library data,
-// local edits, or anything fetched live from an API.
+// local edits, or anything fetched live from an API. Exception: game saga
+// data (PREQUEL/SEQUEL/ALTERNATIVE, sagas/saga_relations/media_saga_groups)
+// is always fully rebuilt from the catalog instead — see the reconciliation
+// block below for why.
 #[tauri::command]
 pub async fn sync_community_catalog(
     app_handle: tauri::AppHandle,
@@ -1411,6 +1414,76 @@ pub async fn sync_community_catalog(
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id)
                      SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
+                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
+                    [],
+                ).str_err()? as i64;
+            }
+
+            // ── Game saga reconciliation (authoritative from catalog) ───
+            // Everything above only fills gaps — a pair the local DB
+            // already has a row for is never touched, so a past bug that
+            // duplicated/garbled a game's saga chain locally survives
+            // forever even after the community catalog itself gets fixed.
+            // For games specifically, nobody hand-edits these row by row
+            // (PrEditorModal's saga UI always rewrites the whole chain on
+            // save), so there's nothing local worth protecting the way a
+            // hand-typed synopsis is — wipe and rebuild entirely from
+            // whatever the community catalog says, for entries it actually
+            // has an opinion on.
+            changes += conn.execute(
+                "DELETE FROM media_relations
+                 WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = media_relations.media_external_id AND cm.type = 'game')
+                   AND EXISTS (SELECT 1 FROM community.media_catalog cr WHERE cr.external_id = media_relations.related_media_external_id AND cr.type = 'game')",
+                [],
+            ).str_err()? as i64;
+            changes += conn.execute(
+                "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                 SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
+                 FROM community.media_relations c
+                 JOIN community.media_catalog cm ON cm.external_id = c.media_external_id AND cm.type = 'game'
+                 JOIN community.media_catalog cr ON cr.external_id = c.related_media_external_id AND cr.type = 'game'
+                 WHERE c.relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')
+                   AND c.media_external_id != c.related_media_external_id
+                   AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id IN (c.media_external_id, c.related_media_external_id))",
+                [],
+            ).str_err()? as i64;
+
+            if has_saga_tables {
+                changes += conn.execute(
+                    "DELETE FROM media_saga_groups
+                     WHERE EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = media_saga_groups.media_external_id AND cm.type = 'game')",
+                    [],
+                ).str_err()? as i64;
+                changes += conn.execute(
+                    "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name)
+                     SELECT c.media_external_id, c.group_name FROM community.media_saga_groups c
+                     JOIN community.media_catalog cm ON cm.external_id = c.media_external_id AND cm.type = 'game'
+                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
+                    [],
+                ).str_err()? as i64;
+
+                // sagas rows first — saga_relations.saga_id has an enforced FK into it.
+                changes += conn.execute(
+                    "INSERT OR REPLACE INTO sagas (id, name)
+                     SELECT DISTINCT cs.id, cs.name
+                     FROM community.sagas cs
+                     WHERE EXISTS (
+                       SELECT 1 FROM community.saga_relations csr
+                       JOIN community.media_catalog cm ON cm.external_id = csr.media_external_id AND cm.type = 'game'
+                       WHERE csr.saga_id = cs.id
+                     )",
+                    [],
+                ).str_err()? as i64;
+                changes += conn.execute(
+                    "DELETE FROM saga_relations
+                     WHERE EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = saga_relations.media_external_id AND cm.type = 'game')",
+                    [],
+                ).str_err()? as i64;
+                changes += conn.execute(
+                    "INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id)
+                     SELECT c.media_external_id, c.saga_id FROM community.saga_relations c
+                     JOIN community.media_catalog cm ON cm.external_id = c.media_external_id AND cm.type = 'game'
                      WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                     [],
                 ).str_err()? as i64;
