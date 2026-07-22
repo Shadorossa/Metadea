@@ -1,0 +1,34 @@
+{
+  "media_catalog": {
+    "id": "d5058624c8cf835bd5058624c8cf835b",
+    "external_id": "vnovel:272096",
+    "type": "vnovel",
+    "title_main": "Umineko no Naku Koro ni: Episode 8 - Twilight of the Golden Witch",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:65904",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Umineko no Naku Koro ni Chiru: Episode 8 - Twilight of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8i2f.jpg",
+      "media_external_id": "vnovel:272096"
+    },
+    {
+      "media_external_id": "vnovel:272096",
+      "related_media_external_id": "vnovel:272087",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Umineko no Naku Koro ni: Episode 7 - Requiem of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nj.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Umineko no naku koro ni (PS3)"
+}
