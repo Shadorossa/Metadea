@@ -25,4 +25,5 @@ export const STORAGE_KEYS = {
   lastVisitedPath: 'metadea_last_visited_path',
   homeCalendarGeneralCache: 'metadea_home_calendar_general_cache',
   libraryGroupByBundle: 'metadea_library_group_by_bundle',
+  searchState: 'metadea_search_state',
 } as const;

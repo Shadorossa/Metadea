@@ -6,6 +6,7 @@ import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
+import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 
 type SearchTranslations = Translations['search'];
 
@@ -56,6 +57,33 @@ function interpolateTemplate(template: string, variables: Record<string, string>
     (result, [key, value]) => result.replace(`{${key}}`, value),
     template,
   );
+}
+
+// Restores the last search when landing on /search with no ?q (the navbar's
+// search link is a bare href, so clicking back into a media page's detail
+// view and returning here would otherwise always reset). sessionStorage
+// (not localStorage) so it naturally clears per-tab; Home/Profile also clear
+// it explicitly on visit so it doesn't outlive an actual change of section.
+interface PersistedSearchState {
+  query: string;
+  mediaType: MediaType;
+  results: SearchResult[];
+  status: SearchStatus;
+  page: number;
+  hasMore: boolean;
+  sortField: 'releaseDate' | 'scoreGlobal';
+  sortDirection: 'asc' | 'desc';
+}
+
+function loadPersistedSearchState(): PersistedSearchState | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEYS.searchState);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedSearchState;
+    return parsed.query ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
@@ -164,13 +192,53 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     executeSearch(query, mediaType, page + 1);
   };
 
+  // Skips the very first persist-effect run — its closure still holds this
+  // render's pre-restore values, since the setState calls below haven't
+  // triggered a re-render yet. The restored values persist fine on the next
+  // run once one of them actually changes.
+  const skipNextPersistRef = useRef(true);
+
   useEffect(() => {
-    if (initialQuery) executeSearch(initialQuery, initialType);
+    if (initialQuery) {
+      executeSearch(initialQuery, initialType);
+    } else {
+      const saved = loadPersistedSearchState();
+      if (saved) {
+        setQuery(saved.query);
+        setMediaType(saved.mediaType);
+        setResults(saved.results);
+        // A save mid-fetch (navigated away before it settled) has no request
+        // to resume — fall back to whatever the results array already shows.
+        setStatus(saved.status === 'loading' ? (saved.results.length ? 'done' : 'idle') : saved.status);
+        setPage(saved.page);
+        setHasMore(saved.hasMore);
+        setSortField(saved.sortField);
+        setSortDirection(saved.sortDirection);
+        const url = new URL(window.location.href);
+        url.searchParams.set('type', saved.mediaType);
+        url.searchParams.set('q', saved.query);
+        history.replaceState(history.state, '', url.toString());
+      }
+    }
     return () => {
       abortControllerRef.current?.abort();
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.searchState, JSON.stringify({
+        query, mediaType, results, status, page, hasMore, sortField, sortDirection,
+      }));
+    } catch {
+      // sessionStorage unavailable (private mode, quota) — search still works, just won't survive a round trip.
+    }
+  }, [query, mediaType, results, status, page, hasMore, sortField, sortDirection]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);

@@ -173,6 +173,9 @@ const t    = useTranslations(lang);
     // Immediately cache profile path to make reloads solid
     localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search + window.location.hash);
 
+    // A real change of section — the search page should start fresh next time.
+    sessionStorage.removeItem(STORAGE_KEYS.searchState);
+
     const session = await getAuthToken().catch(() => null);
     if (!session?.token) { window.location.replace('/login'); return; }
 
