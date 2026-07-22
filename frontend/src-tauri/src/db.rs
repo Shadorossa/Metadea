@@ -477,6 +477,30 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE saga_relations ADD COLUMN order_index REAL", []);
         mark_migration(conn, 23)?;
     }
+    if v < 24 {
+        // local_game_links had no way to tell "still installed" from
+        // "uninstalled ages ago" — a link just sat there forever once
+        // created. local_games_seen tracks the last live scan that actually
+        // found each (launcher, link_key); prune_stale_game_links (folders.rs)
+        // deletes a link once its game hasn't been seen in a while. Seed from
+        // today's existing links so upgrading doesn't treat them as already
+        // stale on the very first post-upgrade scan.
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS local_games_seen (
+                launcher     TEXT NOT NULL,
+                link_key     TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                PRIMARY KEY (launcher, link_key)
+            )",
+            [],
+        );
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO local_games_seen (launcher, link_key, last_seen_at)
+             SELECT launcher, link_key, CURRENT_TIMESTAMP FROM local_game_links",
+            [],
+        );
+        mark_migration(conn, 24)?;
+    }
 
     Ok(())
 }
@@ -614,6 +638,17 @@ CREATE TABLE IF NOT EXISTS local_game_links (
     launcher    TEXT NOT NULL,
     link_key    TEXT NOT NULL DEFAULT '',
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (launcher, link_key)
+);
+
+-- Last time a live scan (scan_all_games) actually found this (launcher,
+-- link_key) installed — lets prune_stale_game_links (folders.rs) tell still
+-- installed from uninstalled a while ago, and clean up the corresponding
+-- local_game_links row instead of it lingering forever.
+CREATE TABLE IF NOT EXISTS local_games_seen (
+    launcher     TEXT NOT NULL,
+    link_key     TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
     PRIMARY KEY (launcher, link_key)
 );
 

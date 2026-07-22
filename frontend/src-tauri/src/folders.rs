@@ -139,6 +139,41 @@ pub fn lookup_game_links(
     map
 }
 
+// Marks every currently-scanned game as seen right now — called at the end
+// of scan_all_games, right before prune_stale_game_links below.
+pub fn touch_games_seen(conn: &rusqlite::Connection, games: &[(String, String)]) {
+    let now = chrono::Utc::now().to_rfc3339();
+    for (launcher, link_key) in games {
+        let _ = conn.execute(
+            "INSERT INTO local_games_seen (launcher, link_key, last_seen_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(launcher, link_key) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+            rusqlite::params![launcher, link_key, now],
+        );
+    }
+}
+
+// A link a user made once (see save_game_link) used to just sit in
+// local_game_links forever, even long after the game was uninstalled —
+// most visible with Family Sharing titles, which get installed/uninstalled
+// far more often than an owned game. Grace period (not "gone from this one
+// scan = delete now") so a temporarily-unplugged external drive holding a
+// GOG/EA library doesn't wipe out its links just because one scan missed it.
+const GAME_LINK_GRACE_DAYS: i64 = 14;
+
+pub fn prune_stale_game_links(conn: &rusqlite::Connection) {
+    let cutoff = (chrono::Utc::now() - chrono::Duration::days(GAME_LINK_GRACE_DAYS)).to_rfc3339();
+    let _ = conn.execute(
+        "DELETE FROM local_game_links
+         WHERE NOT EXISTS (
+             SELECT 1 FROM local_games_seen lgs
+             WHERE lgs.launcher = local_game_links.launcher
+               AND lgs.link_key = local_game_links.link_key
+               AND lgs.last_seen_at >= ?1
+         )",
+        [cutoff],
+    );
+}
+
 #[tauri::command]
 pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
