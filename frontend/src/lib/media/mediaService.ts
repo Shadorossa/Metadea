@@ -3,7 +3,7 @@ import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCove
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume, fetchComicVineIssues, fetchComicVineIssue, fetchComicVineVolumeCast } from '../search/providers/comicvine';
-import type { ComicVineIssue } from '../tauri';
+import { comicVineSearch, type ComicVineIssue } from '../tauri';
 import { unifyGenres } from './genre-unifier';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
@@ -187,22 +187,60 @@ export async function fetchComicIssues(
   rawId: string,
   currentRelations: MediaPageData['relations'],
   issuesLabel: string,
+  titleMain?: string,
+  altTitle?: string,
 ): Promise<ComicIssuesResult> {
-  const idStr = rawId.slice(rawId.indexOf(':') + 1);
-  const volumeId = parseInt(idStr, 10);
-  if (!Number.isFinite(volumeId)) return { relations: null, characters: [] };
+  const isComic = rawId.startsWith('comic:');
+  let volumeId: number | null = null;
+
+  if (isComic) {
+    const idStr = rawId.slice(rawId.indexOf(':') + 1);
+    const parsed = parseInt(idStr, 10);
+    if (Number.isFinite(parsed)) {
+      volumeId = parsed;
+    }
+  }
+
+  if (!volumeId) {
+    if (!titleMain) return { relations: null, characters: [] };
+    const searchRes = await comicVineSearch(titleMain).catch(() => null);
+
+    const pickBestVolume = (vols?: typeof searchRes.volumes) => {
+      if (!vols || vols.length === 0) return null;
+      const lowerTitle = titleMain.toLowerCase().trim();
+      const exact = vols.find(v => v.name.toLowerCase().trim() === lowerTitle);
+      if (exact) return exact;
+      const contains = vols.find(v => v.name.toLowerCase().includes(lowerTitle) || lowerTitle.includes(v.name.toLowerCase()));
+      if (contains) return contains;
+      const sorted = [...vols].sort((a, b) => (b.count_of_issues ?? 0) - (a.count_of_issues ?? 0));
+      return sorted[0];
+    };
+
+    let matchedVol = pickBestVolume(searchRes?.volumes);
+    if (!matchedVol && altTitle && altTitle !== titleMain) {
+      const searchAltRes = await comicVineSearch(altTitle).catch(() => null);
+      matchedVol = pickBestVolume(searchAltRes?.volumes);
+    }
+
+    if (matchedVol) {
+      volumeId = matchedVol.id;
+    } else {
+      return { relations: null, characters: [] };
+    }
+  }
+
   const issues = await fetchComicVineIssues(volumeId).catch(() => []);
   if (!issues.length) return { relations: null, characters: [] };
 
-  const cast = await fetchComicVineVolumeCast(issues.map(i => i.id));
+  const cast = isComic ? await fetchComicVineVolumeCast(issues.map(i => i.id)) : { characters: [], concepts: [] };
   const characters: MediaCharacter[] = cast.characters.map(c => ({
     id: `character:comicvine:${c.id}`,
     name: c.name,
     image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));
   const { core, tags } = unifyGenres(cast.concepts.map(c => c.name));
-  const genreDots = core.join(' · ') || undefined;
-  const genreTagDots = tags.join(' · ') || undefined;
+  const genreDots = isComic ? (core.join(' · ') || undefined) : undefined;
+  const genreTagDots = isComic ? (tags.join(' · ') || undefined) : undefined;
 
   const issueRelations = issuesToRelations(issues, issuesLabel);
   if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };

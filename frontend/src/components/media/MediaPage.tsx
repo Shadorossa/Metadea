@@ -452,8 +452,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           });
         }
 
-        if (full.type === 'comic') {
-          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE).then(({ relations, characters, genreDots, genreTagDots }) => {
+        if (full.type === 'comic' || full.type === 'manga' || full.type === 'lnovel') {
+          fetchComicIssues(currentId, full.relations, tm.relations.ISSUE, full.titleMain, full.titleRomaji || full.titleEnglish).then(({ relations, characters, genreDots, genreTagDots }) => {
             if (cancelled) return;
 
             // Full cast aggregated across every issue — supersedes the
@@ -644,10 +644,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const bannerStyle = !data.bannerImage
     ? ({ '--banner-color': data.bannerColor } as React.CSSProperties)
     : undefined;
-  // Books and comics never share a page — reuse the same "editions" tab
-  // slot for comics' issues, just swapping the label/i18n key.
-  const editionsLabel = data.type === 'comic' ? tm.relations.ISSUE : tm.relations.EDITIONS;
-  const editionsRelationType = data.type === 'comic' ? 'ISSUE' : 'EDITIONS';
+  const isComicOrHasIssues = data.type === 'comic' || (Array.isArray(data.relations) && data.relations.some(r => r.relationType === 'ISSUE'));
+  const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
+  const editionsRelationType = isComicOrHasIssues ? 'ISSUE' : 'EDITIONS';
   const {
     related: relatedRelations,
     recommended: recommendedRelations,

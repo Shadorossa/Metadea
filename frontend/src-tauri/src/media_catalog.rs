@@ -694,7 +694,7 @@ pub async fn save_cached_saga(
 
         if !existing_ids.contains(&entry.external_id) {
             tx.execute(
-                "INSERT INTO media_catalog (
+                "INSERT OR IGNORE INTO media_catalog (
                     id, external_id, type, source, format, title_main, cover_url, release_year, release_month, release_day, created_at, updated_at
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 rusqlite::params![
@@ -833,7 +833,7 @@ pub async fn save_media_relations(
         if !existing_ids.contains(&rel.related_media_external_id) {
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
-                "INSERT INTO media_catalog (
+                "INSERT OR IGNORE INTO media_catalog (
                     id, external_id, type, source, format, title_main, cover_url, created_at, updated_at
                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 rusqlite::params![
