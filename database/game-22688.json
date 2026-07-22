@@ -30,17 +30,17 @@
   "characters": [],
   "media_authors": [],
   "saga_groups": {
-    "game:47716": "IE2",
-    "game:47835": "IE2",
-    "game:47676": "IE3",
-    "game:47675": "IE3",
-    "game:47674": "IE3",
     "game:9685": "IEGO",
     "game:47673": "IEGO",
-    "game:23220": "IEGOCS",
     "game:9693": "IEGOCS",
-    "game:62739": "IEGOGX",
-    "game:134112": "IEGOGX"
+    "game:47674": "IE3",
+    "game:47675": "IE3",
+    "game:134112": "IEGOGX",
+    "game:23220": "IEGOCS",
+    "game:47676": "IE3",
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:62739": "IEGOGX"
   },
   "saga_name": "Inazuma Eleven"
 }

@@ -11,68 +11,29 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:47674",
       "related_media_external_id": "game:4930",
       "relation_type": "SPIN_OFF",
       "type_label": "Spin-off",
       "title": "Inazuma Eleven Strikers",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2qek.jpg",
-      "media_external_id": "game:47674"
-    },
-    {
-      "media_external_id": "game:47674",
-      "related_media_external_id": "game:47716",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Inazuma Eleven 2: Blizzard",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
-    },
-    {
-      "media_external_id": "game:47674",
-      "related_media_external_id": "game:47835",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Inazuma Eleven 2: Firestorm",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
-    },
-    {
-      "media_external_id": "game:47674",
-      "related_media_external_id": "game:9685",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Inazuma Eleven GO: Shadow",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zi4.jpg"
-    },
-    {
-      "media_external_id": "game:47674",
-      "related_media_external_id": "game:47673",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Inazuma Eleven Go: Light",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
-    },
-    {
-      "media_external_id": "game:47674",
-      "related_media_external_id": "game:47676",
-      "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version #2",
-      "title": "Inazuma Eleven 3: Bomb Blast",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407q.jpg"
+      "format": null
     }
   ],
   "characters": [],
   "media_authors": [],
   "saga_groups": {
-    "game:23220": "IEGOCS",
-    "game:47675": "IE3",
-    "game:9693": "IEGOCS",
-    "game:47716": "IE2",
-    "game:62739": "IEGOGX",
-    "game:47673": "IEGO",
-    "game:47674": "IE3",
-    "game:47676": "IE3",
     "game:9685": "IEGO",
+    "game:47673": "IEGO",
+    "game:9693": "IEGOCS",
+    "game:47674": "IE3",
+    "game:47675": "IE3",
     "game:134112": "IEGOGX",
-    "game:47835": "IE2"
+    "game:23220": "IEGOCS",
+    "game:47676": "IE3",
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:62739": "IEGOGX"
   },
   "saga_name": "Inazuma Eleven"
 }
