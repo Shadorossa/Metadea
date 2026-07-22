@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, getMediaRelationsForEditor, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
+import { getCatalogEntry, getMediaAuthors } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
-import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
+import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { submitPrEditorChanges } from './pr-editor-submit';
+import { loadPrEditorRelationsAndSaga } from './pr-editor-load';
+import { buildPrEditorChangeSummary } from './pr-editor-change-summary';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
-  BUNDLE_RELATION_TYPES, PART_OF_RELATION_TYPES, CONTAINS_RELATION_TYPES,
   EDITABLE_RELATION_OPTIONS,
-  isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
+  type SagaRelationType,
 } from '../../lib/media/sagaTypes';
-import { createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
+import { createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS } from '../../lib/media/constants';
-import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
+import { getReleaseDateKey } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './PrEditorCharactersSection';
@@ -175,134 +176,26 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       }
 
       try {
-        const rels = await getMediaRelationsForEditor(externalId).catch(() => [] as DbMediaRelation[]);
-
-        // Bundled In (this entry belongs to something else — PART_OF/UPDATE)
-        // vs. Contains (something else belongs to this entry — EPISODE) are
-        // opposite directions of the same relationship; BUNDLE_RELATION_TYPES
-        // covers both only for excluding them from the plain Relations list
-        // below.
-        const bundled = rels
-          .filter(r => PART_OF_RELATION_TYPES.includes(r.relation_type))
-          .map(r => ({
-            external_id: r.related_media_external_id,
-            title: r.title,
-            cover: r.cover,
-          }));
-        setBundledRelations(bundled);
-        setOriginalBundledIds(new Set(bundled.map(r => r.external_id)));
-
-        const contained = rels
-          .filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type))
-          .map(r => ({
-            external_id: r.related_media_external_id,
-            title: r.title,
-            cover: r.cover,
-          }));
-        setContainedRelations(contained);
-        setOriginalContainedIds(new Set(contained.map(r => r.external_id)));
-
-        const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
-        if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
-        const sagaMemberIds = new Set(transitiveIds);
-
-        // Everything that isn't Bundled In and doesn't target a saga-chain
-        // member shows up here — every existing relation the entry already
-        // had (ADAPTATION, SPIN_OFF, ALTERNATIVE outside the saga, CHARACTER,
-        // OTHER, ...), not just a fixed whitelist. Anything targeting a saga
-        // member is re-derived by the saga chain builder on save instead.
-        const editable = rels
-          .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !sagaMemberIds.has(r.related_media_external_id))
-          .map(r => {
-            // Rows saved before game relations used canonical type keys
-            // (see igdb-mapper.ts) still carry the raw English label as
-            // relation_type (e.g. "Expanded Edition") — normalize on load so
-            // the dropdown pre-selects the real, localized option instead of
-            // rendering it as an extra unlocalized duplicate.
-            const relationType = normalizeLegacyRelationType(r.relation_type);
-            return {
-              related_media_external_id: r.related_media_external_id,
-              relation_type: relationType,
-              type_label: (canonicalRelationLabels as any)[relationType] || r.type_label || relationType,
-              title: r.title,
-              cover: r.cover,
-            };
-          });
-        setEditableRelations(editable);
-        setOriginalEditableRelationTypes(new Map(editable.map(r => [r.related_media_external_id, r.relation_type])));
-
-        const entriesData = await Promise.all(
-          transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
-        );
-        const validEntries = entriesData.filter((x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null);
-
-        const currentEntry = validEntries.find(x => x.id === externalId)?.entry;
-        if (currentEntry) {
-          setEntry(currentEntry);
-          setOriginalEntry(currentEntry);
+        const result = await loadPrEditorRelationsAndSaga(externalId);
+        setBundledRelations(result.bundledRelations);
+        setOriginalBundledIds(result.originalBundledIds);
+        setContainedRelations(result.containedRelations);
+        setOriginalContainedIds(result.originalContainedIds);
+        setEditableRelations(result.editableRelations);
+        setOriginalEditableRelationTypes(result.originalEditableRelationTypes);
+        if (result.currentEntry) {
+          setEntry(result.currentEntry);
+          setOriginalEntry(result.currentEntry);
         }
-
-        validEntries.sort((a, b) => compareByReleaseDate(
-          { ...a.entry, id: a.id },
-          { ...b.entry, id: b.id }
-        ));
-
-        const sortedIds = validEntries.map(x => x.id);
-
-        const meta: Record<string, MediaMeta> = {};
-        for (const x of validEntries) {
-          meta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
-        }
-        setSagaMeta(meta);
-
-        // Bootstraps sagaRelationTypes/sagaGroups from whatever SOURCE/
-        // EPISODE/UPDATE/ALTERNATIVE edges already exist in the DB — this
-        // is a one-time reverse-engineering of prior state, distinct from
-        // classifySagaChain (which turns already-known sagaRelationTypes/
-        // sagaGroups back into a display/relation structure).
-        const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
-          Promise.all(sortedIds.map(id => getMediaRelationsForEditor(id).catch(() => [] as DbMediaRelation[]))),
-          getMediaSagaGroups(sortedIds).catch(() => ({} as Record<string, string>)),
-          invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
-        ]);
-        // Reconstructs the manually-saved order (if any) from SEQUEL edges
-        // among allRelsList instead of trusting release-date order alone —
-        // otherwise a drag-reorder+submit looked saved but silently reverted
-        // to release-date order the next time the editor was reopened.
-        const reconstructedOrder = reconstructSagaOrder(sortedIds, allRelsList);
-        setSagaOrder(reconstructedOrder);
-        setOriginalSagaOrder(reconstructedOrder);
-
-        const relTypesMap: Record<string, SagaRelationType> = {};
-        const groupsMap: Record<string, string> = { ...dbGroups };
-        let nextGroupNum = 1;
-
-        for (let i = 0; i < sortedIds.length; i++) {
-          const ownerId = sortedIds[i];
-          for (const r of allRelsList[i]) {
-            const otherId = r.related_media_external_id;
-            if (r.relation_type === 'ALTERNATIVE') {
-              if (!groupsMap[ownerId] && !groupsMap[otherId]) {
-                groupsMap[ownerId] = groupsMap[otherId] = `Group ${nextGroupNum++}`;
-              } else if (groupsMap[ownerId] && !groupsMap[otherId]) {
-                groupsMap[otherId] = groupsMap[ownerId];
-              } else if (!groupsMap[ownerId] && groupsMap[otherId]) {
-                groupsMap[ownerId] = groupsMap[otherId];
-              }
-            } else {
-              const lower = r.relation_type.toLowerCase();
-              if (isSagaRelationType(lower) && lower !== 'main') {
-                relTypesMap[otherId] = lower;
-              }
-            }
-          }
-        }
-        setSagaRelationTypes(relTypesMap);
-        setOriginalSagaRelationTypes({ ...relTypesMap });
-        setSagaGroups(groupsMap);
-        setOriginalSagaGroups({ ...groupsMap });
-        setSagaName(dbSagaName || '');
-        setOriginalSagaName(dbSagaName || '');
+        setSagaMeta(result.sagaMeta);
+        setSagaOrder(result.sagaOrder);
+        setOriginalSagaOrder(result.originalSagaOrder);
+        setSagaRelationTypes(result.sagaRelationTypes);
+        setOriginalSagaRelationTypes(result.originalSagaRelationTypes);
+        setSagaGroups(result.sagaGroups);
+        setOriginalSagaGroups(result.originalSagaGroups);
+        setSagaName(result.sagaName);
+        setOriginalSagaName(result.originalSagaName);
       } catch (err) {
         console.error('Failed to load relations/saga:', err);
         setBundledRelations([]);
@@ -601,69 +494,23 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
   };
 
-  // Human-readable "- " bullet list of everything this proposal adds or
-  // changes, used as the PR body — diffs catalog fields against the entry as
-  // it was when the modal opened, plus set-differences for the relation
-  // buckets this editor manages (bundled-in, saga order).
   const buildChangeSummary = (resolveMeta: (id: string) => MediaMeta): string => {
     if (!entry) return '';
-    const lines: string[] = [];
-
-    if (entry.blocked_at !== originalEntry?.blocked_at) {
-      lines.push(entry.blocked_at ? '- Blocked (hidden from Metadea)' : '- Unblocked (restored to Metadea)');
-    }
-
-    for (const [field, label] of DIFF_FIELDS) {
-      if (!isFieldChanged(field)) continue;
-      const before = originalEntry?.[field] ?? null;
-      const after = entry[field] ?? null;
-      if (before == null || before === '') lines.push(`- Added ${label}: "${after}"`);
-      else if (after == null || after === '') lines.push(`- Removed ${label} (was "${before}")`);
-      else lines.push(`- Changed ${label}: "${before}" → "${after}"`);
-    }
-
-    const formatWork = (id: string, title?: string | null): string => {
-      const displayTitle = title || resolveMeta(id).title;
-      return displayTitle ? `${displayTitle} (${id})` : id;
-    };
-
-    const d = getDiff();
-    for (const r of d.addedBundled) lines.push(`- Added Bundled In: ${formatWork(r.external_id, r.title)}`);
-    for (const id of d.removedBundledIds) lines.push(`- Removed Bundled In: ${formatWork(id)}`);
-    for (const r of d.addedContained) lines.push(`- Added Contains: ${formatWork(r.external_id, r.title)}`);
-    for (const id of d.removedContainedIds) lines.push(`- Removed Contains: ${formatWork(id)}`);
-    for (const r of d.addedEditableRelations) lines.push(`- Added Relation: ${formatWork(r.related_media_external_id, r.title)} (${r.type_label})`);
-    for (const id of d.removedEditableRelationIds) lines.push(`- Removed Relation: ${formatWork(id)}`);
-    for (const r of d.changedEditableRelations) {
-      const before = originalEditableRelationTypes.get(r.related_media_external_id) ?? '';
-      lines.push(`- Changed Relation Type: ${formatWork(r.related_media_external_id, r.title)} (${before} → ${r.relation_type})`);
-    }
-
-    if (d.addedSaga.length > 0 || d.removedSaga.length > 0 || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged) {
-      if (d.sagaNameChanged) {
-        lines.push(`- Changed Saga Name: "${originalSagaName}" → "${sagaName}"`);
-      }
-      for (const id of d.addedSaga) {
-        lines.push(`- Added to Saga: ${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`);
-      }
-      for (const id of d.removedSaga) {
-        lines.push(`- Removed from Saga: ${formatWork(id)}`);
-      }
-      if (d.sagaOrderChanged) {
-        const chainLabel = sagaOrder.map(id => `${formatWork(id)} [type: ${sagaRelationTypes[id] || 'main'}]`).join(' → ');
-        lines.push(d.addedSaga.length === 0 && d.removedSaga.length === 0
-          ? `- Reordered Saga: ${chainLabel}`
-          : `- Saga order: ${chainLabel}`);
-      } else if (d.relTypesChanged || d.groupsChanged) {
-        lines.push(`- Updated Saga relations/groups`);
-      }
-    }
-
-    if (charactersChanged()) lines.push(`- Characters: ${characters.length} character(s)`);
-    else if (characters.length > 0) lines.push(`- Includes ${characters.length} cached character(s)`);
-    if (mediaAuthors.length > 0) lines.push(`- Includes ${mediaAuthors.length} cached author/staff credit(s)`);
-
-    return lines.length > 0 ? lines.join('\n') : '- No field changes detected (metadata refresh only)';
+    return buildPrEditorChangeSummary({
+      entry,
+      originalEntry,
+      isFieldChanged,
+      diff: getDiff(),
+      resolveMeta,
+      originalEditableRelationTypes,
+      sagaOrder,
+      sagaRelationTypes,
+      sagaName,
+      originalSagaName,
+      charactersChanged: charactersChanged(),
+      charactersCount: characters.length,
+      mediaAuthorsCount: mediaAuthors.length,
+    });
   };
 
   const handleSubmit = async () => {
