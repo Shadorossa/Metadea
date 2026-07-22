@@ -11,8 +11,13 @@ mod anilist;
 mod igdb;
 mod igdb_env;
 mod igdb_matching;
+mod community_sync;
+mod media_authors;
 mod media_catalog;
+mod media_relations;
 mod platform_scanning;
+mod proposal_bundle;
+mod sagas;
 mod steam;
 mod tier_lists;
 mod user_library;
@@ -49,7 +54,7 @@ pub fn run() {
             // exe, so this would be a same-cost, always-false directory check
             // on every launch for actual users — gated out of release builds entirely.
             #[cfg(debug_assertions)]
-            if let Err(e) = media_catalog::sync_local_proposals(&metadea_db) {
+            if let Err(e) = proposal_bundle::sync_local_proposals(&metadea_db) {
                 eprintln!("Failed to sync local proposals: {}", e);
             }
 
@@ -131,24 +136,24 @@ pub fn run() {
             media_catalog::get_all_catalog_entries,
             media_catalog::find_catalog_health_issues,
             media_catalog::search_catalog,
-            media_catalog::get_cached_saga,
-            media_catalog::save_cached_saga,
-            media_catalog::get_transitive_relation_ids,
-            media_catalog::get_saga_name,
-            media_catalog::get_saga_names,
-            media_catalog::get_all_sagas,
-            media_catalog::get_community_sagas,
-            media_catalog::delete_saga,
-            media_catalog::save_media_relations,
-            media_catalog::get_media_relations,
-            media_catalog::get_media_relations_for_editor,
-            media_catalog::get_deleted_relations,
-            media_catalog::get_all_media_relations,
-            media_catalog::save_media_authors,
-            media_catalog::get_media_authors,
-            media_catalog::save_author_profile_and_relations,
-            media_catalog::sync_community_catalog,
-            media_catalog::get_community_characters,
+            sagas::get_cached_saga,
+            sagas::save_cached_saga,
+            sagas::get_transitive_relation_ids,
+            sagas::get_saga_name,
+            sagas::get_saga_names,
+            sagas::get_all_sagas,
+            sagas::get_community_sagas,
+            sagas::delete_saga,
+            media_relations::save_media_relations,
+            media_relations::get_media_relations,
+            media_relations::get_media_relations_for_editor,
+            media_relations::get_deleted_relations,
+            media_relations::get_all_media_relations,
+            media_authors::save_media_authors,
+            media_authors::get_media_authors,
+            media_authors::save_author_profile_and_relations,
+            community_sync::sync_community_catalog,
+            community_sync::get_community_characters,
             characters::save_character,
             characters::get_character,
             characters::get_all_characters,
