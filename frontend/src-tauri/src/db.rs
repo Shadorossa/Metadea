@@ -68,6 +68,123 @@ fn mark_migration(conn: &Connection, version: i64) -> SqlResult<()> {
     Ok(())
 }
 
+fn union_find_root(parent: &mut std::collections::HashMap<String, String>, x: &str) -> String {
+    let mut root = x.to_string();
+    while let Some(p) = parent.get(&root) {
+        if p == &root { break; }
+        root = p.clone();
+    }
+    let mut cur = x.to_string();
+    while let Some(p) = parent.get(&cur).cloned() {
+        if p == cur { break; }
+        parent.insert(cur.clone(), root.clone());
+        cur = p;
+    }
+    root
+}
+
+fn union_find_merge(parent: &mut std::collections::HashMap<String, String>, a: &str, b: &str) {
+    parent.entry(a.to_string()).or_insert_with(|| a.to_string());
+    parent.entry(b.to_string()).or_insert_with(|| b.to_string());
+    let ra = union_find_root(parent, a);
+    let rb = union_find_root(parent, b);
+    if ra != rb {
+        parent.insert(ra, rb);
+    }
+}
+
+// A saga's own bookkeeping (sagas/saga_relations) can end up fragmented into
+// several single-member rows for what's really one connected saga — the
+// collaborative-catalog PR pipeline (scripts/build-database.js and this same
+// bug's Rust twin, import_proposal_bundle) computes each saga PR file's own
+// "owners" from *that file's own* media_relations rows only, which for a
+// saga's "other member" proposal file (see buildRelatedProposalBundle in
+// pr-editor-submit.ts) is always just that one member — anchoring a
+// brand-new single-member saga instead of joining the real one. Rather than
+// trust that bookkeeping, this rebuilds it from the actual, always-reciprocal
+// PREQUEL/SEQUEL/ALTERNATIVE graph in media_relations: connected components
+// there are the real sagas, regardless of how sagas/saga_relations got left.
+// Called both as a one-time migration (existing local corruption) and at the
+// end of every sync_community_catalog (the downloaded database.db can carry
+// the exact same fragmentation until scripts/build-database.js's own fix
+// reaches a rebuilt release).
+pub fn merge_fragmented_sagas(conn: &Connection) -> SqlResult<()> {
+    let mut parent: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    {
+        let mut stmt = conn.prepare(
+            "SELECT media_external_id, related_media_external_id FROM media_relations
+             WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+        )?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+        for (a, b) in rows.filter_map(|r| r.ok()) {
+            union_find_merge(&mut parent, &a, &b);
+        }
+    }
+    if parent.is_empty() {
+        return Ok(());
+    }
+
+    let ids: Vec<String> = parent.keys().cloned().collect();
+    let mut components: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for id in ids {
+        let root = union_find_root(&mut parent, &id);
+        components.entry(root).or_default().push(id);
+    }
+
+    for members in components.values() {
+        if members.len() < 2 { continue; }
+        // Same anchoring convention as save_cached_saga (TS/Rust): the
+        // lexicographically-smallest member — so a future legitimate save
+        // converges on the same id this migration already picked instead of
+        // immediately re-fragmenting it.
+        let canonical = members.iter().min().cloned().unwrap();
+
+        let placeholders = members.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let existing_name: Option<String> = {
+            let sql = format!("SELECT name FROM sagas WHERE id IN ({placeholders}) AND name != '' LIMIT 1");
+            let mut stmt = conn.prepare(&sql)?;
+            let params = rusqlite::params_from_iter(members.iter());
+            stmt.query_row(params, |r| r.get(0)).ok()
+        };
+
+        conn.execute(
+            "INSERT OR IGNORE INTO sagas (id, name) VALUES (?1, '')",
+            [&canonical],
+        )?;
+        if let Some(name) = &existing_name {
+            conn.execute(
+                "UPDATE sagas SET name = ?2 WHERE id = ?1 AND (name IS NULL OR name = '')",
+                rusqlite::params![&canonical, name],
+            )?;
+        }
+
+        for member in members {
+            conn.execute(
+                "DELETE FROM saga_relations WHERE media_external_id = ?1 AND saga_id != ?2",
+                rusqlite::params![member, &canonical],
+            )?;
+            conn.execute(
+                "INSERT OR IGNORE INTO saga_relations (media_external_id, saga_id) VALUES (?1, ?2)",
+                rusqlite::params![member, &canonical],
+            )?;
+        }
+
+        for member in members {
+            if member == &canonical { continue; }
+            let remaining: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM saga_relations WHERE saga_id = ?1",
+                [member],
+                |r| r.get(0),
+            )?;
+            if remaining == 0 {
+                conn.execute("DELETE FROM sagas WHERE id = ?1", [member])?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 fn run_migrations(conn: &Connection) -> SqlResult<()> {
     let v = current_schema_version(conn);
 
@@ -343,6 +460,19 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
             [],
         );
         mark_migration(conn, 21)?;
+    }
+    if v < 22 {
+        // Migration 21 only caught sagas whose own anchor shifted (the old
+        // anchor still shows up as a plain member of the live saga). It
+        // missed the more common fragmentation: the collaborative-catalog PR
+        // pipeline mis-anchoring *every* saga member as its own standalone
+        // single-member saga in the first place (see merge_fragmented_sagas'
+        // own doc comment for why) — visible as the same saga name appearing
+        // once per member instead of once total. Rebuilds sagas/
+        // saga_relations from the real PREQUEL/SEQUEL/ALTERNATIVE graph
+        // instead of trusting that bookkeeping.
+        let _ = merge_fragmented_sagas(conn);
+        mark_migration(conn, 22)?;
     }
 
     Ok(())

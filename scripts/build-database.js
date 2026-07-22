@@ -229,6 +229,7 @@ function buildDatabase(bundles) {
   );
 
   let catalogCount = 0;
+  const sagaNameById = new Map();
   for (const bundle of bundles) {
     const entry = bundle.media_catalog;
     const externalId = entry.external_id;
@@ -264,15 +265,18 @@ function buildDatabase(bundles) {
     }
 
     if (bundle.saga_name) {
-      // Matches import_proposal_bundle's Rust logic: the saga's own id is the
-      // lexicographically smallest of every entry it touches, so re-merging
-      // the same saga from a later PR (different owner set, same members)
-      // converges on the same id instead of creating a duplicate saga row.
+      // NOT written to sagas/saga_relations here — see the post-loop pass
+      // below for why. A "saga member" proposal file's own media_relations
+      // only ever carries *that member's* outgoing edges (see
+      // buildRelatedProposalBundle in pr-editor-submit.ts), so `owners` here
+      // is really just {externalId} for those files — anchoring a
+      // standalone single-member saga per file instead of joining the real,
+      // multi-member one. Just remember the proposed name against every id
+      // this file actually touches; the real chain gets reconstructed from
+      // media_relations once every bundle has been inserted.
       const sagaOwners = owners.size > 0 ? [...owners] : [externalId];
-      const sagaId = sagaOwners.slice().sort()[0];
-      sagaStmt.run(sagaId, bundle.saga_name);
       for (const owner of sagaOwners) {
-        sagaRelationStmt.run(owner, sagaId);
+        if (!sagaNameById.has(owner)) sagaNameById.set(owner, bundle.saga_name);
       }
     }
 
@@ -289,8 +293,63 @@ function buildDatabase(bundles) {
     }
   }
 
+  buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameById);
+
   db.close();
   return catalogCount;
+}
+
+// Rebuilds sagas/saga_relations from the real, always-reciprocal PREQUEL/
+// SEQUEL/ALTERNATIVE graph in media_relations (now fully populated by the
+// loop above) instead of the per-file "owners" set — connected components
+// there are the actual sagas, regardless of which single file first
+// mentioned a saga_name. Mirrors merge_fragmented_sagas in db.rs (the
+// desktop app's own fallback for a database.db built before this fix).
+function buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameById) {
+  const parent = new Map();
+  const find = id => {
+    let root = id;
+    while (parent.has(root) && parent.get(root) !== root) root = parent.get(root);
+    let cur = id;
+    while (parent.has(cur) && parent.get(cur) !== root) {
+      const next = parent.get(cur);
+      parent.set(cur, root);
+      cur = next;
+    }
+    return root;
+  };
+  const union = (a, b) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  const edges = db.prepare(
+    "SELECT media_external_id, related_media_external_id FROM media_relations WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+  ).all();
+  for (const { media_external_id, related_media_external_id } of edges) {
+    union(media_external_id, related_media_external_id);
+  }
+
+  const components = new Map();
+  for (const id of parent.keys()) {
+    const root = find(id);
+    if (!components.has(root)) components.set(root, []);
+    components.get(root).push(id);
+  }
+
+  for (const members of components.values()) {
+    if (members.length < 2) continue;
+    // Same anchoring convention as save_cached_saga (TS/Rust): the
+    // lexicographically-smallest member.
+    const sagaId = members.slice().sort()[0];
+    const name = members.map(id => sagaNameById.get(id)).find(Boolean) || '';
+    sagaStmt.run(sagaId, name);
+    for (const member of members) {
+      sagaRelationStmt.run(member, sagaId);
+    }
+  }
 }
 
 const bundles = readBundles();

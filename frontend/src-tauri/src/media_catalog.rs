@@ -1528,6 +1528,12 @@ pub async fn sync_community_catalog(
                 ).str_err()? as i64;
             }
 
+            // The community database.db's own sagas/saga_relations can be
+            // fragmented (see merge_fragmented_sagas' doc comment) — rebuild
+            // from the now-reconciled media_relations graph instead of
+            // trusting what was just copied in above verbatim.
+            let _ = crate::db::merge_fragmented_sagas(&conn);
+
             // ── Community-side deletions ────────────────────────────────
             // The downloaded database.db is a full, current snapshot of the
             // community catalog — anything in community_synced_ids (this
