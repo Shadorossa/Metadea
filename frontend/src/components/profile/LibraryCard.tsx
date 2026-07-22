@@ -1,5 +1,4 @@
-// Split out of LibrarySection.tsx: a single library grid cell, plus its two
-// private display helpers (date formatting, emoji-tag parsing).
+// Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -9,13 +8,6 @@ import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
 
 export const TYPE_ICON = typeIconMap(16);
-
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  return formatDateNumeric(d);
-}
 
 // Leading emoji + optional variation selector, e.g. "🎨Arte" → "🎨" / "Arte". Plain-text tags are skipped.
 const TAG_EMOJI_RE = /^(\p{Extended_Pictographic}️?)(.*)$/u;
@@ -63,14 +55,22 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const ratingHtml = isAggregate
     ? formatRatingHtml(averageRating(aggregateMembers), getActiveRatingSystem(), 'library-card-rating')
     : formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
-  const [startDateStr, finishedDateStr] = isAggregate
-    ? (() => {
-        const sorted = [...aggregateMembers].sort((a, b) =>
-          compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
-        );
-        return [fmtDate(sorted[0]?.started_at), fmtDate(sorted[sorted.length - 1]?.finished_at)];
-      })()
-    : [fmtDate(item.started_at), fmtDate(item.finished_at)];
+  // Earliest started_at / latest finished_at across every member by actual
+  // date value — not by release order (a bundle/saga's earliest-released
+  // work isn't necessarily the one the user started first), which used to
+  // show the range backwards whenever those didn't line up.
+  const earliestDate = (dates: (string | null | undefined)[]): string => {
+    const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+    return times.length ? formatDateNumeric(new Date(Math.min(...times))) : '';
+  };
+  const latestDate = (dates: (string | null | undefined)[]): string => {
+    const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+    return times.length ? formatDateNumeric(new Date(Math.max(...times))) : '';
+  };
+  const dateStr = [
+    earliestDate(aggregateMembers.map(m => m.started_at)),
+    latestDate(aggregateMembers.map(m => m.finished_at)),
+  ].filter(Boolean).join(' → ');
 
   const openEditor = () => {
     if (bundleMeta) {
@@ -109,14 +109,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
           <div className="library-card-bottom-group">
             <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
             <div className="library-card-footer">
-              {(startDateStr || finishedDateStr) && (
-                <span className="library-card-date">
-                  <span dangerouslySetInnerHTML={{ __html: CALENDAR_ICON }} />
-                  {startDateStr && <span className="library-card-date-start">{startDateStr}</span>}
-                  {startDateStr && finishedDateStr && ' → '}
-                  {finishedDateStr && <span className="library-card-date-finished">{finishedDateStr}</span>}
-                </span>
-              )}
+              {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
               <span className="library-card-type" dangerouslySetInnerHTML={{ __html: typeIc }} />
             </div>
           </div>
