@@ -20,6 +20,7 @@ mod user_lists;
 mod user_metadata;
 mod utils;
 mod discord;
+mod vestigial_cleanup;
 
 use tauri::Manager;
 

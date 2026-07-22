@@ -486,8 +486,11 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         // that live derivation (see pr-editor-load.ts). order_index gives
         // saga_relations a manually-editable position — see its own doc
         // comment above for the "start at 100, use decimals to insert
-        // between" convention.
-        let _ = conn.execute("DROP TABLE IF EXISTS media_saga_groups", []);
+        // between" convention. The table drop itself lives in
+        // vestigial_cleanup.rs, the one file for "delete this leftover from
+        // users' local .db" — keeps this migration list about schema changes
+        // the app still relies on, not one-off teardowns of dead features.
+        crate::vestigial_cleanup::drop_media_saga_groups(conn);
         let _ = conn.execute("ALTER TABLE saga_relations ADD COLUMN order_index REAL", []);
         mark_migration(conn, 23)?;
     }
