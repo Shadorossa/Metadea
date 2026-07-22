@@ -11,6 +11,14 @@
   },
   "media_relations": [
     {
+      "related_media_external_id": "game:47675",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Inazuma Eleven 3: Lightning Bolt",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg",
+      "media_external_id": "game:47676"
+    },
+    {
       "media_external_id": "game:47676",
       "related_media_external_id": "game:47716",
       "relation_type": "PREQUEL",
@@ -54,17 +62,16 @@
   "characters": [],
   "media_authors": [],
   "saga_groups": {
-    "game:9685": "IEGO",
     "game:47673": "IEGO",
-    "game:9693": "IEGOCS",
-    "game:47674": "IE3",
-    "game:47675": "IE3",
-    "game:134112": "IEGOGX",
-    "game:23220": "IEGOCS",
-    "game:47676": "IE3",
     "game:47716": "IE2",
     "game:47835": "IE2",
-    "game:62739": "IEGOGX"
+    "game:62739": "IEGOGX",
+    "game:134112": "IEGOGX",
+    "game:9693": "IEGOCS",
+    "game:23220": "IEGOCS",
+    "game:9685": "IEGO",
+    "game:47676": "IE3",
+    "game:47675": "IE3"
   },
   "saga_name": "Inazuma Eleven"
 }
