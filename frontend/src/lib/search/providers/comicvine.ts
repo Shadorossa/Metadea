@@ -38,6 +38,57 @@ function mapVolume(volume: ComicVineVolume): SearchResult {
   };
 }
 
+const MANGA_PUBLISHERS = new Set([
+  'shueisha',
+  'kodansha',
+  'shogakukan',
+  'kadokawa',
+  'kadokawa shoten',
+  'hakusensha',
+  'square enix',
+  'tokyopop',
+  'viz media',
+  'viz',
+  'yen press',
+  'seven seas',
+  'seven seas entertainment',
+  'dark horse manga',
+  'gangan comics',
+  'akita shoten',
+  'futabasha',
+  'chuang yi',
+  'tokuma shoten',
+  'chuokoransha',
+  'ichijinsha',
+  'media factory',
+  'nihon bungeisha',
+  'shonengahosha'
+]);
+
+function isManga(v: ComicVineVolume): boolean {
+  const pubName = v.publisher?.name?.toLowerCase().trim();
+  if (pubName) {
+    if (MANGA_PUBLISHERS.has(pubName) || pubName.includes('manga')) {
+      return true;
+    }
+  }
+
+  const name = v.name.toLowerCase();
+  const mangaWordRegex = /\b(manga|light novel|manhua|manhwa|shonen|shoujo|seinen|josei)\b/;
+  if (mangaWordRegex.test(name)) {
+    return true;
+  }
+
+  const desc = (v.description ?? '').toLowerCase();
+  const deck = (v.deck ?? '').toLowerCase();
+  const mangaPhraseRegex = /\b(is a|the|original|english|translated|published) manga\b|\b(manga|light novel) (series|adaptation|version|by)\b/;
+  if (mangaPhraseRegex.test(desc) || mangaPhraseRegex.test(deck)) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function searchComics(searchQuery: string, _signal: AbortSignal, page = 1): Promise<SearchPage> {
   if (!isTauri()) {
     // No browser fallback: Comic Vine blocks direct browser fetches (no
@@ -56,8 +107,12 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
     throw new Error(message);
   }
 
+  const results = pageResult.volumes
+    .filter(v => coverUrlFrom(v) && !isManga(v))
+    .map(mapVolume);
+
   return {
-    results: pageResult.volumes.filter(v => coverUrlFrom(v)).map(mapVolume),
+    results,
     hasMore: pageResult.has_more,
   };
 }
