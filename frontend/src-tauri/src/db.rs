@@ -320,6 +320,30 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 20)?;
     }
+    if v < 21 {
+        // save_cached_saga anchors a saga's id on its lexicographically-
+        // smallest member — adding an earlier-released member later shifts
+        // that anchor to a new id, but the *old* sagas row was never
+        // cleaned up, only ever left to linger as an apparent duplicate of
+        // the same saga (first surfaced by the admin panel's Sagas tab,
+        // which lists every sagas row unfiltered). A superseded row is
+        // identifiable without tracking history: its own id now shows up as
+        // a plain *member* of some other, current saga_id — a work is never
+        // legitimately both a saga's own anchor and another saga's member
+        // at once. ON DELETE CASCADE on saga_relations.saga_id handles the
+        // now-pointless relations rows that go with it.
+        let _ = conn.execute(
+            "DELETE FROM sagas WHERE id IN (
+                SELECT s.id FROM sagas s
+                WHERE EXISTS (
+                    SELECT 1 FROM saga_relations sr
+                    WHERE sr.media_external_id = s.id AND sr.saga_id != s.id
+                )
+             )",
+            [],
+        );
+        mark_migration(conn, 21)?;
+    }
 
     Ok(())
 }

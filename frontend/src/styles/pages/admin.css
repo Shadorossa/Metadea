@@ -188,22 +188,23 @@
 /* Sagas tab: a text list (name left, small cover right) that expands in
    place to show member works — no card grid, no editor modal. */
 .catalog-admin-saga-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem 1.5rem;
 }
 
 .catalog-admin-saga-row {
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
   border-radius: var(--radius-sm, 4px);
+  min-width: 0;
 }
 
 .catalog-admin-saga-row-main {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.4rem 0.5rem;
+  padding: 0.6rem 1rem;
 }
 
 .catalog-admin-saga-row-toggle {
@@ -249,7 +250,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.4rem 0.5rem 0.6rem 1.5rem;
+  padding: 0.5rem 1rem 0.7rem 1.9rem;
   border-top: 1px solid var(--border-color, #2d2a24);
 }
 

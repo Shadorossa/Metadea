@@ -704,6 +704,24 @@ pub async fn save_cached_saga(
     let saga_id = anchor.external_id.clone();
     let final_saga_name = if saga_name.is_empty() { anchor.title.clone() } else { saga_name };
 
+    // The anchor above can be a *different* id than a previous save's — e.g.
+    // adding an earlier-released member later, whose external_id now sorts
+    // first. Every saga_id these entries currently sit under other than the
+    // new one is now stale for them; without this, the old sagas row (and
+    // whatever saga_relations still point at it) never gets cleaned up and
+    // lingers forever as an apparent duplicate of the same saga.
+    let all_ids: Vec<String> = entries.iter().map(|e| e.external_id.clone()).collect();
+    let id_placeholders = all_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let old_saga_ids: Vec<String> = {
+        let sql = format!(
+            "SELECT DISTINCT saga_id FROM saga_relations WHERE media_external_id IN ({id_placeholders}) AND saga_id != ?"
+        );
+        let mut stmt = tx.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(all_ids.iter().chain(std::iter::once(&saga_id)));
+        let rows = stmt.query_map(params, |r| r.get::<_, String>(0)).str_err()?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+
     // 1. Insert saga
     tx.execute(
         "INSERT OR REPLACE INTO sagas (id, name) VALUES (?1, ?2)",
@@ -758,6 +776,24 @@ pub async fn save_cached_saga(
             rusqlite::params![&entry.external_id, &saga_id],
         )
         .str_err()?;
+    }
+
+    // Drop this batch's members from every stale old saga_id found above —
+    // if that empties one out entirely, its sagas row is now pointless and
+    // gets removed too, instead of surviving as a stale duplicate.
+    for old_id in &old_saga_ids {
+        let sql = format!(
+            "DELETE FROM saga_relations WHERE saga_id = ? AND media_external_id IN ({id_placeholders})"
+        );
+        let params = rusqlite::params_from_iter(std::iter::once(old_id).chain(all_ids.iter()));
+        tx.execute(&sql, params).str_err()?;
+
+        let remaining: i64 = tx
+            .query_row("SELECT COUNT(*) FROM saga_relations WHERE saga_id = ?1", [old_id], |r| r.get(0))
+            .str_err()?;
+        if remaining == 0 {
+            tx.execute("DELETE FROM sagas WHERE id = ?1", [old_id]).str_err()?;
+        }
     }
 
     tx.commit().str_err()?;
