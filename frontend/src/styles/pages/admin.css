@@ -117,6 +117,12 @@
   border-radius: var(--radius-sm, 4px);
   padding: 0.5rem;
   text-align: center;
+  /* Grid items default to min-width: auto (content-based) — a long
+     unbroken id (character:tmdb:<hash>, no natural break point) would
+     otherwise force this wider than its 1fr share regardless of the
+     ellipsis/overflow rules below, since those never get a chance to
+     apply to a box that never actually shrinks. */
+  min-width: 0;
 }
 
 .catalog-admin-card-cover {

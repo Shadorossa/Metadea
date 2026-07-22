@@ -429,7 +429,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!sagaLoading && visibleSagas.length === 0 && <p className="catalog-admin-status">{t.no_sagas}</p>}
 
           {!sagaLoading && visibleSagas.length > 0 && (
-            <div className="pr-editor-search-grid pr-editor-search-grid--people">
+            <div className="pr-editor-search-grid">
               {visibleSagas.map(saga => (
                 <CatalogEntryCard
                   key={saga.id}
@@ -466,7 +466,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
           )}
 
           {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length > 0 && (
-            <div className="pr-editor-search-grid pr-editor-search-grid--people">
+            <div className="pr-editor-search-grid">
               {visibleCharacters.map(character => (
                 <CatalogEntryCard
                   key={character.external_id}
