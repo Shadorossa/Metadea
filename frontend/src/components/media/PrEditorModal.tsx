@@ -575,13 +575,37 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         return updated;
       });
 
-      if (editableCharacters.length === 0 && liveData.characters && liveData.characters.length > 0) {
-        setEditableCharacters(liveData.characters.map(c => ({
+      if (characters.length === 0 && liveData.characters && liveData.characters.length > 0) {
+        setCharacters(liveData.characters.map(c => ({
           external_id: c.id,
           name: c.name,
           image_url: c.image || null,
           relation_type: c.role || null,
         })));
+      }
+
+      if (liveData.relations && liveData.relations.length > 0) {
+        setEditableRelations(prev => {
+          const existingIds = new Set(prev.map(r => r.related_media_external_id));
+          const toAdd: any[] = [];
+
+          for (const r of liveData.relations) {
+            if (r.relatedExternalId && !existingIds.has(r.relatedExternalId)) {
+              existingIds.add(r.relatedExternalId);
+              toAdd.push({
+                media_external_id: externalId,
+                related_media_external_id: r.relatedExternalId,
+                relation_type: r.relationType || 'RELATED',
+                type_label: (CANONICAL_RELATION_LABELS as any)[r.relationType || ''] || r.typeLabel || 'Related',
+                title: r.title || null,
+                cover: r.cover || null,
+                format: r.format || null,
+              });
+            }
+          }
+
+          return [...prev, ...toAdd];
+        });
       }
 
       setStatusMsg('Datos oficiales descargados para campos vacíos');
