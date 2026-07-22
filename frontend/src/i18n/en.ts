@@ -144,6 +144,12 @@ export const en = {
     github_hint: 'These are the entries already merged into the shared catalog on GitHub. Editing one submits your changes as a new pull request for review.',
     github_open_error: 'Could not load this entry from GitHub.',
     github_delete_error: 'Could not delete this entry from GitHub.',
+    entity_media: 'Works',
+    entity_saga: 'Sagas',
+    entity_character: 'Characters',
+    no_sagas: 'No sagas found.',
+    no_characters: 'No characters found.',
+    add_character_button: 'Search for a character to add',
   },
   search: {
     title: 'Search',

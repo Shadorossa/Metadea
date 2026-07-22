@@ -144,6 +144,12 @@ export const es = {
     github_hint: 'Estas son las entradas ya fusionadas en el catálogo compartido de GitHub. Editar una envía tus cambios como una nueva pull request para revisión.',
     github_open_error: 'No se pudo cargar esta entrada desde GitHub.',
     github_delete_error: 'No se pudo eliminar esta entrada de GitHub.',
+    entity_media: 'Obras',
+    entity_saga: 'Sagas',
+    entity_character: 'Personajes',
+    no_sagas: 'No se encontraron sagas.',
+    no_characters: 'No se encontraron personajes.',
+    add_character_button: 'Buscar personaje para añadir',
   },
   search: {
     title: 'Buscar',

@@ -4,6 +4,7 @@ import '../../styles/pages/media.css';
 import '../../styles/pages/admin.css';
 import { getLang, useTranslations } from '../../i18n/index';
 import { CatalogAdminPanel } from '../../components/admin/CatalogAdminPanel';
+import { CharacterPrEditorModal } from '../../components/character/CharacterPrEditorModal';
 
 const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
@@ -11,4 +12,5 @@ const t    = useTranslations(lang);
 
 <BaseLayout title={`${t.admin.title} — Metadea`} lang={lang} activePage="admin">
   <CatalogAdminPanel client:load i18n={{ media: t.media, discord: t.discord, admin: t.admin }} />
+  <CharacterPrEditorModal client:load />
 </BaseLayout>

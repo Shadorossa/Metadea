@@ -143,6 +143,25 @@ export async function getSagaNames(mediaExternalIds: string[]): Promise<Record<s
   return tauriCmd<Record<string, string>>('get_saga_names', {}, { mediaExternalIds });
 }
 
+export interface SagaListEntry {
+  id: string;
+  name: string;
+  anchor_title: string | null;
+  anchor_cover: string | null;
+  member_count: number;
+}
+
+// Admin catalog editor's Sagas tab — id doubles as the anchor member's own
+// external_id, so opening the full editor for a saga just means opening
+// PrEditorModal on that id (its Saga Order section IS the saga editor).
+export async function getAllSagas(): Promise<SagaListEntry[]> {
+  return tauriCmd<SagaListEntry[]>('get_all_sagas', []);
+}
+
+export async function deleteSaga(sagaId: string): Promise<void> {
+  return tauriRun('delete_saga', { sagaId });
+}
+
 export interface DbMediaRelation {
   /** Owning media for this relation — only meaningful inside a collaborative-
    *  catalog PR bundle (a saga PR can carry relations for more than one

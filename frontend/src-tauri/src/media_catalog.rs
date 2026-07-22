@@ -2083,3 +2083,52 @@ pub async fn get_saga_names(
     }
     Ok(map)
 }
+
+#[derive(Debug, Serialize)]
+pub struct SagaListEntry {
+    pub id: String,
+    pub name: String,
+    pub anchor_title: Option<String>,
+    pub anchor_cover: Option<String>,
+    pub member_count: i64,
+}
+
+// Admin catalog editor's Sagas tab — sagas.id doubles as the anchor member's
+// own external_id (see save_cached_saga's anchoring), so a plain join gets a
+// representative title/cover for the card without a separate lookup.
+#[tauri::command]
+pub async fn get_all_sagas(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<SagaListEntry>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT s.id, s.name, mc.title_main, mc.cover_url,
+                (SELECT COUNT(*) FROM saga_relations sr WHERE sr.saga_id = s.id)
+         FROM sagas s
+         LEFT JOIN visible_media_catalog mc ON mc.external_id = s.id
+         ORDER BY COALESCE(NULLIF(s.name, ''), mc.title_main, s.id)"
+    ).str_err()?;
+    let rows = stmt.query_map([], |row| {
+        Ok(SagaListEntry {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            anchor_title: row.get(2)?,
+            anchor_cover: row.get(3)?,
+            member_count: row.get(4)?,
+        })
+    }).str_err()?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+// Only unlinks the saga itself (cascades to saga_relations) — never touches
+// the member media_catalog rows, which is why this isn't just
+// delete_catalog_entry on the anchor id.
+#[tauri::command]
+pub async fn delete_saga(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    saga_id: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute("DELETE FROM sagas WHERE id = ?1", [&saga_id]).str_err()?;
+    Ok(())
+}

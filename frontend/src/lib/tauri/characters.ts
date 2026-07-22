@@ -44,6 +44,10 @@ export async function setCharacterReaction(externalId: string, reaction: string 
   return tauriRun('set_character_reaction', { externalId, reaction });
 }
 
+export async function deleteCharacter(externalId: string): Promise<void> {
+  return tauriRun('delete_character', { externalId });
+}
+
 export async function saveCharacterAppearances(characterExternalId: string, appearances: CharacterAppearance[]): Promise<void> {
   return tauriRun('save_character_appearances', { characterExternalId, appearances });
 }

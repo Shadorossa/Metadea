@@ -117,6 +117,17 @@ pub async fn get_all_characters(
 }
 
 #[tauri::command]
+pub async fn delete_character(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute("DELETE FROM character_appearances WHERE character_external_id = ?1", [&external_id]).str_err()?;
+    conn.execute("DELETE FROM characters WHERE external_id = ?1", [&external_id]).str_err()?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn set_character_reaction(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,

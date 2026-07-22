@@ -3,8 +3,9 @@ import type { Translations } from '../../i18n/index';
 import { useOwnerGate } from '../../lib/github/useOwnerGate';
 import {
   getAllCatalogEntries, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
-  type MediaCatalogEntry,
+  getAllSagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
 } from '../../lib/tauri/catalog';
+import { getAllCharacters, deleteCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
@@ -13,6 +14,7 @@ import { hydrateBundleIntoLocalCatalog, hydrateSagaChainFromGithub } from '../..
 import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
+import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
@@ -23,18 +25,38 @@ interface Props {
 }
 
 type Source = 'local' | 'github' | 'add';
+// Sagas and characters have no separate GitHub-native listing (a saga isn't
+// its own file the way a media entry is, and characters only ever live in
+// the local `characters` table) — so this only changes what's browsable
+// under 'media'; 'saga'/'character' show the same local data regardless of
+// which source tab is active.
+type Entity = 'media' | 'saga' | 'character';
 
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
   const t = i18n.admin;
 
   const [source, setSource] = useState<Source>('local');
+  const [entity, setEntity] = useState<Entity>('media');
 
   // Local catalog state
   const [query, setQuery] = useState('');
   const [entries, setEntries] = useState<MediaCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<MediaCatalogEntry | null>(null);
+
+  // Sagas state
+  const [sagaQuery, setSagaQuery] = useState('');
+  const [sagas, setSagas] = useState<SagaListEntry[]>([]);
+  const [sagaLoading, setSagaLoading] = useState(true);
+  const [sagaDeleteTarget, setSagaDeleteTarget] = useState<SagaListEntry | null>(null);
+
+  // Characters state
+  const [characterQuery, setCharacterQuery] = useState('');
+  const [characters, setCharacters] = useState<CharacterEntry[]>([]);
+  const [characterLoading, setCharacterLoading] = useState(true);
+  const [characterDeleteTarget, setCharacterDeleteTarget] = useState<CharacterEntry | null>(null);
+  const [characterSearchOpen, setCharacterSearchOpen] = useState(false);
 
   // GitHub database/ state
   const [githubQuery, setGithubQuery] = useState('');
@@ -120,10 +142,36 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
+  const loadSagas = async () => {
+    setSagaLoading(true);
+    try {
+      setSagas(await getAllSagas());
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to load sagas:', err);
+      setSagas([]);
+    } finally {
+      setSagaLoading(false);
+    }
+  };
+
+  const loadCharacters = async () => {
+    setCharacterLoading(true);
+    try {
+      setCharacters(await getAllCharacters());
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to load characters:', err);
+      setCharacters([]);
+    } finally {
+      setCharacterLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOwner) return;
     loadEntries();
     loadGithubFiles();
+    loadSagas();
+    loadCharacters();
     getAllCatalogEntries().then(all => {
       const map: Record<string, { title?: string; cover?: string }> = {};
       for (const e of all) {
@@ -141,6 +189,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
   // (Rules of Hooks — every hook must run on every render).
   const deferredQuery = useDeferredValue(query);
   const deferredGithubQuery = useDeferredValue(githubQuery);
+  const deferredSagaQuery = useDeferredValue(sagaQuery);
+  const deferredCharacterQuery = useDeferredValue(characterQuery);
 
   // Mirrors search_catalog's own match (Rust, media_catalog.rs): case-
   // insensitive substring match against title_main/title_romaji/title_native.
@@ -152,6 +202,20 @@ export function CatalogAdminPanel({ i18n }: Props) {
       || e.title_romaji?.toLowerCase().includes(q)
       || e.title_native?.toLowerCase().includes(q)
     );
+  })();
+
+  const visibleSagas = (() => {
+    const q = deferredSagaQuery.trim().toLowerCase();
+    if (!q) return sagas;
+    return sagas.filter(s =>
+      s.name.toLowerCase().includes(q) || s.anchor_title?.toLowerCase().includes(q)
+    );
+  })();
+
+  const visibleCharacters = (() => {
+    const q = deferredCharacterQuery.trim().toLowerCase();
+    if (!q) return characters;
+    return characters.filter(c => c.name.toLowerCase().includes(q));
   })();
 
   if (gate.state === 'loading') return null;
@@ -173,6 +237,30 @@ export function CatalogAdminPanel({ i18n }: Props) {
       console.error('[CatalogAdminPanel] Failed to delete entry:', err);
     } finally {
       setDeleteTarget(null);
+    }
+  };
+
+  const confirmDeleteSaga = async () => {
+    if (!sagaDeleteTarget) return;
+    try {
+      await deleteSaga(sagaDeleteTarget.id);
+      setSagas(prev => prev.filter(s => s.id !== sagaDeleteTarget.id));
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to delete saga:', err);
+    } finally {
+      setSagaDeleteTarget(null);
+    }
+  };
+
+  const confirmDeleteCharacter = async () => {
+    if (!characterDeleteTarget) return;
+    try {
+      await deleteCharacter(characterDeleteTarget.external_id);
+      setCharacters(prev => prev.filter(c => c.external_id !== characterDeleteTarget.external_id));
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to delete character:', err);
+    } finally {
+      setCharacterDeleteTarget(null);
     }
   };
 
@@ -241,6 +329,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const handleEditorSaved = () => {
     loadEntries();
     loadGithubFiles();
+    loadSagas();
   };
 
   const visibleGithubFiles = githubFiles.filter(f => {
@@ -278,7 +367,101 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </button>
       </div>
 
-      {source === 'local' && (
+      <div className="catalog-admin-source-toggle">
+        <button
+          type="button"
+          className={`catalog-admin-source-btn${entity === 'media' ? ' active' : ''}`}
+          onClick={() => setEntity('media')}
+        >
+          {t.entity_media}
+        </button>
+        <button
+          type="button"
+          className={`catalog-admin-source-btn${entity === 'saga' ? ' active' : ''}`}
+          onClick={() => setEntity('saga')}
+        >
+          {t.entity_saga}
+        </button>
+        <button
+          type="button"
+          className={`catalog-admin-source-btn${entity === 'character' ? ' active' : ''}`}
+          onClick={() => setEntity('character')}
+        >
+          {t.entity_character}
+        </button>
+      </div>
+
+      {entity === 'saga' && (
+        <>
+          <input
+            type="text"
+            className="catalog-admin-search"
+            placeholder={t.search_placeholder}
+            value={sagaQuery}
+            onChange={e => setSagaQuery(e.target.value)}
+          />
+
+          {sagaLoading && <p className="catalog-admin-status">{t.loading}</p>}
+          {!sagaLoading && visibleSagas.length === 0 && <p className="catalog-admin-status">{t.no_sagas}</p>}
+
+          {!sagaLoading && visibleSagas.length > 0 && (
+            <div className="pr-editor-search-grid">
+              {visibleSagas.map(saga => (
+                <CatalogEntryCard
+                  key={saga.id}
+                  id={saga.id}
+                  title={`${saga.name || saga.anchor_title || saga.id} (${saga.member_count})`}
+                  cover={saga.anchor_cover}
+                  editLabel={t.edit_button}
+                  deleteLabel={t.delete_button}
+                  onEdit={() => { setEditingNonGithubFields(undefined); setEditingId(saga.id); }}
+                  onDelete={() => setSagaDeleteTarget(saga)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {entity === 'character' && source !== 'add' && (
+        <>
+          <input
+            type="text"
+            className="catalog-admin-search"
+            placeholder={t.search_placeholder}
+            value={characterQuery}
+            onChange={e => setCharacterQuery(e.target.value)}
+          />
+
+          {characterLoading && <p className="catalog-admin-status">{t.loading}</p>}
+          {!characterLoading && visibleCharacters.length === 0 && <p className="catalog-admin-status">{t.no_characters}</p>}
+
+          {!characterLoading && visibleCharacters.length > 0 && (
+            <div className="pr-editor-search-grid">
+              {visibleCharacters.map(character => (
+                <CatalogEntryCard
+                  key={character.external_id}
+                  id={character.external_id}
+                  title={character.name || character.external_id}
+                  cover={character.image_url}
+                  editLabel={t.edit_button}
+                  deleteLabel={t.delete_button}
+                  onEdit={() => (window as any).openCharacterEditor?.(character.external_id)}
+                  onDelete={() => setCharacterDeleteTarget(character)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {entity === 'character' && source === 'add' && (
+        <button type="button" className="catalog-admin-source-btn" onClick={() => setCharacterSearchOpen(true)}>
+          {t.add_character_button}
+        </button>
+      )}
+
+      {entity === 'media' && source === 'local' && (
         <>
           <input
             type="text"
@@ -310,7 +493,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </>
       )}
 
-      {source === 'github' && (
+      {entity === 'media' && source === 'github' && (
         <>
           <p className="catalog-admin-hint">{t.github_hint}</p>
 
@@ -388,7 +571,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </>
       )}
 
-      {source === 'add' && (
+      {entity === 'media' && source === 'add' && (
         <>
           {addBusy && <p className="catalog-admin-status">{t.add_fetching}</p>}
           <AdminAddSearch
@@ -482,6 +665,49 @@ export function CatalogAdminPanel({ i18n }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {sagaDeleteTarget && (
+        <div className="me-overlay" onClick={() => setSagaDeleteTarget(null)}>
+          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
+            <p>{t.delete_confirm.replace('{title}', sagaDeleteTarget.name || sagaDeleteTarget.anchor_title || sagaDeleteTarget.id)}</p>
+            <div className="catalog-admin-confirm-actions">
+              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setSagaDeleteTarget(null)}>
+                {t.cancel_button}
+              </button>
+              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteSaga}>
+                {t.delete_button}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {characterDeleteTarget && (
+        <div className="me-overlay" onClick={() => setCharacterDeleteTarget(null)}>
+          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
+            <p>{t.delete_confirm.replace('{title}', characterDeleteTarget.name || characterDeleteTarget.external_id)}</p>
+            <div className="catalog-admin-confirm-actions">
+              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setCharacterDeleteTarget(null)}>
+                {t.cancel_button}
+              </button>
+              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteCharacter}>
+                {t.delete_button}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {characterSearchOpen && (
+        <CharacterSearchPopup
+          onSelect={result => {
+            setCharacterSearchOpen(false);
+            (window as any).openCharacterEditor?.(result.externalId);
+          }}
+          onClose={() => setCharacterSearchOpen(false)}
+          excludeIds={characters.map(c => c.external_id)}
+        />
       )}
     </div>
   );
