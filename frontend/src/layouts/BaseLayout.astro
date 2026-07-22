@@ -138,8 +138,13 @@ const t = useTranslations(lang);
       let communityCatalogSynced = false;
       const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
 
+      function isTauriRuntime() {
+        return typeof window !== 'undefined' &&
+          ('__TAURI_IPC__' in window || '__TAURI_INTERNALS__' in window || '__TAURI__' in window || '__TAURI_OAM__' in window);
+      }
+
       async function syncCommunityCatalog() {
-        if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
+        if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
         try {
           const lastSync = localStorage.getItem(STORAGE_KEYS.communityCatalogLastSync);
@@ -159,7 +164,7 @@ const t = useTranslations(lang);
       }
 
       async function checkAppUpdates() {
-        if (typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
+        if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
         try {
           const { check } = await import('@tauri-apps/plugin-updater');
