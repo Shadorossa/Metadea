@@ -38,7 +38,7 @@ export {
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
-async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
+export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageData | null> {
   if (!rawId) return null;
 
   const { type, id: numericId } = parseExternalId(rawId);

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
 import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelationsForEditor, saveMediaRelations, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
-import { invalidateCachedMediaData } from '../../lib/media/mediaService';
+import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
+import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
@@ -530,6 +531,70 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     setEntry({ ...entry, [field]: value === '' ? null : value });
   };
 
+  const [isResyncing, setIsResyncing] = useState(false);
+
+  const handleResync = async () => {
+    if (!externalId || isResyncing) return;
+    setIsResyncing(true);
+    setStatusMsg('Descargando datos oficiales...');
+
+    try {
+      invalidateCachedMediaData(externalId);
+      const liveData = await fetchMediaDataInternal(externalId);
+
+      if (!liveData) {
+        setStatusMsg('No se encontraron datos en la API');
+        setTimeout(() => setStatusMsg(''), 3000);
+        setIsResyncing(false);
+        return;
+      }
+
+      const partialFromLive = mapMediaDataToCatalogEntry(liveData, externalId);
+
+      setEntry(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev };
+
+        const fieldsToSync: (keyof MediaCatalogEntry)[] = [
+          'title_main', 'title_romaji', 'title_native', 'title_english', 'synopsis',
+          'cover_url', 'banners_csv', 'release_year', 'release_month', 'release_day',
+          'release_end_year', 'release_end_month', 'release_end_day', 'status', 'format',
+          'score_global', 'country_code', 'developer_badge', 'genres_csv', 'genres_tag_csv',
+          'platforms_csv', 'authors_csv', 'publishers_csv', 'shop_links_csv', 'source_url', 'time_length'
+        ];
+
+        for (const field of fieldsToSync) {
+          const currentVal = prev[field];
+          const liveVal = partialFromLive[field];
+          const isCurrentEmpty = currentVal == null || currentVal === '';
+          if (isCurrentEmpty && liveVal != null && liveVal !== '') {
+            (updated as any)[field] = liveVal;
+          }
+        }
+
+        return updated;
+      });
+
+      if (editableCharacters.length === 0 && liveData.characters && liveData.characters.length > 0) {
+        setEditableCharacters(liveData.characters.map(c => ({
+          external_id: c.id,
+          name: c.name,
+          image_url: c.image || null,
+          relation_type: c.role || null,
+        })));
+      }
+
+      setStatusMsg('Datos oficiales descargados para campos vacíos');
+      setTimeout(() => setStatusMsg(''), 3500);
+    } catch (err) {
+      console.error('Error durante resync:', err);
+      setStatusMsg('Error al descargar datos');
+      setTimeout(() => setStatusMsg(''), 3000);
+    } finally {
+      setIsResyncing(false);
+    }
+  };
+
   // ── Change detection (shared by hasChanges + the PR change summary) ───────
 
   const isFieldChanged = (field: keyof MediaCatalogEntry) =>
@@ -1055,6 +1120,19 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 <span>{statusMsg}</span>
               </div>
             )}
+            <button
+              type="button"
+              className="pr-editor-block-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Descarga los datos oficiales de la API para rellenar únicamente las secciones y campos vacíos sin sobrescribir tus cambios."
+              disabled={isResyncing}
+              onClick={handleResync}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: isResyncing ? 'spin 1s linear infinite' : undefined }}>
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+              {isResyncing ? 'Descargando...' : 'Re-sync datos vacíos'}
+            </button>
             <button
               type="button"
               className={`pr-editor-block-btn${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
