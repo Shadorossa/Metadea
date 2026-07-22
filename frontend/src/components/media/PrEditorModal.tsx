@@ -1257,6 +1257,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           excludeIds={[externalId, ...containedRelations.map(r => r.external_id)]}
           closeOnSelect={false}
           includeIgdbExpandedEditions
+          includeRemasters
         />
       )}
 

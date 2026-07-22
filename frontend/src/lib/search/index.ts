@@ -1,5 +1,5 @@
 import { searchAniList, searchAniListCharacters } from './providers/anilist';
-import { searchGames, searchGameBundles, searchGameExpandedEditions } from './providers/igdb';
+import { searchGames, searchGameBundles, searchGameExpandedEditions, searchGameRemasters } from './providers/igdb';
 import { searchMovies, searchSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
@@ -7,7 +7,7 @@ import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
 
 export { MissingApiKeyError };
-export { searchGameBundles, searchGameExpandedEditions };
+export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'

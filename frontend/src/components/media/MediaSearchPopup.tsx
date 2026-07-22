@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import { search, searchGameBundles, searchGameExpandedEditions, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
@@ -68,13 +68,15 @@ export interface MediaSearchPopupProps {
    *  is exactly where they belong (a game can bundle its own expanded
    *  edition as a sub-item). */
   includeIgdbExpandedEditions?: boolean;
+  /** Also surfaces IGDB category-8 (remake) and category-9 (remaster) results. */
+  includeRemasters?: boolean;
 }
 
 /** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
  *  to attach a saga member or bundled-in work to the entry being edited.
  *  Closes only on an outside click (stopPropagation keeps that from also
  *  closing the parent PrEditorModal). */
-export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false }: MediaSearchPopupProps) {
+export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false }: MediaSearchPopupProps) {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
@@ -96,9 +98,14 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
           searchGameExpandedEditions(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
+      if (includeRemasters && (typeFilter === 'all' || typeFilter === 'game')) {
+        searchPromises.push(
+          searchGameRemasters(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+        );
+      }
       return Promise.all(searchPromises).then(perType => perType.flat().slice(0, 60));
     },
-    [typeFilter, includeIgdbBundles, includeIgdbExpandedEditions],
+    [typeFilter, includeIgdbBundles, includeIgdbExpandedEditions, includeRemasters],
   );
 
   const handleSelect = async (result: ApiSearchResult) => {

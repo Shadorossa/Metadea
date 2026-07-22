@@ -22,15 +22,14 @@ export async function searchGames(
   return { results: data.results ?? [], hasMore: data.hasMore ?? false };
 }
 
-// Shared by searchGameBundles/searchGameExpandedEditions — both need a
-// live IGDB search restricted to exactly one category plain search
-// deliberately excludes (bundles, expanded editions, ...), so it's a
-// separate query rather than a flag on the normal SEARCHABLE_TYPES fan-out.
-async function searchGamesByCategory(
+// Shared by searchGameBundles/searchGameExpandedEditions/searchGameRemasters —
+// live IGDB search restricted to specific categories plain search
+// deliberately excludes (bundles, expanded editions, remasters, ...).
+async function searchGamesByCategories(
   searchQuery: string,
   signal: AbortSignal,
   page: number,
-  category: number,
+  categories: number[],
   format: string,
   bundlesOnlyQueryParam: string,
 ): Promise<SearchPage> {
@@ -40,7 +39,7 @@ async function searchGamesByCategory(
 
     let pageResult;
     try {
-      pageResult = await igdbSearch(searchQuery, false, page, [category]);
+      pageResult = await igdbSearch(searchQuery, false, page, categories);
     } catch {
       return { results: [], hasMore: false };
     }
@@ -51,7 +50,7 @@ async function searchGamesByCategory(
       return {
         externalId:   `game:${g.id}`,
         type:         'game' as MediaType,
-        format,
+        format:       format || (g.category === 8 ? 'REMAKE' : g.category === 9 ? 'REMASTER' : 'GAME'),
         source:       'igdb' as const,
         titleMain:    cleanEditionTitle(g.name),
         titleRomaji:  null,
@@ -76,13 +75,17 @@ async function searchGamesByCategory(
 
 // IGDB category 3 (bundle) — the "Bundled In" relation picker.
 export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategory(searchQuery, signal, page, 3, 'BUNDLE', 'bundlesOnly');
+  return searchGamesByCategories(searchQuery, signal, page, [3], 'BUNDLE', 'bundlesOnly');
 }
 
-// IGDB category 10 (expanded_game) — the "Contains" relation picker, since
-// a game can "contain" its own expanded edition as a bundled sub-item.
+// IGDB category 10 (expanded_game) — the "Contains" relation picker.
 export async function searchGameExpandedEditions(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategory(searchQuery, signal, page, 10, 'EXPANDED_GAME', 'expandedOnly');
+  return searchGamesByCategories(searchQuery, signal, page, [10], 'EXPANDED_GAME', 'expandedOnly');
+}
+
+// IGDB categories 8 (remake) & 9 (remaster) — the "Contains" relation picker for remasters.
+export async function searchGameRemasters(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  return searchGamesByCategories(searchQuery, signal, page, [8, 9], 'REMASTER', 'remastersOnly');
 }
 
 async function searchGamesLocal(
