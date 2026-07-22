@@ -1,0 +1,206 @@
+{
+  "media_catalog": {
+    "id": "441a8eef1fec52c3441a8eef1fec52c3",
+    "external_id": "movie:889737",
+    "type": "movie",
+    "title_main": "Joker: Folie à Deux",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:475557",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Joker",
+      "cover": "https://image.tmdb.org/t/p/w780/g9l7iLYusH82bbEbwGCJzhVkOe2.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:189",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Sin City: Una dama por la que matar",
+      "cover": "https://image.tmdb.org/t/p/w300/xmCF5CB8ogqUy9K6AmYaAL7x0jV.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:645886",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Imperdonable",
+      "cover": "https://image.tmdb.org/t/p/w300/bEVklVUbbFljZTGzub5scdIHyts.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:245527",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Convict",
+      "cover": "https://image.tmdb.org/t/p/w300/mnvkok7eVau9Fg8BMDuwmk8JCZw.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:382322",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman: La broma asesina",
+      "cover": "https://image.tmdb.org/t/p/w300/zvmlvfvwen0lAn0UMapEWrLj05U.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:487680",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La cocina del infierno",
+      "cover": "https://image.tmdb.org/t/p/w300/jyOYRQuVIhw1DfVjNKj7gUom1Fv.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:176241",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Prison Break: Evasión final",
+      "cover": "https://image.tmdb.org/t/p/w300/xSpSJJnth3RZ2BL0Eyy9keBE24.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:16056",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Fragmentos",
+      "cover": "https://image.tmdb.org/t/p/w300/8Vhj70ttOb3BlDNvvSo6hzaAdtF.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:250388",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Rampage 2",
+      "cover": "https://image.tmdb.org/t/p/w300/pd5OlT9fHCnlsFnIcCbJTDZsJvE.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:1439930",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Punisher: One Last Kill",
+      "cover": "https://image.tmdb.org/t/p/w300/p1eqHRxfIxfgtDgfjWcpEESeEvF.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:34813",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Los perdedores",
+      "cover": "https://image.tmdb.org/t/p/w300/7Ap9ZlNDDzZaGN3trlUXyMROK66.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:870028",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El contable 2",
+      "cover": "https://image.tmdb.org/t/p/w300/jcV9YfjBRo6occxqeWtEiyWwMoG.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:435036",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El impostor",
+      "cover": "https://image.tmdb.org/t/p/w300/sMi0sz3qnj2xBdT0tfHlqnw5zIh.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:429200",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Good Time: Viviendo al límite",
+      "cover": "https://image.tmdb.org/t/p/w300/1UWumNfHLu2yxzlJHziaUcd4mam.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:808396",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La bala de Dios",
+      "cover": "https://image.tmdb.org/t/p/w300/2PqgDnkxoUXbPOyqvMfgqoq0nQY.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:1215162",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Mátalos a todos 2",
+      "cover": "https://image.tmdb.org/t/p/w300/2xmQEwAhTpNUnMvQioS85ojvnO5.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:10649",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Harry el ejecutor",
+      "cover": "https://image.tmdb.org/t/p/w300/nuUJqsXm18CxUn1NesGp4lxx1Q4.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:819",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Sleepers",
+      "cover": "https://image.tmdb.org/t/p/w300/e0bzX1pK2STzUAYXnretiU9gkiq.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:395458",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Suburbicon",
+      "cover": "https://image.tmdb.org/t/p/w300/dL1GOIX3gs3GzZLDs4mg3fjjUOV.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:171337",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Educación siberiana",
+      "cover": "https://image.tmdb.org/t/p/w300/iD601Bn9QMOB7Sf47HcpTrpqgxE.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "movie:889737",
+      "related_media_external_id": "movie:475557",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Joker",
+      "cover": "https://image.tmdb.org/t/p/w780/g9l7iLYusH82bbEbwGCJzhVkOe2.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {},
+  "saga_name": "Joker"
+}
