@@ -44,14 +44,6 @@
     },
     {
       "media_external_id": "game:375",
-      "related_media_external_id": "game:377",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Metal Gear 2: Solid Snake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg"
-    },
-    {
-      "media_external_id": "game:375",
       "related_media_external_id": "game:376",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

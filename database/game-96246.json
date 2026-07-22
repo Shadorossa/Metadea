@@ -27,22 +27,6 @@
       "title": "Yo-Kai Watch 3: Sushi",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87al.jpg",
       "format": null
-    },
-    {
-      "media_external_id": "game:96246",
-      "related_media_external_id": "game:222295",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Yo-Kai Watch 3: Tempura",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87am.jpg"
-    },
-    {
-      "media_external_id": "game:96246",
-      "related_media_external_id": "game:136889",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Yo-Kai Watch 3: Sushi",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87al.jpg"
     }
   ],
   "characters": [],

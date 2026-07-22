@@ -44,14 +44,6 @@
     },
     {
       "media_external_id": "game:380",
-      "related_media_external_id": "game:379",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Metal Gear Solid 3: Snake Eater",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
-    },
-    {
-      "media_external_id": "game:380",
       "related_media_external_id": "game:5328",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

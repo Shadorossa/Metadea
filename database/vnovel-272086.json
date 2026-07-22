@@ -21,14 +21,6 @@
     },
     {
       "media_external_id": "vnovel:272086",
-      "related_media_external_id": "vnovel:272085",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Umineko no Naku Koro ni: Episode 5 - End of the Golden Witch",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78ng.jpg"
-    },
-    {
-      "media_external_id": "vnovel:272086",
       "related_media_external_id": "vnovel:272087",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

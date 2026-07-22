@@ -55,6 +55,20 @@ function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: rea
 // snapshot of the whole saga. Never edited by hand here — only its relations
 // were touched — so its own media_catalog carries no scalar fields beyond
 // identity.
+// Last write wins per (related_media_external_id, relation_type) — the saga
+// chain's freshly-resolved rows are always concatenated last, so they win
+// over a stale editable/existing row for the same pair. Needed because the
+// local DB's PK on media_relations drops relation_type entirely, silently
+// collapsing whatever arrives last — this keeps the same collapse visible
+// and deterministic before it ever reaches a saved proposal bundle.
+function dedupeRelations(relations: DbMediaRelation[]): DbMediaRelation[] {
+  const byKey = new Map<string, DbMediaRelation>();
+  for (const rel of relations) {
+    byKey.set(`${rel.related_media_external_id}:${rel.relation_type}`, rel);
+  }
+  return [...byKey.values()];
+}
+
 function buildRelatedProposalBundle(
   externalId: string,
   catalogEntry: MediaCatalogEntry,
@@ -232,7 +246,9 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   // pre-existing relation that isn't part of the saga chain, so nothing else
   // needs to pass through untouched.
   const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
-  const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows];
+  const currentFinalRelations: DbMediaRelation[] = dedupeRelations(
+    [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows]
+  );
   await saveMediaRelations(externalId, currentFinalRelations)
     .catch(err => console.error('Failed to save relations:', err));
 
@@ -269,7 +285,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
         !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && p.originalSagaOrder.includes(r.related_media_external_id))
       );
       const newRows = chainRelations.filter(r => r.media_external_id === otherId);
-      const otherRelations = [...kept, ...newRows];
+      const otherRelations = dedupeRelations([...kept, ...newRows]);
       await saveMediaRelations(otherId, otherRelations);
 
       // saveMediaRelations above already tombstoned (in deleted_relations)

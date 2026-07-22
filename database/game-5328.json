@@ -28,14 +28,6 @@
     },
     {
       "media_external_id": "game:5328",
-      "related_media_external_id": "game:380",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Metal Gear Solid 4: Guns of the Patriots",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
-    },
-    {
-      "media_external_id": "game:5328",
       "related_media_external_id": "game:1985",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

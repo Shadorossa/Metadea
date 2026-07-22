@@ -28,14 +28,6 @@
     },
     {
       "media_external_id": "game:482",
-      "related_media_external_id": "game:481",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Silent Hill 2",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vyg.jpg"
-    },
-    {
-      "media_external_id": "game:482",
       "related_media_external_id": "game:483",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

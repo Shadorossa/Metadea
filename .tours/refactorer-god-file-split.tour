@@ -1,0 +1,74 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "Refactorer — Splitting God Files (igdb.rs, mediaService.ts, PrEditorModal.tsx)",
+  "description": "For whoever continues shrinking Metadea's oversized files. Walks the extraction pattern used so far — env config and matching heuristics pulled out of igdb.rs, book/comic fetchers pulled out of mediaService.ts, and the GitHub-proposal submit logic pulled out of PrEditorModal.tsx — plus the one Tauri-specific gotcha that will break your build if you skip it.",
+  "ref": "059b318593f5793d3d9d0ead4fe827e6bed1404a",
+  "steps": [
+    {
+      "file": "frontend/src-tauri/src/igdb.rs",
+      "line": 1,
+      "title": "Where we started: a 1787-line command file",
+      "description": "**Situation**: `igdb.rs` mixed HTTP client setup, Twitch token caching, name-matching heuristics, image downloading, and ~15 `#[tauri::command]` search/detail endpoints in one file.\n\n**Implication**: `code_quality_checker.py --language rust` scored it 0/100 — the single-file size threshold (500 lines) makes any file this size fail regardless of internal quality. Two pieces have since been extracted; ~1433 lines remain."
+    },
+    {
+      "file": "frontend/src-tauri/src/igdb_env.rs",
+      "line": 8,
+      "title": "Extraction #1: env/API-key config",
+      "description": "**Mechanism**: `EnvConfig`, `env_from_db`, and the `read_env_config`/`write_env_config` Tauri commands moved here verbatim from igdb.rs. This was deliberately the *first* extraction — self-contained, no dependency on the matching/search logic, lowest risk to validate the split pattern.\n\n**Gotcha**: this file has zero imports from `igdb.rs` itself — it only needs `crate::db::ToStringErr`. That's what made it safe to go first."
+    },
+    {
+      "file": "frontend/src-tauri/src/igdb.rs",
+      "line": 213,
+      "title": "The re-export line that keeps old call sites working",
+      "description": "**Situation**: `comicvine.rs` calls `crate::igdb::read_env_config(...)` — that import path had to keep working after the move.\n\n**Mechanism**: `pub use crate::igdb_env::read_env_config;` re-exports just that one symbol back through `igdb.rs`. `write_env_config` and `EnvConfig` were *not* re-exported — grep confirmed nothing outside igdb_env.rs referenced them via the old `crate::igdb::` path, so re-exporting them would have been dead code."
+    },
+    {
+      "file": "frontend/src-tauri/src/lib.rs",
+      "line": 84,
+      "title": "The gotcha: generate_handler! needs the real module, not a re-export",
+      "description": "**Mechanism**: `tauri::generate_handler!` expands each entry into hidden items like `__cmd__read_env_config` scoped to the *literal defining module*. Pointing it at `igdb::read_env_config` (the re-export) fails to compile with `error[E0433]: cannot find __tauri_command_name_read_env_config in igdb` — even though normal Rust code resolves the re-export fine.\n\n**Gotcha**: every time you move a `#[tauri::command]` function to a new file, you must update its entry here to the new module path. Re-exports only help *non-command* callers like `comicvine.rs`."
+    },
+    {
+      "file": "frontend/src-tauri/src/igdb_matching.rs",
+      "line": 7,
+      "title": "Extraction #2: matching heuristics, pulled the other direction",
+      "description": "**Situation**: unlike igdb_env.rs, this new file *depends on* igdb.rs — `igdb_query`, `is_non_game`, `extract_cover_and_game`, and three constants (`EDITION_KEYWORDS`, `IGDB_API_GAMES`, `IGDB_API_EXTERNAL_GAMES`, `IGDB_GAME_FIELDS`) all still live there because they're used by ~15 other functions that were *not* moved.\n\n**Mechanism**: those five items were changed from private to `pub(crate)` in igdb.rs so this file could reach them with `use crate::igdb::{...}`. Nothing here is a `#[tauri::command]`, so no `generate_handler!` update was needed this time."
+    },
+    {
+      "file": "frontend/src-tauri/src/igdb_matching.rs",
+      "line": 224,
+      "title": "resolve_igdb_game: the only symbol that needed to travel back",
+      "description": "**Mechanism**: `resolve_igdb_game` is `pub(crate)` because igdb.rs still calls it (from `igdb_get_cover_by_steam_id`). Everything else in this file — `normalize_name`, `score_candidate`, the three `try_*_match` stages — stayed plain `fn`, private to this module, since nothing outside it calls them directly.\n\n**Implication**: when deciding what visibility to give a moved item, grep for its call sites *before* moving — only widen visibility for what's actually referenced from the old file."
+    },
+    {
+      "file": "frontend/src-tauri/src/igdb.rs",
+      "line": 217,
+      "title": "Mirror of the same re-export pattern, second time around",
+      "description": "**Situation**: `use crate::igdb_matching::resolve_igdb_game;` — same shape as the igdb_env.rs re-export three steps back, just an import instead of `pub use` since nothing outside igdb.rs itself calls `resolve_igdb_game`.\n\n**Gotcha**: this is the extraction pattern to repeat for the ~1433 remaining lines — image/metadata download (`download_game_metadata`, `save_game_info`) is the next candidate, followed by the search/detail commands, which will each need their own `generate_handler!` path update in lib.rs."
+    },
+    {
+      "file": "frontend/src/lib/media/mediaService.ts",
+      "line": 27,
+      "title": "Same pattern, TypeScript side: mediaService.ts",
+      "description": "**Situation**: `mediaService.ts` was 584 lines with two independently-testable concerns tangled in — book edition fetching and comic issue fetching — both now moved to `book-editions.ts` and `comic-issues.ts`.\n\n**Mechanism**: the re-export block right below (`export { ..., fetchBookEditions, fetchComicIssues }`) means `MediaPage.tsx`'s existing `import { fetchBookEditions, fetchComicIssues } from '../../lib/media/mediaService'` needed zero changes — the TS equivalent of the Rust `pub use` trick, no build-system gotcha attached since there's no macro involved."
+    },
+    {
+      "file": "frontend/src/components/media/PrEditorModal.tsx",
+      "line": 669,
+      "title": "PrEditorModal.tsx: handleSubmit shrunk to a thin wrapper",
+      "description": "**Situation**: `handleSubmit` was ~300 lines of saga-chain diffing and GitHub-proposal submission inlined in a 1425-line component (quality score 22/100).\n\n**Mechanism**: the component now only computes plain values from its own state — `sagaChanged: boolean`, `editedFields: (keyof X)[]`, `changeSummary: string` — and hands them to `submitPrEditorChanges`. Passing pre-computed values instead of the component's closures is what keeps `pr-editor-submit.ts` decoupled from the component's diff logic.\n\n**Gotcha**: `BundledRelation` and `EditableRelation` (lines 35 and 42) had to become `export interface` — the new file imports them back with `import type { BundledRelation, EditableRelation } from './PrEditorModal'`, a TS module cycle that's fine for types-only imports."
+    },
+    {
+      "file": "frontend/src/components/media/pr-editor-submit.ts",
+      "line": 104,
+      "title": "Where the ~300 lines actually live now",
+      "description": "**Mechanism**: `submitPrEditorChanges(p: SubmitPrEditorParams)` — the full saga-chain/relation-propagation/GitHub-submission logic moved here verbatim, every reference to a former closure variable now prefixed `p.`.\n\n**Implication**: this file scored 94/100 on the same quality checker that gave the original component 22/100 — the logic wasn't bad, it was just trapped inside a component that also had to render 1000+ lines of JSX. Same lesson applies to whatever's extracted next from `igdb.rs`: a God file's low score doesn't always mean the individual pieces are poorly written."
+    },
+    {
+      "file": "frontend/src-tauri/src/media_catalog.rs",
+      "line": 1,
+      "title": "What's still waiting: media_catalog.rs",
+      "description": "**Situation**: 2010 lines, quality score 17/100 — the largest untouched file, with many more `#[tauri::command]` entries than igdb.rs had. Every one of them that gets moved will need the same `generate_handler!` path fix demonstrated at step 4.\n\n**Suggested next step**: apply the same discovery process used for igdb.rs — grep for each command's call sites *before* moving it, decide re-export vs. widened visibility per-symbol, then fix lib.rs's `generate_handler!` list, then `cargo check`."
+    }
+  ]
+}

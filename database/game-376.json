@@ -28,14 +28,6 @@
     },
     {
       "media_external_id": "game:376",
-      "related_media_external_id": "game:375",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Metal Gear Solid",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobpak.jpg"
-    },
-    {
-      "media_external_id": "game:376",
       "related_media_external_id": "game:379",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

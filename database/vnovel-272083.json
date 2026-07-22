@@ -30,14 +30,6 @@
     },
     {
       "media_external_id": "vnovel:272083",
-      "related_media_external_id": "vnovel:272082",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Umineko no Naku Koro ni: Episode 2 - Turn of the Golden Witch",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nd.jpg"
-    },
-    {
-      "media_external_id": "vnovel:272083",
       "related_media_external_id": "vnovel:272084",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",

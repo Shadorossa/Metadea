@@ -36,14 +36,6 @@
     },
     {
       "media_external_id": "game:379",
-      "related_media_external_id": "game:376",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Metal Gear Solid 2: Sons of Liberty",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
-    },
-    {
-      "media_external_id": "game:379",
       "related_media_external_id": "game:380",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
