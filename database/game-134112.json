@@ -1,0 +1,72 @@
+{
+  "media_catalog": {
+    "id": "43063d30e302b49743063d30e302b497",
+    "external_id": "game:134112",
+    "type": "game",
+    "title_main": "Inazuma Eleven Go Galaxy: Supernova",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:23220",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3h2z.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:9693",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:23220",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Thunderflash",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h2z.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:9693",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Chrono Stones - Wildfire",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3h31.jpg"
+    },
+    {
+      "media_external_id": "game:134112",
+      "related_media_external_id": "game:62739",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version #1",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:47676": "IE3",
+    "game:47675": "IE3",
+    "game:47674": "IE3",
+    "game:9685": "IEGO",
+    "game:47673": "IEGO",
+    "game:23220": "IEGOCS",
+    "game:9693": "IEGOCS",
+    "game:62739": "IEGOGX",
+    "game:134112": "IEGOGX"
+  },
+  "saga_name": "Inazuma Eleven"
+}

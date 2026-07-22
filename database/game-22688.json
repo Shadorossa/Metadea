@@ -1,0 +1,46 @@
+{
+  "media_catalog": {
+    "id": "8717c05559c4eb7f8717c05559c4eb7f",
+    "external_id": "game:22688",
+    "type": "game",
+    "title_main": "Inazuma Eleven",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:47716",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 2: Blizzard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
+    },
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:47835",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven 2: Firestorm",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:47676": "IE3",
+    "game:47675": "IE3",
+    "game:47674": "IE3",
+    "game:9685": "IEGO",
+    "game:47673": "IEGO",
+    "game:23220": "IEGOCS",
+    "game:9693": "IEGOCS",
+    "game:62739": "IEGOGX",
+    "game:134112": "IEGOGX"
+  },
+  "saga_name": "Inazuma Eleven"
+}
