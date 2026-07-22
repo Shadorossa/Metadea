@@ -1,0 +1,41 @@
+{
+  "media_catalog": {
+    "id": "5fa07dc7cb50e1bf5fa07dc7cb50e1bf",
+    "external_id": "vnovel:252997",
+    "type": "vnovel",
+    "title_main": "Apollo Justice: Ace Attorney Trilogy",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:1429",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Apollo Justice: Ace Attorney",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8n.jpg",
+      "media_external_id": "vnovel:252997"
+    },
+    {
+      "related_media_external_id": "game:1432",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Phoenix Wright: Ace Attorney - Dual Destinies",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8o.jpg",
+      "media_external_id": "vnovel:252997"
+    },
+    {
+      "related_media_external_id": "game:12077",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Phoenix Wright: Ace Attorney - Spirit of Justice",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z95.jpg",
+      "media_external_id": "vnovel:252997"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
