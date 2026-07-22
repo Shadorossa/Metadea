@@ -1,10 +1,7 @@
 import { fetchAniListDetail } from '../search/providers/anilist';
-import { fetchOpenLibWork, fetchOpenLibAuthor, fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
-import type { OpenLibEdition } from '../search/providers/openlibrary';
+import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
-import { fetchComicVineVolume, fetchComicVineIssues, fetchComicVineIssue, fetchComicVineVolumeCast } from '../search/providers/comicvine';
-import { comicVineSearch, type ComicVineIssue } from '../tauri';
-import { unifyGenres } from './genre-unifier';
+import { fetchComicVineVolume, fetchComicVineIssue } from '../search/providers/comicvine';
 import { mapAniListToMedia } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
@@ -12,7 +9,7 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed, getBlockedExternalIds } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor, MediaCharacter } from './types';
+import type { MediaPageData, MediaAuthor } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/staff';
@@ -27,14 +24,19 @@ import {
   dbStaffToMediaStaff, mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
+import { fetchBookEditions } from './book-editions';
+import { fetchComicIssues } from './comic-issues';
 
 // Re-exported so callers keep one import path even though these concerns
-// now live in their own files (media-cache/media-relations/catalog-mapper).
+// now live in their own files (media-cache/media-relations/catalog-mapper/
+// book-editions/comic-issues).
 export {
   patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
+  fetchBookEditions, fetchComicIssues,
 };
+export type { ComicIssuesResult } from './comic-issues';
 
 // ── Fetch interno ─────────────────────────────────────────────────────────
 
@@ -119,135 +121,6 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
   return null;
 }
 
-// Maps OpenLibrary editions to MediaRelation shape for the 'Ediciones' tab.
-// Only editions with a valid cover are included.
-function editionsToRelations(editions: OpenLibEdition[], label: string): MediaPageData['relations'] {
-  const seen = new Set<string>();
-  const result: MediaPageData['relations'] = [];
-  for (const ed of editions) {
-    const edId = bookIdFromWorkKey(ed.key);
-    if (seen.has(edId)) continue;
-    seen.add(edId);
-    const coverId = ed.covers?.[0];
-    const cover = coverId && coverId > 0 ? openLibCoverUrl(coverId, 'M') : undefined;
-    if (!cover) continue;
-    const publisherPart = ed.publishers?.[0] ?? '';
-    const yearPart = ed.publish_date ? ` (${ed.publish_date})` : '';
-    const title = ed.title + (publisherPart ? ` — ${publisherPart}${yearPart}` : yearPart);
-    result.push({ typeLabel: label, relationType: 'EDITIONS', title, cover });
-  }
-  return result;
-}
-
-// Background fetch: all editions for a book, merged with existing relations.
-// Same pattern as fetchExtraRelations for games.
-export async function fetchBookEditions(
-  rawId: string,
-  currentRelations: MediaPageData['relations'],
-  editionsLabel: string,
-): Promise<MediaPageData['relations'] | null> {
-  const workId = rawId.slice(rawId.indexOf(':') + 1);
-  const editions = await fetchOpenLibEditions(workId).catch(() => []);
-  if (!editions.length) return null;
-  const editionRelations = editionsToRelations(editions, editionsLabel);
-  if (!editionRelations.length) return null;
-  const withoutOld = currentRelations.filter(r => r.relationType !== 'EDITIONS');
-  return [...withoutOld, ...editionRelations];
-}
-
-// Maps Comic Vine issues to MediaRelation shape for the 'Issues' tab. Only
-// issues with a cover image are included.
-function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageData['relations'] {
-  const result: MediaPageData['relations'] = [];
-  for (const issue of issues) {
-    const cover = issue.image?.medium_url ?? issue.image?.small_url ?? undefined;
-    if (!cover) continue;
-    const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
-    const namePart = issue.name ? ` — ${issue.name}` : '';
-    const title = (numberPart + namePart) || `#${issue.id}`;
-    const relatedExternalId = `comic:issue-${issue.id}`;
-    result.push({ typeLabel: label, relationType: 'ISSUE', title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
-  }
-  return result;
-}
-
-export interface ComicIssuesResult {
-  relations: MediaPageData['relations'] | null;
-  characters: MediaCharacter[];
-  genreDots?: string;
-  genreTagDots?: string;
-}
-
-// Background fetch: all issues for a comic volume ('Issues' tab), plus the
-// full cast/genres aggregated across every issue — the volume's own
-// character_credits (used for the quick initial display) is usually just a
-// first-issue sample, since Comic Vine editors rarely fill the volume-level
-// field. Runs once per comic; results get persisted.
-export async function fetchComicIssues(
-  rawId: string,
-  currentRelations: MediaPageData['relations'],
-  issuesLabel: string,
-  titleMain?: string,
-  altTitle?: string,
-): Promise<ComicIssuesResult> {
-  const isComic = rawId.startsWith('comic:');
-  let volumeId: number | null = null;
-
-  if (isComic) {
-    const idStr = rawId.slice(rawId.indexOf(':') + 1);
-    const parsed = parseInt(idStr, 10);
-    if (Number.isFinite(parsed)) {
-      volumeId = parsed;
-    }
-  }
-
-  if (!volumeId) {
-    if (!titleMain) return { relations: null, characters: [] };
-    const searchRes = await comicVineSearch(titleMain).catch(() => null);
-
-    const pickBestVolume = (vols?: typeof searchRes.volumes) => {
-      if (!vols || vols.length === 0) return null;
-      const lowerTitle = titleMain.toLowerCase().trim();
-      const exact = vols.find(v => v.name.toLowerCase().trim() === lowerTitle);
-      if (exact) return exact;
-      const contains = vols.find(v => v.name.toLowerCase().includes(lowerTitle) || lowerTitle.includes(v.name.toLowerCase()));
-      if (contains) return contains;
-      const sorted = [...vols].sort((a, b) => (b.count_of_issues ?? 0) - (a.count_of_issues ?? 0));
-      return sorted[0];
-    };
-
-    let matchedVol = pickBestVolume(searchRes?.volumes);
-    if (!matchedVol && altTitle && altTitle !== titleMain) {
-      const searchAltRes = await comicVineSearch(altTitle).catch(() => null);
-      matchedVol = pickBestVolume(searchAltRes?.volumes);
-    }
-
-    if (matchedVol) {
-      volumeId = matchedVol.id;
-    } else {
-      return { relations: null, characters: [] };
-    }
-  }
-
-  const issues = await fetchComicVineIssues(volumeId).catch(() => []);
-  if (!issues.length) return { relations: null, characters: [] };
-
-  const cast = isComic ? await fetchComicVineVolumeCast(issues.map(i => i.id)) : { characters: [], concepts: [] };
-  const characters: MediaCharacter[] = cast.characters.map(c => ({
-    id: `character:comicvine:${c.id}`,
-    name: c.name,
-    image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
-  }));
-  const { core, tags } = unifyGenres(cast.concepts.map(c => c.name));
-  const genreDots = isComic ? (core.join(' · ') || undefined) : undefined;
-  const genreTagDots = isComic ? (tags.join(' · ') || undefined) : undefined;
-
-  const issueRelations = issuesToRelations(issues, issuesLabel);
-  if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };
-  const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.relationType !== 'ISSUE');
-  return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };
-}
-
 // Fields worth diffing for "did this fetch bring anything new" — excludes
 // sticky-once-set fields (format/release date/banner, which never register
 // as changed once already present) and bookkeeping columns.
@@ -327,6 +200,34 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
   }
 }
 
+// The live provider doesn't know a related title was blocked locally — this
+// strips those out before they ever reach the screen or get persisted.
+// Shared by fetchMediaData and fetchExtraRelations.
+async function filterBlockedRelations<T extends { relatedExternalId?: string }>(relations: T[]): Promise<T[]> {
+  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
+  if (blockedIds.length === 0) return relations;
+  const blocked = new Set(blockedIds);
+  return relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
+}
+
+// Fields a curator may have hand-corrected via the collaborative catalog
+// editor take priority over whatever this live fetch just returned — a
+// provider miscategorizing something must not silently overwrite a fix.
+function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry | null): void {
+  if (existing) {
+    if (existing.type) data.type = existing.type;
+    if (existing.format) data.format = existing.format;
+    if (existing.title_main) data.titleMain = existing.title_main;
+    if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
+    if (existing.title_native) data.titleNative = existing.title_native;
+    if (existing.title_english) data.titleEnglish = existing.title_english;
+    if (existing.synopsis) data.description = existing.synopsis;
+  }
+  if (!data.bannerImage && existing?.banners_csv) {
+    data.bannerImage = existing.banners_csv.split(',')[0];
+  }
+}
+
 // Live fetch, blocked-relation filtering, and full DB persistence.
 export async function fetchMediaData(rawId: string): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
@@ -339,31 +240,11 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
-    // The live provider doesn't know a related title was blocked locally —
-    // strip those out before they ever reach the screen or get persisted.
-    const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
-    if (blockedIds.length > 0 && data.relations) {
-      const blocked = new Set(blockedIds);
-      data.relations = data.relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
-    }
+    if (data.relations) data.relations = await filterBlockedRelations(data.relations);
 
     const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-
-    // persistToCatalog preserves an existing banner, but `data` is also shown
-    // on screen — patch it too so a bannerless fetch doesn't flash empty.
     const existing = await getCatalogEntry(rawId).catch(() => null);
-    if (existing) {
-      if (existing.type) data.type = existing.type;
-      if (existing.format) data.format = existing.format;
-      if (existing.title_main) data.titleMain = existing.title_main;
-      if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
-      if (existing.title_native) data.titleNative = existing.title_native;
-      if (existing.title_english) data.titleEnglish = existing.title_english;
-      if (existing.synopsis) data.description = existing.synopsis;
-    }
-    if (!data.bannerImage && existing?.banners_csv) {
-      data.bannerImage = existing.banners_csv.split(',')[0];
-    }
+    applyStickyLocalFields(data, existing);
 
     // mergeAndPersistRelations checks deleted_relations so a relation the
     // user deliberately removed isn't silently re-added by this same fetch.
@@ -404,6 +285,38 @@ export function prefetchMediaData(rawId: string): void {
 
 // Catalog-first fetch: shows catalog data immediately while API loads in background.
 // onPartial fires as soon as catalog data is available; onFull fires when API completes.
+// All local IPC reads — no network involved, so gathering them before the
+// first paint (instead of painting an empty characters/relations/staff grid
+// that pops in a beat later) still lands fast. Only an actual live API fetch
+// is slow enough to justify painting ahead of it.
+async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localData: MediaPageData): Promise<void> {
+  const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
+    loadDbRelationsAndAuthors(rawId),
+    getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
+    getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
+    // catalog.parent_id is just the id — resolved to a full {externalId,
+    // title, cover} object so isBlockedEdition (MediaPage.tsx) sees a
+    // parentGame here too, not just on live fetch.
+    catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  if (dbRels.length > 0) {
+    const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
+    localData.relations = relations;
+    localData.hasSaga = hasSaga;
+  }
+  if (dbAuthors.length > 0) localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
+  if (dbChars.length > 0) localData.characters = dbChars.map(dbCharacterToMediaCharacter);
+  if (dbStaff.length > 0) localData.staff = dbStaff.map(dbStaffToMediaStaff);
+  if (parentEntry) {
+    localData.parentGame = {
+      externalId: parentEntry.external_id,
+      title: parentEntry.title_main || parentEntry.external_id,
+      cover: parentEntry.cover_url ?? undefined,
+    };
+  }
+}
+
 export function fetchMediaDataWithFallback(
   rawId: string,
   onPartial: (data: MediaPageData) => void,
@@ -432,46 +345,7 @@ export function fetchMediaDataWithFallback(
         localData = mapCatalogEntryToPartialData(catalog);
 
         try {
-          // All local IPC reads — no network involved, so gathering them
-          // before the first paint (instead of painting an empty characters/
-          // relations/staff grid that pops in a beat later) still lands fast.
-          // Only an actual live API fetch is slow enough to justify painting
-          // ahead of it.
-          const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
-            loadDbRelationsAndAuthors(rawId),
-            getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
-            getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
-            // catalog.parent_id is just the id — resolved to a full
-            // {externalId, title, cover} object so isBlockedEdition
-            // (MediaPage.tsx) sees a parentGame here too, not just on live fetch.
-            catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
-          ]);
-
-          if (dbRels.length > 0) {
-            const { relations, hasSaga } = sortRelationsForDisplay(dbRels);
-            localData.relations = relations;
-            localData.hasSaga = hasSaga;
-          }
-
-          if (dbAuthors.length > 0) {
-            localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
-          }
-
-          if (dbChars.length > 0) {
-            localData.characters = dbChars.map(dbCharacterToMediaCharacter);
-          }
-
-          if (dbStaff.length > 0) {
-            localData.staff = dbStaff.map(dbStaffToMediaStaff);
-          }
-
-          if (parentEntry) {
-            localData.parentGame = {
-              externalId: parentEntry.external_id,
-              title: parentEntry.title_main || parentEntry.external_id,
-              cover: parentEntry.cover_url ?? undefined,
-            };
-          }
+          await enrichLocalData(rawId, catalog, localData);
         } catch (e) {
           console.error("Failed to load local media relations, authors or characters", e);
         }
@@ -549,13 +423,8 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
 
   if (updatedData.relations.length === currentData.relations.length) return null; // nothing new
 
-  // Same blocked-relation filter as fetchMediaData.
-  const blockedIds = await getBlockedExternalIds().catch(() => [] as string[]);
-  if (blockedIds.length > 0) {
-    const blocked = new Set(blockedIds);
-    updatedData.relations = updatedData.relations.filter(r => !r.relatedExternalId || !blocked.has(r.relatedExternalId));
-    if (updatedData.relations.length === currentData.relations.length) return null;
-  }
+  updatedData.relations = await filterBlockedRelations(updatedData.relations);
+  if (updatedData.relations.length === currentData.relations.length) return null;
 
   return updatedData.relations;
 }

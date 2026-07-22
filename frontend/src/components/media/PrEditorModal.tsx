@@ -1,25 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, saveCatalogEntry, saveCachedSaga, getMediaRelationsForEditor, saveMediaRelations, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
+import { getCatalogEntry, getMediaRelationsForEditor, getMediaAuthors, getMediaSagaGroups } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
-import { getMediaCharacters, getAllCharacters, saveCharactersSkeleton, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
-import type { SagaEntry } from '../../lib/anilist/saga';
+import { getMediaCharacters, getAllCharacters, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
+import { submitPrEditorChanges } from './pr-editor-submit';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
   BUNDLE_RELATION_TYPES, PART_OF_RELATION_TYPES, CONTAINS_RELATION_TYPES,
-  ALL_CHAIN_RELATION_TYPES, EDITABLE_RELATION_OPTIONS,
+  EDITABLE_RELATION_OPTIONS,
   isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
 } from '../../lib/media/sagaTypes';
-import { classifySagaChain, createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
-import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { createMetaResolver, reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
-import { DIFF_FIELDS, REL_TYPE_TO_PAIR } from '../../lib/media/constants';
+import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getReleaseDateKey, compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { useDragReorder } from './hooks/useDragReorder';
@@ -33,8 +32,17 @@ import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
 
 // Always saved as a PART_OF relation — there's no per-item type to pick
 // anymore (previously episode/update, shown as a dropdown).
-interface BundledRelation {
+export interface BundledRelation {
   external_id: string;
+  title?: string | null;
+  cover?: string | null;
+}
+
+// Editable relations: ADAPTATION, SPIN_OFF, ALTERNATIVE, etc (not saga-managed)
+export interface EditableRelation {
+  related_media_external_id: string;
+  relation_type: string;
+  type_label: string;
   title?: string | null;
   cover?: string | null;
 }
@@ -70,66 +78,6 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
   return false;
 }
 
-// Every user's local catalog can carry a different, auto-fetched snapshot of
-// the same work (synopsis/genres/platforms/score are all just whatever the
-// live API happened to return whenever this install last synced) — none of
-// that is a curator decision worth proposing, and different users uploading
-// their own random subset of it would make the shared catalog inconsistent
-// for no reason (every install re-fetches those fields from the live API on
-// its own anyway). A proposal's media_catalog only ever needs enough to
-// identify the row (id/external_id/type/title_main/source) plus whichever
-// fields the user actually hand-edited — `editedFields` — so the GitHub diff
-// reads as "here's what I curated", not "here's my whole local cache".
-function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: readonly (keyof MediaCatalogEntry)[]): MediaCatalogEntry {
-  const minimal: MediaCatalogEntry = {
-    id: entry.id,
-    external_id: entry.external_id,
-    type: entry.type,
-    title_main: entry.title_main,
-    source: entry.source,
-    created_at: entry.created_at,
-    updated_at: entry.updated_at,
-    // A block decision is always a deliberate curator action, never
-    // auto-fetched — carried over unconditionally like the identity fields,
-    // independent of whether it happens to be in `editedFields`.
-    blocked_at: entry.blocked_at,
-  };
-  for (const field of editedFields) {
-    (minimal as any)[field] = entry[field];
-  }
-  return minimal;
-}
-
-// Builds a self-contained GitHub proposal file for a saga member other than
-// the one actually open in the editor — same shape as the primary entry's
-// own bundle (see handleSubmit), just carrying only that member's own
-// relations instead of a snapshot of the whole saga. Named and pulled out of
-// the save handler since "given an already-updated catalog entry + its
-// relations, produce a proposal file" is a generalizable operation any
-// future "propagate an edit to N related entries" feature would also need,
-// not something specific to this one save flow. Never edited by hand here —
-// only its relations were touched — so its own media_catalog carries no
-// scalar fields at all beyond identity.
-function buildRelatedProposalBundle(
-  externalId: string,
-  catalogEntry: MediaCatalogEntry,
-  relations: DbMediaRelation[],
-  sagaGroups: Record<string, string>,
-  sagaName: string,
-): { externalId: string; bundle: ProposalBundle } {
-  return {
-    externalId,
-    bundle: {
-      media_catalog: minimalProposalCatalogEntry(catalogEntry, []),
-      media_relations: relations.map(r => ({ ...r, media_external_id: externalId })),
-      characters: [],
-      media_authors: [],
-      saga_groups: sagaGroups,
-      saga_name: sagaName || undefined,
-    },
-  };
-}
-
 export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
@@ -161,14 +109,6 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [containedRelations, setContainedRelations] = useState<BundledRelation[]>([]);
   const [originalContainedIds, setOriginalContainedIds] = useState<Set<string>>(new Set());
 
-  // Editable relations: ADAPTATION, SPIN_OFF, ALTERNATIVE, etc (not saga-managed)
-  interface EditableRelation {
-    related_media_external_id: string;
-    relation_type: string;
-    type_label: string;
-    title?: string | null;
-    cover?: string | null;
-  }
   const [editableRelations, setEditableRelations] = useState<EditableRelation[]>([]);
   // Maps id -> its original relation_type, both to know which ids existed
   // before (Set-like via .has) and to detect an in-place type change on an
@@ -732,299 +672,37 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     setErrorMsg('');
 
     try {
-      await saveCatalogEntry(entry);
-      invalidateCachedMediaData(externalId);
-      if (entry.external_id && entry.external_id !== externalId) {
-        invalidateCachedMediaData(entry.external_id);
-      }
-
       const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
-
-      // sagaOrder is the whole saga's chronological order (this entry
-      // included) — classifySagaChain clusters it into groups (main/
-      // alternative ids sharing a Concept Group name) and standalone source/
-      // episode/update entries. Walked pairwise, every adjacent *group*
-      // produces a SEQUEL edge (earlier → later) and a PREQUEL edge (later →
-      // earlier) — for every id in the chain, not just the one currently
-      // open in the editor.
-      const fullChain = sagaOrder;
-      const classified = classifySagaChain(fullChain, sagaRelationTypes, sagaGroups);
-      const groups = classified.filter(e => e.kind === 'group');
-
-      type TaggedRelation = DbMediaRelation & { media_external_id: string };
-      const chainRelations: TaggedRelation[] = [];
-
-      const addReciprocalPair = (
-        aId: string, bId: string,
-        aToB: { relation_type: string; type_label: string },
-        bToA: { relation_type: string; type_label: string },
-      ) => {
-        chainRelations.push({ media_external_id: aId, related_media_external_id: bId, ...aToB, title: resolveMeta(bId).title || bId, cover: resolveMeta(bId).cover });
-        chainRelations.push({ media_external_id: bId, related_media_external_id: aId, ...bToA, title: resolveMeta(aId).title || aId, cover: resolveMeta(aId).cover });
-      };
-
-      // 1. Prequel/Sequel between adjacent groups
-      for (let g = 0; g < groups.length - 1; g++) {
-        for (const prevId of groups[g].ids) {
-          for (const nextId of groups[g + 1].ids) {
-            addReciprocalPair(prevId, nextId,
-              { relation_type: 'SEQUEL', type_label: 'Sequel' },
-              { relation_type: 'PREQUEL', type_label: 'Prequel' });
-          }
-        }
-      }
-
-      // 2. Alternative relations within each group. The trailing "#N" in
-      // type_label is each side's own position within group.ids (which
-      // mirrors the exact drag order the user just set, since group.ids is
-      // derived from fullChain/sagaOrder) — there's no SEQUEL/PREQUEL edge
-      // between two alternates (they're not sequential releases), so
-      // without this hint reconstructSagaOrder had nothing but release date
-      // to break the tie between them on next load, silently reverting any
-      // manual reorder within a Concept Group. See reconstructSagaOrder's
-      // own doc for how the suffix gets read back.
-      for (const group of groups) {
-        const mainIndex = group.ids.indexOf(group.mainId);
-        for (const altId of group.ids) {
-          if (altId === group.mainId) continue;
-          const altIndex = group.ids.indexOf(altId);
-          addReciprocalPair(group.mainId, altId,
-            { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${mainIndex}` },
-            { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${altIndex}` });
-        }
-      }
-
-      // 3. Standalone source/episode/update entries attach to the nearest
-      // preceding group (or this entry, if nothing precedes them yet).
-      let lastGroupMainId = externalId;
-      for (const e of classified) {
-        if (e.kind === 'group') { lastGroupMainId = e.mainId; continue; }
-        const [mainToItem, itemToMain] = REL_TYPE_TO_PAIR[e.kind];
-        addReciprocalPair(lastGroupMainId, e.mainId, mainToItem, itemToMain);
-      }
-
-      // Local SagaViewer cache (separate feature/table from media_relations
-      // above) — still gets the full ordered chain so grouping/browsing keeps
-      // working exactly as before.
-      if (fullChain.length > 1) {
-        const chain: SagaEntry[] = fullChain.map(id => id === externalId ? {
-          externalId,
-          title: entry.title_main || externalId,
-          cover: entry.cover_url || null,
-          format: entry.format || null,
-          mediaType: entry.type,
-          year: entry.release_year ?? null,
-          month: entry.release_month ?? null,
-          day: entry.release_day ?? null,
-        } : {
-          externalId: id,
-          title: resolveMeta(id).title || id,
-          cover: resolveMeta(id).cover,
-          format: null,
-          mediaType: id.split(':')[0] || 'anime',
-          year: null,
-          month: null,
-          day: null,
-        });
-        await saveCachedSaga(chain, sagaName).catch(err => console.error('Failed to save saga:', err));
-      }
-
-      const bundledDbRelations: DbMediaRelation[] = bundledRelations
-        .filter(r => r.external_id.trim())
-        .map(r => ({
-          related_media_external_id: r.external_id.trim(),
-          relation_type: 'PART_OF',
-          type_label: 'Part of',
-          title: r.title || r.external_id.trim(),
-          cover: r.cover ?? null,
-        }));
-
-      const containedDbRelations: DbMediaRelation[] = containedRelations
-        .filter(r => r.external_id.trim())
-        .map(r => ({
-          related_media_external_id: r.external_id.trim(),
-          relation_type: 'EPISODE',
-          type_label: 'Episode',
-          title: r.title || r.external_id.trim(),
-          cover: r.cover ?? null,
-        }));
-
-      const editableDbRelations: DbMediaRelation[] = editableRelations
-        .filter(r => r.related_media_external_id.trim())
-        .map(r => ({
-          related_media_external_id: r.related_media_external_id.trim(),
-          relation_type: r.relation_type,
-          type_label: r.type_label,
-          title: r.title || r.related_media_external_id.trim(),
-          cover: r.cover ?? null,
-        }));
-
-      // Current entry: Editable Relations + Bundled In + its own slice of the
-      // chain-derived edges. Editable Relations already carries every
-      // pre-existing relation that isn't part of the saga chain, so nothing
-      // else needs to pass through untouched.
-      const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
-      const currentFinalRelations: DbMediaRelation[] = [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows];
-      await saveMediaRelations(externalId, currentFinalRelations)
-        .catch(err => console.error('Failed to save relations:', err));
-
-      if (charactersChanged()) {
-        await saveCharactersSkeleton(externalId, characters)
-          .catch(err => console.error('Failed to save characters:', err));
-      }
-
-      await invoke('save_media_saga_groups', { groups: sagaGroups })
-        .catch(err => console.error('Failed to save local saga groups:', err));
-
-      // Every other entry in the chain also needs its own new prequel/sequel
-      // edge written locally — fetch its existing relations first so this
-      // only replaces the specific chain-managed edges pointing at something
-      // inside this chain, keeping everything else (including any relation
-      // to media outside this chain) untouched. Also covers entries just
-      // *removed* from the saga (union with originalSagaOrder): their own
-      // row still carries the old SEQUEL/PREQUEL/ALTERNATIVE edges back into
-      // the chain, and get_transitive_relation_ids walks relations from
-      // every owner, not just this entry's — so a removed film's stale
-      // reciprocal edge alone was enough to pull it right back into the saga
-      // the next time this (or any other chain member's) editor reopened.
-      // Only runs when the saga itself actually changed — otherwise this
-      // used to fire on every single save (even a plain synopsis edit),
-      // doing a needless round trip per chain member.
       const sagaChangeDiff = getDiff();
       const sagaChanged = sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
         || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
-      const otherChainIds = sagaChanged
-        ? [...new Set([...fullChain, ...originalSagaOrder].filter(id => id !== externalId))]
-        : [];
-
-      // Each saga member gets its own self-contained proposal file (see the
-      // primary bundle below) — collected here as the loop touches each one
-      // locally, so the same GitHub PR that edits "IE GO Luz" also carries
-      // "Inazuma Eleven 2"'s own updated relations, instead of only the entry
-      // that was actually opened in the editor.
-      const otherProposalEntries: { externalId: string; bundle: ProposalBundle }[] = [];
-      for (const otherId of otherChainIds) {
-        try {
-          const existing = await getMediaRelationsForEditor(otherId);
-          const kept = (existing || []).filter(r =>
-            !(ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && originalSagaOrder.includes(r.related_media_external_id))
-          );
-          const newRows = chainRelations.filter(r => r.media_external_id === otherId);
-          const otherRelations = [...kept, ...newRows];
-          await saveMediaRelations(otherId, otherRelations);
-
-          // saveMediaRelations above already tombstoned (in deleted_relations)
-          // any pair that was in `existing` but dropped from `otherRelations`
-          // — that's what stops a live resync on this member from silently
-          // reintroducing exactly what was just removed here, so there's
-          // nothing left to stamp on the catalog row itself.
-          const otherEntry = await getCatalogEntry(otherId).catch(() => null);
-          if (otherEntry && mode !== 'local') {
-            otherProposalEntries.push(
-              buildRelatedProposalBundle(otherId, otherEntry, otherRelations, sagaGroups, sagaName),
-            );
-          }
-        } catch (err) {
-          console.error(`Failed to propagate saga relation to ${otherId}:`, err);
-        }
-      }
-
-      // Bundled In is reciprocal: the target needs an EPISODE relation
-      // pointing back here. Re-synced each save so removing an entry also
-      // removes its reciprocal side.
-      const currentBundledIds = new Set(bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
-      const bundledTargetsToSync = new Set([...currentBundledIds, ...originalBundledIds]);
-      for (const targetId of bundledTargetsToSync) {
-        try {
-          const existing = await getMediaRelationsForEditor(targetId);
-          const kept = (existing || []).filter(r =>
-            !(r.relation_type === 'EPISODE' && r.related_media_external_id === externalId)
-          );
-          const rows = currentBundledIds.has(targetId)
-            ? [...kept, {
-                related_media_external_id: externalId,
-                relation_type: 'EPISODE',
-                type_label: 'Episode',
-                title: entry.title_main || externalId,
-                cover: entry.cover_url ?? null,
-              }]
-            : kept;
-          await saveMediaRelations(targetId, rows);
-          invalidateCachedMediaData(targetId);
-        } catch (err) {
-          console.error(`Failed to propagate bundled-in relation to ${targetId}:`, err);
-        }
-      }
-
-      // Same reciprocity, opposite direction: Contains needs a PART_OF
-      // relation written back on each child.
-      const currentContainedIds = new Set(containedRelations.map(r => r.external_id.trim()).filter(Boolean));
-      const containedTargetsToSync = new Set([...currentContainedIds, ...originalContainedIds]);
-      for (const childId of containedTargetsToSync) {
-        try {
-          const existing = await getMediaRelationsForEditor(childId);
-          const kept = (existing || []).filter(r =>
-            !(r.relation_type === 'PART_OF' && r.related_media_external_id === externalId)
-          );
-          const rows = currentContainedIds.has(childId)
-            ? [...kept, {
-                related_media_external_id: externalId,
-                relation_type: 'PART_OF',
-                type_label: 'Part of',
-                title: entry.title_main || externalId,
-                cover: entry.cover_url ?? null,
-              }]
-            : kept;
-          await saveMediaRelations(childId, rows);
-          invalidateCachedMediaData(childId);
-        } catch (err) {
-          console.error(`Failed to propagate contains relation to ${childId}:`, err);
-        }
-      }
-
-      // Invalidate frontend session cache so changes load instantly
-      invalidateCachedMediaData(externalId);
-      for (const otherId of otherChainIds) {
-        invalidateCachedMediaData(otherId);
-      }
-
-      if (onSaved) onSaved();
-
-      if (mode === 'local') {
-        // Everything above already wrote straight to the local DB — the
-        // admin catalog panel doesn't propose anything upstream.
-        setStatusMsg('Guardado en la base de datos local.');
-        setTimeout(() => onClose(), 1000);
-        return;
-      }
-
-      // The PR touches more than the flat catalog row — it's a bundle so
-      // this entry's own collaborative-catalog file also carries its
-      // characters, authors, and relations into the shared community
-      // database (see scripts/build-database.js). Saga-chain edges pointing
-      // at *other* members no longer ride along here — each affected member
-      // gets its own self-contained file instead (see otherProposalEntries
-      // above), so this file only carries this entry's own data. Only the
-      // catalog fields actually hand-edited in this session (per DIFF_FIELDS)
-      // go along — see minimalProposalCatalogEntry's own doc for why the
-      // rest of the locally-cached row never rides along too.
       const editedFields = DIFF_FIELDS.filter(([field]) => isFieldChanged(field)).map(([field]) => field);
-      const bundle: ProposalBundle = {
-        media_catalog: minimalProposalCatalogEntry(entry, editedFields),
-        media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
+
+      await submitPrEditorChanges({
+        entry,
+        externalId,
+        mode,
+        sagaOrder,
+        originalSagaOrder,
+        sagaRelationTypes,
+        sagaGroups,
+        sagaName,
+        sagaMeta,
+        bundledRelations,
+        originalBundledIds,
+        containedRelations,
+        originalContainedIds,
+        editableRelations,
         characters,
-        media_authors: mediaAuthors,
-        saga_groups: sagaGroups,
-        saga_name: sagaName || undefined,
-      };
-      const changeSummary = buildChangeSummary(resolveMeta);
-
-      const proposalEntries = [{ externalId, bundle }, ...otherProposalEntries];
-      const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, changeSummary, setStatusMsg);
-      if (prUrl) openUrlInBrowser(prUrl);
-
-      setTimeout(() => onClose(), 1500);
-
+        charactersChanged: charactersChanged(),
+        mediaAuthors,
+        sagaChanged,
+        editedFields,
+        changeSummary: buildChangeSummary(resolveMeta),
+        onSaved,
+        onClose,
+        setStatusMsg,
+      });
     } catch (err) {
       console.error(err);
       setErrorMsg(err instanceof Error ? err.message : 'Error communicating with GitHub API');

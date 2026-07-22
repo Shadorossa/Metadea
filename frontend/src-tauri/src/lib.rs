@@ -9,6 +9,8 @@ mod folders;
 mod github;
 mod anilist;
 mod igdb;
+mod igdb_env;
+mod igdb_matching;
 mod media_catalog;
 mod platform_scanning;
 mod steam;
@@ -79,8 +81,8 @@ pub fn run() {
             folders::launch_game,
             folders::play_file_with_vlc,
             folders::get_vlc_playback_status,
-            igdb::read_env_config,
-            igdb::write_env_config,
+            igdb_env::read_env_config,
+            igdb_env::write_env_config,
             igdb::igdb_search,
             igdb::igdb_search_unfiltered,
             igdb::igdb_upcoming_releases,
