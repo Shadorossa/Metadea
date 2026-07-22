@@ -2,8 +2,8 @@
   "media_catalog": {
     "id": "9f7ec9f12f0a75879f7ec9f12f0a7587",
     "external_id": "vnovel:84972",
-    "type": "vnovel",
-    "title_main": "Gyakuten Kenji 2",
+    "type": "game",
+    "title_main": "Ace Attorney Investigations 2",
     "source": "igdb",
     "created_at": "",
     "updated_at": "",
@@ -18,7 +18,8 @@
     "genres_csv": "Adventure,Visual Novel",
     "genres_tag_csv": "Point-and-click",
     "platforms_csv": "Android,iOS,Nintendo DS",
-    "publishers_csv": "Capcom"
+    "publishers_csv": "Capcom",
+    "title_romaji": "Gyakuten Kenji 2"
   },
   "media_relations": [
     {
