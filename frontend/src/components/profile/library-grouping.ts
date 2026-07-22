@@ -75,12 +75,33 @@ export function groupBundles<T extends { external_id: string }>(
     for (const child of g.grouped) rootIndexOf.set(child.external_id, i);
   });
 
-  const childIdsByContainer = new Map<string, string[]>();
+  // containerOf[childId] = its container — flattened below to the ultimate
+  // top-level container (same rootOf technique as groupEditions) so a
+  // bundle-of-a-bundle (A contains B, B contains D/E) collapses into one
+  // card under A instead of B also showing as its own separate bundle.
+  const containerOf = new Map<string, string>();
   for (const rel of relations) {
     if (!rel.media_external_id || !CONTAINS_RELATION_TYPES.includes(rel.relation_type)) continue;
-    const list = childIdsByContainer.get(rel.media_external_id) ?? [];
-    list.push(rel.related_media_external_id);
-    childIdsByContainer.set(rel.media_external_id, list);
+    containerOf.set(rel.related_media_external_id, rel.media_external_id);
+  }
+  const ultimateContainerOf = (id: string): string => {
+    let cur = id;
+    const seen = new Set<string>();
+    while (containerOf.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = containerOf.get(cur)!;
+    }
+    return cur;
+  };
+  for (const id of [...containerOf.keys()]) {
+    containerOf.set(id, ultimateContainerOf(id));
+  }
+
+  const childIdsByContainer = new Map<string, string[]>();
+  for (const [childId, containerId] of containerOf) {
+    const list = childIdsByContainer.get(containerId) ?? [];
+    list.push(childId);
+    childIdsByContainer.set(containerId, list);
   }
 
   const consumed = new Set<number>();

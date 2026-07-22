@@ -11,3 +11,11 @@ export function isAdultContentEnabled(): boolean {
 export function setAdultContentEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.showAdultContent, enabled.toString());
 }
+
+export function isLibraryGroupByBundleEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEYS.libraryGroupByBundle) === 'true';
+}
+
+export function setLibraryGroupByBundleEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.libraryGroupByBundle, enabled.toString());
+}

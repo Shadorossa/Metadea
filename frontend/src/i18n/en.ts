@@ -57,6 +57,7 @@ export const en = {
     library_filters: 'Filters',
     library_group_editions: 'Group by installment',
     library_group_editions_hint: 'Also in your library',
+    library_group_bundle: 'Group by bundle',
     favorites: 'Favorites',
     empty_favorites: 'You don\'t have any favorites in this category yet.',
     favorites_multimedia: 'Multimedia',

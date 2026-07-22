@@ -24,4 +24,5 @@ export const STORAGE_KEYS = {
   communityCatalogSyncLog: 'community_catalog_sync_log',
   lastVisitedPath: 'metadea_last_visited_path',
   homeCalendarGeneralCache: 'metadea_home_calendar_general_cache',
+  libraryGroupByBundle: 'metadea_library_group_by_bundle',
 } as const;

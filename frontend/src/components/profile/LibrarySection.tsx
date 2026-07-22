@@ -5,7 +5,8 @@ import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache
 import { notifyNewEpisode } from '../../lib/shared/notifications';
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem } from '../../lib/media/rating-utils';
-import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON } from '../../lib/shared/icon-strings';
+import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON } from '../../lib/shared/icon-strings';
+import { isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled } from '../../lib/settings/preferences';
 import { TYPE_LABELS, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
@@ -51,6 +52,12 @@ export function LibrarySection() {
   const [statusIndex, setStatusIndex] = useState(0);
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [groupByEdition, setGroupByEdition] = useState(false);
+  const [groupByBundle, setGroupByBundle] = useState(isLibraryGroupByBundleEnabled);
+  const toggleGroupByBundle = () => setGroupByBundle(prev => {
+    const next = !prev;
+    setLibraryGroupByBundleEnabled(next);
+    return next;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -155,12 +162,14 @@ export function LibrarySection() {
 
     return sectionsData
       .filter(sec => sec.items.length > 0)
-      // Edition/bundle/saga-chain grouping is gated behind "Agrupar por ediciones".
+      // Edition/saga-chain grouping is gated behind "Agrupar por entrega"; bundle grouping has its own toggle.
       .map(sec => {
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
         let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> = editionGroups;
+        if (groupByBundle) {
+          cards = groupBundles(cards, catalogMap, sagaRelations);
+        }
         if (groupByEdition) {
-          cards = groupBundles(editionGroups, catalogMap, sagaRelations);
           cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames);
         }
 
@@ -185,7 +194,7 @@ export function LibrarySection() {
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaNames, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaNames, nameFilter, selectedTypes, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
 
   if (items === null) return null;
 
@@ -279,6 +288,14 @@ export function LibrarySection() {
           >
             <span dangerouslySetInnerHTML={{ __html: GROUP_EDITIONS_ICON }} />
             <span>{p.library_group_editions}</span>
+          </button>
+          <button
+            type="button"
+            className={`library-toggle-btn ${groupByBundle ? 'active' : ''}`}
+            onClick={toggleGroupByBundle}
+          >
+            <span dangerouslySetInnerHTML={{ __html: GROUP_BUNDLE_ICON }} />
+            <span>{p.library_group_bundle}</span>
           </button>
         </div>
       </aside>
