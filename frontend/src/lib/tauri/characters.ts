@@ -48,6 +48,14 @@ export async function deleteCharacter(externalId: string): Promise<void> {
   return tauriRun('delete_character', { externalId });
 }
 
+// Admin catalog editor's GitHub > Personajes tab — reads straight from the
+// downloaded community database.db (same source sync_community_catalog
+// merges from), not the local characters table, since GitHub's own set can
+// differ from what's synced locally.
+export async function getCommunityCharacters(): Promise<CharacterEntry[]> {
+  return tauriCmd<CharacterEntry[]>('get_community_characters', []);
+}
+
 export async function saveCharacterAppearances(characterExternalId: string, appearances: CharacterAppearance[]): Promise<void> {
   return tauriRun('save_character_appearances', { characterExternalId, appearances });
 }

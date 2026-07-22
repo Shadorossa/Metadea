@@ -3349,6 +3349,16 @@
   grid-template-columns: repeat(10, 1fr);
 }
 
+/* Sagas/characters: a long unbroken id (TMDB's character:tmdb:<hash> ids
+   especially) has no natural break point, so a bare `1fr` column — which
+   still respects each item's own min-content width — grows past its fair
+   share and pushes the whole grid wider than the panel, cutting off the
+   trailing columns. An explicit minmax() overrides that auto-sizing at the
+   track level instead of the text needing to shrink to fit. */
+.catalog-admin-panel .pr-editor-search-grid--people {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
 .pr-editor-search-controls {
   display: flex;
   flex-shrink: 0;

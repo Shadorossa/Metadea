@@ -5,7 +5,7 @@ import {
   getAllCatalogEntries, deleteCatalogEntry, getCatalogEntry, saveCatalogEntry,
   getAllSagas, deleteSaga, type MediaCatalogEntry, type SagaListEntry,
 } from '../../lib/tauri/catalog';
-import { getAllCharacters, deleteCharacter, type CharacterEntry } from '../../lib/tauri/characters';
+import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
 import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
@@ -57,6 +57,13 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [characterLoading, setCharacterLoading] = useState(true);
   const [characterDeleteTarget, setCharacterDeleteTarget] = useState<CharacterEntry | null>(null);
   const [characterSearchOpen, setCharacterSearchOpen] = useState(false);
+
+  // GitHub's own characters (read-only peek at the community database.db,
+  // not the local one) — fetched on demand, not on mount, since it's a
+  // network download rather than a local IPC read.
+  const [githubCharacters, setGithubCharacters] = useState<CharacterEntry[]>([]);
+  const [githubCharactersLoading, setGithubCharactersLoading] = useState(false);
+  const [githubCharactersError, setGithubCharactersError] = useState(false);
 
   // GitHub database/ state
   const [githubQuery, setGithubQuery] = useState('');
@@ -182,6 +189,22 @@ export function CatalogAdminPanel({ i18n }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner]);
 
+  // Fetched on demand, the first time this tab combination is actually visited.
+  useEffect(() => {
+    if (!isOwner || entity !== 'character' || source !== 'github') return;
+    if (githubCharacters.length > 0 || githubCharactersLoading) return;
+    setGithubCharactersLoading(true);
+    setGithubCharactersError(false);
+    getCommunityCharacters()
+      .then(setGithubCharacters)
+      .catch(err => {
+        console.error('[CatalogAdminPanel] Failed to load GitHub characters:', err);
+        setGithubCharactersError(true);
+      })
+      .finally(() => setGithubCharactersLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, entity, source]);
+
   // Deferred so fast typing doesn't force a full re-filter/re-render of a
   // (potentially large) catalog on every single keystroke — the input itself
   // stays instantly responsive, the list just settles a beat behind it.
@@ -213,9 +236,10 @@ export function CatalogAdminPanel({ i18n }: Props) {
   })();
 
   const visibleCharacters = (() => {
+    const list = source === 'github' ? githubCharacters : characters;
     const q = deferredCharacterQuery.trim().toLowerCase();
-    if (!q) return characters;
-    return characters.filter(c => c.name.toLowerCase().includes(q));
+    if (!q) return list;
+    return list.filter(c => c.name.toLowerCase().includes(q));
   })();
 
   if (gate.state === 'loading') return null;
@@ -405,7 +429,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
           {!sagaLoading && visibleSagas.length === 0 && <p className="catalog-admin-status">{t.no_sagas}</p>}
 
           {!sagaLoading && visibleSagas.length > 0 && (
-            <div className="pr-editor-search-grid">
+            <div className="pr-editor-search-grid pr-editor-search-grid--people">
               {visibleSagas.map(saga => (
                 <CatalogEntryCard
                   key={saga.id}
@@ -425,6 +449,8 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
       {entity === 'character' && source !== 'add' && (
         <>
+          {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
+
           <input
             type="text"
             className="catalog-admin-search"
@@ -433,11 +459,14 @@ export function CatalogAdminPanel({ i18n }: Props) {
             onChange={e => setCharacterQuery(e.target.value)}
           />
 
-          {characterLoading && <p className="catalog-admin-status">{t.loading}</p>}
-          {!characterLoading && visibleCharacters.length === 0 && <p className="catalog-admin-status">{t.no_characters}</p>}
+          {(source === 'github' ? githubCharactersLoading : characterLoading) && <p className="catalog-admin-status">{t.loading}</p>}
+          {source === 'github' && githubCharactersError && <p className="catalog-admin-status">{t.github_open_error}</p>}
+          {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length === 0 && (
+            <p className="catalog-admin-status">{t.no_characters}</p>
+          )}
 
-          {!characterLoading && visibleCharacters.length > 0 && (
-            <div className="pr-editor-search-grid">
+          {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length > 0 && (
+            <div className="pr-editor-search-grid pr-editor-search-grid--people">
               {visibleCharacters.map(character => (
                 <CatalogEntryCard
                   key={character.external_id}
@@ -447,7 +476,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
                   editLabel={t.edit_button}
                   deleteLabel={t.delete_button}
                   onEdit={() => (window as any).openCharacterEditor?.(character.external_id)}
-                  onDelete={() => setCharacterDeleteTarget(character)}
+                  onDelete={() => source === 'github' ? alert(t.github_delete_error) : setCharacterDeleteTarget(character)}
                 />
               ))}
             </div>

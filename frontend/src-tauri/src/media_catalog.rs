@@ -1561,6 +1561,68 @@ pub async fn sync_community_catalog(
     imported
 }
 
+// Admin catalog editor's GitHub > Personajes tab — a read-only peek at the
+// community catalog's own characters table, not the merge sync_community_catalog
+// does into the local one. Characters have no per-file GitHub representation
+// (unlike media_catalog rows, one database/*.json each) — they only exist
+// embedded inside each media bundle's own file — so the built database.db
+// (same download as sync_community_catalog) is the only place to read "every
+// character GitHub actually has" from in one request instead of one per file.
+#[tauri::command]
+pub async fn get_community_characters(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<Vec<crate::characters::CharacterEntry>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .str_err()?;
+    let resp = client.get(COMMUNITY_DB_URL).send().await.str_err()?;
+    if !resp.status().is_success() {
+        return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));
+    }
+    let bytes = resp.bytes().await.str_err()?;
+
+    let cache_dir = app_handle.path().app_cache_dir().str_err()?;
+    std::fs::create_dir_all(&cache_dir).str_err()?;
+    let temp_path = cache_dir.join("community_characters_tmp.db");
+    std::fs::write(&temp_path, &bytes).str_err()?;
+    let temp_path_str = temp_path.to_string_lossy().to_string();
+
+    let result = (|| -> Result<Vec<crate::characters::CharacterEntry>, String> {
+        let conn = state.conn.lock().str_err()?;
+        conn.execute("ATTACH DATABASE ?1 AS ghcharacters", rusqlite::params![temp_path_str]).str_err()?;
+
+        let read = (|| -> Result<Vec<crate::characters::CharacterEntry>, String> {
+            let mut stmt = conn.prepare(
+                "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, NULL, created_at, updated_at
+                 FROM ghcharacters.characters"
+            ).str_err()?;
+            let rows = stmt.query_map([], |row| {
+                Ok(crate::characters::CharacterEntry {
+                    id: row.get(0)?,
+                    external_id: row.get(1)?,
+                    name: row.get(2)?,
+                    name_native: row.get(3)?,
+                    aliases_csv: row.get(4)?,
+                    biography: row.get(5)?,
+                    image_url: row.get(6)?,
+                    reaction: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            }).str_err()?;
+            Ok(rows.filter_map(|r| r.ok()).collect())
+        })();
+
+        conn.execute("DETACH DATABASE ghcharacters", []).str_err()?;
+        read
+    })();
+
+    let _ = std::fs::remove_file(&temp_path);
+    result
+}
+
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ProposalBundle {
