@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "285ef1c9f888499b285ef1c9f888499b",
+    "external_id": "game:146075",
+    "type": "game",
+    "title_main": "The Great Ace Attorney Chronicles",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:76244",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "The Great Ace Attorney: Adventures",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9st.jpg",
+      "media_external_id": "game:146075"
+    },
+    {
+      "related_media_external_id": "game:146081",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "The Great Ace Attorney 2: Resolve",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob9su.jpg",
+      "media_external_id": "game:146075"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
