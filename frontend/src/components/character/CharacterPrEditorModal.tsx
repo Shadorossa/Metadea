@@ -393,7 +393,6 @@ export function CharacterPrEditorModal() {
           image_url: updatedCharacter.image_url,
         }],
         media_authors: [],
-        saga_groups: {},
       };
 
       const changeSummary = `- ${buildChangeSummary()}`;

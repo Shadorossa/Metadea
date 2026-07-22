@@ -478,6 +478,19 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = merge_fragmented_sagas(conn);
         mark_migration(conn, 22)?;
     }
+    if v < 23 {
+        // media_saga_groups persisted "alternate version" clustering as a
+        // real table, but nothing besides PrEditorModal's own reload ever
+        // needed it — and it's fully re-derivable from ALTERNATIVE edges in
+        // media_relations, which are already durable. Dropped in favor of
+        // that live derivation (see pr-editor-load.ts). order_index gives
+        // saga_relations a manually-editable position — see its own doc
+        // comment above for the "start at 100, use decimals to insert
+        // between" convention.
+        let _ = conn.execute("DROP TABLE IF EXISTS media_saga_groups", []);
+        let _ = conn.execute("ALTER TABLE saga_relations ADD COLUMN order_index REAL", []);
+        mark_migration(conn, 23)?;
+    }
 
     Ok(())
 }
@@ -701,9 +714,18 @@ CREATE TABLE IF NOT EXISTS sagas (
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- order_index is a manually-editable position within the saga (see
+-- assign_saga_order_indices in media_catalog.rs) — new chains start at 100
+-- with room to prepend earlier entries below it, and an entry inserted
+-- between two already-ordered ones gets the fractional midpoint between
+-- them instead of forcing a renumber of the whole saga. NULL for any row
+-- never touched by the editor (e.g. purely graph-reconciled via
+-- merge_fragmented_sagas) — build_saga_list falls back to release-date
+-- order for those.
 CREATE TABLE IF NOT EXISTS saga_relations (
     media_external_id TEXT NOT NULL,
     saga_id           TEXT NOT NULL,
+    order_index       REAL,
     PRIMARY KEY (media_external_id, saga_id),
     FOREIGN KEY (saga_id) REFERENCES sagas(id) ON DELETE CASCADE
 );
@@ -738,11 +760,6 @@ CREATE TABLE IF NOT EXISTS deleted_relations (
     related_media_external_id TEXT NOT NULL,
     deleted_at                TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (media_external_id, related_media_external_id)
-);
-
-CREATE TABLE IF NOT EXISTS media_saga_groups (
-    group_name        TEXT NOT NULL,
-    media_external_id TEXT NOT NULL PRIMARY KEY
 );
 
 -- Snapshot of external_ids seen in the last downloaded community catalog

@@ -116,25 +116,6 @@ fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
     }
 }
 
-// Shared by save_media_saga_groups and import_proposal_bundle's bundle.saga_groups
-// handling — both used to carry their own copy of this exact upsert-or-delete loop.
-fn upsert_saga_groups(
-    tx: &rusqlite::Transaction,
-    groups: &std::collections::HashMap<String, String>,
-) -> Result<(), String> {
-    for (media_id, group_name) in groups {
-        if group_name.is_empty() {
-            tx.execute("DELETE FROM media_saga_groups WHERE media_external_id = ?1", [media_id]).str_err()?;
-        } else {
-            tx.execute(
-                "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?1, ?2)",
-                rusqlite::params![media_id, group_name],
-            ).str_err()?;
-        }
-    }
-    Ok(())
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[derive(Default)]
 pub struct MediaCatalogEntry {
@@ -678,6 +659,76 @@ pub async fn get_cached_saga(
     }
 }
 
+// Computes saga_relations.order_index for `chain_ids` (front-to-back, the
+// editor's current sagaOrder), keeping every id's existing value where one is
+// known and only computing new ones — so re-saving a saga after a trivial
+// edit (renaming, adding an unrelated relation) doesn't reshuffle order
+// values that a human may have already fine-tuned via drag-reorder.
+//
+// - No existing values at all (brand-new saga): sequential starting at 100.
+// - New ids at either end of the chain: extend by whole steps (±1) from the
+//   nearest known anchor.
+// - A new id inserted between two already-anchored ones: the fractional
+//   midpoint between them (evenly spaced if several new ids land in the same
+//   gap) — this is the "use decimals to insert between" case.
+// - If the existing anchors are no longer in ascending order relative to
+//   their new chain position (a manual drag-reorder crossed them), that's
+//   treated as a deliberate reorder: the whole chain is renumbered fresh from
+//   100, restoring clean gaps instead of trying to patch around it.
+fn assign_saga_order_indices(chain_ids: &[String], existing: &std::collections::HashMap<String, f64>) -> std::collections::HashMap<String, f64> {
+    let mut result = std::collections::HashMap::new();
+
+    let renumber = |result: &mut std::collections::HashMap<String, f64>| {
+        for (i, id) in chain_ids.iter().enumerate() {
+            result.insert(id.clone(), 100.0 + i as f64);
+        }
+    };
+
+    let anchors: Vec<(usize, f64)> = chain_ids.iter().enumerate()
+        .filter_map(|(i, id)| existing.get(id).map(|&v| (i, v)))
+        .collect();
+
+    if anchors.is_empty() {
+        renumber(&mut result);
+        return result;
+    }
+
+    let monotonic = anchors.windows(2).all(|w| w[0].1 < w[1].1);
+    if !monotonic {
+        renumber(&mut result);
+        return result;
+    }
+
+    for &(i, v) in &anchors {
+        result.insert(chain_ids[i].clone(), v);
+    }
+
+    let (first_i, first_v) = anchors[0];
+    for k in 0..first_i {
+        let i = first_i - 1 - k;
+        result.insert(chain_ids[i].clone(), first_v - (k as f64 + 1.0));
+    }
+
+    let (last_i, last_v) = anchors[anchors.len() - 1];
+    for i in (last_i + 1)..chain_ids.len() {
+        result.insert(chain_ids[i].clone(), last_v + (i - last_i) as f64);
+    }
+
+    for w in anchors.windows(2) {
+        let (ia, va) = w[0];
+        let (ib, vb) = w[1];
+        let gap = ib - ia;
+        if gap > 1 {
+            let step = (vb - va) / gap as f64;
+            for k in 1..gap {
+                result.insert(chain_ids[ia + k].clone(), va + step * k as f64);
+            }
+        }
+    }
+
+    result
+}
+
 #[tauri::command]
 pub async fn save_cached_saga(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -733,6 +784,21 @@ pub async fn save_cached_saga(
     let all_ids: Vec<String> = entries.iter().map(|e| e.external_id.clone()).collect();
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
 
+    // Read any order_index these ids already carry (regardless of which
+    // saga_id they currently sit under — an anchor shift shouldn't reset a
+    // human-curated order) before the delete below wipes the rows.
+    let existing_order: std::collections::HashMap<String, f64> = {
+        let sql = format!(
+            "SELECT media_external_id, order_index FROM saga_relations
+             WHERE media_external_id IN ({id_placeholders}) AND order_index IS NOT NULL"
+        );
+        let mut stmt = tx.prepare(&sql).str_err()?;
+        let params = rusqlite::params_from_iter(all_ids.iter());
+        let rows = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?))).str_err()?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+    let order_map = assign_saga_order_indices(&all_ids, &existing_order);
+
     // Remove stale members — previously this only INSERT OR REPLACED, so an
     // entry deliberately removed from the saga by the user would linger in
     // saga_relations indefinitely and keep appearing in getCachedSaga.
@@ -772,8 +838,8 @@ pub async fn save_cached_saga(
 
         // Insert relation
         tx.execute(
-            "INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id) VALUES (?1, ?2)",
-            rusqlite::params![&entry.external_id, &saga_id],
+            "INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id, order_index) VALUES (?1, ?2, ?3)",
+            rusqlite::params![&entry.external_id, &saga_id, order_map.get(&entry.external_id)],
         )
         .str_err()?;
     }
@@ -1221,9 +1287,8 @@ pub async fn save_author_profile_and_relations(
 // Uses INSERT OR IGNORE via ATTACH DATABASE so it only fills in ids the user
 // doesn't already have locally — never overwrites a user's own library data,
 // local edits, or anything fetched live from an API. Exception: saga data
-// (PREQUEL/SEQUEL/ALTERNATIVE, sagas/saga_relations/media_saga_groups) is
-// always fully rebuilt from the catalog instead — see the reconciliation
-// block below for why.
+// (PREQUEL/SEQUEL/ALTERNATIVE, sagas/saga_relations) is always fully rebuilt
+// from the catalog instead — see the reconciliation block below for why.
 #[tauri::command]
 pub async fn sync_community_catalog(
     app_handle: tauri::AppHandle,
@@ -1419,16 +1484,15 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
-            // Custom saga display name and per-entry saga sub-group labels
-            // (both editable in PrEditorModal, both exported in every PR
-            // bundle — see saga_groups/saga_name there) — same fill-gaps
-            // merge as everything else above. Guarded by a table-existence
-            // check because these three tables were only added to
-            // build-database.js's output alongside this merge; a community
-            // catalog built by an older workflow run won't have them yet.
+            // Custom saga display name (editable in PrEditorModal, exported in
+            // every PR bundle — see saga_name there) — same fill-gaps merge
+            // as everything else above. Guarded by a table-existence check
+            // because these tables were only added to build-database.js's
+            // output alongside this merge; a community catalog built by an
+            // older workflow run won't have them yet.
             let has_saga_tables: bool = conn
                 .query_row(
-                    "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'media_saga_groups'",
+                    "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'sagas'",
                     [],
                     |r| r.get(0),
                 )
@@ -1436,12 +1500,6 @@ pub async fn sync_community_catalog(
                 .unwrap_or(false);
 
             if has_saga_tables {
-                changes += conn.execute(
-                    "INSERT OR IGNORE INTO media_saga_groups (media_external_id, group_name)
-                     SELECT c.media_external_id, c.group_name FROM community.media_saga_groups c
-                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
-                    [],
-                ).str_err()? as i64;
                 changes += conn.execute(
                     "INSERT OR IGNORE INTO sagas (id, name)
                      SELECT id, name FROM community.sagas",
@@ -1489,19 +1547,6 @@ pub async fn sync_community_catalog(
             ).str_err()? as i64;
 
             if has_saga_tables {
-                changes += conn.execute(
-                    "DELETE FROM media_saga_groups
-                     WHERE EXISTS (SELECT 1 FROM community.media_catalog cm WHERE cm.external_id = media_saga_groups.media_external_id AND cm.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel'))",
-                    [],
-                ).str_err()? as i64;
-                changes += conn.execute(
-                    "INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name)
-                     SELECT c.media_external_id, c.group_name FROM community.media_saga_groups c
-                     JOIN community.media_catalog cm ON cm.external_id = c.media_external_id AND cm.type IN ('anime', 'manga', 'lnovel', 'game', 'vnovel')
-                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
-                    [],
-                ).str_err()? as i64;
-
                 // sagas rows first — saga_relations.saga_id has an enforced FK into it.
                 changes += conn.execute(
                     "INSERT OR REPLACE INTO sagas (id, name)
@@ -1573,7 +1618,6 @@ pub async fn sync_community_catalog(
                     ("character_appearances", "media_external_id"),
                     ("media_staff_relation", "media_external_id"),
                     ("media_by_author", "media_external_id"),
-                    ("media_saga_groups", "media_external_id"),
                     ("saga_relations", "media_external_id"),
                 ] {
                     let ids_params = rusqlite::params_from_iter(removed_ids.iter());
@@ -1675,7 +1719,6 @@ pub struct ProposalBundle {
     pub media_relations: Vec<DbMediaRelation>,
     pub characters: Vec<crate::characters::SkeletonCharacter>,
     pub media_authors: Vec<DbMediaAuthor>,
-    pub saga_groups: Option<std::collections::HashMap<String, String>>,
     pub saga_name: Option<String>,
 }
 
@@ -2061,9 +2104,6 @@ pub fn import_proposal_bundle(db: &crate::db::MetadeaDb, bundle: ProposalBundle)
     replace_bundle_characters(&tx, &entry, &bundle.characters, &now)?;
     replace_bundle_authors(&tx, &entry, &bundle.media_authors, &now)?;
 
-    if let Some(saga_groups) = &bundle.saga_groups {
-        upsert_saga_groups(&tx, saga_groups)?;
-    }
     if let Some(saga_name) = &bundle.saga_name {
         upsert_bundle_saga_name(&tx, &entry, &owners, saga_name)?;
     }
@@ -2094,49 +2134,6 @@ pub async fn get_transitive_relation_ids(
     let rows = stmt.query_map([&media_external_id], |row| row.get::<_, String>(0)).str_err()?;
     let ids: Vec<String> = rows.filter_map(|r| r.ok()).collect();
     Ok(ids)
-}
-
-#[tauri::command]
-pub async fn save_media_saga_groups(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    groups: std::collections::HashMap<String, String>,
-) -> Result<(), String> {
-    let mut conn = state.conn.lock().str_err()?;
-    let tx = conn.transaction().str_err()?;
-    upsert_saga_groups(&tx, &groups)?;
-    tx.commit().str_err()
-}
-
-#[tauri::command]
-// Scoped to the ids the caller actually cares about (the saga chain's
-// transitive relation ids) rather than the whole table — media_saga_groups
-// has no natural upper bound as the catalog grows, and every entry only
-// ever needs the handful of groups belonging to its own saga.
-pub async fn get_media_saga_groups(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    media_external_ids: Vec<String>,
-) -> Result<std::collections::HashMap<String, String>, String> {
-    let mut map = std::collections::HashMap::new();
-    if media_external_ids.is_empty() {
-        return Ok(map);
-    }
-
-    let conn = state.conn.lock().str_err()?;
-    let placeholders = media_external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!(
-        "SELECT media_external_id, group_name FROM media_saga_groups WHERE media_external_id IN ({})",
-        placeholders
-    );
-    let mut stmt = conn.prepare(&sql).str_err()?;
-    let params = rusqlite::params_from_iter(media_external_ids.iter());
-    let rows = stmt.query_map(params, |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-    }).str_err()?;
-
-    for row in rows.filter_map(|r| r.ok()) {
-        map.insert(row.0, row.1);
-    }
-    Ok(map)
 }
 
 #[tauri::command]
@@ -2296,6 +2293,30 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
         }
     }
 
+    // Manually-curated order (see save_cached_saga's assign_saga_order_indices)
+    // — takes priority over the release-date sort below, but only when EVERY
+    // visible member of a given saga has one; a mix (e.g. one new member
+    // added via pure graph reconciliation, never touched in the editor) falls
+    // back to the date sort entirely rather than interleaving two different
+    // orderings. order_index is newer than the sagas table in some older
+    // community snapshots — tolerate a missing-column prepare error the same
+    // way the name lookup above does.
+    let mut order_hints: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    {
+        let sql = format!(
+            "SELECT media_external_id, order_index FROM {table_prefix}saga_relations
+             WHERE media_external_id IN ({placeholders}) AND order_index IS NOT NULL"
+        );
+        if let Ok(mut stmt) = conn.prepare(&sql) {
+            let params = rusqlite::params_from_iter(all_member_ids.iter());
+            if let Ok(rows) = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?))) {
+                for (id, order) in rows.filter_map(|r| r.ok()) {
+                    order_hints.insert(id, order);
+                }
+            }
+        }
+    }
+
     let mut result = Vec::new();
     for members in components.values() {
         let mut visible: Vec<&String> = members.iter().filter(|id| info.contains_key(*id)).collect();
@@ -2303,16 +2324,21 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
 
         // Anchor id keeps the established "lexicographically smallest
         // external_id" convention (matches save_cached_saga/merge_fragmented_sagas),
-        // but display order is chronological by release date, with the id as
-        // a tiebreak for missing/equal dates — undated entries sort last.
+        // but display order prefers the manually-curated order_index when
+        // every member has one, falling back to chronological release date
+        // (id as tiebreak for missing/equal dates — undated entries sort last).
         let canonical = visible.iter().min().map(|s| (*s).clone()).unwrap();
-        visible.sort_by(|a, b| {
-            let da = &info[*a];
-            let db = &info[*b];
-            let key_a = (da.2.unwrap_or(i64::MAX), da.3.unwrap_or(13), da.4.unwrap_or(32));
-            let key_b = (db.2.unwrap_or(i64::MAX), db.3.unwrap_or(13), db.4.unwrap_or(32));
-            key_a.cmp(&key_b).then_with(|| a.cmp(b))
-        });
+        if visible.iter().all(|id| order_hints.contains_key(*id)) {
+            visible.sort_by(|a, b| order_hints[*a].partial_cmp(&order_hints[*b]).unwrap().then_with(|| a.cmp(b)));
+        } else {
+            visible.sort_by(|a, b| {
+                let da = &info[*a];
+                let db = &info[*b];
+                let key_a = (da.2.unwrap_or(i64::MAX), da.3.unwrap_or(13), da.4.unwrap_or(32));
+                let key_b = (db.2.unwrap_or(i64::MAX), db.3.unwrap_or(13), db.4.unwrap_or(32));
+                key_a.cmp(&key_b).then_with(|| a.cmp(b))
+            });
+        }
 
         let name = names.get(&canonical).cloned()
             .or_else(|| visible.iter().find_map(|id| names.get(*id).cloned()))

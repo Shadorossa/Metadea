@@ -9,7 +9,6 @@ export interface ProposalBundle {
   media_relations: Array<DbMediaRelation & { media_external_id: string }>;
   characters: DbMediaCharacter[];
   media_authors: DbMediaAuthor[];
-  saga_groups: Record<string, string>;
   saga_name?: string;
 }
 

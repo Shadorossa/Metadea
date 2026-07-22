@@ -1,4 +1,3 @@
-import { invoke } from '../tauri';
 import { saveCatalogEntry, getCatalogEntry, saveMediaRelations, saveMediaAuthors, type DbMediaRelation } from '../tauri/catalog';
 import { saveCharactersSkeleton, type SkeletonCharacter } from '../tauri/characters';
 import type { ProposalBundle } from './submitCollaborativeProposal';
@@ -49,7 +48,6 @@ export async function hydrateBundleIntoLocalCatalog(bundle: ProposalBundle): Pro
 
   await saveCharactersSkeleton(externalId, bundle.characters as SkeletonCharacter[]);
   await saveMediaAuthors(externalId, bundle.media_authors);
-  await invoke('save_media_saga_groups', { groups: bundle.saga_groups || {} }).catch(() => {});
 }
 
 // A saga edit now lands as one self-contained GitHub file per affected

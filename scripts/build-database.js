@@ -8,7 +8,10 @@
 //
 // Each database/*.json is a *bundle*, not a bare media_catalog row:
 //   { media_catalog: {...}, media_relations: [...], characters: [...],
-//     media_authors: [...], saga_groups: {...}, saga_name: "..." }
+//     media_authors: [...], saga_name: "..." }
+// (older files may still carry a now-ignored saga_groups field — "alternate
+// version" clustering is derived live from ALTERNATIVE relation edges
+// instead of being persisted, see pr-editor-load.ts)
 // media_relations already includes both "Bundled In" (EPISODE/UPDATE) and
 // saga-derived PREQUEL/SEQUEL entries — PrEditorModal resolves those before
 // writing the file, so this script only has to fan them out into tables.
@@ -120,11 +123,6 @@ CREATE TABLE media_by_author (
     PRIMARY KEY (media_external_id, author_external_id)
 );
 
-CREATE TABLE media_saga_groups (
-    media_external_id TEXT NOT NULL PRIMARY KEY,
-    group_name         TEXT NOT NULL
-);
-
 CREATE TABLE sagas (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL DEFAULT '',
@@ -133,9 +131,14 @@ CREATE TABLE sagas (
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- order_index mirrors db.rs's saga_relations — always NULL here since this
+-- script has no manual-order data of its own (only the desktop app's editor
+-- writes it), but the column needs to exist so a client ATTACHing this file
+-- can query it without a schema-mismatch error.
 CREATE TABLE saga_relations (
     media_external_id TEXT NOT NULL,
     saga_id           TEXT NOT NULL,
+    order_index       REAL,
     PRIMARY KEY (media_external_id, saga_id)
 );
 `;
@@ -218,9 +221,6 @@ function buildDatabase(bundles) {
   const byAuthorStmt = db.prepare(
     'INSERT OR REPLACE INTO media_by_author (media_external_id, author_external_id, role) VALUES (?, ?, ?)'
   );
-  const sagaGroupStmt = db.prepare(
-    'INSERT OR REPLACE INTO media_saga_groups (media_external_id, group_name) VALUES (?, ?)'
-  );
   const sagaStmt = db.prepare(
     'INSERT OR REPLACE INTO sagas (id, name) VALUES (?, ?)'
   );
@@ -258,10 +258,6 @@ function buildDatabase(bundles) {
       if (reciprocal) {
         reciprocalRelationStmt.run(rel.related_media_external_id, owner, reciprocal[0], reciprocal[1]);
       }
-    }
-
-    for (const [mediaId, groupName] of Object.entries(bundle.saga_groups || {})) {
-      if (mediaId && groupName) sagaGroupStmt.run(mediaId, groupName);
     }
 
     if (bundle.saga_name) {

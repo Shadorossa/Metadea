@@ -138,8 +138,6 @@ pub fn run() {
             media_catalog::get_all_sagas,
             media_catalog::get_community_sagas,
             media_catalog::delete_saga,
-            media_catalog::save_media_saga_groups,
-            media_catalog::get_media_saga_groups,
             media_catalog::save_media_relations,
             media_catalog::get_media_relations,
             media_catalog::get_media_relations_for_editor,

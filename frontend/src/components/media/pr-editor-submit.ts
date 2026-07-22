@@ -2,7 +2,6 @@
 // saga-chain edges, persists locally, propagates reciprocal relations, and
 // (in 'proposal' mode) submits the GitHub PR. Takes precomputed diff values
 // instead of the component's own closures.
-import { invoke } from '../../lib/tauri';
 import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../lib/tauri/catalog';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
@@ -53,7 +52,6 @@ function buildRelatedProposalBundle(
   externalId: string,
   catalogEntry: MediaCatalogEntry,
   relations: DbMediaRelation[],
-  sagaGroups: Record<string, string>,
   sagaName: string,
 ): { externalId: string; bundle: ProposalBundle } {
   return {
@@ -63,7 +61,6 @@ function buildRelatedProposalBundle(
       media_relations: relations.map(r => ({ ...r, media_external_id: externalId })),
       characters: [],
       media_authors: [],
-      saga_groups: sagaGroups,
       saga_name: sagaName || undefined,
     },
   };
@@ -225,9 +222,6 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       .catch(err => console.error('Failed to save characters:', err));
   }
 
-  await invoke('save_media_saga_groups', { groups: p.sagaGroups })
-    .catch(err => console.error('Failed to save local saga groups:', err));
-
   // Every other chain member gets its chain-managed edges rewritten too — union
   // with originalSagaOrder so a just-removed member's stale reciprocal edge
   // doesn't pull it back into the saga via get_transitive_relation_ids.
@@ -251,7 +245,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const otherEntry = await getCatalogEntry(otherId).catch(() => null);
       if (otherEntry && mode !== 'local') {
         otherProposalEntries.push(
-          buildRelatedProposalBundle(otherId, otherEntry, otherRelations, p.sagaGroups, p.sagaName),
+          buildRelatedProposalBundle(otherId, otherEntry, otherRelations, p.sagaName),
         );
       }
     } catch (err) {
@@ -331,7 +325,6 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
     characters: p.characters,
     media_authors: p.mediaAuthors,
-    saga_groups: p.sagaGroups,
     saga_name: p.sagaName || undefined,
   };
 

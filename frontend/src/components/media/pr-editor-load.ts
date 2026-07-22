@@ -1,7 +1,7 @@
 // The relations/saga half of PrEditorModal's load() effect — a pure
 // computation of `externalId` alone, split out since it reads no component
 // state. (The catalog-entry half stays in the component, in its own try block.)
-import { getCatalogEntry, getMediaRelationsForEditor, getMediaSagaGroups } from '../../lib/tauri/catalog';
+import { getCatalogEntry, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
 import { invoke } from '../../lib/tauri';
 import {
@@ -99,9 +99,11 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
 
   // Bootstraps sagaRelationTypes/sagaGroups from existing SOURCE/EPISODE/
   // UPDATE/ALTERNATIVE edges — a one-time reverse-engineering of prior state.
-  const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
+  // sagaGroups (which ids are "alternate versions" of each other) is derived
+  // purely from ALTERNATIVE edges below, never persisted on its own — the
+  // relation graph is already the durable source of truth for that grouping.
+  const [allRelsList, dbSagaName] = await Promise.all([
     Promise.all(sortedIds.map(id => getMediaRelationsForEditor(id).catch(() => [] as DbMediaRelation[]))),
-    getMediaSagaGroups(sortedIds).catch(() => ({} as Record<string, string>)),
     invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
   ]);
   // Reconstructed from SEQUEL edges, not release-date order alone, so a manual reorder survives a reload.
@@ -109,7 +111,7 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   const originalSagaOrder = sagaOrder;
 
   const sagaRelationTypes: Record<string, SagaRelationType> = {};
-  const sagaGroups: Record<string, string> = { ...dbGroups };
+  const sagaGroups: Record<string, string> = {};
   let nextGroupNum = 1;
 
   for (let i = 0; i < sortedIds.length; i++) {
