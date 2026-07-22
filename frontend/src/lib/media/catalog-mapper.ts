@@ -84,6 +84,8 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     // from developer_badge since a company can be both).
     const publishers = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : companies;
     if (publishers.length > 0) metaLines.push(publishers.join(', '));
+    const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
+    if (formatLabel) metaLines.push(formatLabel);
   } else {
     if (companies.length > 0) metaLines.push(companies.join(', '));
     // Counts already have their own stat row above — not repeated here.
