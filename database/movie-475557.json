@@ -1,0 +1,394 @@
+{
+  "media_catalog": {
+    "id": "961ac42ce1c46783961ac42ce1c46783",
+    "external_id": "movie:475557",
+    "type": "movie",
+    "title_main": "Joker",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "movie:1359",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "American Psycho",
+      "cover": "https://image.tmdb.org/t/p/w300/ySPCri7VfAjbLLkMKs7Zjn6Njco.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:382322",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman: La broma asesina",
+      "cover": "https://image.tmdb.org/t/p/w300/zvmlvfvwen0lAn0UMapEWrLj05U.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:487680",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La cocina del infierno",
+      "cover": "https://image.tmdb.org/t/p/w300/jyOYRQuVIhw1DfVjNKj7gUom1Fv.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:395458",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Suburbicon",
+      "cover": "https://image.tmdb.org/t/p/w300/dL1GOIX3gs3GzZLDs4mg3fjjUOV.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:68812",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Iceman (El hombre de hielo)",
+      "cover": "https://image.tmdb.org/t/p/w300/aTBK4Sf1fJs9XzdhgT7hNJZwNU9.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:617502",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Jolt",
+      "cover": "https://image.tmdb.org/t/p/w300/7Q1FlceiRzgtmBITQJ639WyElKr.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:645886",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Imperdonable",
+      "cover": "https://image.tmdb.org/t/p/w300/bEVklVUbbFljZTGzub5scdIHyts.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:801335",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La chica en el sótano",
+      "cover": "https://image.tmdb.org/t/p/w300/4p6uMC8PxEHSY5hJR0KJkOt3wPk.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:1381027",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Un buen chico",
+      "cover": "https://image.tmdb.org/t/p/w300/lrwd5yxWuBjSpnCrzZM1N7obe3K.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:597208",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El callejón de las almas perdidas",
+      "cover": "https://image.tmdb.org/t/p/w300/3eceDLSJQ4GbSdnBj08QkmKoqni.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:435036",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El impostor",
+      "cover": "https://image.tmdb.org/t/p/w300/sMi0sz3qnj2xBdT0tfHlqnw5zIh.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:274",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El silencio de los corderos",
+      "cover": "https://image.tmdb.org/t/p/w300/8FdQQ3cUCs9goEOr1qUFaHackoJ.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:189",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Sin City: Una dama por la que matar",
+      "cover": "https://image.tmdb.org/t/p/w300/xmCF5CB8ogqUy9K6AmYaAL7x0jV.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:190955",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Lazos de sangre",
+      "cover": "https://image.tmdb.org/t/p/w300/5vYbz1WZei7hGkAlF5T0xqZ76jc.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:187",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Sin City: Ciudad del pecado",
+      "cover": "https://image.tmdb.org/t/p/w300/u4MK2f3AgG6nlJdJPxtJKiCN3G6.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:800158",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "El asesino",
+      "cover": "https://image.tmdb.org/t/p/w300/wXbAPrZTqJzlqmmRaUh95DJ5Lv1.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:1155324",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "King Ivory",
+      "cover": "https://image.tmdb.org/t/p/w300/8OlEKz9CdnMj48m0rQnPQCiGV24.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:1227816",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Pacto de sangre",
+      "cover": "https://image.tmdb.org/t/p/w300/70cTpSGH1cXygHum9lOASTbOvGc.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:8271",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Disturbia",
+      "cover": "https://image.tmdb.org/t/p/w300/mOplBj1GJ9Iew1Dazu7cz53WXPd.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:520663",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "La mujer en la ventana",
+      "cover": "https://image.tmdb.org/t/p/w300/htNLpDWkaCYtkjjiFlfV2VBICUx.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:945937",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Fast Charlie",
+      "cover": "https://image.tmdb.org/t/p/w300/z70TmAwynA2u7PKAr8uoLfmqsML.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:22021",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Coffy",
+      "cover": "https://image.tmdb.org/t/p/w300/Aq6BQsgDGgdwhaY8vbFgClmvNFF.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "related_media_external_id": "movie:14576",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Shade: Juego de asesinos",
+      "cover": "https://image.tmdb.org/t/p/w300/2uK217wp1SSFgbIcwDaPrzlLd7X.jpg",
+      "media_external_id": "movie:475557"
+    },
+    {
+      "media_external_id": "movie:475557",
+      "related_media_external_id": "movie:889737",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Joker: Folie à Deux",
+      "cover": "https://image.tmdb.org/t/p/w300/i90gQD1ogdrX2EE2bYCtYSuqjRV.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:tmdb:5e8593bd98f1f10014aacb71",
+      "name": "Arthur Fleck",
+      "image_url": "https://image.tmdb.org/t/p/w185/u38k3hQBDwNX0VA22aQceDp9Iyv.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b5242749251411f8600052d",
+      "name": "Murray Franklin",
+      "image_url": "https://image.tmdb.org/t/p/w185/cT8htcckIuyI1Lqwt1CvD02ynTh.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b5122a00e0a262596006a4c",
+      "name": "Sophie Dumond",
+      "image_url": "https://image.tmdb.org/t/p/w185/sgxzT54GnvgeMnOZgpQQx9csAdd.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b5636fcc3a3685c8e026bac",
+      "name": "Penny Fleck",
+      "image_url": "https://image.tmdb.org/t/p/w185/aJRQAkO24L6bH8qkkE5Iv1nA3gf.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b9fecf0c3a3680441002ee1",
+      "name": "Thomas Wayne",
+      "image_url": "https://image.tmdb.org/t/p/w185/4P6TsRcnr9MRbXlCdHitulGM5LT.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ba0149092514177b20076a7",
+      "name": "Detective Burke",
+      "image_url": "https://image.tmdb.org/t/p/w185/d3caK3l4UfbnzOxv95wLoFLZzMO.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ba0144fc3a3680441008c31",
+      "name": "Detective Garrity",
+      "image_url": "https://image.tmdb.org/t/p/w185/wxYyJSltCHwU0MTg838SllOlvNT.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ba014700e0a2633c5008920",
+      "name": "Randall",
+      "image_url": "https://image.tmdb.org/t/p/w185/x1Cef2yPZS7bJTwxI7DX3q0HNcv.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ca5b79d9251415ebe6c3035",
+      "name": "Gary",
+      "image_url": "https://image.tmdb.org/t/p/w185/stbbWD89FQWa34TNVyxVj5xBVIm.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b5d2363925141521a021d99",
+      "name": "Hoyt Vaughn",
+      "image_url": "https://image.tmdb.org/t/p/w185/uH90fGfLLzYCX02yOW3kH4LMO7n.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5e168ee6cf4b8b0011806b59",
+      "name": "GiGi Dumond",
+      "image_url": null,
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5b60965c0e0a267ee70001ea",
+      "name": "Gene Ufland",
+      "image_url": "https://image.tmdb.org/t/p/w185/xzRBK8hR6693VQWmr3Wx2UVoA5P.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5d9d0a8ea5046e003682bb15",
+      "name": "Dr. Sally",
+      "image_url": "https://image.tmdb.org/t/p/w185/eA2gD2JUtXoaGUSYdwenAzeYvwG.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5d9d0ab9a6e2d2001d4f274d",
+      "name": "Barry O'Donnell",
+      "image_url": "https://image.tmdb.org/t/p/w185/6axiNcYIZmaeRKyfCm3xBHC7KQL.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ba0147dc3a3680435008d5b",
+      "name": "Alfred Pennyworth",
+      "image_url": "https://image.tmdb.org/t/p/w185/tENL3Uxt07Rn21o0y0eolwTnkoZ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5c6dd9f30e0a262c99a1b8c0",
+      "name": "Bruce Wayne",
+      "image_url": "https://image.tmdb.org/t/p/w185/zqo2pLRyjm1vIU1AVu2IWMDT8zN.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5e168feecf4b8b0015805804",
+      "name": "Martha Wayne",
+      "image_url": "https://image.tmdb.org/t/p/w185/jPsSCGPkgMAYh9NKcBJNUCW1FLv.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ca5b82dc3a36826c5af011e",
+      "name": "Social Worker",
+      "image_url": "https://image.tmdb.org/t/p/w185/kZktXVoRLaETbNkiMoDBzFpdWVB.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5d985a8caaec71001a68174c",
+      "name": "Young Penny",
+      "image_url": "https://image.tmdb.org/t/p/w185/p94oyYrrywfSH3vkimTL1cbaWQt.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5e1691081f748b0014852498",
+      "name": "Dr. Stoner",
+      "image_url": "https://image.tmdb.org/t/p/w185/er5hLYMwjAYb3saRQcNZED4rtgx.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5ca47973c3a3685aad0c1d28",
+      "name": "Carl (Arkham Clerk)",
+      "image_url": "https://image.tmdb.org/t/p/w185/2MsJh0bpyzwvOUnXOltHp3j85Pb.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5dc9d4177314a10018bc8c84",
+      "name": "Arkham Psychiatrist",
+      "image_url": "https://image.tmdb.org/t/p/w185/nV8nnymN0ClT3xppwhlAtUnjSxa.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5e1692901f748b0016855ab9",
+      "name": "Woman on Subway",
+      "image_url": "https://image.tmdb.org/t/p/w185/s3A3adaBlROorijl667bYm8FPN7.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5d9d0c4e4772150029028314",
+      "name": "Wall Street Three",
+      "image_url": "https://image.tmdb.org/t/p/w185/f2AGpZHxYoJthRIIahMx80NYcrc.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:tmdb:5d9d0c84f96a390040f6a4a0",
+      "name": "Wall Street Three",
+      "image_url": "https://image.tmdb.org/t/p/w185/qb3oEBOpc11maO2CeM7SgbfWQEq.jpg",
+      "relation_type": null,
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:t57130",
+      "name": "Todd Phillips",
+      "image": "https://image.tmdb.org/t/p/w185/A6FPht87DiqXzp456WjakLi2AtP.jpg",
+      "role": "Director",
+      "url": null
+    }
+  ],
+  "saga_groups": {},
+  "saga_name": "Joker"
+}
