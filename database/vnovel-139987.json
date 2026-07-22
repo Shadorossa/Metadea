@@ -1,0 +1,81 @@
+{
+  "media_catalog": {
+    "id": "85848696d43314f785848696d43314f7",
+    "external_id": "vnovel:139987",
+    "type": "vnovel",
+    "title_main": "Umineko no Naku Koro ni Saku: Nekobako to Musou no Koukyoukyoku",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:272080",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 1 - Legend of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nb.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272082",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 2 - Turn of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nd.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272083",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 3 - Banquet of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78ne.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272084",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 4 - Alliance of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nf.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272085",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 5 - End of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78ng.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272086",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 6 - Dawn of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nh.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272087",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 7 - Requiem of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nj.jpg",
+      "media_external_id": "vnovel:139987"
+    },
+    {
+      "related_media_external_id": "vnovel:272096",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Umineko no Naku Koro ni: Episode 8 - Twilight of the Golden Witch",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co78nm.jpg",
+      "media_external_id": "vnovel:139987"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
