@@ -540,6 +540,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
   useDiscordPresence(data, t.discord);
 
+  useEffect(() => {
+    if (pageState === 'ready' && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('openEditor') === 'true') {
+        setShowEditor(true);
+        params.delete('openEditor');
+        const newSearch = params.toString() ? `?${params.toString()}` : '';
+        window.history.replaceState({}, '', `${window.location.pathname}${newSearch}`);
+      }
+    }
+  }, [pageState]);
+
   const handleCoverClick = useCallback(() => {
     setShowEditor(true);
   }, []);
@@ -792,7 +804,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               onClick={() => {
                 if (previewMode) return;
                 if (isBlockedEdition) {
-                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`;
+                  window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true`;
                   return;
                 }
                 if (isBundle) return;
@@ -800,7 +812,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               }}
               onKeyDown={e => !previewMode && (e.key === 'Enter' || e.key === ' ') && (
                 isBlockedEdition
-                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}`)
+                  ? (window.location.href = `/media?id=${encodeURIComponent(data.parentGame!.externalId)}&openEditor=true`)
                   : isBundle
                   ? undefined
                   : handleCoverClick()
