@@ -1,9 +1,6 @@
-// The relations/saga half of PrEditorModal's load() effect, split out
-// because it's a fully self-contained computation of `externalId` alone —
-// no component state is read, only written afterward via the returned
-// result. (The catalog-entry half stays in the component: it's a separate,
-// independently-caught try block that sets `entry`/`originalEntry` on its
-// own before this one even starts.)
+// The relations/saga half of PrEditorModal's load() effect — a pure
+// computation of `externalId` alone, split out since it reads no component
+// state. (The catalog-entry half stays in the component, in its own try block.)
 import { getCatalogEntry, getMediaRelationsForEditor, getMediaSagaGroups } from '../../lib/tauri/catalog';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
 import { invoke } from '../../lib/tauri';
@@ -23,10 +20,8 @@ export interface PrEditorRelationsAndSagaResult {
   originalContainedIds: Set<string>;
   editableRelations: EditableRelation[];
   originalEditableRelationTypes: Map<string, string>;
-  // Set when the transitive-ids expansion below re-fetched this entry's own
-  // catalog row (already sorted alongside the rest of the saga) — the
-  // caller should prefer this over whatever getCatalogEntry(externalId)
-  // resolved in the sibling try block, same as the original inline code did.
+  // Re-fetched via the transitive-ids expansion below — callers should prefer
+  // this over whatever the sibling try block's getCatalogEntry resolved.
   currentEntry: MediaCatalogEntry | null;
   sagaMeta: Record<string, MediaMeta>;
   sagaOrder: string[];
@@ -42,11 +37,8 @@ export interface PrEditorRelationsAndSagaResult {
 export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<PrEditorRelationsAndSagaResult> {
   const rels = await getMediaRelationsForEditor(externalId).catch(() => [] as DbMediaRelation[]);
 
-  // Bundled In (this entry belongs to something else — PART_OF/UPDATE)
-  // vs. Contains (something else belongs to this entry — EPISODE) are
-  // opposite directions of the same relationship; BUNDLE_RELATION_TYPES
-  // covers both only for excluding them from the plain Relations list
-  // below.
+  // Bundled In (PART_OF/UPDATE) vs. Contains (EPISODE) are opposite directions
+  // of the same relationship; BUNDLE_RELATION_TYPES covers both for excluding them below.
   const bundledRelations = rels
     .filter(r => PART_OF_RELATION_TYPES.includes(r.relation_type))
     .map(r => ({
@@ -69,19 +61,12 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
   const sagaMemberIds = new Set(transitiveIds);
 
-  // Everything that isn't Bundled In and doesn't target a saga-chain
-  // member shows up here — every existing relation the entry already
-  // had (ADAPTATION, SPIN_OFF, ALTERNATIVE outside the saga, CHARACTER,
-  // OTHER, ...), not just a fixed whitelist. Anything targeting a saga
-  // member is re-derived by the saga chain builder on save instead.
+  // Everything not Bundled In and not targeting a saga member — anything
+  // targeting a saga member is re-derived by the saga chain builder instead.
   const editableRelations = rels
     .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !sagaMemberIds.has(r.related_media_external_id))
     .map(r => {
-      // Rows saved before game relations used canonical type keys
-      // (see igdb-mapper.ts) still carry the raw English label as
-      // relation_type (e.g. "Expanded Edition") — normalize on load so
-      // the dropdown pre-selects the real, localized option instead of
-      // rendering it as an extra unlocalized duplicate.
+      // Pre-canonical-keys rows still carry the raw English label (e.g. "Expanded Edition").
       const relationType = normalizeLegacyRelationType(r.relation_type);
       return {
         related_media_external_id: r.related_media_external_id,
@@ -112,20 +97,14 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
     sagaMeta[x.id] = { title: x.entry.title_main || x.id, cover: x.entry.cover_url || null };
   }
 
-  // Bootstraps sagaRelationTypes/sagaGroups from whatever SOURCE/
-  // EPISODE/UPDATE/ALTERNATIVE edges already exist in the DB — this
-  // is a one-time reverse-engineering of prior state, distinct from
-  // classifySagaChain (which turns already-known sagaRelationTypes/
-  // sagaGroups back into a display/relation structure).
+  // Bootstraps sagaRelationTypes/sagaGroups from existing SOURCE/EPISODE/
+  // UPDATE/ALTERNATIVE edges — a one-time reverse-engineering of prior state.
   const [allRelsList, dbGroups, dbSagaName] = await Promise.all([
     Promise.all(sortedIds.map(id => getMediaRelationsForEditor(id).catch(() => [] as DbMediaRelation[]))),
     getMediaSagaGroups(sortedIds).catch(() => ({} as Record<string, string>)),
     invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
   ]);
-  // Reconstructs the manually-saved order (if any) from SEQUEL edges
-  // among allRelsList instead of trusting release-date order alone —
-  // otherwise a drag-reorder+submit looked saved but silently reverted
-  // to release-date order the next time the editor was reopened.
+  // Reconstructed from SEQUEL edges, not release-date order alone, so a manual reorder survives a reload.
   const sagaOrder = reconstructSagaOrder(sortedIds, allRelsList);
   const originalSagaOrder = sagaOrder;
 

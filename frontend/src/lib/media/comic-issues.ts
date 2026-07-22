@@ -1,12 +1,10 @@
-// Comic Vine issues ('Issues' tab) — split out of mediaService.ts to keep
-// that file to fetch orchestration.
+// Comic Vine issues ('Issues' tab), split out of mediaService.ts.
 import { fetchComicVineIssues, fetchComicVineVolumeCast } from '../search/providers/comicvine';
 import { comicVineSearch, type ComicVineIssue, type ComicVineSearchPage } from '../tauri';
 import { unifyGenres } from './genre-unifier';
 import type { MediaPageData, MediaCharacter } from './types';
 
-// Maps Comic Vine issues to MediaRelation shape for the 'Issues' tab. Only
-// issues with a cover image are included.
+// Maps to MediaRelation shape; only issues with a cover are included.
 function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageData['relations'] {
   const result: MediaPageData['relations'] = [];
   for (const issue of issues) {
@@ -28,9 +26,8 @@ export interface ComicIssuesResult {
   genreTagDots?: string;
 }
 
-// A comic's own volumeId, resolved either directly from rawId or (for a
-// non-comic type, e.g. an anime adaptation with a comic tie-in) by searching
-// Comic Vine for a volume whose name matches titleMain/altTitle.
+// volumeId from rawId directly, or (non-comic types) by searching Comic
+// Vine for a volume matching titleMain/altTitle.
 async function resolveVolumeId(rawId: string, isComic: boolean, titleMain?: string, altTitle?: string): Promise<number | null> {
   if (isComic) {
     const idStr = rawId.slice(rawId.indexOf(':') + 1);
@@ -60,11 +57,9 @@ async function resolveVolumeId(rawId: string, isComic: boolean, titleMain?: stri
   return matchedVol?.id ?? null;
 }
 
-// Background fetch: all issues for a comic volume ('Issues' tab), plus the
-// full cast/genres aggregated across every issue — the volume's own
-// character_credits (used for the quick initial display) is usually just a
-// first-issue sample, since Comic Vine editors rarely fill the volume-level
-// field. Runs once per comic; results get persisted.
+// All issues for a comic volume plus the full cast/genres aggregated across
+// them — the volume's own character_credits is usually just a first-issue
+// sample. Runs once per comic; results get persisted.
 export async function fetchComicIssues(
   rawId: string,
   currentRelations: MediaPageData['relations'],

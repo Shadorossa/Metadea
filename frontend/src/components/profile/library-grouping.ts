@@ -7,13 +7,9 @@ import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 
-// Groups library entries that are editions of one another (remakes,
-// remasters, ports, ...) under a single "slot" so they don't each claim a
-// spot in the grid. Gated entirely behind "Agrupar por ediciones" — sequel/
-// prequel (saga) grouping used to also live here, but now runs separately
-// in refineSagaGroups (see its own doc for why: an edition link only ever
-// connects two owned entries directly, which is fine for editions, but a
-// saga needs to bridge across works the user doesn't own at all).
+// Groups editions of the same work (remakes, remasters, ports) under one
+// grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
+// (refineSagaGroups) since it must bridge works the user doesn't own.
 export function groupEditions<T extends { external_id: string; selected_version: string | null; type: string }>(
   sectionItems: T[],
   catalogMap: Map<string, MediaCatalogEntry>,
@@ -49,9 +45,7 @@ export function groupEditions<T extends { external_id: string; selected_version:
     return cur;
   };
 
-  // Flatten multi-level chains (e.g. Rebirth → Remake → Original, from two
-  // separate direct parent_id edges) so every entry in the chain ends up
-  // pointing straight at the same ultimate root.
+  // Flatten multi-level chains (e.g. Rebirth → Remake → Original) so every entry points at the ultimate root.
   for (const id of [...parentOf.keys()]) {
     parentOf.set(id, rootOf(id));
   }
@@ -66,19 +60,10 @@ export function groupEditions<T extends { external_id: string; selected_version:
   return out;
 }
 
-// Second pass, on top of groupEditions' output: collapses the root-groups
-// for whatever a CONTAINS relation (EPISODE, from the container's own row —
-// e.g. "Chronicles" containing "Adventures" and "2: Resolve") groups
-// together into one card showing the container's own cover/title instead of
-// either work's. Deliberately not gated on the container's own catalog
-// `format` being 'BUNDLE' — an already-cataloged container can be stuck
-// with a stale format from before that value existed (persistToCatalog
-// preserves an existing format rather than recomputing it), so the
-// relation itself is the only reliable signal here. Needs at least two of
-// the container's contents actually present in the library, and the
-// container itself already cataloged (for its cover/title) — a bundle with
-// only one owned part, or one never added to the local catalog at all,
-// isn't worth collapsing into.
+// Second pass: collapses groups a CONTAINS/EPISODE relation ties to one
+// container into a single card with the container's cover/title. Goes by
+// the relation itself, not the container's `format`, since that can be
+// stale; needs 2+ owned contents plus the container itself already cataloged.
 export function groupBundles<T extends { external_id: string }>(
   groups: Array<{ item: T; grouped: T[] }>,
   catalogMap: Map<string, MediaCatalogEntry>,
@@ -105,10 +90,8 @@ export function groupBundles<T extends { external_id: string }>(
     const catalogEntry = catalogMap.get(containerId);
     if (!catalogEntry) continue;
 
-    // Counted by matched *children*, not by distinct root-group indices —
-    // a saga (SEQUEL/PREQUEL) pass earlier can already have fused two
-    // contained works into a single root group (one "item" + the other in
-    // its own "grouped"), which would otherwise look like only one match.
+    // Counted by matched children, not root-group indices — an earlier saga
+    // pass can fuse two contained works into one root group already.
     const matchedChildIds = new Set(
       childIds.filter(id => {
         const idx = rootIndexOf.get(id);
@@ -134,28 +117,13 @@ export function groupBundles<T extends { external_id: string }>(
   return [...remaining, ...bundleGroups];
 }
 
-// Sequel/prequel relations are saved for games too (IGDB), not just
-// anime/manga/lnovel (AniList) — Silent Hill, Metal Gear Solid, Final
-// Fantasy VII etc. all have real SEQUEL/PREQUEL rows in media_relations,
-// confirmed directly against the DB.
+// Games (IGDB) carry real SEQUEL/PREQUEL rows too, not just AniList types.
 const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel']);
 
-// Third pass: merges standalone (non-edition, non-bundle) root-groups that
-// belong to the very same saga — via the WHOLE catalog's PREQUEL/SEQUEL
-// graph, not just relations between two entries the user actually owns.
-// That distinction matters: owning 1, 2, 3 and 5 of a saga but not 4 used
-// to only group 1-3 together (the 3→4 and 4→5 edges each need *both* ends
-// owned to link two owned entries), leaving 5 stranded on its own even
-// though it's clearly the same saga. Walking the full graph (every 1-2,
-// 2-3, 3-4, 4-5 edge, whether or not "4" itself is in the library) finds
-// the one connected saga component 1-2-3-4-5 belongs to regardless of
-// gaps, then folds every owned member found in it into one card — same
-// aggregate rating/date-range treatment as a bundle, plus the saga's own
-// assigned name (PrEditorModal's "Saga Name" field, via sagaNames) in place
-// of showing the earliest work's own title, if one was ever set.
-// Deliberately only touches groups groupEditions/groupBundles left as bare
-// singletons (no bundleMeta, nothing already grouped) — an edition-linked
-// or bundle card keeps its own distinct look untouched.
+// Third pass: merges standalone groups belonging to the same saga, walking
+// the WHOLE catalog's PREQUEL/SEQUEL graph (not just relations between owned
+// entries) so a gap (owning 1,2,3,5 but not 4) doesn't strand 5 on its own.
+// Only touches bare singletons — edition/bundle cards keep their own look.
 export function refineSagaGroups<T extends { external_id: string }>(
   groups: Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }>,
   catalogMap: Map<string, MediaCatalogEntry>,
@@ -176,15 +144,8 @@ export function refineSagaGroups<T extends { external_id: string }>(
   };
 
   for (const rel of relations) {
-    // See groupEditions' old comment (moved here): SECUELA/PRECUELA are the
-    // pre-fix, Spanish-label rows some libraries still have on disk.
-    // ALTERNATIVE is included too — PrEditorModal's saga editor (see
-    // classifySagaChain) writes it between two entries placed in the same
-    // "Concept Group" (e.g. a remake alongside its original), which is a
-    // saga step exactly like SEQUEL/PREQUEL, just without an order between
-    // them — without this, a remake placed this way ends up joined to its
-    // original by the separate edition/parent_id mechanism but never folds
-    // into the rest of the saga's SEQUEL/PREQUEL cluster.
+    // SECUELA/PRECUELA: pre-fix Spanish labels some libraries still have on disk.
+    // ALTERNATIVE: classifySagaChain's Concept Group edge — a saga step without an order.
     const isSequel  = rel.relation_type === 'SEQUEL'  || rel.relation_type === 'SECUELA';
     const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
     const isAlternative = rel.relation_type === 'ALTERNATIVE';
@@ -199,14 +160,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
     union(a, b);
   }
 
-  // A group that groupEditions already fused (e.g. Silent Hill 2 + its
-  // remake, joined by the edition/parent_id mechanism) still belongs in the
-  // bigger saga cluster if EITHER of its members touches the saga graph —
-  // checking only bare singletons here used to leave an edition-linked
-  // group stranded next to, instead of merged into, the rest of its own
-  // saga (Silent Hill 1/3 on one card, Silent Hill 2 + remake on another,
-  // never joined). Only bundles (a genuinely different concept — a
-  // container, not a saga step) are excluded.
+  // An edition-fused group still joins the saga cluster if either member touches the graph. Bundles are excluded.
   const byComponent = new Map<string, number[]>();
   groups.forEach((g, i) => {
     if (g.bundleMeta) return;
@@ -232,8 +186,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
       consumed.add(idx);
     }
 
-    // Earliest release first — the group still sits over its first work,
-    // same as before.
+    // Earliest release first — the group sits over its first work.
     const sorted = [...allMembers].sort((a, b) =>
       compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
     );

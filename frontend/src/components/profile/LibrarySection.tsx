@@ -16,11 +16,7 @@ import { LibraryCard, TYPE_ICON } from './LibraryCard';
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
 
-// media_catalog.format values this filter cares about (see i18n's
-// media.formats for their display labels) — a fixed subset, not every possible format, so an
-// item whose format is something else entirely (or unset, for non-game
-// types) is left alone by this filter rather than hidden by it. 'GAME' (the
-// base entry, no edition) is surfaced to the user as "Main".
+// A fixed subset of media_catalog.format values — anything else (or unset) passes through untouched.
 const EDITION_FILTER_OPTIONS = [
   { key: 'GAME', label: 'Main' },
   { key: 'REMAKE', label: 'Remake' },
@@ -64,8 +60,7 @@ export function LibrarySection() {
         getCachedLibraryAndCatalog(),
         getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
       ]);
-      // Refreshes the localStorage cache read by getActiveRatingSystem()
-      // used per-card below — see syncActiveRatingSystem's own doc.
+      // Refreshes the localStorage cache read by getActiveRatingSystem() per-card below.
       await syncActiveRatingSystem();
       if (cancelled) return;
       setItems(rawItems);
@@ -73,24 +68,9 @@ export function LibrarySection() {
       setSagaRelations(relations);
       getSagaNames(rawItems.map(i => i.external_id)).then(names => { if (!cancelled) setSagaNames(names); }).catch(() => {});
 
-      // Entering your library is the other trigger point (besides visiting
-      // the media page itself) for needsResync()'s per-status cadence —
-      // catches shows/manga you're actively watching/reading even if you
-      // don't click into their page that day. needsResync() itself decides
-      // what's actually due: RELEASING every 7 days (any type — anime AND
-      // manga/lnovel chapters go through the exact same total_count/status
-      // pipeline, see anilist-mapper.ts), other statuses on their own longer
-      // cadence, and — the case this also backfills — a catalog row that
-      // was never synced at all (last_synced_at missing entirely, e.g. a
-      // stub created before this system existed, or one only ever filled in
-      // via community-catalog sync) is always immediately due, so its first
-      // library visit does a full live re-fetch and finally records
-      // last_synced_at/status/total_count for it.
-      // Scoped to in-progress entries only (no point re-checking something
-      // you haven't started), sequential with a short stagger so a library
-      // full of ongoing shows doesn't burst AniList's rate limit, and each
-      // result is patched into catalogMap as it lands so "Al día" grouping
-      // and episode/chapter counts update live.
+      // Entering the library is the other trigger point (besides the media
+      // page) for needsResync()'s cadence — scoped to in-progress entries,
+      // sequential with a short stagger to avoid bursting AniList's rate limit.
       const dueForResync = rawItems.filter(item => {
         if (!isInProgressStatus(item.status)) return false;
         const catalog = catalogEntries.find(e => e.external_id === item.external_id);
@@ -105,8 +85,7 @@ export function LibrarySection() {
         if (cancelled) return;
         if (fresh) {
           setCatalogMap(prev => new Map(prev).set(fresh.external_id, fresh));
-          // total_count went up since the last known value — a new episode/
-          // chapter aired for something the user is actively watching/reading.
+          // total_count went up — a new episode/chapter aired.
           const beforeCount = before?.total_count ?? 0;
           const afterCount = fresh.total_count ?? 0;
           if (beforeCount > 0 && afterCount > beforeCount) {
@@ -122,11 +101,7 @@ export function LibrarySection() {
 
     load();
 
-    // Fired by ProfileLibraryEditor after a save/delete in the media editor
-    // modal — re-fetches in place (setState diffs just the changed card)
-    // instead of profile.astro re-mounting this whole component from
-    // scratch, which used to unmount/remount the entire grid (every card,
-    // every filter control) for a one-field change, flashing the full tab.
+    // Fired by ProfileLibraryEditor after a save/delete — re-fetches in place instead of remounting the whole grid.
     window.addEventListener('refresh-profile-library', load);
     return () => {
       cancelled = true;
@@ -166,11 +141,7 @@ export function LibrarySection() {
       return dateB - dateA; // newest finished to oldest finished
     });
 
-    // "Al día" is a purely computed regrouping, not a stored status — an
-    // in-progress entry moves here when its progress has caught up with
-    // everything a still-RELEASING show has aired/published so far (see
-    // isCaughtUpOnReleasing), and drops back into "En curso" the moment the
-    // weekly resync raises total_count past it again.
+    // "Al día" is a computed regrouping, not a stored status (see isCaughtUpOnReleasing).
     const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
 
     const sectionsData = [
@@ -184,9 +155,7 @@ export function LibrarySection() {
 
     return sectionsData
       .filter(sec => sec.items.length > 0)
-      // Edition, bundle (CONTAINS), and saga-chain (PREQUEL/SEQUEL)
-      // grouping are all gated behind "Agrupar por ediciones" now — none of
-      // this runs on the plain, ungrouped grid.
+      // Edition/bundle/saga-chain grouping is gated behind "Agrupar por ediciones".
       .map(sec => {
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
         let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> = editionGroups;
@@ -195,11 +164,7 @@ export function LibrarySection() {
           cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames);
         }
 
-        // groupBundles/refineSagaGroups can both append merged cards at the
-        // end regardless of date/rating — re-sort by the same criteria as
-        // the section itself, using the group's own aggregate (every
-        // member's rating/duration, latest finished_at) in place of a
-        // single item's fields whenever one applies.
+        // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.
         cards = [...cards].sort((a, b) => {
           const isAggA = !!a.bundleMeta || !!a.aggregateStats;
           const isAggB = !!b.bundleMeta || !!b.aggregateStats;

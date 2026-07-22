@@ -1,6 +1,4 @@
-// Env/API-key config (IGDB, Steam, TMDB, AniList, Comic Vine credentials) —
-// split out of igdb.rs, which re-exports these so `crate::igdb::X` paths
-// elsewhere (comicvine.rs, lib.rs's generate_handler!) don't need to change.
+// Env/API-key config, split out of igdb.rs (which re-exports read_env_config).
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use crate::db::ToStringErr;

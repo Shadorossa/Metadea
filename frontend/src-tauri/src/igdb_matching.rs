@@ -1,7 +1,5 @@
-// Game-matching heuristics used to resolve a Steam app_id to the correct
-// IGDB entry — moved out of igdb.rs to shrink that file. Three-stage
-// strategy (Steam ID lookup -> normalized name -> fuzzy similarity), see
-// resolve_igdb_game.
+// Resolves a Steam app_id to an IGDB entry: Steam-ID lookup -> normalized
+// name -> fuzzy similarity (see resolve_igdb_game). Split out of igdb.rs.
 use chrono::Datelike;
 
 use crate::igdb::{
@@ -68,8 +66,7 @@ fn score_candidate(query_norm: &str, candidate_raw: &str) -> f64 {
     score
 }
 
-// Fetch release year from Steam Store API (lightweight basic filter)
-// Returns None on any error or if date is unparseable
+// Release year from Steam's store API; None on error or unparseable date.
 async fn steam_release_year(client: &reqwest::Client, app_id: &str) -> Option<i32> {
     let url = format!(
         "https://store.steampowered.com/api/appdetails?appids={}&filters=basic",
@@ -79,8 +76,7 @@ async fn steam_release_year(client: &reqwest::Client, app_id: &str) -> Option<i3
     let json: serde_json::Value = resp.json().await.ok()?;
     let date_str = json[app_id]["data"]["release_date"]["date"].as_str()?;
 
-    // Formats: "17 Mar, 2017", "2002", "Q4 2023", "Mar 2002"
-    // Extract the last 4-digit number as year
+    // Formats: "17 Mar, 2017", "2002", "Q4 2023", "Mar 2002" — take the 4-digit token.
     let year = date_str
         .split_whitespace()
         .filter_map(|token| {
@@ -116,9 +112,8 @@ fn pick_by_year<'a>(
         .copied()
 }
 
-// Stage 1 of resolve_igdb_game: Steam's own external-game link (category=1
-// is Steam in IGDB) — the most reliable match when it hits, since it's an
-// explicit id mapping rather than a name guess.
+// Stage 1: Steam's own external-game link (category=1 = Steam in IGDB) — an
+// explicit id mapping, most reliable when it hits.
 async fn try_steam_id_match(
     client: &reqwest::Client,
     client_id: &str,
@@ -162,9 +157,8 @@ async fn try_steam_id_match(
     Some((id, game_id, igdb_game))
 }
 
-// Stage 2: among the fuzzy-search results, a normalized-name exact match
-// (ignoring DLC/addons) beats trusting raw search relevance. Steam's own
-// release year disambiguates when more than one title normalizes the same.
+// Stage 2: an exact normalized-name match among fuzzy results beats raw
+// search relevance; Steam's release year breaks ties between duplicates.
 fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
     let norm_matches: Vec<_> = arr
         .iter()
@@ -189,9 +183,8 @@ fn try_normalized_match(arr: &[serde_json::Value], name_norm: &str, steam_year: 
     Some((id, igdb_game_id, igdb_game))
 }
 
-// Stage 3, last resort: fuzzy string similarity against the cleaned query,
-// with a bonus for matching Steam's release year, only accepted above a
-// minimum confidence threshold.
+// Stage 3, last resort: fuzzy string similarity, with a Steam-year bonus,
+// only accepted above a minimum confidence threshold.
 fn try_similarity_match(arr: &[serde_json::Value], name_norm: &str, steam_year: Option<i32>) -> Option<IgdbGameMatch> {
     let best = arr
         .iter()
@@ -228,7 +221,6 @@ pub(crate) async fn resolve_igdb_game(
     app_id: &str,
     game_name: &str,
 ) -> Result<IgdbGameMatch, String> {
-    // For IGDB search: remove symbols AND replace problematic punctuation with spaces
     // "NieR:Automata™" → "NieR Automata", "STEINS;GATE" → "STEINS GATE"
     let search_query = game_name
         .chars()
@@ -242,10 +234,7 @@ pub(crate) async fn resolve_igdb_game(
         .collect::<Vec<_>>()
         .join(" ");
 
-    // Normalized version for comparison after search
     let name_norm = normalize_name(game_name);
-
-    // Fetch Steam release year for disambiguation (runs concurrently with Steam ID lookup)
     let steam_year = steam_release_year(client, app_id).await;
 
     eprintln!(

@@ -210,10 +210,7 @@ pub(crate) fn extract_cover_and_game(
     (cover, game_id, game.clone())
 }
 
-// -- Matching heuristics --------------------------------------------------
-// Moved to igdb_matching.rs; resolve_igdb_game re-exported here so this
-// file's own callers (igdb_get_cover_by_steam_id below) don't need to
-// change their `resolve_igdb_game(...)` call.
+// Matching heuristics moved to igdb_matching.rs.
 use crate::igdb_matching::resolve_igdb_game;
 
 async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {

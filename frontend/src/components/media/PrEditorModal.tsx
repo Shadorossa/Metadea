@@ -10,6 +10,7 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { submitPrEditorChanges } from './pr-editor-submit';
 import { loadPrEditorRelationsAndSaga } from './pr-editor-load';
 import { buildPrEditorChangeSummary } from './pr-editor-change-summary';
+import { mergeResyncFields, buildResyncCharacters, appendResyncRelations } from './pr-editor-resync';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
@@ -384,62 +385,12 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
       const partialFromLive = mapMediaDataToCatalogEntry(liveData, externalId);
 
-      setEntry(prev => {
-        if (!prev) return prev;
-        const updated = { ...prev };
+      setEntry(prev => prev ? mergeResyncFields(prev, partialFromLive) : prev);
 
-        const fieldsToSync: (keyof MediaCatalogEntry)[] = [
-          'title_main', 'title_romaji', 'title_native', 'title_english', 'synopsis',
-          'cover_url', 'banners_csv', 'release_year', 'release_month', 'release_day',
-          'release_end_year', 'release_end_month', 'release_end_day', 'status', 'format',
-          'score_global', 'country_code', 'developer_badge', 'genres_csv', 'genres_tag_csv',
-          'platforms_csv', 'authors_csv', 'publishers_csv', 'shop_links_csv', 'source_url', 'time_length'
-        ];
+      const newCharacters = buildResyncCharacters(liveData, characters.length > 0);
+      if (newCharacters) setCharacters(newCharacters);
 
-        for (const field of fieldsToSync) {
-          const currentVal = prev[field];
-          const liveVal = partialFromLive[field];
-          const isCurrentEmpty = currentVal == null || currentVal === '';
-          if (isCurrentEmpty && liveVal != null && liveVal !== '') {
-            (updated as any)[field] = liveVal;
-          }
-        }
-
-        return updated;
-      });
-
-      if (characters.length === 0 && liveData.characters && liveData.characters.length > 0) {
-        setCharacters(liveData.characters.map(c => ({
-          external_id: c.id,
-          name: c.name,
-          image_url: c.image || null,
-          relation_type: c.role || null,
-        })));
-      }
-
-      if (liveData.relations && liveData.relations.length > 0) {
-        setEditableRelations(prev => {
-          const existingIds = new Set(prev.map(r => r.related_media_external_id));
-          const toAdd: any[] = [];
-
-          for (const r of liveData.relations) {
-            if (r.relatedExternalId && !existingIds.has(r.relatedExternalId)) {
-              existingIds.add(r.relatedExternalId);
-              toAdd.push({
-                media_external_id: externalId,
-                related_media_external_id: r.relatedExternalId,
-                relation_type: r.relationType || 'RELATED',
-                type_label: (CANONICAL_RELATION_LABELS as any)[r.relationType || ''] || r.typeLabel || 'Related',
-                title: r.title || null,
-                cover: r.cover || null,
-                format: r.format || null,
-              });
-            }
-          }
-
-          return [...prev, ...toAdd];
-        });
-      }
+      setEditableRelations(prev => appendResyncRelations(prev, liveData, externalId));
 
       setStatusMsg('Datos oficiales descargados para campos vacíos');
       setTimeout(() => setStatusMsg(''), 3500);

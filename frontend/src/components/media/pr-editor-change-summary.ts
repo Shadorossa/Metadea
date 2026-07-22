@@ -1,8 +1,5 @@
-// buildChangeSummary, split out of PrEditorModal.tsx: a pure formatter that
-// turns the modal's diff state into the "- " bullet list used as the PR
-// body. Takes fully-computed values (the diff object, counts, resolveMeta)
-// rather than the component's own closures — same reasoning as
-// pr-editor-submit.ts's SubmitPrEditorParams.
+// buildChangeSummary, split out of PrEditorModal.tsx: formats the "- " PR
+// body from precomputed values, same reasoning as SubmitPrEditorParams.
 import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
 import type { MediaMeta } from '../../lib/media/sagaGrouping';
 import type { SagaRelationType } from '../../lib/media/sagaTypes';
@@ -41,10 +38,7 @@ export interface BuildChangeSummaryParams {
   mediaAuthorsCount: number;
 }
 
-// Human-readable "- " bullet list of everything this proposal adds or
-// changes, used as the PR body — diffs catalog fields against the entry as
-// it was when the modal opened, plus set-differences for the relation
-// buckets this editor manages (bundled-in, saga order).
+// "- " bullet list of everything this proposal adds or changes, used as the PR body.
 export function buildPrEditorChangeSummary(p: BuildChangeSummaryParams): string {
   const { entry, originalEntry, isFieldChanged, diff: d, resolveMeta, originalEditableRelationTypes, sagaOrder, sagaRelationTypes, sagaName, originalSagaName } = p;
   const lines: string[] = [];

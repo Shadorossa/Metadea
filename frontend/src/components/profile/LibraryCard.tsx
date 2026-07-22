@@ -17,10 +17,7 @@ function fmtDate(iso: string | null | undefined): string {
   return formatDateNumeric(d);
 }
 
-// Matches a single leading emoji (plus an optional variation selector) at the
-// very start of a tag string — e.g. "🎨Arte" → emoji "🎨", name "Arte". Tags
-// are free text (see MediaEditorModal's tag input), so only tags the user
-// actually prefixed with an emoji get a bookmark; plain-text tags are skipped.
+// Leading emoji + optional variation selector, e.g. "🎨Arte" → "🎨" / "Arte". Plain-text tags are skipped.
 const TAG_EMOJI_RE = /^(\p{Extended_Pictographic}️?)(.*)$/u;
 
 function tagBadges(tags: string[] | null | undefined): { emoji: string; label: string }[] {
@@ -39,13 +36,9 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
-  /** Saga's own assigned name (PrEditorModal's "Saga Name" field), shown
-   *  instead of the earliest work's own title when a saga-chain merge found
-   *  one — the bundle's own title_main plays the same role for bundles. */
+  /** Saga's assigned name, shown instead of the earliest work's title. */
   titleOverride?: string;
-  /** True for a saga-chain merge (see refineSagaGroups) — same aggregate
-   *  rating/date-range treatment as a bundle, just without swapping the
-   *  cover (a saga still sits over its first work's own cover). */
+  /** Saga-chain merge (see refineSagaGroups) — aggregate stats without swapping the cover. */
   aggregateStats?: boolean;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
@@ -58,22 +51,14 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
 
-  // Chronological, earliest first — so a saga's flyout reads left to right
-  // in release order (SH1, SH2, SH3, ...) instead of whatever order the
-  // section's own sort (rating/date-finished/duration) happened to leave
-  // them in.
+  // Chronological, earliest first — so a saga's flyout reads in release order.
   const orderedGrouped = [...grouped].sort((a, b) =>
     compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
   );
   const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
 
-  // A bundle or saga-chain card merges every member's own rating/dates
-  // instead of showing just the root's own — there's no single "item" that
-  // represents the whole group's progress. groupBundles' own `grouped`
-  // already includes the representative item itself (it's built by
-  // concatenating every matched sub-group's own item+grouped, one of which
-  // *is* the representative's), while refineSagaGroups' `grouped` is just
-  // "the others" — so only the saga case needs `item` added back in here.
+  // groupBundles' `grouped` already includes the representative item;
+  // refineSagaGroups' `grouped` is just "the others", so only the saga case re-adds `item`.
   const aggregateMembers = bundleMeta ? orderedGrouped : [item, ...orderedGrouped];
   const ratingHtml = isAggregate
     ? formatRatingHtml(averageRating(aggregateMembers), getActiveRatingSystem(), 'library-card-rating')
@@ -89,9 +74,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
 
   const openEditor = () => {
     if (bundleMeta) {
-      // The bundle itself has no library log of its own (it's not something
-      // you "play" — its contents are), so there's nothing to open the
-      // editor for; go to its media page instead, same as clicking the cover.
+      // A bundle has no library log of its own — go to its media page instead.
       window.location.href = mediaUrl;
       return;
     }
@@ -102,14 +85,8 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
 
   return (
     <div className={`library-card-cell${grouped.length > 0 ? ' library-card-cell--stacked' : ''}`}>
-      {/* .library-card-stack-extra is a *sibling* of .library-card, both
-          wrapped in .library-card-cell, instead of a child of the card
-          itself. The card needs overflow:hidden permanently (it clips its
-          own blurred cover background) — toggling that off on hover so the
-          flyout could escape also un-clipped the blur, making the card
-          visibly wider than its column on every hover, grouped or not. The
-          wrapper carries overflow:visible instead, and has no painted
-          content of its own to worry about clipping. */}
+      {/* stack-extra is a sibling of .library-card, not a child — the card needs
+          overflow:hidden permanently (clips its blurred bg), so the flyout escapes via the wrapper instead. */}
       <div className="library-card" data-id={item.external_id} onClick={openEditor}>
         {cover && <div className="library-card-bg"><img className="library-card-bg-img" src={cover} alt="" /></div>}
         {grouped.length > 0 && (
@@ -139,10 +116,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
         </div>
       </div>
       {grouped.length > 0 && (
-        // Hidden until hover (see .library-card--stacked:hover in
-        // profile.css) — a peek at exactly what's collapsed under the "+N"
-        // badge, sliding out to the right instead of making the user guess
-        // from the badge's tooltip alone.
+        // Hidden until hover (.library-card--stacked:hover in profile.css) — a peek at the "+N" badge's contents.
         <div className="library-card-stack-extra">
           {orderedGrouped.map(g => {
             const gMeta = catalogMap.get(g.external_id);

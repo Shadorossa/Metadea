@@ -1,5 +1,4 @@
-// OpenLibrary editions ('Ediciones' tab) — split out of mediaService.ts to
-// keep that file to fetch orchestration.
+// OpenLibrary editions ('Ediciones' tab), split out of mediaService.ts.
 import { fetchOpenLibEditions, openLibCoverUrl, bookIdFromWorkKey } from '../search/providers/openlibrary';
 import type { OpenLibEdition } from '../search/providers/openlibrary';
 import type { MediaPageData } from './types';
@@ -23,8 +22,8 @@ function editionsToRelations(editions: OpenLibEdition[], label: string): MediaPa
   return result;
 }
 
-// Background fetch: all editions for a book, merged with existing relations.
-// Same pattern as fetchExtraRelations for games.
+// All editions for a book, merged with existing relations (same pattern as
+// fetchExtraRelations for games).
 export async function fetchBookEditions(
   rawId: string,
   currentRelations: MediaPageData['relations'],

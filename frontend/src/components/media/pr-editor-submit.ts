@@ -1,10 +1,7 @@
 // handleSubmit's I/O sequence, split out of PrEditorModal.tsx: builds the
-// saga-chain relation edges, persists everything locally, propagates
-// reciprocal relations to bundled/contained/chain members, and (in
-// 'proposal' mode) submits the GitHub PR. Takes fully-computed diff values
-// (editedFields/changeSummary/sagaChanged/charactersChanged) rather than the
-// component's own diff closures, so this function has no hidden dependency
-// on component state beyond what's passed in.
+// saga-chain edges, persists locally, propagates reciprocal relations, and
+// (in 'proposal' mode) submits the GitHub PR. Takes precomputed diff values
+// instead of the component's own closures.
 import { invoke } from '../../lib/tauri';
 import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../lib/tauri/catalog';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
@@ -19,16 +16,9 @@ import { REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../lib/media/sagaTypes';
 import type { BundledRelation, EditableRelation } from './PrEditorModal';
 
-// Every user's local catalog can carry a different, auto-fetched snapshot of
-// the same work (synopsis/genres/platforms/score are all just whatever the
-// live API happened to return whenever this install last synced) — none of
-// that is a curator decision worth proposing, and different users uploading
-// their own random subset of it would make the shared catalog inconsistent
-// for no reason (every install re-fetches those fields from the live API on
-// its own anyway). A proposal's media_catalog only ever needs enough to
-// identify the row (id/external_id/type/title_main/source) plus whichever
-// fields the user actually hand-edited — `editedFields` — so the GitHub diff
-// reads as "here's what I curated", not "here's my whole local cache".
+// A proposal only needs enough to identify the row plus whatever the user
+// actually hand-edited (`editedFields`) — auto-fetched fields (synopsis,
+// score, ...) would just make the shared catalog inconsistent across users.
 function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: readonly (keyof MediaCatalogEntry)[]): MediaCatalogEntry {
   const minimal: MediaCatalogEntry = {
     id: entry.id,
@@ -38,10 +28,7 @@ function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: rea
     source: entry.source,
     created_at: entry.created_at,
     updated_at: entry.updated_at,
-    // A block decision is always a deliberate curator action, never
-    // auto-fetched — carried over unconditionally like the identity fields,
-    // independent of whether it happens to be in `editedFields`.
-    blocked_at: entry.blocked_at,
+    blocked_at: entry.blocked_at, // always a deliberate curator action, never auto-fetched
   };
   for (const field of editedFields) {
     (minimal as any)[field] = entry[field];
@@ -49,18 +36,9 @@ function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: rea
   return minimal;
 }
 
-// Builds a self-contained GitHub proposal file for a saga member other than
-// the one actually open in the editor — same shape as the primary entry's
-// own bundle, just carrying only that member's own relations instead of a
-// snapshot of the whole saga. Never edited by hand here — only its relations
-// were touched — so its own media_catalog carries no scalar fields beyond
-// identity.
 // Last write wins per (related_media_external_id, relation_type) — the saga
-// chain's freshly-resolved rows are always concatenated last, so they win
-// over a stale editable/existing row for the same pair. Needed because the
-// local DB's PK on media_relations drops relation_type entirely, silently
-// collapsing whatever arrives last — this keeps the same collapse visible
-// and deterministic before it ever reaches a saved proposal bundle.
+// chain's freshly-resolved rows are concatenated last, so they win over a
+// stale editable/existing row for the same pair.
 function dedupeRelations(relations: DbMediaRelation[]): DbMediaRelation[] {
   const byKey = new Map<string, DbMediaRelation>();
   for (const rel of relations) {
@@ -69,6 +47,8 @@ function dedupeRelations(relations: DbMediaRelation[]): DbMediaRelation[] {
   return [...byKey.values()];
 }
 
+// Self-contained proposal bundle for a saga member other than the one open
+// in the editor — only its relations changed, so no scalar catalog fields.
 function buildRelatedProposalBundle(
   externalId: string,
   catalogEntry: MediaCatalogEntry,
@@ -126,12 +106,8 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
 
   const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, p.sagaMeta);
 
-  // sagaOrder is the whole saga's chronological order (this entry included)
-  // — classifySagaChain clusters it into groups (main/alternative ids
-  // sharing a Concept Group name) and standalone source/episode/update
-  // entries. Walked pairwise, every adjacent *group* produces a SEQUEL edge
-  // (earlier → later) and a PREQUEL edge (later → earlier) — for every id in
-  // the chain, not just the one currently open in the editor.
+  // classifySagaChain clusters sagaOrder into groups + standalone entries;
+  // walked pairwise below, every adjacent group gets a SEQUEL/PREQUEL edge.
   const fullChain = p.sagaOrder;
   const classified = classifySagaChain(fullChain, p.sagaRelationTypes, p.sagaGroups);
   const groups = classified.filter(e => e.kind === 'group');
@@ -159,12 +135,9 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     }
   }
 
-  // 2. Alternative relations within each group. The trailing "#N" in
-  // type_label is each side's own position within group.ids (which mirrors
-  // the exact drag order the user just set) — there's no SEQUEL/PREQUEL edge
-  // between two alternates, so without this hint reconstructSagaOrder had
-  // nothing but release date to break the tie between them on next load,
-  // silently reverting any manual reorder within a Concept Group.
+  // 2. Alternative relations within each group. The "#N" in type_label is
+  // each side's position within group.ids, so reconstructSagaOrder can
+  // recover a manual reorder instead of falling back to release date.
   for (const group of groups) {
     const mainIndex = group.ids.indexOf(group.mainId);
     for (const altId of group.ids) {
@@ -185,9 +158,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     addReciprocalPair(lastGroupMainId, e.mainId, mainToItem, itemToMain);
   }
 
-  // Local SagaViewer cache (separate feature/table from media_relations
-  // above) — still gets the full ordered chain so grouping/browsing keeps
-  // working exactly as before.
+  // Local SagaViewer cache (separate from media_relations) still gets the full ordered chain.
   if (fullChain.length > 1) {
     const chain: SagaEntry[] = fullChain.map(id => id === externalId ? {
       externalId,
@@ -241,10 +212,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       cover: r.cover ?? null,
     }));
 
-  // Current entry: Editable Relations + Bundled In + its own slice of the
-  // chain-derived edges. Editable Relations already carries every
-  // pre-existing relation that isn't part of the saga chain, so nothing else
-  // needs to pass through untouched.
+  // Editable Relations already carries every pre-existing relation outside the saga chain.
   const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
   const currentFinalRelations: DbMediaRelation[] = dedupeRelations(
     [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows]
@@ -260,23 +228,14 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   await invoke('save_media_saga_groups', { groups: p.sagaGroups })
     .catch(err => console.error('Failed to save local saga groups:', err));
 
-  // Every other entry in the chain also needs its own new prequel/sequel edge
-  // written locally — fetch its existing relations first so this only
-  // replaces the specific chain-managed edges pointing at something inside
-  // this chain, keeping everything else untouched. Also covers entries just
-  // *removed* from the saga (union with originalSagaOrder): their own row
-  // still carries the old SEQUEL/PREQUEL/ALTERNATIVE edges back into the
-  // chain, and get_transitive_relation_ids walks relations from every owner
-  // — so a removed film's stale reciprocal edge alone was enough to pull it
-  // right back into the saga next time. Only runs when the saga itself
-  // actually changed, not on every single save.
+  // Every other chain member gets its chain-managed edges rewritten too — union
+  // with originalSagaOrder so a just-removed member's stale reciprocal edge
+  // doesn't pull it back into the saga via get_transitive_relation_ids.
   const otherChainIds = p.sagaChanged
     ? [...new Set([...fullChain, ...p.originalSagaOrder].filter(id => id !== externalId))]
     : [];
 
-  // Each saga member gets its own self-contained proposal file, collected
-  // here as the loop touches each one locally, so the same GitHub PR also
-  // carries every other affected member's own updated relations.
+  // Each saga member gets its own proposal file, so the same PR carries every affected member's update.
   const otherProposalEntries: { externalId: string; bundle: ProposalBundle }[] = [];
   for (const otherId of otherChainIds) {
     try {
@@ -288,10 +247,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const otherRelations = dedupeRelations([...kept, ...newRows]);
       await saveMediaRelations(otherId, otherRelations);
 
-      // saveMediaRelations above already tombstoned (in deleted_relations)
-      // any pair that was in `existing` but dropped from `otherRelations` —
-      // that's what stops a live resync on this member from silently
-      // reintroducing exactly what was just removed here.
+      // saveMediaRelations already tombstoned any dropped pair, so a resync won't reintroduce it.
       const otherEntry = await getCatalogEntry(otherId).catch(() => null);
       if (otherEntry && mode !== 'local') {
         otherProposalEntries.push(
@@ -303,9 +259,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     }
   }
 
-  // Bundled In is reciprocal: the target needs an EPISODE relation pointing
-  // back here. Re-synced each save so removing an entry also removes its
-  // reciprocal side.
+  // Bundled In is reciprocal: the target needs an EPISODE relation back here, re-synced each save.
   const currentBundledIds = new Set(p.bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
   const bundledTargetsToSync = new Set([...currentBundledIds, ...p.originalBundledIds]);
   for (const targetId of bundledTargetsToSync) {
@@ -330,8 +284,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     }
   }
 
-  // Same reciprocity, opposite direction: Contains needs a PART_OF relation
-  // written back on each child.
+  // Same reciprocity, opposite direction: Contains needs a PART_OF relation on each child.
   const currentContainedIds = new Set(p.containedRelations.map(r => r.external_id.trim()).filter(Boolean));
   const containedTargetsToSync = new Set([...currentContainedIds, ...p.originalContainedIds]);
   for (const childId of containedTargetsToSync) {
@@ -365,20 +318,14 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   if (p.onSaved) p.onSaved();
 
   if (mode === 'local') {
-    // Everything above already wrote straight to the local DB — the admin
-    // catalog panel doesn't propose anything upstream.
+    // Already wrote straight to the local DB — nothing to propose upstream.
     p.setStatusMsg('Guardado en la base de datos local.');
     setTimeout(() => p.onClose(), 1000);
     return;
   }
 
-  // The PR touches more than the flat catalog row — it's a bundle so this
-  // entry's own collaborative-catalog file also carries its characters,
-  // authors, and relations into the shared community database. Saga-chain
-  // edges pointing at *other* members no longer ride along here — each
-  // affected member gets its own self-contained file instead (see
-  // otherProposalEntries above). Only the catalog fields actually hand-
-  // edited in this session go along — see minimalProposalCatalogEntry.
+  // Saga-chain edges pointing at other members ride in otherProposalEntries
+  // instead; only hand-edited catalog fields go along (minimalProposalCatalogEntry).
   const bundle: ProposalBundle = {
     media_catalog: minimalProposalCatalogEntry(entry, p.editedFields),
     media_relations: currentFinalRelations.map(r => ({ ...r, media_external_id: externalId })),
