@@ -1,10 +1,6 @@
-// Everything about the saga chain: the editor's cached chain (SagaEntry /
-// get_cached_saga / save_cached_saga), the admin panel's saga list
-// (SagaListEntry / build_saga_list / get_all_sagas / get_community_sagas /
-// delete_saga), and small lookups other features need (get_transitive_relation_ids,
-// get_saga_name / get_saga_names). Split out of media_catalog.rs, which had
-// grown to cover catalog CRUD, relations, authors, community sync, and
-// proposal-bundle import all in one 2400+ line file.
+// Saga chain: editor cache (SagaEntry/get_cached_saga/save_cached_saga),
+// admin panel list (SagaListEntry/build_saga_list/get_all_sagas/
+// get_community_sagas/delete_saga), and small shared lookups.
 use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
@@ -108,22 +104,12 @@ pub async fn get_cached_saga(
     }
 }
 
-// Computes saga_relations.order_index for `chain_ids` (front-to-back, the
-// editor's current sagaOrder), keeping every id's existing value where one is
-// known and only computing new ones — so re-saving a saga after a trivial
-// edit (renaming, adding an unrelated relation) doesn't reshuffle order
-// values that a human may have already fine-tuned via drag-reorder.
-//
-// - No existing values at all (brand-new saga): sequential starting at 100.
-// - New ids at either end of the chain: extend by whole steps (±1) from the
-//   nearest known anchor.
-// - A new id inserted between two already-anchored ones: the fractional
-//   midpoint between them (evenly spaced if several new ids land in the same
-//   gap) — this is the "use decimals to insert between" case.
-// - If the existing anchors are no longer in ascending order relative to
-//   their new chain position (a manual drag-reorder crossed them), that's
-//   treated as a deliberate reorder: the whole chain is renumbered fresh from
-//   100, restoring clean gaps instead of trying to patch around it.
+// order_index per id in `chain_ids` (front-to-back): keeps existing values,
+// extends either end by whole steps from the nearest anchor, and gives a
+// newly-inserted-between id the fractional midpoint of its neighbors — so a
+// drag-reorder never forces renumbering the rest of the saga. Anchors out of
+// order relative to the new chain position (a real reorder) do trigger a
+// full renumber from 100.
 fn assign_saga_order_indices(chain_ids: &[String], existing: &std::collections::HashMap<String, f64>) -> std::collections::HashMap<String, f64> {
     let mut result = std::collections::HashMap::new();
 
@@ -233,9 +219,8 @@ pub async fn save_cached_saga(
     let all_ids: Vec<String> = entries.iter().map(|e| e.external_id.clone()).collect();
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
 
-    // Read any order_index these ids already carry (regardless of which
-    // saga_id they currently sit under — an anchor shift shouldn't reset a
-    // human-curated order) before the delete below wipes the rows.
+    // Existing order_index across any saga_id (an anchor shift shouldn't
+    // reset it), read before the delete below wipes the rows.
     let existing_order: std::collections::HashMap<String, f64> = {
         let sql = format!(
             "SELECT media_external_id, order_index FROM saga_relations
@@ -409,19 +394,11 @@ pub struct SagaListEntry {
     pub members: Vec<SagaMemberEntry>,
 }
 
-// Shared by get_all_sagas (table_prefix "") and get_community_sagas
-// (table_prefix "ghsagas.") — both read the saga list the exact same way:
-// computed from the real, always-reciprocal PREQUEL/SEQUEL graph in
-// media_relations, never from sagas/saga_relations directly, since that
-// bookkeeping can be fragmented into one single-member row per work (see
-// merge_fragmented_sagas in db.rs for why). A downloaded community.db is
-// exactly as likely to still carry that fragmentation as the local install
-// was before migration 22, so github's own listing needs the same fix, not
-// just a trust-the-file read the way the media/character tabs get away with.
-// ALTERNATIVE is deliberately not part of this graph — it links alternate
-// versions/adaptations (remakes, source material, gaidens), not numbered
-// story continuations, and pulling it in merged unrelated entries into the
-// same saga.
+// Shared by get_all_sagas ("") and get_community_sagas ("ghsagas."): computed
+// live from the reciprocal PREQUEL/SEQUEL graph, never trusting
+// sagas/saga_relations directly (can be fragmented — see merge_fragmented_sagas
+// in db.rs). ALTERNATIVE is excluded — it links alternate versions/adaptations,
+// not numbered continuations, and would merge unrelated entries into one saga.
 fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite::Result<Vec<SagaListEntry>> {
     let mut parent: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     {
@@ -496,14 +473,9 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
         }
     }
 
-    // Manually-curated order (see save_cached_saga's assign_saga_order_indices)
-    // — takes priority over the release-date sort below, but only when EVERY
-    // visible member of a given saga has one; a mix (e.g. one new member
-    // added via pure graph reconciliation, never touched in the editor) falls
-    // back to the date sort entirely rather than interleaving two different
-    // orderings. order_index is newer than the sagas table in some older
-    // community snapshots — tolerate a missing-column prepare error the same
-    // way the name lookup above does.
+    // Manual order_index wins over the date sort below, but only when EVERY
+    // visible member has one — a mix (e.g. a graph-only reconciled member)
+    // falls back entirely to the date sort rather than interleaving both.
     let mut order_hints: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     {
         let sql = format!(

@@ -93,25 +93,15 @@ pub(crate) fn union_find_merge(parent: &mut std::collections::HashMap<String, St
     }
 }
 
-// A saga's own bookkeeping (sagas/saga_relations) can end up fragmented into
-// several single-member rows for what's really one connected saga — the
-// collaborative-catalog PR pipeline (scripts/build-database.js and this same
-// bug's Rust twin, import_proposal_bundle) computes each saga PR file's own
-// "owners" from *that file's own* media_relations rows only, which for a
-// saga's "other member" proposal file (see buildRelatedProposalBundle in
-// pr-editor-submit.ts) is always just that one member — anchoring a
-// brand-new single-member saga instead of joining the real one. Rather than
-// trust that bookkeeping, this rebuilds it from the actual, always-reciprocal
-// PREQUEL/SEQUEL graph in media_relations: connected components there are the
-// real sagas, regardless of how sagas/saga_relations got left. ALTERNATIVE is
-// deliberately excluded here — unlike a numbered sequel/prequel, it links
-// alternate versions/adaptations that aren't the same story continuation, and
-// including it was pulling unrelated entries (remakes, source adaptations,
-// gaidens) into the same saga.
-// Called both as a one-time migration (existing local corruption) and at the
-// end of every sync_community_catalog (the downloaded database.db can carry
-// the exact same fragmentation until scripts/build-database.js's own fix
-// reaches a rebuilt release).
+// sagas/saga_relations can fragment into one single-member row per work (the
+// PR pipeline anchors each proposal file's own "owners" independently — see
+// buildRelatedProposalBundle in pr-editor-submit.ts). Rebuilds it instead from
+// the real PREQUEL/SEQUEL graph in media_relations — connected components
+// there are the real sagas. ALTERNATIVE is excluded: it links alternate
+// versions/adaptations, not story continuations, and would merge unrelated
+// entries in. Runs as a one-time migration and at the end of every
+// sync_community_catalog (a downloaded database.db can carry the same
+// fragmentation until build-database.js's own fix reaches a rebuilt release).
 pub fn merge_fragmented_sagas(conn: &Connection) -> SqlResult<()> {
     let mut parent: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     {
@@ -479,17 +469,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 22)?;
     }
     if v < 23 {
-        // media_saga_groups persisted "alternate version" clustering as a
-        // real table, but nothing besides PrEditorModal's own reload ever
-        // needed it — and it's fully re-derivable from ALTERNATIVE edges in
-        // media_relations, which are already durable. Dropped in favor of
-        // that live derivation (see pr-editor-load.ts). order_index gives
-        // saga_relations a manually-editable position — see its own doc
-        // comment above for the "start at 100, use decimals to insert
-        // between" convention. The table drop itself lives in
-        // vestigial_cleanup.rs, the one file for "delete this leftover from
-        // users' local .db" — keeps this migration list about schema changes
-        // the app still relies on, not one-off teardowns of dead features.
+        // media_saga_groups is superseded — re-derivable live from
+        // ALTERNATIVE edges (pr-editor-load.ts), drop lives in
+        // vestigial_cleanup.rs. order_index adds a manual saga position
+        // (see saga_relations' own doc comment).
         crate::vestigial_cleanup::drop_media_saga_groups(conn);
         let _ = conn.execute("ALTER TABLE saga_relations ADD COLUMN order_index REAL", []);
         mark_migration(conn, 23)?;
@@ -717,14 +700,10 @@ CREATE TABLE IF NOT EXISTS sagas (
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
--- order_index is a manually-editable position within the saga (see
--- assign_saga_order_indices in media_catalog.rs) — new chains start at 100
--- with room to prepend earlier entries below it, and an entry inserted
--- between two already-ordered ones gets the fractional midpoint between
--- them instead of forcing a renumber of the whole saga. NULL for any row
--- never touched by the editor (e.g. purely graph-reconciled via
--- merge_fragmented_sagas) — build_saga_list falls back to release-date
--- order for those.
+-- order_index: manual saga position (see assign_saga_order_indices in
+-- sagas.rs) — new chains start at 100, inserts between two ordered entries
+-- get the fractional midpoint. NULL when never touched by the editor;
+-- build_saga_list then falls back to release-date order.
 CREATE TABLE IF NOT EXISTS saga_relations (
     media_external_id TEXT NOT NULL,
     saga_id           TEXT NOT NULL,

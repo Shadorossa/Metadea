@@ -4,24 +4,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use crate::db::ToStringErr;
 
-// Fixed GitHub Release asset for the repo's shared community catalog —
-// rebuilt by .github/workflows/update-database.yml (scripts/build-database.js)
-// from every database/*.json a merged collaborative-catalog PR has added, and
-// republished to the 'catalog-latest' release (asset overwritten in place)
-// on every run. A Release asset instead of a branch-tracked raw file on
-// purpose — committing the rebuilt .db straight to main on every merge would
-// grow the repo's git history by a near-full binary copy forever, with no
-// ceiling, at any real proposal volume. Shared across sagas.rs and
-// community_sync.rs (both download this same asset).
+// Rebuilt-in-place GitHub Release asset (scripts/build-database.js), not a
+// branch-tracked file — a branch commit would bloat git history with a
+// near-full binary copy on every merge.
 pub(crate) const COMMUNITY_DB_URL: &str = "https://github.com/Shadorossa/Metadea/releases/download/catalog-latest/database.db";
 
-// Batch existence check used by save_cached_saga / save_media_relations /
-// save_author_profile_and_relations — each used to run one
-// "SELECT EXISTS(...)" query per row inside its loop (N+1 against SQLite for
-// an author with dozens of works, or a long saga). One IN-query up front is
-// enough since every caller here only needs a yes/no per id, not row data.
-// pub(crate): used from sagas.rs, media_relations.rs, media_authors.rs, and
-// proposal_bundle.rs.
+// One IN-query instead of N+1 SELECT EXISTS per row.
 pub(crate) fn existing_catalog_ids(
     tx: &rusqlite::Transaction,
     ids: &[String],
@@ -44,29 +32,11 @@ pub(crate) fn existing_catalog_ids(
     Ok(found)
 }
 
-// The "type" half of a raw external_id (e.g. "anime:12345" -> "anime"),
-// used to fill in the `type` column of a stub media_catalog row created
-// for a relation target we haven't cataloged yet. split_once (not
-// split().next(), which always yields at least one item and made the
-// "anime" fallback unreachable) so a colon-less id actually falls back to
-// "anime" instead of using the whole id string as the type. Shared by
-// save_media_relations / save_author_profile_and_relations /
-// import_proposal_bundle, which used to each carry their own copy.
-// The saga chain (get_transitive_relation_ids' recursive CTE) only walks
-// forward via a row's own media_external_id column, so every link needs its
-// own outgoing edge — a PREQUEL saved on one side without the matching
-// SEQUEL on the other silently breaks traversal partway through the saga.
-// PrEditorModal already wrote both sides by hand (see REL_TYPE_TO_PAIR /
-// its own SEQUEL+PREQUEL pair) but that only covered its own manual-save
-// path; every other writer (a plain page view re-syncing relations from a
-// live API fetch) saved one-sided edges. Centralizing it here means any
-// current or future caller of save_media_relations/import_proposal_bundle
-// gets the reciprocal edge for free.
-//
-// INSERT OR IGNORE (not REPLACE) at the call site — a curator may have
-// deliberately classified the other side differently (e.g. SIDE_STORY
-// instead of a plain SEQUEL), and a live API re-fetch must not clobber that.
-// pub(crate): used from media_relations.rs and proposal_bundle.rs.
+// The other side's edge (SEQUEL<->PREQUEL, etc.) — get_transitive_relation_ids'
+// recursive CTE only walks forward via media_external_id, so a one-sided
+// write silently breaks traversal partway through a saga. Callers use
+// INSERT OR IGNORE with this, not REPLACE: a curator may have deliberately
+// classified the other side differently (e.g. SIDE_STORY over plain SEQUEL).
 pub(crate) fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, &'static str)> {
     match relation_type {
         "SEQUEL"     => Some(("PREQUEL", "Prequel")),
@@ -79,8 +49,8 @@ pub(crate) fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, 
     }
 }
 
-// pub(crate): used from media_relations.rs, media_authors.rs, and
-// proposal_bundle.rs.
+// external_id's own prefix as its type (e.g. "anime:123" -> "anime");
+// colon-less ids fall back to "anime".
 pub(crate) fn infer_type_from_id(external_id: &str) -> String {
     external_id
         .split_once(':')
@@ -89,14 +59,8 @@ pub(crate) fn infer_type_from_id(external_id: &str) -> String {
         .to_string()
 }
 
-// A skeleton stub row (created for a relation/author target not yet
-// cataloged locally) still knows exactly where it came from — the provider
-// is implied by the external_id's own type prefix, same as cover/title/
-// source are implied for any other skeleton entry. Mirrors the source
-// string each mapper itself writes (anilist-mapper.ts, tmdb-mapper.ts,
-// igdb-mapper.ts, openlibrary-mapper.ts, comicvine-mapper.ts).
-// pub(crate): used from sagas.rs, media_relations.rs, media_authors.rs, and
-// proposal_bundle.rs.
+// A stub row's source, inferred from its type prefix — mirrors the source
+// string each live mapper writes (anilist/tmdb/igdb/openlibrary/comicvine).
 pub(crate) fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
     match infer_type_from_id(external_id).as_str() {
         "anime" | "manga" | "lnovel" => Some("anilist"),
@@ -165,13 +129,8 @@ const SELECT_ALL: &str = "
            type, created_at, updated_at
     FROM media_catalog";
 
-// Same as SELECT_ALL but excluding blocked rows — used by every read path
-// that isn't a direct "look up this exact id" lookup (search, browse,
-// relations, saga chains) so a blocked entry stays invisible everywhere
-// except the editor used to block/unblock it. Backed by the
-// visible_media_catalog view (db.rs) rather than repeating "blocked_at IS
-// NULL" here and in every query that joins against media_catalog elsewhere
-// in this file.
+// Same as SELECT_ALL but excludes blocked rows (visible_media_catalog view,
+// db.rs) — used by every read path except a direct id lookup.
 const SELECT_VISIBLE: &str = "
     SELECT id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
            developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
@@ -324,26 +283,13 @@ pub async fn save_catalog_entry(
         ],
     ).str_err()?;
 
-    // authors_csv is a flat name-only display cache (see MediaPage.tsx) — the
-    // real author relations (id, image, role, url) go through save_media_authors
-    // / save_author_profile_and_relations into media_author/media_by_author.
-    // This used to also parse authors_csv here and re-derive relational rows
-    // from it, which (a) produced garbage names for any external_id containing
-    // a colon (e.g. OpenLibrary's "author:/authors/OL123A" — split(':').nth(1)
-    // returned the OpenLibrary key, not a name) and (b) wiped every real
-    // author relation whenever authors_csv was empty, since the DELETE ran
-    // unconditionally before the (then no-op) insert loop.
-
+    // authors_csv is just a flat display cache (MediaPage.tsx) — real author
+    // relations go through save_media_authors/save_author_profile_and_relations.
     Ok(entry)
 }
 
-// Records a failed live re-sync attempt without touching any other column —
-// unlike save_catalog_entry (INSERT OR REPLACE against the full row), a
-// failed fetch has no fresh data to write, so this only bumps the failure
-// counter/message on whatever's already there. No-ops silently if the row
-// doesn't exist yet (a cold first-visit failure has nothing to attach to;
-// the next visit just retries since needsResync() treats a missing
-// last_synced_at as always due).
+// Bumps the failure counter/message only — unlike save_catalog_entry, a
+// failed fetch has no fresh row data to write.
 #[tauri::command]
 pub async fn mark_catalog_sync_failed(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -361,11 +307,8 @@ pub async fn mark_catalog_sync_failed(
     Ok(())
 }
 
-// Narrow update for genres/tags discovered by a background fetch after the
-// initial page render (Comic Vine's concepts, aggregated across every issue)
-// — unlike save_catalog_entry (INSERT OR REPLACE against the full row), this
-// only touches genres_csv/genres_tag_csv so it can't clobber every other
-// column with stale/default values from a partial in-memory snapshot.
+// Narrow update for genres/tags discovered by a background fetch (Comic
+// Vine's aggregated concepts) — touches only these two columns.
 #[tauri::command]
 pub async fn update_catalog_genres(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -384,12 +327,8 @@ pub async fn update_catalog_genres(
     Ok(())
 }
 
-// Lightweight id-only set for filtering — a live API fetch's raw
-// relations/recommendations have no idea a given related title was blocked
-// (hidden) locally via the collaborative-catalog editor, so the frontend
-// needs this to strip blocked entries out of `data.relations` before ever
-// showing them, not just rely on DB-backed reads (get_media_relations)
-// already excluding them via visible_media_catalog.
+// Lets the frontend strip blocked entries out of a live API fetch's raw
+// relations, which have no idea a title was blocked locally.
 #[tauri::command]
 pub async fn get_blocked_external_ids(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -470,15 +409,10 @@ fn row_to_health_entry(row: &rusqlite::Row) -> rusqlite::Result<CatalogHealthEnt
     })
 }
 
-// Admin/maintenance check for Settings > Entorno's "Detectar duplicados y
-// huérfanos" button — read-only, doesn't touch anything. An "orphan" is a
-// catalog row nothing else in the DB points to at all (not in the user's
-// own library/lists/tiers, not part of any relation/saga/character
-// appearance, not another row's parent) — safe to review for deletion via
-// the existing delete_catalog_entry. A "duplicate" is two or more rows
-// sharing the same (normalized title, type) — likely the same work
-// cataloged twice under different external_ids (e.g. from two different
-// source providers) — flagged for manual review only, never auto-merged.
+// Settings > Entorno's "Detectar duplicados y huérfanos" — read-only.
+// Orphan: nothing else in the DB references this row. Duplicate: two+ rows
+// share the same (normalized title, type), e.g. cataloged twice under
+// different external_ids. Flagged for manual review only, never auto-merged.
 #[tauri::command]
 pub async fn find_catalog_health_issues(
     state: tauri::State<'_, crate::db::MetadeaDb>,

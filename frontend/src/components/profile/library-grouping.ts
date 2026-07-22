@@ -181,12 +181,8 @@ export function refineSagaGroups<T extends { external_id: string }>(
     union(a, b);
   }
 
-  // A work that's part of a bundle (either side of an EPISODE/PART_OF
-  // relation — container or child) never joins a saga cluster, regardless of
-  // whether "Agrupar por bundle" actually collapsed it into a bundleMeta card
-  // right now: the two filters are independently toggleable, so a bundle
-  // member with groupByBundle off would otherwise still have no bundleMeta
-  // and get swept into a saga group it doesn't belong in.
+  // A bundle member (either side of EPISODE/PART_OF) never joins a saga
+  // cluster, even with "Agrupar por bundle" off (bundleMeta unset then).
   const bundleParticipantIds = new Set<string>();
   for (const rel of relations) {
     if (!rel.media_external_id || !CONTAINS_RELATION_TYPES.includes(rel.relation_type)) continue;
