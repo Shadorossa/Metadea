@@ -2250,22 +2250,29 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
     let all_member_ids: Vec<String> = components.values().flatten().cloned().collect();
     let placeholders = all_member_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
 
-    let mut info: std::collections::HashMap<String, (Option<String>, Option<String>)> = std::collections::HashMap::new();
+    // (title, cover, release_year, release_month, release_day) — the date
+    // fields drive member ordering below (chronological, not lexicographic
+    // by external_id, which happened to look right for some sagas but put
+    // others in a scrambled order unrelated to release sequence).
+    type MemberInfo = (Option<String>, Option<String>, Option<i64>, Option<i64>, Option<i64>);
+    let mut info: std::collections::HashMap<String, MemberInfo> = std::collections::HashMap::new();
     {
         // Excludes locally-blocked entries here (not from `components` itself)
         // so a blocked member just quietly drops out of the list below, the
         // same way visible_media_catalog used to filter get_all_sagas.
         let sql = format!(
-            "SELECT mc.external_id, mc.title_main, mc.cover_url
+            "SELECT mc.external_id, mc.title_main, mc.cover_url, mc.release_year, mc.release_month, mc.release_day
              FROM {table_prefix}media_catalog mc
              WHERE mc.external_id IN ({placeholders})
                AND NOT EXISTS (SELECT 1 FROM blocked_media_catalog b WHERE b.external_id = mc.external_id)"
         );
         let mut stmt = conn.prepare(&sql)?;
         let params = rusqlite::params_from_iter(all_member_ids.iter());
-        let rows = stmt.query_map(params, |r| Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?)))?;
-        for (id, title, cover) in rows.filter_map(|r| r.ok()) {
-            info.insert(id, (title, cover));
+        let rows = stmt.query_map(params, |r| {
+            Ok((r.get::<_, String>(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
+        })?;
+        for (id, title, cover, year, month, day) in rows.filter_map(|r| r.ok()) {
+            info.insert(id, (title, cover, year, month, day));
         }
     }
 
@@ -2289,14 +2296,27 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
     for members in components.values() {
         let mut visible: Vec<&String> = members.iter().filter(|id| info.contains_key(*id)).collect();
         if visible.len() < 2 { continue; }
-        visible.sort();
 
-        let canonical = visible[0].clone();
-        let name = visible.iter().find_map(|id| names.get(*id).cloned()).unwrap_or_default();
+        // Anchor id keeps the established "lexicographically smallest
+        // external_id" convention (matches save_cached_saga/merge_fragmented_sagas),
+        // but display order is chronological by release date, with the id as
+        // a tiebreak for missing/equal dates — undated entries sort last.
+        let canonical = visible.iter().min().map(|s| (*s).clone()).unwrap();
+        visible.sort_by(|a, b| {
+            let da = &info[*a];
+            let db = &info[*b];
+            let key_a = (da.2.unwrap_or(i64::MAX), da.3.unwrap_or(13), da.4.unwrap_or(32));
+            let key_b = (db.2.unwrap_or(i64::MAX), db.3.unwrap_or(13), db.4.unwrap_or(32));
+            key_a.cmp(&key_b).then_with(|| a.cmp(b))
+        });
+
+        let name = names.get(&canonical).cloned()
+            .or_else(|| visible.iter().find_map(|id| names.get(*id).cloned()))
+            .unwrap_or_default();
 
         let mut entry = SagaListEntry { id: canonical.clone(), name, anchor_title: None, anchor_cover: None, members: Vec::new() };
         for member_id in &visible {
-            let (title, cover) = info.get(*member_id).cloned().unwrap_or((None, None));
+            let (title, cover, ..) = info.get(*member_id).cloned().unwrap_or((None, None, None, None, None));
             if **member_id == canonical {
                 entry.anchor_title = title.clone();
                 entry.anchor_cover = cover.clone();
