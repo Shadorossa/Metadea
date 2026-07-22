@@ -16,24 +16,6 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Inazuma Eleven 2: Blizzard",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg",
-      "format": null
-    },
-    {
-      "media_external_id": "game:47676",
-      "related_media_external_id": "game:47835",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Inazuma Eleven 2: Firestorm",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg",
-      "format": null
-    },
-    {
-      "media_external_id": "game:47676",
-      "related_media_external_id": "game:47716",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Inazuma Eleven 2: Blizzard",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407n.jpg"
     },
     {
@@ -66,31 +48,23 @@
       "relation_type": "ALTERNATIVE",
       "type_label": "Alternative Version #0",
       "title": "Inazuma Eleven 3: Lightning Bolt",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg"
-    },
-    {
-      "media_external_id": "game:47676",
-      "related_media_external_id": "game:47674",
-      "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version #0",
-      "title": "Inazuma Eleven 3: Team Ogre Attacks!",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407s.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
   "saga_groups": {
-    "game:47716": "IE2",
-    "game:47835": "IE2",
-    "game:47676": "IE3",
-    "game:47675": "IE3",
-    "game:47674": "IE3",
     "game:9685": "IEGO",
     "game:47673": "IEGO",
-    "game:23220": "IEGOCS",
     "game:9693": "IEGOCS",
-    "game:62739": "IEGOGX",
-    "game:134112": "IEGOGX"
+    "game:47674": "IE3",
+    "game:47675": "IE3",
+    "game:134112": "IEGOGX",
+    "game:23220": "IEGOCS",
+    "game:47676": "IE3",
+    "game:47716": "IE2",
+    "game:47835": "IE2",
+    "game:62739": "IEGOGX"
   },
   "saga_name": "Inazuma Eleven"
 }
