@@ -1,0 +1,56 @@
+{
+  "media_catalog": {
+    "id": "29dac155b07e2c5b29dac155b07e2c5b",
+    "external_id": "anime:3665",
+    "type": "anime",
+    "title_main": "Ginga Eiyuu Densetsu Gaiden: Rasen Meikyuu",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3371",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Ginga Eiyuu Densetsu Gaiden: Senoku no Hoshi, Senoku no Hikari",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/n3371-rgefk9MUco58.png",
+      "format": null
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3014",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Ginga Eiyuu Densetsu: Waga Yuku wa Hoshi no Taikai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx3014-HcjYHAbi1bnd.jpg"
+    },
+    {
+      "media_external_id": "anime:3665",
+      "related_media_external_id": "anime:3016",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version #3",
+      "title": "Ginga Eiyuu Densetsu: Arata Naru Tatakai no Overture",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/small/bx3016-ubCyMga7qCq6.png"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {
+    "anime:170816": "Group 1",
+    "anime:820": "Group 1",
+    "manga:41941": "Group 1",
+    "anime:3016": "Group 1",
+    "manga:87134": "Group 1",
+    "anime:20628": "Group 1",
+    "anime:100780": "Group 1",
+    "anime:124032": "Group 1",
+    "anime:148970": "Group 1",
+    "anime:3015": "Group 1",
+    "anime:3371": "Group 1",
+    "anime:3665": "Group 1"
+  },
+  "saga_name": "Ginga Eiyuu Densetsu"
+}
