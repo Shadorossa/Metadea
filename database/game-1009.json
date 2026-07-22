@@ -1,0 +1,49 @@
+{
+  "media_catalog": {
+    "id": "58e042038810081758e0420388100817",
+    "external_id": "game:1009",
+    "type": "game",
+    "title_main": "The Last of Us",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:204350",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "The Last of Us Part I",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coa1gq.jpg",
+      "media_external_id": "game:1009"
+    },
+    {
+      "related_media_external_id": "game:6036",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "The Last of Us Remastered",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5zks.jpg",
+      "media_external_id": "game:1009"
+    },
+    {
+      "related_media_external_id": "game:11790",
+      "relation_type": "STANDALONE",
+      "type_label": "Standalone Expansion",
+      "title": "The Last of Us: Left Behind",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5xg8.jpg",
+      "media_external_id": "game:1009"
+    },
+    {
+      "media_external_id": "game:1009",
+      "related_media_external_id": "game:26192",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "The Last of Us Part II",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ziw.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}

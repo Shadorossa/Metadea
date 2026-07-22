@@ -1,0 +1,34 @@
+{
+  "media_catalog": {
+    "id": "77c157c09ab02dcf77c157c09ab02dcf",
+    "external_id": "game:26192",
+    "type": "game",
+    "title_main": "The Last of Us Part II",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:26192",
+      "related_media_external_id": "game:277143",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "The Last of Us Part II Remastered",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coa1gr.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:26192",
+      "related_media_external_id": "game:1009",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The Last of Us",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1r7f.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
