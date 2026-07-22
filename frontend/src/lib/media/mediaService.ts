@@ -264,11 +264,11 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
 
     // Computed up front so hasNewData can diff against `existing` directly.
     const contentFields: Pick<MediaCatalogEntry, typeof NEW_DATA_COMPARE_FIELDS[number]> = {
-      title_main: data.titleMain || existing?.title_main || '',
-      title_native: data.titleNative || existing?.title_native || null,
-      title_romaji: data.titleRomaji || existing?.title_romaji || null,
-      title_english: data.titleEnglish || existing?.title_english || null,
-      synopsis: data.description || null,
+      title_main: existing?.title_main || data.titleMain || '',
+      title_native: existing?.title_native || data.titleNative || null,
+      title_romaji: existing?.title_romaji || data.titleRomaji || null,
+      title_english: existing?.title_english || data.titleEnglish || null,
+      synopsis: existing?.synopsis || data.description || null,
       cover_url: data.cover || null,
       status: data.status || null,
       score_global: data.scoreGlobal || null,
@@ -294,7 +294,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       id: '', // Will be filled/matched by Rust if already exists
       external_id: data.externalId,
       parent_id: data.parentGame?.externalId || null,
-      type: data.type,
+      type: existing?.type || data.type,
       // Sticky: once set, only the collaborative editor changes format/
       // release date again — a live re-fetch must not reset a manual
       // correction back to whatever the API says. `||` not `??` since a

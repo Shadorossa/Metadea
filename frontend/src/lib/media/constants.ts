@@ -7,7 +7,7 @@ export const STAR_PATH =
 // the PR change summary, the per-field changed dots, and hasChanges().
 export const DIFF_FIELDS: ReadonlyArray<readonly [keyof MediaCatalogEntry, string]> = [
   ['title_main', 'Main Title'], ['title_romaji', 'Romaji Title'], ['title_native', 'Native Title'],
-  ['format', 'Format'],
+  ['type', 'Type'], ['format', 'Format'],
   ['synopsis', 'Synopsis'], ['cover_url', 'Cover URL'], ['banners_csv', 'Banner URLs'],
   ['release_year', 'Release Year'], ['release_month', 'Release Month'], ['release_day', 'Release Day'],
   ['total_count', 'Episodes/Chapters'], ['total_count_2', 'Seasons/Volumes'],

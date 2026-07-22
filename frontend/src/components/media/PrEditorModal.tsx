@@ -528,7 +528,14 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
-    setEntry({ ...entry, [field]: value === '' ? null : value });
+    if (field === 'type' && value && typeof value === 'string') {
+      const currentId = entry.external_id;
+      const parts = currentId.split(':');
+      const newExternalId = parts.length > 1 ? `${value}:${parts.slice(1).join(':')}` : `${value}:${currentId}`;
+      setEntry({ ...entry, type: value, external_id: newExternalId });
+    } else {
+      setEntry({ ...entry, [field]: value === '' ? null : value });
+    }
   };
 
   const [isResyncing, setIsResyncing] = useState(false);
@@ -733,6 +740,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
     try {
       await saveCatalogEntry(entry);
+      invalidateCachedMediaData(externalId);
+      if (entry.external_id && entry.external_id !== externalId) {
+        invalidateCachedMediaData(entry.external_id);
+      }
 
       const resolveMeta = createMetaResolver(externalId, { title: entry.title_main || externalId, cover: entry.cover_url || null }, sagaMeta);
 
@@ -1095,6 +1106,32 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // it already carries every format key both AniList (TV/MOVIE/OVA/...) and
   // IGDB (GAME/REMAKE/REMASTER/.../VISUAL_NOVEL) mappers can produce, so this
   // never drifts out of sync with what a live fetch would set automatically.
+  const mediaTypesDict = (tm.search?.types ?? {
+    anime: 'Anime',
+    manga: 'Manga',
+    lnovel: 'Novela Ligera',
+    game: 'Videojuego',
+    vnovel: 'Novela Visual',
+    movie: 'Película',
+    series: 'Serie',
+    book: 'Libro',
+    comic: 'Cómic',
+  }) as Record<string, string>;
+
+  const typeField = (field: keyof MediaCatalogEntry, label: string) => (
+    <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
+      <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
+        <option value="">—</option>
+        {Object.keys(mediaTypesDict)
+          .filter(k => k !== 'all' && k !== 'character')
+          .sort((a, b) => mediaTypesDict[a].localeCompare(mediaTypesDict[b]))
+          .map(key => (
+            <option key={key} value={key}>{mediaTypesDict[key]}</option>
+          ))}
+      </select>
+    </Field>
+  );
+
   const formatField = (field: keyof MediaCatalogEntry, label: string) => (
     <Field label={label} changed={isFieldChanged(field)} dim={isLocalOnly(field)}>
       <select value={(entry[field] as string) || ''} onChange={e => handleChange(field, e.target.value || null)}>
@@ -1251,8 +1288,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
             </div>
 
             <div className="pr-editor-section">
-              {sectionTitle('Classification & Metadata', ['format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'publishers_csv', 'authors_csv'])}
+              {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'publishers_csv', 'authors_csv'])}
               <div className="pr-editor-classification-grid">
+                {typeField('type', 'Type')}
                 {formatField('format', 'Format')}
                 {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
                 {slotField('genres_tag_csv', 'Themes / Tags')}
