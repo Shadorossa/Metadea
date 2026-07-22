@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "d28cdcef52c258bfd28cdcef52c258bf",
+    "external_id": "game:215089",
+    "type": "game",
+    "title_main": "The Last of Us Part I: Firefly Edition",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-07-22T15:59:20.125Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:1009",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "The Last of Us",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1r7f.jpg",
+      "media_external_id": "game:215089"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_groups": {}
+}
