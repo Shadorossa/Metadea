@@ -566,6 +566,17 @@
   height: 14px;
 }
 
+.library-card-date-start {
+  font-size: 0.62rem;
+  opacity: 0.75;
+}
+
+.library-card-date-finished {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+}
+
 .library-card-type {
   flex-shrink: 0;
   color: var(--text-dim);

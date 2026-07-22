@@ -63,14 +63,14 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const ratingHtml = isAggregate
     ? formatRatingHtml(averageRating(aggregateMembers), getActiveRatingSystem(), 'library-card-rating')
     : formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
-  const dateStr = isAggregate
+  const [startDateStr, finishedDateStr] = isAggregate
     ? (() => {
         const sorted = [...aggregateMembers].sort((a, b) =>
           compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
         );
-        return [fmtDate(sorted[0]?.started_at), fmtDate(sorted[sorted.length - 1]?.finished_at)].filter(Boolean).join(' → ');
+        return [fmtDate(sorted[0]?.started_at), fmtDate(sorted[sorted.length - 1]?.finished_at)];
       })()
-    : [fmtDate(item.started_at), fmtDate(item.finished_at)].filter(Boolean).join(' → ');
+    : [fmtDate(item.started_at), fmtDate(item.finished_at)];
 
   const openEditor = () => {
     if (bundleMeta) {
@@ -109,7 +109,14 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
           <div className="library-card-bottom-group">
             <span dangerouslySetInnerHTML={{ __html: ratingHtml }} />
             <div className="library-card-footer">
-              {dateStr && <span className="library-card-date" dangerouslySetInnerHTML={{ __html: CALENDAR_ICON + dateStr }} />}
+              {(startDateStr || finishedDateStr) && (
+                <span className="library-card-date">
+                  <span dangerouslySetInnerHTML={{ __html: CALENDAR_ICON }} />
+                  {startDateStr && <span className="library-card-date-start">{startDateStr}</span>}
+                  {startDateStr && finishedDateStr && ' → '}
+                  {finishedDateStr && <span className="library-card-date-finished">{finishedDateStr}</span>}
+                </span>
+              )}
               <span className="library-card-type" dangerouslySetInnerHTML={{ __html: typeIc }} />
             </div>
           </div>
