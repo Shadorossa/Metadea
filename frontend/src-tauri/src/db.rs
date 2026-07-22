@@ -102,8 +102,12 @@ pub(crate) fn union_find_merge(parent: &mut std::collections::HashMap<String, St
 // pr-editor-submit.ts) is always just that one member — anchoring a
 // brand-new single-member saga instead of joining the real one. Rather than
 // trust that bookkeeping, this rebuilds it from the actual, always-reciprocal
-// PREQUEL/SEQUEL/ALTERNATIVE graph in media_relations: connected components
-// there are the real sagas, regardless of how sagas/saga_relations got left.
+// PREQUEL/SEQUEL graph in media_relations: connected components there are the
+// real sagas, regardless of how sagas/saga_relations got left. ALTERNATIVE is
+// deliberately excluded here — unlike a numbered sequel/prequel, it links
+// alternate versions/adaptations that aren't the same story continuation, and
+// including it was pulling unrelated entries (remakes, source adaptations,
+// gaidens) into the same saga.
 // Called both as a one-time migration (existing local corruption) and at the
 // end of every sync_community_catalog (the downloaded database.db can carry
 // the exact same fragmentation until scripts/build-database.js's own fix
@@ -113,7 +117,7 @@ pub fn merge_fragmented_sagas(conn: &Connection) -> SqlResult<()> {
     {
         let mut stmt = conn.prepare(
             "SELECT media_external_id, related_media_external_id FROM media_relations
-             WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+             WHERE relation_type IN ('PREQUEL', 'SEQUEL')"
         )?;
         let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
         for (a, b) in rows.filter_map(|r| r.ok()) {
@@ -469,8 +473,8 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         // single-member saga in the first place (see merge_fragmented_sagas'
         // own doc comment for why) — visible as the same saga name appearing
         // once per member instead of once total. Rebuilds sagas/
-        // saga_relations from the real PREQUEL/SEQUEL/ALTERNATIVE graph
-        // instead of trusting that bookkeeping.
+        // saga_relations from the real PREQUEL/SEQUEL graph instead of
+        // trusting that bookkeeping.
         let _ = merge_fragmented_sagas(conn);
         mark_migration(conn, 22)?;
     }

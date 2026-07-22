@@ -300,11 +300,13 @@ function buildDatabase(bundles) {
 }
 
 // Rebuilds sagas/saga_relations from the real, always-reciprocal PREQUEL/
-// SEQUEL/ALTERNATIVE graph in media_relations (now fully populated by the
-// loop above) instead of the per-file "owners" set — connected components
-// there are the actual sagas, regardless of which single file first
-// mentioned a saga_name. Mirrors merge_fragmented_sagas in db.rs (the
-// desktop app's own fallback for a database.db built before this fix).
+// SEQUEL graph in media_relations (now fully populated by the loop above)
+// instead of the per-file "owners" set — connected components there are the
+// actual sagas, regardless of which single file first mentioned a saga_name.
+// Mirrors merge_fragmented_sagas in db.rs (the desktop app's own fallback for
+// a database.db built before this fix). ALTERNATIVE is deliberately excluded
+// — it links alternate versions/adaptations, not numbered story
+// continuations, and including it merged unrelated entries into one saga.
 function buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameById) {
   const parent = new Map();
   const find = id => {
@@ -326,7 +328,7 @@ function buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameByI
   };
 
   const edges = db.prepare(
-    "SELECT media_external_id, related_media_external_id FROM media_relations WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+    "SELECT media_external_id, related_media_external_id FROM media_relations WHERE relation_type IN ('PREQUEL', 'SEQUEL')"
   ).all();
   for (const { media_external_id, related_media_external_id } of edges) {
     union(media_external_id, related_media_external_id);

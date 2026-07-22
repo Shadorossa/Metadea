@@ -2211,19 +2211,23 @@ pub struct SagaListEntry {
 
 // Shared by get_all_sagas (table_prefix "") and get_community_sagas
 // (table_prefix "ghsagas.") — both read the saga list the exact same way:
-// computed from the real, always-reciprocal PREQUEL/SEQUEL/ALTERNATIVE graph
-// in media_relations, never from sagas/saga_relations directly, since that
+// computed from the real, always-reciprocal PREQUEL/SEQUEL graph in
+// media_relations, never from sagas/saga_relations directly, since that
 // bookkeeping can be fragmented into one single-member row per work (see
 // merge_fragmented_sagas in db.rs for why). A downloaded community.db is
 // exactly as likely to still carry that fragmentation as the local install
 // was before migration 22, so github's own listing needs the same fix, not
 // just a trust-the-file read the way the media/character tabs get away with.
+// ALTERNATIVE is deliberately not part of this graph — it links alternate
+// versions/adaptations (remakes, source material, gaidens), not numbered
+// story continuations, and pulling it in merged unrelated entries into the
+// same saga.
 fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite::Result<Vec<SagaListEntry>> {
     let mut parent: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     {
         let sql = format!(
             "SELECT media_external_id, related_media_external_id FROM {table_prefix}media_relations
-             WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')"
+             WHERE relation_type IN ('PREQUEL', 'SEQUEL')"
         );
         let mut stmt = conn.prepare(&sql)?;
         let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
