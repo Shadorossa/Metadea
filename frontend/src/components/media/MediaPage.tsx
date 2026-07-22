@@ -989,23 +989,32 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               <div className="media-relations-grid">
                 {visibleRelations
                   .slice((relationPage - 1) * pageSize, relationPage * pageSize)
-                  .map((r, i) => (
-                    <a key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} href={r.url ?? '#'} className="media-relation-card">
-                      <div className="media-relation-bg-layer">
-                        {r.cover && <img src={r.cover} alt="" loading="lazy" />}
-                      </div>
-                      <div className="media-relation-card-overlay" />
-                      <span className="media-relation-type">{r.typeLabel}</span>
-                      <div className="media-relation-card-content">
-                        <div className="media-relation-thumb">
-                          {r.cover && <img src={r.cover} alt={r.title} loading="lazy" />}
+                  .map((r, i) => {
+                    // No url (manga's ComicVine issues — see comic-issues.ts) means
+                    // purely visual, not a real navigable entry.
+                    const Wrapper = r.url ? 'a' : 'div';
+                    return (
+                      <Wrapper
+                        key={r.url ?? `${r.typeLabel}-${r.title}-${i}`}
+                        href={r.url}
+                        className={`media-relation-card${r.url ? '' : ' media-relation-card--static'}`}
+                      >
+                        <div className="media-relation-bg-layer">
+                          {r.cover && <img src={r.cover} alt="" loading="lazy" />}
                         </div>
-                        <div className="media-relation-info">
-                          <span className="media-relation-title">{splitTitleAfterColon(r.title)}</span>
+                        <div className="media-relation-card-overlay" />
+                        <span className="media-relation-type">{r.typeLabel}</span>
+                        <div className="media-relation-card-content">
+                          <div className="media-relation-thumb">
+                            {r.cover && <img src={r.cover} alt={r.title} loading="lazy" />}
+                          </div>
+                          <div className="media-relation-info">
+                            <span className="media-relation-title">{splitTitleAfterColon(r.title)}</span>
+                          </div>
                         </div>
-                      </div>
-                    </a>
-                  ))}
+                      </Wrapper>
+                    );
+                  })}
               </div>
               {visibleRelations.length > pageSize && (
                 <Pagination

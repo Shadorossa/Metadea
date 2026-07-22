@@ -5,7 +5,9 @@ import { unifyGenres } from './genre-unifier';
 import type { MediaPageData, MediaCharacter } from './types';
 
 // Maps to MediaRelation shape; only issues with a cover are included.
-function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageData['relations'] {
+// Not clickable for manga (ComicVine issues shown just as visual context
+// there, not real navigable entries) — comics keep their normal link.
+function issuesToRelations(issues: ComicVineIssue[], label: string, clickable: boolean): MediaPageData['relations'] {
   const result: MediaPageData['relations'] = [];
   for (const issue of issues) {
     const cover = issue.image?.medium_url ?? issue.image?.small_url ?? undefined;
@@ -13,6 +15,10 @@ function issuesToRelations(issues: ComicVineIssue[], label: string): MediaPageDa
     const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
     const namePart = issue.name ? ` — ${issue.name}` : '';
     const title = (numberPart + namePart) || `#${issue.id}`;
+    if (!clickable) {
+      result.push({ typeLabel: label, relationType: 'ISSUE', title, cover });
+      continue;
+    }
     const relatedExternalId = `comic:issue-${issue.id}`;
     result.push({ typeLabel: label, relationType: 'ISSUE', title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
   }
@@ -68,6 +74,7 @@ export async function fetchComicIssues(
   altTitle?: string,
 ): Promise<ComicIssuesResult> {
   const isComic = rawId.startsWith('comic:');
+  const isManga = rawId.startsWith('manga:');
   const volumeId = await resolveVolumeId(rawId, isComic, titleMain, altTitle);
   if (!volumeId) return { relations: null, characters: [] };
 
@@ -84,7 +91,7 @@ export async function fetchComicIssues(
   const genreDots = isComic ? (core.join(' · ') || undefined) : undefined;
   const genreTagDots = isComic ? (tags.join(' · ') || undefined) : undefined;
 
-  const issueRelations = issuesToRelations(issues, issuesLabel);
+  const issueRelations = issuesToRelations(issues, issuesLabel, !isManga);
   if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };
   const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.relationType !== 'ISSUE');
   return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };

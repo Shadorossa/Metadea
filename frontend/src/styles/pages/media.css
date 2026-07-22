@@ -778,6 +778,21 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
+/* Not a real link (e.g. manga's ComicVine issues) — no hover affordance. */
+.media-relation-card--static {
+  cursor: default;
+}
+
+.media-relation-card--static:hover {
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+.media-relation-card--static:hover .media-relation-bg-layer img {
+  transform: translateZ(0);
+  opacity: 0.08;
+}
+
 .media-relation-bg-layer img {
   position: absolute;
   inset: 0;
