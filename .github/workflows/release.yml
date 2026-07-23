@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+      - '*.*.*'
+  workflow_dispatch:
 
 jobs:
   publish-tauri:
@@ -24,7 +26,7 @@ jobs:
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
         with:
-          work-dir: src-tauri
+          work-dir: frontend/src-tauri
 
       - name: Install dependencies
         run: |
