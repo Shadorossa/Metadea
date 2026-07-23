@@ -578,7 +578,11 @@ const translations = useTranslations(lang);
       const reactionBtns = document.querySelectorAll('.char-action-btn[data-reaction]');
 
       const allFavs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
-      const favList = allFavs['characters_fav'] || allFavs['characters'] || [];
+      // read_user_favorites (Rust) keys its result by the singular type name
+      // (fav_key_to_type("character_fav") === "character") — 'characters'/
+      // 'characters_fav' never matched anything, so isFav was always false
+      // and the button never reflected (or persisted to) the real list.
+      const favList = allFavs['character'] || [];
       let isFav = Array.isArray(favList) && favList.includes(charKeyStr);
 
       function updateFavUI() {
@@ -593,7 +597,7 @@ const translations = useTranslations(lang);
         favBtn.onclick = async () => {
           isFav = !isFav;
           updateFavUI();
-          await syncFavorites('characters', charKeyStr, isFav).catch(console.error);
+          await syncFavorites('character', charKeyStr, isFav).catch(console.error);
         };
       }
 

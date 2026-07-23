@@ -337,8 +337,23 @@ export function fetchMediaDataWithFallback(
       if (hasLocalData && localData) {
         fullArrived = true;
         onFull(localData);
+        // The background resync's own result used to just be discarded here
+        // — persistToCatalog (inside fetchMediaData) only ever writes
+        // media_catalog's own scalar columns, never characters/staff, so
+        // MediaPage.tsx's saveCharactersSkeleton/saveStaffSkeleton calls
+        // (which only run from an onFull callback) never saw this data at
+        // all. A catalog row missing its characters (e.g. first added via
+        // the admin panel, or the very first live fetch briefly not
+        // returning any) stayed missing forever, since every later visit
+        // took this local-data branch instead of a fresh fetch. Routing the
+        // resync through onFull the same way a first-ever fetch already
+        // does fixes that, at the cost of onFull's other one-time work
+        // (extra relations walk, etc.) also re-running — acceptable since
+        // needsResync() already gates how often this happens at all.
         if (catalogEntry && needsResync(catalogEntry) && !isCancelled()) {
-          fetchMediaData(rawId).catch(() => {});
+          fetchMediaData(rawId).then(fresh => {
+            if (fresh && !isCancelled()) onFull(fresh);
+          }).catch(() => {});
         }
         return;
       }
