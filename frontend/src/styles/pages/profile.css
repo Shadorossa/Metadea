@@ -577,8 +577,9 @@
 
 .library-card-group-badge {
   position: absolute;
-  top: 0.4rem;
+  top: 50%;
   right: 0.4rem;
+  transform: translateY(-50%);
   z-index: 3;
   display: flex;
   align-items: center;
