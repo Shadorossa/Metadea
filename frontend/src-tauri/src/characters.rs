@@ -193,6 +193,26 @@ pub async fn save_character_appearances(
     let tx = conn.transaction().str_err()?;
     let now = Utc::now().to_rfc3339();
 
+    // Preserve each existing (media, position) pairing before wiping this
+    // character's rows — save_characters_skeleton (the media-side writer)
+    // sets position from AniList's own role-sorted cast order; blindly
+    // delete+reinsert here would hand every one of this character's rows a
+    // fresh rowid, and since get_media_characters falls back to rowid once
+    // position is unset, that used to silently shove this character to the
+    // end of every OTHER (untouched) character's list for the same media.
+    let mut existing_positions: std::collections::HashMap<String, Option<i32>> = std::collections::HashMap::new();
+    {
+        let mut stmt = tx.prepare(
+            "SELECT media_external_id, position FROM character_appearances WHERE character_external_id = ?1"
+        ).str_err()?;
+        let rows = stmt.query_map([&character_external_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<i32>>(1)?))
+        }).str_err()?;
+        for r in rows.filter_map(|r| r.ok()) {
+            existing_positions.insert(r.0, r.1);
+        }
+    }
+
     // Full curated list, so anything missing was deliberately removed —
     // this used to only INSERT OR REPLACE, so a removed appearance's old
     // row never actually went away and would reappear on next load.
@@ -210,10 +230,14 @@ pub async fn save_character_appearances(
     let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
 
     for a in appearances {
+        // A brand-new appearance (never seen before) has no known cast
+        // position — NULL sorts last, which is the reasonable default until
+        // that media's own skeleton resync fills it in for real.
+        let position = existing_positions.get(&a.media_external_id).copied().flatten();
         tx.execute(
-            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &a.character_name, &now],
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, position, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &a.character_name, &position, &now],
         ).str_err()?;
 
         if !existing_ids.contains(&a.media_external_id) {
@@ -289,7 +313,10 @@ pub async fn get_media_characters(
             "SELECT c.external_id, c.name, c.image_url, ca.relation_type, ca.character_name
              FROM character_appearances ca
              JOIN characters c ON c.external_id = ca.character_external_id
-             WHERE ca.media_external_id = ?1",
+             WHERE ca.media_external_id = ?1
+             ORDER BY
+                (ca.position IS NULL), ca.position,
+                CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'BACKGROUND' THEN 2 ELSE 3 END",
         )
         .str_err()?;
     let rows = stmt
@@ -339,7 +366,7 @@ pub async fn save_characters_skeleton(
         [&media_external_id],
     ).str_err()?;
 
-    for char in characters {
+    for (index, char) in characters.into_iter().enumerate() {
         if !seen.insert(char.external_id.clone()) {
             continue;
         }
@@ -358,14 +385,19 @@ pub async fn save_characters_skeleton(
             ],
         ).str_err()?;
 
+        // `index` is this media's own cast order (AniList's own
+        // sort: [ROLE, RELEVANCE] when this came from a live fetch — MAIN
+        // characters first) — stored so it survives independently of a
+        // later per-character rewrite (see save_character_appearances).
         tx.execute(
-            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, position, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 &char.external_id,
                 &media_external_id,
                 &char.relation_type,
                 &char.character_name,
+                index as i32,
                 &now,
             ],
         ).str_err()?;

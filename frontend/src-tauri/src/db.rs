@@ -708,6 +708,20 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 33)?;
     }
+    if v < 34 {
+        // A media's character grid used to have no stable order at all —
+        // get_media_characters had no ORDER BY, so SQLite returned rows in
+        // physical/rowid order. save_characters_skeleton (media-side writer)
+        // happened to insert in AniList's own role-sorted order, so a fresh
+        // resync looked right by coincidence — but save_character_appearances
+        // (the character's own edit page) deletes and reinserts that ONE
+        // character's rows across every media it appears in, handing each a
+        // brand-new (later) rowid and silently shoving it to the end of every
+        // OTHER character's untouched rows for the same media. This column
+        // makes the order explicit and independent of rowid churn.
+        let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN position INTEGER", []);
+        mark_migration(conn, 34)?;
+    }
 
     Ok(())
 }
@@ -844,6 +858,7 @@ CREATE TABLE IF NOT EXISTS character_appearances (
     character_name        TEXT,
     media_external_id     TEXT NOT NULL,
     relation_type         TEXT,
+    position              INTEGER,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
 );

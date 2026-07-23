@@ -154,6 +154,7 @@ const translations = useTranslations(lang);
     getCharacterAppearances,
     saveCharacterAppearances,
     getCharacterActors,
+    saveCharacterActors,
     getCatalogEntry,
     getSyncState,
     markSynced,
@@ -439,6 +440,7 @@ const translations = useTranslations(lang);
         }
       }
       const persistedActors = await getCharacterActors(characterExternalId).catch(() => []);
+      const persistedIds = new Set(persistedActors.map(a => a.external_id));
       for (const a of persistedActors) {
         const live = vaMap.get(a.external_id);
         vaMap.set(a.external_id, {
@@ -449,6 +451,24 @@ const translations = useTranslations(lang);
           siteUrl: live?.siteUrl || '',
           language: a.language || live?.language || 'Japanese',
         });
+      }
+
+      // Voice actors only ever came from this live AniList fetch — never
+      // cached locally otherwise — so a later visit skipped by sync_state's
+      // staleness gate (no live fetch, no character.media.edges at all) used
+      // to show no voice actors whatsoever. Persist the merged set (local
+      // edits still win, never overwritten) so they survive a skipped fetch
+      // the same way appearances already do.
+      const hasNewActors = Array.from(vaMap.keys()).some(id => !persistedIds.has(id));
+      if (hasNewActors) {
+        saveCharacterActors(characterExternalId, Array.from(vaMap.values()).map(va => ({
+          external_id: va.externalId,
+          name: va.name,
+          name_native: va.native || null,
+          image_url: va.image || null,
+          role: null,
+          language: va.language || null,
+        }))).catch(() => {});
       }
 
       const vaByLang = new Map<string, MergedVoiceActor[]>();
