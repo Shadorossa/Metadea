@@ -27,7 +27,6 @@ query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
         title { romaji english native }
         coverImage { large }
         genres
-        source
         status
         studios { edges { isMain node { id name } } }
       }
@@ -71,7 +70,6 @@ interface AniListImportMediaItem {
     title: { romaji: string | null; english: string | null; native: string | null };
     coverImage: { large: string | null } | null;
     genres: string[];
-    source: string | null;
     status: string | null;
     studios: { edges: { isMain: boolean; node: { id: number; name: string } }[] } | null;
   };
@@ -372,7 +370,12 @@ function buildCatalogEntry(externalId: string, entryType: string, mediaItem: Ani
     external_id: externalId,
     type: entryType,
     format: mediaItem.media?.format ?? null,
-    source: mediaItem.media?.source ?? null,
+    // AniList's own "source" field is its MediaSource enum — what medium
+    // this work was itself adapted FROM (ORIGINAL/MANGA/NOVEL/GAME/...),
+    // not the metadata provider. media_catalog.source means the latter
+    // (anilist/igdb/tmdb/...), same as every other write path in the app —
+    // this used to copy AniList's raw enum value in here instead.
+    source: 'anilist',
     title_main: mediaItem.media?.title?.romaji ?? mediaItem.media?.title?.english ?? mediaItem.media?.title?.native ?? null,
     title_romaji: mediaItem.media?.title?.romaji ?? null,
     title_native: mediaItem.media?.title?.native ?? null,

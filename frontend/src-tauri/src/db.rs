@@ -545,14 +545,13 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         // two separately-named fields just to avoid ambiguity. role carries
         // that distinction properly instead ('developer'/'publisher'/
         // 'studio'/'production'), across every provider, not just games.
-        //
-        // --- Column removals (search this file for DROP COLUMN to find them) ---
-        // Same DROP COLUMN this app already relies on in migration 14 — no
-        // data worth preserving either way. Run first, before the tables
-        // below, so this block reads top-to-bottom as "remove the old,
-        // then add the new".
-        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN developer_badge", []);
-        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
+        // (The DROP COLUMN for developer_badge/publishers_csv originally
+        // lived right here, added on the same day after this migration had
+        // already run and been marked applied on real databases — so it
+        // silently never executed for anyone who'd already updated. Moved
+        // to migration 28, a fresh number every already-migrated database
+        // will actually hit. See run_migrations' own doc comment: search
+        // "DROP COLUMN" to find every column this app has actually removed.)
         let _ = conn.execute(
             "CREATE TABLE IF NOT EXISTS companies (
                 external_id TEXT PRIMARY KEY,
@@ -597,6 +596,16 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
             [],
         );
         mark_migration(conn, 27)?;
+    }
+    if v < 28 {
+        // The real column removal for developer_badge/publishers_csv — see
+        // migration 26's comment. Same DROP COLUMN this app already relies
+        // on in migration 14; already-migrated databases (which ran the
+        // no-op version of this inside migration 26 earlier) need this new
+        // number to actually pick it up.
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN developer_badge", []);
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
+        mark_migration(conn, 28)?;
     }
 
     Ok(())
