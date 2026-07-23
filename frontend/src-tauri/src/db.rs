@@ -607,6 +607,71 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
         mark_migration(conn, 28)?;
     }
+    if v < 29 {
+        // Generic staleness/resync tracking, one row per external_id — as of
+        // migration 32 this is the single source of truth for every entity
+        // (media_catalog included), replacing what used to be duplicated as
+        // media_catalog's own last_synced_at/sync_failed_count/last_sync_error
+        // columns. Characters and staff/authors have their own dedicated
+        // pages that used to live-fetch their external provider
+        // unconditionally on every single visit; this table lets
+        // needsResync() (media-status.ts) gate those the same way it
+        // already gates media.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS sync_state (
+                external_id       TEXT PRIMARY KEY,
+                last_synced_at    TEXT,
+                sync_failed_count INTEGER DEFAULT 0,
+                last_sync_error   TEXT
+            );",
+        )?;
+        mark_migration(conn, 29)?;
+    }
+    if v < 30 {
+        // AniList's own character-profile fields, previously never cached
+        // locally at all (only name/native/image/bio/aliases were) — needed
+        // so a character page skipped by sync_state's staleness gate can
+        // still render these from local data instead of going blank.
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN gender TEXT", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN age TEXT", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN blood_type TEXT", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN dob_year INTEGER", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN dob_month INTEGER", []);
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN dob_day INTEGER", []);
+        mark_migration(conn, 30)?;
+    }
+    if v < 31 {
+        // Same idea as migration 30, for the author page: AniList staff/
+        // OpenLibrary author fields that were fetched live but never cached,
+        // needed so a sync_state-skipped visit can still render a full profile.
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN name_native TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN aliases_csv TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN biography TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN birth_date TEXT", []);
+        let _ = conn.execute("ALTER TABLE media_author ADD COLUMN death_date TEXT", []);
+        mark_migration(conn, 31)?;
+    }
+    if v < 32 {
+        // media_catalog's own sync bookkeeping moves into sync_state too —
+        // single source of truth for every entity now, not just the ones
+        // that never had one. Migrate whatever's already tracked first, then
+        // drop the columns it lived in (media_catalog.rs, proposal_bundle.rs,
+        // and community_sync.rs no longer reference them). Both the SELECT
+        // and the DROPs are `let _ =`: a brand-new database's base schema
+        // (db.rs's CREATE TABLE) never has these columns at all, so both
+        // legitimately no-op there instead of failing app startup.
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO sync_state (external_id, last_synced_at, sync_failed_count, last_sync_error)
+             SELECT external_id, last_synced_at, sync_failed_count, last_sync_error
+             FROM media_catalog
+             WHERE last_synced_at IS NOT NULL OR sync_failed_count IS NOT NULL OR last_sync_error IS NOT NULL",
+            [],
+        );
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN last_sync_error", []);
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN last_synced_at", []);
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN sync_failed_count", []);
+        mark_migration(conn, 32)?;
+    }
 
     Ok(())
 }
@@ -707,6 +772,12 @@ CREATE TABLE IF NOT EXISTS characters (
     name         TEXT NOT NULL DEFAULT '',
     name_native  TEXT,
     reaction     TEXT,
+    gender       TEXT,
+    age          TEXT,
+    blood_type   TEXT,
+    dob_year     INTEGER,
+    dob_month    INTEGER,
+    dob_day      INTEGER,
     created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -814,8 +885,6 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     format               TEXT DEFAULT '',
     genres_csv           TEXT DEFAULT '',
     genres_tag_csv       TEXT DEFAULT '',
-    last_sync_error      TEXT,
-    last_synced_at       TEXT,
     parent_id            TEXT,
     platforms_csv        TEXT DEFAULT '',
     ratings_count        INTEGER DEFAULT 0,
@@ -830,7 +899,6 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     source               TEXT DEFAULT '',
     source_url           TEXT,
     status               TEXT,
-    sync_failed_count    INTEGER DEFAULT 0,
     synopsis             TEXT,
     time_length          INTEGER,
     title_english        TEXT,
@@ -850,6 +918,11 @@ CREATE TABLE IF NOT EXISTS media_author (
     author_image_url TEXT,
     author_url       TEXT,
     name             TEXT NOT NULL,
+    name_native      TEXT,
+    aliases_csv      TEXT,
+    biography        TEXT,
+    birth_date       TEXT,
+    death_date       TEXT,
     created_at       TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at       TEXT DEFAULT CURRENT_TIMESTAMP
 );

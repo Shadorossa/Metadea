@@ -69,13 +69,17 @@ pub async fn sync_community_catalog(
             // blocked_at is community-wide by design (a curator block should
             // reach every install), guarded by attached_db_has_column in case
             // this community.db predates the column.
+            // last_sync_error/last_synced_at/sync_failed_count deliberately
+            // excluded even if the attached community.db still has them — a
+            // community submission has no business seeding another user's
+            // sync bookkeeping (see sync_state's own table for that now).
             let possible_cols = [
                 "id", "external_id", "authors_csv", "banners_csv", "country_code", "cover_url",
                 "favorites_count", "format", "genres_csv", "genres_tag_csv",
-                "last_sync_error", "last_synced_at", "parent_id", "platforms_csv",
+                "parent_id", "platforms_csv",
                 "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
                 "release_month", "release_year", "score_global",
-                "shop_links_csv", "source", "source_url", "status", "sync_failed_count", "synopsis",
+                "shop_links_csv", "source", "source_url", "status", "synopsis",
                 "time_length", "title_english", "title_main", "title_native", "title_romaji", "total_count", "total_count_2",
                 "type"
             ];
@@ -404,6 +408,16 @@ pub async fn get_community_characters(
                     biography: row.get(5)?,
                     image_url: row.get(6)?,
                     reaction: row.get(7)?,
+                    // The community-shared database (scripts/build-database.js
+                    // output) has no gender/age/blood_type/dob_* columns —
+                    // this is purely a name/cover cache for character search,
+                    // never rendered as a full character page.
+                    gender: None,
+                    age: None,
+                    blood_type: None,
+                    dob_year: None,
+                    dob_month: None,
+                    dob_day: None,
                     created_at: row.get(8)?,
                     updated_at: row.get(9)?,
                 })

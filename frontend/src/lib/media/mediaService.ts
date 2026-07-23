@@ -7,7 +7,7 @@ import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
-import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed, getBlockedExternalIds } from '../tauri';
+import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, getBlockedExternalIds, getSyncState, setSyncState, markSyncFailed } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaAuthor, MediaCompany } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
@@ -179,10 +179,6 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       release_end_month: existing?.release_end_month ?? (data.releaseEndMonth || null),
       release_end_day: existing?.release_end_day ?? (data.releaseEndDay || null),
       time_length: data.timeLength || null,
-      // Read by needsResync() to decide when this entry is next due a check.
-      last_synced_at: new Date().toISOString(),
-      sync_failed_count: hasNewData ? 0 : (existing?.sync_failed_count ?? 0) + 1,
-      last_sync_error: null,
       // Only PrEditorModal's block toggle sets this — never cleared by a resync.
       blocked_at: existing?.blocked_at ?? null,
       created_at: '',
@@ -190,6 +186,17 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
     };
 
     await saveCatalogEntry(entry).catch(console.error);
+
+    // Read by needsResync() to decide when this entry is next due a check —
+    // a fetch that brings nothing new widens the backoff too, not just real
+    // errors, so this can't just be mark_synced's fixed "reset to 0".
+    const existingSync = await getSyncState(data.externalId).catch(() => null);
+    await setSyncState(
+      data.externalId,
+      new Date().toISOString(),
+      hasNewData ? 0 : (existingSync?.sync_failed_count ?? 0) + 1,
+      null,
+    ).catch(() => {});
   } catch (e) {
     console.error("Failed to persist media to local SQLite cache", e);
   }
@@ -240,8 +247,8 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
 
   const data = await fetchMediaDataInternal(rawId);
   if (!data) {
-    // Bumps sync_failed_count so needsResync() backs off a failing provider; no-op if no catalog row yet.
-    markCatalogSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
+    // Bumps sync_failed_count so needsResync() backs off a failing provider.
+    markSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
     if (data.relations) data.relations = await filterBlockedRelations(data.relations);
@@ -362,6 +369,7 @@ export function fetchMediaDataWithFallback(
   let hasLocalData = false;
   let localData: MediaPageData | null = null;
   let catalogEntry: MediaCatalogEntry | null = null;
+  const syncStatePromise = getSyncState(rawId).catch(() => null);
 
   getCatalogEntry(rawId)
     .then(async catalog => {
@@ -382,7 +390,7 @@ export function fetchMediaDataWithFallback(
       }
     })
     .catch(() => {})
-    .finally(() => {
+    .finally(async () => {
       // Catalog data is the final answer for this render — a resync (if due) only refreshes in the background.
       if (hasLocalData && localData) {
         fullArrived = true;
@@ -400,7 +408,13 @@ export function fetchMediaDataWithFallback(
         // does fixes that, at the cost of onFull's other one-time work
         // (extra relations walk, etc.) also re-running — acceptable since
         // needsResync() already gates how often this happens at all.
-        if (catalogEntry && needsResync(catalogEntry) && !isCancelled()) {
+        const syncState = await syncStatePromise;
+        const dueForResync = needsResync(syncState ? {
+          status: catalogEntry?.status,
+          last_synced_at: syncState.last_synced_at,
+          sync_failed_count: syncState.sync_failed_count,
+        } : null);
+        if (catalogEntry && dueForResync && !isCancelled()) {
           fetchMediaData(rawId).then(fresh => {
             if (fresh && !isCancelled()) onFull(fresh);
           }).catch(() => {});

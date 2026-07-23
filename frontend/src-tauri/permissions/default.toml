@@ -55,7 +55,6 @@ commands.allow = [
   "save_catalog_entry",
   "get_catalog_entry",
   "get_blocked_external_ids",
-  "mark_catalog_sync_failed",
   "update_catalog_genres",
   "delete_catalog_entry",
   "get_all_catalog_entries",
@@ -77,6 +76,8 @@ commands.allow = [
   "save_media_authors",
   "get_media_authors",
   "save_author_profile_and_relations",
+  "get_author",
+  "get_author_works",
   "request_github_device_code",
   "request_github_device_token",
   "get_github_user_profile",
@@ -130,6 +131,11 @@ commands.allow = [
   "update_tier_list_tiers",
   "add_item_to_tier_list",
   "remove_item_from_tier_list",
-  "set_tier_list_placements"
+  "set_tier_list_placements",
+  "get_sync_state",
+  "get_sync_states",
+  "mark_synced",
+  "mark_sync_failed",
+  "set_sync_state"
 ]
 

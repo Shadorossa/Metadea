@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames } from '../../lib/tauri';
+import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames, getSyncStates } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { notifyNewEpisode } from '../../lib/shared/notifications';
@@ -78,10 +78,14 @@ export function LibrarySection() {
       // Entering the library is the other trigger point (besides the media
       // page) for needsResync()'s cadence — scoped to in-progress entries,
       // sequential with a short stagger to avoid bursting AniList's rate limit.
-      const dueForResync = rawItems.filter(item => {
-        if (!isInProgressStatus(item.status)) return false;
+      // One batched sync_state lookup instead of a per-item round trip.
+      const inProgressItems = rawItems.filter(item => isInProgressStatus(item.status));
+      const syncStates = await getSyncStates(inProgressItems.map(i => i.external_id)).catch(() => []);
+      const syncStateMap = new Map(syncStates.map(s => [s.external_id, s]));
+      const dueForResync = inProgressItems.filter(item => {
         const catalog = catalogEntries.find(e => e.external_id === item.external_id);
-        return needsResync(catalog);
+        const sync = syncStateMap.get(item.external_id);
+        return needsResync(sync ? { status: catalog?.status, last_synced_at: sync.last_synced_at, sync_failed_count: sync.sync_failed_count } : null);
       });
 
       for (const item of dueForResync) {

@@ -9,6 +9,12 @@ export interface CharacterEntry {
   biography?:   string | null;
   image_url?:   string | null;
   reaction?:    string | null;
+  gender?:      string | null;
+  age?:         string | null; // AniList's own field — free-form ("17", "17-18"), not always numeric
+  blood_type?:  string | null;
+  dob_year?:    number | null;
+  dob_month?:   number | null;
+  dob_day?:     number | null;
   created_at:   string;
   updated_at:   string;
 }
@@ -26,9 +32,18 @@ export async function saveCharacter(
   nameNative?: string | null,
   aliasesCsv?: string | null,
   biography?: string | null,
+  gender?: string | null,
+  age?: string | null,
+  bloodType?: string | null,
+  dobYear?: number | null,
+  dobMonth?: number | null,
+  dobDay?: number | null,
 ): Promise<CharacterEntry> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<CharacterEntry>('save_character', { externalId, name, imageUrl, nameNative, aliasesCsv, biography });
+  return invoke<CharacterEntry>('save_character', {
+    externalId, name, imageUrl, nameNative, aliasesCsv, biography,
+    gender, age, bloodType, dobYear, dobMonth, dobDay,
+  });
 }
 
 export async function getCharacter(externalId: string): Promise<CharacterEntry | null> {

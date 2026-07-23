@@ -21,6 +21,7 @@ mod platform_scanning;
 mod proposal_bundle;
 mod sagas;
 mod steam;
+mod sync_state;
 mod tier_lists;
 mod user_library;
 mod user_lists;
@@ -132,7 +133,6 @@ pub fn run() {
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::get_blocked_external_ids,
-            media_catalog::mark_catalog_sync_failed,
             media_catalog::update_catalog_genres,
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
@@ -154,6 +154,8 @@ pub fn run() {
             media_authors::save_media_authors,
             media_authors::get_media_authors,
             media_authors::save_author_profile_and_relations,
+            media_authors::get_author,
+            media_authors::get_author_works,
             community_sync::sync_community_catalog,
             community_sync::get_community_characters,
             characters::save_character,
@@ -203,6 +205,11 @@ pub fn run() {
             tier_lists::add_item_to_tier_list,
             tier_lists::remove_item_from_tier_list,
             tier_lists::set_tier_list_placements,
+            sync_state::get_sync_state,
+            sync_state::get_sync_states,
+            sync_state::mark_synced,
+            sync_state::mark_sync_failed,
+            sync_state::set_sync_state,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

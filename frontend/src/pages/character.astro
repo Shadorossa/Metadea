@@ -71,7 +71,6 @@ const translations = useTranslations(lang);
           <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
           
           <div class="character-alt-names-wrap" id="char-alt-names-wrap" style="display: none;">
-            <span class="character-alt-names-label">Nombres alternativos / Aliases:</span>
             <div class="character-alt-names" id="char-alt-names"></div>
           </div>
         </div>
@@ -141,9 +140,10 @@ const translations = useTranslations(lang);
     }
   };
 
-  import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
+  import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import { compareByReleaseDateDesc } from '../lib/media/mapper-utils';
+  import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import {
     readUserFavorites,
@@ -152,9 +152,40 @@ const translations = useTranslations(lang);
     getCharacter,
     setCharacterReaction,
     getCharacterAppearances,
+    saveCharacterAppearances,
     getCharacterActors,
     getCatalogEntry,
+    getSyncState,
+    markSynced,
+    markSyncFailed,
+    type CharacterEntry,
   } from '../lib/tauri';
+
+  // Reconstructs an AniListCharacterDetail-shaped object purely from what's
+  // cached locally, so every downstream render (stats, name/native/image,
+  // aliases) works unchanged whether `character` came from a live AniList
+  // fetch or was skipped because sync_state says it isn't due for a resync
+  // yet. media.edges stays empty — appearances/voice-actors already have
+  // their own local-first merge (character_appearances / character_actors)
+  // that tolerates an empty live edge list fine.
+  function localCharacterToDetail(id: number, lc: CharacterEntry): AniListCharacterDetail {
+    return {
+      id,
+      name: {
+        full: lc.name,
+        native: lc.name_native ?? null,
+        alternative: lc.aliases_csv ? lc.aliases_csv.split(',').map(s => s.trim()).filter(Boolean) : [],
+        alternativeSpoiler: [],
+      },
+      image: { large: lc.image_url ?? null },
+      description: lc.biography ?? null,
+      gender: lc.gender ?? null,
+      dateOfBirth: { year: lc.dob_year ?? null, month: lc.dob_month ?? null, day: lc.dob_day ?? null },
+      age: lc.age ?? null,
+      bloodType: lc.blood_type ?? null,
+      media: { edges: [] },
+    };
+  }
 
   async function loadCharacterData() {
     const lang = window.location.pathname.startsWith('/en') ? 'en' : 'es';
@@ -197,14 +228,6 @@ const translations = useTranslations(lang);
     }
 
     try {
-      const character = await fetchAniListCharacterDetail(characterId);
-      if (!character) {
-        loadingEl.style.display = 'none';
-        errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
-        errorEl.style.display = 'block';
-        return;
-      }
-
       // Fetched once, reused below for every field the PR editor lets you
       // correct (name/native/image/biography/aliases) — a local edit always
       // wins over AniList's live copy, same "sticky local field" rule
@@ -212,6 +235,41 @@ const translations = useTranslations(lang);
       // Without this the character page always showed AniList's raw data
       // and any manual correction made in the editor never appeared here.
       const localChar = await getCharacter(characterExternalId).catch(() => null);
+
+      // sync_state gates the live AniList call the same way needsResync()
+      // already gates media_catalog resyncs — this page used to hit AniList
+      // unconditionally on every single visit regardless of how fresh the
+      // local copy already was.
+      const syncState = await getSyncState(characterExternalId).catch(() => null);
+      const dueForResync = needsResync(syncState ? {
+        last_synced_at: syncState.last_synced_at,
+        sync_failed_count: syncState.sync_failed_count,
+      } : null);
+
+      let character: AniListCharacterDetail;
+      if (dueForResync || !localChar) {
+        const live = await fetchAniListCharacterDetail(characterId);
+        if (live) {
+          character = live;
+          markSynced(characterExternalId).catch(() => {});
+        } else if (localChar) {
+          // Live fetch failed (rate limit, network hiccup, ...) but a local
+          // copy already exists — degrade to that instead of a hard error,
+          // same backoff-on-failure behavior mediaService.ts uses for media.
+          markSyncFailed(characterExternalId, 'Live fetch returned no data').catch(() => {});
+          character = localCharacterToDetail(characterId, localChar);
+        } else {
+          loadingEl.style.display = 'none';
+          errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
+          errorEl.style.display = 'block';
+          return;
+        }
+      } else {
+        // Not due for a resync and a local copy already exists — skip the
+        // AniList call entirely instead of re-fetching on every page visit.
+        character = localCharacterToDetail(characterId, localChar);
+      }
+
       const stickyName = localChar?.name || character.name.full;
       const stickyNameNative = localChar?.name_native || character.name.native || null;
       // A locally-stored image only gets replaced by the fresh AniList fetch
@@ -579,37 +637,41 @@ const translations = useTranslations(lang);
       }
 
       const rawAppearances = await getCharacterAppearances(characterExternalId).catch(() => []);
-      let mergedAppearances: MergedAppearance[];
-      if (rawAppearances.length > 0) {
-        mergedAppearances = await Promise.all(rawAppearances.map(async (a): Promise<MergedAppearance> => {
-          const entry = await getCatalogEntry(a.media_external_id).catch(() => null);
-          const cached = anilistMediaCache[a.media_external_id];
-          const relationType = a.relation_type ?? cached?.role ?? null;
-          return {
-            mediaId: a.media_external_id,
-            title: entry?.title_main || cached?.title || a.media_external_id,
-            cover: entry?.cover_url ?? cached?.cover ?? null,
-            year: entry?.release_year ?? cached?.year ?? null,
-            month: entry?.release_month ?? cached?.month ?? null,
-            day: entry?.release_day ?? cached?.day ?? null,
-            roleLabel: relationType ? (window.ROLE_LABELS[relationType] ?? relationType) : '',
-          };
-        }));
-      } else {
-        mergedAppearances = (rawEdges as any[]).map(edge => {
-          const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
-          const cached = anilistMediaCache[extId];
-          return {
-            mediaId: extId,
-            title: cached.title,
-            cover: cached.cover,
-            year: cached.year,
-            month: cached.month,
-            day: cached.day,
-            roleLabel: cached.role ? (window.ROLE_LABELS[cached.role] ?? cached.role) : '',
-          };
-        });
+
+      // Union of local rows + this live AniList lookup — local rows are
+      // never dropped (so a manual edit in CharacterPrEditorModal sticks),
+      // but any AniList appearance not already known locally gets added.
+      // Just seeding once "while local is empty" (the previous approach)
+      // stalled after the very first row got persisted from ANY source
+      // (e.g. a media-page visit before ever opening the character page),
+      // silently leaving the rest of AniList's list out forever.
+      const localIds = new Set(rawAppearances.map(a => a.media_external_id));
+      const newFromAniList = (rawEdges as any[])
+        .map(edge => ({
+          media_external_id: `${edge.node.type.toLowerCase()}:${edge.node.id}`,
+          relation_type: edge.characterRole ?? null,
+          character_name: null as string | null,
+        }))
+        .filter(a => !localIds.has(a.media_external_id));
+      const unionAppearances = [...rawAppearances, ...newFromAniList];
+      if (newFromAniList.length > 0) {
+        saveCharacterAppearances(characterExternalId, unionAppearances).catch(() => {});
       }
+
+      const mergedAppearances: MergedAppearance[] = await Promise.all(unionAppearances.map(async (a): Promise<MergedAppearance> => {
+        const entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+        const cached = anilistMediaCache[a.media_external_id];
+        const relationType = a.relation_type ?? cached?.role ?? null;
+        return {
+          mediaId: a.media_external_id,
+          title: entry?.title_main || cached?.title || a.media_external_id,
+          cover: entry?.cover_url ?? cached?.cover ?? null,
+          year: entry?.release_year ?? cached?.year ?? null,
+          month: entry?.release_month ?? cached?.month ?? null,
+          day: entry?.release_day ?? cached?.day ?? null,
+          roleLabel: relationType ? (window.ROLE_LABELS[relationType] ?? relationType) : '',
+        };
+      }));
 
       // Newest release first, oldest last — same ordering as the character
       // editor's own appearances list (compareByReleaseDateDesc).
@@ -742,7 +804,13 @@ const translations = useTranslations(lang);
         stickyImage,
         stickyNameNative,
         allAliases.map(a => a.text).join(','),
-        stickyBiography
+        stickyBiography,
+        character.gender,
+        character.age,
+        character.bloodType,
+        character.dateOfBirth?.year ?? null,
+        character.dateOfBirth?.month ?? null,
+        character.dateOfBirth?.day ?? null,
       ).catch(() => {});
 
     } catch (err: any) {

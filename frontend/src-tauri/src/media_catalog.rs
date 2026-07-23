@@ -94,8 +94,6 @@ pub struct MediaCatalogEntry {
     pub format: Option<String>,
     pub genres_csv: Option<String>,
     pub genres_tag_csv: Option<String>,
-    pub last_sync_error: Option<String>,
-    pub last_synced_at: Option<String>,
     pub parent_id: Option<String>,
     pub platforms_csv: Option<String>,
     pub ratings_count: Option<i32>,
@@ -110,7 +108,6 @@ pub struct MediaCatalogEntry {
     pub source: Option<String>,
     pub source_url: Option<String>,
     pub status: Option<String>,
-    pub sync_failed_count: Option<i32>,
     pub synopsis: Option<String>,
     pub time_length: Option<i32>,
     pub title_english: Option<String>,
@@ -127,10 +124,10 @@ pub struct MediaCatalogEntry {
 const SELECT_ALL: &str = "
     SELECT id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
-           last_sync_error, last_synced_at, parent_id, platforms_csv,
+           parent_id, platforms_csv,
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
            release_month, release_year, score_global,
-           shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+           shop_links_csv, source, source_url, status, synopsis,
            time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
            type, created_at, updated_at
     FROM media_catalog";
@@ -140,10 +137,10 @@ const SELECT_ALL: &str = "
 const SELECT_VISIBLE: &str = "
     SELECT id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
-           last_sync_error, last_synced_at, parent_id, platforms_csv,
+           parent_id, platforms_csv,
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
            release_month, release_year, score_global,
-           shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+           shop_links_csv, source, source_url, status, synopsis,
            time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
            type, created_at, updated_at
     FROM visible_media_catalog";
@@ -161,34 +158,31 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
         format:              row.get(8)?,
         genres_csv:          row.get(9)?,
         genres_tag_csv:      row.get(10)?,
-        last_sync_error:     row.get(11)?,
-        last_synced_at:      row.get(12)?,
-        parent_id:           row.get(13)?,
-        platforms_csv:       row.get(14)?,
-        ratings_count:       row.get(15)?,
-        release_day:         row.get(16)?,
-        release_end_day:     row.get(17)?,
-        release_end_month:   row.get(18)?,
-        release_end_year:    row.get(19)?,
-        release_month:       row.get(20)?,
-        release_year:        row.get(21)?,
-        score_global:        row.get(22)?,
-        shop_links_csv:      row.get(23)?,
-        source:              row.get(24)?,
-        source_url:          row.get(25)?,
-        status:              row.get(26)?,
-        sync_failed_count:   row.get(27)?,
-        synopsis:            row.get(28)?,
-        time_length:         row.get(29)?,
-        title_english:       row.get(30)?,
-        title_main:          row.get(31)?,
-        title_native:        row.get(32)?,
-        title_romaji:        row.get(33)?,
-        total_count:         row.get(34)?,
-        total_count_2:       row.get(35)?,
-        r#type:              row.get::<_, Option<String>>(36)?.unwrap_or_default(),
-        created_at:          row.get::<_, Option<String>>(37)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(38)?.unwrap_or_default(),
+        parent_id:           row.get(11)?,
+        platforms_csv:       row.get(12)?,
+        ratings_count:       row.get(13)?,
+        release_day:         row.get(14)?,
+        release_end_day:     row.get(15)?,
+        release_end_month:   row.get(16)?,
+        release_end_year:    row.get(17)?,
+        release_month:       row.get(18)?,
+        release_year:        row.get(19)?,
+        score_global:        row.get(20)?,
+        shop_links_csv:      row.get(21)?,
+        source:              row.get(22)?,
+        source_url:          row.get(23)?,
+        status:              row.get(24)?,
+        synopsis:            row.get(25)?,
+        time_length:         row.get(26)?,
+        title_english:       row.get(27)?,
+        title_main:          row.get(28)?,
+        title_native:        row.get(29)?,
+        title_romaji:        row.get(30)?,
+        total_count:         row.get(31)?,
+        total_count_2:       row.get(32)?,
+        r#type:              row.get::<_, Option<String>>(33)?.unwrap_or_default(),
+        created_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(35)?.unwrap_or_default(),
     })
 }
 
@@ -235,13 +229,13 @@ pub async fn save_catalog_entry(
         "INSERT OR REPLACE INTO media_catalog (
             id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
             favorites_count, format, genres_csv, genres_tag_csv,
-            last_sync_error, last_synced_at, parent_id, platforms_csv,
+            parent_id, platforms_csv,
             ratings_count, release_day, release_end_day, release_end_month, release_end_year,
             release_month, release_year, score_global,
-            shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
+            shop_links_csv, source, source_url, status, synopsis,
             time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
             type, created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         rusqlite::params![
             &entry.id,
             &entry.external_id,
@@ -254,8 +248,6 @@ pub async fn save_catalog_entry(
             &entry.format,
             &entry.genres_csv,
             &entry.genres_tag_csv,
-            &entry.last_sync_error,
-            &entry.last_synced_at,
             &entry.parent_id,
             &entry.platforms_csv,
             &entry.ratings_count,
@@ -270,7 +262,6 @@ pub async fn save_catalog_entry(
             &entry.source,
             &entry.source_url,
             &entry.status,
-            &entry.sync_failed_count,
             &entry.synopsis,
             &entry.time_length,
             &entry.title_english,
@@ -288,25 +279,6 @@ pub async fn save_catalog_entry(
     // authors_csv is just a flat display cache (MediaPage.tsx) — real author
     // relations go through save_media_authors/save_author_profile_and_relations.
     Ok(entry)
-}
-
-// Bumps the failure counter/message only — unlike save_catalog_entry, a
-// failed fetch has no fresh row data to write.
-#[tauri::command]
-pub async fn mark_catalog_sync_failed(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    external_id: String,
-    error: String,
-) -> Result<(), String> {
-    let conn = state.conn.lock().str_err()?;
-    conn.execute(
-        "UPDATE media_catalog
-         SET sync_failed_count = COALESCE(sync_failed_count, 0) + 1,
-             last_sync_error = ?2
-         WHERE external_id = ?1",
-        rusqlite::params![external_id, error],
-    ).str_err()?;
-    Ok(())
 }
 
 // Narrow update for genres/tags discovered by a background fetch (Comic

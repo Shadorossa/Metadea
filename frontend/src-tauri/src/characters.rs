@@ -14,6 +14,13 @@ pub struct CharacterEntry {
     pub biography: Option<String>,
     pub image_url: Option<String>,
     pub reaction: Option<String>,
+    pub gender: Option<String>,
+    /// AniList's own field — a free-form string ("17", "17-18"), not always numeric.
+    pub age: Option<String>,
+    pub blood_type: Option<String>,
+    pub dob_year: Option<i32>,
+    pub dob_month: Option<i32>,
+    pub dob_day: Option<i32>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -29,7 +36,9 @@ pub struct CharacterAppearance {
 }
 
 const SELECT_CHARACTER: &str =
-    "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM characters";
+    "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction,
+            gender, age, blood_type, dob_year, dob_month, dob_day, created_at, updated_at
+     FROM characters";
 
 fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry> {
     Ok(CharacterEntry {
@@ -41,8 +50,14 @@ fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry>
         biography: row.get(5)?,
         image_url: row.get(6)?,
         reaction: row.get(7)?,
-        created_at: row.get(8)?,
-        updated_at: row.get(9)?,
+        gender: row.get(8)?,
+        age: row.get(9)?,
+        blood_type: row.get(10)?,
+        dob_year: row.get(11)?,
+        dob_month: row.get(12)?,
+        dob_day: row.get(13)?,
+        created_at: row.get(14)?,
+        updated_at: row.get(15)?,
     })
 }
 
@@ -55,6 +70,12 @@ pub async fn save_character(
     name_native: Option<String>,
     aliases_csv: Option<String>,
     biography: Option<String>,
+    gender: Option<String>,
+    age: Option<String>,
+    blood_type: Option<String>,
+    dob_year: Option<i32>,
+    dob_month: Option<i32>,
+    dob_day: Option<i32>,
 ) -> Result<CharacterEntry, String> {
     let conn = state.conn.lock().str_err()?;
 
@@ -74,12 +95,20 @@ pub async fn save_character(
     let updated_at = Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        rusqlite::params![&id, &external_id, &name, &name_native, &aliases_csv, &biography, &image_url, &reaction, &created_at, &updated_at],
+        "INSERT OR REPLACE INTO characters (
+            id, external_id, name, name_native, aliases_csv, biography, image_url, reaction,
+            gender, age, blood_type, dob_year, dob_month, dob_day, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        rusqlite::params![
+            &id, &external_id, &name, &name_native, &aliases_csv, &biography, &image_url, &reaction,
+            &gender, &age, &blood_type, &dob_year, &dob_month, &dob_day, &created_at, &updated_at,
+        ],
     ).str_err()?;
 
-    Ok(CharacterEntry { id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at })
+    Ok(CharacterEntry {
+        id, external_id, name, name_native, aliases_csv, biography, image_url, reaction,
+        gender, age, blood_type, dob_year, dob_month, dob_day, created_at, updated_at,
+    })
 }
 
 #[tauri::command]

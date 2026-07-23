@@ -140,16 +140,6 @@
   margin-top: 1rem;
 }
 
-.character-alt-names-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-dim);
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
 .character-alt-names {
   display: flex;
   gap: 0.4rem;

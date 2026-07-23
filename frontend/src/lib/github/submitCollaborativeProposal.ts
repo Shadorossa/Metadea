@@ -137,15 +137,17 @@ function mergeListByKey<T>(upstream: T[], local: T[], removedKeys: string[] | un
 function sharableBundleFor(bundle: ProposalBundle): ProposalBundle {
   // Strip fields that only make sense on this user's own local install
   // before they leave the machine — the shared community catalog every
-  // other user pulls from has no business carrying one person's sync
-  // bookkeeping, per-install favorite/rating counters, or this row's local
-  // timestamps as if they were canonical data. id/created_at/updated_at
-  // can't just be omitted (MediaCatalogEntry requires them) — zeroed out
-  // instead, same placeholder convention mapMediaDataToCatalogEntry already
-  // uses for `id`, since save_catalog_entry (Rust) always regenerates all
-  // three from the existing row on import regardless of what's here.
+  // other user pulls from has no business carrying one person's per-install
+  // favorite/rating counters or this row's local timestamps as if they were
+  // canonical data. Sync bookkeeping itself no longer lives on media_catalog
+  // at all (see sync_state.rs), so there's nothing sync-related left to strip
+  // here. id/created_at/updated_at can't just be omitted (MediaCatalogEntry
+  // requires them) — zeroed out instead, same placeholder convention
+  // mapMediaDataToCatalogEntry already uses for `id`, since save_catalog_entry
+  // (Rust) always regenerates all three from the existing row on import
+  // regardless of what's here.
   const {
-    last_synced_at, sync_failed_count, last_sync_error, favorites_count, ratings_count,
+    favorites_count, ratings_count,
     ...sharableCatalogEntry
   } = bundle.media_catalog;
   sharableCatalogEntry.created_at = '';

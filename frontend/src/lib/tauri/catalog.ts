@@ -21,8 +21,6 @@ export interface MediaCatalogEntry {
   format?:              string | null;
   genres_csv?:          string | null;
   genres_tag_csv?:      string | null;
-  last_sync_error?:     string | null;
-  last_synced_at?:      string | null;
   parent_id?:           string | null;
   platforms_csv?:       string | null;
   ratings_count?:       number | null;
@@ -44,7 +42,6 @@ export interface MediaCatalogEntry {
    *  source logo/link without one. */
   source_url?:          string | null;
   status?:              string | null;
-  sync_failed_count?:   number | null;
   synopsis?:            string | null;
   time_length?:         number | null;
   /** Display-only alternate title (AniList title.english) — no other
@@ -83,10 +80,6 @@ export async function getBlockedExternalIds(): Promise<string[]> {
 
 export async function deleteCatalogEntry(externalId: string): Promise<void> {
   return tauriRun('delete_catalog_entry', { externalId });
-}
-
-export async function markCatalogSyncFailed(externalId: string, error: string): Promise<void> {
-  return tauriRun('mark_catalog_sync_failed', { externalId, error });
 }
 
 export async function updateCatalogGenres(externalId: string, genresCsv: string | null, genresTagCsv: string | null): Promise<void> {
@@ -223,6 +216,14 @@ export interface DbMediaAuthor {
   image?: string | null;
   role?: string | null;
   url?: string | null;
+  // Full-profile fields — only ever populated via saveAuthorProfileAndRelations
+  // (the author's own page), never by saveMediaAuthors (a media page's
+  // lightweight author list, which never touches these — see media_authors.rs).
+  name_native?: string | null;
+  aliases_csv?: string | null;
+  biography?: string | null;
+  birth_date?: string | null;
+  death_date?: string | null;
 }
 
 export async function saveMediaAuthors(mediaExternalId: string, authors: DbMediaAuthor[]): Promise<void> {
@@ -231,6 +232,32 @@ export async function saveMediaAuthors(mediaExternalId: string, authors: DbMedia
 
 export async function getMediaAuthors(mediaExternalId: string): Promise<DbMediaAuthor[]> {
   return tauriCmd<DbMediaAuthor[]>('get_media_authors', [], { mediaExternalId });
+}
+
+export async function getAuthor(externalId: string): Promise<DbMediaAuthor | null> {
+  return tauriCmd<DbMediaAuthor | null>('get_author', null, { externalId });
+}
+
+export interface AuthorWork {
+  media_external_id: string;
+  role?: string | null;
+  title: string;
+  cover?: string | null;
+}
+
+export async function getAuthorWorks(authorExternalId: string): Promise<AuthorWork[]> {
+  return tauriCmd<AuthorWork[]>('get_author_works', [], { authorExternalId });
+}
+
+export interface AuthorWorkRelation {
+  media_external_id: string;
+  role?: string | null;
+  title: string;
+  cover?: string | null;
+}
+
+export async function saveAuthorProfileAndRelations(author: DbMediaAuthor, relations: AuthorWorkRelation[]): Promise<void> {
+  return tauriRun('save_author_profile_and_relations', { author, relations });
 }
 
 // Downloads the repo's shared community catalog (built from merged
