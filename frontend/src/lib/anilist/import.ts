@@ -252,11 +252,8 @@ export async function syncFromAniList(
       const format = mediaItem.media?.format;
       const anilistId = mediaItem.mediaId;
 
-      // Try both ID formats: import format (e.g. anime_tv_123) and mapper format (e.g. anime:123)
       const importId = formatMediaId(mediaType, format, anilistId);
-      const baseType = anilistBaseType(mediaType, format);
-      const mapperId = `${baseType}:${anilistId}`;
-      const existing = existingMap.get(importId) ?? existingMap.get(mapperId);
+      const existing = existingMap.get(importId);
 
       const newStatus = ANILIST_TO_APP_STATUS[mediaItem.status] ?? 'planning';
       const newRating = mediaItem.score && mediaItem.score > 0 ? (mediaItem.score as number) : null;
@@ -345,11 +342,16 @@ function mapMediaType(mediaType: string, format?: string): string {
   return anilistBaseType(mediaType, format);
 }
 
+// Must match the "type:id" scheme every other path in the app uses
+// (search results, mediaService.ts, anilist-mapper.ts's own live-fetch
+// ids, ...) — this used to build "anime_tv_123"-style ids instead, so a
+// title imported here and the same title opened via search/browsing
+// never matched: two separate catalog/library rows for the same work, and
+// the underscore id had no ':' for parseExternalId to split on, so its
+// numeric id parsed as NaN and the media page could never live-fetch it.
 function formatMediaId(mediaType: string, format: string | undefined, anilistId: number): string {
   const baseType = anilistBaseType(mediaType, format);
-  if (!format) return `${baseType}_${anilistId}`;
-  const formatNorm = format.toLowerCase().replace(/\s+/g, '');
-  return `${baseType}_${formatNorm}_${anilistId}`;
+  return `${baseType}:${anilistId}`;
 }
 
 function formatFuzzyDate(fuzzyDate: { year?: number; month?: number; day?: number } | null): string {
