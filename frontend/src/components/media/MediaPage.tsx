@@ -564,6 +564,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
   const handleEditorSaved = useCallback((entry: LibraryEntry) => {
     applySaved(entry);
+    // The editor's own heart button (MediaEditorModal) writes favorite state
+    // independently of the cover's — without this, saving a favorite change
+    // there wouldn't show up on the cover heart until the next full reload.
+    setIsFavorited(!!entry.is_favorite);
     setSavedToast('visible');
     if (savedToastTimer.current) clearTimeout(savedToastTimer.current);
     // After 2s start exit animation, then hide after animation (300ms)
@@ -575,6 +579,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
   const handleEditorDeleted = useCallback(() => {
     applyDeleted();
+    // Deleting the library entry unfavorites it too (MediaEditorModal's own
+    // delete flow calls syncFavorites(..., false)) — mirror that here.
+    setIsFavorited(false);
   }, [applyDeleted]);
 
   // Manual "retry sync" — bypasses the in-memory session cache
@@ -852,15 +859,19 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 </div>
               </div>
             </div>
-              {isBundle && !previewMode && (
-                // A bundle has no library entry/editor of its own to hold the
-                // usual favorite toggle (MediaEditorModal's heart button) —
-                // this is the same syncFavorites call that button makes,
-                // just standalone on the cover itself. Lives outside
-                // .media-cover-wrap (not inside it) specifically so it can
-                // straddle the cover's own bottom edge — that wrap's
-                // overflow:hidden (it clips its own hover overlay) would
-                // otherwise clip half the button off.
+              {!previewMode && (
+                // Same syncFavorites call MediaEditorModal's own heart button
+                // makes, just standalone on the cover itself — a bundle has
+                // no library entry/editor of its own to hold that button at
+                // all, so this started as bundle-only, but favoriting
+                // straight from the cover (no need to open the editor) is
+                // useful for every media type. handleEditorSaved/Deleted keep
+                // isFavorited in sync with whatever the editor's own toggle
+                // does, since that's a separate independent write to the same
+                // underlying favorites list. Lives outside .media-cover-wrap
+                // (not inside it) specifically so it can straddle the cover's
+                // own bottom edge — that wrap's overflow:hidden (it clips its
+                // own hover overlay) would otherwise clip half the button off.
                 <button
                   type="button"
                   className={`media-cover-favorite-btn${isFavorited ? ' active' : ''}`}
