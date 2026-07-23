@@ -138,7 +138,7 @@ export const en = {
     cancel_button: 'Cancel',
     delete_confirm: 'Delete "{title}"? This cannot be undone.',
     source_local: 'My local catalog',
-    source_github: 'GitHub (database/)',
+    source_github: 'GitHub (catalog/)',
     source_add: 'Add work',
     add_fetching: 'Fetching full data for this title...',
     github_hint: 'These are the entries already merged into the shared catalog on GitHub. Editing one submits your changes as a new pull request for review.',

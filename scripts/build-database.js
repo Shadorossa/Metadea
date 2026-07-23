@@ -1,12 +1,19 @@
 #!/usr/bin/env node
-// Rebuilds database.db (repo root) from every database/*.json a merged
-// collaborative-catalog PR (see PrEditorModal.tsx's handleSubmit) has added.
-// Run by .github/workflows/update-database.yml on every push to main that
-// touches database/**; the desktop app downloads the resulting file (see
-// media_catalog.rs's sync_community_catalog) and merges rows it doesn't
+// Rebuilds database.db (repo root) from every catalog/<Folder>/*.json a merged
+// collaborative-catalog PR (see PrEditorModal.tsx's handleSubmit and
+// CharacterPrEditorModal.tsx's handleSubmit) has added. Run by
+// .github/workflows/update-database.yml on every push to main that touches
+// catalog/**; the desktop app downloads the resulting file (see
+// community_sync.rs's sync_community_catalog) and merges rows it doesn't
 // already have locally into its own tables.
 //
-// Each database/*.json is a *bundle*, not a bare media_catalog row:
+// catalog/ has one subfolder per media type (Anime, Games, Movies, ...) plus
+// a standalone Characters/ folder — mirrors frontend/src/lib/github/
+// catalogPaths.ts, kept in sync by hand. Which bucket a file belongs to is
+// sniffed from its own shape rather than its folder, so this script doesn't
+// need to hardcode the folder names:
+//
+// A *media* bundle:
 //   { media_catalog: {...}, media_relations: [...], characters: [...],
 //     media_authors: [...], saga_name: "..." }
 // (older files may still carry a now-ignored saga_groups field — "alternate
@@ -16,6 +23,13 @@
 // saga-derived PREQUEL/SEQUEL entries — PrEditorModal resolves those before
 // writing the file, so this script only has to fan them out into tables.
 //
+// A *character* bundle (no owning media_catalog row of its own):
+//   { character: { external_id, name, name_native, aliases_csv, biography,
+//     image_url }, appearances: [{ media_external_id, relation_type }],
+//     actors: [{ external_id, name, name_native, image_url, role, language }] }
+// actors_csv (characters table) is computed here from `actors`, not carried
+// in the bundle itself — same cache-column convention as authors_csv.
+//
 // node:sqlite is experimental — run with `node --experimental-sqlite`.
 
 const fs = require('fs');
@@ -24,7 +38,7 @@ const crypto = require('crypto');
 const { DatabaseSync } = require('node:sqlite');
 
 const REPO_ROOT = path.join(__dirname, '..');
-const DATABASE_DIR = path.join(REPO_ROOT, 'database');
+const CATALOG_DIR = path.join(REPO_ROOT, 'catalog');
 const DB_PATH = path.join(REPO_ROOT, 'database.db');
 
 // Table shapes mirror frontend/src-tauri/src/db.rs's METADEA_SCHEMA — keep
@@ -76,6 +90,7 @@ CREATE TABLE characters (
     name        TEXT NOT NULL DEFAULT '',
     name_native TEXT,
     aliases_csv TEXT DEFAULT '',
+    actors_csv  TEXT DEFAULT '',
     biography   TEXT,
     image_url   TEXT,
     reaction    TEXT,
@@ -90,6 +105,27 @@ CREATE TABLE character_appearances (
     character_name        TEXT,
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (character_external_id, media_external_id)
+);
+
+-- Shared between voice actors (role='voice', AniList Staff) and live-action
+-- actors (role='actor', e.g. TMDB) — mirrors db.rs's actors/character_actors.
+CREATE TABLE actors (
+    id          TEXT PRIMARY KEY,
+    external_id TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL DEFAULT '',
+    name_native TEXT,
+    image_url   TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE character_actors (
+    actor_external_id     TEXT NOT NULL,
+    character_external_id TEXT NOT NULL,
+    role                  TEXT,
+    language              TEXT,
+    added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (actor_external_id, character_external_id)
 );
 
 -- relation_type is deliberately NOT part of the primary key — matches
@@ -165,30 +201,47 @@ const CATALOG_COLUMNS = [
   'last_synced_at', 'sync_failed_count', 'last_sync_error', 'manually_edited_at', 'created_at', 'updated_at',
 ];
 
-function readBundles() {
-  if (!fs.existsSync(DATABASE_DIR)) {
-    console.log(`No ${DATABASE_DIR} directory found — nothing to build.`);
-    return [];
+// One level of recursion is all catalog/ ever has (catalog/<Folder>/*.json),
+// but walking generically means this script never needs its own copy of the
+// folder-name list.
+function walkJsonFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  const out = [];
+  for (const name of fs.readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (fs.statSync(full).isDirectory()) out.push(...walkJsonFiles(full));
+    else if (name.endsWith('.json')) out.push(full);
   }
-  const files = fs.readdirSync(DATABASE_DIR).filter(f => f.endsWith('.json'));
-  const bundles = [];
+  return out;
+}
+
+function readBundles() {
+  if (!fs.existsSync(CATALOG_DIR)) {
+    console.log(`No ${CATALOG_DIR} directory found — nothing to build.`);
+    return { mediaBundles: [], characterBundles: [] };
+  }
+  const files = walkJsonFiles(CATALOG_DIR);
+  const mediaBundles = [];
+  const characterBundles = [];
   for (const file of files) {
     try {
-      const raw = fs.readFileSync(path.join(DATABASE_DIR, file), 'utf-8');
+      const raw = fs.readFileSync(file, 'utf-8');
       const bundle = JSON.parse(raw);
-      if (!bundle.media_catalog?.external_id) {
-        console.warn(`Skipping ${file}: missing media_catalog.external_id`);
-        continue;
+      if (bundle.character?.external_id) {
+        characterBundles.push(bundle);
+      } else if (bundle.media_catalog?.external_id) {
+        mediaBundles.push(bundle);
+      } else {
+        console.warn(`Skipping ${file}: not a recognized media or character bundle`);
       }
-      bundles.push(bundle);
     } catch (e) {
       console.warn(`Skipping ${file}: ${e.message}`);
     }
   }
-  return bundles;
+  return { mediaBundles, characterBundles };
 }
 
-function buildDatabase(bundles) {
+function buildDatabase({ mediaBundles, characterBundles }) {
   if (fs.existsSync(DB_PATH)) fs.unlinkSync(DB_PATH);
   const db = new DatabaseSync(DB_PATH);
   db.exec(CREATE_TABLES_SQL);
@@ -198,16 +251,22 @@ function buildDatabase(bundles) {
   const catalogPlaceholders = CATALOG_COLUMNS.map(() => '?').join(', ');
   const catalogStmt = db.prepare(`INSERT OR REPLACE INTO media_catalog (${CATALOG_COLUMNS.join(', ')}) VALUES (${catalogPlaceholders})`);
 
-  // name_native/aliases_csv/biography have no source in the bundle today —
-  // ProposalBundle.characters is a Vec<SkeletonCharacter> (external_id, name,
-  // image_url, relation_type, character_name only, see characters.rs), so
-  // these three columns exist for schema parity with db.rs but are always
-  // written NULL/'' until the collaborative editor starts submitting them.
+  // A media bundle's own embedded characters[] (SkeletonCharacter, see
+  // characters.rs) only ever carries external_id/name/image_url/relation_type/
+  // character_name — name_native/aliases_csv/biography come from a standalone
+  // character bundle instead (CharacterPrEditorModal.tsx), written NULL/'' here
+  // when this row comes from the media-embedded list.
   const characterStmt = db.prepare(
-    'INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const appearanceStmt = db.prepare(
     'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at) VALUES (?, ?, ?, ?, ?)'
+  );
+  const actorStmt = db.prepare(
+    'INSERT OR REPLACE INTO actors (id, external_id, name, name_native, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  );
+  const characterActorStmt = db.prepare(
+    'INSERT OR REPLACE INTO character_actors (actor_external_id, character_external_id, role, language, added_at) VALUES (?, ?, ?, ?, ?)'
   );
   const relationStmt = db.prepare(
     'INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
@@ -230,7 +289,7 @@ function buildDatabase(bundles) {
 
   let catalogCount = 0;
   const sagaNameById = new Map();
-  for (const bundle of bundles) {
+  for (const bundle of mediaBundles) {
     const entry = bundle.media_catalog;
     const externalId = entry.external_id;
 
@@ -278,7 +337,7 @@ function buildDatabase(bundles) {
 
     for (const char of bundle.characters || []) {
       if (!char.external_id) continue;
-      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', null, '', null, char.image_url ?? null, null, now, now);
+      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', null, '', '', null, char.image_url ?? null, null, now, now);
       appearanceStmt.run(char.external_id, externalId, char.relation_type ?? null, char.character_name ?? null, now);
     }
 
@@ -291,8 +350,31 @@ function buildDatabase(bundles) {
 
   buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameById);
 
+  // Standalone character bundles processed last so a dedicated character
+  // proposal's own fields/appearances win over whatever a media bundle's
+  // embedded skeleton (processed above) guessed for the same character.
+  let characterCount = 0;
+  for (const bundle of characterBundles) {
+    const char = bundle.character;
+    const actorsCsv = (bundle.actors || []).map(a => a.name).filter(Boolean).join(',');
+    characterStmt.run(
+      crypto.randomUUID(), char.external_id, char.name || '', char.name_native ?? null,
+      char.aliases_csv ?? '', actorsCsv, char.biography ?? null, char.image_url ?? null, null, now, now,
+    );
+    characterCount++;
+    for (const app of bundle.appearances || []) {
+      if (!app.media_external_id) continue;
+      appearanceStmt.run(char.external_id, app.media_external_id, app.relation_type ?? null, null, now);
+    }
+    for (const actor of bundle.actors || []) {
+      if (!actor.external_id) continue;
+      actorStmt.run(crypto.randomUUID(), actor.external_id, actor.name || '', actor.name_native ?? null, actor.image_url ?? null, now, now);
+      characterActorStmt.run(actor.external_id, char.external_id, actor.role ?? null, actor.language ?? null, now);
+    }
+  }
+
   db.close();
-  return catalogCount;
+  return { catalogCount, characterCount };
 }
 
 // Rebuilds sagas/saga_relations from the real, always-reciprocal PREQUEL/
@@ -350,6 +432,9 @@ function buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameByI
   }
 }
 
-const bundles = readBundles();
-const count = buildDatabase(bundles);
-console.log(`Built ${DB_PATH} with ${count} entries from ${bundles.length} source files.`);
+const { mediaBundles, characterBundles } = readBundles();
+const { catalogCount, characterCount } = buildDatabase({ mediaBundles, characterBundles });
+console.log(
+  `Built ${DB_PATH} with ${catalogCount} catalog entries from ${mediaBundles.length} media files ` +
+  `and ${characterCount} characters from ${characterBundles.length} character files.`
+);

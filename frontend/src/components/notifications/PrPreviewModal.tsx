@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
 import type { GitHubPull } from '../../lib/github/api';
 import { fetchFileAtRef } from '../../lib/github/api';
+import { catalogFilePath } from '../../lib/github/catalogPaths';
 import { getCatalogEntry } from '../../lib/tauri/catalog';
 import { buildPreviewMediaPageData } from '../../lib/media/mediaService';
 import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
@@ -30,7 +31,7 @@ export function PrPreviewModal({ pr, token, externalId, i18n, onClose }: Props) 
 
     (async () => {
       try {
-        const filePath = `database/${externalId.replace(':', '-')}.json`;
+        const filePath = catalogFilePath(externalId);
         const content = await fetchFileAtRef(token, filePath, pr.head.ref);
         const bundle = JSON.parse(content) as ProposalBundle;
         const baseline = await getCatalogEntry(externalId).catch(() => null);

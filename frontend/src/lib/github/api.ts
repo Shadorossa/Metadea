@@ -1,4 +1,5 @@
 import { REPO_OWNER, REPO_NAME } from './ownership';
+import { MEDIA_CATALOG_FOLDERS, catalogRootPath } from './catalogPaths';
 
 export interface GitHubPull {
   number: number;
@@ -65,12 +66,20 @@ export interface GitHubDirEntry {
   type: 'file' | 'dir';
 }
 
-// Lists every merged collaborative-catalog entry (database/*.json on main) —
-// distinct from listOpenProposalPulls, which only lists entries still under
-// review.
+// Lists every merged collaborative-catalog media entry (catalog/<Type>/*.json
+// on main) — distinct from listOpenProposalPulls, which only lists entries
+// still under review. One request per type folder (GitHub's contents API
+// only lists a single directory's immediate children, not recursively) — a
+// folder that 404s just hasn't had a proposal of that type yet.
 export async function listDatabaseFiles(token: string): Promise<GitHubDirEntry[]> {
-  const entries = await githubFetch<GitHubDirEntry[]>(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/database`);
-  return entries.filter(e => e.type === 'file' && e.name.endsWith('.json'));
+  const perFolder = await Promise.all(MEDIA_CATALOG_FOLDERS.map(async folder => {
+    try {
+      return await githubFetch<GitHubDirEntry[]>(token, `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${catalogRootPath(folder)}`);
+    } catch {
+      return [] as GitHubDirEntry[];
+    }
+  }));
+  return perFolder.flat().filter(e => e.type === 'file' && e.name.endsWith('.json'));
 }
 
 export async function deleteFileFromMain(token: string, path: string, sha: string, message: string): Promise<void> {
@@ -81,8 +90,9 @@ export async function deleteFileFromMain(token: string, path: string, sha: strin
   });
 }
 
-// database/{type}-{id}.json → "{type}:{id}" — mirrors the filename convention
-// set by submitCollaborativeProposal.ts (externalId.replace(':', '-')).
+// catalog/<Folder>/{type}-{id}.json → "{type}:{id}" — mirrors the filename
+// convention set by catalogPaths.ts's catalogFilePath (externalId with ':'
+// replaced by '-').
 export function externalIdFromDatabaseFilename(name: string): string {
   return name.replace(/\.json$/, '').replace('-', ':');
 }

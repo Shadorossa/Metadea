@@ -10,7 +10,7 @@ import type { SagaEntry } from '../../lib/anilist/saga';
 import { saveCachedSaga } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData } from '../../lib/media/mediaService';
 import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
-import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle, type ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
 import { REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../lib/media/sagaTypes';
 import { setField } from '../../lib/shared/object-utils';
@@ -54,8 +54,9 @@ function buildRelatedProposalBundle(
   catalogEntry: MediaCatalogEntry,
   relations: DbMediaRelation[],
   sagaName: string,
-): { externalId: string; bundle: ProposalBundle } {
+): { kind: 'media'; externalId: string; bundle: ProposalBundle } {
   return {
+    kind: 'media',
     externalId,
     bundle: {
       media_catalog: minimalProposalCatalogEntry(catalogEntry, []),
@@ -231,7 +232,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     : [];
 
   // Each saga member gets its own proposal file, so the same PR carries every affected member's update.
-  const otherProposalEntries: { externalId: string; bundle: ProposalBundle }[] = [];
+  const otherProposalEntries: Extract<ProposalFileEntry, { kind: 'media' }>[] = [];
   for (const otherId of otherChainIds) {
     try {
       const existing = await getMediaRelationsForEditor(otherId);
@@ -329,7 +330,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     saga_name: p.sagaName || undefined,
   };
 
-  const proposalEntries = [{ externalId, bundle }, ...otherProposalEntries];
+  const proposalEntries: ProposalFileEntry[] = [{ kind: 'media', externalId, bundle }, ...otherProposalEntries];
   const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
   if (prUrl) openUrlInBrowser(prUrl);
 

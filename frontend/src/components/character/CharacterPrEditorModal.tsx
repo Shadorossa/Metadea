@@ -4,12 +4,14 @@ import {
   getCharacter, saveCharacter, getCharacterAppearances, saveCharacterAppearances,
   type CharacterEntry, type CharacterAppearance,
 } from '../../lib/tauri/characters';
+import { getCharacterActors, saveCharacterActors, type DbCharacterActor } from '../../lib/tauri/actors';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import { fetchAniListCharacterDetail, fetchAniListDetail } from '../../lib/search/providers/anilist';
-import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
+import { fetchAniListCharacterDetail, fetchAniListDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
+import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
+import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
@@ -18,9 +20,10 @@ import {
   isFieldChanged,
   characteristicsChanged as characteristicsChangedPure,
   appearancesChanged as appearancesChangedPure,
+  voiceActorsChanged as voiceActorsChangedPure,
   hasChanged as hasChangedPure,
   buildChangeSummary as buildChangeSummaryPure,
-  type AppearanceRow, type CharacterDiffFields,
+  type AppearanceRow, type VoiceActorRow, type CharacterDiffFields,
 } from '../../lib/character/prEditorDiff';
 
 const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
@@ -84,6 +87,7 @@ export function CharacterPrEditorModal() {
   const [originalVoiceActors, setOriginalVoiceActors] = useState<VoiceActorRow[]>([]);
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
+  const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
 
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -277,19 +281,35 @@ export function CharacterPrEditorModal() {
         setOriginalAliases(combinedAliases);
         setOriginalImageUrl(data.image_url || '');
 
+        // Persisted actors (from a previous save via the search picker) take
+        // priority — only fill in from AniList's live cast list for a
+        // voice actor nobody's curated here yet, same "local ∪ live" merge
+        // aliases already do above.
+        const persistedActors = await getCharacterActors(currentId).catch(() => [] as DbCharacterActor[]);
         const vaMap = new Map<string, VoiceActorRow>();
+        for (const a of persistedActors) {
+          vaMap.set(a.external_id, {
+            externalId: a.external_id,
+            name: a.name,
+            native: a.name_native || '',
+            language: a.language || 'Japanese',
+            image: a.image_url || '',
+            role: a.role || 'voice',
+          });
+        }
         if (anilistDetail?.media?.edges) {
           for (const edge of anilistDetail.media.edges) {
             if (edge.voiceActors) {
               for (const va of edge.voiceActors) {
-                const key = `${va.id || va.name?.full}`;
+                const key = va.id ? `person:a${va.id}` : `va:${va.name?.full || ''}`;
                 if (!vaMap.has(key)) {
                   vaMap.set(key, {
-                    id: va.id,
+                    externalId: key,
                     name: va.name?.userPreferred || va.name?.full || '',
                     native: va.name?.native || '',
                     language: va.languageV2 || 'Japanese',
                     image: va.image?.large || va.image?.medium || '',
+                    role: 'voice',
                   });
                 }
               }
@@ -336,6 +356,7 @@ export function CharacterPrEditorModal() {
   };
   const characteristicsChanged = () => characteristicsChangedPure(characteristics, originalCharacteristics);
   const appearancesChanged = () => appearancesChangedPure(appearances, originalAppearances);
+  const voiceActorsChanged = () => voiceActorsChangedPure(voiceActors, originalVoiceActors);
   const hasChanged = () => hasChangedPure(originalCharacter, diffFields);
   const buildChangeSummary = () => buildChangeSummaryPure(originalCharacter, diffFields);
 
@@ -386,13 +407,14 @@ export function CharacterPrEditorModal() {
         name,
         name_native: normField(nameNative) as string | null | undefined,
         aliases_csv: normField(aliases.join(',')) as string | null | undefined,
+        actors_csv: normField(voiceActors.map(v => v.name).filter(Boolean).join(',')) as string | null | undefined,
         biography: normField(reassembledBiography) as string | null | undefined,
         image_url: normField(imageUrl) as string | null | undefined,
       };
 
       await saveCharacter(
         currentId, updatedCharacter.name, updatedCharacter.image_url,
-        updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.biography,
+        updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.actors_csv, updatedCharacter.biography,
       );
       if (appearancesChanged()) {
         await saveCharacterAppearances(currentId, appearances.map(a => ({
@@ -400,22 +422,44 @@ export function CharacterPrEditorModal() {
           relation_type: a.relation_type,
         })));
       }
+      if (voiceActorsChanged()) {
+        await saveCharacterActors(currentId, voiceActors.map(v => ({
+          external_id: v.externalId || `va:${encodeURIComponent(v.name)}`,
+          name: v.name,
+          name_native: v.native || null,
+          image_url: v.image || null,
+          role: v.role || 'voice',
+          language: v.language || null,
+        })));
+      }
 
       setStatusMsg(t.preparing_proposal);
 
-      const bundle: ProposalBundle = {
-        media_catalog: {} as any,
-        media_relations: [],
-        characters: [{
+      const bundle: CharacterProposalBundle = {
+        character: {
           external_id: updatedCharacter.external_id,
           name: updatedCharacter.name,
+          name_native: updatedCharacter.name_native,
+          aliases_csv: updatedCharacter.aliases_csv,
+          biography: updatedCharacter.biography,
           image_url: updatedCharacter.image_url,
-        }],
-        media_authors: [],
+        },
+        appearances: appearances.map(a => ({
+          media_external_id: a.media_external_id,
+          relation_type: a.relation_type,
+        })),
+        actors: voiceActors.map(v => ({
+          external_id: v.externalId || `va:${encodeURIComponent(v.name)}`,
+          name: v.name,
+          name_native: v.native || null,
+          image_url: v.image || null,
+          role: v.role || 'voice',
+          language: v.language || null,
+        })),
       };
 
       const changeSummary = `- ${buildChangeSummary()}`;
-      const prUrl = await submitCollaborativeProposal(currentId, [{ externalId: currentId, bundle }], changeSummary, setStatusMsg);
+      const prUrl = await submitCollaborativeProposal(currentId, [{ kind: 'character', externalId: currentId, bundle }], changeSummary, setStatusMsg);
 
       if (prUrl) {
         setStatusMsg(t.pr_success);
@@ -432,8 +476,18 @@ export function CharacterPrEditorModal() {
     }
   };
 
-  const addVoiceActor = () => {
-    setVoiceActors(prev => [...prev, { name: '', native: '', language: 'Japanese', image: '' }]);
+  const addVoiceActor = (result: AniListStaffSearchResult) => {
+    const externalId = `person:a${result.id}`;
+    setVoiceActorSearchOpen(false);
+    if (voiceActors.some(v => v.externalId === externalId)) return;
+    setVoiceActors(prev => [...prev, {
+      externalId,
+      name: result.name,
+      native: result.nameNative || '',
+      language: 'Japanese',
+      image: result.image || '',
+      role: 'voice',
+    }]);
   };
 
   const updateVoiceActor = (index: number, field: keyof VoiceActorRow, value: string) => {
@@ -621,7 +675,7 @@ export function CharacterPrEditorModal() {
               <span className="pr-editor-section-title" style={{ margin: 0 }}>
                 Actores de Voz ({voiceActors.length})
               </span>
-              <button type="button" className="pr-editor-add-btn" onClick={addVoiceActor}>
+              <button type="button" className="pr-editor-add-btn" onClick={() => setVoiceActorSearchOpen(true)}>
                 + Añadir actor de voz
               </button>
             </div>
@@ -672,7 +726,12 @@ export function CharacterPrEditorModal() {
                         'DE': 'German', 'FR': 'French', 'PT': 'Portuguese', 'KR': 'Korean', 'ZH': 'Chinese',
                       };
                       const curCode = (va.language || 'Japanese').toLowerCase();
-                      const isSelected = curCode.includes(langTag.toLowerCase()) ||
+                      // No generic curCode.includes(langTag) fallback here —
+                      // "Japanese".includes("es") is true, so that check used
+                      // to light up the ES tag for every actor still on the
+                      // default Japanese language. Only these exact,
+                      // unambiguous per-language substrings decide it.
+                      const isSelected =
                         (langTag === 'JP' && curCode.includes('japan')) ||
                         (langTag === 'ES' && curCode.includes('span')) ||
                         (langTag === 'EN' && curCode.includes('engl')) ||
@@ -718,6 +777,14 @@ export function CharacterPrEditorModal() {
           onClose={() => setAppearanceSearchOpen(false)}
           excludeIds={appearances.map(a => a.media_external_id)}
           closeOnSelect={false}
+        />
+      )}
+
+      {voiceActorSearchOpen && (
+        <VoiceActorSearchPopup
+          onSelect={addVoiceActor}
+          onClose={() => setVoiceActorSearchOpen(false)}
+          excludeIds={voiceActors.map(v => v.externalId).filter((id): id is string => !!id)}
         />
       )}
     </div>,

@@ -110,6 +110,8 @@ commands.allow = [
   "get_media_characters",
   "save_staff_skeleton",
   "get_media_staff",
+  "get_character_actors",
+  "save_character_actors",
   "save_favorite_custom_image",
   "get_all_favorite_custom_images",
   "delete_favorite_custom_image",

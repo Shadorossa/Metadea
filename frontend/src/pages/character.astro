@@ -178,6 +178,12 @@ const translations = useTranslations(lang);
 
     const cleanIdParam = idParam.replace(/\D/g, '');
     const characterId = parseInt(cleanIdParam, 10);
+    // Canonical local-DB key for this character — matches the `character:<id>`
+    // format every other write path already uses (anilist-mapper.ts's cast-list
+    // import, search/providers/anilist.ts's character search). `characterId`
+    // itself stays bare where it's an AniList API id, not a DB key (the
+    // fetchAniListCharacterDetail call and the anilist.co siteUrl fallback below).
+    const characterExternalId = `character:${characterId}`;
 
     if (isNaN(characterId)) {
       loadingEl.style.display = 'none';
@@ -241,7 +247,7 @@ const translations = useTranslations(lang);
 
       // 2. Local DB saved aliases
       try {
-        const localChar = await getCharacter(String(characterId));
+        const localChar = await getCharacter(characterExternalId);
         if (localChar?.aliases_csv) {
           for (const alt of localChar.aliases_csv.split(',')) addAlias(alt, false);
         }
@@ -262,22 +268,17 @@ const translations = useTranslations(lang);
         }
       }
 
-      // 4. Biografía text patterns ("also known as X", "known as X", "(Kanji/Title)")
+      // 4. Biografía text patterns ("also known as X", "known as X")
+      // Deliberately does NOT also grab arbitrary "(...)" text from the bio —
+      // that used to add anything in parentheses as an "alias", but a
+      // biography's parentheticals are usually team names, arcs, or asides
+      // ("the Aliea Gakuen arc", "(Coach)"), not alternate names, and there's
+      // no reliable way to tell those apart from a real one this way.
       const rawDesc = character.description || '';
       const akaRegex = /(?:also\s+known\s+as|known\s+as|referred\s+to\s+as|also\s+called|alias(?:es)?)\s+([^,.\n(<]+)/gi;
       let match;
       while ((match = akaRegex.exec(rawDesc)) !== null) {
         if (match[1]) addAlias(match[1], false);
-      }
-
-      const parenRegex = /\(([^)\n]{2,40})\)/g;
-      while ((match = parenRegex.exec(rawDesc)) !== null) {
-        if (match[1]) {
-          const val = match[1].replace(/<[^>]*>/g, '').trim();
-          if (val && !/^\d+$/.test(val) && !val.toLowerCase().includes('page')) {
-            addAlias(val, false);
-          }
-        }
       }
 
       const allAliases = Array.from(aliasMap.values());
@@ -566,7 +567,7 @@ const translations = useTranslations(lang);
       }
 
       // Reacciones y Favorito
-      const charKeyStr = String(characterId);
+      const charKeyStr = characterExternalId;
       contentEl.setAttribute('data-char-key', charKeyStr);
 
       const favBtn = document.getElementById('char-fav-btn');
@@ -623,6 +624,7 @@ const translations = useTranslations(lang);
         character.image?.large,
         character.name.native,
         (character.name.alternative ?? []).join(','),
+        savedLocal?.actors_csv,
         character.description
       ).catch(() => {});
 

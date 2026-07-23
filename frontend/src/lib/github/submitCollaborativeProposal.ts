@@ -4,6 +4,7 @@ import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';
 import { REPO_OWNER, REPO_NAME, isRepoOwner } from './ownership';
 import { setField } from '../shared/object-utils';
+import { catalogFilePath } from './catalogPaths';
 
 export interface ProposalBundle {
   media_catalog: MediaCatalogEntry;
@@ -13,9 +14,46 @@ export interface ProposalBundle {
   saga_name?: string;
 }
 
-export interface ProposalFileEntry {
-  externalId: string;
-  bundle: ProposalBundle;
+// A character has no owning media_catalog row — its own file just carries its
+// own fields plus the media it appears in (character_appearances' shape),
+// independent of any one media's own proposal file.
+export interface CharacterProposalField {
+  external_id: string;
+  name: string;
+  name_native?: string | null;
+  aliases_csv?: string | null;
+  biography?: string | null;
+  image_url?: string | null;
+}
+
+export interface CharacterProposalAppearance {
+  media_external_id: string;
+  relation_type: string | null;
+}
+
+export interface CharacterProposalActor {
+  external_id: string;
+  name: string;
+  name_native?: string | null;
+  image_url?: string | null;
+  role?: string | null;
+  language?: string | null;
+}
+
+export interface CharacterProposalBundle {
+  character: CharacterProposalField;
+  appearances: CharacterProposalAppearance[];
+  actors: CharacterProposalActor[];
+}
+
+export type ProposalFileEntry =
+  | { kind: 'media'; externalId: string; bundle: ProposalBundle }
+  | { kind: 'character'; externalId: string; bundle: CharacterProposalBundle };
+
+function entryTitle(entry: ProposalFileEntry): string {
+  return entry.kind === 'media'
+    ? (entry.bundle.media_catalog.title_main || entry.externalId)
+    : (entry.bundle.character.name || entry.externalId);
 }
 
 // Overlays onto `upstream` only the media_catalog fields where `local`
@@ -29,6 +67,21 @@ function overlayChangedCatalogFields(local: MediaCatalogEntry, upstream: MediaCa
   const merged: MediaCatalogEntry = { ...upstream };
   for (const key of Object.keys(local) as (keyof MediaCatalogEntry)[]) {
     if (key === 'id' || key === 'created_at' || key === 'updated_at') continue;
+    const localVal = local[key] ?? null;
+    const upstreamVal = upstream[key] ?? null;
+    if (JSON.stringify(localVal) !== JSON.stringify(upstreamVal)) {
+      setField(merged, key, local[key]);
+    }
+  }
+  return merged;
+}
+
+// Same idea as overlayChangedCatalogFields, for a character's own (much
+// smaller) field set.
+function overlayChangedCharacterFields(local: CharacterProposalField, upstream: CharacterProposalField): CharacterProposalField {
+  const merged: CharacterProposalField = { ...upstream };
+  for (const key of Object.keys(local) as (keyof CharacterProposalField)[]) {
+    if (key === 'external_id') continue;
     const localVal = local[key] ?? null;
     const upstreamVal = upstream[key] ?? null;
     if (JSON.stringify(localVal) !== JSON.stringify(upstreamVal)) {
@@ -57,10 +110,58 @@ function sharableBundleFor(bundle: ProposalBundle): ProposalBundle {
   return { ...bundle, media_catalog: sharableCatalogEntry };
 }
 
+// Fetches whatever's already published at `filePath` on main, if anything —
+// shared by both bundle kinds since the lookup itself doesn't care what's in
+// the file, only the merge step afterward does.
+async function fetchExistingBundle<T>(filePath: string, token: string): Promise<T | null> {
+  const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=main`, {
+    headers: { 'Authorization': `token ${token}` },
+  });
+  if (!res.ok) return null;
+  try {
+    const data = await res.json();
+    return JSON.parse(decodeURIComponent(escape(atob(data.content)))) as T;
+  } catch {
+    // Malformed/unparseable upstream file — caller falls back to this
+    // proposal's own local snapshot rather than blocking the submit.
+    return null;
+  }
+}
+
+async function buildOutgoingContent(fileEntry: ProposalFileEntry, primaryExternalId: string, token: string): Promise<string> {
+  const filePath = catalogFilePath(fileEntry.externalId);
+
+  if (fileEntry.kind === 'media') {
+    const existingBundle = await fetchExistingBundle<ProposalBundle>(filePath, token);
+    let merged = fileEntry.bundle;
+    if (existingBundle) {
+      merged = {
+        ...fileEntry.bundle,
+        media_catalog: overlayChangedCatalogFields(fileEntry.bundle.media_catalog, existingBundle.media_catalog),
+        // A non-primary entry (a saga member touched only via relation
+        // propagation, not opened in the editor) keeps upstream's
+        // characters/authors untouched — this proposal never claims to have
+        // edited those, only the relation.
+        ...(fileEntry.externalId !== primaryExternalId ? {
+          characters: existingBundle.characters ?? [],
+          media_authors: existingBundle.media_authors ?? [],
+        } : {}),
+      };
+    }
+    return JSON.stringify(sharableBundleFor(merged), null, 2);
+  }
+
+  const existingBundle = await fetchExistingBundle<CharacterProposalBundle>(filePath, token);
+  const merged: CharacterProposalBundle = existingBundle
+    ? { character: overlayChangedCharacterFields(fileEntry.bundle.character, existingBundle.character), appearances: fileEntry.bundle.appearances }
+    : fileEntry.bundle;
+  return JSON.stringify(merged, null, 2);
+}
+
 // Handles the workflow of creating a branch, committing one JSON file per
-// affected media entry, and opening a single GitHub PR covering all of them —
-// e.g. adding a saga to "IE GO Luz" also touches "Inazuma Eleven 2"'s own
-// file with its reciprocal relation, so both commits ride the same branch/PR
+// affected entry, and opening a single GitHub PR covering all of them — e.g.
+// adding a saga to "IE GO Luz" also touches "Inazuma Eleven 2"'s own file
+// with its reciprocal relation, so both commits ride the same branch/PR
 // instead of only the entry that was actually opened in the editor.
 export async function submitCollaborativeProposal(
   primaryExternalId: string,
@@ -70,7 +171,6 @@ export async function submitCollaborativeProposal(
 ): Promise<string | null> {
   if (entries.length === 0) return null;
   const primary = entries.find(e => e.externalId === primaryExternalId) ?? entries[0];
-  const entry = primary.bundle.media_catalog;
 
   onStatus('Checking GitHub token...');
   const token = await invoke<string | null>('get_github_token').catch(() => null);
@@ -131,40 +231,14 @@ export async function submitCollaborativeProposal(
   // One commit per affected entry, all on the same branch — a saga edit that
   // touches N works ends up as N self-contained files (each with just its
   // own relations, not a copy of every other file's data) in one PR.
-  for (const { externalId, bundle } of entries) {
-    onStatus(`Uploading data for ${bundle.media_catalog.title_main || externalId}...`);
-    const filePath = `database/${externalId.replace(':', '-')}.json`;
+  for (const fileEntry of entries) {
+    const { externalId } = fileEntry;
+    onStatus(`Uploading data for ${entryTitle(fileEntry)}...`);
+    const filePath = catalogFilePath(externalId);
 
     // If a file for this id is already published on `main`, propose a real
-    // diff against it instead of a full re-upload: media_catalog only
-    // carries the fields that actually changed (see overlayChangedCatalogFields).
-    // A non-primary entry (a saga member touched only via relation
-    // propagation, not opened in the editor) additionally keeps upstream's
-    // characters/authors untouched — this proposal never claims to have
-    // edited those, only the relation.
-    let outgoingBundle = bundle;
-    const existingRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=main`, {
-      headers: { 'Authorization': `token ${token}` },
-    });
-    if (existingRes.ok) {
-      try {
-        const existingData = await existingRes.json();
-        const existingBundle = JSON.parse(decodeURIComponent(escape(atob(existingData.content)))) as ProposalBundle;
-        outgoingBundle = {
-          ...bundle,
-          media_catalog: overlayChangedCatalogFields(bundle.media_catalog, existingBundle.media_catalog),
-          ...(externalId !== primaryExternalId ? {
-            characters: existingBundle.characters ?? [],
-            media_authors: existingBundle.media_authors ?? [],
-          } : {}),
-        };
-      } catch {
-        // Malformed/unparseable upstream file — fall back to this
-        // proposal's own local snapshot rather than blocking the submit.
-      }
-    }
-
-    const jsonContent = JSON.stringify(sharableBundleFor(outgoingBundle), null, 2);
+    // diff against it instead of a full re-upload (see buildOutgoingContent).
+    const jsonContent = await buildOutgoingContent(fileEntry, primaryExternalId, token);
     const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
 
     let fileSha: string | undefined;
@@ -183,7 +257,7 @@ export async function submitCollaborativeProposal(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: `Update catalog entry for ${outgoingBundle.media_catalog.title_main || externalId}`,
+        message: `Update catalog entry for ${entryTitle(fileEntry)}`,
         content: base64Content,
         branch: branchName,
         sha: fileSha,
@@ -196,7 +270,7 @@ export async function submitCollaborativeProposal(
 
   // Always open a PR to keep the workflow consistent and provide a review URL.
   onStatus('Opening Pull Request...');
-  const affectedList = entries.map(({ externalId, bundle }) => `- **${bundle.media_catalog.title_main || externalId}** (\`${externalId}\`)`).join('\n');
+  const affectedList = entries.map(e => `- **${entryTitle(e)}** (\`${e.externalId}\`)`).join('\n');
   const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for:\n${affectedList}\n\n### Changes\n${changeSummary}`;
   const prRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls`, {
     method: 'POST',
@@ -205,7 +279,7 @@ export async function submitCollaborativeProposal(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      title: `[Proposal] Catalog data for ${entry.title_main || primaryExternalId}`,
+      title: `[Proposal] Catalog data for ${entryTitle(primary)}`,
       head: headRef,
       base: 'main',
       body: prBody,

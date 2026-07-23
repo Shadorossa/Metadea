@@ -1,3 +1,4 @@
+mod actors;
 mod auth;
 mod characters;
 mod staff;
@@ -47,10 +48,10 @@ pub fn run() {
                 .expect("failed to open metadea.db");
             db::seed_fav_lists(&metadea_db);
 
-            // Dev-only: imports database/*.json proposal files sitting next to
+            // Dev-only: imports catalog/**.json proposal files sitting next to
             // the repo checkout, so a developer's own local db reflects them
             // without waiting for scripts/build-database.js + sync_community_catalog.
-            // A real installed build never has a database/ folder next to its
+            // A real installed build never has a catalog/ folder next to its
             // exe, so this would be a same-cost, always-false directory check
             // on every launch for actual users — gated out of release builds entirely.
             #[cfg(debug_assertions)]
@@ -165,6 +166,8 @@ pub fn run() {
             characters::get_media_characters,
             staff::save_staff_skeleton,
             staff::get_media_staff,
+            actors::get_character_actors,
+            actors::save_character_actors,
             favorite_images::save_favorite_custom_image,
             favorite_images::get_all_favorite_custom_images,
             favorite_images::delete_favorite_custom_image,

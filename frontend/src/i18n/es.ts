@@ -138,7 +138,7 @@ export const es = {
     cancel_button: 'Cancelar',
     delete_confirm: '¿Eliminar "{title}"? Esta acción no se puede deshacer.',
     source_local: 'Mi catálogo local',
-    source_github: 'GitHub (database/)',
+    source_github: 'GitHub (catalog/)',
     source_add: 'Añadir obra',
     add_fetching: 'Obteniendo los datos completos de esta obra...',
     github_hint: 'Estas son las entradas ya fusionadas en el catálogo compartido de GitHub. Editar una envía tus cambios como una nueva pull request para revisión.',

@@ -338,6 +338,61 @@ export async function searchAniListCharacters(
   return { results, hasMore: pageData.pageInfo?.hasNextPage ?? false };
 }
 
+export interface AniListStaffSearchResult {
+  id: number;
+  name: string;
+  nameNative: string | null;
+  image: string | null;
+}
+
+interface AniListStaffSearchResponse {
+  data?: {
+    Page?: {
+      pageInfo?: { hasNextPage: boolean };
+      staff?: Array<{ id: number; name: { full: string; native: string | null }; image: { large: string | null } | null }>;
+    };
+  };
+}
+
+const SEARCH_STAFF_QUERY = `
+  query SearchStaff($searchQuery: String!, $page: Int) {
+    Page(page: $page, perPage: 25) {
+      pageInfo { hasNextPage }
+      staff(search: $searchQuery, sort: SEARCH_MATCH) {
+        id
+        name { full native }
+        image { large }
+      }
+    }
+  }
+`;
+
+// Voice actor picker (CharacterPrEditorModal) — AniList models a voice actor
+// as Staff, same entity type as a work's director/writer/composer, just
+// linked via Character.media.edges[].voiceActors instead of Media.staff.
+export async function searchAniListStaff(
+  searchQuery: string,
+  signal: AbortSignal,
+  page = 1,
+): Promise<{ results: AniListStaffSearchResult[]; hasMore: boolean }> {
+  const { ok, result } = await graphqlPost<AniListStaffSearchResponse['data']>(
+    API_ENDPOINTS.ANILIST,
+    SEARCH_STAFF_QUERY,
+    { searchQuery, page },
+    { signal },
+  );
+
+  if (!ok) return { results: [], hasMore: false };
+  const pageData = result?.data?.Page;
+  if (!pageData) return { results: [], hasMore: false };
+
+  const staff = pageData.staff ?? [];
+  return {
+    results: staff.map(s => ({ id: s.id, name: s.name.full, nameNative: s.name.native, image: s.image?.large ?? null })),
+    hasMore: pageData.pageInfo?.hasNextPage ?? false,
+  };
+}
+
 export interface AniListCharacterDetail {
   id: number;
   name: {

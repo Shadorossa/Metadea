@@ -2,6 +2,7 @@ import { saveCatalogEntry, getCatalogEntry, saveMediaRelations, saveMediaAuthors
 import { saveCharactersSkeleton, type SkeletonCharacter } from '../tauri/characters';
 import type { ProposalBundle } from './submitCollaborativeProposal';
 import { fetchFileAtRef } from './api';
+import { catalogFilePath } from './catalogPaths';
 import { ALL_CHAIN_RELATION_TYPES } from '../media/sagaTypes';
 import { fetchMediaData } from '../media/mediaService';
 
@@ -54,7 +55,7 @@ export async function hydrateSagaChainFromGithub(token: string, startExternalId:
     // Every id in a frontier level is an independent GitHub fetch — run the
     // whole level concurrently instead of one round trip after another.
     const hopResults = await Promise.all(frontier.map(async id => {
-      const path = `database/${id.replace(':', '-')}.json`;
+      const path = catalogFilePath(id);
       try {
         const content = await fetchFileAtRef(token, path, 'main');
         return JSON.parse(content) as ProposalBundle;

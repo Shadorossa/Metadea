@@ -39,7 +39,7 @@ A much smaller Cloudflare Workers service (`backend/`) exists alongside it, used
                                     └──────────────────────────────────┘
 ```
 
-The community catalog itself is distributed through git, not a database server — see [colaboracion_catalogo_git.md](./colaboracion_catalogo_git.md). In short: a user's proposed edit becomes a PR that writes one JSON bundle under `database/*.json`; once merged, CI runs [scripts/build-database.js](../scripts/build-database.js) to rebuild `database.db` at the repo root, and every installed app downloads that file and merges in rows it doesn't already have (`sync_community_catalog` in `media_catalog.rs`).
+The community catalog itself is distributed through git, not a database server — see [colaboracion_catalogo_git.md](./colaboracion_catalogo_git.md) (that doc predates the current `catalog/<Type>/` folder split and character-bundle support — treat it as the original design rationale, not a literal current file layout). In short: a user's proposed edit becomes a PR that writes one JSON bundle under `catalog/<Type>/*.json` (or `catalog/Characters/*.json` for a character); once merged, CI runs [scripts/build-database.js](../scripts/build-database.js) to rebuild `database.db` at the repo root, and every installed app downloads that file and merges in rows it doesn't already have (`sync_community_catalog` in `community_sync.rs`).
 
 ---
 
@@ -77,9 +77,13 @@ metadea/
 │   │   └── middleware/             # cors.ts, auth.ts
 │   └── wrangler.jsonc
 │
-├── database/                        # One JSON "bundle" per merged catalog PR
-│                                    #   (media_catalog + relations + characters + authors)
-├── database.db                      # Built from database/*.json by the script below
+├── catalog/                          # One JSON bundle per merged catalog PR, one
+│   ├── Anime/, Games/, Movies/, ...  #   subfolder per media type (media_catalog +
+│   └── Characters/                   #   relations/characters/authors), plus a
+│                                     #   standalone folder for character-only bundles
+│                                     #   (character fields + appearances, no owning
+│                                     #   media_catalog row — see catalogPaths.ts)
+├── database.db                      # Built from catalog/**.json by the script below
 ├── scripts/build-database.js        # Rebuilds database.db; run by CI on push to main
 │
 └── docs/
@@ -125,13 +129,17 @@ There is no cloud library sync in the current build — `POST /api/library/sync`
 ### 3. Community Catalog Contribution (GitHub-mediated)
 
 ```
-User edits a catalog entry (characters, relations, saga) in the admin/catalog panel
+User edits a catalog entry (media fields, relations, saga) or a character
+(bio, aliases, appearances) via the admin panel or CharacterPrEditorModal
   → GitHub device-flow auth (github.rs) for a PAT-equivalent token
-  → App creates a branch + writes database/<external_id>.json + opens a PR
+  → App creates a branch + writes catalog/<Type>/<external_id>.json (media)
+    or catalog/Characters/<external_id>.json (character) + opens a PR
   → Repo owner reviews/merges from the same admin panel
   → CI (GitHub Actions) runs build-database.js on push to main → database.db
   → Every client's sync_community_catalog downloads and merges the new rows
 ```
+
+A character's own file carries just its fields plus `appearances` (media it's in + role) — it has no owning `media_catalog` row, so it isn't nested inside any one media's bundle. Folder-to-type mapping lives in `frontend/src/lib/github/catalogPaths.ts`; `scripts/build-database.js` and `proposal_bundle.rs`'s dev-only local sync both sniff a file's shape (`character` vs `media_catalog` key) rather than trusting its folder, so they don't need their own copy of that mapping.
 
 ---
 

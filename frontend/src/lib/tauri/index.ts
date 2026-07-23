@@ -19,6 +19,7 @@ export * from './tier-lists';
 export * from './catalog';
 export * from './characters';
 export * from './staff';
+export * from './actors';
 export * from './favorite-images';
 export * from './igdb';
 export * from './comicvine';

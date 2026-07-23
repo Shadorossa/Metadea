@@ -11,6 +11,10 @@ pub struct CharacterEntry {
     pub name_native: Option<String>,
     /// Comma-separated alternative names (AniList's name.alternative list).
     pub aliases_csv: Option<String>,
+    /// Comma-separated actor/voice-actor names — display cache, mirrors
+    /// media_catalog.authors_csv. The real relations live in actors.rs's
+    /// character_actors table.
+    pub actors_csv: Option<String>,
     pub biography: Option<String>,
     pub image_url: Option<String>,
     pub reaction: Option<String>,
@@ -29,7 +33,7 @@ pub struct CharacterAppearance {
 }
 
 const SELECT_CHARACTER: &str =
-    "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM characters";
+    "SELECT id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at FROM characters";
 
 fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry> {
     Ok(CharacterEntry {
@@ -38,11 +42,12 @@ fn row_to_character(row: &rusqlite::Row<'_>) -> rusqlite::Result<CharacterEntry>
         name: row.get(2)?,
         name_native: row.get(3)?,
         aliases_csv: row.get(4)?,
-        biography: row.get(5)?,
-        image_url: row.get(6)?,
-        reaction: row.get(7)?,
-        created_at: row.get(8)?,
-        updated_at: row.get(9)?,
+        actors_csv: row.get(5)?,
+        biography: row.get(6)?,
+        image_url: row.get(7)?,
+        reaction: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
     })
 }
 
@@ -54,6 +59,7 @@ pub async fn save_character(
     image_url: Option<String>,
     name_native: Option<String>,
     aliases_csv: Option<String>,
+    actors_csv: Option<String>,
     biography: Option<String>,
 ) -> Result<CharacterEntry, String> {
     let conn = state.conn.lock().str_err()?;
@@ -74,12 +80,12 @@ pub async fn save_character(
     let updated_at = Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        rusqlite::params![&id, &external_id, &name, &name_native, &aliases_csv, &biography, &image_url, &reaction, &created_at, &updated_at],
+        "INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        rusqlite::params![&id, &external_id, &name, &name_native, &aliases_csv, &actors_csv, &biography, &image_url, &reaction, &created_at, &updated_at],
     ).str_err()?;
 
-    Ok(CharacterEntry { id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at })
+    Ok(CharacterEntry { id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at })
 }
 
 #[tauri::command]

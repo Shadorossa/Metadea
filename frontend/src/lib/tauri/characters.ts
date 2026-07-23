@@ -6,6 +6,7 @@ export interface CharacterEntry {
   name:         string;
   name_native?: string | null;
   aliases_csv?: string | null; // Comma-separated alternative names
+  actors_csv?:  string | null; // Comma-separated actor/voice-actor names
   biography?:   string | null;
   image_url?:   string | null;
   reaction?:    string | null;
@@ -25,10 +26,11 @@ export async function saveCharacter(
   imageUrl?: string | null,
   nameNative?: string | null,
   aliasesCsv?: string | null,
+  actorsCsv?: string | null,
   biography?: string | null,
 ): Promise<CharacterEntry> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<CharacterEntry>('save_character', { externalId, name, imageUrl, nameNative, aliasesCsv, biography });
+  return invoke<CharacterEntry>('save_character', { externalId, name, imageUrl, nameNative, aliasesCsv, actorsCsv, biography });
 }
 
 export async function getCharacter(externalId: string): Promise<CharacterEntry | null> {

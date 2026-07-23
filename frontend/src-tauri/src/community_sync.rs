@@ -146,8 +146,8 @@ pub async fn sync_community_catalog(
             // the character rows and their media links the same "fill gaps
             // only" way.
             changes += conn.execute(
-                "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
-                 SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
+                "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at)
+                 SELECT id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
                 [],
             ).str_err()? as i64;
             changes += conn.execute(
@@ -157,6 +157,28 @@ pub async fn sync_community_catalog(
                  WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = c.media_external_id)",
                 [],
             ).str_err()? as i64;
+
+            // Actors (voice/live-action) — same fill-gaps merge as characters above.
+            let has_actor_tables: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'actors'",
+                    [],
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+            if has_actor_tables {
+                changes += conn.execute(
+                    "INSERT OR IGNORE INTO actors (id, external_id, name, name_native, image_url, created_at, updated_at)
+                     SELECT id, external_id, name, name_native, image_url, created_at, updated_at FROM community.actors",
+                    [],
+                ).str_err()? as i64;
+                changes += conn.execute(
+                    "INSERT OR IGNORE INTO character_actors (actor_external_id, character_external_id, role, language, added_at)
+                     SELECT actor_external_id, character_external_id, role, language, added_at FROM community.character_actors",
+                    [],
+                ).str_err()? as i64;
+            }
 
             // Relations, same fill-gaps merge (composite PK means this never
             // overwrites one the user's own API sync produced). Respects the
@@ -336,11 +358,12 @@ pub async fn sync_community_catalog(
 
 // Admin catalog editor's GitHub > Personajes tab — a read-only peek at the
 // community catalog's own characters table, not the merge sync_community_catalog
-// does into the local one. Characters have no per-file GitHub representation
-// (unlike media_catalog rows, one database/*.json each) — they only exist
-// embedded inside each media bundle's own file — so the built database.db
-// (same download as sync_community_catalog) is the only place to read "every
-// character GitHub actually has" from in one request instead of one per file.
+// does into the local one. Characters do have their own file now
+// (catalog/Characters/<id>.json, plus whatever's still embedded in a media
+// bundle's own file), but there's no per-character-file browse/edit view in
+// the admin panel yet — the built database.db (same download as
+// sync_community_catalog) is the only place to read "every character GitHub
+// actually has" from in one request instead of one per file.
 #[tauri::command]
 pub async fn get_community_characters(
     app_handle: tauri::AppHandle,
@@ -368,7 +391,7 @@ pub async fn get_community_characters(
 
         let read = (|| -> Result<Vec<crate::characters::CharacterEntry>, String> {
             let mut stmt = conn.prepare(
-                "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, NULL, created_at, updated_at
+                "SELECT id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, NULL, created_at, updated_at
                  FROM ghcharacters.characters"
             ).str_err()?;
             let rows = stmt.query_map([], |row| {
@@ -378,11 +401,12 @@ pub async fn get_community_characters(
                     name: row.get(2)?,
                     name_native: row.get(3)?,
                     aliases_csv: row.get(4)?,
-                    biography: row.get(5)?,
-                    image_url: row.get(6)?,
-                    reaction: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
+                    actors_csv: row.get(5)?,
+                    biography: row.get(6)?,
+                    image_url: row.get(7)?,
+                    reaction: row.get(8)?,
+                    created_at: row.get(9)?,
+                    updated_at: row.get(10)?,
                 })
             }).str_err()?;
             Ok(rows.filter_map(|r| r.ok()).collect())

@@ -33,11 +33,14 @@ export const appearancesChanged = (appearances: AppearanceRow[], originalAppeara
 };
 
 export interface VoiceActorRow {
-  id?: number;
+  /** e.g. "person:a12345" (AniList Staff) — undefined for a not-yet-persisted
+   *  legacy row created before the search picker existed. */
+  externalId?: string;
   name: string;
   native: string;
   language: string;
   image: string;
+  role?: string;
 }
 
 export interface CharacterDiffFields {

@@ -1,5 +1,5 @@
 // The collaborative-catalog PR bundle format and its import path (both the
-// dev-time "read every database/*.json on disk" sync and the shared
+// dev-time "read every catalog/**.json on disk" sync and the shared
 // per-section upsert helpers) — split out of media_catalog.rs.
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -21,44 +21,173 @@ pub struct ProposalBundle {
     pub saga_name: Option<String>,
 }
 
+// A character has no owning media_catalog row — mirrors
+// CharacterProposalBundle in submitCollaborativeProposal.ts.
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CharacterProposalField {
+    pub external_id: String,
+    pub name: String,
+    pub name_native: Option<String>,
+    pub aliases_csv: Option<String>,
+    pub biography: Option<String>,
+    pub image_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CharacterProposalAppearance {
+    pub media_external_id: String,
+    pub relation_type: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CharacterProposalActor {
+    pub external_id: String,
+    pub name: String,
+    pub name_native: Option<String>,
+    pub image_url: Option<String>,
+    pub role: Option<String>,
+    pub language: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CharacterProposalBundle {
+    pub character: CharacterProposalField,
+    pub appearances: Vec<CharacterProposalAppearance>,
+    pub actors: Vec<CharacterProposalActor>,
+}
+
+// One level of recursion is all catalog/ ever has (catalog/<Folder>/*.json).
+fn collect_json_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) -> Result<(), String> {
+    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        if path.is_dir() {
+            collect_json_files(&path, out)?;
+        } else if path.extension().and_then(|s| s.to_str()) == Some("json") {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
 pub fn sync_local_proposals(db: &crate::db::MetadeaDb) -> Result<(), String> {
-    let db_path = std::env::current_dir().unwrap_or_default();
-    let mut database_dir = db_path.join("database");
-    if !database_dir.exists() {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let mut catalog_dir = cwd.join("catalog");
+    if !catalog_dir.exists() {
         if let Some(parent) = std::env::current_dir().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())) {
-            database_dir = parent.join("database");
+            catalog_dir = parent.join("catalog");
         }
     }
 
-    if !database_dir.exists() {
+    if !catalog_dir.exists() {
         return Ok(());
     }
 
-    let entries = std::fs::read_dir(database_dir).map_err(|e| e.to_string())?;
-    for entry in entries {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-            match std::fs::read_to_string(&path) {
-                Ok(content) => {
-                    match serde_json::from_str::<ProposalBundle>(&content) {
-                        Ok(bundle) => {
-                            if let Err(e) = import_proposal_bundle(db, bundle) {
-                                eprintln!("Failed to import bundle {:?}: {}", path, e);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to deserialize bundle {:?}: {}", path, e);
-                        }
+    let mut files = Vec::new();
+    collect_json_files(&catalog_dir, &mut files)?;
+
+    for path in files {
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to read proposal file {:?}: {}", path, e);
+                continue;
+            }
+        };
+
+        // Which shape a file is gets sniffed from its own content (a "character"
+        // key vs a "media_catalog" key), same as build-database.js's readBundles
+        // — neither this function nor that script needs to hardcode which
+        // folder holds which kind.
+        let raw: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to parse proposal file {:?}: {}", path, e);
+                continue;
+            }
+        };
+
+        if raw.get("character").is_some() {
+            match serde_json::from_value::<CharacterProposalBundle>(raw) {
+                Ok(bundle) => {
+                    if let Err(e) = import_character_bundle(db, bundle) {
+                        eprintln!("Failed to import character bundle {:?}: {}", path, e);
                     }
                 }
-                Err(e) => {
-                    eprintln!("Failed to read proposal file {:?}: {}", path, e);
+                Err(e) => eprintln!("Failed to deserialize character bundle {:?}: {}", path, e),
+            }
+        } else {
+            match serde_json::from_value::<ProposalBundle>(raw) {
+                Ok(bundle) => {
+                    if let Err(e) = import_proposal_bundle(db, bundle) {
+                        eprintln!("Failed to import bundle {:?}: {}", path, e);
+                    }
                 }
+                Err(e) => eprintln!("Failed to deserialize bundle {:?}: {}", path, e),
             }
         }
     }
 
+    Ok(())
+}
+
+fn import_character_bundle(db: &crate::db::MetadeaDb, bundle: CharacterProposalBundle) -> Result<(), String> {
+    let mut conn = db.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    let now = Utc::now().to_rfc3339();
+    let char = &bundle.character;
+
+    // Same "fill in, don't clobber an existing row" convention as
+    // replace_bundle_characters below — dev-time sync, not the authoritative
+    // merge (that's sync_community_catalog, reading the built database.db).
+    tx.execute(
+        "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, ?8, ?8)",
+        rusqlite::params![
+            crate::db::generate_id(),
+            &char.external_id,
+            &char.name,
+            &char.name_native,
+            &char.aliases_csv,
+            &char.biography,
+            &char.image_url,
+            &now,
+        ],
+    ).str_err()?;
+
+    for app in &bundle.appearances {
+        tx.execute(
+            "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
+             VALUES (?1, ?2, ?3, NULL, ?4)",
+            rusqlite::params![&char.external_id, &app.media_external_id, &app.relation_type, &now],
+        ).str_err()?;
+    }
+
+    for actor in &bundle.actors {
+        tx.execute(
+            "INSERT OR IGNORE INTO actors (id, external_id, name, name_native, image_url, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+            rusqlite::params![
+                crate::db::generate_id(),
+                &actor.external_id,
+                &actor.name,
+                &actor.name_native,
+                &actor.image_url,
+                &now,
+            ],
+        ).str_err()?;
+
+        tx.execute(
+            "INSERT OR REPLACE INTO character_actors (actor_external_id, character_external_id, role, language, added_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![&actor.external_id, &char.external_id, &actor.role, &actor.language, &now],
+        ).str_err()?;
+    }
+
+    tx.commit().str_err()?;
     Ok(())
 }
 

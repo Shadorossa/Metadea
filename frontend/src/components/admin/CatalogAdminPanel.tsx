@@ -26,9 +26,11 @@ interface Props {
 }
 
 type Source = 'local' | 'github' | 'add';
-// Neither saga nor character has its own per-file GitHub representation the
-// way a media entry does (one database/*.json each) — 'github' instead reads
-// a one-shot download of the community database.db for both (get_community_
+// Sagas have no per-file GitHub representation of their own (they're derived
+// from media_relations edges, not a standalone entity). Characters do have
+// their own file now (catalog/Characters/*.json), but this panel has no
+// dedicated per-file browse/edit view for them yet — 'github' for both reads
+// a one-shot download of the community database.db instead (get_community_
 // characters/get_community_sagas), read-only, never merged into local.
 type Entity = 'media' | 'saga' | 'character';
 
@@ -73,7 +75,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const [githubCharactersLoading, setGithubCharactersLoading] = useState(false);
   const [githubCharactersError, setGithubCharactersError] = useState(false);
 
-  // GitHub database/ state
+  // GitHub catalog/ state
   const [githubQuery, setGithubQuery] = useState('');
   const [githubFiles, setGithubFiles] = useState<GitHubDirEntry[]>([]);
   const [githubLoading, setGithubLoading] = useState(true);
@@ -147,7 +149,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     try {
       setGithubFiles(await listDatabaseFiles(token));
     } catch (err: any) {
-      // 404 means the database/ folder doesn't exist yet — not an error worth logging
+      // 404 means that type's catalog/ folder doesn't exist yet — not an error worth logging
       if (!String(err?.message ?? err).includes('Not Found')) {
         console.error('[CatalogAdminPanel] Failed to list GitHub database files:', err);
       }

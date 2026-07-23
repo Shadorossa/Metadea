@@ -501,6 +501,45 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 24)?;
     }
+    if v < 25 {
+        // Actors table shared between voice actors (anime, role='voice') and
+        // live-action actors (role='actor') — one kind of "who portrays this
+        // character" concept instead of two near-identical tables, since a
+        // person can plausibly be sourced from either AniList Staff or TMDB.
+        // actors_csv on characters mirrors media_catalog.authors_csv's cache
+        // column, computed frontend-side (aliases.join(',')-style) rather
+        // than recomputed here.
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS actors (
+                id          TEXT PRIMARY KEY,
+                external_id TEXT UNIQUE NOT NULL,
+                name        TEXT NOT NULL DEFAULT '',
+                name_native TEXT,
+                image_url   TEXT,
+                created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS actors_external_idx ON actors(external_id)",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS character_actors (
+                actor_external_id     TEXT NOT NULL,
+                character_external_id TEXT NOT NULL,
+                role                  TEXT,
+                language              TEXT,
+                added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (actor_external_id, character_external_id),
+                FOREIGN KEY (actor_external_id) REFERENCES actors(external_id) ON DELETE CASCADE
+            )",
+            [],
+        );
+        let _ = conn.execute("ALTER TABLE characters ADD COLUMN actors_csv TEXT DEFAULT ''", []);
+        mark_migration(conn, 25)?;
+    }
 
     Ok(())
 }
@@ -556,6 +595,17 @@ pub fn generate_id() -> String {
 // ─── Unified Schema (tables in alphabetical order) ───────────────────────────
 
 const METADEA_SCHEMA: &str = "
+CREATE TABLE IF NOT EXISTS actors (
+    id          TEXT PRIMARY KEY,
+    external_id TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL DEFAULT '',
+    name_native TEXT,
+    image_url   TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS actors_external_idx ON actors(external_id);
+
 CREATE TABLE IF NOT EXISTS app_env (
     name       TEXT PRIMARY KEY,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -584,6 +634,7 @@ CREATE TABLE IF NOT EXISTS favorite_custom_images (
 CREATE TABLE IF NOT EXISTS characters (
     id           TEXT PRIMARY KEY,
     aliases_csv  TEXT DEFAULT '',
+    actors_csv   TEXT DEFAULT '',
     biography    TEXT,
     external_id  TEXT UNIQUE NOT NULL,
     image_url    TEXT,
@@ -594,6 +645,18 @@ CREATE TABLE IF NOT EXISTS characters (
     updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX IF NOT EXISTS characters_external_idx ON characters(external_id);
+
+-- Shared between voice actors (role='voice', sourced from AniList Staff) and
+-- live-action actors (role='actor', e.g. TMDB) — see actors' own doc comment.
+CREATE TABLE IF NOT EXISTS character_actors (
+    actor_external_id     TEXT NOT NULL,
+    character_external_id TEXT NOT NULL,
+    role                  TEXT,
+    language              TEXT,
+    added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (actor_external_id, character_external_id),
+    FOREIGN KEY (actor_external_id) REFERENCES actors(external_id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS character_appearances (
     character_external_id TEXT NOT NULL,
