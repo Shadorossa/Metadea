@@ -137,18 +137,18 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       title_romaji: existing?.title_romaji || data.titleRomaji || null,
       title_english: existing?.title_english || data.titleEnglish || null,
       synopsis: existing?.synopsis || data.description || null,
-      cover_url: data.cover || null,
-      status: data.status || null,
-      score_global: data.scoreGlobal || null,
-      total_count: data.totalCount || null,
-      total_count_2: data.totalCount_2 || null,
-      genres_csv: data.genreDots ? data.genreDots.split(' · ').join(',') : null,
-      genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
-      platforms_csv: data.platforms ? data.platforms.join(',') : null,
-      shop_links_csv: shopLinks || null,
-      authors_csv: (data.authors ?? []).map(a => a.name).join(','),
-      source_url: data.sourceUrl || null,
-      country_code: data.countryOfOrigin || null,
+      cover_url: existing?.cover_url || data.cover || null,
+      status: existing?.status || data.status || null,
+      score_global: existing?.score_global ?? (data.scoreGlobal || null),
+      total_count: existing?.total_count ?? (data.totalCount || null),
+      total_count_2: existing?.total_count_2 ?? (data.totalCount_2 || null),
+      genres_csv: existing?.genres_csv || (data.genreDots ? data.genreDots.split(' · ').join(',') : null),
+      genres_tag_csv: existing?.genres_tag_csv || (data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null),
+      platforms_csv: existing?.platforms_csv || (data.platforms ? data.platforms.join(',') : null),
+      shop_links_csv: existing?.shop_links_csv || shopLinks || null,
+      authors_csv: existing?.authors_csv || ((data.authors ?? []).map(a => a.name).join(',')),
+      source_url: existing?.source_url || data.sourceUrl || null,
+      country_code: existing?.country_code || data.countryOfOrigin || null,
     };
 
     // A fetch that brings nothing new widens needsResync()'s backoff too, not just real errors.
@@ -165,7 +165,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       format: existing?.format || data.format || null,
       source: data.source || 'igdb',
       ...contentFields,
-      banners_csv: data.bannerImage || existing?.banners_csv || null,
+      banners_csv: existing?.banners_csv || data.bannerImage || null,
       release_year: existing?.release_year ?? (data.releaseYear || null),
       release_month: existing?.release_month ?? (data.releaseMonth || null),
       release_day: existing?.release_day ?? (data.releaseDay || null),
@@ -199,17 +199,31 @@ async function filterBlockedRelations<T extends { relatedExternalId?: string }>(
 
 // Curator-corrected fields take priority over this live fetch's result.
 function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry | null): void {
-  if (existing) {
-    if (existing.type) data.type = existing.type;
-    if (existing.format) data.format = existing.format;
-    if (existing.title_main) data.titleMain = existing.title_main;
-    if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
-    if (existing.title_native) data.titleNative = existing.title_native;
-    if (existing.title_english) data.titleEnglish = existing.title_english;
-    if (existing.synopsis) data.description = existing.synopsis;
-  }
-  if (!data.bannerImage && existing?.banners_csv) {
-    data.bannerImage = existing.banners_csv.split(',')[0];
+  if (!existing) return;
+
+  if (existing.type) data.type = existing.type;
+  if (existing.format) data.format = existing.format;
+  if (existing.title_main) data.titleMain = existing.title_main;
+  if (existing.title_romaji) data.titleRomaji = existing.title_romaji;
+  if (existing.title_native) data.titleNative = existing.title_native;
+  if (existing.title_english) data.titleEnglish = existing.title_english;
+  if (existing.synopsis) data.description = existing.synopsis;
+  if (existing.cover_url) data.cover = existing.cover_url;
+  if (existing.banners_csv) data.bannerImage = existing.banners_csv.split(',')[0];
+  if (existing.genres_csv) data.genreDots = existing.genres_csv.split(',').join(' · ');
+  if (existing.genres_tag_csv) data.genreTagDots = existing.genres_tag_csv.split(',').join(' · ');
+  if (existing.platforms_csv) data.platforms = existing.platforms_csv.split(',').filter(Boolean);
+  if (existing.country_code) data.countryOfOrigin = existing.country_code;
+  if (existing.source_url) data.sourceUrl = existing.source_url;
+  if (existing.status) data.status = existing.status;
+  if (existing.release_year != null) data.releaseYear = existing.release_year;
+  if (existing.release_month != null) data.releaseMonth = existing.release_month;
+  if (existing.release_day != null) data.releaseDay = existing.release_day;
+  if (existing.release_end_year != null) data.releaseEndYear = existing.release_end_year;
+  if (existing.release_end_month != null) data.releaseEndMonth = existing.release_end_month;
+  if (existing.release_end_day != null) data.releaseEndDay = existing.release_end_day;
+  if (existing.authors_csv) {
+    data.authors = existing.authors_csv.split(',').map(name => ({ name }));
   }
 }
 
