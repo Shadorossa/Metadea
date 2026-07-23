@@ -1,0 +1,24 @@
+{
+  "media_catalog": {
+    "id": "e594de45728396efe594de45728396ef",
+    "external_id": "game:97403",
+    "type": "game",
+    "title_main": "Rance X: Showdown",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:97403",
+      "related_media_external_id": "game:60726",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Rance IX: The Helmanian Revolution",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3gr5.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}

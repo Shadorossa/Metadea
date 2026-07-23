@@ -1,0 +1,40 @@
+{
+  "media_catalog": {
+    "id": "d3e05ca6fe799f83d3e05ca6fe799f83",
+    "external_id": "game:41406",
+    "type": "game",
+    "title_main": "Rance III: Leazas Kanraku",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:132710",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Rance 03: The Fall of Leazas",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co4xsw.jpg",
+      "media_external_id": "game:41406"
+    },
+    {
+      "media_external_id": "game:41406",
+      "related_media_external_id": "game:57642",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Rance II: Hangyaku no Shoujo-tachi",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zof.jpg"
+    },
+    {
+      "media_external_id": "game:41406",
+      "related_media_external_id": "game:41405",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Rance IV: Kyoudan no Isan",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co4af3.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
