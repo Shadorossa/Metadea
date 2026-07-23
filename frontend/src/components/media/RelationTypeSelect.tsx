@@ -68,7 +68,14 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
     ? [extraOption.value, ...options]
     : options;
 
-  const currentLabel = value === extraOption?.value ? extraOption.label : (labels[value] || value);
+  // `labels` (the canonical/localized dictionary) wins whenever it actually
+  // has this value — e.g. ADAPTATION and REL_ADAPTATION are the same concept
+  // to a curator and must always read identically, regardless of whatever
+  // raw text got stored in this specific row's own type_label historically
+  // (different app-language sessions saved different literal words there).
+  // extraOption.label is only the fallback, for values truly outside the
+  // dictionary (CHARACTER, OTHER, ...).
+  const currentLabel = labels[value] || (value === extraOption?.value ? extraOption.label : value);
 
   return (
     <>
@@ -94,7 +101,7 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
           style={{ top: rect.top, left: rect.left, minWidth: rect.width }}
         >
           {allOptions.map(opt => {
-            const label = opt === extraOption?.value ? extraOption.label : (labels[opt] || opt);
+            const label = labels[opt] || (opt === extraOption?.value ? extraOption.label : opt);
             return (
               <button
                 type="button"

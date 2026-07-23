@@ -247,7 +247,7 @@ export const es = {
     },
     relations: {
       SEQUEL: 'Secuela', PREQUEL: 'Precuela', SIDE_STORY: 'Historia paralela',
-      ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Fuente',
+      ALTERNATIVE: 'Alternativa', ADAPTATION: 'Adaptación', PARENT: 'Fuente', SOURCE: 'Obra original',
       SUMMARY: 'Resumen', SPIN_OFF: 'Spin-off', OTHER: 'Otro',
       CHARACTER: 'Personaje', CONTAINS: 'Contiene', RECOMMENDATION: 'Recomendado',
       EDITIONS: 'Ediciones',

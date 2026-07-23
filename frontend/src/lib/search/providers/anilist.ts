@@ -8,7 +8,7 @@ import { graphqlPost } from '../../api/client';
 interface AniListCharacter {
   id: number;
   name: { full: string };
-  image: { medium: string | null };
+  image: { large: string | null; medium: string | null };
 }
 
 interface AniListCharacterEdge {
@@ -38,7 +38,7 @@ interface AniListRelationEdge {
     type: string;
     format: string | null;
     title: { romaji: string | null };
-    coverImage: { medium: string | null };
+    coverImage: { extraLarge: string | null; medium: string | null };
     startDate: { year: number | null; month: number | null; day: number | null } | null;
   };
 }
@@ -48,7 +48,7 @@ export interface AniListStaffEdge {
   node: {
     id: number;
     name: { full: string };
-    image: { medium: string | null } | null;
+    image: { large: string | null; medium: string | null } | null;
   };
 }
 
@@ -105,12 +105,12 @@ const DETAIL_QUERY = `
       studios { edges { isMain node { id name siteUrl } } }
       characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
         pageInfo { hasNextPage total }
-        edges { role node { id name { full } image { medium } } }
+        edges { role node { id name { full } image { large medium } } }
       }
       relations {
         edges {
           relationType
-          node { id type format title { romaji } coverImage { medium } startDate { year month day } }
+          node { id type format title { romaji } coverImage { extraLarge medium } startDate { year month day } }
         }
       }
       staff(perPage: 25) {
@@ -119,7 +119,7 @@ const DETAIL_QUERY = `
           node {
             id
             name { full }
-            image { medium }
+            image { large medium }
           }
         }
       }
@@ -132,7 +132,7 @@ const CHARACTERS_QUERY = `
     Media(id: $id) {
       characters(sort: [ROLE, RELEVANCE], page: $page, perPage: 25) {
         pageInfo { hasNextPage }
-        edges { role node { id name { full } image { medium } } }
+        edges { role node { id name { full } image { large medium } } }
       }
     }
   }

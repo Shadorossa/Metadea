@@ -1,0 +1,60 @@
+name: 'CI'
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  typecheck-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: frontend
+
+      # Informational only for now, not blocking — the frontend already has
+      # ~45 pre-existing type errors unrelated to any given PR (loose EnvConfig
+      # unions, i18n locale-union mismatches, a missing JSX namespace, etc.).
+      # Flipping this to a hard gate before that baseline is cleaned up would
+      # fail on day one for reasons no PR caused. Once the baseline is clean,
+      # remove `continue-on-error` so this actually blocks regressions.
+      - name: Typecheck (informational)
+        working-directory: frontend
+        continue-on-error: true
+        run: npx tsc --noEmit
+
+  typecheck-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+
+      # Generates worker-configuration.d.ts (gitignored, Cloudflare-binding
+      # types) — tsc can't resolve the Env type without it.
+      - name: Generate Cloudflare Worker types
+        working-directory: backend
+        run: npm run cf-typegen
+
+      # Informational only for now — same reasoning as the frontend job (a
+      # handful of pre-existing itty-router/IGDB type mismatches predate this
+      # workflow). Remove `continue-on-error` once that baseline is clean.
+      - name: Typecheck (informational)
+        working-directory: backend
+        continue-on-error: true
+        run: npx tsc --noEmit

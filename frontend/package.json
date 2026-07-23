@@ -23,11 +23,13 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "astro": "^7.0.2",
+    "dompurify": "^3.4.12",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.3",
+    "@types/dompurify": "^3.0.5",
     "knip": "^6.26.0"
   }
 }

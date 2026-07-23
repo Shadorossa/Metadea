@@ -576,6 +576,28 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 26)?;
     }
+    if v < 27 {
+        // reciprocal_relation() (media_catalog.rs) used to map ADAPTATION's
+        // reciprocal to ADAPTATION instead of SOURCE — so an anime whose
+        // manga source was only ever seen via that manga's own SOURCE
+        // relation reciprocating onto the anime (rather than the anime's
+        // own live AniList fetch, which correctly says SOURCE directly)
+        // got mislabeled "Adaptation" instead of "Source Material" on its
+        // own page. Mirrors migration 20's same corrective pattern for the
+        // opposite direction. AniList never tags an anime/movie/series'
+        // own relation to its manga/book source as ADAPTATION directly —
+        // only this buggy reciprocal insert could have produced that
+        // combination, so this is safe to correct unconditionally.
+        let _ = conn.execute(
+            "UPDATE media_relations
+             SET relation_type = 'SOURCE', type_label = 'Source Material'
+             WHERE relation_type = 'ADAPTATION'
+               AND (media_external_id LIKE 'anime:%' OR media_external_id LIKE 'movie:%' OR media_external_id LIKE 'series:%')
+               AND (related_media_external_id LIKE 'manga:%' OR related_media_external_id LIKE 'lnovel:%' OR related_media_external_id LIKE 'book:%')",
+            [],
+        );
+        mark_migration(conn, 27)?;
+    }
 
     Ok(())
 }

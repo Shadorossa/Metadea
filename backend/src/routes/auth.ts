@@ -198,7 +198,10 @@ export async function googleAuthCallback(request: Request, env: CloudflareEnv): 
         ? JSON.stringify(err)
         : String(err);
     console.error(`[auth] FAILED at step "${step}":`, message);
-    return fail(`[${step}] ${message}`);
+    // Only the step name reaches the client's redirect URL — the full
+    // error message (table names, query fragments if Turso ever returns a
+    // verbose one) stays server-side in the console.error above.
+    return fail(step);
   }
 }
 

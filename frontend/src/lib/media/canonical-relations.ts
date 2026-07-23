@@ -4,7 +4,7 @@
 // happens separately (see media-relations.ts's sortRelationsForDisplay).
 export const CANONICAL_RELATION_LABELS: Record<string, string> = {
   SEQUEL: 'Sequel', PREQUEL: 'Prequel', SIDE_STORY: 'Side story',
-  ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source',
+  ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source', SOURCE: 'Source Material',
   SUMMARY: 'Summary', SPIN_OFF: 'Spin-off', OTHER: 'Other',
   CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
   EDITIONS: 'Editions',

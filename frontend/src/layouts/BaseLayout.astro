@@ -76,6 +76,11 @@ const t = useTranslations(lang);
     </div>
     <Footer lang={lang} />
 
+    <!-- Global bottom toast (app-update check on startup, etc.) — persists
+         across Astro page transitions since the check that drives it only
+         ever runs once per app session, not per page. -->
+    <div id="global-toast" class="global-toast" transition:persist></div>
+
     <!-- Auth modal -->
     <dialog id="auth-modal" class="auth-modal">
       <div class="auth-modal-box">
@@ -163,15 +168,33 @@ const t = useTranslations(lang);
         }
       }
 
+      // Shared with the manual "Buscar actualizaciones" button in Settings
+      // (lib/settings/updater.ts) — same toast element, so only one status
+      // message is ever visible regardless of which path triggered it.
+      function showGlobalToast(msg: string, autoHideMs?: number) {
+        const el = document.getElementById('global-toast');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.add('visible');
+        if (autoHideMs) setTimeout(() => el.classList.remove('visible'), autoHideMs);
+      }
+      function hideGlobalToast() {
+        document.getElementById('global-toast')?.classList.remove('visible');
+      }
+
       async function checkAppUpdates() {
         if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
+        const { getT } = await import('../i18n/client');
+        const tm = getT().settings;
+        showGlobalToast(tm.app_checking_update || 'Buscando actualizaciones...');
         try {
           const { check } = await import('@tauri-apps/plugin-updater');
           const { relaunch } = await import('@tauri-apps/plugin-process');
 
           const update = await check();
           if (update && update.available) {
+            hideGlobalToast();
             const confirmUpdate = confirm(
               `¡Nueva versión ${update.version} disponible!\n\n¿Quieres descargarla e instalarla automáticamente ahora?`
             );
@@ -179,9 +202,12 @@ const t = useTranslations(lang);
               await update.downloadAndInstall();
               await relaunch();
             }
+          } else {
+            showGlobalToast(tm.app_up_to_date || '¡Estás en la última versión!', 2500);
           }
         } catch (error) {
           console.warn("[Updater] No se pudo comprobar actualizaciones:", error);
+          hideGlobalToast();
         }
       }
 

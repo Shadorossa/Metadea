@@ -247,7 +247,7 @@ export const en = {
     },
     relations: {
       SEQUEL: 'Sequel', PREQUEL: 'Prequel', SIDE_STORY: 'Side story',
-      ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source',
+      ALTERNATIVE: 'Alternative', ADAPTATION: 'Adaptation', PARENT: 'Source', SOURCE: 'Source Material',
       SUMMARY: 'Summary', SPIN_OFF: 'Spin-off', OTHER: 'Other',
       CHARACTER: 'Character', CONTAINS: 'Contains', RECOMMENDATION: 'Recommended',
       EDITIONS: 'Editions',

@@ -96,12 +96,16 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const characters = raw.characters.edges.map(e => ({
     id:    e.node.id ? `character:${e.node.id}` : undefined,
     name:  e.node.name.full,
-    image: e.node.image.medium ?? undefined,
+    // Prefer large — this seeds that character's own local DB row via
+    // saveCharactersSkeleton, which becomes the sticky-preferred portrait
+    // on that character's own (much bigger) page, not just this small grid
+    // card, so `medium` alone looked pixelated there.
+    image: e.node.image.large ?? e.node.image.medium ?? undefined,
     role:  e.role,
   }));
 
   const relations: MediaRelation[] = raw.relations.edges
-    .filter(e => e.relationType !== 'CHARACTER' && e.node.format !== 'MUSIC' && e.node.coverImage?.medium)
+    .filter(e => e.relationType !== 'CHARACTER' && e.node.format !== 'MUSIC' && (e.node.coverImage?.extraLarge || e.node.coverImage?.medium))
     .sort((a, b) => {
       const typePriority = (RELATION_PRIORITY[a.relationType] ?? 99) - (RELATION_PRIORITY[b.relationType] ?? 99);
       if (typePriority !== 0) return typePriority;
@@ -122,7 +126,12 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
         typeLabel,
         relationType: e.relationType,
         title: e.node.title.romaji ?? '',
-        cover: e.node.coverImage?.medium ?? undefined,
+        // Prefer the high-res cover — this becomes the FULL cover on that
+        // related title's own page too (via save_media_relations' stub-row
+        // insert), not just this small relation card, so `medium` alone
+        // used to look pixelated/blurry the first time that title's own
+        // page was opened before a live fetch replaced it.
+        cover: e.node.coverImage?.extraLarge ?? e.node.coverImage?.medium ?? undefined,
         url:   `/media?id=${relatedExternalId}`,
         relatedExternalId,
         format: e.node.format ?? undefined,
@@ -146,7 +155,9 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       // otherwise-independent numeric ids from colliding.
       external_id: `person:a${e.node.id}`,
       name: e.node.name.full,
-      image: e.node.image?.medium || undefined,
+      // Prefer large — same reasoning as the characters list above, this
+      // becomes the sticky-preferred portrait on that author's own page.
+      image: e.node.image?.large || e.node.image?.medium || undefined,
       role,
       url: `/author?id=person:a${e.node.id}`,
     }));
@@ -181,7 +192,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     .map(e => ({
       id: `person:a${e.node.id}`,
       name: e.node.name.full,
-      image: e.node.image?.medium || undefined,
+      image: e.node.image?.large || e.node.image?.medium || undefined,
       role: e.role,
     }));
 

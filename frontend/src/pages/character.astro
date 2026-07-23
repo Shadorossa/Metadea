@@ -144,6 +144,7 @@ const translations = useTranslations(lang);
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import { compareByReleaseDateDesc } from '../lib/media/mapper-utils';
+  import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import {
     readUserFavorites,
     syncFavorites,
@@ -213,7 +214,18 @@ const translations = useTranslations(lang);
       const localChar = await getCharacter(characterExternalId).catch(() => null);
       const stickyName = localChar?.name || character.name.full;
       const stickyNameNative = localChar?.name_native || character.name.native || null;
-      const stickyImage = localChar?.image_url || character.image?.large || null;
+      // A locally-stored image only gets replaced by the fresh AniList fetch
+      // when it's itself an old AniList "medium" thumbnail (e.g. seeded by a
+      // media page's character grid — save_characters_skeleton's INSERT OR
+      // IGNORE means it never upgrades itself otherwise) — never for a
+      // custom crop (data: URL) or any other deliberately-set image, which
+      // stay sticky like every other manually-edited field.
+      const localImageIsAniListMedium = !!localChar?.image_url
+        && localChar.image_url.includes('anilist.co')
+        && localChar.image_url.includes('/medium/');
+      const stickyImage = (localChar?.image_url && !localImageIsAniListMedium)
+        ? localChar.image_url
+        : (character.image?.large || localChar?.image_url || null);
       const stickyBiography = localChar?.biography || character.description;
 
       // Nombre principal y nativo
@@ -229,7 +241,7 @@ const translations = useTranslations(lang);
       // Imagen / Avatar
       const avatarContainer = document.getElementById('char-avatar-container')!;
       if (stickyImage) {
-        avatarContainer.innerHTML = `<img src="${stickyImage}" alt="${stickyName}" class="character-avatar-img" />`;
+        avatarContainer.innerHTML = `<img src="${safeUrl(stickyImage)}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
       } else {
         avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
       }
@@ -300,8 +312,8 @@ const translations = useTranslations(lang);
       if (allAliases.length > 0) {
         altNamesContainer.innerHTML = allAliases
           .map(({ text, spoiler }) => spoiler
-            ? `<span class="character-alt-name-tag"><span class="spoiler">${text}</span></span>`
-            : `<span class="character-alt-name-tag">${text}</span>`)
+            ? `<span class="character-alt-name-tag"><span class="spoiler">${escapeHtml(text)}</span></span>`
+            : `<span class="character-alt-name-tag">${escapeHtml(text)}</span>`)
           .join('');
         altNamesWrap.style.display = 'block';
       } else {
@@ -313,7 +325,7 @@ const translations = useTranslations(lang);
       const siteUrl = character.siteUrl || `https://anilist.co/character/${characterId}`;
       if (apiLinkWrap) {
         apiLinkWrap.innerHTML = `
-          <a href="${siteUrl}" target="_blank" rel="noopener noreferrer" class="media-store-link" title="AniList">
+          <a href="${safeUrl(siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-store-link" title="AniList">
             <img src="/API/Anilist_logo.png" alt="AniList" class="media-store-icon" />
           </a>
         `;
@@ -407,17 +419,17 @@ const translations = useTranslations(lang);
       const addedLabels = new Set<string>();
 
       if (character.gender) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Género</span><span class="media-stat-value">${character.gender}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Género</span><span class="media-stat-value">${escapeHtml(character.gender)}</span></div>`;
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Edad</span><span class="media-stat-value">${character.age}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Edad</span><span class="media-stat-value">${escapeHtml(String(character.age))}</span></div>`;
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Grupo Sanguíneo</span><span class="media-stat-value">${character.bloodType}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Grupo Sanguíneo</span><span class="media-stat-value">${escapeHtml(character.bloodType)}</span></div>`;
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
@@ -449,9 +461,9 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
 
         const values = stat.value.split(',').map(v => v.trim()).filter(v => v);
-        const valueHtml = values.map(v => `<div>${v}</div>`).join('');
+        const valueHtml = values.map(v => `<div>${escapeHtml(v)}</div>`).join('');
 
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${displayLabel}</span><div class="media-stat-value">${valueHtml}</div></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
       }
 
@@ -478,9 +490,9 @@ const translations = useTranslations(lang);
               <button
                 type="button"
                 class="char-seiyu-lang-btn ${lang === activeLang ? 'char-seiyu-lang-btn--active' : ''}"
-                data-lang="${lang}"
+                data-lang="${escapeHtml(lang)}"
               >
-                ${lang}
+                ${escapeHtml(lang)}
               </button>
             `).join('');
 
@@ -497,13 +509,13 @@ const translations = useTranslations(lang);
             .map(va => `
               <div class="media-author-pill">
                 ${va.image
-                  ? `<img src="${va.image}" alt="${va.name}" class="media-author-avatar" />`
-                  : `<div class="media-author-avatar media-author-avatar--placeholder">${va.name.charAt(0).toUpperCase()}</div>`}
+                  ? `<img src="${safeUrl(va.image)}" alt="${escapeHtml(va.name)}" class="media-author-avatar" />`
+                  : `<div class="media-author-avatar media-author-avatar--placeholder">${escapeHtml(va.name.charAt(0).toUpperCase())}</div>`}
                 <div class="media-author-info">
                   ${va.siteUrl
-                    ? `<a href="${va.siteUrl}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">${va.name}</a>`
-                    : `<span class="media-author-name">${va.name}</span>`}
-                  ${va.native && va.native !== va.name ? `<span class="media-author-role">${va.native}</span>` : ''}
+                    ? `<a href="${safeUrl(va.siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">${escapeHtml(va.name)}</a>`
+                    : `<span class="media-author-name">${escapeHtml(va.name)}</span>`}
+                  ${va.native && va.native !== va.name ? `<span class="media-author-role">${escapeHtml(va.native)}</span>` : ''}
                 </div>
               </div>
             `).join('');
@@ -524,7 +536,7 @@ const translations = useTranslations(lang);
       // Biografía
       const bioSection = document.getElementById('char-bio-section')!;
       if (cleanDescription) {
-        document.getElementById('char-description')!.innerHTML = cleanDescription;
+        document.getElementById('char-description')!.innerHTML = sanitizeHtml(cleanDescription);
         bioSection.style.display = 'block';
       } else {
         bioSection.style.display = 'none';
@@ -618,18 +630,18 @@ const translations = useTranslations(lang);
 
         appearancesGrid.innerHTML = slice
           .map(app => `
-              <a href="/media?id=${app.mediaId}" class="media-relation-card">
-                ${app.cover ? `<div class="media-relation-bg-layer"><img src="${app.cover}" alt="" /></div>` : ''}
+              <a href="/media?id=${encodeURIComponent(app.mediaId)}" class="media-relation-card">
+                ${app.cover ? `<div class="media-relation-bg-layer"><img src="${safeUrl(app.cover)}" alt="" /></div>` : ''}
                 <div class="media-relation-card-overlay"></div>
                 <div class="media-relation-card-content">
                   <div class="media-relation-thumb">
-                    ${app.cover ? `<img src="${app.cover}" alt="${app.title}" loading="lazy" />` : ''}
+                    ${app.cover ? `<img src="${safeUrl(app.cover)}" alt="${escapeHtml(app.title)}" loading="lazy" />` : ''}
                   </div>
                   <div class="media-relation-info">
-                    <span class="media-relation-title">${app.title}</span>
+                    <span class="media-relation-title">${escapeHtml(app.title)}</span>
                   </div>
                 </div>
-                ${app.roleLabel ? `<div class="media-relation-type">${app.roleLabel}</div>` : ''}
+                ${app.roleLabel ? `<div class="media-relation-type">${escapeHtml(app.roleLabel)}</div>` : ''}
               </a>
             `)
           .join('');

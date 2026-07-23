@@ -524,7 +524,11 @@ fn build_saga_list(conn: &rusqlite::Connection, table_prefix: &str) -> rusqlite:
         // (id as tiebreak for missing/equal dates — undated entries sort last).
         let canonical = visible.iter().min().map(|s| (*s).clone()).unwrap();
         if visible.iter().all(|id| order_hints.contains_key(*id)) {
-            visible.sort_by(|a, b| order_hints[*a].partial_cmp(&order_hints[*b]).unwrap().then_with(|| a.cmp(b)));
+            // unwrap_or(Equal), not unwrap(): order_index is user-curated
+            // data that's lived through several migrations — a stray NaN
+            // shouldn't be able to panic the whole reorder, just fall back
+            // to the id tiebreak for that one comparison.
+            visible.sort_by(|a, b| order_hints[*a].partial_cmp(&order_hints[*b]).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.cmp(b)));
         } else {
             visible.sort_by(|a, b| {
                 let da = &info[*a];

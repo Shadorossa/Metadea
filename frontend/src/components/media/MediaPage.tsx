@@ -23,6 +23,7 @@ import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
 import { mergePlatformVersions } from '../../lib/media/mapper-utils';
+import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES } from '../../lib/constants/media';
 
 // Breaks a "Prefix: Rest" relation title onto two lines after the colon
@@ -925,7 +926,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               <div
                 ref={descriptionRef}
                 className={`media-description-text${descriptionOverflows ? ' has-overflow' : ''}`}
-                dangerouslySetInnerHTML={{ __html: data.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(data.description) }}
               />
             </>
           )}
@@ -1180,8 +1181,18 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               <div className="media-chars-grid">
                 {activeCharList
                   .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
-                  .map((c, i) => (
-                  <div key={i} className="media-char-card">
+                  .map((c, i) => {
+                    // Characters have their own page; staff (director, writer,
+                    // composer, ...) route to the author page instead — same
+                    // id shape MediaAuthor cards already link to elsewhere.
+                    // No href at all (rather than "#") when c.id is missing —
+                    // an <a> without href isn't a link, so the card just
+                    // stops being clickable instead of navigating nowhere.
+                    const href = c.id
+                      ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(c.id)}` : `/character?id=${encodeURIComponent(c.id)}`)
+                      : undefined;
+                    return (
+                  <a key={i} href={href} className="media-char-card">
                     <div className="media-char-bg-layer">
                       {c.image && <img src={c.image} alt="" loading="lazy" />}
                     </div>
@@ -1195,8 +1206,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         <span className="media-char-name">{c.name}</span>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  </a>
+                    );
+                  })}
               </div>
               {activeCharList.length > CHARACTER_PAGE_SIZE && (
                 <Pagination
