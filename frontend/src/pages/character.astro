@@ -10,103 +10,93 @@ const translations = useTranslations(lang);
 ---
 
 <BaseLayout title="Detalle de Personaje — Metadea" lang={lang} activePage="search">
-  <div class="character-page-container">
-    
-    <!-- Botón Volver + Editar -->
-    <div class="back-btn-wrap">
-      <a href="/search?type=character" class="btn btn--sm btn--secondary back-btn-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Volver a la búsqueda
-      </a>
-      <button class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje" onclick="handleEditClick()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-        </svg>
-        Editar
-      </button>
-    </div>
+  <div class="media-page">
 
     <!-- Estado de Carga -->
-    <div id="character-loading" class="character-empty-box">
+    <div id="character-loading" class="media-loading">
       <p>Cargando información del personaje...</p>
     </div>
 
     <!-- Estado de Error -->
-    <div id="character-error" class="character-error-box" style="display: none;">
+    <div id="character-error" class="media-error" style="display: none;">
       <p style="font-weight: 700; margin-bottom: 0.5rem;">Error al cargar personaje</p>
       <p id="character-error-text" style="font-size: 0.85rem; opacity: 0.8;"></p>
     </div>
 
-    <!-- Contenido del Personaje (Grid de 2 Columnas) -->
-    <div id="character-content" class="character-detail-layout" style="display: none;" data-char-key="">
+    <!-- Contenido del Personaje -->
+    <div id="character-content" style="display: none;" data-char-key="">
       
-      <!-- Columna Izquierda: Sidebar -->
-      <div class="character-sidebar-col">
-        <!-- Avatar del Personaje -->
-        <div class="character-avatar-wrap" id="char-avatar-container">
-          <!-- Rellenado dinámicamente por JS -->
+      <!-- Hero principal -->
+      <div class="character-hero-body">
+        <div class="character-hero-left-col">
+          <div class="character-avatar-frame">
+            <div class="character-avatar-wrap" id="char-avatar-container"></div>
+          </div>
+          <div class="character-action-row" id="char-action-row">
+            <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title="Favorito">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              <span>Favorito</span>
+            </button>
+            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title="Me gusta">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+              </svg>
+              <span>Me gusta</span>
+            </button>
+            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title="Interesa">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span>Interesa</span>
+            </button>
+            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title="No me gusta">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
+              </svg>
+              <span>No me gusta</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Favorito + Reacciones -->
-        <div class="character-action-row" id="char-action-row">
-          <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title="Favorito">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-            <span>Favorito</span>
-          </button>
-          <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title="Me gusta">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
-            </svg>
-            <span>Me gusta</span>
-          </button>
-          <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title="Interesa">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            <span>Interesa</span>
-          </button>
-          <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title="No me gusta">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
-            </svg>
-            <span>No me gusta</span>
-          </button>
-        </div>
-
-        <!-- Lista de Detalles Técnicos -->
-        <div class="character-stats-card" id="char-stats-card" style="display: none;">
-          <div class="character-sidebar-stats-list" id="char-stats-list">
-            <!-- Rellenado dinámicamente por JS -->
+        <div class="character-hero-right-col">
+          <div class="character-name-row">
+            <h1 class="media-title-main" id="char-name-full"></h1>
+            <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" onclick="handleEditClick()" title="Editar datos del personaje">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+              Editar
+            </button>
+          </div>
+          <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
+          
+          <div class="character-alt-names-wrap" id="char-alt-names-wrap" style="display: none;">
+            <span class="character-alt-names-label">Nombres alternativos / Aliases:</span>
+            <div class="character-alt-names" id="char-alt-names"></div>
           </div>
         </div>
       </div>
 
-      <!-- Columna Derecha: Contenido Principal -->
-      <div class="character-main-col">
-
-        <!-- Nombres y Cabecera -->
-        <div class="character-names-header">
-          <h1 class="character-name-title" id="char-name-full"></h1>
-          <p class="character-name-native" id="char-name-native" style="display: none; margin: 0;"></p>
-          <div class="character-alt-names" id="char-alt-names" style="display: none;">
-            <!-- Rellenado dinámicamente por JS -->
+      <!-- Body: 3 Columnas (Biografía, Apariciones en Obras, Datos) -->
+      <div class="media-body" style="padding-top: 2rem;">
+        <!-- Columna 1: Biografía -->
+        <div class="media-col-synopsis" id="char-bio-section" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Biografía</p>
+            <div class="media-section-header-line"></div>
           </div>
+          <div class="media-description-text" id="char-description"></div>
         </div>
 
-        <!-- Descripción / Biografía -->
-        <div class="character-section-box" id="char-bio-section" style="display: none;">
-          <h2 class="character-section-title">Biografía</h2>
-          <div class="character-description-text" id="char-description"></div>
-        </div>
-
-        <!-- Apariciones en Obras -->
-        <div class="character-section-box" id="char-appearances-section" style="display: none;">
-          <h2 class="character-section-title">Apariciones en Obras</h2>
-          <div class="character-appearances-grid" id="char-appearances-grid"></div>
+        <!-- Columna 2: Apariciones en Obras -->
+        <div class="media-col-related" id="char-appearances-section" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Apariciones en Obras</p>
+            <div class="media-section-header-line"></div>
+          </div>
+          <div class="media-relations-grid" id="char-appearances-grid"></div>
           
-          <!-- Paginación de Apariciones -->
+          <!-- Paginación -->
           <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
             <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">Anterior</button>
             <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Página 1 de 1</span>
@@ -114,6 +104,14 @@ const translations = useTranslations(lang);
           </div>
         </div>
 
+        <!-- Columna 3: Datos -->
+        <div class="media-col-stats" id="char-stats-card" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Datos</p>
+            <div class="media-section-header-line"></div>
+          </div>
+          <div class="media-stats-list" id="char-stats-list"></div>
+        </div>
       </div>
 
     </div>
@@ -124,19 +122,11 @@ const translations = useTranslations(lang);
 <CharacterPrEditorModal client:load />
 
 <script>
-  // Global function to handle edit button click
   window.handleEditClick = function() {
     const charKeyEl = document.querySelector('[data-char-key]');
-    if (!charKeyEl) {
-      console.error('Character key not found');
-      return;
-    }
+    if (!charKeyEl) return;
     const charKey = charKeyEl.getAttribute('data-char-key');
-    if (!charKey) {
-      console.error('Character key is empty');
-      return;
-    }
-
+    if (!charKey) return;
     if (window.openCharacterEditor) {
       window.openCharacterEditor(charKey);
     }
@@ -146,7 +136,7 @@ const translations = useTranslations(lang);
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import {
     readUserFavorites,
-    writeUserFavorites,
+    syncFavorites,
     saveCharacter,
     getCharacter,
     setCharacterReaction,
@@ -154,7 +144,6 @@ const translations = useTranslations(lang);
   } from '../lib/tauri';
 
   async function loadCharacterData() {
-    // Initialize role labels from current language
     const lang = window.location.pathname.startsWith('/en') ? 'en' : 'es';
     window.ROLE_LABELS = {
       MAIN: lang === 'en' ? 'Main' : 'Principal',
@@ -162,12 +151,6 @@ const translations = useTranslations(lang);
       BACKGROUND: 'Background',
     };
 
-    // This listener is registered once and never removed (see astro:page-load
-    // below), but that event fires on every SPA navigation, not just to this
-    // page — once the user has visited a character page even once, every
-    // future navigation anywhere else re-fires this handler against a DOM
-    // that no longer has these elements. Bail out silently instead of
-    // crashing on the resulting null.
     const loadingEl = document.getElementById('character-loading');
     const errorEl = document.getElementById('character-error');
     const errorTextEl = document.getElementById('character-error-text');
@@ -177,12 +160,6 @@ const translations = useTranslations(lang);
     const urlParams = new URLSearchParams(window.location.search);
     const idParam = urlParams.get('id') ?? '';
 
-    // This page only knows how to render AniList's rich character detail
-    // (biography, alt/spoiler names, media appearances). A Comic Vine result
-    // (id like "comicvine:123") would otherwise have its digits silently
-    // stripped by the parseInt below and get looked up as if it were an
-    // AniList numeric id — showing a real but entirely wrong character
-    // instead of an error. Bail out clearly instead.
     if (idParam.startsWith('comicvine:')) {
       loadingEl.style.display = 'none';
       errorTextEl.textContent = 'La ficha de personajes de Comic Vine aún no está disponible.';
@@ -227,50 +204,106 @@ const translations = useTranslations(lang);
         avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
       }
 
-      // Nombres alternativos (incluye los marcados como spoiler por AniList,
-      // ocultos tras la clase .spoiler hasta que el usuario pase el ratón).
+      // Parseo de biografía para extraer características
+      const { characteristics: parsedStats, cleanBiography } = parseCharacterBiography(character.description);
+      const cleanDescription = cleanBiography.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
+
+      // ── EXTRAER Y CONSOLIDAR ABSOLUTAMENTE TODOS LOS ALIASES ──
+      const aliasMap = new Map<string, { text: string; spoiler: boolean }>();
+      const mainNameLower = (character.name?.full || '').toLowerCase().trim();
+      const nativeNameLower = (character.name?.native || '').toLowerCase().trim();
+
+      function addAlias(rawText: string, spoiler: boolean = false) {
+        if (!rawText) return;
+        const clean = rawText.replace(/<[^>]*>/g, '').trim();
+        if (!clean) return;
+        const parts = clean.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+        for (const p of parts) {
+          const key = p.toLowerCase().trim();
+          if (key && key !== mainNameLower && key !== nativeNameLower && key.length > 1 && !aliasMap.has(key)) {
+            aliasMap.set(key, { text: p, spoiler });
+          }
+        }
+      }
+
+      // 1. AniList alternative names
+      for (const alt of character.name?.alternative ?? []) addAlias(alt, false);
+      for (const alt of character.name?.alternativeSpoiler ?? []) addAlias(alt, true);
+
+      // 2. Local DB saved aliases
+      try {
+        const localChar = await getCharacter(String(characterId));
+        if (localChar?.aliases_csv) {
+          for (const alt of localChar.aliases_csv.split(',')) addAlias(alt, false);
+        }
+      } catch (e) {}
+
+      // 3. Biografía parsed bold labels ("Aliases", "AKA", "Nicknames", etc.)
+      for (const stat of parsedStats) {
+        const lbl = stat.label.toLowerCase();
+        if (
+          lbl.includes('alias') ||
+          lbl.includes('nombre') ||
+          lbl.includes('name') ||
+          lbl.includes('aka') ||
+          lbl.includes('nickname') ||
+          lbl.includes('title')
+        ) {
+          addAlias(stat.value, false);
+        }
+      }
+
+      // 4. Biografía text patterns ("also known as X", "known as X", "(Kanji/Title)")
+      const rawDesc = character.description || '';
+      const akaRegex = /(?:also\s+known\s+as|known\s+as|referred\s+to\s+as|also\s+called|alias(?:es)?)\s+([^,.\n(<]+)/gi;
+      let match;
+      while ((match = akaRegex.exec(rawDesc)) !== null) {
+        if (match[1]) addAlias(match[1], false);
+      }
+
+      const parenRegex = /\(([^)\n]{2,40})\)/g;
+      while ((match = parenRegex.exec(rawDesc)) !== null) {
+        if (match[1]) {
+          const val = match[1].replace(/<[^>]*>/g, '').trim();
+          if (val && !/^\d+$/.test(val) && !val.toLowerCase().includes('page')) {
+            addAlias(val, false);
+          }
+        }
+      }
+
+      const allAliases = Array.from(aliasMap.values());
+      const altNamesWrap = document.getElementById('char-alt-names-wrap')!;
       const altNamesContainer = document.getElementById('char-alt-names')!;
-      const altNames = [
-        ...(character.name.alternative ?? []).map((alt: string) => ({ text: alt, spoiler: false })),
-        ...(character.name.alternativeSpoiler ?? []).map((alt: string) => ({ text: alt, spoiler: true })),
-      ];
-      if (altNames.length > 0) {
-        altNamesContainer.innerHTML = altNames
+
+      if (allAliases.length > 0) {
+        altNamesContainer.innerHTML = allAliases
           .map(({ text, spoiler }) => spoiler
             ? `<span class="character-alt-name-tag"><span class="spoiler">${text}</span></span>`
             : `<span class="character-alt-name-tag">${text}</span>`)
           .join('');
-        altNamesContainer.style.display = 'flex';
+        altNamesWrap.style.display = 'block';
       } else {
-        altNamesContainer.style.display = 'none';
+        altNamesWrap.style.display = 'none';
       }
 
-      // ── PARSEO DE DATOS TÉCNICOS (compartido con el editor de personajes,
-      // ver lib/character/biography-parser.ts — misma lógica de extraer
-      // pares <b>Label:</b> Value de la biografía de AniList) ─────────────
-      const { characteristics: parsedStats, cleanBiography } = parseCharacterBiography(character.description);
-
-      // Formatear spoilers: Convertir !~ y ~! a span.spoiler
-      const cleanDescription = cleanBiography.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
-
-      // ── RENDEREAR ESPECIFICACIONES / ATRIBUTOS ─────────────────────────
+      // ── ESPECIFICACIONES Y DATOS ──
       const statsCard = document.getElementById('char-stats-card')!;
       const statsList = document.getElementById('char-stats-list')!;
       let statsHtml = '';
       const addedLabels = new Set<string>();
 
       if (character.gender) {
-        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Género</span><span class="character-stat-value">${character.gender}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Género</span><span class="media-stat-value">${character.gender}</span></div>`;
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
-        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Edad</span><span class="character-stat-value">${character.age}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Edad</span><span class="media-stat-value">${character.age}</span></div>`;
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
-        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Grupo Sanguíneo</span><span class="character-stat-value">${character.bloodType}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Grupo Sanguíneo</span><span class="media-stat-value">${character.bloodType}</span></div>`;
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
@@ -278,15 +311,20 @@ const translations = useTranslations(lang);
         const day = character.dateOfBirth.day ?? '?';
         const month = character.dateOfBirth.month ?? '?';
         const year = character.dateOfBirth.year ? `/${character.dateOfBirth.year}` : '';
-        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">Cumpleaños</span><span class="character-stat-value">${day}/${month}${year}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Cumpleaños</span><span class="media-stat-value">${day}/${month}${year}</span></div>`;
         addedLabels.add('birthday');
         addedLabels.add('cumpleaños');
       }
 
-      // Añadir atributos extraídos del DOM de forma localizada
       for (const stat of parsedStats) {
         const lowerLabel = stat.label.toLowerCase();
         if (addedLabels.has(lowerLabel)) continue;
+        if (
+          lowerLabel.includes('alias') ||
+          lowerLabel.includes('nombre') ||
+          lowerLabel.includes('name') ||
+          lowerLabel.includes('aka')
+        ) continue;
 
         let displayLabel = stat.label;
         if (lowerLabel === 'height') displayLabel = 'Estatura';
@@ -296,11 +334,10 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'affiliations') displayLabel = 'Afiliación';
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
 
-        // Split by commas if present, each on a new line
         const values = stat.value.split(',').map(v => v.trim()).filter(v => v);
-        const valueHtml = values.map(v => `<div class="character-stat-value-item">${v}</div>`).join('');
+        const valueHtml = values.map(v => `<div>${v}</div>`).join('');
 
-        statsHtml += `<div class="character-sidebar-stat-item"><span class="character-stat-label">${displayLabel}</span><div class="character-stat-value">${valueHtml}</div></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${displayLabel}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
       }
 
@@ -320,7 +357,7 @@ const translations = useTranslations(lang);
         bioSection.style.display = 'none';
       }
 
-      // ── APARICIONES EN OBRAS (ORDENADO + PAGINACIÓN DINÁMICA DE 2 FILAS) ──
+      // ── APARICIONES EN OBRAS ──
       const appearancesSection = document.getElementById('char-appearances-section')!;
       const appearancesGrid = document.getElementById('char-appearances-grid')!;
       const paginationEl = document.getElementById('appearances-pagination')!;
@@ -329,35 +366,15 @@ const translations = useTranslations(lang);
       const txtPage = document.getElementById('txt-appearances-page')!;
 
       const rawEdges = character.media?.edges || [];
-
-      // ORDENACIÓN: Primero obras MAIN, luego el resto (ambas ordenadas cronológicamente)
       const mainMedia = rawEdges.filter((edge: any) => edge.characterRole === 'MAIN');
       const otherMedia = rawEdges.filter((edge: any) => edge.characterRole !== 'MAIN');
       const sortedEdges = [...mainMedia, ...otherMedia];
 
       let currentPage = 1;
-      // Safe default until the ResizeObserver below reports the real grid width.
-      let itemsPerPage = 6;
-
-      // Must match .character-appearance-cover-wrap's minmax() lower bound in character.css
-      const MIN_CARD_WIDTH = 130;
-
-      // Deterministic itemsPerPage from the grid's actual rendered width, instead
-      // of reading grid-template-columns via getComputedStyle — that value only
-      // reflects whatever the browser had already painted at call time, which
-      // was inconsistent between the very first render (images/layout not yet
-      // settled) and a later revisit (everything already warm), causing 1 row
-      // to show on first load but 2 rows after navigating away and back.
-      function computeItemsPerPage(containerWidth: number): number {
-        const gapPx = parseFloat(window.getComputedStyle(appearancesGrid).columnGap || '20') || 20;
-        const cols = Math.max(1, Math.floor((containerWidth + gapPx) / (MIN_CARD_WIDTH + gapPx)));
-        return Math.max(cols * 2, 6); // exactamente 2 filas, mínimo 6 como salvaguarda
-      }
+      const itemsPerPage = 8;
 
       function renderMediaPage() {
         const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
-
-        // Limitar página actual
         if (currentPage > totalPages) currentPage = totalPages || 1;
 
         const start = (currentPage - 1) * itemsPerPage;
@@ -365,22 +382,24 @@ const translations = useTranslations(lang);
 
         appearancesGrid.innerHTML = slice
           .map((edge: any) => {
-            const coverHtml = edge.node.coverImage?.large
-              ? `<img src="${edge.node.coverImage.large}" alt="${edge.node.title.userPreferred}" class="character-appearance-cover-img" loading="lazy" />`
-              : `<div class="character-appearance-cover-placeholder">Sin portada</div>`;
-
+            const coverUrl = edge.node.coverImage?.large ?? '';
+            const title = edge.node.title.userPreferred ?? '';
             const roleLabel = edge.characterRole ? (window.ROLE_LABELS[edge.characterRole] ?? edge.characterRole) : '';
-            const roleBadgeHtml = roleLabel
-              ? `<div class="character-appearance-role-badge">${roleLabel}</div>`
-              : '';
+            const mediaId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
 
             return `
-              <a href="/media?id=${edge.node.type.toLowerCase()}:${edge.node.id}" class="character-appearance-card group">
-                <div class="character-appearance-cover-wrap">
-                  ${coverHtml}
-                  ${roleBadgeHtml}
+              <a href="/media?id=${mediaId}" class="media-relation-card">
+                ${coverUrl ? `<div class="media-relation-bg-layer"><img src="${coverUrl}" alt="" /></div>` : ''}
+                <div class="media-relation-card-overlay"></div>
+                <div class="media-relation-card-content">
+                  <div class="media-relation-thumb">
+                    ${coverUrl ? `<img src="${coverUrl}" alt="${title}" loading="lazy" />` : ''}
+                  </div>
+                  <div class="media-relation-info">
+                    <span class="media-relation-title">${title}</span>
+                  </div>
                 </div>
-                <span class="character-appearance-title card-title">${edge.node.title.userPreferred}</span>
+                ${roleLabel ? `<div class="media-relation-type">${roleLabel}</div>` : ''}
               </a>
             `;
           })
@@ -389,145 +408,103 @@ const translations = useTranslations(lang);
         txtPage.textContent = `Página ${currentPage} de ${totalPages}`;
         btnPrev.disabled = currentPage === 1;
         btnNext.disabled = currentPage >= totalPages;
-
-        if (totalPages > 1) {
-          paginationEl.style.display = 'flex';
-        } else {
-          paginationEl.style.display = 'none';
-        }
+        paginationEl.style.display = totalPages > 1 ? 'flex' : 'none';
       }
 
       if (sortedEdges.length > 0) {
         appearancesSection.style.display = 'block';
+        renderMediaPage();
 
-        // ResizeObserver fires once immediately with the grid's real post-layout
-        // width, so itemsPerPage is deterministic from the very first render —
-        // this also covers window resizes on its own, no separate listener needed.
-        const ro = new ResizeObserver(entries => {
-          const width = entries[0]?.contentRect.width;
-          if (!width) return;
-          itemsPerPage = computeItemsPerPage(width);
-          renderMediaPage();
-        });
-        ro.observe(appearancesGrid);
-        // Fallback: call renderMediaPage immediately in case ResizeObserver doesn't fire
-        setTimeout(() => {
-          const width = appearancesGrid.offsetWidth;
-          if (width && appearancesGrid.innerHTML === '') {
-            itemsPerPage = computeItemsPerPage(width);
-            renderMediaPage();
-          }
-        }, 100);
-        document.addEventListener('astro:before-swap', () => ro.disconnect(), { once: true });
-
-        btnPrev.addEventListener('click', () => {
+        btnPrev.onclick = () => {
           if (currentPage > 1) {
             currentPage--;
             renderMediaPage();
-            appearancesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        });
-
-        btnNext.addEventListener('click', () => {
+        };
+        btnNext.onclick = () => {
           const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
           if (currentPage < totalPages) {
             currentPage++;
             renderMediaPage();
-            appearancesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        });
-
+        };
       } else {
         appearancesSection.style.display = 'none';
       }
 
-      // ── PERSIST CHARACTER + APPEARANCES IN metadea.db ───────────────────
-      // Characters live only in the characters table, never in media_catalog
-      // (that table is for anime/manga/games/etc, not the people/characters
-      // appearing in them).
-      const charKey = `character:${characterId}`;
+      // Reacciones y Favorito
+      const charKeyStr = String(characterId);
+      contentEl.setAttribute('data-char-key', charKeyStr);
 
-      // Store charKey in data attribute for edit button
-      const contentEl = document.getElementById('character-content');
-      if (contentEl) {
-        contentEl.setAttribute('data-char-key', charKey);
-      }
-      const allAliases = [...(character.name.alternative ?? []), ...(character.name.alternativeSpoiler ?? [])];
-      const aliasesCsv = allAliases.length > 0 ? allAliases.join(',') : null;
+      const favBtn = document.getElementById('char-fav-btn');
+      const reactionBtns = document.querySelectorAll('.char-action-btn[data-reaction]');
 
-      await saveCharacter(
-        charKey,
-        character.name.full,
-        character.image?.large || null,
-        character.name.native || null,
-        aliasesCsv,
-        character.description || null,
-      ).catch(console.error);
-
-      if (sortedEdges.length > 0) {
-        const appearances = sortedEdges.map((edge: any) => ({
-          media_external_id: `${edge.node.type.toLowerCase()}:${edge.node.id}`,
-          relation_type: edge.characterRole ?? null,
-        }));
-        await saveCharacterAppearances(charKey, appearances).catch(console.error);
-      }
-
-      // ── FAVORITE + REACTION BUTTONS ──────────────────────────────────────
-      const favBtn = document.getElementById('char-fav-btn')!;
-      const reactionBtns = Array.from(
-        document.querySelectorAll<HTMLButtonElement>('.char-action-btn[data-reaction]')
-      );
-
-      let favData = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
-      if (!favData.character) favData.character = [];
-
-      const savedCharacter = await getCharacter(charKey).catch(() => null);
-      let currentReaction: string | null = savedCharacter?.reaction ?? null;
+      const allFavs = await readUserFavorites().catch(() => ({} as Record<string, string[]>));
+      const favList = allFavs['characters_fav'] || allFavs['characters'] || [];
+      let isFav = Array.isArray(favList) && favList.includes(charKeyStr);
 
       function updateFavUI() {
-        favBtn.classList.toggle('active', favData.character.includes(charKey));
+        if (favBtn) {
+          if (isFav) favBtn.classList.add('active');
+          else favBtn.classList.remove('active');
+        }
       }
+      updateFavUI();
+
+      if (favBtn) {
+        favBtn.onclick = async () => {
+          isFav = !isFav;
+          updateFavUI();
+          await syncFavorites('characters', charKeyStr, isFav).catch(console.error);
+        };
+      }
+
+      const savedLocal = await getCharacter(charKeyStr);
+      let activeReaction = savedLocal?.reaction ?? null;
 
       function updateReactionUI() {
-        for (const btn of reactionBtns) {
-          btn.classList.toggle('active', btn.dataset.reaction === currentReaction);
-        }
-      }
-
-      updateFavUI();
-      updateReactionUI();
-
-      favBtn.addEventListener('click', async () => {
-        if (favData.character.includes(charKey)) {
-          favData.character = favData.character.filter((id: string) => id !== charKey);
-        } else {
-          favData.character.push(charKey);
-        }
-        await writeUserFavorites(favData).catch(console.error);
-        updateFavUI();
-      });
-
-      for (const btn of reactionBtns) {
-        btn.addEventListener('click', async () => {
-          const clicked = btn.dataset.reaction!;
-          currentReaction = currentReaction === clicked ? null : clicked;
-          updateReactionUI();
-          await setCharacterReaction(charKey, currentReaction).catch(console.error);
+        reactionBtns.forEach(btn => {
+          const r = btn.getAttribute('data-reaction');
+          if (r === activeReaction) btn.classList.add('active');
+          else btn.classList.remove('active');
         });
       }
+      updateReactionUI();
 
-      // Mostrar el contenido final
-      loadingEl.style.display = 'none';
-      contentEl.style.display = 'grid';
+      reactionBtns.forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const r = btn.getAttribute('data-reaction');
+          if (activeReaction === r) activeReaction = null;
+          else activeReaction = r;
+          updateReactionUI();
+          await setCharacterReaction(charKeyStr, activeReaction).catch(console.error);
+        });
+      });
 
-    } catch (err) {
-      console.error(err);
       loadingEl.style.display = 'none';
-      errorTextEl.textContent = 'Error de conexión o fallo al consultar la API de AniList.';
-      errorEl.style.display = 'block';
+      contentEl.style.display = 'block';
+
+      saveCharacter(
+        charKeyStr,
+        character.name.full,
+        character.image?.large,
+        character.name.native,
+        (character.name.alternative ?? []).join(','),
+        character.description
+      ).catch(() => {});
+
+    } catch (err: any) {
+      console.error('Error in loadCharacterData:', err);
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = err?.message || String(err);
+      errorEl.style.display = 'flex';
     }
   }
 
-  // Carga al entrar (Astro SPA router)
-  document.addEventListener('astro:page-load', loadCharacterData);
+  document.addEventListener('astro:page-load', () => {
+    loadCharacterData();
+  });
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    loadCharacterData();
+  }
 </script>

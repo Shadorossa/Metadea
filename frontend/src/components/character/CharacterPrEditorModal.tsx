@@ -61,19 +61,13 @@ export function CharacterPrEditorModal() {
   const [character, setCharacter] = useState<CharacterEntry | null>(null);
   const [originalCharacter, setOriginalCharacter] = useState<CharacterEntry | null>(null);
 
-  // Cache for character data to avoid reloading from API
   const characterCacheRef = useRef<Record<string, CachedCharacterData>>({});
 
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
   const [aliases, setAliases] = useState<string[]>([]);
-  const [aliasesInput, setAliasesInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // Biography is split into structured "characteristics" (bold-label lines
-  // like "Height: 170 cm") and the remaining free-text — see
-  // lib/character/biography-parser.ts. Both get reassembled into a single
-  // biography string on save, since that's the only column the DB has.
   const [characteristics, setCharacteristics] = useState<ParsedCharacteristic[]>([]);
   const [cleanBiography, setCleanBiography] = useState('');
   const [originalCharacteristics, setOriginalCharacteristics] = useState<ParsedCharacteristic[]>([]);
@@ -115,10 +109,8 @@ export function CharacterPrEditorModal() {
 
     const loadCharacter = async () => {
       try {
-        // Check if we have cached data
         const cached = characterCacheRef.current[currentId];
         if (cached) {
-          // Use cached data
           setCharacter(cached.character);
           setOriginalCharacter(cached.originalCharacter);
           setName(cached.name);
@@ -136,14 +128,11 @@ export function CharacterPrEditorModal() {
         }
 
         const now = new Date().toISOString();
+        const cleanCharIdStr = currentId.includes(':') ? currentId.split(':')[1] : currentId;
+        const anilistCharId = parseInt(cleanCharIdStr.replace(/\D/g, ''), 10);
 
-        // Parse external_id to get AniList character ID
-        const [, charId] = currentId.split(':');
-        const anilistCharId = parseInt(charId, 10);
-
-        // Fetch from AniList for fresh biography (includes appearances list)
         let anilistDetail = null;
-        if (anilistCharId) {
+        if (!isNaN(anilistCharId) && anilistCharId > 0) {
           try {
             anilistDetail = await fetchAniListCharacterDetail(anilistCharId);
           } catch (err) {
@@ -151,7 +140,6 @@ export function CharacterPrEditorModal() {
           }
         }
 
-        // Load from local DB as fallback
         const localData: CharacterEntry = (await getCharacter(currentId)) ?? {
           id: '',
           external_id: currentId,
@@ -160,7 +148,6 @@ export function CharacterPrEditorModal() {
           updated_at: now,
         };
 
-        // Use AniList data if available, otherwise local
         const data = anilistDetail ? {
           ...localData,
           name: anilistDetail.name.full || localData.name,
@@ -173,13 +160,17 @@ export function CharacterPrEditorModal() {
         setOriginalCharacter(data);
         setName(data.name || '');
         setNameNative(data.name_native || '');
-        setAliases((data.aliases_csv || '').split(',').map(a => a.trim()).filter(a => a));
-        setAliasesInput('');
+
+        const aniListAlt = [
+          ...(anilistDetail?.name?.alternative ?? []),
+          ...(anilistDetail?.name?.alternativeSpoiler ?? []),
+        ];
+        const localAlt = (data.aliases_csv || '').split(',').map(a => a.trim()).filter(Boolean);
+        const combinedAliases = Array.from(new Set([...localAlt, ...aniListAlt]));
+        setAliases(combinedAliases);
         setImageUrl(data.image_url || '');
 
         const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
-
-        // Add structured fields from AniList as characteristics if not already in parsed stats
         const addedLabels = new Set(parsedStats.map(c => c.label.toLowerCase()));
         const allCharacteristics = [...parsedStats];
 
@@ -189,7 +180,7 @@ export function CharacterPrEditorModal() {
         if (anilistDetail?.age && !addedLabels.has('age') && !addedLabels.has('edad')) {
           allCharacteristics.push({ label: 'Age', value: String(anilistDetail.age) });
         }
-        if (anilistDetail?.bloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('tipo de sangre') && !addedLabels.has('grupo sanguíneo')) {
+        if (anilistDetail?.bloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('grupo sanguíneo')) {
           allCharacteristics.push({ label: 'Blood Type', value: anilistDetail.bloodType });
         }
         if (anilistDetail?.dateOfBirth && (anilistDetail.dateOfBirth.day || anilistDetail.dateOfBirth.month)) {
@@ -206,17 +197,10 @@ export function CharacterPrEditorModal() {
         setOriginalCharacteristics(allCharacteristics);
         setOriginalCleanBiography(parsedBio);
 
-        // Load appearances from local DB
+        // ── APARICIONES: Usar datos guardados localmente o fallback a AniList ──
         const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
+        let resolved: AppearanceRow[] = [];
 
-        // Batch catalog lookups to minimize requests
-        const missingIds = new Set<string>();
-        for (const a of rawAppearances) {
-          const cached = await getCatalogEntry(a.media_external_id).catch(() => null);
-          if (!cached) missingIds.add(a.media_external_id);
-        }
-
-        // Fetch AniList details only for missing ones (batched from anilistDetail.media if available)
         const anilistMediaCache: Record<string, { title: string; cover: string | null }> = {};
         if (anilistDetail?.media?.edges) {
           for (const edge of anilistDetail.media.edges) {
@@ -228,12 +212,10 @@ export function CharacterPrEditorModal() {
           }
         }
 
-        const resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
-          let entry = await getCatalogEntry(a.media_external_id).catch(() => null);
-
-          // Try cache first, then AniList as fallback
-          if (!entry) {
-            if (anilistMediaCache[a.media_external_id]) {
+        if (rawAppearances.length > 0) {
+          resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
+            let entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+            if (!entry && anilistMediaCache[a.media_external_id]) {
               const cached = anilistMediaCache[a.media_external_id];
               entry = {
                 id: '',
@@ -245,48 +227,35 @@ export function CharacterPrEditorModal() {
                 updated_at: now,
               };
               await saveCatalogEntry(entry).catch(() => {});
-            } else {
-              try {
-                const [type, id] = a.media_external_id.split(':');
-                const anilistId = parseInt(id, 10);
-                if (type && anilistId) {
-                  const detail = await fetchAniListDetail(anilistId);
-                  if (detail) {
-                    entry = {
-                      id: '',
-                      external_id: a.media_external_id,
-                      type: type.toUpperCase(),
-                      title_main: detail.title.english || detail.title.romaji || detail.title.native || a.media_external_id,
-                      cover_url: detail.coverImage?.large || null,
-                      created_at: now,
-                      updated_at: now,
-                    };
-                    await saveCatalogEntry(entry).catch(() => {});
-                  }
-                }
-              } catch (err) {
-                console.error(`Failed to fetch AniList detail for ${a.media_external_id}:`, err);
-              }
             }
-          }
+            return {
+              media_external_id: a.media_external_id,
+              relation_type: a.relation_type ?? null,
+              title: entry?.title_main || anilistMediaCache[a.media_external_id]?.title || a.media_external_id,
+              cover: entry?.cover_url ?? anilistMediaCache[a.media_external_id]?.cover ?? null,
+            };
+          }));
+        } else if (anilistDetail?.media?.edges) {
+          resolved = anilistDetail.media.edges.map((edge: any): AppearanceRow => {
+            const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+            return {
+              media_external_id: extId,
+              relation_type: edge.characterRole ?? 'SUPPORTING',
+              title: edge.node.title.userPreferred || extId,
+              cover: edge.node.coverImage?.large || null,
+            };
+          });
+        }
 
-          return {
-            media_external_id: a.media_external_id,
-            relation_type: a.relation_type ?? null,
-            title: entry?.title_main || a.media_external_id,
-            cover: entry?.cover_url ?? null,
-          };
-        }));
         setAppearances(resolved);
         setOriginalAppearances(resolved);
 
-        // Cache the loaded data
         characterCacheRef.current[currentId] = {
           character: data,
           originalCharacter: data,
           name: data.name || '',
           nameNative: data.name_native || '',
-          aliases: (data.aliases_csv || '').split(',').map(a => a.trim()).filter(a => a),
+          aliases: combinedAliases,
           imageUrl: data.image_url || '',
           characteristics: allCharacteristics,
           cleanBiography: parsedBio,
@@ -305,9 +274,6 @@ export function CharacterPrEditorModal() {
     loadCharacter();
   }, [isOpen, currentId, loadNonce]);
 
-  // Thin per-render wrappers around the pure diff helpers in
-  // lib/character/prEditorDiff.ts, so every existing call site below
-  // (hasChanged(), characteristicsChanged(), etc.) keeps working unchanged.
   const diffFields: CharacterDiffFields = {
     name, nameNative, aliases, imageUrl, cleanBiography, originalCleanBiography,
     characteristics, originalCharacteristics, appearances, originalAppearances,
@@ -368,9 +334,6 @@ export function CharacterPrEditorModal() {
         image_url: normField(imageUrl) as string | null | undefined,
       };
 
-      // Persist locally first (same pattern as the media PrEditorModal) so
-      // the edit sticks for this user immediately, independent of whether
-      // the collaborative PR below succeeds.
       await saveCharacter(
         currentId, updatedCharacter.name, updatedCharacter.image_url,
         updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.biography,
@@ -385,7 +348,7 @@ export function CharacterPrEditorModal() {
       setStatusMsg(t.preparing_proposal);
 
       const bundle: ProposalBundle = {
-        media_catalog: {} as any, // Characters don't need media_catalog
+        media_catalog: {} as any,
         media_relations: [],
         characters: [{
           external_id: updatedCharacter.external_id,
@@ -401,7 +364,6 @@ export function CharacterPrEditorModal() {
       if (prUrl) {
         setStatusMsg(t.pr_success);
         await new Promise(r => setTimeout(r, 1500));
-        // Clear cache for this character so next edit loads fresh data
         delete characterCacheRef.current[currentId];
         await openUrlInBrowser(prUrl);
         handleClose();
@@ -448,27 +410,20 @@ export function CharacterPrEditorModal() {
         <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
-          {/* ── Foto ────────────────────────────────────────────────── */}
-          <div className="pr-editor-section">
-            <span className="pr-editor-section-title">
-              {t.photo}
-              {isFieldChanged(imageUrl, originalCharacter?.image_url) && <span className="pr-editor-section-changed-dot" />}
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.6rem' }}>
-              <div className="pr-editor-cover-preview-card" style={{ width: '90px', aspectRatio: '3 / 4', flexShrink: 0 }}>
+          {/* ── Fila de Cabecera: Foto + Datos Básicos ── */}
+          <div className="pr-editor-section" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="pr-editor-cover-preview-card" style={{ width: '110px', aspectRatio: '3 / 4', flexShrink: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                 {imageUrl
-                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
+                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <span className="pr-editor-cover-placeholder">{t.no_image}</span>}
               </div>
-              <button type="button" className="pr-editor-add-btn" onClick={handleChangePhoto}>
+              <button type="button" className="pr-editor-add-btn" onClick={handleChangePhoto} style={{ fontSize: '0.75rem', width: '100%' }}>
                 {t.change_image}
               </button>
             </div>
-          </div>
 
-          {/* ── Datos básicos ───────────────────────────────────────── */}
-          <div className="pr-editor-section">
-            <div className="pr-editor-form-grid">
+            <div className="pr-editor-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
               <Field label={t.name} changed={isFieldChanged(name, originalCharacter?.name)}>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} />
               </Field>
@@ -483,59 +438,76 @@ export function CharacterPrEditorModal() {
             </div>
           </div>
 
-          {/* ── Características (género, edad, altura...) ──────────── */}
+          {/* ── Características (Edad, Género, Estatura...) ── */}
           <div className="pr-editor-section">
             <span className="pr-editor-section-title">
               {t.characteristics}
               {characteristicsChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.6rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
               {characteristics.map((c, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <div key={idx} className="pr-editor-char-row">
                   <input
                     type="text"
+                    className="pr-editor-char-input"
                     value={c.label}
                     onChange={e => updateCharacteristic(idx, 'label', e.target.value)}
                     placeholder={t.char_label_ph}
-                    style={{ flex: '0 0 40%' }}
+                    style={{ flex: '0 0 35%', minWidth: 0, fontWeight: 600 }}
                   />
+                  <div className="pr-editor-char-divider" />
                   <input
                     type="text"
+                    className="pr-editor-char-input"
                     value={c.value}
                     onChange={e => updateCharacteristic(idx, 'value', e.target.value)}
                     placeholder={t.char_value_ph}
-                    style={{ flex: 1 }}
+                    style={{ flex: '1 1 0%', minWidth: 0 }}
                   />
                   <button
                     type="button"
-                    className="pr-editor-media-card-remove"
-                    style={{ position: 'static' }}
+                    className="pr-editor-char-remove"
                     onClick={() => removeCharacteristic(idx)}
+                    title="Eliminar característica"
                   >
                     ×
                   </button>
                 </div>
               ))}
-              <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic}>{t.add_characteristic}</button>
             </div>
+            <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic} style={{ marginTop: '0.75rem' }}>
+              {t.add_characteristic}
+            </button>
           </div>
 
-          {/* ── Biografía ────────────────────────────────────────────── */}
+          {/* ── Biografía ── */}
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
               <Field label={t.biography} changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
-                <textarea rows={6} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder={t.biography_ph} />
+                <textarea rows={5} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder={t.biography_ph} />
               </Field>
             </div>
           </div>
 
-          {/* ── Apariciones ──────────────────────────────────────────── */}
+          {/* ── Apariciones ── */}
           <div className="pr-editor-section">
-            <span className="pr-editor-section-title">
-              {t.appearances}
-              {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
-            </span>
-            <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <span className="pr-editor-section-title" style={{ margin: 0 }}>
+                {t.appearances} ({appearances.length})
+                {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
+              </span>
+              <button
+                type="button"
+                className="pr-editor-add-btn"
+                onClick={() => setAppearanceSearchOpen(true)}
+                title="Añadir aparición"
+                style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold', flexShrink: 0 }}
+              >
+                +
+              </button>
+            </div>
+
+            <div className="pr-editor-media-group-cards pr-editor-media-group-cards--wide">
               {appearances.map(a => (
                 <div key={a.media_external_id} className="pr-editor-media-card">
                   <div className="pr-editor-media-card-cover">
@@ -563,19 +535,6 @@ export function CharacterPrEditorModal() {
                   </select>
                 </div>
               ))}
-            </div>
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              <select
-                value={appearanceRelationType}
-                onChange={e => setAppearanceRelationType(e.target.value)}
-                className="pr-editor-media-card-select"
-                style={{ fontSize: '0.7rem' }}
-              >
-                {RELATION_TYPE_OPTIONS.map(type => (
-                  <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
-                ))}
-              </select>
-              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>{t.add_appearance}</button>
             </div>
           </div>
         </div>
