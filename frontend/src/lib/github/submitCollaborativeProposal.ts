@@ -47,8 +47,27 @@ export interface CharacterProposalBundle {
 }
 
 export type ProposalFileEntry =
-  | { kind: 'media'; externalId: string; bundle: ProposalBundle }
-  | { kind: 'character'; externalId: string; bundle: CharacterProposalBundle };
+  | {
+      kind: 'media';
+      externalId: string;
+      bundle: ProposalBundle;
+      // Same purpose as the character variant's below — explicit removals
+      // this session made, never written to the on-disk bundle itself.
+      removedRelationIds?: string[];
+      removedCharacterIds?: string[];
+      removedAuthorIds?: string[];
+    }
+  | {
+      kind: 'character';
+      externalId: string;
+      bundle: CharacterProposalBundle;
+      // Explicit removals this editor session made — needed to tell "the
+      // user removed this appearance/actor" apart from "this editor never
+      // even loaded it" when merging against whatever's upstream (see
+      // mergeListByKey). Never itself written to the on-disk bundle.
+      removedAppearanceIds?: string[];
+      removedActorIds?: string[];
+    };
 
 function entryTitle(entry: ProposalFileEntry): string {
   return entry.kind === 'media'
@@ -89,6 +108,19 @@ function overlayChangedCharacterFields(local: CharacterProposalField, upstream: 
     }
   }
   return merged;
+}
+
+// Merges a list-shaped field (appearances, actors) against upstream without
+// clobbering entries this editor session never saw: anything upstream keeps
+// existing unless explicitly removed here, local additions/edits win for
+// their own key, and only keys in `removedKeys` actually disappear — an
+// upstream entry just missing from `local` (because another user added it
+// after this session started) is left untouched instead of being dropped.
+function mergeListByKey<T>(upstream: T[], local: T[], removedKeys: string[] | undefined, keyOf: (item: T) => string): T[] {
+  const merged = new Map(upstream.map(item => [keyOf(item), item]));
+  for (const key of removedKeys ?? []) merged.delete(key);
+  for (const item of local) merged.set(keyOf(item), item);
+  return Array.from(merged.values());
 }
 
 function sharableBundleFor(bundle: ProposalBundle): ProposalBundle {
@@ -135,17 +167,24 @@ async function buildOutgoingContent(fileEntry: ProposalFileEntry, primaryExterna
     const existingBundle = await fetchExistingBundle<ProposalBundle>(filePath, token);
     let merged = fileEntry.bundle;
     if (existingBundle) {
+      const isPrimary = fileEntry.externalId === primaryExternalId;
       merged = {
         ...fileEntry.bundle,
         media_catalog: overlayChangedCatalogFields(fileEntry.bundle.media_catalog, existingBundle.media_catalog),
+        media_relations: mergeListByKey(
+          existingBundle.media_relations ?? [], fileEntry.bundle.media_relations,
+          fileEntry.removedRelationIds, r => r.related_media_external_id,
+        ),
         // A non-primary entry (a saga member touched only via relation
         // propagation, not opened in the editor) keeps upstream's
         // characters/authors untouched — this proposal never claims to have
         // edited those, only the relation.
-        ...(fileEntry.externalId !== primaryExternalId ? {
-          characters: existingBundle.characters ?? [],
-          media_authors: existingBundle.media_authors ?? [],
-        } : {}),
+        characters: isPrimary
+          ? mergeListByKey(existingBundle.characters ?? [], fileEntry.bundle.characters, fileEntry.removedCharacterIds, c => c.external_id)
+          : (existingBundle.characters ?? []),
+        media_authors: isPrimary
+          ? mergeListByKey(existingBundle.media_authors ?? [], fileEntry.bundle.media_authors, fileEntry.removedAuthorIds, a => a.external_id)
+          : (existingBundle.media_authors ?? []),
       };
     }
     return JSON.stringify(sharableBundleFor(merged), null, 2);
@@ -153,7 +192,17 @@ async function buildOutgoingContent(fileEntry: ProposalFileEntry, primaryExterna
 
   const existingBundle = await fetchExistingBundle<CharacterProposalBundle>(filePath, token);
   const merged: CharacterProposalBundle = existingBundle
-    ? { character: overlayChangedCharacterFields(fileEntry.bundle.character, existingBundle.character), appearances: fileEntry.bundle.appearances }
+    ? {
+        character: overlayChangedCharacterFields(fileEntry.bundle.character, existingBundle.character),
+        appearances: mergeListByKey(
+          existingBundle.appearances ?? [], fileEntry.bundle.appearances,
+          fileEntry.removedAppearanceIds, a => a.media_external_id,
+        ),
+        actors: mergeListByKey(
+          existingBundle.actors ?? [], fileEntry.bundle.actors,
+          fileEntry.removedActorIds, a => a.external_id,
+        ),
+      }
     : fileEntry.bundle;
   return JSON.stringify(merged, null, 2);
 }

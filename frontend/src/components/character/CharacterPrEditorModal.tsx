@@ -10,6 +10,7 @@ import { fetchAniListCharacterDetail, fetchAniListDetail, type AniListStaffSearc
 import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
+import { compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
@@ -227,13 +228,16 @@ export function CharacterPrEditorModal() {
         const rawAppearances = await getCharacterAppearances(currentId).catch(() => [] as CharacterAppearance[]);
         let resolved: AppearanceRow[] = [];
 
-        const anilistMediaCache: Record<string, { title: string; cover: string | null }> = {};
+        const anilistMediaCache: Record<string, { title: string; cover: string | null; year: number | null; month: number | null; day: number | null }> = {};
         if (anilistDetail?.media?.edges) {
           for (const edge of anilistDetail.media.edges) {
             const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
             anilistMediaCache[extId] = {
               title: edge.node.title.userPreferred || `${edge.node.type}:${edge.node.id}`,
               cover: edge.node.coverImage?.large || null,
+              year: edge.node.startDate?.year ?? null,
+              month: edge.node.startDate?.month ?? null,
+              day: edge.node.startDate?.day ?? null,
             };
           }
         }
@@ -241,14 +245,17 @@ export function CharacterPrEditorModal() {
         if (rawAppearances.length > 0) {
           resolved = await Promise.all(rawAppearances.map(async (a): Promise<AppearanceRow> => {
             let entry = await getCatalogEntry(a.media_external_id).catch(() => null);
-            if (!entry && anilistMediaCache[a.media_external_id]) {
-              const cached = anilistMediaCache[a.media_external_id];
+            const cached = anilistMediaCache[a.media_external_id];
+            if (!entry && cached) {
               entry = {
                 id: '',
                 external_id: a.media_external_id,
                 type: a.media_external_id.split(':')[0].toUpperCase(),
                 title_main: cached.title,
                 cover_url: cached.cover,
+                release_year: cached.year,
+                release_month: cached.month,
+                release_day: cached.day,
                 created_at: now,
                 updated_at: now,
               };
@@ -257,8 +264,11 @@ export function CharacterPrEditorModal() {
             return {
               media_external_id: a.media_external_id,
               relation_type: a.relation_type ?? null,
-              title: entry?.title_main || anilistMediaCache[a.media_external_id]?.title || a.media_external_id,
-              cover: entry?.cover_url ?? anilistMediaCache[a.media_external_id]?.cover ?? null,
+              title: entry?.title_main || cached?.title || a.media_external_id,
+              cover: entry?.cover_url ?? cached?.cover ?? null,
+              release_year: entry?.release_year ?? cached?.year ?? null,
+              release_month: entry?.release_month ?? cached?.month ?? null,
+              release_day: entry?.release_day ?? cached?.day ?? null,
             };
           }));
         } else if (anilistDetail?.media?.edges) {
@@ -269,10 +279,14 @@ export function CharacterPrEditorModal() {
               relation_type: edge.characterRole ?? 'SUPPORTING',
               title: edge.node.title.userPreferred || extId,
               cover: edge.node.coverImage?.large || null,
+              release_year: edge.node.startDate?.year ?? null,
+              release_month: edge.node.startDate?.month ?? null,
+              release_day: edge.node.startDate?.day ?? null,
             };
           });
         }
 
+        resolved.sort(compareByReleaseDateDesc);
         setAppearances(resolved);
         setOriginalAppearances(resolved);
 
@@ -371,12 +385,17 @@ export function CharacterPrEditorModal() {
     setAppearances(appearances.map(a => a.media_external_id === mediaExternalId ? { ...a, relation_type: relationType } : a));
   const addAppearance = (result: ApiSearchResult) => {
     if (appearances.some(a => a.media_external_id === result.externalId)) return;
-    setAppearances([...appearances, {
+    const next = [...appearances, {
       media_external_id: result.externalId,
       relation_type: appearanceRelationType,
       title: result.titleMain || result.externalId,
       cover: result.coverUrl,
-    }]);
+      release_year: result.releaseYear,
+      release_month: result.releaseMonth,
+      release_day: result.releaseDay,
+    }];
+    next.sort(compareByReleaseDateDesc);
+    setAppearances(next);
   };
 
   const handleChangePhoto = async () => {
@@ -458,8 +477,24 @@ export function CharacterPrEditorModal() {
         })),
       };
 
+      // Explicit removals from *this* editing session — lets the merge
+      // against whatever's upstream tell "the user removed this" apart from
+      // "this session never even loaded it" (see mergeListByKey), instead of
+      // the submitted appearances/actors list blindly overwriting upstream's.
+      const removedAppearanceIds = originalAppearances
+        .filter(orig => !appearances.some(a => a.media_external_id === orig.media_external_id))
+        .map(orig => orig.media_external_id);
+      const removedActorIds = originalVoiceActors
+        .filter(orig => orig.externalId && !voiceActors.some(v => v.externalId === orig.externalId))
+        .map(orig => orig.externalId as string);
+
       const changeSummary = `- ${buildChangeSummary()}`;
-      const prUrl = await submitCollaborativeProposal(currentId, [{ kind: 'character', externalId: currentId, bundle }], changeSummary, setStatusMsg);
+      const prUrl = await submitCollaborativeProposal(
+        currentId,
+        [{ kind: 'character', externalId: currentId, bundle, removedAppearanceIds, removedActorIds }],
+        changeSummary,
+        setStatusMsg,
+      );
 
       if (prUrl) {
         setStatusMsg(t.pr_success);

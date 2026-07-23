@@ -143,6 +143,7 @@ const translations = useTranslations(lang);
 
   import { fetchAniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
+  import { compareByReleaseDateDesc } from '../lib/media/mapper-utils';
   import {
     readUserFavorites,
     syncFavorites,
@@ -500,9 +501,12 @@ const translations = useTranslations(lang);
       const txtPage = document.getElementById('txt-appearances-page')!;
 
       const rawEdges = character.media?.edges || [];
-      const mainMedia = rawEdges.filter((edge: any) => edge.characterRole === 'MAIN');
-      const otherMedia = rawEdges.filter((edge: any) => edge.characterRole !== 'MAIN');
-      const sortedEdges = [...mainMedia, ...otherMedia];
+      // Newest release first, oldest last — same ordering as the character
+      // editor's own appearances list (compareByReleaseDateDesc).
+      const sortedEdges = [...rawEdges].sort((a: any, b: any) => compareByReleaseDateDesc(
+        { release_year: a.node.startDate?.year ?? null, release_month: a.node.startDate?.month ?? null, release_day: a.node.startDate?.day ?? null },
+        { release_year: b.node.startDate?.year ?? null, release_month: b.node.startDate?.month ?? null, release_day: b.node.startDate?.day ?? null },
+      ));
 
       let currentPage = 1;
       const itemsPerPage = 8;

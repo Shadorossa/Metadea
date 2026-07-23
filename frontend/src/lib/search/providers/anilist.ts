@@ -430,6 +430,7 @@ export interface AniListCharacterDetail {
           large: string;
         };
         type: string;
+        startDate: { year: number | null; month: number | null; day: number | null } | null;
       };
     }>;
   };
@@ -466,7 +467,7 @@ const DETAIL_CHARACTER_QUERY = `
       }
       age
       bloodType
-      media(page: $mediaPage, perPage: 50, sort: START_DATE) {
+      media(page: $mediaPage, perPage: 50, sort: START_DATE_DESC) {
         pageInfo {
           hasNextPage
           total
@@ -496,6 +497,7 @@ const DETAIL_CHARACTER_QUERY = `
               large
             }
             type
+            startDate { year month day }
           }
         }
       }

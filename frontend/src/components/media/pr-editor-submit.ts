@@ -88,6 +88,13 @@ export interface SubmitPrEditorParams {
   mediaAuthors: DbMediaAuthor[];
   sagaChanged: boolean;
   editedFields: (keyof MediaCatalogEntry)[];
+  // Explicit removals this editor session made, for the GitHub upload merge
+  // (see mergeListByKey in submitCollaborativeProposal.ts) — tells "the user
+  // removed this" apart from "this session never loaded it" so an upstream
+  // relation/character/author someone else added isn't silently dropped.
+  removedRelationIds: string[];
+  removedCharacterIds: string[];
+  removedAuthorIds: string[];
   changeSummary: string;
   onSaved?: () => void;
   onClose: () => void;
@@ -330,7 +337,15 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     saga_name: p.sagaName || undefined,
   };
 
-  const proposalEntries: ProposalFileEntry[] = [{ kind: 'media', externalId, bundle }, ...otherProposalEntries];
+  const proposalEntries: ProposalFileEntry[] = [
+    {
+      kind: 'media', externalId, bundle,
+      removedRelationIds: p.removedRelationIds,
+      removedCharacterIds: p.removedCharacterIds,
+      removedAuthorIds: p.removedAuthorIds,
+    },
+    ...otherProposalEntries,
+  ];
   const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
   if (prUrl) openUrlInBrowser(prUrl);
 

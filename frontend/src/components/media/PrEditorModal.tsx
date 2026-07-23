@@ -146,6 +146,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
   const [showCharSearch, setShowCharSearch] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
+  const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | null>(null);
 
@@ -209,7 +210,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
     load();
     getMediaCharacters(externalId).then(chars => { setCharacters(chars); setOriginalCharacters(chars); }).catch(() => { setCharacters([]); setOriginalCharacters([]); });
-    getMediaAuthors(externalId).then(setMediaAuthors).catch(() => setMediaAuthors([]));
+    getMediaAuthors(externalId).then(a => { setMediaAuthors(a); setOriginalMediaAuthors(a); }).catch(() => { setMediaAuthors([]); setOriginalMediaAuthors([]); });
     getAllCharacters().then(setAllCharacters).catch(() => setAllCharacters([]));
   }, [externalId]);
 
@@ -427,6 +428,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       relTypesChanged: recordsDiffer(sagaRelationTypes, originalSagaRelationTypes, v => v || 'main'),
       groupsChanged: recordsDiffer(sagaGroups, originalSagaGroups, v => (v || '').trim()),
       sagaNameChanged: sagaName !== originalSagaName,
+      // Only used for the GitHub upload merge (submitCollaborativeProposal's
+      // mergeListByKey) — tells "removed this session" apart from "never
+      // loaded it" so an upstream row someone else added isn't clobbered.
+      removedCharacterIds: originalCharacters
+        .filter(c => !characters.some(cur => cur.external_id === c.external_id))
+        .map(c => c.external_id),
+      removedAuthorIds: originalMediaAuthors
+        .filter(a => !mediaAuthors.some(cur => cur.external_id === a.external_id))
+        .map(a => a.external_id),
     };
   };
 
@@ -475,6 +485,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       const sagaChanged = sagaChangeDiff.sagaOrderChanged || sagaChangeDiff.relTypesChanged
         || sagaChangeDiff.groupsChanged || sagaChangeDiff.addedSaga.length > 0 || sagaChangeDiff.removedSaga.length > 0;
       const editedFields = DIFF_FIELDS.filter(([field]) => isFieldChanged(field)).map(([field]) => field);
+      // Union of every relation-editing UI's own removals — media_relations
+      // has no per-category split once saved (see mergeListByKey), so the
+      // GitHub merge just needs "which related_media_external_id ids did
+      // this session actually remove", regardless of which list they came from.
+      const removedRelationIds = [
+        ...sagaChangeDiff.removedBundledIds,
+        ...sagaChangeDiff.removedContainedIds,
+        ...sagaChangeDiff.removedEditableRelationIds,
+      ];
 
       await submitPrEditorChanges({
         entry,
@@ -496,6 +515,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         mediaAuthors,
         sagaChanged,
         editedFields,
+        removedRelationIds,
+        removedCharacterIds: sagaChangeDiff.removedCharacterIds,
+        removedAuthorIds: sagaChangeDiff.removedAuthorIds,
         changeSummary: buildChangeSummary(resolveMeta),
         onSaved,
         onClose,

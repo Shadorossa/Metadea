@@ -11,6 +11,12 @@ export interface AppearanceRow {
   relation_type: string | null;
   title: string;
   cover: string | null;
+  // Sort key for "newest first" ordering (compareByReleaseDateDesc) — not
+  // persisted, just whatever the catalog/AniList already had cached when
+  // this row was resolved.
+  release_year?: number | null;
+  release_month?: number | null;
+  release_day?: number | null;
 }
 
 const appearanceKey = (a: { media_external_id: string; relation_type: string | null }) =>

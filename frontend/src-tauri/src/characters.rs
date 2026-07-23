@@ -162,6 +162,15 @@ pub async fn save_character_appearances(
     let mut conn = state.conn.lock().str_err()?;
     let tx = conn.transaction().str_err()?;
     let now = Utc::now().to_rfc3339();
+
+    // Full curated list, so anything missing was deliberately removed —
+    // this used to only INSERT OR REPLACE, so a removed appearance's old
+    // row never actually went away and would reappear on next load.
+    tx.execute(
+        "DELETE FROM character_appearances WHERE character_external_id = ?1",
+        [&character_external_id],
+    ).str_err()?;
+
     for a in appearances {
         tx.execute(
             "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)

@@ -126,6 +126,22 @@ export function compareByReleaseDate<T extends { release_year?: number | null; r
   return (a.id || '').localeCompare(b.id || '');
 }
 
+/** Newest-first version of compareByReleaseDate — unlike a plain sign flip,
+ *  entries with no known date still sort last instead of jumping to the
+ *  front (getReleaseDateKey's Infinity-for-unknown convention only reads as
+ *  "last" for ascending order). Used for "recent appearances" style lists. */
+export function compareByReleaseDateDesc<T extends { release_year?: number | null; release_month?: number | null; release_day?: number | null; id?: string }>(a: T, b: T): number {
+  const keyA = getReleaseDateKey(a);
+  const keyB = getReleaseDateKey(b);
+  const aUnknown = keyA[0] === Infinity;
+  const bUnknown = keyB[0] === Infinity;
+  if (aUnknown !== bUnknown) return aUnknown ? 1 : -1;
+  if (keyA[0] !== keyB[0]) return keyB[0] - keyA[0];
+  if (keyA[1] !== keyB[1]) return keyB[1] - keyA[1];
+  if (keyA[2] !== keyB[2]) return keyB[2] - keyA[2];
+  return (a.id || '').localeCompare(b.id || '');
+}
+
 /** Map AniList type/format to internal media types ('anime', 'lnovel', 'manga'). */
 export function mapExternalFormatToType(type: string | null | undefined, format: string | null | undefined): 'anime' | 'lnovel' | 'manga' {
   const lowerType = type?.toLowerCase();
