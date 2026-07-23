@@ -418,6 +418,20 @@ const DETAIL_CHARACTER_QUERY = `
         }
         edges {
           characterRole
+          voiceActors {
+            id
+            name {
+              full
+              native
+              userPreferred
+            }
+            languageV2
+            image {
+              large
+              medium
+            }
+            siteUrl
+          }
           node {
             id
             title {

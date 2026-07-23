@@ -109,8 +109,17 @@ const translations = useTranslations(lang);
           <div class="media-section-header-row">
             <p class="section-label">Datos</p>
             <div class="media-section-header-line"></div>
+            <div id="char-api-link-wrap"></div>
           </div>
           <div class="media-stats-list" id="char-stats-list"></div>
+
+          <!-- Actores de Voz por Idioma (debajo de datos) -->
+          <div class="char-seiyu-section" id="char-seiyu-section" style="display: none; margin-top: 1rem;">
+            <div class="media-authors-box" style="margin-bottom: 0.75rem;">
+              <div class="media-authors-list" id="char-seiyu-list"></div>
+            </div>
+            <div class="char-seiyu-lang-tabs" id="char-seiyu-lang-tabs"></div>
+          </div>
         </div>
       </div>
 
@@ -286,6 +295,71 @@ const translations = useTranslations(lang);
         altNamesWrap.style.display = 'none';
       }
 
+      // ── ENLACE A LA API DE ORIGEN (ANILIST) ──
+      const apiLinkWrap = document.getElementById('char-api-link-wrap');
+      const siteUrl = character.siteUrl || `https://anilist.co/character/${characterId}`;
+      if (apiLinkWrap) {
+        apiLinkWrap.innerHTML = `
+          <a href="${siteUrl}" target="_blank" rel="noopener noreferrer" class="media-store-link" title="AniList">
+            <img src="/API/Anilist_logo.png" alt="AniList" class="media-store-icon" />
+          </a>
+        `;
+      }
+
+      // ── EXTRAER Y AGRUPAR ACTORES DE VOZ POR IDIOMA ──
+      const LANG_MAP: Record<string, { code: string; label: string }> = {
+        'japanese': { code: 'JP', label: 'Japonés' },
+        'spanish': { code: 'ES', label: 'Español' },
+        'english': { code: 'EN', label: 'Inglés' },
+        'italian': { code: 'IT', label: 'Italiano' },
+        'french': { code: 'FR', label: 'Francés' },
+        'german': { code: 'DE', label: 'Alemán' },
+        'portuguese': { code: 'PT', label: 'Portugués' },
+        'korean': { code: 'KR', label: 'Coreano' },
+        'chinese': { code: 'ZH', label: 'Chino' },
+        'mandarin': { code: 'ZH', label: 'Chino' },
+      };
+
+      const vaByLang = new Map<string, Array<{ id: number; name: string; native: string; image: string; siteUrl: string; language: string }>>();
+
+      if (character.media?.edges) {
+        for (const edge of character.media.edges) {
+          if (edge.voiceActors) {
+            for (const va of edge.voiceActors) {
+              const rawLang = (va.languageV2 || 'Japanese').toLowerCase();
+              const langKey = LANG_MAP[rawLang]?.code || rawLang.substring(0, 2).toUpperCase();
+              const langLabel = LANG_MAP[rawLang]?.label || va.languageV2 || 'Japonés';
+
+              if (!vaByLang.has(langKey)) {
+                vaByLang.set(langKey, []);
+              }
+              const list = vaByLang.get(langKey)!;
+              if (!list.some(item => item.id === va.id)) {
+                list.push({
+                  id: va.id,
+                  name: va.name?.userPreferred || va.name?.full || '',
+                  native: va.name?.native || '',
+                  image: va.image?.large || va.image?.medium || '',
+                  siteUrl: va.siteUrl || `https://anilist.co/staff/${va.id}`,
+                  language: langLabel,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Orden de prioridad para las pestañas de idiomas
+      const langPriority = ['JP', 'ES', 'EN', 'IT', 'FR', 'DE', 'PT', 'KR', 'ZH'];
+      const availableLangs = Array.from(vaByLang.keys()).sort((a, b) => {
+        const idxA = langPriority.indexOf(a);
+        const idxB = langPriority.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b);
+      });
+
       // ── ESPECIFICACIONES Y DATOS ──
       const statsCard = document.getElementById('char-stats-card')!;
       const statsList = document.getElementById('char-stats-list')!;
@@ -343,6 +417,65 @@ const translations = useTranslations(lang);
 
       if (statsHtml) {
         statsList.innerHTML = statsHtml;
+        statsList.style.display = 'block';
+      } else {
+        statsList.style.display = 'none';
+      }
+
+      // Render seiyūs por pestañas de idiomas (abajo del último apartado de datos)
+      const seiyuSection = document.getElementById('char-seiyu-section');
+      const seiyuTabsEl = document.getElementById('char-seiyu-lang-tabs');
+      const seiyuListEl = document.getElementById('char-seiyu-list');
+
+      if (availableLangs.length > 0 && seiyuSection && seiyuTabsEl && seiyuListEl) {
+        let activeLang = availableLangs.includes('JP') ? 'JP' : availableLangs[0];
+
+        function renderSeiyuList(langKey: string) {
+          activeLang = langKey;
+
+          seiyuTabsEl.innerHTML = availableLangs
+            .map(lang => `
+              <button
+                type="button"
+                class="char-seiyu-lang-btn ${lang === activeLang ? 'char-seiyu-lang-btn--active' : ''}"
+                data-lang="${lang}"
+              >
+                ${lang}
+              </button>
+            `).join('');
+
+          seiyuTabsEl.querySelectorAll('.char-seiyu-lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const target = e.currentTarget as HTMLElement;
+              const lang = target.getAttribute('data-lang');
+              if (lang) renderSeiyuList(lang);
+            });
+          });
+
+          const vas = vaByLang.get(activeLang) || [];
+          seiyuListEl.innerHTML = vas
+            .map(va => `
+              <div class="media-author-pill">
+                ${va.image
+                  ? `<img src="${va.image}" alt="${va.name}" class="media-author-avatar" />`
+                  : `<div class="media-author-avatar media-author-avatar--placeholder">${va.name.charAt(0).toUpperCase()}</div>`}
+                <div class="media-author-info">
+                  <a href="${va.siteUrl}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">
+                    ${va.name}
+                  </a>
+                  ${va.native && va.native !== va.name ? `<span class="media-author-role">${va.native}</span>` : ''}
+                </div>
+              </div>
+            `).join('');
+        }
+
+        renderSeiyuList(activeLang);
+        seiyuSection.style.display = 'block';
+      } else if (seiyuSection) {
+        seiyuSection.style.display = 'none';
+      }
+
+      if (statsHtml || availableLangs.length > 0) {
         statsCard.style.display = 'block';
       } else {
         statsCard.style.display = 'none';
