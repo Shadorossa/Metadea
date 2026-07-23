@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "f16906634a598473f16906634a598473",
+    "external_id": "game:132645",
+    "type": "game",
+    "title_main": "Kichikuou Rance",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:132645",
+      "related_media_external_id": "game:132655",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Rance 5D: The Lonely Girl",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3gr3.jpg"
+    },
+    {
+      "media_external_id": "game:132645",
+      "related_media_external_id": "game:132656",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Rance VI: Collapse of Zeth",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3gr4.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
