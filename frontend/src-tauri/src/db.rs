@@ -179,6 +179,8 @@ pub fn merge_fragmented_sagas(conn: &Connection) -> SqlResult<()> {
     Ok(())
 }
 
+// Search this function for "DROP COLUMN" to find every column this app has
+// ever actually removed (as opposed to just stopped reading/writing).
 fn run_migrations(conn: &Connection) -> SqlResult<()> {
     let v = current_schema_version(conn);
 
@@ -543,6 +545,14 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         // two separately-named fields just to avoid ambiguity. role carries
         // that distinction properly instead ('developer'/'publisher'/
         // 'studio'/'production'), across every provider, not just games.
+        //
+        // --- Column removals (search this file for DROP COLUMN to find them) ---
+        // Same DROP COLUMN this app already relies on in migration 14 — no
+        // data worth preserving either way. Run first, before the tables
+        // below, so this block reads top-to-bottom as "remove the old,
+        // then add the new".
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN developer_badge", []);
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
         let _ = conn.execute(
             "CREATE TABLE IF NOT EXISTS companies (
                 external_id TEXT PRIMARY KEY,
@@ -564,11 +574,6 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
             )",
             [],
         );
-        // Drop the flattened columns for real now that the table above
-        // replaces them — same DROP COLUMN this app already relies on in
-        // migration 14, no data worth preserving either way.
-        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN developer_badge", []);
-        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
         mark_migration(conn, 26)?;
     }
 
