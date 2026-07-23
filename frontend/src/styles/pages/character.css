@@ -258,21 +258,25 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
+.character-section-box h2.character-section-title,
 .character-section-title {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-main);
   margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
 }
 
 .character-section-title::after {
-  content: '';
-  flex-grow: 1;
-  height: 1px;
-  background: var(--border-color);
+  content: '' !important;
+  display: block !important;
+  flex-grow: 1 !important;
+  height: 1px !important;
+  background: var(--border-color) !important;
 }
 
 .character-description-text {
