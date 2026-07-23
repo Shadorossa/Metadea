@@ -85,9 +85,24 @@ export function CharacterPrEditorModal() {
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
 
+  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustBioHeight = () => {
+    if (bioTextareaRef.current) {
+      bioTextareaRef.current.style.height = 'auto';
+      bioTextareaRef.current.style.height = `${Math.max(120, bioTextareaRef.current.scrollHeight)}px`;
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(adjustBioHeight, 50);
+    }
+  }, [cleanBiography, isOpen]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -537,7 +552,22 @@ export function CharacterPrEditorModal() {
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
               <Field label={t.biography} changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
-                <textarea rows={5} value={cleanBiography} onChange={e => setCleanBiography(e.target.value)} placeholder={t.biography_ph} />
+                <textarea
+                  ref={bioTextareaRef}
+                  value={cleanBiography}
+                  onChange={e => {
+                    setCleanBiography(e.target.value);
+                    adjustBioHeight();
+                  }}
+                  placeholder={t.biography_ph}
+                  style={{
+                    minHeight: '120px',
+                    height: 'auto',
+                    fieldSizing: 'content',
+                    resize: 'vertical',
+                    overflowY: 'hidden',
+                  }}
+                />
               </Field>
             </div>
           </div>
