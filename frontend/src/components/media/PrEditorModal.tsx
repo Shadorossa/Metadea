@@ -347,7 +347,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       setEditableRelations([...editableRelations, {
         related_media_external_id: result.externalId,
         relation_type: DEFAULT_NEW_RELATION_TYPE,
-        type_label: (canonicalRelationLabels as any)[DEFAULT_NEW_RELATION_TYPE] || DEFAULT_NEW_RELATION_TYPE,
+        type_label: canonicalRelationLabels[DEFAULT_NEW_RELATION_TYPE] || DEFAULT_NEW_RELATION_TYPE,
         title: result.titleMain,
         cover: result.coverUrl,
       }]);
@@ -355,7 +355,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   };
   const updateEditableRelationType = (id: string, relationType: string) =>
     setEditableRelations(prev => prev.map(r => r.related_media_external_id === id
-      ? { ...r, relation_type: relationType, type_label: (canonicalRelationLabels as any)[relationType] || relationType }
+      ? { ...r, relation_type: relationType, type_label: canonicalRelationLabels[relationType] || relationType }
       : r));
   const removeEditableRelation = (id: string) =>
     setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));

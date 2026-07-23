@@ -338,12 +338,12 @@ export function CatalogAdminPanel({ i18n }: Props) {
       // enrichment fetch above), is data that exists locally without being
       // on GitHub yet.
       const finalEntry = await getCatalogEntry(bundle.media_catalog.external_id).catch(() => null);
-      const bundleFields = bundle.media_catalog as any;
+      const bundleFields = bundle.media_catalog;
       const localOnly = new Set<string>();
       if (finalEntry) {
         for (const [field] of DIFF_FIELDS) {
           const inBundle = bundleFields[field] !== undefined;
-          const hasLocalValue = (finalEntry as any)[field];
+          const hasLocalValue = finalEntry[field];
           if (!inBundle && hasLocalValue) localOnly.add(field);
         }
       }

@@ -6,6 +6,7 @@ import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
 import type { DbMediaCharacter } from '../../lib/tauri/characters';
 import type { MediaPageData } from '../../lib/media/types';
 import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
+import { setField } from '../../lib/shared/object-utils';
 import type { EditableRelation } from './PrEditorModal';
 
 // Only fills fields currently empty — a live re-fetch must never overwrite a manual edit.
@@ -24,7 +25,7 @@ export function mergeResyncFields(prev: MediaCatalogEntry, partialFromLive: Part
     const liveVal = partialFromLive[field];
     const isCurrentEmpty = currentVal == null || currentVal === '';
     if (isCurrentEmpty && liveVal != null && liveVal !== '') {
-      (updated as any)[field] = liveVal;
+      setField(updated, field, liveVal);
     }
   }
   return updated;
@@ -51,7 +52,7 @@ export function appendResyncRelations(prev: EditableRelation[], liveData: MediaP
         media_external_id: externalId,
         related_media_external_id: r.relatedExternalId,
         relation_type: r.relationType || 'RELATED',
-        type_label: (CANONICAL_RELATION_LABELS as any)[r.relationType || ''] || r.typeLabel || 'Related',
+        type_label: CANONICAL_RELATION_LABELS[r.relationType || ''] || r.typeLabel || 'Related',
         title: r.title || null,
         cover: r.cover || null,
         format: r.format || null,

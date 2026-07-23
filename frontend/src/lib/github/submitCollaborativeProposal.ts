@@ -3,6 +3,7 @@ import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri
 import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';
 import { REPO_OWNER, REPO_NAME, isRepoOwner } from './ownership';
+import { setField } from '../shared/object-utils';
 
 export interface ProposalBundle {
   media_catalog: MediaCatalogEntry;
@@ -31,7 +32,7 @@ function overlayChangedCatalogFields(local: MediaCatalogEntry, upstream: MediaCa
     const localVal = local[key] ?? null;
     const upstreamVal = upstream[key] ?? null;
     if (JSON.stringify(localVal) !== JSON.stringify(upstreamVal)) {
-      (merged as any)[key] = local[key];
+      setField(merged, key, local[key]);
     }
   }
   return merged;

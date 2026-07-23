@@ -13,6 +13,7 @@ import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib
 import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { REL_TYPE_TO_PAIR } from '../../lib/media/constants';
 import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../lib/media/sagaTypes';
+import { setField } from '../../lib/shared/object-utils';
 import type { BundledRelation, EditableRelation } from './PrEditorModal';
 
 // A proposal only needs enough to identify the row plus whatever the user
@@ -30,7 +31,7 @@ function minimalProposalCatalogEntry(entry: MediaCatalogEntry, editedFields: rea
     blocked_at: entry.blocked_at, // always a deliberate curator action, never auto-fetched
   };
   for (const field of editedFields) {
-    (minimal as any)[field] = entry[field];
+    setField(minimal, field, entry[field]);
   }
   return minimal;
 }

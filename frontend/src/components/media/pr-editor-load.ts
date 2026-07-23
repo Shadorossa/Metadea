@@ -71,7 +71,7 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
       return {
         related_media_external_id: r.related_media_external_id,
         relation_type: relationType,
-        type_label: (CANONICAL_RELATION_LABELS as any)[relationType] || r.type_label || relationType,
+        type_label: CANONICAL_RELATION_LABELS[relationType] || r.type_label || relationType,
         title: r.title,
         cover: r.cover,
       };
