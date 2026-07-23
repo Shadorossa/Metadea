@@ -1,0 +1,44 @@
+{
+  "character": {
+    "external_id": "character:36045"
+  },
+  "appearances": [
+    {
+      "media_external_id": "manga:146749",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:146748",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:103290",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:92936",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:64053",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:51499",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:51498",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:145272",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:156726",
+      "relation_type": null
+    }
+  ],
+  "actors": []
+}
