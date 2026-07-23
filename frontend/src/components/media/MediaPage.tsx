@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
@@ -137,6 +137,47 @@ function StatusDropdown({
         ))}
       </div>
     </div>
+  );
+}
+
+// ── SectionTabs ────────────────────────────────────────────────────────────
+// Shared "tabs vs. plain label" section header — a section's label becomes a
+// row of switchable tabs once there's more than one thing to show (Related/
+// Editions/Recommended, Personajes/Staff), falling back to a single static
+// label + line otherwise. `tabs` must already be pre-filtered to only the
+// ones actually visible right now (a tab always renders once included).
+
+interface SectionTab {
+  key: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+function SectionTabs({ tabs, fallbackLabel }: { tabs: SectionTab[]; fallbackLabel: string }) {
+  if (tabs.length === 0) {
+    return (
+      <>
+        <p className="section-label">{fallbackLabel}</p>
+        <div className="media-section-header-line" />
+      </>
+    );
+  }
+  return (
+    <>
+      {tabs.map((tab, i) => (
+        <Fragment key={tab.key}>
+          <button
+            type="button"
+            className={`section-label section-label--tab${tab.active ? ' active' : ''}`}
+            onClick={tab.onClick}
+          >
+            {tab.label}
+          </button>
+          <div className={`media-section-header-line${i < tabs.length - 1 ? ' media-section-header-line--short' : ''}`} />
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -639,6 +680,28 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     }
   }, [libRating, updateLocal, applySaved, rollback]);
 
+  // Cover heart — same quick-edit pattern as handleStatusChange/handleRate,
+  // but favorite is the one field MediaEditorModal persists in two places at
+  // once (saveLibraryEntry's is_favorite column AND the separate
+  // user_lists-based favorites list via syncFavorites — see its own
+  // handleSubmit). The cover heart used to only do the second half, so
+  // whatever elsewhere in the app treats the library entry's is_favorite
+  // column as the source of truth never saw a cover-only favorite at all.
+  const handleToggleFavorite = useCallback(async () => {
+    const next = !isFavorited;
+    setIsFavorited(next);
+    const draft = updateLocal({ is_favorite: next ? 1 : 0 });
+    try {
+      const saved = await saveLibraryEntry(draft);
+      applySaved(saved);
+      await syncFavorites(draft.type, currentId, next);
+    } catch (e) {
+      console.error('Failed to save favorite:', e);
+      setIsFavorited(!next);
+      rollback();
+    }
+  }, [isFavorited, updateLocal, applySaved, rollback, currentId]);
+
   // ── States: loading / error ──────────────────────────────────────────────
 
   if (pageState === 'loading') {
@@ -860,26 +923,26 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               </div>
             </div>
               {!previewMode && (
-                // Same syncFavorites call MediaEditorModal's own heart button
-                // makes, just standalone on the cover itself — a bundle has
-                // no library entry/editor of its own to hold that button at
-                // all, so this started as bundle-only, but favoriting
-                // straight from the cover (no need to open the editor) is
-                // useful for every media type. handleEditorSaved/Deleted keep
-                // isFavorited in sync with whatever the editor's own toggle
-                // does, since that's a separate independent write to the same
-                // underlying favorites list. Lives outside .media-cover-wrap
-                // (not inside it) specifically so it can straddle the cover's
-                // own bottom edge — that wrap's overflow:hidden (it clips its
-                // own hover overlay) would otherwise clip half the button off.
+                // Same dual write MediaEditorModal's own heart button makes
+                // on save (saveLibraryEntry's is_favorite column, then
+                // syncFavorites for the separate favorites list) — this
+                // started bundle-only (no library entry/editor of its own to
+                // hold that button at all) doing just the syncFavorites half,
+                // but favoriting straight from the cover is useful for every
+                // media type, and needs the same is_favorite write the editor
+                // makes or whatever elsewhere treats that column as the
+                // source of truth never sees it. handleEditorSaved/Deleted
+                // keep isFavorited in sync with the editor's own toggle too.
+                // Lives outside .media-cover-wrap (not inside it) specifically
+                // so it can straddle the cover's own bottom edge — that
+                // wrap's overflow:hidden (it clips its own hover overlay)
+                // would otherwise clip half the button off.
                 <button
                   type="button"
                   className={`media-cover-favorite-btn${isFavorited ? ' active' : ''}`}
                   onClick={e => {
                     e.stopPropagation();
-                    const next = !isFavorited;
-                    setIsFavorited(next);
-                    syncFavorites(data.type, currentId, next).catch(() => setIsFavorited(!next));
+                    handleToggleFavorite();
                   }}
                   title={tm.editor.favorite}
                 >
@@ -953,45 +1016,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 each label becomes a tab switching which subset the grid
                 below shows, instead of mixing recommendations into
                 "Related". */}
-            {hasTabs ? (
-              <>
-                <button
-                  type="button"
-                  className={`section-label section-label--tab${relationsTab === 'related' ? ' active' : ''}`}
-                  onClick={() => { setRelationsTab('related'); setRelationPage(1); }}
-                >
-                  {tm.section_related}
-                </button>
-                <div className="media-section-header-line media-section-header-line--short" />
-                {hasEditionRelations && (
-                  <button
-                    type="button"
-                    className={`section-label section-label--tab${relationsTab === 'editions' ? ' active' : ''}`}
-                    onClick={() => { setRelationsTab('editions'); setRelationPage(1); }}
-                  >
-                    {editionsLabel}
-                  </button>
-                )}
-                {hasEditionRelations && hasRecommendedRelations && (
-                  <div className="media-section-header-line media-section-header-line--short" />
-                )}
-                {hasRecommendedRelations && (
-                  <button
-                    type="button"
-                    className={`section-label section-label--tab${relationsTab === 'recommended' ? ' active' : ''}`}
-                    onClick={() => { setRelationsTab('recommended'); setRelationPage(1); }}
-                  >
-                    {tm.relations.RECOMMENDATION}
-                  </button>
-                )}
-                <div className="media-section-header-line" />
-              </>
-            ) : (
-              <>
-                <p className="section-label">{tm.section_related}</p>
-                <div className="media-section-header-line" />
-              </>
-            )}
+            <SectionTabs
+              fallbackLabel={tm.section_related}
+              tabs={hasTabs ? [
+                { key: 'related', label: tm.section_related, active: relationsTab === 'related', onClick: () => { setRelationsTab('related'); setRelationPage(1); } },
+                ...(hasEditionRelations ? [{ key: 'editions', label: editionsLabel, active: relationsTab === 'editions', onClick: () => { setRelationsTab('editions'); setRelationPage(1); } }] : []),
+                ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
+              ] : []}
+            />
             {data.storeLinks && data.storeLinks.length > 0 && (
               <MediaStoreLinks links={data.storeLinks} />
             )}
@@ -1152,31 +1184,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     grid as Personajes, switched via a tab — same pattern as
                     Related/Editions/Recommended above. Only shown when the
                     provider actually returned staff data (AniList/TMDB). */}
-                {hasStaff ? (
-                  <>
-                    <button
-                      type="button"
-                      className={`section-label section-label--tab${charTab === 'characters' ? ' active' : ''}`}
-                      onClick={() => { setCharTab('characters'); setCharacterPage(1); }}
-                    >
-                      {tm.section_characters}
-                    </button>
-                    <div className="media-section-header-line media-section-header-line--short" />
-                    <button
-                      type="button"
-                      className={`section-label section-label--tab${charTab === 'staff' ? ' active' : ''}`}
-                      onClick={() => { setCharTab('staff'); setCharacterPage(1); }}
-                    >
-                      {tm.section_staff}
-                    </button>
-                    <div className="media-section-header-line" />
-                  </>
-                ) : (
-                  <>
-                    <p className="section-label">{tm.section_characters}</p>
-                    <div className="media-section-header-line" />
-                  </>
-                )}
+                <SectionTabs
+                  fallbackLabel={tm.section_characters}
+                  tabs={hasStaff ? [
+                    { key: 'characters', label: tm.section_characters, active: charTab === 'characters', onClick: () => { setCharTab('characters'); setCharacterPage(1); } },
+                    { key: 'staff', label: tm.section_staff, active: charTab === 'staff', onClick: () => { setCharTab('staff'); setCharacterPage(1); } },
+                  ] : []}
+                />
               </div>
               <div className="media-chars-grid">
                 {activeCharList

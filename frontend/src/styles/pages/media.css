@@ -308,13 +308,17 @@
   position: relative;
 }
 
-/* Standalone favorite toggle for bundles (no library entry/editor of their
-   own to hold the usual heart button) — half on the cover, half hanging
-   below its bottom edge, always visible (not gated behind hover like the
-   overlay above, since it's the only way to favorite a bundle at all). */
+/* Standalone favorite toggle, always visible on the cover itself (not
+   gated behind hover like the overlay above) — shown for every media, not
+   just bundles, so it needs to stay fully within the cover's own bounds:
+   it used to hang half below .media-cover-frame's bottom edge, which was
+   safe only for bundles/blocked editions (isUneditable, no
+   .media-library-widget-box rendered right after) but overlapped that
+   widget's StatusDropdown/StarRating controls for every normal editable
+   media once shown there too, stealing clicks meant for the heart. */
 .media-cover-favorite-btn {
   position: absolute;
-  bottom: -16px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;

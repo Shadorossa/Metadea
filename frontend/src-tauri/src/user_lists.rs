@@ -7,7 +7,7 @@ const FAV_MAP: &[(&str, &str)] = &[
     ("multimedia", "multimedia_fav"),
     ("game",       "game_fav"),
     ("vnovel",     "vnovel_fav"),
-    ("novel",      "lnovel_fav"),
+    ("lnovel",     "lnovel_fav"),
     ("series",     "series_fav"),
     ("movie",      "movie_fav"),
     ("book",       "book_fav"),
