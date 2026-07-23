@@ -429,3 +429,23 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--text-main) !important;
   font-weight: bold !important;
 }
+
+/* Links in newspaper-dark theme */
+html[data-theme="newspaper-dark"] a,
+html[data-theme="newspaper-dark"] a:visited,
+html[data-theme="newspaper-dark"] a:link,
+[data-theme="newspaper-dark"] a,
+[data-theme="newspaper-dark"] a:visited,
+[data-theme="newspaper-dark"] a:link {
+  color: var(--accent) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--border-color) !important;
+  text-underline-offset: 3px !important;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease !important;
+}
+
+html[data-theme="newspaper-dark"] a:hover,
+[data-theme="newspaper-dark"] a:hover {
+  color: var(--text-main) !important;
+  text-decoration-color: var(--text-main) !important;
+}

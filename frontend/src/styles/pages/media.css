@@ -570,6 +570,21 @@
   font-weight: 600;
 }
 
+.media-description-text a,
+.media-description-text a:visited,
+.media-description-text a:link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.media-description-text a:hover {
+  color: var(--text-main);
+  text-decoration-color: var(--accent);
+}
+
 
 
 .media-description-source {
