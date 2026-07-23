@@ -238,9 +238,18 @@ pub async fn get_all_media_relations(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
+            // ORDER BY mr.rowid — same convention as get_media_relations.
+            // save_media_relations always deletes+reinserts a media's whole
+            // relation list in the curated (possibly drag-reordered) array
+            // order, so rowid IS that order. Without this, the profile
+            // library's bundle grouping (groupBundles) — the only caller of
+            // this bulk query — showed a bundle's "Contains" children in
+            // whatever order SQLite's query planner happened to return them,
+            // not the order curated in the editor.
             "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url
              FROM media_relations mr
-             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id",
+             JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
+             ORDER BY mr.rowid",
         )
         .str_err()?;
 

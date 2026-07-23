@@ -3,7 +3,6 @@ import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
-import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
 
@@ -43,10 +42,10 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
 
-  // Chronological, earliest first — so a saga's flyout reads in release order.
-  const orderedGrouped = [...grouped].sort((a, b) =>
-    compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
-  );
+  // Earliest started_at first (the date the user set in the media editor,
+  // not the work's own release date) — so the flyout reads in the order the
+  // user actually went through these, not IGDB/AniList's own chronology.
+  const orderedGrouped = [...grouped].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
   const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
 
   // groupBundles' `grouped` already includes the representative item;

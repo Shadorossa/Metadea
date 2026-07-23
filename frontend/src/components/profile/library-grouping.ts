@@ -10,7 +10,7 @@ import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
 // (refineSagaGroups) since it must bridge works the user doesn't own.
-export function groupEditions<T extends { external_id: string; selected_version: string | null; type: string }>(
+export function groupEditions<T extends { external_id: string; selected_version: string | null; type: string; started_at: string | null }>(
   sectionItems: T[],
   catalogMap: Map<string, MediaCatalogEntry>,
   includeEditions: boolean,
@@ -53,7 +53,15 @@ export function groupEditions<T extends { external_id: string; selected_version:
   const out: Array<{ item: T; grouped: T[] }> = [];
   for (const item of sectionItems) {
     if (parentOf.has(item.external_id)) continue; // rendered nested under its parent instead
-    const grouped = sectionItems.filter(other => parentOf.get(other.external_id) === item.external_id);
+    // Earliest started_at first — sectionItems arrives in whatever order the
+    // page's own "ordenar por" setting picked (rating, date finished,
+    // alphabetical, ...), which has nothing to do with the sequence the user
+    // actually went through these editions/episodes in, so it can't just be
+    // inherited here. started_at (user-set) reflects that intent directly,
+    // unlike added_at (just when the row was first created).
+    const grouped = sectionItems
+      .filter(other => parentOf.get(other.external_id) === item.external_id)
+      .sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
     out.push({ item, grouped });
   }
 
@@ -64,7 +72,7 @@ export function groupEditions<T extends { external_id: string; selected_version:
 // container into a single card with the container's cover/title. Goes by
 // the relation itself, not the container's `format`, since that can be
 // stale; needs 2+ owned contents plus the container itself already cataloged.
-export function groupBundles<T extends { external_id: string }>(
+export function groupBundles<T extends { external_id: string; started_at: string | null }>(
   groups: Array<{ item: T; grouped: T[] }>,
   catalogMap: Map<string, MediaCatalogEntry>,
   relations: DbMediaRelation[],
@@ -123,7 +131,7 @@ export function groupBundles<T extends { external_id: string }>(
 
     const matchedRootIndices = new Set([...matchedChildIds].map(id => rootIndexOf.get(id)!));
 
-    const merged: T[] = [];
+    let merged: T[] = [];
     let representative: T | null = null;
     for (const idx of matchedRootIndices) {
       const g = groups[idx];
@@ -131,6 +139,10 @@ export function groupBundles<T extends { external_id: string }>(
       merged.push(g.item, ...g.grouped);
       consumed.add(idx);
     }
+    // Earliest started_at first — same reasoning as groupEditions: `groups`
+    // arrives in the page's own "ordenar por" order, unrelated to the
+    // sequence the user actually went through these in.
+    merged = merged.sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
     bundleGroups.push({ item: representative!, grouped: merged, bundleMeta: catalogEntry });
   }
 

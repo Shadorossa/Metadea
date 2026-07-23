@@ -39,13 +39,18 @@ function getEditionChildIds(items: Items): Set<string> {
 }
 
 // Formats that describe a sub-unit of a work rather than a standalone work
-// of their own — a TV/anime season, a game update, or a single comic issue.
-// Unlike REMAKE/REMASTER/etc. (linked to their base via the version-log
-// system's `selected_version`), these are identified purely by their own
-// catalog format tag — no linking needed, since there's no "pick which
-// season/update/issue this belongs to" UI, each is just its own library
-// entry tagged with one of these formats.
-const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE']);
+// of their own — a TV/anime season, a game update, a single comic issue, or
+// one episode of a bundled VN (e.g. Umineko no Naku Koro ni's episodes,
+// IGDB game_type 6). Unlike REMAKE/REMASTER/etc. (linked to their base via
+// the version-log system's `selected_version`), these are identified purely
+// by their own catalog format tag — no linking needed, since there's no
+// "pick which season/update/issue/episode this belongs to" UI, each is just
+// its own library entry tagged with one of these formats. Still counted in
+// every stat computed from the full `items` list (hours played, completed-
+// by-year, etc.) — only excluded from the ones that count/bucket *works*
+// (totalWorks, completed/currently/paused/dropped/planning), so a bundle's
+// episodes don't inflate "obras completadas" beyond the bundle itself.
+const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
 
 function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: Map<string, MediaCatalogEntry>): boolean {
   if (childIds.has(item.external_id)) return true;

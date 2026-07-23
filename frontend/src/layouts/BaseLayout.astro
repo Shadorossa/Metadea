@@ -182,12 +182,22 @@ const t = useTranslations(lang);
         document.getElementById('global-toast')?.classList.remove('visible');
       }
 
+      // The toast is only ever shown on Home — every other page stays silent
+      // (still checks and still shows the "new version" confirm() dialog if
+      // one is actually found, just without the "checking.../up to date"
+      // cosmetic feedback, which would otherwise pop up mid-navigation on
+      // whatever page the user happens to be on).
+      function isOnHomePage() {
+        return document.body?.dataset.page === 'home';
+      }
+
       async function checkAppUpdates() {
         if (!isTauriRuntime()) return;
         if (!navigator.onLine) return;
         const { getT } = await import('../i18n/client');
         const tm = getT().settings;
-        showGlobalToast(tm.app_checking_update || 'Buscando actualizaciones...');
+        const showStatus = isOnHomePage();
+        if (showStatus) showGlobalToast(tm.app_checking_update || 'Buscando actualizaciones...');
         try {
           const { check } = await import('@tauri-apps/plugin-updater');
           const { relaunch } = await import('@tauri-apps/plugin-process');
@@ -202,12 +212,12 @@ const t = useTranslations(lang);
               await update.downloadAndInstall();
               await relaunch();
             }
-          } else {
+          } else if (showStatus) {
             showGlobalToast(tm.app_up_to_date || '¡Estás en la última versión!', 2500);
           }
         } catch (error) {
           console.warn("[Updater] No se pudo comprobar actualizaciones:", error);
-          hideGlobalToast();
+          if (showStatus) hideGlobalToast();
         }
       }
 
@@ -242,8 +252,14 @@ const t = useTranslations(lang);
         initAuthModal();
         setTimeout(rememberCurrentPath, 0);
 
-        if (!updaterChecked) {
+        // sessionStorage, not just the in-memory updaterChecked flag below —
+        // this script tag re-runs on every Astro page transition (each one
+        // re-declares `let updaterChecked = false`), so the in-memory flag
+        // alone let the update check (and its toast) fire again on every
+        // single navigation instead of once per app launch.
+        if (!updaterChecked && !sessionStorage.getItem(STORAGE_KEYS.updaterCheckedThisSession)) {
           updaterChecked = true;
+          sessionStorage.setItem(STORAGE_KEYS.updaterCheckedThisSession, '1');
           setTimeout(checkAppUpdates, 2000);
         }
         if (!communityCatalogSynced) {
