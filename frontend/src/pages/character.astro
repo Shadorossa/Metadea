@@ -150,7 +150,9 @@ const translations = useTranslations(lang);
     saveCharacter,
     getCharacter,
     setCharacterReaction,
-    saveCharacterAppearances,
+    getCharacterAppearances,
+    getCharacterActors,
+    getCatalogEntry,
   } from '../lib/tauri';
 
   async function loadCharacterData() {
@@ -202,11 +204,23 @@ const translations = useTranslations(lang);
         return;
       }
 
+      // Fetched once, reused below for every field the PR editor lets you
+      // correct (name/native/image/biography/aliases) — a local edit always
+      // wins over AniList's live copy, same "sticky local field" rule
+      // mediaService.ts's applyStickyLocalFields uses for media pages.
+      // Without this the character page always showed AniList's raw data
+      // and any manual correction made in the editor never appeared here.
+      const localChar = await getCharacter(characterExternalId).catch(() => null);
+      const stickyName = localChar?.name || character.name.full;
+      const stickyNameNative = localChar?.name_native || character.name.native || null;
+      const stickyImage = localChar?.image_url || character.image?.large || null;
+      const stickyBiography = localChar?.biography || character.description;
+
       // Nombre principal y nativo
-      document.getElementById('char-name-full')!.textContent = character.name.full;
+      document.getElementById('char-name-full')!.textContent = stickyName;
       const nativeEl = document.getElementById('char-name-native')!;
-      if (character.name.native) {
-        nativeEl.textContent = character.name.native;
+      if (stickyNameNative) {
+        nativeEl.textContent = stickyNameNative;
         nativeEl.style.display = 'block';
       } else {
         nativeEl.style.display = 'none';
@@ -214,20 +228,20 @@ const translations = useTranslations(lang);
 
       // Imagen / Avatar
       const avatarContainer = document.getElementById('char-avatar-container')!;
-      if (character.image?.large) {
-        avatarContainer.innerHTML = `<img src="${character.image.large}" alt="${character.name.full}" class="character-avatar-img" />`;
+      if (stickyImage) {
+        avatarContainer.innerHTML = `<img src="${stickyImage}" alt="${stickyName}" class="character-avatar-img" />`;
       } else {
         avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
       }
 
       // Parseo de biografía para extraer características
-      const { characteristics: parsedStats, cleanBiography } = parseCharacterBiography(character.description);
+      const { characteristics: parsedStats, cleanBiography } = parseCharacterBiography(stickyBiography);
       const cleanDescription = cleanBiography.replace(/~!([\s\S]*?)!~/g, '<span class="spoiler">$1</span>');
 
       // ── EXTRAER Y CONSOLIDAR ABSOLUTAMENTE TODOS LOS ALIASES ──
       const aliasMap = new Map<string, { text: string; spoiler: boolean }>();
-      const mainNameLower = (character.name?.full || '').toLowerCase().trim();
-      const nativeNameLower = (character.name?.native || '').toLowerCase().trim();
+      const mainNameLower = stickyName.toLowerCase().trim();
+      const nativeNameLower = (stickyNameNative || '').toLowerCase().trim();
 
       function addAlias(rawText: string, spoiler: boolean = false) {
         if (!rawText) return;
@@ -247,12 +261,9 @@ const translations = useTranslations(lang);
       for (const alt of character.name?.alternativeSpoiler ?? []) addAlias(alt, true);
 
       // 2. Local DB saved aliases
-      try {
-        const localChar = await getCharacter(characterExternalId);
-        if (localChar?.aliases_csv) {
-          for (const alt of localChar.aliases_csv.split(',')) addAlias(alt, false);
-        }
-      } catch (e) {}
+      if (localChar?.aliases_csv) {
+        for (const alt of localChar.aliases_csv.split(',')) addAlias(alt, false);
+      }
 
       // 3. Biografía parsed bold labels ("Aliases", "AKA", "Nicknames", etc.)
       for (const stat of parsedStats) {
@@ -275,7 +286,7 @@ const translations = useTranslations(lang);
       // biography's parentheticals are usually team names, arcs, or asides
       // ("the Aliea Gakuen arc", "(Coach)"), not alternate names, and there's
       // no reliable way to tell those apart from a real one this way.
-      const rawDesc = character.description || '';
+      const rawDesc = stickyBiography || '';
       const akaRegex = /(?:also\s+known\s+as|known\s+as|referred\s+to\s+as|also\s+called|alias(?:es)?)\s+([^,.\n(<]+)/gi;
       let match;
       while ((match = akaRegex.exec(rawDesc)) !== null) {
@@ -322,33 +333,60 @@ const translations = useTranslations(lang);
         'mandarin': { code: 'ZH', label: 'Chino' },
       };
 
-      const vaByLang = new Map<string, Array<{ id: number; name: string; native: string; image: string; siteUrl: string; language: string }>>();
-
+      // Local DB actors overlay the live AniList cast list the same way the
+      // PR editor merges them (see CharacterPrEditorModal.tsx's vaMap) — a
+      // locally-added actor (no AniList counterpart at all) or a locally
+      // edited role/language must show here too, not just in the editor.
+      // Keyed by external_id ("person:a{id}" for a real AniList staff pick,
+      // "va:{name}" for a manually-typed legacy entry) instead of AniList's
+      // own numeric id, since a local-only actor has no such id.
+      interface MergedVoiceActor {
+        externalId: string;
+        name: string;
+        native: string;
+        image: string;
+        siteUrl: string;
+        language: string;
+      }
+      const vaMap = new Map<string, MergedVoiceActor>();
       if (character.media?.edges) {
         for (const edge of character.media.edges) {
           if (edge.voiceActors) {
             for (const va of edge.voiceActors) {
-              const rawLang = (va.languageV2 || 'Japanese').toLowerCase();
-              const langKey = LANG_MAP[rawLang]?.code || rawLang.substring(0, 2).toUpperCase();
-              const langLabel = LANG_MAP[rawLang]?.label || va.languageV2 || 'Japonés';
-
-              if (!vaByLang.has(langKey)) {
-                vaByLang.set(langKey, []);
-              }
-              const list = vaByLang.get(langKey)!;
-              if (!list.some(item => item.id === va.id)) {
-                list.push({
-                  id: va.id,
+              const key = va.id ? `person:a${va.id}` : `va:${va.name?.full || ''}`;
+              if (!vaMap.has(key)) {
+                vaMap.set(key, {
+                  externalId: key,
                   name: va.name?.userPreferred || va.name?.full || '',
                   native: va.name?.native || '',
                   image: va.image?.large || va.image?.medium || '',
-                  siteUrl: va.siteUrl || `https://anilist.co/staff/${va.id}`,
-                  language: langLabel,
+                  siteUrl: va.siteUrl || (va.id ? `https://anilist.co/staff/${va.id}` : ''),
+                  language: va.languageV2 || 'Japanese',
                 });
               }
             }
           }
         }
+      }
+      const persistedActors = await getCharacterActors(characterExternalId).catch(() => []);
+      for (const a of persistedActors) {
+        const live = vaMap.get(a.external_id);
+        vaMap.set(a.external_id, {
+          externalId: a.external_id,
+          name: a.name || live?.name || '',
+          native: a.name_native || live?.native || '',
+          image: a.image_url || live?.image || '',
+          siteUrl: live?.siteUrl || '',
+          language: a.language || live?.language || 'Japanese',
+        });
+      }
+
+      const vaByLang = new Map<string, MergedVoiceActor[]>();
+      for (const va of vaMap.values()) {
+        const rawLang = (va.language || 'Japanese').toLowerCase();
+        const langKey = LANG_MAP[rawLang]?.code || rawLang.substring(0, 2).toUpperCase();
+        if (!vaByLang.has(langKey)) vaByLang.set(langKey, []);
+        vaByLang.get(langKey)!.push(va);
       }
 
       // Orden de prioridad para las pestañas de idiomas
@@ -462,9 +500,9 @@ const translations = useTranslations(lang);
                   ? `<img src="${va.image}" alt="${va.name}" class="media-author-avatar" />`
                   : `<div class="media-author-avatar media-author-avatar--placeholder">${va.name.charAt(0).toUpperCase()}</div>`}
                 <div class="media-author-info">
-                  <a href="${va.siteUrl}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">
-                    ${va.name}
-                  </a>
+                  ${va.siteUrl
+                    ? `<a href="${va.siteUrl}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">${va.name}</a>`
+                    : `<span class="media-author-name">${va.name}</span>`}
                   ${va.native && va.native !== va.name ? `<span class="media-author-role">${va.native}</span>` : ''}
                 </div>
               </div>
@@ -500,47 +538,100 @@ const translations = useTranslations(lang);
       const btnNext = document.getElementById('btn-next-appearances') as HTMLButtonElement;
       const txtPage = document.getElementById('txt-appearances-page')!;
 
+      // Local DB appearances win over the live AniList list whenever any
+      // exist, same as the editor (CharacterPrEditorModal.tsx) — a manually
+      // added or removed appearance must show here too, not just there.
+      // AniList's own edges still resolve title/cover/date for whichever of
+      // those local rows aren't cataloged locally yet.
+      interface MergedAppearance {
+        mediaId: string;
+        title: string;
+        cover: string | null;
+        year: number | null;
+        month: number | null;
+        day: number | null;
+        roleLabel: string;
+      }
       const rawEdges = character.media?.edges || [];
+      const anilistMediaCache: Record<string, { title: string; cover: string | null; year: number | null; month: number | null; day: number | null; role: string | null }> = {};
+      for (const edge of rawEdges as any[]) {
+        const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+        anilistMediaCache[extId] = {
+          title: edge.node.title.userPreferred || extId,
+          cover: edge.node.coverImage?.large ?? null,
+          year: edge.node.startDate?.year ?? null,
+          month: edge.node.startDate?.month ?? null,
+          day: edge.node.startDate?.day ?? null,
+          role: edge.characterRole ?? null,
+        };
+      }
+
+      const rawAppearances = await getCharacterAppearances(characterExternalId).catch(() => []);
+      let mergedAppearances: MergedAppearance[];
+      if (rawAppearances.length > 0) {
+        mergedAppearances = await Promise.all(rawAppearances.map(async (a): Promise<MergedAppearance> => {
+          const entry = await getCatalogEntry(a.media_external_id).catch(() => null);
+          const cached = anilistMediaCache[a.media_external_id];
+          const relationType = a.relation_type ?? cached?.role ?? null;
+          return {
+            mediaId: a.media_external_id,
+            title: entry?.title_main || cached?.title || a.media_external_id,
+            cover: entry?.cover_url ?? cached?.cover ?? null,
+            year: entry?.release_year ?? cached?.year ?? null,
+            month: entry?.release_month ?? cached?.month ?? null,
+            day: entry?.release_day ?? cached?.day ?? null,
+            roleLabel: relationType ? (window.ROLE_LABELS[relationType] ?? relationType) : '',
+          };
+        }));
+      } else {
+        mergedAppearances = (rawEdges as any[]).map(edge => {
+          const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+          const cached = anilistMediaCache[extId];
+          return {
+            mediaId: extId,
+            title: cached.title,
+            cover: cached.cover,
+            year: cached.year,
+            month: cached.month,
+            day: cached.day,
+            roleLabel: cached.role ? (window.ROLE_LABELS[cached.role] ?? cached.role) : '',
+          };
+        });
+      }
+
       // Newest release first, oldest last — same ordering as the character
       // editor's own appearances list (compareByReleaseDateDesc).
-      const sortedEdges = [...rawEdges].sort((a: any, b: any) => compareByReleaseDateDesc(
-        { release_year: a.node.startDate?.year ?? null, release_month: a.node.startDate?.month ?? null, release_day: a.node.startDate?.day ?? null },
-        { release_year: b.node.startDate?.year ?? null, release_month: b.node.startDate?.month ?? null, release_day: b.node.startDate?.day ?? null },
+      mergedAppearances.sort((a, b) => compareByReleaseDateDesc(
+        { release_year: a.year, release_month: a.month, release_day: a.day },
+        { release_year: b.year, release_month: b.month, release_day: b.day },
       ));
 
       let currentPage = 1;
       const itemsPerPage = 8;
 
       function renderMediaPage() {
-        const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
+        const totalPages = Math.ceil(mergedAppearances.length / itemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages || 1;
 
         const start = (currentPage - 1) * itemsPerPage;
-        const slice = sortedEdges.slice(start, start + itemsPerPage);
+        const slice = mergedAppearances.slice(start, start + itemsPerPage);
 
         appearancesGrid.innerHTML = slice
-          .map((edge: any) => {
-            const coverUrl = edge.node.coverImage?.large ?? '';
-            const title = edge.node.title.userPreferred ?? '';
-            const roleLabel = edge.characterRole ? (window.ROLE_LABELS[edge.characterRole] ?? edge.characterRole) : '';
-            const mediaId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
-
-            return `
-              <a href="/media?id=${mediaId}" class="media-relation-card">
-                ${coverUrl ? `<div class="media-relation-bg-layer"><img src="${coverUrl}" alt="" /></div>` : ''}
+          .map(app => `
+              <a href="/media?id=${app.mediaId}" class="media-relation-card">
+                ${app.cover ? `<div class="media-relation-bg-layer"><img src="${app.cover}" alt="" /></div>` : ''}
                 <div class="media-relation-card-overlay"></div>
                 <div class="media-relation-card-content">
                   <div class="media-relation-thumb">
-                    ${coverUrl ? `<img src="${coverUrl}" alt="${title}" loading="lazy" />` : ''}
+                    ${app.cover ? `<img src="${app.cover}" alt="${app.title}" loading="lazy" />` : ''}
                   </div>
                   <div class="media-relation-info">
-                    <span class="media-relation-title">${title}</span>
+                    <span class="media-relation-title">${app.title}</span>
                   </div>
                 </div>
-                ${roleLabel ? `<div class="media-relation-type">${roleLabel}</div>` : ''}
+                ${app.roleLabel ? `<div class="media-relation-type">${app.roleLabel}</div>` : ''}
               </a>
-            `;
-          })
+            `)
           .join('');
 
         txtPage.textContent = `Página ${currentPage} de ${totalPages}`;
@@ -549,7 +640,7 @@ const translations = useTranslations(lang);
         paginationEl.style.display = totalPages > 1 ? 'flex' : 'none';
       }
 
-      if (sortedEdges.length > 0) {
+      if (mergedAppearances.length > 0) {
         appearancesSection.style.display = 'block';
         renderMediaPage();
 
@@ -560,7 +651,7 @@ const translations = useTranslations(lang);
           }
         };
         btnNext.onclick = () => {
-          const totalPages = Math.ceil(sortedEdges.length / itemsPerPage);
+          const totalPages = Math.ceil(mergedAppearances.length / itemsPerPage);
           if (currentPage < totalPages) {
             currentPage++;
             renderMediaPage();
@@ -626,13 +717,20 @@ const translations = useTranslations(lang);
       loadingEl.style.display = 'none';
       contentEl.style.display = 'block';
 
+      // Writes the sticky (local-preferred) values back, not AniList's raw
+      // live copy — this used to blindly resave character.name.full/
+      // .image/.native/.description on every single page view, silently
+      // wiping out any edit made via the PR editor as soon as the user next
+      // visited this same character page. Also persists the fully
+      // consolidated alias list (aliases_csv/regex-extracted/etc.), not
+      // just AniList's own raw alternative names.
       saveCharacter(
         charKeyStr,
-        character.name.full,
-        character.image?.large,
-        character.name.native,
-        (character.name.alternative ?? []).join(','),
-        character.description
+        stickyName,
+        stickyImage,
+        stickyNameNative,
+        allAliases.map(a => a.text).join(','),
+        stickyBiography
       ).catch(() => {});
 
     } catch (err: any) {

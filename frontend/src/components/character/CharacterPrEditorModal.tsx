@@ -175,12 +175,19 @@ export function CharacterPrEditorModal() {
           updated_at: now,
         };
 
+        // Local edit wins whenever one exists — the same "sticky local
+        // field" rule mediaService.ts's applyStickyLocalFields uses for
+        // media pages. AniList's live value only fills in what's actually
+        // still blank locally (a brand-new character, or a field the user
+        // never touched). Without this, a manually corrected name/bio/image
+        // (e.g. fixing a mis-parsed characteristic) got silently reverted
+        // to AniList's raw copy the very next time this editor reopened.
         const data = anilistDetail ? {
           ...localData,
-          name: anilistDetail.name.full || localData.name,
-          name_native: anilistDetail.name.native || localData.name_native,
-          biography: anilistDetail.description || localData.biography,
-          image_url: anilistDetail.image?.large || localData.image_url,
+          name: localData.name || anilistDetail.name.full || '',
+          name_native: localData.name_native || anilistDetail.name.native || null,
+          biography: localData.biography || anilistDetail.description || null,
+          image_url: localData.image_url || anilistDetail.image?.large || null,
         } : localData;
 
         setCharacter(data);
