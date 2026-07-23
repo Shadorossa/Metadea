@@ -17,9 +17,15 @@ export interface ProposalBundle {
 // A character has no owning media_catalog row — its own file just carries its
 // own fields plus the media it appears in (character_appearances' shape),
 // independent of any one media's own proposal file.
+// Every field but external_id is optional and omitted when unchanged —
+// mirrors minimalProposalCatalogEntry's media_catalog equivalent, so a
+// proposal that only added a voice actor doesn't also re-propose the name/
+// bio/aliases/image as if the user had edited those too (harmless once
+// there's an existing upstream file to overlay onto, but with none yet the
+// whole object used to get written out verbatim).
 export interface CharacterProposalField {
   external_id: string;
-  name: string;
+  name?: string;
   name_native?: string | null;
   aliases_csv?: string | null;
   biography?: string | null;
@@ -31,9 +37,14 @@ export interface CharacterProposalAppearance {
   relation_type: string | null;
 }
 
+// name/name_native/image_url are omitted for an AniList-sourced actor (see
+// CharacterPrEditorModal's addVoiceActor) — that data belongs to AniList,
+// not to this proposal, and build-database.js resolves display fields from
+// whatever else already knows this actor rather than treating a blank as
+// authoritative.
 export interface CharacterProposalActor {
   external_id: string;
-  name: string;
+  name?: string;
   name_native?: string | null;
   image_url?: string | null;
   role?: string | null;

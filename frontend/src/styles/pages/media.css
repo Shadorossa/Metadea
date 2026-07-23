@@ -923,6 +923,14 @@
   min-width: 0;
 }
 
+/* When Characters has nothing to show, Users is the row's only DOM child —
+   grid auto-placement would otherwise drop it into column 1 (the wide 4.1fr
+   share meant for Characters) instead of leaving it pinned to its own 0.9fr
+   column, stretching it across most of the page width. */
+.media-users-section:only-child {
+  grid-column: 2;
+}
+
 /* No friends-scores data to show next to it — Characters takes the row's
    full width instead of leaving the reserved Users column empty. */
 .media-chars-section--full {

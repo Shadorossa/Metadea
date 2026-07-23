@@ -295,22 +295,14 @@ export function CharacterPrEditorModal() {
         setOriginalAliases(combinedAliases);
         setOriginalImageUrl(data.image_url || '');
 
-        // Persisted actors (from a previous save via the search picker) take
-        // priority — only fill in from AniList's live cast list for a
-        // voice actor nobody's curated here yet, same "local ∪ live" merge
-        // aliases already do above.
-        const persistedActors = await getCharacterActors(currentId).catch(() => [] as DbCharacterActor[]);
+        // Live AniList cast list goes in first (full name/image) — a
+        // community-shared actor's proposal only ever carries role/language
+        // (see handleSubmit: AniList's own data isn't re-proposed), so
+        // persisted rows can have a blank name/native/image. Overlaying
+        // persisted second, only over non-empty fields, means role/language
+        // (the actual curated data) always win while name/image still fall
+        // back to AniList's live copy instead of showing blank.
         const vaMap = new Map<string, VoiceActorRow>();
-        for (const a of persistedActors) {
-          vaMap.set(a.external_id, {
-            externalId: a.external_id,
-            name: a.name,
-            native: a.name_native || '',
-            language: a.language || 'Japanese',
-            image: a.image_url || '',
-            role: a.role || 'voice',
-          });
-        }
         if (anilistDetail?.media?.edges) {
           for (const edge of anilistDetail.media.edges) {
             if (edge.voiceActors) {
@@ -329,6 +321,18 @@ export function CharacterPrEditorModal() {
               }
             }
           }
+        }
+        const persistedActors = await getCharacterActors(currentId).catch(() => [] as DbCharacterActor[]);
+        for (const a of persistedActors) {
+          const live = vaMap.get(a.external_id);
+          vaMap.set(a.external_id, {
+            externalId: a.external_id,
+            name: a.name || live?.name || '',
+            native: a.name_native || live?.native || '',
+            language: a.language || live?.language || 'Japanese',
+            image: a.image_url || live?.image || '',
+            role: a.role || live?.role || 'voice',
+          });
         }
         const initialVas = Array.from(vaMap.values());
         setVoiceActors(initialVas);
@@ -454,20 +458,33 @@ export function CharacterPrEditorModal() {
 
       setStatusMsg(t.preparing_proposal);
 
+      // Only the fields this session actually edited — same reasoning as
+      // minimalProposalCatalogEntry (media proposals): a proposal whose only
+      // real change is "added a voice actor" shouldn't also re-propose the
+      // name/bio/aliases/image as if the user had touched those too.
+      const characterFields: CharacterProposalBundle['character'] = { external_id: updatedCharacter.external_id };
+      if (isFieldChanged(name, originalCharacter.name)) characterFields.name = updatedCharacter.name;
+      if (isFieldChanged(nameNative, originalCharacter.name_native)) characterFields.name_native = updatedCharacter.name_native;
+      if (aliases.join(',') !== (originalCharacter.aliases_csv || '')) characterFields.aliases_csv = updatedCharacter.aliases_csv;
+      if (isFieldChanged(cleanBiography, originalCleanBiography)) characterFields.biography = updatedCharacter.biography;
+      if (isFieldChanged(imageUrl, originalCharacter.image_url)) characterFields.image_url = updatedCharacter.image_url;
+
       const bundle: CharacterProposalBundle = {
-        character: {
-          external_id: updatedCharacter.external_id,
-          name: updatedCharacter.name,
-          name_native: updatedCharacter.name_native,
-          aliases_csv: updatedCharacter.aliases_csv,
-          biography: updatedCharacter.biography,
-          image_url: updatedCharacter.image_url,
-        },
+        character: characterFields,
         appearances: appearances.map(a => ({
           media_external_id: a.media_external_id,
           relation_type: a.relation_type,
         })),
-        actors: voiceActors.map(v => ({
+        // AniList-sourced actors (real external_id from the search picker)
+        // only propose the relation itself (role/language) — name/native/
+        // image are AniList's data, not this proposal's; a legacy row with
+        // no real external_id (typed in manually, before the picker existed)
+        // has no other way to be identified/displayed, so keeps its fields.
+        actors: voiceActors.map(v => v.externalId?.startsWith('person:a') ? {
+          external_id: v.externalId,
+          role: v.role || 'voice',
+          language: v.language || null,
+        } : {
           external_id: v.externalId || `va:${encodeURIComponent(v.name)}`,
           name: v.name,
           name_native: v.native || null,

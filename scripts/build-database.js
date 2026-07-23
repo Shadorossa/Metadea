@@ -268,6 +268,8 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   const characterActorStmt = db.prepare(
     'INSERT OR REPLACE INTO character_actors (actor_external_id, character_external_id, role, language, added_at) VALUES (?, ?, ?, ?, ?)'
   );
+  const selectCharacterStmt = db.prepare('SELECT * FROM characters WHERE external_id = ?');
+  const selectActorStmt = db.prepare('SELECT * FROM actors WHERE external_id = ?');
   const relationStmt = db.prepare(
     'INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label) VALUES (?, ?, ?, ?)'
   );
@@ -353,25 +355,65 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   // Standalone character bundles processed last so a dedicated character
   // proposal's own fields/appearances win over whatever a media bundle's
   // embedded skeleton (processed above) guessed for the same character.
+  // A character bundle only carries the fields its own proposal actually
+  // changed (see CharacterPrEditorModal's handleSubmit) — e.g. a "just added
+  // a voice actor" proposal has no name/biography/image_url at all. Fall
+  // back to whatever's already in the table (built from an earlier bundle,
+  // media-embedded or standalone) instead of blanking it out; only a field
+  // truly present in this bundle overrides it.
   let characterCount = 0;
   for (const bundle of characterBundles) {
     const char = bundle.character;
-    const actorsCsv = (bundle.actors || []).map(a => a.name).filter(Boolean).join(',');
+    const existing = selectCharacterStmt.get(char.external_id);
     characterStmt.run(
-      crypto.randomUUID(), char.external_id, char.name || '', char.name_native ?? null,
-      char.aliases_csv ?? '', actorsCsv, char.biography ?? null, char.image_url ?? null, null, now, now,
+      existing?.id || crypto.randomUUID(),
+      char.external_id,
+      char.name !== undefined ? char.name : (existing?.name ?? ''),
+      char.name_native !== undefined ? char.name_native : (existing?.name_native ?? null),
+      char.aliases_csv !== undefined ? char.aliases_csv : (existing?.aliases_csv ?? ''),
+      existing?.actors_csv ?? '', // recomputed below, once every actor row is in
+      char.biography !== undefined ? char.biography : (existing?.biography ?? null),
+      char.image_url !== undefined ? char.image_url : (existing?.image_url ?? null),
+      existing?.reaction ?? null,
+      existing?.created_at || now,
+      now,
     );
     characterCount++;
     for (const app of bundle.appearances || []) {
       if (!app.media_external_id) continue;
       appearanceStmt.run(char.external_id, app.media_external_id, app.relation_type ?? null, null, now);
     }
+    // name/name_native/image_url are commonly omitted (an AniList-sourced
+    // actor's own data, not this proposal's — see CharacterProposalActor) —
+    // same "don't blank out what's already known" fallback as the character
+    // row above.
     for (const actor of bundle.actors || []) {
       if (!actor.external_id) continue;
-      actorStmt.run(crypto.randomUUID(), actor.external_id, actor.name || '', actor.name_native ?? null, actor.image_url ?? null, now, now);
+      const existingActor = selectActorStmt.get(actor.external_id);
+      actorStmt.run(
+        existingActor?.id || crypto.randomUUID(),
+        actor.external_id,
+        actor.name !== undefined ? actor.name : (existingActor?.name ?? ''),
+        actor.name_native !== undefined ? actor.name_native : (existingActor?.name_native ?? null),
+        actor.image_url !== undefined ? actor.image_url : (existingActor?.image_url ?? null),
+        existingActor?.created_at || now,
+        now,
+      );
       characterActorStmt.run(actor.external_id, char.external_id, actor.role ?? null, actor.language ?? null, now);
     }
   }
+
+  // actors_csv is a display cache derived entirely from character_actors/
+  // actors (now fully populated) — recomputed here instead of tracked
+  // per-bundle so it's always correct regardless of which bundle(s)
+  // contributed which actor.
+  db.exec(`
+    UPDATE characters SET actors_csv = COALESCE((
+      SELECT GROUP_CONCAT(a.name, ',')
+      FROM character_actors ca JOIN actors a ON a.external_id = ca.actor_external_id
+      WHERE ca.character_external_id = characters.external_id AND a.name != ''
+    ), '')
+  `);
 
   db.close();
   return { catalogCount, characterCount };
