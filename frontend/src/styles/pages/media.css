@@ -3230,7 +3230,8 @@
 }
 
 .pr-editor-media-group-cards--wide {
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(18, 1fr);
+  gap: 0.4rem;
 }
 
 /* Relations grid — fixed 6 per row instead of auto-fill, so the count

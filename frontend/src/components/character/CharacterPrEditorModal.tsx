@@ -68,6 +68,11 @@ export function CharacterPrEditorModal() {
   const [aliases, setAliases] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState('');
 
+  const [originalName, setOriginalName] = useState('');
+  const [originalNameNative, setOriginalNameNative] = useState('');
+  const [originalAliases, setOriginalAliases] = useState<string[]>([]);
+  const [originalImageUrl, setOriginalImageUrl] = useState('');
+
   const [characteristics, setCharacteristics] = useState<ParsedCharacteristic[]>([]);
   const [cleanBiography, setCleanBiography] = useState('');
   const [originalCharacteristics, setOriginalCharacteristics] = useState<ParsedCharacteristic[]>([]);
@@ -75,6 +80,8 @@ export function CharacterPrEditorModal() {
 
   const [appearances, setAppearances] = useState<AppearanceRow[]>([]);
   const [originalAppearances, setOriginalAppearances] = useState<AppearanceRow[]>([]);
+  const [voiceActors, setVoiceActors] = useState<VoiceActorRow[]>([]);
+  const [originalVoiceActors, setOriginalVoiceActors] = useState<VoiceActorRow[]>([]);
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
 
@@ -250,6 +257,34 @@ export function CharacterPrEditorModal() {
         setAppearances(resolved);
         setOriginalAppearances(resolved);
 
+        setOriginalName(data.name || '');
+        setOriginalNameNative(data.name_native || '');
+        setOriginalAliases(combinedAliases);
+        setOriginalImageUrl(data.image_url || '');
+
+        const vaMap = new Map<string, VoiceActorRow>();
+        if (anilistDetail?.media?.edges) {
+          for (const edge of anilistDetail.media.edges) {
+            if (edge.voiceActors) {
+              for (const va of edge.voiceActors) {
+                const key = `${va.id || va.name?.full}`;
+                if (!vaMap.has(key)) {
+                  vaMap.set(key, {
+                    id: va.id,
+                    name: va.name?.userPreferred || va.name?.full || '',
+                    native: va.name?.native || '',
+                    language: va.languageV2 || 'Japanese',
+                    image: va.image?.large || va.image?.medium || '',
+                  });
+                }
+              }
+            }
+          }
+        }
+        const initialVas = Array.from(vaMap.values());
+        setVoiceActors(initialVas);
+        setOriginalVoiceActors(initialVas);
+
         characterCacheRef.current[currentId] = {
           character: data,
           originalCharacter: data,
@@ -275,8 +310,14 @@ export function CharacterPrEditorModal() {
   }, [isOpen, currentId, loadNonce]);
 
   const diffFields: CharacterDiffFields = {
-    name, nameNative, aliases, imageUrl, cleanBiography, originalCleanBiography,
-    characteristics, originalCharacteristics, appearances, originalAppearances,
+    name, originalName,
+    nameNative, originalNameNative,
+    aliases, originalAliases,
+    imageUrl, originalImageUrl,
+    cleanBiography, originalCleanBiography,
+    characteristics, originalCharacteristics,
+    appearances, originalAppearances,
+    voiceActors, originalVoiceActors,
   };
   const characteristicsChanged = () => characteristicsChangedPure(characteristics, originalCharacteristics);
   const appearancesChanged = () => appearancesChangedPure(appearances, originalAppearances);
@@ -374,6 +415,18 @@ export function CharacterPrEditorModal() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const addVoiceActor = () => {
+    setVoiceActors(prev => [...prev, { name: '', native: '', language: 'Japanese', image: '' }]);
+  };
+
+  const updateVoiceActor = (index: number, field: keyof VoiceActorRow, value: string) => {
+    setVoiceActors(prev => prev.map((va, i) => i === index ? { ...va, [field]: value } : va));
+  };
+
+  const removeVoiceActor = (index: number) => {
+    setVoiceActors(prev => prev.filter((_, i) => i !== index));
   };
 
   if (!mounted || !isOpen) return null;
@@ -496,14 +549,8 @@ export function CharacterPrEditorModal() {
                 {t.appearances} ({appearances.length})
                 {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
               </span>
-              <button
-                type="button"
-                className="pr-editor-add-btn"
-                onClick={() => setAppearanceSearchOpen(true)}
-                title="Añadir aparición"
-                style={{ width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold', flexShrink: 0 }}
-              >
-                +
+              <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>
+                + {t.add_appearance}
               </button>
             </div>
 
@@ -533,6 +580,92 @@ export function CharacterPrEditorModal() {
                       <option key={type} value={type}>{getRelationTypeLabels()[type as keyof ReturnType<typeof getRelationTypeLabels>] || type}</option>
                     ))}
                   </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Actores de Voz (Seiyūs) ── */}
+          <div className="pr-editor-section" style={{ marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <span className="pr-editor-section-title" style={{ margin: 0 }}>
+                Actores de Voz ({voiceActors.length})
+              </span>
+              <button type="button" className="pr-editor-add-btn" onClick={addVoiceActor}>
+                + Añadir actor de voz
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem' }}>
+              {voiceActors.map((va, idx) => (
+                <div key={idx} className="pr-editor-media-card" style={{ padding: '0.6rem 0.5rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative' }}>
+                  <button
+                    type="button"
+                    className="pr-editor-media-card-remove"
+                    onClick={() => removeVoiceActor(idx)}
+                    title="Eliminar actor de voz"
+                  >
+                    ×
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingRight: '1rem' }}>
+                    {va.image ? (
+                      <img src={va.image} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', flexShrink: 0 }}>
+                        {va.name ? va.name.charAt(0).toUpperCase() : '?'}
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      className="pr-editor-char-input"
+                      value={va.name}
+                      onChange={e => updateVoiceActor(idx, 'name', e.target.value)}
+                      placeholder="Nombre actor"
+                      style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.75rem' }}
+                    />
+                  </div>
+
+                  <input
+                    type="text"
+                    className="pr-editor-char-input"
+                    value={va.native}
+                    onChange={e => updateVoiceActor(idx, 'native', e.target.value)}
+                    placeholder="Nombre nativo (Kanji)"
+                    style={{ fontSize: '0.7rem' }}
+                  />
+
+                  {/* Selector de Etiquetas de Idioma */}
+                  <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap', marginTop: '0.1rem' }}>
+                    {['JP', 'ES', 'EN', 'IT', 'DE', 'FR', 'PT', 'KR', 'ZH'].map(langTag => {
+                      const LANG_TAG_MAP: Record<string, string> = {
+                        'JP': 'Japanese', 'ES': 'Spanish', 'EN': 'English', 'IT': 'Italian',
+                        'DE': 'German', 'FR': 'French', 'PT': 'Portuguese', 'KR': 'Korean', 'ZH': 'Chinese',
+                      };
+                      const curCode = (va.language || 'Japanese').toLowerCase();
+                      const isSelected = curCode.includes(langTag.toLowerCase()) ||
+                        (langTag === 'JP' && curCode.includes('japan')) ||
+                        (langTag === 'ES' && curCode.includes('span')) ||
+                        (langTag === 'EN' && curCode.includes('engl')) ||
+                        (langTag === 'IT' && curCode.includes('ital')) ||
+                        (langTag === 'DE' && curCode.includes('germ')) ||
+                        (langTag === 'FR' && curCode.includes('fren')) ||
+                        (langTag === 'PT' && curCode.includes('port')) ||
+                        (langTag === 'KR' && curCode.includes('kore')) ||
+                        (langTag === 'ZH' && (curCode.includes('chin') || curCode.includes('mand')));
+
+                      return (
+                        <button
+                          key={langTag}
+                          type="button"
+                          className={`char-seiyu-lang-btn ${isSelected ? 'char-seiyu-lang-btn--active' : ''}`}
+                          onClick={() => updateVoiceActor(idx, 'language', LANG_TAG_MAP[langTag] || langTag)}
+                          style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}
+                        >
+                          {langTag}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>

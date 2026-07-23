@@ -32,42 +32,61 @@ export const appearancesChanged = (appearances: AppearanceRow[], originalAppeara
   return false;
 };
 
+export interface VoiceActorRow {
+  id?: number;
+  name: string;
+  native: string;
+  language: string;
+  image: string;
+}
+
 export interface CharacterDiffFields {
   name: string;
+  originalName: string;
   nameNative: string;
+  originalNameNative: string;
   aliases: string[];
+  originalAliases: string[];
   imageUrl: string;
+  originalImageUrl: string;
   cleanBiography: string;
   originalCleanBiography: string;
   characteristics: ParsedCharacteristic[];
   originalCharacteristics: ParsedCharacteristic[];
   appearances: AppearanceRow[];
   originalAppearances: AppearanceRow[];
+  voiceActors: VoiceActorRow[];
+  originalVoiceActors: VoiceActorRow[];
 }
 
+export const voiceActorsChanged = (voiceActors: VoiceActorRow[], originalVoiceActors: VoiceActorRow[]) =>
+  JSON.stringify(voiceActors) !== JSON.stringify(originalVoiceActors);
+
+export const aliasesChanged = (aliases: string[], originalAliases: string[]) =>
+  JSON.stringify(aliases) !== JSON.stringify(originalAliases);
+
 export const hasChanged = (originalCharacter: CharacterEntry | null, f: CharacterDiffFields): boolean => {
-  if (!originalCharacter) return false;
   return (
-    isFieldChanged(f.name, originalCharacter.name) ||
-    isFieldChanged(f.nameNative, originalCharacter.name_native) ||
-    f.aliases.join(',') !== (originalCharacter.aliases_csv || '') ||
-    isFieldChanged(f.imageUrl, originalCharacter.image_url) ||
+    isFieldChanged(f.name, f.originalName) ||
+    isFieldChanged(f.nameNative, f.originalNameNative) ||
+    aliasesChanged(f.aliases, f.originalAliases) ||
+    isFieldChanged(f.imageUrl, f.originalImageUrl) ||
     isFieldChanged(f.cleanBiography, f.originalCleanBiography) ||
     characteristicsChanged(f.characteristics, f.originalCharacteristics) ||
-    appearancesChanged(f.appearances, f.originalAppearances)
+    appearancesChanged(f.appearances, f.originalAppearances) ||
+    voiceActorsChanged(f.voiceActors, f.originalVoiceActors)
   );
 };
 
 export const buildChangeSummary = (originalCharacter: CharacterEntry | null, f: CharacterDiffFields): string => {
   const changes: string[] = [];
-  if (originalCharacter) {
-    if (isFieldChanged(f.name, originalCharacter.name)) changes.push(`Nombre: ${f.name}`);
-    if (isFieldChanged(f.nameNative, originalCharacter.name_native)) changes.push(`Nombre nativo: ${f.nameNative || '(vacío)'}`);
-    if (f.aliases.join(',') !== (originalCharacter.aliases_csv || '')) changes.push(`Aliases: ${f.aliases.length ? f.aliases.join(', ') : '(vacío)'}`);
-    if (isFieldChanged(f.imageUrl, originalCharacter.image_url)) changes.push(`Imagen: ${f.imageUrl || '(vacío)'}`);
-    if (isFieldChanged(f.cleanBiography, f.originalCleanBiography)) changes.push('Biografía: Actualizada');
-    if (characteristicsChanged(f.characteristics, f.originalCharacteristics)) changes.push(`Características: ${f.characteristics.length} campo(s)`);
-    if (appearancesChanged(f.appearances, f.originalAppearances)) changes.push(`Apariciones: ${f.appearances.length} obra(s)`);
-  }
+  if (isFieldChanged(f.name, f.originalName)) changes.push(`Nombre: ${f.name}`);
+  if (isFieldChanged(f.nameNative, f.originalNameNative)) changes.push(`Nombre nativo: ${f.nameNative || '(vacío)'}`);
+  if (aliasesChanged(f.aliases, f.originalAliases)) changes.push(`Aliases: ${f.aliases.length ? f.aliases.join(', ') : '(vacío)'}`);
+  if (isFieldChanged(f.imageUrl, f.originalImageUrl)) changes.push(`Imagen: ${f.imageUrl || '(vacío)'}`);
+  if (isFieldChanged(f.cleanBiography, f.originalCleanBiography)) changes.push('Biografía: Actualizada');
+  if (characteristicsChanged(f.characteristics, f.originalCharacteristics)) changes.push(`Características: ${f.characteristics.length} campo(s)`);
+  if (appearancesChanged(f.appearances, f.originalAppearances)) changes.push(`Apariciones: ${f.appearances.length} obra(s)`);
+  if (voiceActorsChanged(f.voiceActors, f.originalVoiceActors)) changes.push(`Actores de voz: ${f.voiceActors.length} actor(es)`);
   return changes.length > 0 ? changes.join('\n- ') : 'Sin cambios detectados';
 };
