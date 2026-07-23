@@ -62,19 +62,21 @@ pub async fn sync_community_catalog(
         // changed" even when every title was already in the local catalog.
         let mut changes: i64 = 0;
         let merge_result = (|| -> Result<(), String> {
-            // Explicit column list, not `SELECT *`: a DB upgraded via the
-            // authors_csv migration has it as its *last* physical column,
-            // while a fresh DB has it inline — position-based `SELECT *`
-            // would shift every later column into the wrong field.
+            // Explicit column list, not `SELECT *`: a DB upgraded via an old
+            // migration can have a given column as its *last* physical
+            // column, while a fresh DB has it inline — position-based
+            // `SELECT *` would shift every later column into the wrong field.
             // blocked_at is community-wide by design (a curator block should
             // reach every install), guarded by attached_db_has_column in case
             // this community.db predates the column.
-            // last_sync_error/last_synced_at/sync_failed_count deliberately
-            // excluded even if the attached community.db still has them — a
-            // community submission has no business seeding another user's
-            // sync bookkeeping (see sync_state's own table for that now).
+            // last_sync_error/last_synced_at/sync_failed_count/authors_csv
+            // deliberately excluded even if the attached community.db still
+            // has them — sync bookkeeping has no business coming from a
+            // community submission (see sync_state's own table for that now),
+            // and authors_csv no longer exists at all (media_author/
+            // media_by_author are the only source of author data now).
             let possible_cols = [
-                "id", "external_id", "authors_csv", "banners_csv", "country_code", "cover_url",
+                "id", "external_id", "banners_csv", "country_code", "cover_url",
                 "favorites_count", "format", "genres_csv", "genres_tag_csv",
                 "parent_id", "platforms_csv",
                 "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
@@ -125,12 +127,12 @@ pub async fn sync_community_catalog(
                 ).str_err()? as i64;
             }
 
-            // banners/genres/companies/authors are only ever set through the
+            // banners/genres/companies are only ever set through the
             // collaborative catalog, so an already-cached row (most of them,
             // since the live API sync gets there first) would otherwise never
             // pick up a merged PR's update — fill each only where still
             // empty, never clobbering a local edit or fresher live value.
-            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "authors_csv"] {
+            for col in ["banners_csv", "genres_csv", "genres_tag_csv"] {
                 if attached_db_has_column(&conn, "community", "media_catalog", col) {
                     changes += conn.execute(
                         &format!(

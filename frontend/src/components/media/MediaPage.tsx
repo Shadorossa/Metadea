@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
+import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -584,20 +584,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setIsFavorited(false);
   }, [applyDeleted]);
 
-  // Manual "retry sync" — bypasses the in-memory session cache
-  // fetchMediaData(WithFallback) would otherwise short-circuit on, forcing
-  // a genuine live re-fetch right now instead of waiting for needsResync()'s
-  // own cadence to consider this entry due again.
+  // Manual "retry sync" — calls fetchMediaData directly instead of
+  // fetchMediaDataWithFallback, which still gates its own live fetch behind
+  // needsResync()/sync_state; that used to make this button a no-op
+  // whenever the entry wasn't actually due yet (sync_state's backoff can
+  // push that out to months on a title with a couple of past failures),
+  // silently redisplaying the same stale local data instead of the fresh
+  // fetch the button promises.
   const handleRetrySync = useCallback(() => {
     if (!currentId || retryingSync) return;
     setRetryingSync(true);
     invalidateCachedMediaData(currentId);
-    fetchMediaDataWithFallback(
-      currentId,
-      partial => setData(partial),
-      full => { setData(full); setRetryingSync(false); },
-      () => setRetryingSync(false),
-    );
+    fetchMediaData(currentId).then(fresh => {
+      if (fresh) setData(fresh);
+    }).finally(() => setRetryingSync(false));
   }, [currentId, retryingSync]);
 
   // Closing without saving: roll back any optimistic quick-click draft to
@@ -1066,18 +1066,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                             {auth.url ? (
                               <span
                                 className="media-author-name media-author-name--link"
-                                onClick={() => {
-                                  if (auth.url!.startsWith('http')) {
-                                    const tauri = window.__TAURI__;
-                                    if (tauri?.opener?.openUrl) {
-                                      tauri.opener.openUrl(auth.url!);
-                                    } else {
-                                      window.open(auth.url!, '_blank');
-                                    }
-                                  } else {
-                                    window.location.href = auth.url!;
-                                  }
-                                }}
+                                onClick={() => (auth.url!.startsWith('http') ? openLink(auth.url!) : (window.location.href = auth.url!))}
                               >
                                 {auth.name}
                               </span>

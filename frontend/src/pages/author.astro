@@ -1,75 +1,73 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import '../styles/pages/author.css';
+import '../styles/pages/media.css';
+import '../styles/pages/character.css';
 import { getLang } from '../i18n/index';
 
 const lang = getLang(Astro.url);
 ---
 
 <BaseLayout title="Author Details — Metadea" lang={lang} activePage="search">
-  <div class="author-page-container">
-    
-    <!-- Back Button -->
-    <div class="back-btn-wrap">
-      <a href="#" onclick="history.back(); return false;" class="btn btn--sm btn--secondary back-btn-link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        Go back
-      </a>
-    </div>
+  <div class="media-page">
 
     <!-- Loading State -->
-    <div id="author-loading" class="author-empty-box">
-      <p>Loading author details...</p>
+    <div id="author-loading" class="media-loading">
+      <div class="spinner" />
     </div>
 
     <!-- Error State -->
-    <div id="author-error" class="author-error-box" style="display: none;">
-      <p style="font-weight: 700; margin-bottom: 0.5rem;">Error loading author details</p>
-      <p id="author-error-text" style="font-size: 0.85rem; opacity: 0.8;"></p>
+    <div id="author-error" class="media-error" style="display: none;">
+      <span id="author-error-text"></span>
     </div>
 
     <!-- Author Content -->
-    <div id="author-content" class="author-detail-layout" style="display: none;">
-      
-      <!-- Left Column: Sidebar -->
-      <div class="author-sidebar-col">
-        <!-- Author Photo -->
-        <div class="author-avatar-wrap" id="author-avatar-container">
-          <!-- Populated dynamically -->
+    <div id="author-content" style="display: none;">
+
+      <!-- Hero -->
+      <div class="character-hero-body">
+        <div class="character-hero-left-col">
+          <div class="character-avatar-frame">
+            <div class="character-avatar-wrap" id="author-avatar-container"></div>
+          </div>
         </div>
 
-        <!-- Sidebar Stats Card -->
-        <div class="author-stats-card" id="author-stats-card" style="display: none;">
-          <div class="author-sidebar-stats-list" id="author-stats-list">
-            <!-- Populated dynamically -->
+        <div class="character-hero-right-col">
+          <div class="character-name-row">
+            <h1 class="media-title-main" id="author-name-full"></h1>
+          </div>
+          <p class="media-title-native" id="author-name-native" style="display: none; margin-top: 0.25rem;"></p>
+
+          <div class="character-alt-names-wrap" id="author-alt-names-wrap" style="display: none;">
+            <div class="character-alt-names" id="author-alt-names"></div>
           </div>
         </div>
       </div>
 
-      <!-- Right Column: Main Content -->
-      <div class="author-main-col">
-
-        <!-- Names Header -->
-        <div class="author-names-header">
-          <h1 class="author-name-title" id="author-name-full"></h1>
-          <p class="author-name-native" id="author-name-native" style="display: none; margin: 0;"></p>
-          <div class="author-alt-names" id="author-alt-names" style="display: none;">
-            <!-- Populated dynamically -->
+      <!-- Body: Biografía / Obras / Datos — same 3-column layout as the media/character pages -->
+      <div class="media-body" style="padding-top: 2rem;">
+        <div class="media-col-synopsis" id="author-bio-section" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Biography</p>
+            <div class="media-section-header-line"></div>
           </div>
+          <div class="media-description-text" id="author-description"></div>
         </div>
 
-        <!-- Biography Section -->
-        <div class="author-section-box" id="author-bio-section" style="display: none;">
-          <h2 class="author-section-title">Biography</h2>
-          <div class="author-description-text" id="author-description"></div>
+        <div class="media-col-related" id="author-works-section" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Works</p>
+            <div class="media-section-header-line"></div>
+          </div>
+          <div class="media-relations-grid" id="author-works-grid"></div>
         </div>
 
-        <!-- Works Section -->
-        <div class="author-section-box" id="author-works-section" style="display: none;">
-          <h2 class="author-section-title">Works</h2>
-          <div class="author-works-grid" id="author-works-grid"></div>
+        <div class="media-col-stats" id="author-stats-card" style="display: none;">
+          <div class="media-section-header-row">
+            <p class="section-label">Datos</p>
+            <div class="media-section-header-line"></div>
+          </div>
+          <div class="media-stats-list" id="author-stats-list"></div>
         </div>
-
       </div>
 
     </div>
@@ -136,13 +134,41 @@ const lang = getLang(Astro.url);
     const staff = await fetchAniListStaffDetail(staffId);
     if (!staff) return null;
 
-    const edges = staff.staffMedia?.edges || [];
-    const works = edges.map(edge => {
-      const item = edge.node;
-      const type = mapExternalFormatToType(item.type, item.format);
-      const title = item.title.english || item.title.romaji || 'Unknown Title';
-      return { url: `/media?id=${type}:${item.id}`, title, cover: item.coverImage?.medium || null, role: edge.staffRole || null };
-    });
+    // Soundtrack/song credits (Insert Song Lyrics, Theme Song Performance,
+    // Music, ...) show up in the same staffMedia list as real story/art
+    // credits — AniList has no separate connection for them — but they're
+    // not representative of an author's actual body of work, so they don't
+    // belong in the Works grid. AniList can combine several roles for the
+    // same media into one comma-separated staffRole string (e.g. "Original
+    // Creator, Insert Song Lyrics (\"...\")") rather than separate edges —
+    // only drop the work entirely when EVERY part is music-related; when a
+    // real role is mixed in, keep the work and show that instead of the raw
+    // (often long, quote-heavy) combined string.
+    const MUSIC_ROLE_RE = /song|music|composer|lyric/i;
+    // Preferred display role when a media has more than one real (non-music)
+    // credit — mirrors anilist-mapper.ts's own author rolePriority order.
+    const ROLE_DISPLAY_PRIORITY = ['Original Creator', 'Story & Art', 'Story', 'Art', 'Original Story', 'Director'];
+
+    const pickDisplayRole = (rawRole: string): string | null => {
+      const parts = rawRole.split(',').map(p => p.trim()).filter(Boolean);
+      const realParts = parts.filter(p => !MUSIC_ROLE_RE.test(p));
+      if (realParts.length === 0) return null; // every part is music-related — drop this work
+      for (const preferred of ROLE_DISPLAY_PRIORITY) {
+        const match = realParts.find(p => p.toLowerCase().startsWith(preferred.toLowerCase()));
+        if (match) return match;
+      }
+      return realParts[0];
+    };
+
+    const works = (staff.staffMedia?.edges || [])
+      .map(edge => ({ edge, role: pickDisplayRole(edge.staffRole || '') }))
+      .filter((e): e is { edge: typeof e.edge; role: string } => e.role !== null)
+      .map(({ edge, role }) => {
+        const item = edge.node;
+        const type = mapExternalFormatToType(item.type, item.format);
+        const title = item.title.english || item.title.romaji || 'Unknown Title';
+        return { url: `/media?id=${type}:${item.id}`, title, cover: item.coverImage?.medium || null, role };
+      });
 
     const dbAuthor: DbMediaAuthor = {
       external_id: externalId,
@@ -234,26 +260,27 @@ const lang = getLang(Astro.url);
 
     const avatarContainer = document.getElementById('author-avatar-container')!;
     avatarContainer.innerHTML = data.image
-      ? `<img src="${safeUrl(data.image)}" alt="${escapeHtml(data.name)}" class="author-avatar-img" />`
-      : `<div class="author-avatar-placeholder">No Image</div>`;
+      ? `<img src="${safeUrl(data.image)}" alt="${escapeHtml(data.name)}" class="character-avatar-img" />`
+      : `<div class="character-avatar-placeholder">Sin imagen</div>`;
 
+    const altNamesWrap = document.getElementById('author-alt-names-wrap')!;
     const altNamesContainer = document.getElementById('author-alt-names')!;
     if (data.aliases.length > 0) {
-      altNamesContainer.innerHTML = data.aliases.map(alt => `<span class="author-alt-name-tag">${escapeHtml(alt)}</span>`).join('');
-      altNamesContainer.style.display = 'flex';
+      altNamesContainer.innerHTML = data.aliases.map(alt => `<span class="character-alt-name-tag">${escapeHtml(alt)}</span>`).join('');
+      altNamesWrap.style.display = 'block';
     } else {
-      altNamesContainer.style.display = 'none';
+      altNamesWrap.style.display = 'none';
     }
 
     const statsList = document.getElementById('author-stats-list')!;
     statsList.innerHTML = '';
     let hasStats = false;
     if (data.birthDate) {
-      statsList.innerHTML += `<div class="author-sidebar-stat-item"><span class="author-stat-label">Birth Date</span><span class="author-stat-value">${escapeHtml(data.birthDate)}</span></div>`;
+      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">Fecha de nacimiento</span><span class="media-stat-value">${escapeHtml(data.birthDate)}</span></div>`;
       hasStats = true;
     }
     if (data.deathDate) {
-      statsList.innerHTML += `<div class="author-sidebar-stat-item"><span class="author-stat-label">Death Date</span><span class="author-stat-value">${escapeHtml(data.deathDate)}</span></div>`;
+      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">Fecha de fallecimiento</span><span class="media-stat-value">${escapeHtml(data.deathDate)}</span></div>`;
       hasStats = true;
     }
     document.getElementById('author-stats-card')!.style.display = hasStats ? 'block' : 'none';
@@ -270,20 +297,21 @@ const lang = getLang(Astro.url);
     const worksSection = document.getElementById('author-works-section')!;
     if (data.works.length > 0) {
       worksGrid.innerHTML = data.works
-        .map(w => {
-          const coverImg = w.cover
-            ? `<img src="${safeUrl(w.cover)}" alt="${escapeHtml(w.title)}" class="author-work-cover" />`
-            : `<div class="author-work-placeholder">${escapeHtml(w.title)}</div>`;
-          return `
-            <a href="${w.url}" class="author-work-card">
-              <div class="author-work-cover-wrap">
-                ${coverImg}
+        .map(w => `
+          <a href="${w.url}" class="media-relation-card">
+            ${w.cover ? `<div class="media-relation-bg-layer"><img src="${safeUrl(w.cover)}" alt="" loading="lazy" /></div>` : ''}
+            <div class="media-relation-card-overlay"></div>
+            <div class="media-relation-card-content">
+              <div class="media-relation-thumb">
+                ${w.cover ? `<img src="${safeUrl(w.cover)}" alt="${escapeHtml(w.title)}" loading="lazy" />` : ''}
               </div>
-              <span class="author-work-title" title="${escapeHtml(w.title)}">${escapeHtml(w.title)}</span>
-              ${w.role ? `<span class="author-work-role">${escapeHtml(w.role)}</span>` : ''}
-            </a>
-          `;
-        })
+              <div class="media-relation-info">
+                <span class="media-relation-title">${escapeHtml(w.title)}</span>
+              </div>
+            </div>
+            ${w.role ? `<div class="media-relation-type">${escapeHtml(w.role)}</div>` : ''}
+          </a>
+        `)
         .join('');
       worksSection.style.display = 'block';
     } else {
@@ -362,7 +390,7 @@ const lang = getLang(Astro.url);
       renderAuthor(data);
 
       loadingEl.style.display = 'none';
-      contentEl.style.display = 'grid';
+      contentEl.style.display = 'block';
 
     } catch (err: any) {
       console.error(err);

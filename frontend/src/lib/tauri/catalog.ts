@@ -3,7 +3,6 @@ import { invoke, tauriCmd, tauriRun, isTauri } from './core';
 export interface MediaCatalogEntry {
   id:                   string;
   external_id:          string;
-  authors_csv?:         string | null;
   banners_csv?:         string | null;
   /** Set via PrEditorModal to reserve this external_id (so it can never be
    *  re-added as "new" from a live search result) while hiding the row

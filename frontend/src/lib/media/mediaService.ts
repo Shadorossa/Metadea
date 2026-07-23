@@ -129,7 +129,7 @@ const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'title_english', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
-  'authors_csv', 'source_url', 'country_code',
+  'source_url', 'country_code',
 ] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
@@ -152,7 +152,6 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       genres_tag_csv: existing?.genres_tag_csv || (data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null),
       platforms_csv: existing?.platforms_csv || (data.platforms ? data.platforms.join(',') : null),
       shop_links_csv: existing?.shop_links_csv || shopLinks || null,
-      authors_csv: existing?.authors_csv || ((data.authors ?? []).map(a => a.name).join(',')),
       source_url: existing?.source_url || data.sourceUrl || null,
       country_code: existing?.country_code || data.countryOfOrigin || null,
     };
@@ -235,9 +234,12 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
   if (existing.release_end_year != null) data.releaseEndYear = existing.release_end_year;
   if (existing.release_end_month != null) data.releaseEndMonth = existing.release_end_month;
   if (existing.release_end_day != null) data.releaseEndDay = existing.release_end_day;
-  if (existing.authors_csv) {
-    data.authors = existing.authors_csv.split(',').map(name => ({ name }));
-  }
+  // Author data has no sticky field of its own anymore (authors_csv is
+  // retired — see db.rs migration 35) — data.authors stands as whatever the
+  // live fetch just returned; the media_author/media_by_author relation
+  // tables (loaded below via loadDbRelationsAndAuthors/saveMediaAuthors) are
+  // the only persisted source now, and they carry image/url/external_id
+  // properly instead of a bare comma-separated name list.
 }
 
 // Live fetch, blocked-relation filtering, and full DB persistence.

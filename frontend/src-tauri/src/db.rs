@@ -722,6 +722,20 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE character_appearances ADD COLUMN position INTEGER", []);
         mark_migration(conn, 34)?;
     }
+    if v < 35 {
+        // authors_csv (a flat comma-separated name cache, curator-editable in
+        // the PR editor) is retired — the "sticky" logic that rebuilt
+        // MediaPageData.authors from it on every live refetch discarded each
+        // author's image/url/external_id even when the fresh fetch had them,
+        // permanently downgrading real author cards to bare unlinked names
+        // (see mediaService.ts's applyStickyLocalFields, now removed). The
+        // media_author/media_by_author relation tables already carry the
+        // same information plus image/url, and don't have that problem —
+        // single source of truth from here on. `let _ =`: a brand-new
+        // database's base schema never had this column at all.
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN authors_csv", []);
+        mark_migration(conn, 35)?;
+    }
 
     Ok(())
 }
@@ -927,7 +941,6 @@ CREATE TABLE IF NOT EXISTS local_anime_folders (
 CREATE TABLE IF NOT EXISTS media_catalog (
     id                   TEXT PRIMARY KEY,
     external_id          TEXT UNIQUE NOT NULL,
-    authors_csv          TEXT DEFAULT '',
     banners_csv          TEXT DEFAULT '',
     blocked_at           TEXT,
     country_code         TEXT,

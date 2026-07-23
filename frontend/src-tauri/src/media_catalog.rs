@@ -85,7 +85,6 @@ pub(crate) fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
 pub struct MediaCatalogEntry {
     pub id: String,
     pub external_id: String,
-    pub authors_csv: Option<String>,
     pub banners_csv: Option<String>,
     pub blocked_at: Option<String>,
     pub country_code: Option<String>,
@@ -122,7 +121,7 @@ pub struct MediaCatalogEntry {
 }
 
 const SELECT_ALL: &str = "
-    SELECT id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
+    SELECT id, external_id, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
            parent_id, platforms_csv,
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
@@ -135,7 +134,7 @@ const SELECT_ALL: &str = "
 // Same as SELECT_ALL but excludes blocked rows (visible_media_catalog view,
 // db.rs) — used by every read path except a direct id lookup.
 const SELECT_VISIBLE: &str = "
-    SELECT id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
+    SELECT id, external_id, banners_csv, blocked_at, country_code, cover_url,
            favorites_count, format, genres_csv, genres_tag_csv,
            parent_id, platforms_csv,
            ratings_count, release_day, release_end_day, release_end_month, release_end_year,
@@ -149,40 +148,39 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<MediaCatalogEntry> 
     Ok(MediaCatalogEntry {
         id:                  row.get::<_, Option<String>>(0)?.unwrap_or_default(),
         external_id:         row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-        authors_csv:         row.get(2)?,
-        banners_csv:         row.get(3)?,
-        blocked_at:          row.get(4)?,
-        country_code:        row.get(5)?,
-        cover_url:           row.get(6)?,
-        favorites_count:     row.get(7)?,
-        format:              row.get(8)?,
-        genres_csv:          row.get(9)?,
-        genres_tag_csv:      row.get(10)?,
-        parent_id:           row.get(11)?,
-        platforms_csv:       row.get(12)?,
-        ratings_count:       row.get(13)?,
-        release_day:         row.get(14)?,
-        release_end_day:     row.get(15)?,
-        release_end_month:   row.get(16)?,
-        release_end_year:    row.get(17)?,
-        release_month:       row.get(18)?,
-        release_year:        row.get(19)?,
-        score_global:        row.get(20)?,
-        shop_links_csv:      row.get(21)?,
-        source:              row.get(22)?,
-        source_url:          row.get(23)?,
-        status:              row.get(24)?,
-        synopsis:            row.get(25)?,
-        time_length:         row.get(26)?,
-        title_english:       row.get(27)?,
-        title_main:          row.get(28)?,
-        title_native:        row.get(29)?,
-        title_romaji:        row.get(30)?,
-        total_count:         row.get(31)?,
-        total_count_2:       row.get(32)?,
-        r#type:              row.get::<_, Option<String>>(33)?.unwrap_or_default(),
-        created_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
-        updated_at:          row.get::<_, Option<String>>(35)?.unwrap_or_default(),
+        banners_csv:         row.get(2)?,
+        blocked_at:          row.get(3)?,
+        country_code:        row.get(4)?,
+        cover_url:           row.get(5)?,
+        favorites_count:     row.get(6)?,
+        format:              row.get(7)?,
+        genres_csv:          row.get(8)?,
+        genres_tag_csv:      row.get(9)?,
+        parent_id:           row.get(10)?,
+        platforms_csv:       row.get(11)?,
+        ratings_count:       row.get(12)?,
+        release_day:         row.get(13)?,
+        release_end_day:     row.get(14)?,
+        release_end_month:   row.get(15)?,
+        release_end_year:    row.get(16)?,
+        release_month:       row.get(17)?,
+        release_year:        row.get(18)?,
+        score_global:        row.get(19)?,
+        shop_links_csv:      row.get(20)?,
+        source:              row.get(21)?,
+        source_url:          row.get(22)?,
+        status:              row.get(23)?,
+        synopsis:            row.get(24)?,
+        time_length:         row.get(25)?,
+        title_english:       row.get(26)?,
+        title_main:          row.get(27)?,
+        title_native:        row.get(28)?,
+        title_romaji:        row.get(29)?,
+        total_count:         row.get(30)?,
+        total_count_2:       row.get(31)?,
+        r#type:              row.get::<_, Option<String>>(32)?.unwrap_or_default(),
+        created_at:          row.get::<_, Option<String>>(33)?.unwrap_or_default(),
+        updated_at:          row.get::<_, Option<String>>(34)?.unwrap_or_default(),
     })
 }
 
@@ -227,7 +225,7 @@ pub async fn save_catalog_entry(
 
     conn.execute(
         "INSERT OR REPLACE INTO media_catalog (
-            id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
+            id, external_id, banners_csv, blocked_at, country_code, cover_url,
             favorites_count, format, genres_csv, genres_tag_csv,
             parent_id, platforms_csv,
             ratings_count, release_day, release_end_day, release_end_month, release_end_year,
@@ -235,11 +233,10 @@ pub async fn save_catalog_entry(
             shop_links_csv, source, source_url, status, synopsis,
             time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
             type, created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         rusqlite::params![
             &entry.id,
             &entry.external_id,
-            &entry.authors_csv,
             &entry.banners_csv,
             &entry.blocked_at,
             &entry.country_code,
@@ -276,8 +273,6 @@ pub async fn save_catalog_entry(
         ],
     ).str_err()?;
 
-    // authors_csv is just a flat display cache (MediaPage.tsx) — real author
-    // relations go through save_media_authors/save_author_profile_and_relations.
     Ok(entry)
 }
 

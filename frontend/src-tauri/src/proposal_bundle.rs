@@ -207,7 +207,7 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
     if exists_val == 0 {
         tx.execute(
             "INSERT INTO media_catalog (
-                id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
+                id, external_id, banners_csv, blocked_at, country_code, cover_url,
                 favorites_count, format, genres_csv, genres_tag_csv,
                 parent_id, platforms_csv,
                 ratings_count, release_day, release_end_day, release_end_month, release_end_year,
@@ -215,11 +215,10 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 shop_links_csv, source, source_url, status, synopsis,
                 time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
                 type, created_at, updated_at
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &entry.external_id,
-                &entry.authors_csv,
                 &entry.banners_csv,
                 &entry.blocked_at,
                 &entry.country_code,
@@ -259,7 +258,7 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
     } else {
         tx.execute(
             "UPDATE media_catalog SET
-                authors_csv = ?, banners_csv = ?, blocked_at = ?, country_code = ?, cover_url = ?,
+                banners_csv = ?, blocked_at = ?, country_code = ?, cover_url = ?,
                 favorites_count = ?, format = ?, genres_csv = ?,
                 genres_tag_csv = ?, parent_id = ?,
                 platforms_csv = ?, ratings_count = ?, release_day = ?,
@@ -271,7 +270,6 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 updated_at = ?
              WHERE external_id = ?",
             rusqlite::params![
-                &entry.authors_csv,
                 &entry.banners_csv,
                 &entry.blocked_at,
                 &entry.country_code,

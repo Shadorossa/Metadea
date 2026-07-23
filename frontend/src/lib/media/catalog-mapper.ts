@@ -1,7 +1,7 @@
 // Local-catalog (SQLite) → MediaPageData mapping, for the instant fast-path
 // render shown before/without a live API fetch.
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor, MediaStat } from './types';
+import type { MediaPageData, MediaStat } from './types';
 import { formatDateParts, lookupLabel, countryName } from './mapper-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES } from '../constants/media';
@@ -15,20 +15,16 @@ export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[n
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
   const tm = getT().media;
-  const authorList = c.authors_csv ? c.authors_csv.split(',').filter(Boolean) : [];
-  const authors: MediaAuthor[] = authorList.map(name => ({ external_id: `author:${name}`, name }));
   const stats: MediaStat[] = [];
   // Order must match each live mapper's own push order (score, author,
   // episodes/chapters, duration, format|status, country) or Datos visibly
-  // reorders itself once a live fetch replaces this render.
+  // reorders itself once a live fetch replaces this render. Authors
+  // themselves aren't in this fast path at all anymore — no longer cached
+  // as a catalog column (see db.rs migration 35), so they only ever come
+  // from the relational media_author table, patched in moments later by
+  // enrichLocalData just like characters/companies already are.
   if (c.score_global != null) {
     stats.push({ label: tm.stat_score, value: String(c.score_global), isScore: true });
-  }
-  if (authorList.length > 0) {
-    stats.push({
-      label: authorList.length > 1 ? 'Autores' : 'Autor',
-      value: authorList.join(', '),
-    });
   }
   if (c.type === 'anime' || c.type === 'series') {
     if (c.total_count) {
@@ -81,9 +77,6 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
   // loads, the same "flashes in late" tradeoff as every other relational
   // field on this fast path (authors, characters, ...).
   const metaLines: string[] = [];
-  if ((c.type === 'book' || c.type === 'comic') && authorList.length > 0) {
-    metaLines.push(authorList.join(', '));
-  }
 
   // "start - end" once an end date exists, matching anilist-mapper.
   const startFmt = formatDateParts({ year: c.release_year, month: c.release_month, day: c.release_day });
@@ -127,7 +120,6 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     relations:     [],
     progressStatus: inferProgressStatus(c.type),
     progressLabel,
-    authors:       authors.length > 0 ? authors : undefined,
   };
 }
 
@@ -174,9 +166,6 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
       : data.storeLinks?.length
         ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
         : undefined,
-    // Names only — a flat display cache for the fast path, not a relation
-    // store (see saveMediaAuthors for the real author relations).
-    authors_csv:           data.authors?.length ? data.authors.map(a => a.name).join(',') : undefined,
     created_at:            now,
     updated_at:            now,
   };
