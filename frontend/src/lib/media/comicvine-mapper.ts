@@ -173,7 +173,7 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
 
   return {
     externalId,
-    type: 'comic',
+    type: externalId.slice(0, externalId.indexOf(':')),
     titleMain,
     titleNative:  undefined,
     titleEnglish: undefined,

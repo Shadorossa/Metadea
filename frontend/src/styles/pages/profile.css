@@ -392,12 +392,21 @@
   left: 100%;
   top: 0;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: stretch;
   gap: 0.4rem;
-  padding-left: 0.4rem;
+  /* The left inset must be padding, not margin — margin sits outside this
+     element's own box, so the cursor crossing it (moving right from the
+     card into the flyout) would briefly leave every hoverable element at
+     once and collapse the flyout before it's reached. */
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
   max-width: 0;
   overflow: hidden;
+  background: color-mix(in srgb, var(--bg-base) 55%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 8px;
   transition: max-width 0.35s ease;
   pointer-events: none;
 }
@@ -584,6 +593,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.1rem;
   min-width: 1.3rem;
   height: 1.3rem;
   padding: 0 0.35rem;
@@ -595,6 +605,17 @@
   line-height: 1;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   cursor: help;
+}
+
+/* The "›" hints the badge opens a flyout of the bundle's contents to the
+   right — nudges further right on hover, like a menu arrow easing open. */
+.library-card-group-badge-arrow {
+  display: inline-block;
+  transition: transform 0.35s ease;
+}
+
+.library-card-cell--stacked:hover .library-card-group-badge-arrow {
+  transform: translateX(3px);
 }
 
 .library-card-tag-badges {

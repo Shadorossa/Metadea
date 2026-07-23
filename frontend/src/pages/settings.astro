@@ -61,10 +61,10 @@ const version = pkg.version;
         <span
           class="section-label settings-sidebar-label"
           id="settings-admin-label"
-          style="margin-top: 1rem; display: none;"
+          style="margin-top: 1rem;"
           >{t.settings.section_admin}</span
         >
-        <a href="/admin/catalog" class="settings-tab" id="settings-admin-link" style="display: none;">
+        <a href="/admin/catalog" class="settings-tab" id="settings-admin-link">
           <Fragment set:html={ICON_SETTINGS_ADMIN} />
           {t.settings.tab_admin}
         </a>
@@ -107,7 +107,6 @@ const version = pkg.version;
   import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
   import { initCatalogHealthCheck } from "../lib/settings/catalog-health";
   import { initSettingsTabs } from "../lib/settings/tabs";
-  import { isConnectedAsOwner } from "../lib/github/ownership";
   import { getT } from "../i18n/client";
 
   function showToast(msg?: string) {
@@ -226,12 +225,6 @@ const version = pkg.version;
     initCommunityCatalogSync();
     initCatalogHealthCheck();
     initSettingsTabs();
-
-    isConnectedAsOwner().then(isOwner => {
-      if (!isOwner) return;
-      document.getElementById("settings-admin-label")?.style.removeProperty("display");
-      document.getElementById("settings-admin-link")?.style.removeProperty("display");
-    }).catch(err => console.warn("[Settings] Admin section visibility check failed:", err));
 
     // Re-setup help modals on SPA navigation
     setupHelpModals();

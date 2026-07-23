@@ -45,6 +45,19 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
 
   const { type, id: numericId } = parseExternalId(rawId);
 
+  // Comic-Vine-sourced issue sub-entries (manga:issue-, lnovel:issue-,
+  // comic:issue-) carry their parent work's own type prefix so catalog
+  // classification matches the parent, but the actual fetch always goes
+  // through ComicVine — must be checked before the type-based routing below,
+  // since e.g. "manga" would otherwise match the AniList branch.
+  const idStr = rawId.slice(rawId.indexOf(':') + 1);
+  if (idStr.startsWith('issue-')) {
+    const issueId = parseInt(idStr.slice('issue-'.length), 10);
+    if (!Number.isFinite(issueId)) return null;
+    const issue = await fetchComicVineIssue(issueId);
+    return issue ? mapComicVineIssueToMedia(issue, rawId) : null;
+  }
+
   if (ANILIST_TYPES.includes(type)) {
     if (!numericId) return null;
     const raw = await fetchAniListDetail(numericId);
@@ -70,13 +83,6 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
   }
 
   if (type === 'comic') {
-    const idStr = rawId.slice(rawId.indexOf(':') + 1);
-    if (idStr.startsWith('issue-')) {
-      const issueId = parseInt(idStr.slice('issue-'.length), 10);
-      if (!Number.isFinite(issueId)) return null;
-      const issue = await fetchComicVineIssue(issueId);
-      return issue ? mapComicVineIssueToMedia(issue, rawId) : null;
-    }
     const volumeId = parseInt(idStr, 10);
     if (!Number.isFinite(volumeId)) return null;
     const volume = await fetchComicVineVolume(volumeId);

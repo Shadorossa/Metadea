@@ -4,10 +4,12 @@ import { comicVineSearch, type ComicVineIssue, type ComicVineSearchPage } from '
 import { unifyGenres } from './genre-unifier';
 import type { MediaPageData, MediaCharacter } from './types';
 
-// Maps to MediaRelation shape; only issues with a cover are included.
-// Not clickable for manga (ComicVine issues shown just as visual context
-// there, not real navigable entries) — comics keep their normal link.
-function issuesToRelations(issues: ComicVineIssue[], label: string, clickable: boolean): MediaPageData['relations'] {
+// Maps to MediaRelation shape; only issues with a cover are included. The id
+// carries the parent work's own base type (manga:issue-, lnovel:issue-,
+// comic:issue-) so a manga's chapters stay classified as manga even though
+// the actual data always comes from ComicVine — see fetchMediaDataInternal's
+// generic "issue-" routing in mediaService.ts.
+function issuesToRelations(issues: ComicVineIssue[], label: string, baseType: string): MediaPageData['relations'] {
   const result: MediaPageData['relations'] = [];
   for (const issue of issues) {
     const cover = issue.image?.medium_url ?? issue.image?.small_url ?? undefined;
@@ -15,11 +17,7 @@ function issuesToRelations(issues: ComicVineIssue[], label: string, clickable: b
     const numberPart = issue.issue_number ? `#${issue.issue_number}` : '';
     const namePart = issue.name ? ` — ${issue.name}` : '';
     const title = (numberPart + namePart) || `#${issue.id}`;
-    if (!clickable) {
-      result.push({ typeLabel: label, relationType: 'ISSUE', title, cover });
-      continue;
-    }
-    const relatedExternalId = `comic:issue-${issue.id}`;
+    const relatedExternalId = `${baseType}:issue-${issue.id}`;
     result.push({ typeLabel: label, relationType: 'ISSUE', title, cover, url: `/media?id=${relatedExternalId}`, relatedExternalId });
   }
   return result;
@@ -74,7 +72,7 @@ export async function fetchComicIssues(
   altTitle?: string,
 ): Promise<ComicIssuesResult> {
   const isComic = rawId.startsWith('comic:');
-  const isManga = rawId.startsWith('manga:');
+  const baseType = rawId.slice(0, rawId.indexOf(':'));
   const volumeId = await resolveVolumeId(rawId, isComic, titleMain, altTitle);
   if (!volumeId) return { relations: null, characters: [] };
 
@@ -91,7 +89,7 @@ export async function fetchComicIssues(
   const genreDots = isComic ? (core.join(' · ') || undefined) : undefined;
   const genreTagDots = isComic ? (tags.join(' · ') || undefined) : undefined;
 
-  const issueRelations = issuesToRelations(issues, issuesLabel, !isManga);
+  const issueRelations = issuesToRelations(issues, issuesLabel, baseType);
   if (!issueRelations.length) return { relations: null, characters, genreDots, genreTagDots };
   const withoutOld = (Array.isArray(currentRelations) ? currentRelations : []).filter(r => r.relationType !== 'ISSUE');
   return { relations: [...withoutOld, ...issueRelations], characters, genreDots, genreTagDots };

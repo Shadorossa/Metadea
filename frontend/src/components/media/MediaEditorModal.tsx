@@ -108,7 +108,11 @@ function NumberField({ label, value, max, step, onChange }: {
 export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry, initialActiveLogId }: Props) {
   const t  = i18n;
   const te = t.editor;
-  const isMovie = data.type === 'movie' || (data.type === 'anime' && data.format === 'MOVIE');
+  // Any work whose whole "total" is a single unit (a movie, an anime movie,
+  // an OVA/special with just one episode, etc.) gets the same one-shot
+  // "viewing date" field as a movie instead of a started/finished range —
+  // a range makes no sense when there's nothing to span.
+  const isMovie = data.type === 'movie' || (data.type === 'anime' && data.format === 'MOVIE') || data.totalCount === 1;
 
   const [entry, dispatchEntry] = useReducer(entryReducer, externalId, id => ({ ...entryInit, activeLogId: initialActiveLogId || id }));
   const [ui,    dispatchUi]    = useReducer(uiReducer, {

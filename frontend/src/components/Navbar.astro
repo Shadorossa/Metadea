@@ -40,11 +40,6 @@ const { activePage, i18n } = Astro.props;
 
   <!-- Derecha: notificaciones + usuario -->
   <div class="nav-group">
-    <a href="/admin/catalog" data-nav="admin" id="nav-admin-btn" class={`nav-icon-btn${activePage === 'admin' ? ' active' : ''}`} title="Admin" style="display: none;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </a>
     <a href="/notifications" data-nav="notifications" class={`nav-icon-btn${activePage === 'notifications' ? ' active' : ''}`} title={i18n.notifications}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -87,24 +82,6 @@ const { activePage, i18n } = Astro.props;
     return undefined;
   }
 
-  // Owner-only admin link — hidden by default (see the inline style above),
-  // shown once we confirm the connected GitHub account matches the repo
-  // owner. Checked once per full page load; the navbar itself persists
-  // across View Transitions so this doesn't need to re-run per navigation.
-  let adminLinkChecked = false;
-  async function checkAdminLinkVisibility() {
-    if (adminLinkChecked) return;
-    adminLinkChecked = true;
-    const adminLink = document.getElementById('nav-admin-btn') as HTMLAnchorElement | null;
-    if (!adminLink || typeof window === 'undefined' || !('__TAURI_IPC__' in window)) return;
-    try {
-      const { isConnectedAsOwner } = await import(/* @vite-ignore */ '../lib/github/ownership');
-      if (await isConnectedAsOwner()) adminLink.style.display = '';
-    } catch (err) {
-      console.warn('[Navbar] Admin link visibility check failed:', err);
-    }
-  }
-
   function updateActiveNav() {
     const path = window.location.pathname;
     const key = computeActivePage(path);
@@ -127,5 +104,4 @@ const { activePage, i18n } = Astro.props;
   // navigation — that's all this persisted navbar needs now that the account
   // button is a plain link instead of a dropdown.
   document.addEventListener('astro:page-load', updateActiveNav);
-  document.addEventListener('astro:page-load', checkAdminLinkVisibility);
 </script>

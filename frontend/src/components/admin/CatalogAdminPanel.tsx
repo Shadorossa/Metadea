@@ -183,10 +183,11 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
+  // Local catalog data loads for everyone — only the GitHub tab (direct
+  // repo file browsing/deletion, not the fork+PR flow every edit already
+  // goes through) needs real write access to the repo.
   useEffect(() => {
-    if (!isOwner) return;
     loadEntries();
-    loadGithubFiles();
     loadSagas();
     loadCharacters();
     getAllCatalogEntries().then(all => {
@@ -197,7 +198,24 @@ export function CatalogAdminPanel({ i18n }: Props) {
       setCatalogInfoMap(map);
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    loadGithubFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner]);
+
+  // Safety net for the source-toggle buttons below (which already hide
+  // "GitHub"/"Add work" without write access) — if access is ever lost
+  // mid-session (token cleared, etc.) while one of those was selected,
+  // fall back to the always-available Local tab instead of stranding the
+  // view on a now-hidden source.
+  useEffect(() => {
+    if (gate.state !== 'loading' && !isOwner && source !== 'local') {
+      setSource('local');
+    }
+  }, [isOwner, gate.state, source]);
 
   // Fetched on demand, the first time this tab combination is actually visited.
   useEffect(() => {
@@ -269,14 +287,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
   })();
 
   if (gate.state === 'loading') return null;
-  if (!isOwner) {
-    return (
-      <main className="placeholder-page">
-        <h1 className="placeholder-title">{t.title}</h1>
-        <p className="placeholder-text">{t.not_owner}</p>
-      </main>
-    );
-  }
 
   const confirmDeleteLocal = async () => {
     if (!deleteTarget) return;
@@ -401,20 +411,24 @@ export function CatalogAdminPanel({ i18n }: Props) {
         >
           {t.source_local}
         </button>
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${source === 'github' ? ' active' : ''}`}
-          onClick={() => setSource('github')}
-        >
-          {t.source_github}
-        </button>
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
-          onClick={() => setSource('add')}
-        >
-          {t.source_add}
-        </button>
+        {isOwner && (
+          <>
+            <button
+              type="button"
+              className={`catalog-admin-source-btn${source === 'github' ? ' active' : ''}`}
+              onClick={() => setSource('github')}
+            >
+              {t.source_github}
+            </button>
+            <button
+              type="button"
+              className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
+              onClick={() => setSource('add')}
+            >
+              {t.source_add}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="catalog-admin-source-toggle">
@@ -552,7 +566,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </>
       )}
 
-      {entity === 'character' && source === 'add' && (
+      {entity === 'character' && source === 'add' && isOwner && (
         <button type="button" className="catalog-admin-source-btn" onClick={() => setCharacterSearchOpen(true)}>
           {t.add_character_button}
         </button>
@@ -590,7 +604,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </>
       )}
 
-      {entity === 'media' && source === 'github' && (
+      {entity === 'media' && source === 'github' && isOwner && (
         <>
           <p className="catalog-admin-hint">{t.github_hint}</p>
 
@@ -668,7 +682,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
         </>
       )}
 
-      {entity === 'media' && source === 'add' && (
+      {entity === 'media' && source === 'add' && isOwner && (
         <>
           {addBusy && <p className="catalog-admin-status">{t.add_fetching}</p>}
           <AdminAddSearch

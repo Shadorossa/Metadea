@@ -66,10 +66,14 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
     const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
     return times.length ? formatDateNumeric(new Date(Math.max(...times))) : '';
   };
-  const dateStr = [
-    earliestDate(aggregateMembers.map(m => m.started_at)),
-    latestDate(aggregateMembers.map(m => m.finished_at)),
-  ].filter(Boolean).join(' → ');
+  const startDateStr = earliestDate(aggregateMembers.map(m => m.started_at));
+  const endDateStr = latestDate(aggregateMembers.map(m => m.finished_at));
+  // A one-shot work (movie, single-episode anime, etc. — see MediaEditorModal's
+  // isMovie) has its started_at/finished_at set to the same day, which would
+  // otherwise render as a redundant "12/2/2024 → 12/2/2024" range.
+  const dateStr = startDateStr === endDateStr
+    ? startDateStr
+    : [startDateStr, endDateStr].filter(Boolean).join(' → ');
 
   const openEditor = () => {
     if (bundleMeta) {
@@ -90,7 +94,8 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
         {cover && <div className="library-card-bg"><img className="library-card-bg-img" src={cover} alt="" /></div>}
         {grouped.length > 0 && (
           <span className="library-card-group-badge" title={`${p.library_group_editions_hint}: ${groupedTitles.join(', ')}`}>
-            +{grouped.length}
+            <span className="library-card-group-badge-count">+{grouped.length}</span>
+            <span className="library-card-group-badge-arrow">›</span>
           </span>
         )}
         {badges.length > 0 && (

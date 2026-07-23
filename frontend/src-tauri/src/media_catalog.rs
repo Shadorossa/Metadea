@@ -62,6 +62,14 @@ pub(crate) fn infer_type_from_id(external_id: &str) -> String {
 // A stub row's source, inferred from its type prefix — mirrors the source
 // string each live mapper writes (anilist/tmdb/igdb/openlibrary/comicvine).
 pub(crate) fn infer_source_from_id(external_id: &str) -> Option<&'static str> {
+    // Comic-Vine issue sub-entries keep their parent's type prefix (e.g.
+    // "manga:issue-123") so catalog classification matches the parent, but
+    // the data itself always comes from ComicVine regardless of that prefix.
+    if let Some((_, rest)) = external_id.split_once(':') {
+        if rest.starts_with("issue-") {
+            return Some("comicvine");
+        }
+    }
     match infer_type_from_id(external_id).as_str() {
         "anime" | "manga" | "lnovel" => Some("anilist"),
         "movie" | "series" => Some("tmdb"),

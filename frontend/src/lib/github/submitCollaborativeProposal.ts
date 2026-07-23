@@ -2,7 +2,7 @@ import { invoke } from '../tauri';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter } from '../tauri/characters';
 import type { GitHubUserProfile } from '../settings/github';
-import { REPO_OWNER, REPO_NAME, isRepoOwner } from './ownership';
+import { REPO_OWNER, REPO_NAME, checkRepoWriteAccess } from './ownership';
 import { setField } from '../shared/object-utils';
 import { catalogFilePath } from './catalogPaths';
 
@@ -244,7 +244,7 @@ export async function submitCollaborativeProposal(
 
   const branchName = `proposal-${primaryExternalId.replace(':', '-')}-${username}`;
 
-  const isOwner = isRepoOwner(username);
+  const isOwner = await checkRepoWriteAccess(token, username);
   const headRef = isOwner ? branchName : `${username}:${branchName}`;
   let targetRepoOwner = REPO_OWNER;
 
