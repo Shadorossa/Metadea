@@ -9,19 +9,12 @@ export interface FetchJsonOptions extends RequestInit {
   timeoutMs?: number;
 }
 
-// Applied whenever a call site doesn't pass its own timeoutMs — without
-// this, an unreachable/hanging provider (e.g. OpenLibrary timing out) used
-// to block that request until the OS's own TCP timeout kicked in (often
-// 60-130s), which for the "all types" search dragged down every other
-// already-finished provider along with it since it waits on all of them.
+// Without this, a hanging provider (e.g. OpenLibrary) blocked until the OS's
+// own TCP timeout (60-130s), dragging down the whole "all types" search.
 const DEFAULT_TIMEOUT_MS = 8000;
 
-/**
- * Fetches a URL and parses the JSON response.
- * Returns null on any failure (network error, non-OK status, invalid JSON)
- * instead of throwing — matches the "silent fail" behavior most search
- * providers rely on.
- */
+/** Returns null on any failure (network error, non-OK status, invalid JSON)
+ *  instead of throwing — matches most search providers' silent-fail behavior. */
 export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}): Promise<T | null> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, signal: externalSignal, ...init } = options;
 
@@ -54,15 +47,10 @@ export interface GraphQLResult<T> {
   errors?: Array<{ message: string }>;
 }
 
-/**
- * POSTs a GraphQL query/variables pair to `endpoint` with the standard JSON
- * headers, optionally authenticated with a bearer token. Doesn't throw for a
- * non-OK status or GraphQL errors (callers decide how to react), nor for its
- * own timeout — but a caller-provided `signal` being aborted (genuine
- * cancellation, e.g. the user changed the search query) still propagates as
- * a rejection, since some callers (search) rely on catching that specific
- * case to avoid overwriting fresher results with a stale/cancelled response.
- */
+/** POSTs a GraphQL query/variables pair. Doesn't throw for a non-OK status,
+ *  GraphQL errors, or its own timeout — but a caller-provided `signal`
+ *  aborting (genuine cancellation) still propagates as a rejection, since
+ *  search relies on catching that to avoid overwriting fresher results. */
 export async function graphqlPost<T>(
   endpoint: string,
   query: string,

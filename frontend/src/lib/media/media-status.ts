@@ -60,15 +60,10 @@ export function canonicalizeIgdbStatus(raw: number | null | undefined): Canonica
   return raw != null ? IGDB_STATUS_MAP[raw] : undefined;
 }
 
-// OpenLibrary (books) and Comic Vine (issues) have no live "airing/release"
-// status concept at all — unlike AniList/TMDB/IGDB, which each report a real
-// upcoming/ongoing/cancelled state, anything these two providers can return
-// has necessarily already been published. Without this, both mappers simply
-// never set MediaPageData.status, and media_catalog.status stayed null
-// forever for every book/comic — no live resync ever fills in what the
-// provider itself never reports. A named function (not a bare 'FINISHED'
-// literal at each mapper) so this is a documented, deliberate choice, not
-// something the next status-less provider silently forgets to repeat.
+// OpenLibrary/Comic Vine have no live release-status concept — anything they
+// return has necessarily already been published. A named function (not a
+// bare 'FINISHED' literal per mapper) marks this as deliberate, not an
+// oversight the next status-less provider silently forgets to repeat.
 export function canonicalizeAlwaysFinished(): CanonicalStatus {
   return 'FINISHED';
 }

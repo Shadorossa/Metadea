@@ -57,27 +57,18 @@ pub async fn sync_community_catalog(
 
         conn.execute("ATTACH DATABASE ?1 AS community", rusqlite::params![temp_path_str])
             .str_err()?;
-        // Counts every row actually inserted/updated across the whole merge
-        // below (new catalog entries, relations, characters, authors, sagas,
-        // and the gap-filled banners/genres/etc.) — not just brand new
-        // media_catalog rows — so the UI can tell "the community added
-        // something for you" from "nothing changed" even when every title
-        // involved was already in your local catalog.
+        // Counts every row inserted/updated across the whole merge below —
+        // lets the UI tell "the community added something" from "nothing
+        // changed" even when every title was already in the local catalog.
         let mut changes: i64 = 0;
         let merge_result = (|| -> Result<(), String> {
-            // Column list is explicit (not `SELECT *`) on purpose: DBs upgraded
-            // via the `ALTER TABLE ... ADD COLUMN authors_csv` migration in
-            // db.rs have authors_csv as their *last* physical column, while a
-            // fresh DB (this downloaded community one included) has it inline
-            // per METADEA_SCHEMA's CREATE TABLE text — position-based `SELECT *`
-            // would silently shift every column after the mismatch into the
-            // wrong field.
-            // blocked_at is a curator flag ("hide this remaster/edition
-            // everywhere") that IS meant to propagate community-wide, so a
-            // blocked entry someone proposed reaches every other user's
-            // catalog the same way any other collaborative-catalog field
-            // does. Guarded by attached_db_has_column in case this
-            // community.db predates the column.
+            // Explicit column list, not `SELECT *`: a DB upgraded via the
+            // authors_csv migration has it as its *last* physical column,
+            // while a fresh DB has it inline — position-based `SELECT *`
+            // would shift every later column into the wrong field.
+            // blocked_at is community-wide by design (a curator block should
+            // reach every install), guarded by attached_db_has_column in case
+            // this community.db predates the column.
             let possible_cols = [
                 "id", "external_id", "authors_csv", "banners_csv", "country_code", "cover_url",
                 "developer_badge", "favorites_count", "format", "genres_csv", "genres_tag_csv",
@@ -118,13 +109,8 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
-            // For entries that already existed locally (the INSERT OR IGNORE
-            // above only benefits brand-new rows), adopt a community block
-            // that isn't reflected here yet — same "fill gaps only" shape as
-            // the columns below, so a local unblock decision (blocked_at
-            // already NULL after the user re-enabled it) is never
-            // overwritten, but a fresh community-wide block still reaches
-            // every other user's install once it merges.
+            // Existing rows also adopt a not-yet-reflected community block —
+            // but only fills a NULL, so a local unblock is never overwritten.
             if has_blocked_col {
                 changes += conn.execute(
                     "UPDATE media_catalog
@@ -135,21 +121,11 @@ pub async fn sync_community_catalog(
                 ).str_err()? as i64;
             }
 
-            // The INSERT OR IGNORE above only benefits entries the user's
-            // local catalog doesn't have at all — for anything already
-            // cached (the common case, since the live API sync populates
-            // most rows before anyone ever opens the collaborative editor on
-            // them), it's silently skipped. That's fine for fields the live
-            // API sync keeps fresh (title, dates, score, status...), but
-            // banners/genres/companies/authors are *only* ever set through
-            // the collaborative catalog — an existing row can otherwise never
-            // receive a merged PR's update to those fields. Fill them in only
-            // where the local value is still empty, so a manual edit already
-            // present locally (or a fresher live-synced value) is never
-            // clobbered.
-            // Same "fill gaps only" shape for every gap-fillable column —
-            // built as one parameterized statement instead of five
-            // hand-copied UPDATEs that used to drift if only one got edited.
+            // banners/genres/companies/authors are only ever set through the
+            // collaborative catalog, so an already-cached row (most of them,
+            // since the live API sync gets there first) would otherwise never
+            // pick up a merged PR's update — fill each only where still
+            // empty, never clobbering a local edit or fresher live value.
             for col in ["banners_csv", "genres_csv", "genres_tag_csv", "publishers_csv", "authors_csv"] {
                 if attached_db_has_column(&conn, "community", "media_catalog", col) {
                     changes += conn.execute(
@@ -182,16 +158,9 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
-            // Relations (bundled-in episodes/updates, saga-derived prequel/
-            // sequel, and any other relation a PR carried over) — same
-            // fill-gaps merge, keyed by the table's own composite PK so this
-            // never overwrites a relation the user's own API sync produced.
-            // Excludes any pair the user has deliberately deleted locally:
-            // the community catalog can carry an older relation (e.g. from a
-            // different, earlier PR touching the same pair) that's since
-            // been removed here — the exact same "can't tell a deletion
-            // from never-synced" problem a live API resync has, so it gets
-            // the same per-pair tombstone guard (see deleted_relations).
+            // Relations, same fill-gaps merge (composite PK means this never
+            // overwrites one the user's own API sync produced). Respects the
+            // deleted_relations tombstone, same as a live resync would.
             changes += conn.execute(
                 "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  SELECT c.media_external_id, c.related_media_external_id, c.relation_type, c.type_label
@@ -221,12 +190,8 @@ pub async fn sync_community_catalog(
                 [],
             ).str_err()? as i64;
 
-            // Custom saga display name (editable in PrEditorModal, exported in
-            // every PR bundle — see saga_name there) — same fill-gaps merge
-            // as everything else above. Guarded by a table-existence check
-            // because these tables were only added to build-database.js's
-            // output alongside this merge; a community catalog built by an
-            // older workflow run won't have them yet.
+            // Custom saga display name, same fill-gaps merge — guarded since
+            // an older community catalog build might not have these tables yet.
             let has_saga_tables: bool = conn
                 .query_row(
                     "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'sagas'",
@@ -251,19 +216,11 @@ pub async fn sync_community_catalog(
             }
 
             // ── Saga reconciliation (authoritative from catalog) ─────────
-            // Everything above only fills gaps — a pair the local DB
-            // already has a row for is never touched, so a past bug that
-            // duplicated/garbled a saga chain locally survives forever even
-            // after the community catalog itself gets fixed. Nobody hand-
-            // edits these row by row (PrEditorModal's saga UI always
-            // rewrites the whole chain on save), so there's nothing local
-            // worth protecting the way a hand-typed synopsis is — wipe and
-            // rebuild entirely from whatever the community catalog says,
-            // for entries it actually has an opinion on. Scoped to the same
-            // types the frontend's own saga grouping considers chainable
-            // (SAGA_GROUPABLE_TYPES in library-grouping.ts) — started as
-            // games-only, widened after the same corruption turned up in a
-            // vnovel saga (Umineko no Naku Koro ni).
+            // Fill-gaps alone would let an old local saga bug survive even
+            // after the community catalog fixed it — nobody hand-edits these
+            // rows (PrEditorModal always rewrites the whole chain), so wipe
+            // and rebuild from the community catalog for types it has an
+            // opinion on (SAGA_GROUPABLE_TYPES in library-grouping.ts).
             changes += conn.execute(
                 "DELETE FROM media_relations
                  WHERE relation_type IN ('PREQUEL', 'SEQUEL', 'ALTERNATIVE')
@@ -317,16 +274,9 @@ pub async fn sync_community_catalog(
             let _ = crate::db::merge_fragmented_sagas(&conn);
 
             // ── Community-side deletions ────────────────────────────────
-            // The downloaded database.db is a full, current snapshot of the
-            // community catalog — anything in community_synced_ids (this
-            // client's snapshot from the *previous* sync) but missing from
-            // community.media_catalog now was removed upstream (e.g. via a
-            // merged collaborative-editor PR that deleted a saga entry).
-            // Only actually deleted locally when the user doesn't have it in
-            // their own library — a community removal must never touch
-            // something the user is tracking. On a first-ever sync,
-            // community_synced_ids is still empty, so nothing here matches
-            // and nothing gets deleted — only the snapshot refresh below runs.
+            // In last sync's snapshot (community_synced_ids) but missing from
+            // this download now = removed upstream. Only deleted locally if
+            // the user isn't tracking it in their own library.
             let removed_ids: Vec<String> = {
                 let mut stmt = conn.prepare(
                     "SELECT s.external_id FROM community_synced_ids s

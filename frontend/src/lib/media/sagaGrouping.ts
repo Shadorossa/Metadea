@@ -31,16 +31,12 @@ export interface SagaGroupEntry {
   kind: 'group' | 'source' | 'episode' | 'update';
 }
 
-/** Walks the saga's chronological order once and clusters it into
- *  SagaGroupEntry buckets — 'main' ids sharing the same free-text Concept
- *  Group name collapse into a single 'group' entry, which is what makes them
- *  alternates of each other (so e.g. a console remaster and its PC original,
- *  or Inazuma Eleven 2's three versions, count as one step in the saga
- *  timeline instead of a chain of their own sequels/prequels), while
- *  'source'/'episode'/'update' ids always stay standalone. Shared by the
- *  editor's render (to draw group boxes) and by handleSubmit (to derive
- *  prequel/sequel + source/episode/update edges) — previously each kept its
- *  own slightly different copy of this walk. */
+/** Clusters the saga's chronological order into SagaGroupEntry buckets:
+ *  'main' ids sharing the same free-text Concept Group name collapse into one
+ *  'group' entry (alternates — a remaster and its original count as one saga
+ *  step, not a sequel/prequel of each other); 'source'/'episode'/'update' ids
+ *  always stay standalone. Shared by the editor's render and handleSubmit's
+ *  edge derivation, which used to each keep a slightly different copy. */
 export function classifySagaChain(
   fullChain: string[],
   sagaRelationTypes: Record<string, SagaRelationType>,
@@ -80,34 +76,22 @@ export function classifySagaChain(
   return entries;
 }
 
-/** Reconstructs the saga's chronological order from previously-saved SEQUEL
- *  edges among `dateOrderedIds`, instead of trusting release dates alone.
- *
- *  handleSubmit walks whatever order the editor's sagaOrder state holds
- *  (release-date order, or a manually drag-reordered one) and writes a
- *  SEQUEL edge for every adjacent pair — but the *load* path used to always
- *  rebuild sagaOrder fresh from release dates on every open, discarding any
- *  saved reorder entirely. A manual reorder looked like it saved (the PR/
- *  local relations did update), but reopening the editor silently reverted
- *  the displayed order to release-date order every time.
- *
- *  Falls back to `dateOrderedIds` untouched when there are no SEQUEL edges
- *  yet (a fresh saga) or when the saved edges don't form a valid total
- *  order (shouldn't happen, but better to show *something* sensible than
- *  drop entries). Ties among ids with no edge constraint keep their
- *  relative release-date order for stability. */
+/** Reconstructs saga order from saved SEQUEL edges instead of trusting
+ *  release dates alone — without this, reopening the editor after a manual
+ *  drag-reorder silently reverted to release-date order every time, even
+ *  though the save itself had gone through fine. Falls back to
+ *  `dateOrderedIds` when there are no SEQUEL edges yet or they don't form a
+ *  valid order; unconstrained ties keep release-date order. */
 export function reconstructSagaOrder(dateOrderedIds: string[], relsByIndex: DbMediaRelation[][]): string[] {
   const idSet = new Set(dateOrderedIds);
   const dateIndex = new Map(dateOrderedIds.map((id, i) => [id, i]));
 
   // precedes.get(A) = ids that a saved SEQUEL edge says come directly after A
   const precedes = new Map<string, Set<string>>();
-  // Two alternates of the same Concept Group have no SEQUEL edge between
-  // them (they're not sequential releases) — without some hint, Kahn's tie
-  // break below always fell back to release-date order, silently reverting
-  // a manual reorder within a group every time the editor reopened. See
-  // PrEditorModal.tsx's own save logic for where this "#N" suffix comes
-  // from (each alternate's own position within its Concept Group).
+  // Two alternates of the same group have no SEQUEL edge between them, so
+  // without this hint Kahn's tie-break below fell back to release-date order
+  // and silently reverted a manual in-group reorder. "#N" is each
+  // alternate's position within its group (see PrEditorModal.tsx's save logic).
   const groupPosition = new Map<string, number>();
   const ALT_POSITION_RE = /#(\d+)$/;
   for (let i = 0; i < dateOrderedIds.length; i++) {

@@ -12,25 +12,16 @@ import { fetchMediaData } from '../media/mediaService';
 // does on save.
 export async function hydrateBundleIntoLocalCatalog(bundle: ProposalBundle): Promise<void> {
   const externalId = bundle.media_catalog.external_id;
-  // bundle.media_catalog is deliberately sparse — a proposal only ever
-  // carries identity fields plus whatever a curator actually hand-edited
-  // (see minimalProposalCatalogEntry, PrEditorModal.tsx), not a full
-  // snapshot. save_catalog_entry (Rust) is INSERT OR REPLACE, so passing
-  // that sparse object straight through used to wipe out every richer field
-  // (synopsis, cover, format, genres, platforms, ...) this same row already
-  // had locally from its own live API sync — merge onto the existing local
-  // row instead of replacing it outright.
+  // bundle.media_catalog only carries identity + hand-edited fields — merge
+  // onto the existing local row instead of replacing it (save_catalog_entry
+  // is INSERT OR REPLACE, so passing this sparse object straight through
+  // would wipe every richer field the live API sync already populated).
   const existing = await getCatalogEntry(externalId).catch(() => null);
   await saveCatalogEntry(existing ? { ...existing, ...bundle.media_catalog } : bundle.media_catalog);
 
-  // Same gap for every hydrated entry, not just the one actually opened —
-  // a saga member nobody has visited as a full media page on this install
-  // has no cover/synopsis/etc. of its own to merge onto (the bundle only
-  // ever carries identity + hand-curated fields), so it'd stay visibly
-  // blank (no cover art) in the saga order list forever. One live fetch
-  // (same path "Add work" already uses for a brand-new id), only when core
-  // content is still missing, so an install that already has the real data
-  // is never silently overwritten.
+  // A saga member nobody's visited as a full page has no cover/synopsis of
+  // its own to merge onto — one live fetch, only if still missing, so a
+  // populated install is never overwritten.
   const hydrated = await getCatalogEntry(externalId).catch(() => null);
   if (hydrated && !hydrated.cover_url && !hydrated.synopsis) {
     await fetchMediaData(externalId).catch(() => null);
@@ -50,16 +41,10 @@ export async function hydrateBundleIntoLocalCatalog(bundle: ProposalBundle): Pro
   await saveMediaAuthors(externalId, bundle.media_authors);
 }
 
-// A saga edit now lands as one self-contained GitHub file per affected
-// member (see submitCollaborativeProposal.ts) instead of a single file
-// carrying every member's relations — so opening just one member's file no
-// longer hydrates the local DB with the whole saga's data like it used to
-// when everything lived in one JSON. This walks the saga-chain relation
-// targets breadth-first, fetching + hydrating each linked member's own
-// GitHub file too, so PrEditorModal's local reconstruction (get_transitive_
-// relation_ids + per-member getCatalogEntry/getMediaRelations) still sees
-// the complete saga exactly as before, regardless of how many files it's
-// actually split across.
+// A saga edit lands as one self-contained GitHub file per affected member,
+// not one file carrying the whole chain — walks the saga relations
+// breadth-first, hydrating each linked member's own file too, so
+// PrEditorModal's local reconstruction still sees the complete saga.
 export async function hydrateSagaChainFromGithub(token: string, startExternalId: string): Promise<void> {
   const visited = new Set<string>([startExternalId]);
   let frontier = [startExternalId];
