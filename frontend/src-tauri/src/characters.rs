@@ -2,6 +2,7 @@ use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use crate::db::ToStringErr;
+use crate::media_catalog::{existing_catalog_ids, infer_type_from_id, infer_source_from_id};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CharacterEntry {
@@ -25,7 +26,8 @@ pub struct CharacterEntry {
     pub updated_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(default)]
 pub struct CharacterAppearance {
     pub media_external_id: String,
     pub relation_type: Option<String>,
@@ -33,6 +35,11 @@ pub struct CharacterAppearance {
     /// series) — distinct from relation_type, which holds anime relation
     /// kinds (MAIN/SUPPORTING) for AniList characters.
     pub character_name: Option<String>,
+    /// Only used to seed a media_catalog stub (see save_character_appearances)
+    /// when this appearance's own media isn't cataloged yet — not persisted
+    /// on the character_appearances row itself.
+    pub title: Option<String>,
+    pub cover: Option<String>,
 }
 
 const SELECT_CHARACTER: &str =
@@ -194,12 +201,39 @@ pub async fn save_character_appearances(
         [&character_external_id],
     ).str_err()?;
 
+    // Same stub-catalog seeding save_media_relations does for a relation
+    // target that isn't cataloged yet — a character's appearance list is the
+    // other direction of that same "media -> media" reference (media <-
+    // character here), so opening a character page should be just as able to
+    // seed cover/type/format for a work it links to as opening a media page.
+    let all_ids: Vec<String> = appearances.iter().map(|a| a.media_external_id.clone()).collect();
+    let existing_ids = existing_catalog_ids(&tx, &all_ids)?;
+
     for a in appearances {
         tx.execute(
             "INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at)
              VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![&character_external_id, &a.media_external_id, &a.relation_type, &a.character_name, &now],
         ).str_err()?;
+
+        if !existing_ids.contains(&a.media_external_id) {
+            let media_type = infer_type_from_id(&a.media_external_id);
+            tx.execute(
+                "INSERT OR IGNORE INTO media_catalog (
+                    id, external_id, type, source, title_main, cover_url, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                rusqlite::params![
+                    crate::db::generate_id(),
+                    &a.media_external_id,
+                    &media_type,
+                    infer_source_from_id(&a.media_external_id),
+                    &a.title,
+                    &a.cover,
+                    &now,
+                    &now,
+                ],
+            ).str_err()?;
+        }
     }
     tx.commit().str_err()?;
     Ok(())
@@ -220,6 +254,8 @@ pub async fn get_character_appearances(
                 media_external_id: row.get(0)?,
                 relation_type: row.get(1)?,
                 character_name: row.get(2)?,
+                title: None,
+                cover: None,
             })
         })
         .str_err()?

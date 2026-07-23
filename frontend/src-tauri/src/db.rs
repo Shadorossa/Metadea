@@ -672,6 +672,42 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN sync_failed_count", []);
         mark_migration(conn, 32)?;
     }
+    if v < 33 {
+        // One-time cleanup for character_appearances rows keyed "manga:<N>"
+        // that should have been "lnovel:<N>" — AniList's `type` field can't
+        // tell manga from light novel (both are type MANGA, only `format`
+        // distinguishes them), and earlier appearance-seeding code used
+        // `type` bare, filing every light-novel appearance under the wrong
+        // id. A manga:<N>/lnovel:<N> pair sharing the same numeric id can
+        // only be the same underlying AniList entry (AniList ids are unique
+        // regardless of type/format), so a lnovel:<N> catalog row already
+        // existing is solid proof the manga:<N> appearance is the stray one.
+        //
+        // Step 1: rename in place wherever nothing already occupies the
+        // correct id for that character (silently skipped by OR IGNORE
+        // when it does, handled by step 2 instead).
+        let _ = conn.execute(
+            "UPDATE OR IGNORE character_appearances
+             SET media_external_id = 'lnovel:' || substr(media_external_id, 7)
+             WHERE media_external_id LIKE 'manga:%'
+               AND EXISTS (SELECT 1 FROM media_catalog WHERE external_id = 'lnovel:' || substr(character_appearances.media_external_id, 7))",
+            [],
+        );
+        // Step 2: drop whatever's left under the wrong id once its correct
+        // sibling exists for that same character (covers both the rename's
+        // IGNORE'd conflicts and any pre-existing duplicate).
+        let _ = conn.execute(
+            "DELETE FROM character_appearances
+             WHERE media_external_id LIKE 'manga:%'
+               AND EXISTS (
+                   SELECT 1 FROM character_appearances b
+                   WHERE b.character_external_id = character_appearances.character_external_id
+                     AND b.media_external_id = 'lnovel:' || substr(character_appearances.media_external_id, 7)
+               )",
+            [],
+        );
+        mark_migration(conn, 33)?;
+    }
 
     Ok(())
 }

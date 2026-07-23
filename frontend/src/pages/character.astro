@@ -142,7 +142,7 @@ const translations = useTranslations(lang);
 
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
-  import { compareByReleaseDateDesc } from '../lib/media/mapper-utils';
+  import { compareByReleaseDateDesc, mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import {
@@ -625,7 +625,12 @@ const translations = useTranslations(lang);
       const rawEdges = character.media?.edges || [];
       const anilistMediaCache: Record<string, { title: string; cover: string | null; year: number | null; month: number | null; day: number | null; role: string | null }> = {};
       for (const edge of rawEdges as any[]) {
-        const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+        // AniList's own `type` field can't tell manga from light novel
+        // (both are type MANGA — format NOVEL is what actually distinguishes
+        // them) — using it bare here used to key light novel appearances as
+        // "manga:<id>" instead of "lnovel:<id>", creating a second entry
+        // alongside whatever this same work already existed as elsewhere.
+        const extId = `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`;
         anilistMediaCache[extId] = {
           title: edge.node.title.userPreferred || extId,
           cover: edge.node.coverImage?.large ?? null,
@@ -648,12 +653,22 @@ const translations = useTranslations(lang);
       const localIds = new Set(rawAppearances.map(a => a.media_external_id));
       const newFromAniList = (rawEdges as any[])
         .map(edge => ({
-          media_external_id: `${edge.node.type.toLowerCase()}:${edge.node.id}`,
+          media_external_id: `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`,
           relation_type: edge.characterRole ?? null,
           character_name: null as string | null,
+          // Seeds a media_catalog stub (cover/type/title) the same way a
+          // media page already does for its own relations, so this work has
+          // a real card/link even before anyone visits its own page first.
+          title: edge.node.title.userPreferred,
+          cover: edge.node.coverImage?.large ?? null,
         }))
         .filter(a => !localIds.has(a.media_external_id));
-      const unionAppearances = [...rawAppearances, ...newFromAniList];
+      // Hard guarantee against duplicate cards for the same work — first
+      // occurrence wins, so a local (possibly curator-edited) row always
+      // beats whatever AniList's own live edge for that same id would say.
+      const unionAppearances = Array.from(
+        new Map([...rawAppearances, ...newFromAniList].map(a => [a.media_external_id, a])).values(),
+      );
       if (newFromAniList.length > 0) {
         saveCharacterAppearances(characterExternalId, unionAppearances).catch(() => {});
       }

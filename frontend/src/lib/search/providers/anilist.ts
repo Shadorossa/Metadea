@@ -440,6 +440,11 @@ export interface AniListCharacterDetail {
           large: string;
         };
         type: string;
+        // ANIME/MANGA only — a light novel is type MANGA with format NOVEL,
+        // AniList has no separate LNOVEL type. Use mapExternalFormatToType
+        // (mapper-utils.ts), not `type` alone, wherever this needs to become
+        // this app's own manga/lnovel-distinguishing external_id.
+        format: string | null;
         startDate: { year: number | null; month: number | null; day: number | null } | null;
       };
     }>;
@@ -507,6 +512,7 @@ const DETAIL_CHARACTER_QUERY = `
               large
             }
             type
+            format
             startDate { year month day }
           }
         }
@@ -528,7 +534,19 @@ export async function fetchAniListCharacterDetail(id: number): Promise<AniListCh
       .then(data => data?.Character?.media ?? null),
   );
 
-  character.media.edges = [...character.media.edges, ...extraEdges];
+  // De-duped by the same type:id key every consumer already uses as this
+  // media's external_id — a page-boundary overlap (or AniList itself
+  // occasionally returning the same node twice) used to surface as literal
+  // duplicate "appearances" entries for every downstream reader
+  // (character.astro, CharacterPrEditorModal.tsx).
+  const seenMedia = new Set<string>();
+  const allEdges = [...character.media.edges, ...extraEdges].filter(edge => {
+    const key = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+    if (seenMedia.has(key)) return false;
+    seenMedia.add(key);
+    return true;
+  });
+  character.media.edges = allEdges;
   return character;
 }
 

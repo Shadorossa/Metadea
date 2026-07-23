@@ -23,6 +23,10 @@ export interface CharacterAppearance {
   media_external_id: string;
   relation_type?:     string | null;
   character_name?:    string | null;
+  /** Only used to seed a media_catalog stub when this appearance's media
+   *  isn't cataloged yet — not persisted on the appearance row itself. */
+  title?:              string | null;
+  cover?:              string | null;
 }
 
 export async function saveCharacter(

@@ -10,7 +10,7 @@ import { fetchAniListCharacterDetail, fetchAniListDetail, type AniListStaffSearc
 import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
-import { compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
+import { compareByReleaseDateDesc, mapExternalFormatToType } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
@@ -238,7 +238,10 @@ export function CharacterPrEditorModal() {
         const anilistMediaCache: Record<string, { title: string; cover: string | null; year: number | null; month: number | null; day: number | null }> = {};
         if (anilistDetail?.media?.edges) {
           for (const edge of anilistDetail.media.edges) {
-            const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+            // AniList's `type` alone can't tell manga from light novel (both
+            // are type MANGA — format NOVEL is what actually distinguishes
+            // them) — see character.astro's identical fix.
+            const extId = `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`;
             anilistMediaCache[extId] = {
               title: edge.node.title.userPreferred || `${edge.node.type}:${edge.node.id}`,
               cover: edge.node.coverImage?.large || null,
@@ -280,7 +283,7 @@ export function CharacterPrEditorModal() {
           }));
         } else if (anilistDetail?.media?.edges) {
           resolved = anilistDetail.media.edges.map((edge: any): AppearanceRow => {
-            const extId = `${edge.node.type.toLowerCase()}:${edge.node.id}`;
+            const extId = `${mapExternalFormatToType(edge.node.type, edge.node.format)}:${edge.node.id}`;
             return {
               media_external_id: extId,
               relation_type: edge.characterRole ?? 'SUPPORTING',
