@@ -81,15 +81,20 @@ export function mapTmdbToMedia(
 
   // Namespaced under "tmdb:" — TMDB's company ids and IGDB's/AniList's are
   // independent numbering spaces that would otherwise collide in the shared
-  // companies table. TMDB doesn't split production companies into separate
-  // roles the way IGDB/AniList do — tagged 'publisher' so this still lands
-  // in the same always-publisher display slot every other type uses.
-  const companies: MediaCompany[] = (raw.production_companies ?? []).map(c => ({
+  // companies table. production_companies (the studio that actually makes
+  // it) is 'developer'; TV's networks (the channel/platform that airs it —
+  // movies have no equivalent field) is 'publisher', mirroring games'
+  // developer/publisher split.
+  const toCompany = (c: { id: number; name: string; logo_path?: string | null }, role: 'developer' | 'publisher'): MediaCompany => ({
     external_id: `company:tmdb:${c.id}`,
     name: c.name,
     logo_url: c.logo_path ? API_ENDPOINTS.TMDB_IMAGE(c.logo_path) : null,
-    role: 'publisher',
-  }));
+    role,
+  });
+  const companies: MediaCompany[] = [
+    ...(raw.production_companies ?? []).map(c => toCompany(c, 'developer')),
+    ...(isTv ? (raw.networks ?? []).map(c => toCompany(c, 'publisher')) : []),
+  ];
 
   const scoreGlobal = raw.vote_average ? Math.round(raw.vote_average * 10) / 10 : undefined;
   const timeLength = isTv ? raw.episode_run_time?.[0] : raw.runtime ?? undefined;
@@ -139,8 +144,10 @@ export function mapTmdbToMedia(
   if (originCountry) stats.push({ label: tm.stat_country, value: countryName(originCountry) ?? originCountry });
 
   // The date already shows in the banner's own dateBadge overlay (top-right
-  // square) — it must not also repeat here, under the studios/companies line.
-  const metaLines = [companies.map(c => c.name).join(', ')].filter(Boolean);
+  // square) — it must not also repeat here, under the studios/companies
+  // line. That line is always the publisher role only (the network, for TV)
+  // — movies have no network, so this is empty for them, never a fallback.
+  const metaLines = [companies.filter(c => c.role === 'publisher').map(c => c.name).join(', ')].filter(Boolean);
 
   // Cards here represent the in-fiction character, not the actor — the
   // photo is necessarily the actor's own (TMDB has no separate character

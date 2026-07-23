@@ -66,10 +66,11 @@ export interface MediaCompany {
    *  type: games use IGDB's own developer/publisher split; anime maps
    *  AniList's main animation studio to 'developer' and every other credited
    *  company (production committee, AniList's own "Producers") to
-   *  'publisher'; movies/series tag every TMDB production company
-   *  'publisher' (TMDB has no equivalent split); comics tag ComicVine's
-   *  publisher 'publisher'. The media page's publisher-line display always
-   *  reads the 'publisher' role only. */
+   *  'publisher'; movies/series tag TMDB's production_companies 'developer'
+   *  and (TV only) its networks — the airing channel/platform — 'publisher'
+   *  (movies have no network field, so movie companies are 'developer'
+   *  only); comics tag ComicVine's publisher 'publisher'. The media page's
+   *  publisher-line display always reads the 'publisher' role only. */
   role: string;
 }
 

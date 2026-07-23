@@ -125,6 +125,12 @@ export interface TmdbTvDetail extends TmdbDetailBase {
   episode_run_time?: number[];
   created_by?: TmdbCreator[];
   content_ratings?: TmdbContentRatings;
+  /** The channel/streaming platform that airs the show (Netflix, HBO, TV
+   *  Tokyo, ...) — always present on the detail response, no
+   *  append_to_response needed. Distinct from production_companies (the
+   *  studio that actually makes it) the same way a game's publisher is
+   *  distinct from its developer; movies have no equivalent field. */
+  networks?: TmdbCompany[];
   /** TMDB's own show-type classification, always present on the detail
    *  response (no append_to_response needed) — a much more reliable source
    *  for "what kind of show is this" than inferring it from season/episode
