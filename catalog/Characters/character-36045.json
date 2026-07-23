@@ -1,0 +1,49 @@
+{
+  "character": {
+    "external_id": "character:36045",
+    "name": "Erika Furudo",
+    "name_native": "古戸ヱリカ",
+    "aliases_csv": "The Detective,Witch of Truth",
+    "biography": "<b>Gender:</b> Female<br>\n<b>Blood Type:</b> B<br>\n<b>Birthday:</b> 4/10<br>\n<br>\n<p>The main antagonist and self-proclaimed intellectual rapist of End of the Golden Witch and Dawn of the Golden Witch. She is a young detective introduced in End of the Golden Witch. A blue-haired girl estimated by <a href=\"https://anilist.co/character/21086/Ronoue-Genji\">Genji</a> to be about <a href=\"https://anilist.co/character/14044/Ushiromiya-Jessica\">Jessica</a>'s age, 18, she's highly intelligent and possesses a photographic memory.  She's quite polite in public and shows a deep interest in mysteries. In reality, she's quite ruthless and cunning and only solves mysteries, so she can sneer at those who pose them. She does, however, possess a serious inferiority complex, since she emotionally breaks down whenever things aren't in her favor. </p>\n<p><span class=\"markdown_spoiler\"><span>After the events of The Great Court of Illusions, Bernkastel grants Erika the title of The Witch of Truth as a reward for completely destroying the witch illusion of the 5th game.</span></span></p>",
+    "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b36045-M9i8Oa3sSXlR.png"
+  },
+  "appearances": [
+    {
+      "media_external_id": "manga:103290",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:145272",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:146748",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:146749",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:156726",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:51498",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:51499",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:64053",
+      "relation_type": null
+    },
+    {
+      "media_external_id": "manga:92936",
+      "relation_type": null
+    }
+  ],
+  "actors": []
+}
