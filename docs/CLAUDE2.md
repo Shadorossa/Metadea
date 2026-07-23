@@ -1,43 +1,45 @@
-# Metadea — Personal Media Manager
+# Metadea — Architecture
 
-**Status:** Early development  
-**Architecture:** Desktop app (Astro frontend + Turso backend)  
-**Model:** Local-first with optional cloud sync
+**Status:** Active development (v0.3.64, shipping `.msi` releases)
+**Architecture:** Tauri v2 desktop app — Astro + React frontend, Rust core, local SQLite — plus a small Cloudflare Workers service for account linking and an IGDB proxy
+**Model:** Local-first. Personal library data never leaves the machine; a separate GitHub-based flow lets users propose shared catalog metadata (characters, relations, sagas).
 
 ---
 
 ## Overview
 
-Metadea is a personal media library manager for anime, manga, light novels, games, visual novels, movies, series, and books. Users bring their own API keys and search/manage their collection locally.
+Metadea is a personal media library manager for anime, manga, light novels, games, visual novels, movies, series, comics and books. Almost everything — library entries, ratings, favorites, tier lists, the local metadata catalog — lives in a SQLite database inside the user's app-data folder, owned and read by the Rust side of the Tauri app. The web-looking frontend (Astro + React) is compiled into the native window; there is no separate web deployment.
 
-**Core principle:** User controls their own data, their own API quota, zero friction onboarding.
+A much smaller Cloudflare Workers service (`backend/`) exists alongside it, used for exactly two things today: proxying IGDB search (so regular users don't need their own IGDB/Twitch app credentials) and an optional Google account link. It is **not** where library data is stored.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Frontend (Astro + React)                               │
-│  • Search UI (multi-source)                             │
-│  • Library management                                   │
-│  • Settings (API keys)                                  │
-└─────────────────────────────────────────────────────────┘
-           ↓ (direct to external APIs)
-┌──────────────────────────────────────────────────────────────────┐
-│  External APIs (user's keys)                                     │
-│  • AniList (anime, manga, novels) — no key required             │
-│  • IGDB (games, visual novels) — Twitch OAuth                   │
-│  • TMDB (movies, series) — free API key                         │
-│  • OpenLibrary (books) — no key required                        │
-└──────────────────────────────────────────────────────────────────┘
-           ↓ (user data only, validated)
-┌─────────────────────────────────────────────────────────┐
-│  Backend (Cloudflare Workers + Turso SQLite)           │
-│  • Library persistence (user_library table)            │
-│  • ID validation before save                           │
-│  • Stats aggregation (pending)                         │
-└─────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│  Tauri window (Astro + React, compiled into the native app)       │
+│  • Search UI, library management, settings, admin/catalog panel   │
+└───────────────────────────────────────────────────────────────────┘
+        │ tauri invoke()                    │ fetch() (search, auth)
+        ▼                                    ▼
+┌──────────────────────────────┐   ┌──────────────────────────────────┐
+│  Rust core (src-tauri)       │   │  External services                │
+│  • SQLite (metadea.db)       │   │  • AniList GraphQL (public)        │
+│  • Platform game scanning    │   │  • TMDB REST (user's bearer token) │
+│    (Steam/Epic/GOG/Xbox/EA)  │   │  • OpenLibrary REST (public)       │
+│  • Local anime folder scan   │   │  • ComicVine REST (local key,      │
+│  • IGDB / ComicVine calls    │   │    called from Rust)               │
+│    for catalog moderation    │   │  • Cloudflare Worker (backend/):   │
+│  • GitHub device-flow auth   │   │    - GET /api/search/games (IGDB   │
+│    + PR creation for the     │   │      proxy, shared app creds)      │
+│    community catalog         │   │    - Google OAuth (optional link)  │
+│  • Discord rich presence     │   │  • GitHub REST API (branch/PR      │
+└──────────────────────────────┘   │    creation for catalog proposals) │
+                                    └──────────────────────────────────┘
+```
+
+The community catalog itself is distributed through git, not a database server — see [colaboracion_catalogo_git.md](./colaboracion_catalogo_git.md). In short: a user's proposed edit becomes a PR that writes one JSON bundle under `database/*.json`; once merged, CI runs [scripts/build-database.js](../scripts/build-database.js) to rebuild `database.db` at the repo root, and every installed app downloads that file and merges in rows it doesn't already have (`sync_community_catalog` in `media_catalog.rs`).
 
 ---
 
@@ -45,102 +47,90 @@ Metadea is a personal media library manager for anime, manga, light novels, game
 
 ```
 metadea/
-├── frontend/                    # Astro web app
+├── frontend/                       # The Tauri project (UI + native shell)
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── search/
-│   │   │   │   └── SearchIsland.tsx        # Multi-source search (React island)
-│   │   │   ├── Navbar.astro               # Top navigation
-│   │   ├── layouts/
-│   │   │   └── BaseLayout.astro           # Main layout (auth modal, navbar)
-│   │   ├── pages/
-│   │   │   ├── index.astro                # → /home redirect
-│   │   │   ├── home.astro                 # Landing page
-│   │   │   ├── search.astro               # Search page
-│   │   │   ├── notifications.astro        # Placeholder
-│   │   │   ├── login.astro                # Placeholder redirect
-│   │   │   └── register.astro             # Placeholder redirect
+│   │   ├── pages/                  # Astro routes: home, search, media, character,
+│   │   │                           #   author, local, tier(/new), settings, profile,
+│   │   │                           #   admin/catalog, auth/callback, login
+│   │   ├── components/             # local/, media/, search/, settings/, tier/,
+│   │   │                           #   character/, profile/, admin/, shared/, home/
 │   │   ├── lib/
-│   │   │   ├── search.ts                  # Search dispatcher (router)
-│   │   │   ├── config.ts                  # Constants (API_URL)
-│   │   │   └── api/
-│   │   │       ├── anilist.ts             # AniList GraphQL (anime, manga, novels)
-│   │   │       ├── igdb.ts                # IGDB frontend caller
-│   │   │       ├── tmdb.ts                # TMDB REST (movies, series)
-│   │   │       └── openlibrary.ts         # OpenLibrary REST (books)
-│   │   ├── i18n/
-│   │   │   ├── index.ts                   # i18n routing + useTranslations()
-│   │   │   ├── es.ts                      # Spanish translations
-│   │   │   └── en.ts                      # English translations
-│   │   └── styles/
-│   │       ├── global.css                 # Root variables, reset
-│   │       ├── components.css             # Auth modal, buttons, dialogs
-│   │       ├── search.css                 # Search tabs, results grid
-│   │       └── navbar.css                 # Navigation styling
+│   │   │   ├── tauri/              # invoke() wrappers, one file per Rust module
+│   │   │   ├── search/providers/   # anilist, igdb, tmdb, openlibrary, comicvine
+│   │   │   ├── local/, anilist/, github/, character/, profile/, settings/, cache/
+│   │   │   └── config.ts           # PUBLIC_API_URL → the Cloudflare Worker
+│   │   ├── i18n/                   # es.ts / en.ts, useTranslations()
+│   │   └── styles/                 # core/ (tokens, themes), components/, pages/
+│   ├── src-tauri/src/              # Rust core — see module table below
 │   ├── astro.config.mjs
-│   ├── tailwind.config.js
 │   └── package.json
 │
-├── backend/                     # Cloudflare Workers (Turso data)
+├── backend/                         # Cloudflare Workers — auth + IGDB proxy only
 │   ├── src/
-│   │   ├── lib/
-│   │   │   ├── cors.ts                    # CORS headers, jsonResponse() helpers
-│   │   │   ├── igdb.ts                    # IGDB OAuth + VN classification
-│   │   │   ├── turso.ts                   # Turso client, saveLibraryItem()
-│   │   │   └── validation.ts              # validateExternalId() for all sources
 │   │   ├── routes/
-│   │   │   ├── search.ts                  # POST /api/search/games (pending removal)
-│   │   │   └── library.ts                 # POST /api/library/sync (save items)
-│   │   ├── types/
-│   │   │   └── index.ts                   # CloudflareEnv, LibrarySyncRequest
-│   │   └── index.ts                       # Router setup, /health, /library/sync
-│   ├── wrangler.jsonc
-│   ├── tsconfig.json
-│   └── package.json
+│   │   │   ├── auth.ts             # Google OAuth (redirect/callback/exchange/me)
+│   │   │   ├── search.ts           # GET /api/search/games — actively used, NOT
+│   │   │                           #   obsolete (called from lib/search/providers/igdb.ts)
+│   │   │   └── library.ts          # POST /api/library/sync — no known caller in
+│   │   │                           #   frontend/src; looks like dead code, see below
+│   │   ├── services/               # auth.ts (JWT/Google), database.ts (Turso), igdb.ts
+│   │   └── middleware/             # cors.ts, auth.ts
+│   └── wrangler.jsonc
+│
+├── database/                        # One JSON "bundle" per merged catalog PR
+│                                    #   (media_catalog + relations + characters + authors)
+├── database.db                      # Built from database/*.json by the script below
+├── scripts/build-database.js        # Rebuilds database.db; run by CI on push to main
 │
 └── docs/
-    └── CLAUDE.md                (this file)
+    ├── CLAUDE.md                    # Frontend dev rules: CSS location, i18n
+    ├── CLAUDE2.md                   # This file — architecture
+    └── colaboracion_catalogo_git.md # Design doc for the GitHub-based catalog flow
 ```
 
 ---
 
 ## Data Flow
 
-### 1. Search (Frontend-only)
+### 1. Search (hybrid: live API + local catalog merge)
 
 ```
-User types query in SearchIsland
-    → search() dispatcher in lib/search.ts
-    → switches on mediaType
-        case 'anime' → searchAniList(query, 'ANIME', 'anime', signal)
-        case 'manga' → searchAniList(query, 'MANGA', 'manga', signal)
-        case 'novel' → searchAniList(query, 'MANGA', 'novel', signal, 'NOVEL')
-        case 'game'  → searchGames(query, 'game', signal)
-        case 'vnovel' → searchGames(query, 'vnovel', signal)
-        case 'movie' → searchMovies(query, signal)
-        case 'series' → searchSeries(query, signal)
-        case 'book'  → searchBooks(query, signal)
-    → Each API handler fetches directly using user's keys (or public APIs)
-    → Returns SearchResult[] (normalized)
-    → Render in grid, each card is MediaCard
+User types query
+  → search() dispatcher in lib/search/index.ts
+  → per mediaType, calls one provider in lib/search/providers/*:
+      anime/manga/lnovel → AniList GraphQL (direct, public)
+      game/vnovel        → IGDB, via Cloudflare Worker GET /api/search/games
+      movie/series       → TMDB REST (direct, user's bearer token)
+      book               → OpenLibrary REST (direct, public)
+      comic              → ComicVine REST (direct)
+      character          → fans out to AniList + ComicVine character search
+  → in parallel, searchLocalCatalog() queries the local SQLite catalog
+    (search_catalog Tauri command) and merges in local-only hits
+  → results deduped by externalId, blocked entries filtered out
+  → rendered as MediaCard grid
 ```
 
-**User keys stored in:**
-- `localStorage` (frontend only, never sent to backend)
-- Not yet implemented—pending Settings page
+`game`/`vnovel` search is deliberately proxied through the Worker so ordinary users don't need their own IGDB/Twitch app credentials. The native Rust IGDB client (`igdb.rs`, `igdb_env.rs`) still exists and is used for catalog **moderation** (unfiltered search, candidate matching, forcing an IGDB id) in the admin panel, which does read locally-configured credentials.
 
-### 2. Library Save (Frontend → Backend)
+### 2. Library Save (fully local)
 
 ```
-User clicks "Add to Library" on SearchResult
-    → Payload: { externalId: 'game:918', type: 'game', rating: 8, ... }
-    → POST /api/library/sync
-    → Backend: validateExternalId(externalId, type)
-        → Checks format (source:id)
-        → Validates ID is positive integer (or valid UUID for books)
-        → Returns boolean
-    → If valid: INSERT into user_library
-    → Response: { success, saved, rejected, rejectedIds }
+User rates/favorites/tracks progress on a media
+  → invoke('save_library_entry', { ... }) (lib/tauri/library.ts → user_library.rs)
+  → INSERT/UPDATE into metadea.db, no network call
+```
+
+There is no cloud library sync in the current build — `POST /api/library/sync` in `backend/src/routes/library.ts` exists but nothing in `frontend/src` calls it (confirmed by grep). Treat it as legacy/dead code rather than an active sync path.
+
+### 3. Community Catalog Contribution (GitHub-mediated)
+
+```
+User edits a catalog entry (characters, relations, saga) in the admin/catalog panel
+  → GitHub device-flow auth (github.rs) for a PAT-equivalent token
+  → App creates a branch + writes database/<external_id>.json + opens a PR
+  → Repo owner reviews/merges from the same admin panel
+  → CI (GitHub Actions) runs build-database.js on push to main → database.db
+  → Every client's sync_community_catalog downloads and merges the new rows
 ```
 
 ---
@@ -148,213 +138,137 @@ User clicks "Add to Library" on SearchResult
 ## API Integration Details
 
 ### AniList (GraphQL)
-- **Endpoint:** `https://graphql.anilist.co`
-- **Auth:** None required (public)
-- **Media types:** ANIME, MANGA
-- **Special:** Light novels use `format: NOVEL` filter
+- **Endpoint:** `https://graphql.anilist.co`, no auth required
+- **Media types:** anime, manga, light novels (`format: NOVEL` filter), characters
 
-**Two query strategies:**
-- `SEARCH_QUERY`: Without format (anime/manga)
-- `SEARCH_QUERY_WITH_FORMAT`: With format (light novels, to avoid null-filter bug)
-
-### IGDB (REST + Twitch OAuth)
-- **Endpoint:** `https://api.igdb.com/v4/games`
-- **Auth:** Twitch OAuth (client_id + client_secret → access_token)
-- **Media types:** Game (type=0), Visual Novel (type=0 with genre ID 34)
-- **Token cache:** In-isolate (Worker memory), lasts 60 days
-- **VN detection:** Genre 34 in top 3 genres, NOT RPG (12) or Fighting (4)
+### IGDB (REST)
+- **Default search path:** Cloudflare Worker (`backend/src/routes/search.ts` + `services/igdb.ts`), Twitch OAuth app credentials held server-side, token cached per warm isolate
+- **Catalog moderation path:** native Rust (`igdb.rs`, `igdb_matching.rs`, `igdb_env.rs`), reads locally-configured credentials, used by the admin/catalog panel for unfiltered search, candidate matching, relation graphs
 
 ### TMDB (REST)
-- **Endpoint:** `https://api.themoviedb.org/3`
-- **Auth:** Bearer token (read-only)
-- **Media types:** Movies (`search/movie`), Series (`search/tv`)
-- **Config:** `PUBLIC_TMDB_TOKEN` in frontend `.env.local`
-- **Date parsing:** Fixed to use UTC getters (prevents off-by-one in negative timezones)
+- **Endpoint:** `https://api.themoviedb.org/3`, bearer token supplied by the user
+- **Media types:** movies (`search/movie`), series (`search/tv`)
 
 ### OpenLibrary (REST)
-- **Endpoint:** `https://openlibrary.org/search.json`
-- **Auth:** None required (public)
-- **Media type:** Books
-- **ID format:** `/works/OL1234W` (not numeric)
+- **Endpoint:** `https://openlibrary.org/search.json`, no auth
+- **ID format:** `/works/OL1234W`
+
+### ComicVine (REST)
+- Called from Rust (`comicvine.rs`); covers comic search, volumes, issues, issue cast/characters
+
+### GitHub
+- Device-flow OAuth for community catalog contributions (`github.rs`) — separate from the Cloudflare Worker's Google OAuth, and from the app's own local login
+- README also mentions GitHub for "data backup"; not yet reflected in the reviewed code paths
+
+### Steam / Epic / GOG / Xbox / EA (local platform scanning)
+- `platform_scanning.rs` + `steam.rs` detect installed games and can launch them; Steam additionally supports achievements and owned-games lookups via the Steam Web API
+
+### Discord
+- `discord.rs` runs a background rich-presence updater
+
+---
+
+## Auth (three independent mechanisms, not one system)
+
+1. **Local login** (`login.astro`): username only, stored as `offline_token` in the local SQLite via `auth.rs`. This is what actually gates the app today.
+2. **Google OAuth** (`home.astro` → Cloudflare Worker `backend/src/routes/auth.ts` → Turso `users` table, JWT): optional "Vincular con Google" link surfaced only when the session is still the local `offline_token`. Independent of the Rust-side local login.
+3. **GitHub device flow** (`github.rs`): scoped to the community catalog proposal/moderation flow, not general app auth.
+
+Worth double-checking against current product intent: it's not obvious from the code alone why local login, Google linking, and GitHub auth are three separate token stores rather than one identity.
 
 ---
 
 ## Type System
 
-### SearchResult (frontend ↔ APIs)
+### SearchResult (frontend, `lib/search/index.ts`)
 ```typescript
+type MediaType = 'all' | 'anime' | 'manga' | 'lnovel' | 'game' | 'vnovel'
+  | 'movie' | 'series' | 'book' | 'comic' | 'character';
+
 interface SearchResult {
-  externalId:   string;     // e.g. "anime:918", "game:181", "book:/works/OL123W"
-  type:         MediaType;  // 'anime' | 'manga' | 'novel' | 'game' | 'vnovel' | 'movie' | 'series' | 'book' | 'all' | 'user'
-  format:       string;     // "TV", "OVA", "MANGA", "base_game", "remaster", etc.
-  source:       string;     // "anilist" | "igdb" | "tmdb" | "openlibrary"
+  externalId:   string;   // e.g. "anime:918" — matches media_catalog.external_id
+  type:         MediaType;
+  format:       string;   // "TV", "OVA", "MANGA", "base_game", ...
+  source:       'anilist' | 'igdb' | 'tmdb' | 'openlibrary' | 'comicvine';
   titleMain:    string;
-  titleRomaji:  string | null;   // AniList only
-  titleNative:  string | null;   // Native script title
+  titleRomaji:  string | null;
+  titleNative:  string | null;
   coverUrl:     string | null;
   releaseYear:  number | null;
   releaseMonth: number | null;
   releaseDay:   number | null;
-  scoreGlobal:  number | null;   // Normalized 0–10
+  scoreGlobal:  number | null;
+  authorNames?: string[] | null;  // OpenLibrary only
+  authorKey?:   string | null;    // OpenLibrary only
 }
 ```
 
-### LibraryItemInput (frontend → backend)
-```typescript
-interface LibraryItemInput {
-  externalId:       string;     // Validated before save
-  type:             string;
-  status?:          string;     // 'planning' | 'currently' | 'completed' | 'paused' | 'dropped'
-  rating?:          number;     // 0–10
-  progress?:        number;
-  minutes_spent?:   number;
-  is_favorite?:     boolean;
-  is_platinum?:     boolean;
-  tags?:            string;
-  notes?:           string;
-  started_at?:      string;     // ISO date
-  finished_at?:     string;     // ISO date
-}
-```
+### Local catalog schema
+The canonical schema lives in `src-tauri/src/db.rs` (`media_catalog`, `characters`, `character_appearances`, `media_relations`, `media_author`, `media_by_author`, `sagas`, `saga_relations`, plus per-user tables like `user_library`, `user_lists`, `tier_lists`). `scripts/build-database.js` maintains a hand-kept mirror of the catalog-side tables for the community database build — the two are documented as needing to be kept in sync manually, so a schema change in `db.rs` requires a matching change there.
 
 ---
 
-## Component Inventory
+## Rust Core Modules (`frontend/src-tauri/src/`)
 
-### Frontend Components
-
-| File | Type | Purpose |
-|------|------|---------|
-| `SearchIsland.tsx` | React (island) | Multi-source search UI, debounce, loading state |
-| `Navbar.astro` | Astro | Logo, nav links, user button (opens auth modal) |
-| `BaseLayout.astro` | Astro | HTML shell, global styles, auth modal dialog |
-
-### Frontend Pages
-
-| Route | File | Purpose | Status |
-|-------|------|---------|--------|
-| `/` | `index.astro` | Redirect to /home | ✅ |
-| `/home` | `home.astro` | Landing page | ✅ |
-| `/search` | `search.astro` | Search interface | ✅ |
-| `/notifications` | `notifications.astro` | Placeholder | ⏳ |
-| `/login` | `login.astro` | Redirect to /home (auth in modal) | ⏳ |
-| `/register` | `register.astro` | Redirect to /home (auth in modal) | ⏳ |
-
-### Backend Routes
-
-| Method | Path | Purpose | Status |
-|--------|------|---------|--------|
-| `GET` | `/api/health` | Liveness check | ✅ |
-| `POST` | `/api/library/sync` | Save items to library | ✅ Implementation, ⏳ Auth |
-| `OPTIONS` | `*` | CORS preflight | ✅ |
-
----
-
-## Configuration & Secrets
-
-### Frontend `.env.local`
-```env
-PUBLIC_API_URL=http://localhost:8787
-PUBLIC_TMDB_TOKEN=<your-tmdb-api-key>
-PUBLIC_ANILIST_URL=https://graphql.anilist.co
-```
-
-### Backend `.dev.vars` (local development)
-```env
-TURSO_URL=libsql://...
-TURSO_TOKEN=...
-IGDB_CLIENT_ID=...
-IGDB_CLIENT_SECRET=...
-```
-
-### Frontend Local Storage (pending)
-```javascript
-{
-  igdb_client_id: '',
-  igdb_client_secret: '',
-  tmdb_api_key: '',
-  // AniList and OpenLibrary don't need keys
-}
-```
+| Module | Responsibility |
+|---|---|
+| `db.rs` | SQLite schema + migrations, connection handling |
+| `media_catalog.rs` | Catalog CRUD, health checks, community sync merge |
+| `media_relations.rs`, `sagas.rs` | Prequel/sequel/adaptation graph, saga grouping |
+| `characters.rs`, `staff.rs`, `media_authors.rs` | Character/staff/author records and appearances |
+| `igdb.rs`, `igdb_matching.rs`, `igdb_env.rs` | IGDB client, candidate matching, local credential config |
+| `comicvine.rs` | ComicVine client |
+| `anilist.rs` | AniList token storage + profile lookup |
+| `platform_scanning.rs`, `steam.rs` | Installed-game detection, Steam achievements/owned games |
+| `folders.rs` | Folder picking, local anime scanning, launching games/VLC |
+| `user_library.rs`, `user_lists.rs`, `user_metadata.rs`, `favorite_images.rs` | Per-user data: library entries, custom lists, favorites, profile images |
+| `tier_lists.rs` | Tier list CRUD and placements |
+| `episode_history.rs` | Local anime watch history |
+| `community_sync.rs`, `proposal_bundle.rs` | Pulls/merges the community `database.db`, builds proposal bundles for PRs |
+| `github.rs` | Device-flow auth + PR creation for catalog proposals |
+| `auth.rs` | Local username/token storage |
+| `discord.rs` | Rich presence |
+| `utils.rs`, `vestigial_cleanup.rs` | Shared helpers; one-off cleanup of stale data |
 
 ---
 
 ## Known Issues & TODO
 
-### Critical
-- **Auth system:** Placeholder only, no real login/register
-- **Settings page:** Users can't input their API keys yet (next priority)
+### Likely dead code
+- `backend/src/routes/library.ts` (`POST /api/library/sync`) — no caller found in `frontend/src`; either wire it up or remove it
+- `vestigial_cleanup.rs` — named and scoped as one-off cleanup; confirm it isn't still needed before assuming it's safe to delete
 
-### Medium Priority
-- **Search `all` type:** Parallel queries across all sources (not implemented)
-- **Search `user` type:** Query local database for user profiles (not implemented)
-- **Stats dashboard:** Aggregate ratings, hours played, etc. (pending)
-- **Library sync conflicts:** No conflict resolution yet
+### Medium priority
+- Three separate auth mechanisms (local, Google, GitHub) with no shared identity — worth a deliberate decision rather than accretion
+- No automated tests found in `frontend/` or `backend/` beyond `vitest` being a backend devDependency (no test files located)
 
-### Low Priority
-- **Offline mode:** Currently requires internet for all searches
-- **Image caching:** No offline cache for covers yet
-- **Advanced filters:** Search results don't support filtering by format/year
-
-### Technical Debt
-- **Error logging:** Backend has no structured logging (console errors only)
-- **Rate limiting:** No per-user rate limits on library sync
-- **CORS:** Currently `*` (open), should whitelist frontend domain
-- **Validation:** IGDB query injection vulnerable (minimal escaping only)
-
----
-
-## Code Quality
-
-**Type Safety:** 100% (no `as any`)  
-**Test Coverage:** 0% (not started)  
-**Documentation:** This file + JSDoc in API files
-
----
-
-## Removed / Unnecessary Code
-
-✅ **Nothing to report.** All code in `/src` is active and intentional.
-
-### Notes on non-removal:
-- `login.astro` / `register.astro` are placeholders but necessary (routing structure)
-- `backend/src/routes/search.ts` is **obsolete** (searches now direct from frontend), marked for removal once full transition complete
-- `backend/src/lib/igdb.ts` still exists but frontend should migrate to direct IGDB calls once key-management is implemented
-
----
-
-## Next Steps (Priority Order)
-
-1. **Settings page** — Allow users to input IGDB + TMDB keys (localStorage)
-2. **Migrate IGDB search to frontend** — Move `searchGames()` from backend, remove `/api/search/games`
-3. **Proper error handling** — Try-catch in all API calls, user feedback
-4. **Auth system** — Real register/login (JWT + session)
-5. **Stats dashboard** — Aggregation + visualization
-6. **Tests** — Unit tests for search, validation, normalization
+### Documentation debt
+- `docs/CLAUDE2.md` (this file) previously described an early Cloudflare-Workers-only prototype that no longer matches the shipped app — now updated (2026-07-23)
+- `docs/DEVELOPMENT_RULES.md` / `docs/30_DAY_ROADMAP.md` describe a test-coverage and CI process not currently observed in the repo; worth reconciling or marking aspirational
 
 ---
 
 ## Useful Commands
 
-**Frontend Development**
+**Frontend / Tauri app**
 ```bash
 cd frontend
-npm run dev          # Start dev server (localhost:3000)
+npm run dev          # Astro dev server only (localhost:3000, no native shell)
+npm run tauri:dev     # Full Tauri dev app (native window + Rust core)
+npm run tauri:build   # Production .msi build
 ```
 
-**Backend Development**
+**Cloudflare Worker (auth + IGDB proxy)**
 ```bash
 cd backend
-npm run dev          # Start Wrangler dev server (localhost:8787)
+npm run dev          # Wrangler dev server (localhost:8787)
 ```
 
-**Both (from root)**
+**Community database rebuild**
 ```bash
-# In separate terminals:
-cd frontend && npm run dev &
-cd backend && npm run dev
+node --experimental-sqlite scripts/build-database.js
 ```
 
 ---
 
-Last updated: 2026-06-24
+Last updated: 2026-07-23
