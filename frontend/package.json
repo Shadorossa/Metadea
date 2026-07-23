@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "type": "module",
-  "version": "0.3.65",
+  "version": "0.3.66",
   "engines": {
     "node": ">=22.12.0"
   },
