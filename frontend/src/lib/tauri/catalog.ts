@@ -17,9 +17,6 @@ export interface MediaCatalogEntry {
    *  without a live fetch. */
   country_code?:        string | null;
   cover_url?:           string | null;
-  /** Lead developer name, overlaid on a game's banner (IGDB only) — same
-   *  "persist so the fast path has it too" reasoning as source_url. */
-  developer_badge?:     string | null;
   favorites_count?:     number | null;
   format?:              string | null;
   genres_csv?:          string | null;
@@ -28,10 +25,6 @@ export interface MediaCatalogEntry {
   last_synced_at?:      string | null;
   parent_id?:           string | null;
   platforms_csv?:       string | null;
-  /** Publisher subset of companies_cache_csv (IGDB only) — kept separate
-   *  since a company can be both developer and publisher, which the merged
-   *  companies_cache_csv can't tell apart once flattened. */
-  publishers_csv?:      string | null;
   ratings_count?:       number | null;
   release_day?:         number | null;
   /** AniList raw.endDate — persisted so the catalog-only fast path can

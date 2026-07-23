@@ -17,8 +17,18 @@ interface AniListCharacterEdge {
 }
 
 interface AniListStudio {
+  id: number;
   name: string;
   siteUrl: string | null;
+}
+
+interface AniListStudioEdge {
+  // True for the actual (main) animation studio; false for every other
+  // company involved (production committee members — shown on AniList's own
+  // site as "Producers"). AniList has no separate query for producers at
+  // all — both are the same `studios` connection, told apart only by this flag.
+  isMain: boolean;
+  node: AniListStudio;
 }
 
 interface AniListRelationEdge {
@@ -70,7 +80,7 @@ export interface AniListMediaDetail {
   startDate: { year: number | null; month: number | null; day: number | null } | null;
   endDate: { year: number | null; month: number | null; day: number | null } | null;
   source: string | null;
-  studios: { nodes: AniListStudio[] };
+  studios: { edges: AniListStudioEdge[] };
   characters: { pageInfo: { hasNextPage: boolean; total: number | null }; edges: AniListCharacterEdge[] };
   relations: { edges: AniListRelationEdge[] };
   staff: { edges: AniListStaffEdge[] };
@@ -92,7 +102,7 @@ const DETAIL_QUERY = `
       startDate { year month day }
       endDate   { year month day }
       source
-      studios(isMain: true) { nodes { name siteUrl } }
+      studios { edges { isMain node { id name siteUrl } } }
       characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
         pageInfo { hasNextPage total }
         edges { role node { id name { full } image { medium } } }

@@ -1,10 +1,11 @@
 // Relation sorting, legacy-label normalization, and DB↔UI shape conversion
 // for media relations/authors/characters — extracted from mediaService.ts
 // (still re-exported from there).
-import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation, MediaCompany } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, getDeletedRelations, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
 import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/staff';
+import type { DbMediaCompany } from '../tauri/companies';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';
@@ -132,6 +133,15 @@ export function dbAuthorToMediaAuthor(a: DbMediaAuthor): MediaAuthor {
     image: a.image || undefined,
     role: a.role || undefined,
     url: `/author?id=${a.external_id}`,
+  };
+}
+
+export function dbCompanyToMediaCompany(c: DbMediaCompany): MediaCompany {
+  return {
+    external_id: c.external_id,
+    name: c.name,
+    logo_url: c.logo_url ?? null,
+    role: c.role,
   };
 }
 

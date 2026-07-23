@@ -62,9 +62,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     stats.push({ label: tm.stat_country, value: countryName(c.country_code) ?? c.country_code });
   }
 
-  const companies = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : [];
   const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
-  const isGameType = c.type === 'game' || c.type === 'vnovel';
 
   // "platform|url" pairs.
   const storeLinks = c.shop_links_csv
@@ -74,23 +72,17 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
       }).filter(l => l.url)
     : undefined;
 
-  // Mirrors each live mapper's own metaLines convention (platforms/publisher
-  // for games, studios/format for everything else).
+  // metaLines[0] is always the publisher/producer line (styled as the bold
+  // "studios label") — format already has its own dedicated Stats row above
+  // and must never show here instead, even as a placeholder before company
+  // data loads. The publisher line itself isn't built here — companies are
+  // relational now (companies/media_by_company), not a catalog_media
+  // column, so mediaService.ts's enrichLocalData patches it in once it
+  // loads, the same "flashes in late" tradeoff as every other relational
+  // field on this fast path (authors, characters, ...).
   const metaLines: string[] = [];
-  if (c.type === 'book' || c.type === 'comic') {
-    if (authorList.length > 0) metaLines.push(authorList.join(', '));
-  } else if (isGameType) {
-    // Publisher(s) only — read straight from publishers_csv (kept separate
-    // from developer_badge since a company can be both).
-    const publishers = c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : companies;
-    if (publishers.length > 0) metaLines.push(publishers.join(', '));
-    const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
-    if (formatLabel) metaLines.push(formatLabel);
-  } else {
-    if (companies.length > 0) metaLines.push(companies.join(', '));
-    // Counts already have their own stat row above — not repeated here.
-    const formatLabel = c.format ? lookupLabel(tm.formats, c.format, c.format) : undefined;
-    if (formatLabel) metaLines.push(formatLabel);
+  if ((c.type === 'book' || c.type === 'comic') && authorList.length > 0) {
+    metaLines.push(authorList.join(', '));
   }
 
   // "start - end" once an end date exists, matching anilist-mapper.
@@ -127,10 +119,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     format:        c.format        ?? undefined,
     source:        c.source        ?? undefined,
     sourceUrl:     c.source_url      ?? undefined,
-    developerBadge: c.developer_badge ?? undefined,
     platforms:     platforms.length > 0 ? platforms : undefined,
-    companies:     companies.length > 0 ? companies : undefined,
-    publishers:    c.publishers_csv ? c.publishers_csv.split(',').filter(Boolean) : undefined,
     storeLinks,
     metaLines,
     stats,
@@ -156,7 +145,6 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
     format:                data.format,
     source:                data.source,
     source_url:            data.sourceUrl      || undefined,
-    developer_badge:       data.developerBadge || undefined,
     title_main:            data.titleMain   || undefined,
     title_native:          data.titleNative || undefined,
     title_romaji:          data.titleRomaji || undefined,
@@ -186,7 +174,6 @@ export function mapMediaDataToCatalogEntry(data: MediaPageData, externalId: stri
       : data.storeLinks?.length
         ? data.storeLinks.map(l => `${l.platform}|${l.url}`).join(',')
         : undefined,
-    publishers_csv:        data.publishers?.length ? data.publishers.join(',') : (data.companies?.length ? data.companies.join(',') : undefined),
     // Names only — a flat display cache for the fast path, not a relation
     // store (see saveMediaAuthors for the real author relations).
     authors_csv:           data.authors?.length ? data.authors.map(a => a.name).join(',') : undefined,

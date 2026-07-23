@@ -1,6 +1,7 @@
 mod actors;
 mod auth;
 mod characters;
+mod companies;
 mod staff;
 mod comicvine;
 mod db;
@@ -168,6 +169,8 @@ pub fn run() {
             staff::get_media_staff,
             actors::get_character_actors,
             actors::save_character_actors,
+            companies::get_media_companies,
+            companies::save_media_companies,
             favorite_images::save_favorite_custom_image,
             favorite_images::get_all_favorite_custom_images,
             favorite_images::delete_favorite_custom_image,

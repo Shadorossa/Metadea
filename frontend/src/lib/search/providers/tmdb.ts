@@ -34,7 +34,7 @@ interface TmdbPageResponse {
 }
 
 interface TmdbGenre { id: number; name: string }
-interface TmdbCompany { id: number; name: string }
+interface TmdbCompany { id: number; name: string; logo_path?: string | null }
 
 interface TmdbCastMember {
   id: number;

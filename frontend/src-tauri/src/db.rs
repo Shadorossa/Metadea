@@ -348,15 +348,18 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 12)?;
     }
     if v < 13 {
-        // Every mapper computes these on each live fetch (the provider's own
-        // page URL, a game's lead developer for the banner overlay) but
-        // neither was ever persisted — the catalog-only fast path shown on
-        // most visits (see mediaService.ts/needsResync) had no column to
-        // read them back from, so the source logo/link and "Main Developer"
-        // badge flickered in and out depending on whether that visit
-        // happened to trigger a live fetch or not.
+        // Every mapper computes this on each live fetch (the provider's own
+        // page URL) but it was never persisted — the catalog-only fast path
+        // shown on most visits (see mediaService.ts/needsResync) had no
+        // column to read it back from, so the source logo/link flickered in
+        // and out depending on whether that visit happened to trigger a live
+        // fetch or not.
+        // (developer_badge used to also be added here — dropped in
+        // migration 26, superseded by the companies/media_by_company
+        // tables. A fresh install replays every migration from v0, so it's
+        // removed from here too, not just the base schema, or it'd come
+        // right back.)
         let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN source_url TEXT", []);
-        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN developer_badge TEXT", []);
         mark_migration(conn, 13)?;
     }
     if v < 14 {
@@ -380,15 +383,11 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 14)?;
     }
     if v < 15 {
-        // companies_cache_csv merges developers+publishers into one flat
-        // list (also directly editable via PrEditorModal) — a game where
-        // the same company is both (e.g. self-published) can't be told
-        // apart once flattened, so the catalog-only fast path had no way to
-        // reproduce the live fetch's publisher-only meta line without
-        // wrongly subtracting a company that legitimately belongs in both.
-        // publishers_csv is persisted separately, verbatim, purely for that
-        // display line — see igdb-mapper.ts / catalog-mapper.ts.
-        let _ = conn.execute("ALTER TABLE media_catalog ADD COLUMN publishers_csv TEXT", []);
+        // Used to add publishers_csv here — dropped in migration 26,
+        // superseded by the companies/media_by_company tables (a game where
+        // the same company is both developer and publisher couldn't be told
+        // apart once flattened into one CSV). No-op now, kept only so the
+        // migration number stays marked as applied on every database.
         mark_migration(conn, 15)?;
     }
     if v < 17 {
@@ -506,9 +505,6 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         // live-action actors (role='actor') — one kind of "who portrays this
         // character" concept instead of two near-identical tables, since a
         // person can plausibly be sourced from either AniList Staff or TMDB.
-        // actors_csv on characters mirrors media_catalog.authors_csv's cache
-        // column, computed frontend-side (aliases.join(',')-style) rather
-        // than recomputed here.
         let _ = conn.execute(
             "CREATE TABLE IF NOT EXISTS actors (
                 id          TEXT PRIMARY KEY,
@@ -537,8 +533,43 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
             )",
             [],
         );
-        let _ = conn.execute("ALTER TABLE characters ADD COLUMN actors_csv TEXT DEFAULT ''", []);
         mark_migration(conn, 25)?;
+    }
+    if v < 26 {
+        // Real relational replacement for how media tracks companies —
+        // developer_badge/publishers_csv flattened developer+publisher (and,
+        // for anime, studios) into a couple of CSV-ish columns with no
+        // stable id, so a company that's both (e.g. self-published) needed
+        // two separately-named fields just to avoid ambiguity. role carries
+        // that distinction properly instead ('developer'/'publisher'/
+        // 'studio'/'production'), across every provider, not just games.
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS companies (
+                external_id TEXT PRIMARY KEY,
+                name        TEXT NOT NULL DEFAULT '',
+                logo_url    TEXT,
+                created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        );
+        let _ = conn.execute(
+            "CREATE TABLE IF NOT EXISTS media_by_company (
+                company_external_id TEXT NOT NULL,
+                media_external_id    TEXT NOT NULL,
+                role                  TEXT NOT NULL,
+                added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (media_external_id, company_external_id, role),
+                FOREIGN KEY (company_external_id) REFERENCES companies(external_id) ON DELETE CASCADE
+            )",
+            [],
+        );
+        // Drop the flattened columns for real now that the table above
+        // replaces them — same DROP COLUMN this app already relies on in
+        // migration 14, no data worth preserving either way.
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN developer_badge", []);
+        let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN publishers_csv", []);
+        mark_migration(conn, 26)?;
     }
 
     Ok(())
@@ -634,7 +665,6 @@ CREATE TABLE IF NOT EXISTS favorite_custom_images (
 CREATE TABLE IF NOT EXISTS characters (
     id           TEXT PRIMARY KEY,
     aliases_csv  TEXT DEFAULT '',
-    actors_csv   TEXT DEFAULT '',
     biography    TEXT,
     external_id  TEXT UNIQUE NOT NULL,
     image_url    TEXT,
@@ -656,6 +686,14 @@ CREATE TABLE IF NOT EXISTS character_actors (
     added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (actor_external_id, character_external_id),
     FOREIGN KEY (actor_external_id) REFERENCES actors(external_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS companies (
+    external_id TEXT PRIMARY KEY,
+    name        TEXT NOT NULL DEFAULT '',
+    logo_url    TEXT,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS character_appearances (
@@ -736,7 +774,6 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     blocked_at           TEXT,
     country_code         TEXT,
     cover_url            TEXT,
-    developer_badge      TEXT,
     favorites_count      INTEGER DEFAULT 0,
     format               TEXT DEFAULT '',
     genres_csv           TEXT DEFAULT '',
@@ -745,7 +782,6 @@ CREATE TABLE IF NOT EXISTS media_catalog (
     last_synced_at       TEXT,
     parent_id            TEXT,
     platforms_csv        TEXT DEFAULT '',
-    publishers_csv       TEXT DEFAULT '',
     ratings_count        INTEGER DEFAULT 0,
     release_day          INTEGER,
     release_end_day      INTEGER,
@@ -788,6 +824,17 @@ CREATE TABLE IF NOT EXISTS media_by_author (
     role               TEXT,
     PRIMARY KEY (media_external_id, author_external_id),
     FOREIGN KEY (author_external_id) REFERENCES media_author(external_id) ON DELETE CASCADE
+);
+
+-- role distinguishes developer/publisher (games only for now) — part of the
+-- PK since a self-published game's own company is legitimately both.
+CREATE TABLE IF NOT EXISTS media_by_company (
+    company_external_id TEXT NOT NULL,
+    media_external_id    TEXT NOT NULL,
+    role                  TEXT NOT NULL,
+    added_at              TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (media_external_id, company_external_id, role),
+    FOREIGN KEY (company_external_id) REFERENCES companies(external_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sagas (

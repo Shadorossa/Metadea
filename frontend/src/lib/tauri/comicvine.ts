@@ -6,6 +6,7 @@ export interface ComicVineImage {
 }
 
 export interface ComicVinePublisher {
+  id:   number | null;
   name: string | null;
 }
 

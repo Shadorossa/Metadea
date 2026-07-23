@@ -1,6 +1,6 @@
 import { igdbImageUrl } from '../tauri';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation, MediaStat } from './types';
+import type { MediaPageData, MediaRelation, MediaStat, MediaCompany } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
 import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
@@ -38,7 +38,7 @@ interface IgdbDetailGame {
   genres?: { id: number; name: string }[];
   involved_companies?: {
     id: number;
-    company?: { name: string };
+    company?: { id: number; name: string; logo?: { image_id: string } };
     developer?: boolean;
     publisher?: boolean;
   }[];
@@ -98,9 +98,27 @@ function findAltName(
 export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageData {
   const tm = getT().media;
   const genres = game.genres?.map(g => g.name) ?? [];
-  const developers = game.involved_companies?.filter(c => c.developer && c.company).map(c => c.company!.name) ?? [];
-  const publishers = game.involved_companies?.filter(c => c.publisher && c.company).map(c => c.company!.name) ?? [];
   const platforms = [...new Set((game.platforms ?? []).map(p => p.name))];
+
+  // Structured (id + logo + role), for the relational companies/
+  // media_by_company tables — a company can carry both roles at once
+  // (self-published), so this yields one entry per role, not per company.
+  const toMediaCompany = (c: NonNullable<IgdbDetailGame['involved_companies']>[number], role: 'developer' | 'publisher'): MediaCompany | null => {
+    if (!c.company) return null;
+    return {
+      external_id: `company:${c.company.id}`,
+      name: c.company.name,
+      logo_url: c.company.logo?.image_id ? igdbImageUrl(c.company.logo.image_id, 'logo_med') : null,
+      role,
+    };
+  };
+  const companies: MediaCompany[] = (game.involved_companies ?? []).flatMap(c => {
+    const entries: MediaCompany[] = [];
+    if (c.developer) { const m = toMediaCompany(c, 'developer'); if (m) entries.push(m); }
+    if (c.publisher) { const m = toMediaCompany(c, 'publisher'); if (m) entries.push(m); }
+    return entries;
+  });
+  const publisherNames = companies.filter(c => c.role === 'publisher').map(c => c.name);
 
   const coverUrl = game.cover?.image_id ? igdbImageUrl(game.cover.image_id, '1080p') : undefined;
   const bannerUrl = game.banner_image_id ? igdbImageUrl(game.banner_image_id, '1080p') : undefined;
@@ -170,7 +188,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Platforms get their own Datos block (MediaPage.tsx) — this slot is
   // publisher-only, for consistency with other content types.
   const metaLines: string[] = [];
-  if (publishers.length) metaLines.push(publishers.join(', '));
+  if (publisherNames.length) metaLines.push(publisherNames.join(', '));
 
   const relations: MediaRelation[] = [];
 
@@ -274,7 +292,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     genreTagDots,
     metaLines,
     dateBadge: releaseDate ?? undefined,
-    developerBadge: developers[0] ?? undefined,
     description: game.summary,
     stats,
     characters: [],
@@ -293,11 +310,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     platforms,
     scoreGlobal,
     status: canonicalStatus,
-    companies: [...new Set([...developers, ...publishers])],
-    // Kept separate from `companies` so a self-published title (both
-    // developer and publisher) still shows correctly in the publisher-only
-    // metaLines/fast-path line.
-    publishers: [...new Set(publishers)],
+    companies,
   };
 }
 

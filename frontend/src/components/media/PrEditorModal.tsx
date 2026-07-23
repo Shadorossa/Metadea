@@ -787,14 +787,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
             </div>
 
             <div className="pr-editor-section">
-              {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'publishers_csv', 'authors_csv'])}
+              {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv', 'authors_csv'])}
               <div className="pr-editor-classification-grid">
                 {typeField('type', 'Type')}
                 {formatField('format', 'Format')}
                 {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
                 {slotField('genres_tag_csv', 'Themes / Tags')}
                 {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
-                {slotField('publishers_csv', 'Companies / Studios')}
                 {slotField('authors_csv', 'Authors / Staff')}
               </div>
             </div>

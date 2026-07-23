@@ -71,8 +71,8 @@ pub async fn sync_community_catalog(
             // this community.db predates the column.
             let possible_cols = [
                 "id", "external_id", "authors_csv", "banners_csv", "country_code", "cover_url",
-                "developer_badge", "favorites_count", "format", "genres_csv", "genres_tag_csv",
-                "last_sync_error", "last_synced_at", "parent_id", "platforms_csv", "publishers_csv",
+                "favorites_count", "format", "genres_csv", "genres_tag_csv",
+                "last_sync_error", "last_synced_at", "parent_id", "platforms_csv",
                 "ratings_count", "release_day", "release_end_day", "release_end_month", "release_end_year",
                 "release_month", "release_year", "score_global",
                 "shop_links_csv", "source", "source_url", "status", "sync_failed_count", "synopsis",
@@ -126,7 +126,7 @@ pub async fn sync_community_catalog(
             // since the live API sync gets there first) would otherwise never
             // pick up a merged PR's update — fill each only where still
             // empty, never clobbering a local edit or fresher live value.
-            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "publishers_csv", "authors_csv"] {
+            for col in ["banners_csv", "genres_csv", "genres_tag_csv", "authors_csv"] {
                 if attached_db_has_column(&conn, "community", "media_catalog", col) {
                     changes += conn.execute(
                         &format!(
@@ -146,8 +146,8 @@ pub async fn sync_community_catalog(
             // the character rows and their media links the same "fill gaps
             // only" way.
             changes += conn.execute(
-                "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at)
-                 SELECT id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
+                "INSERT OR IGNORE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at)
+                 SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at FROM community.characters",
                 [],
             ).str_err()? as i64;
             changes += conn.execute(
@@ -391,7 +391,7 @@ pub async fn get_community_characters(
 
         let read = (|| -> Result<Vec<crate::characters::CharacterEntry>, String> {
             let mut stmt = conn.prepare(
-                "SELECT id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, NULL, created_at, updated_at
+                "SELECT id, external_id, name, name_native, aliases_csv, biography, image_url, NULL, created_at, updated_at
                  FROM ghcharacters.characters"
             ).str_err()?;
             let rows = stmt.query_map([], |row| {
@@ -401,12 +401,11 @@ pub async fn get_community_characters(
                     name: row.get(2)?,
                     name_native: row.get(3)?,
                     aliases_csv: row.get(4)?,
-                    actors_csv: row.get(5)?,
-                    biography: row.get(6)?,
-                    image_url: row.get(7)?,
-                    reaction: row.get(8)?,
-                    created_at: row.get(9)?,
-                    updated_at: row.get(10)?,
+                    biography: row.get(5)?,
+                    image_url: row.get(6)?,
+                    reaction: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
                 })
             }).str_err()?;
             Ok(rows.filter_map(|r| r.ok()).collect())

@@ -430,14 +430,13 @@ export function CharacterPrEditorModal() {
         name,
         name_native: normField(nameNative) as string | null | undefined,
         aliases_csv: normField(aliases.join(',')) as string | null | undefined,
-        actors_csv: normField(voiceActors.map(v => v.name).filter(Boolean).join(',')) as string | null | undefined,
         biography: normField(reassembledBiography) as string | null | undefined,
         image_url: normField(imageUrl) as string | null | undefined,
       };
 
       await saveCharacter(
         currentId, updatedCharacter.name, updatedCharacter.image_url,
-        updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.actors_csv, updatedCharacter.biography,
+        updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.biography,
       );
       if (appearancesChanged()) {
         await saveCharacterAppearances(currentId, appearances.map(a => ({
@@ -491,7 +490,7 @@ export function CharacterPrEditorModal() {
           image_url: v.image || null,
           role: v.role || 'voice',
           language: v.language || null,
-        })),
+        }),
       };
 
       // Explicit removals from *this* editing session — lets the merge

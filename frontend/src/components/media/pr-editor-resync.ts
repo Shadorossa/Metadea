@@ -14,8 +14,8 @@ export const RESYNC_FIELDS: (keyof MediaCatalogEntry)[] = [
   'title_main', 'title_romaji', 'title_native', 'title_english', 'synopsis',
   'cover_url', 'banners_csv', 'release_year', 'release_month', 'release_day',
   'release_end_year', 'release_end_month', 'release_end_day', 'status', 'format',
-  'score_global', 'country_code', 'developer_badge', 'genres_csv', 'genres_tag_csv',
-  'platforms_csv', 'authors_csv', 'publishers_csv', 'shop_links_csv', 'source_url', 'time_length',
+  'score_global', 'country_code', 'genres_csv', 'genres_tag_csv',
+  'platforms_csv', 'authors_csv', 'shop_links_csv', 'source_url', 'time_length',
 ];
 
 export function mergeResyncFields(prev: MediaCatalogEntry, partialFromLive: Partial<MediaCatalogEntry>): MediaCatalogEntry {

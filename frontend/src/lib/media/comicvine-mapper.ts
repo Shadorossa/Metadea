@@ -1,6 +1,6 @@
 import type { ComicVineVolume, ComicVineIssueDetail } from '../tauri';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember } from './types';
+import type { MediaPageData, MediaAuthor, MediaCharacter, MediaCompany, MediaStaffMember } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, type DateParts } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
@@ -70,7 +70,16 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
   }));
   const staff = authorsToStaff(authors);
 
-  const companies = volume.publisher?.name ? [volume.publisher.name] : undefined;
+  // Namespaced under "comicvine:" — ComicVine's publisher ids are an
+  // independent numbering space from IGDB/AniList/TMDB's own company ids.
+  const companies: MediaCompany[] | undefined = volume.publisher?.name
+    ? [{
+        external_id: `company:comicvine:${volume.publisher.id ?? volume.publisher.name}`,
+        name: volume.publisher.name,
+        logo_url: null,
+        role: 'publisher',
+      }]
+    : undefined;
 
   // Prefer the real first/last issue cover dates (resolved by the Rust side
   // with two lightweight extra requests) over start_year alone, so the badge

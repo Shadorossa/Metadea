@@ -208,14 +208,14 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
         tx.execute(
             "INSERT INTO media_catalog (
                 id, external_id, authors_csv, banners_csv, blocked_at, country_code, cover_url,
-                developer_badge, favorites_count, format, genres_csv, genres_tag_csv,
-                last_sync_error, last_synced_at, parent_id, platforms_csv, publishers_csv,
+                favorites_count, format, genres_csv, genres_tag_csv,
+                last_sync_error, last_synced_at, parent_id, platforms_csv,
                 ratings_count, release_day, release_end_day, release_end_month, release_end_year,
                 release_month, release_year, score_global,
                 shop_links_csv, source, source_url, status, sync_failed_count, synopsis,
                 time_length, title_english, title_main, title_native, title_romaji, total_count, total_count_2,
                 type, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40, ?41)",
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             rusqlite::params![
                 crate::db::generate_id(),
                 &entry.external_id,
@@ -224,7 +224,6 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 &entry.blocked_at,
                 &entry.country_code,
                 &entry.cover_url,
-                &entry.developer_badge,
                 &entry.favorites_count,
                 &entry.format,
                 &entry.genres_csv,
@@ -233,7 +232,6 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 &entry.last_synced_at,
                 &entry.parent_id,
                 &entry.platforms_csv,
-                &entry.publishers_csv,
                 &entry.ratings_count,
                 &entry.release_day,
                 &entry.release_end_day,
@@ -264,24 +262,23 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
     } else {
         tx.execute(
             "UPDATE media_catalog SET
-                authors_csv = ?1, banners_csv = ?2, blocked_at = ?3, country_code = ?4, cover_url = ?5,
-                developer_badge = ?6, favorites_count = ?7, format = ?8, genres_csv = ?9,
-                genres_tag_csv = ?10, last_sync_error = ?11, last_synced_at = ?12, parent_id = ?13,
-                platforms_csv = ?14, publishers_csv = ?15, ratings_count = ?16, release_day = ?17,
-                release_end_day = ?18, release_end_month = ?19, release_end_year = ?20,
-                release_month = ?21, release_year = ?22, score_global = ?23, shop_links_csv = ?24,
-                source = ?25, source_url = ?26, status = ?27, sync_failed_count = ?28,
-                synopsis = ?29, time_length = ?30, title_english = ?31, title_main = ?32, title_native = ?33,
-                title_romaji = ?34, total_count = ?35, total_count_2 = ?36, type = ?37,
-                updated_at = ?38
-             WHERE external_id = ?39",
+                authors_csv = ?, banners_csv = ?, blocked_at = ?, country_code = ?, cover_url = ?,
+                favorites_count = ?, format = ?, genres_csv = ?,
+                genres_tag_csv = ?, last_sync_error = ?, last_synced_at = ?, parent_id = ?,
+                platforms_csv = ?, ratings_count = ?, release_day = ?,
+                release_end_day = ?, release_end_month = ?, release_end_year = ?,
+                release_month = ?, release_year = ?, score_global = ?, shop_links_csv = ?,
+                source = ?, source_url = ?, status = ?, sync_failed_count = ?,
+                synopsis = ?, time_length = ?, title_english = ?, title_main = ?, title_native = ?,
+                title_romaji = ?, total_count = ?, total_count_2 = ?, type = ?,
+                updated_at = ?
+             WHERE external_id = ?",
             rusqlite::params![
                 &entry.authors_csv,
                 &entry.banners_csv,
                 &entry.blocked_at,
                 &entry.country_code,
                 &entry.cover_url,
-                &entry.developer_badge,
                 &entry.favorites_count,
                 &entry.format,
                 &entry.genres_csv,
@@ -290,7 +287,6 @@ fn upsert_bundle_catalog_entry(tx: &rusqlite::Transaction, entry: &MediaCatalogE
                 &entry.last_synced_at,
                 &entry.parent_id,
                 &entry.platforms_csv,
-                &entry.publishers_csv,
                 &entry.ratings_count,
                 &entry.release_day,
                 &entry.release_end_day,

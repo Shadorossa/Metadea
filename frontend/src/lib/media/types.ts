@@ -58,6 +58,21 @@ export interface MediaAuthor {
   url?: string;
 }
 
+export interface MediaCompany {
+  external_id: string;
+  name: string;
+  logo_url?: string | null;
+  /** 'developer' | 'publisher' — always one of these two, across every media
+   *  type: games use IGDB's own developer/publisher split; anime maps
+   *  AniList's main animation studio to 'developer' and every other credited
+   *  company (production committee, AniList's own "Producers") to
+   *  'publisher'; movies/series tag every TMDB production company
+   *  'publisher' (TMDB has no equivalent split); comics tag ComicVine's
+   *  publisher 'publisher'. The media page's publisher-line display always
+   *  reads the 'publisher' role only. */
+  role: string;
+}
+
 export interface MediaPageData {
   externalId: string;          // "anime:918", "book:OL12345W"
   type: string;                // "anime" | "manga" | "lnovel" | "book"
@@ -85,7 +100,6 @@ export interface MediaPageData {
   genreTagDots?: string;       // secondary tags (themes, non-core)
   metaLines: string[];         // líneas del panel derecho (estudio, formato, etc.)
   dateBadge?: string;          // overlay sobre el banner con fechas
-  developerBadge?: string;     // overlay sobre el banner con el desarrollador (juegos)
   // links a tiendas (juegos) — undefined: no aplica/no comprobado; null: se
   // comprobó el juego y sus ports y no hay ninguno; array: los enlaces encontrados
   storeLinks?: { platform: string; url: string }[] | null;
@@ -114,8 +128,9 @@ export interface MediaPageData {
   totalCount?: number;
   totalCount_2?: number;
   countryOfOrigin?: string;    // ISO-ish country code (AniList/TMDB) — persisted to media_catalog.country_code so the catalog-only fast path can show "País de origen" without a live fetch
-  companies?: string[];        // developer/publisher (games), animation studio (anime), production company (movies/series) — persisted to media_catalog.companies_cache_csv
-  publishers?: string[];       // games only (IGDB) — publisher subset of `companies`, persisted separately to media_catalog.publishers_csv so the catalog-only fast path can show a publisher-only line without guessing which of `companies` that is
   authors?: MediaAuthor[];     // author objects (books, anime creators) — persisted to media_author table
+  // Developer/publisher (games), studio (anime), production company (movies/
+  // series) — persisted to companies/media_by_company, distinguished by role.
+  companies?: MediaCompany[];
   hasSaga?: boolean;           // AniList entry has a direct PREQUEL/SEQUEL relation — shows the SagaViewer button
 }

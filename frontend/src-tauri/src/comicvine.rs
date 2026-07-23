@@ -54,6 +54,7 @@ pub struct ComicVineImage {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComicVinePublisher {
+    pub id:   Option<u64>,
     pub name: Option<String>,
 }
 

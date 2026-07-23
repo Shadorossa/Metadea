@@ -767,8 +767,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             </button>
           )}
         </div>
-        {data.developerBadge && (
-          <div className="media-banner-developer-badge">{data.developerBadge}</div>
+        {data.companies?.find(c => c.role === 'developer') && (
+          <div className="media-banner-developer-badge">{data.companies.find(c => c.role === 'developer')!.name}</div>
         )}
 
         <div className="media-hero-body">

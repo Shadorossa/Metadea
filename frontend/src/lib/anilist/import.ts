@@ -2,6 +2,7 @@ import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatal
 import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
+import { saveMediaCompanies } from '../tauri/companies';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
@@ -28,7 +29,7 @@ query GetMediaList($userId: Int, $type: MediaType, $page: Int) {
         genres
         source
         status
-        studios(isMain: true) { nodes { name } }
+        studios { edges { isMain node { id name } } }
       }
     }
   }
@@ -72,7 +73,7 @@ interface AniListImportMediaItem {
     genres: string[];
     source: string | null;
     status: string | null;
-    studios: { nodes: { name: string }[] } | null;
+    studios: { edges: { isMain: boolean; node: { id: number; name: string } }[] } | null;
   };
 }
 
@@ -205,6 +206,7 @@ export async function importFromAniList(
 
       if (!catalogMap.has(externalId)) {
         await saveCatalogEntry(buildCatalogEntry(externalId, entryType, mediaItem)).catch(console.error);
+        await saveAniListStudios(externalId, entryType, mediaItem);
       }
 
       imported++;
@@ -313,6 +315,7 @@ export async function syncFromAniList(
         await saveLibraryEntry(entry).catch(console.error);
         if (!catalogMap.has(importId)) {
           await saveCatalogEntry(buildCatalogEntry(importId, entryType, mediaItem)).catch(console.error);
+          await saveAniListStudios(importId, entryType, mediaItem);
         }
         added++;
       }
@@ -380,10 +383,25 @@ function buildCatalogEntry(externalId: string, entryType: string, mediaItem: Ani
     status: mediaItem.media?.status ?? null,
     genres_csv: core.join(',') || null,
     genres_tag_csv: tags.join(',') || null,
-    publishers_csv: entryType === 'anime'
-      ? (mediaItem.media?.studios?.nodes.map(n => n.name).join(',') || null)
-      : null,
     created_at: now,
     updated_at: now,
   };
+}
+
+// Anime studios go into the same companies/media_by_company tables as
+// IGDB's developer/publisher — namespaced under "anilist:" since AniList's
+// studio ids and IGDB's company ids are independent numbering spaces that
+// would otherwise collide in the shared companies table. Same isMain split
+// as anilist-mapper.ts: the main animation studio is 'developer', every
+// other credited company ("Producers" on AniList's own site) is 'publisher'.
+async function saveAniListStudios(externalId: string, entryType: string, mediaItem: AniListImportMediaItem): Promise<void> {
+  if (entryType !== 'anime') return;
+  const edges = mediaItem.media?.studios?.edges ?? [];
+  if (!edges.length) return;
+  await saveMediaCompanies(externalId, edges.map(e => ({
+    external_id: `company:anilist:${e.node.id}`,
+    name: e.node.name,
+    logo_url: null,
+    role: e.isMain ? 'developer' : 'publisher',
+  }))).catch(console.error);
 }

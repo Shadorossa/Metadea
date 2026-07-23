@@ -1,6 +1,6 @@
 import type { TmdbMovieDetail, TmdbTvDetail } from '../search/providers/tmdb';
 import { parseDateParts } from '../search/providers/tmdb';
-import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuthor } from './types';
+import type { MediaPageData, MediaStat, MediaCharacter, MediaRelation, MediaAuthor, MediaCompany } from './types';
 import { unifyGenres } from './genre-unifier';
 import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
@@ -79,7 +79,17 @@ export function mapTmdbToMedia(
   const genreDots    = coreGenres.join(' · ') || undefined;
   const genreTagDots = genreTags.join(' · ')  || undefined;
 
-  const companies = (raw.production_companies ?? []).map(c => c.name);
+  // Namespaced under "tmdb:" — TMDB's company ids and IGDB's/AniList's are
+  // independent numbering spaces that would otherwise collide in the shared
+  // companies table. TMDB doesn't split production companies into separate
+  // roles the way IGDB/AniList do — tagged 'publisher' so this still lands
+  // in the same always-publisher display slot every other type uses.
+  const companies: MediaCompany[] = (raw.production_companies ?? []).map(c => ({
+    external_id: `company:tmdb:${c.id}`,
+    name: c.name,
+    logo_url: c.logo_path ? API_ENDPOINTS.TMDB_IMAGE(c.logo_path) : null,
+    role: 'publisher',
+  }));
 
   const scoreGlobal = raw.vote_average ? Math.round(raw.vote_average * 10) / 10 : undefined;
   const timeLength = isTv ? raw.episode_run_time?.[0] : raw.runtime ?? undefined;
@@ -130,7 +140,7 @@ export function mapTmdbToMedia(
 
   // The date already shows in the banner's own dateBadge overlay (top-right
   // square) — it must not also repeat here, under the studios/companies line.
-  const metaLines = [companies.join(', ')].filter(Boolean);
+  const metaLines = [companies.map(c => c.name).join(', ')].filter(Boolean);
 
   // Cards here represent the in-fiction character, not the actor — the
   // photo is necessarily the actor's own (TMDB has no separate character

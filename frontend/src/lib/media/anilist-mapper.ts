@@ -1,6 +1,6 @@
 import type { AniListMediaDetail, AniListStaffEdge } from '../search/providers/anilist';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation, MediaAuthor, MediaStat } from './types';
+import type { MediaPageData, MediaRelation, MediaAuthor, MediaCompany, MediaStat } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
@@ -67,13 +67,27 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     ? (endFmt ? `${startFmt} - ${endFmt}` : startFmt)
     : undefined;
 
-  // Chapter/volume/episode counts have their own dedicated stat row
-  // (Capítulos | Volúmenes) — repeating them here in the format meta line
-  // was redundant with that row.
-  const quickMeta = formatLabel;
-
-  const studiosList = raw.studios.nodes.map(n => n.name).join(', ');
-  const metaLines   = [studiosList, quickMeta].filter(Boolean);
+  // Namespaced under "anilist:" — AniList's studio ids and IGDB's company
+  // ids are independent numbering spaces that would otherwise collide in
+  // the shared companies table. AniList has one connection for both roles,
+  // told apart by the edge's isMain flag: the actual (main) animation
+  // studio is 'developer', every other credited company — AniList's own
+  // site calls these "Producers", usually the production committee — is
+  // 'publisher', mirroring games' developer/publisher split.
+  const studioCompanies: MediaCompany[] = resolvedType === 'anime'
+    ? raw.studios.edges.map(e => ({
+        external_id: `company:anilist:${e.node.id}`,
+        name: e.node.name,
+        logo_url: null,
+        role: e.isMain ? 'developer' : 'publisher',
+      }))
+    : [];
+  // metaLines[0] is always the publisher line (rendered in the bold
+  // "studios label" slot right under genre dots) — format has its own
+  // dedicated Stats row above and must never show here instead, even when
+  // there's no producer to show.
+  const publisherNames = studioCompanies.filter(c => c.role === 'publisher').map(c => c.name).join(', ');
+  const metaLines   = [publisherNames].filter(Boolean);
 
   const { core: coreGenres, tags: genreTags } = unifyGenres(raw.genres);
   const genreDots    = coreGenres.join(' · ') || undefined;
@@ -265,7 +279,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     totalCount_2: (resolvedType === 'manga' || resolvedType === 'lnovel') ? (raw.volumes ?? undefined) : undefined,
     // Studios only apply to anime — AniList's `studios` connection is
     // effectively unused for manga/light novels (no animation involved).
-    companies:    resolvedType === 'anime' ? raw.studios.nodes.map(n => n.name) : undefined,
+    companies:    studioCompanies.length > 0 ? studioCompanies : undefined,
     authors:      authors.length > 0 ? authors : undefined,
     hasSaga,
   };

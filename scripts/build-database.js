@@ -27,8 +27,10 @@
 //   { character: { external_id, name, name_native, aliases_csv, biography,
 //     image_url }, appearances: [{ media_external_id, relation_type }],
 //     actors: [{ external_id, name, name_native, image_url, role, language }] }
-// actors_csv (characters table) is computed here from `actors`, not carried
-// in the bundle itself — same cache-column convention as authors_csv.
+// Every field but external_id (character) / external_id (actor) is optional
+// and only present when this proposal actually changed it — see
+// CharacterPrEditorModal's handleSubmit — so a bundle is merged onto
+// whatever's already known for that id/actor rather than replacing it wholesale.
 //
 // node:sqlite is experimental — run with `node --experimental-sqlite`.
 
@@ -74,7 +76,6 @@ CREATE TABLE media_catalog (
     genres_tag_csv       TEXT DEFAULT '',
     platforms_csv        TEXT DEFAULT '',
     shop_links_csv       TEXT DEFAULT '',
-    companies_cache_csv  TEXT DEFAULT '',
     authors_csv          TEXT DEFAULT '',
     last_synced_at       TEXT,
     sync_failed_count    INTEGER DEFAULT 0,
@@ -90,7 +91,6 @@ CREATE TABLE characters (
     name        TEXT NOT NULL DEFAULT '',
     name_native TEXT,
     aliases_csv TEXT DEFAULT '',
-    actors_csv  TEXT DEFAULT '',
     biography   TEXT,
     image_url   TEXT,
     reaction    TEXT,
@@ -197,7 +197,7 @@ const CATALOG_COLUMNS = [
   'title_main', 'title_romaji', 'title_native', 'synopsis', 'cover_url', 'banners_csv',
   'release_year', 'release_month', 'release_day', 'time_length', 'status', 'score_global',
   'favorites_count', 'ratings_count', 'total_count', 'total_count_2',
-  'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv', 'companies_cache_csv', 'authors_csv',
+  'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv', 'authors_csv',
   'last_synced_at', 'sync_failed_count', 'last_sync_error', 'manually_edited_at', 'created_at', 'updated_at',
 ];
 
@@ -257,7 +257,7 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   // character bundle instead (CharacterPrEditorModal.tsx), written NULL/'' here
   // when this row comes from the media-embedded list.
   const characterStmt = db.prepare(
-    'INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, actors_csv, biography, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT OR REPLACE INTO characters (id, external_id, name, name_native, aliases_csv, biography, image_url, reaction, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const appearanceStmt = db.prepare(
     'INSERT OR REPLACE INTO character_appearances (character_external_id, media_external_id, relation_type, character_name, added_at) VALUES (?, ?, ?, ?, ?)'
@@ -339,7 +339,7 @@ function buildDatabase({ mediaBundles, characterBundles }) {
 
     for (const char of bundle.characters || []) {
       if (!char.external_id) continue;
-      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', null, '', '', null, char.image_url ?? null, null, now, now);
+      characterStmt.run(char.id || crypto.randomUUID(), char.external_id, char.name || '', null, '', null, char.image_url ?? null, null, now, now);
       appearanceStmt.run(char.external_id, externalId, char.relation_type ?? null, char.character_name ?? null, now);
     }
 
@@ -371,7 +371,6 @@ function buildDatabase({ mediaBundles, characterBundles }) {
       char.name !== undefined ? char.name : (existing?.name ?? ''),
       char.name_native !== undefined ? char.name_native : (existing?.name_native ?? null),
       char.aliases_csv !== undefined ? char.aliases_csv : (existing?.aliases_csv ?? ''),
-      existing?.actors_csv ?? '', // recomputed below, once every actor row is in
       char.biography !== undefined ? char.biography : (existing?.biography ?? null),
       char.image_url !== undefined ? char.image_url : (existing?.image_url ?? null),
       existing?.reaction ?? null,
@@ -402,18 +401,6 @@ function buildDatabase({ mediaBundles, characterBundles }) {
       characterActorStmt.run(actor.external_id, char.external_id, actor.role ?? null, actor.language ?? null, now);
     }
   }
-
-  // actors_csv is a display cache derived entirely from character_actors/
-  // actors (now fully populated) — recomputed here instead of tracked
-  // per-bundle so it's always correct regardless of which bundle(s)
-  // contributed which actor.
-  db.exec(`
-    UPDATE characters SET actors_csv = COALESCE((
-      SELECT GROUP_CONCAT(a.name, ',')
-      FROM character_actors ca JOIN actors a ON a.external_id = ca.actor_external_id
-      WHERE ca.character_external_id = characters.external_id AND a.name != ''
-    ), '')
-  `);
 
   db.close();
   return { catalogCount, characterCount };

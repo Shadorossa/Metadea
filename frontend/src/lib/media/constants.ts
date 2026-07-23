@@ -12,7 +12,7 @@ export const DIFF_FIELDS: ReadonlyArray<readonly [keyof MediaCatalogEntry, strin
   ['release_year', 'Release Year'], ['release_month', 'Release Month'], ['release_day', 'Release Day'],
   ['total_count', 'Episodes/Chapters'], ['total_count_2', 'Seasons/Volumes'],
   ['genres_csv', 'Genres'], ['genres_tag_csv', 'Themes/Tags'],
-  ['platforms_csv', 'Platforms'], ['publishers_csv', 'Companies/Studios'], ['authors_csv', 'Authors/Staff'],
+  ['platforms_csv', 'Platforms'], ['authors_csv', 'Authors/Staff'],
 ];
 
 // Reciprocal edge pair written for each standalone source/episode/update

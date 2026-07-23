@@ -632,7 +632,6 @@ const translations = useTranslations(lang);
         character.image?.large,
         character.name.native,
         (character.name.alternative ?? []).join(','),
-        savedLocal?.actors_csv,
         character.description
       ).catch(() => {});
 

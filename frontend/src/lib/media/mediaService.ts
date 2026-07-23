@@ -9,10 +9,11 @@ import { mapTmdbToMedia } from './tmdb-mapper';
 import { mapIgdbToMedia, mergeBaseGameRelation, mergeRelationGraph, dedupeRelationsByTarget, type IgdbSubGame, type RelationGraphNode } from './igdb-mapper';
 import { igdbGetGameDetail, igdbGetBaseGames, igdbGetRelationGraph, getCatalogEntry, saveCatalogEntry, markCatalogSyncFailed, getBlockedExternalIds } from '../tauri';
 import type { MediaCatalogEntry } from '../tauri';
-import type { MediaPageData, MediaAuthor } from './types';
+import type { MediaPageData, MediaAuthor, MediaCompany } from './types';
 import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/staff';
+import { getMediaCompanies, saveMediaCompanies } from '../tauri/companies';
 import { parseExternalId } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
@@ -21,7 +22,7 @@ import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidat
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
-  dbStaffToMediaStaff, mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
+  dbStaffToMediaStaff, dbCompanyToMediaCompany, mediaCharactersToSkeleton, mediaStaffToSkeleton, loadDbRelationsAndAuthors, mergeAndPersistRelations,
 } from './media-relations';
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 import { fetchBookEditions } from './book-editions';
@@ -122,7 +123,7 @@ const NEW_DATA_COMPARE_FIELDS = [
   'title_main', 'title_native', 'title_romaji', 'title_english', 'synopsis', 'cover_url',
   'status', 'score_global', 'total_count', 'total_count_2',
   'genres_csv', 'genres_tag_csv', 'platforms_csv', 'shop_links_csv',
-  'publishers_csv', 'authors_csv', 'source_url', 'developer_badge', 'country_code',
+  'authors_csv', 'source_url', 'country_code',
 ] as const;
 
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
@@ -145,10 +146,8 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       genres_tag_csv: data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null,
       platforms_csv: data.platforms ? data.platforms.join(',') : null,
       shop_links_csv: shopLinks || null,
-      publishers_csv: data.publishers ? data.publishers.join(',') : null,
       authors_csv: (data.authors ?? []).map(a => a.name).join(','),
       source_url: data.sourceUrl || null,
-      developer_badge: data.developerBadge || null,
       country_code: data.countryOfOrigin || null,
     };
 
@@ -242,6 +241,15 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
       await saveMediaAuthors(rawId, data.authors!).catch(console.error);
     }
 
+    // Every mapper that has companies (igdb/anilist/tmdb/comicvine) already
+    // stamps a `role` on each entry — same full-replace semantics as
+    // save_characters_skeleton, there's no separate "missing logo" check
+    // like authors' above since every provider that has a logo returns one
+    // whenever the company has one.
+    if (data.companies && data.companies.length > 0) {
+      await saveMediaCompanies(rawId, data.companies).catch(console.error);
+    }
+
     // Reload so the result reflects curated relations/authors.
     const { relations: finalRels, authors: finalAuthors } = await loadDbRelationsAndAuthors(rawId);
 
@@ -266,13 +274,25 @@ export function prefetchMediaData(rawId: string): void {
   fetchMediaData(rawId).catch(() => {});
 }
 
+// Every mapper's display line is always the 'publisher' role (games: the
+// actual publisher; anime: the producers/production committee, AniList's
+// non-main studios; movies/series: TMDB's production companies, which
+// aren't split into roles) — never 'developer', and never a format-label
+// fallback (format has its own dedicated Stats row). Book/comic's line is
+// authors, untouched by this.
+function companyMetaLine(companies: MediaCompany[]): string | undefined {
+  const names = companies.filter(c => c.role === 'publisher').map(c => c.name);
+  return names.length > 0 ? names.join(', ') : undefined;
+}
+
 // Fills in relations/authors/characters/staff/parent from local IPC reads
 // only (no network) — fast enough to run before first paint.
 async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localData: MediaPageData): Promise<void> {
-  const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, parentEntry] = await Promise.all([
+  const [{ relations: dbRels, authors: dbAuthors }, dbChars, dbStaff, dbCompanies, parentEntry] = await Promise.all([
     loadDbRelationsAndAuthors(rawId),
     getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
     getMediaStaff(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaStaff>>),
+    getMediaCompanies(rawId).catch(() => [] as Awaited<ReturnType<typeof getMediaCompanies>>),
     // Resolved to a full {externalId, title, cover} so isBlockedEdition (MediaPage.tsx) sees it here too.
     catalog.parent_id ? getCatalogEntry(catalog.parent_id).catch(() => null) : Promise.resolve(null),
   ]);
@@ -285,6 +305,16 @@ async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localD
   if (dbAuthors.length > 0) localData.authors = dbAuthors.map(dbAuthorToMediaAuthor);
   if (dbChars.length > 0) localData.characters = dbChars.map(dbCharacterToMediaCharacter);
   if (dbStaff.length > 0) localData.staff = dbStaff.map(dbStaffToMediaStaff);
+  if (dbCompanies.length > 0) {
+    localData.companies = dbCompanies.map(dbCompanyToMediaCompany);
+    // The catalog-only fast path (mapCatalogEntryToPartialData) has no
+    // company data to build this line from at all — companies are
+    // relational now, not a catalog_media column — so it's patched in here
+    // once the company table loads, same "flashes in late" tradeoff as
+    // every other relational field on this page (authors, characters, ...).
+    const companyLine = companyMetaLine(localData.companies);
+    if (companyLine) localData.metaLines = [companyLine, ...localData.metaLines];
+  }
   if (parentEntry) {
     localData.parentGame = {
       externalId: parentEntry.external_id,
