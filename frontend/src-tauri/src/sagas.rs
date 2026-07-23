@@ -332,13 +332,33 @@ pub async fn get_saga_name(
     let conn = state.conn.lock().str_err()?;
     let name: Option<String> = conn
         .query_row(
-            "SELECT s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id WHERE sr.media_external_id = ?1",
+            "SELECT s.name FROM saga_relations sr JOIN sagas s ON s.id = sr.saga_id WHERE sr.media_external_id = ?1 AND s.name != ''",
             [&media_external_id],
             |row| row.get(0),
         )
         .optional()
         .str_err()?;
-    Ok(name)
+
+    if name.is_some() {
+        return Ok(name);
+    }
+
+    let fallback: Option<String> = conn
+        .query_row(
+            "SELECT s.name FROM saga_relations sr
+             JOIN sagas s ON s.id = sr.saga_id
+             WHERE s.name != '' AND sr.media_external_id IN (
+                 SELECT related_media_external_id FROM media_relations WHERE media_external_id = ?1 AND relation_type IN ('PREQUEL', 'SEQUEL')
+                 UNION
+                 SELECT media_external_id FROM media_relations WHERE related_media_external_id = ?1 AND relation_type IN ('PREQUEL', 'SEQUEL')
+             )",
+            [&media_external_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .str_err()?;
+
+    Ok(fallback)
 }
 
 // Bulk variant of get_saga_name — the library grid's saga grouping needs the

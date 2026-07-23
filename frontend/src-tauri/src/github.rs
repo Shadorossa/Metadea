@@ -153,16 +153,33 @@ pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .str_err()?;
-    let res = client
-        .get(&format!("{}/user", GITHUB_API))
-        .header("Authorization", format!("token {}", token))
-        .header("User-Agent", "Metadea-App")
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .str_err()?;
-    if !res.status().is_success() {
-        return Err(format!("Failed to load GitHub profile: {}", res.status()));
+
+    let mut last_err = String::new();
+    for attempt in 0..3 {
+        if attempt > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        match client
+            .get(&format!("{}/user", GITHUB_API))
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "Metadea-App")
+            .header("Accept", "application/json")
+            .send()
+            .await
+        {
+            Ok(res) => {
+                if res.status().is_success() {
+                    return res.json().await.str_err();
+                } else if res.status().as_u16() == 401 {
+                    return Err("Sesión de GitHub expirada o inválida. Vuelve a iniciar sesión.".to_string());
+                } else {
+                    return Err(format!("Error en la API de GitHub: HTTP {}", res.status()));
+                }
+            }
+            Err(e) => {
+                last_err = format!("No se pudo conectar con GitHub. Comprueba tu conexión a internet.");
+            }
+        }
     }
-    res.json().await.str_err()
+    Err(last_err)
 }
