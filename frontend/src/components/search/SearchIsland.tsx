@@ -87,31 +87,33 @@ function loadPersistedSearchState(): PersistedSearchState | null {
   }
 }
 
-export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
-  // search.astro reads ?q=/?type= via Astro.url.searchParams, but this page
-  // is statically prerendered (no `output: 'server'`) — that query string is
-  // always empty at build time, so initialQuery/initialType never reflect the
-  // real runtime URL. That made quick search's "Ver todos" (which deep-links
-  // to /search?type=<t>&q=<query>) always land on a blank/previous search
-  // instead of the specific type+query. Read the real URL here instead,
-  // client-side, where it's accurate — computed once via the lazy useState
-  // initializer, not on every render.
-  const [initial] = useState(() => {
-    if (typeof window === 'undefined') return { query: initialQuery, mediaType: initialType };
-    const params = new URLSearchParams(window.location.search);
-    const q = params.get('q');
-    if (!q) return { query: initialQuery, mediaType: initialType };
-    const rawType = params.get('type');
-    const mediaType: MediaType = rawType && (MEDIA_TYPE_IDS as string[]).includes(rawType) ? rawType as MediaType : initialType;
-    return { query: q, mediaType };
-  });
+// search.astro reads ?q=/?type= via Astro.url.searchParams, but this page is
+// statically prerendered (no `output: 'server'`) — that query string is
+// always empty at build time, so initialQuery/initialType (and the SSR'd
+// markup built from them) never reflect the real runtime URL. Reading
+// window.location.search directly during the initial render (e.g. via a
+// lazy useState initializer) would fix that, but it makes the very first
+// client render diverge from the server-rendered HTML, which is a React
+// hydration-mismatch error, not just cosmetically wrong markup — so this is
+// read in a mount effect instead (after hydration), matching SSR on the
+// first render and correcting it a tick later, same as the existing
+// persisted-search-state restore just below it.
+function getUrlSearchParams(): { query: string; mediaType: MediaType } | null {
+  const params = new URLSearchParams(window.location.search);
+  const q = params.get('q');
+  if (!q) return null;
+  const rawType = params.get('type');
+  const mediaType: MediaType = rawType && (MEDIA_TYPE_IDS as string[]).includes(rawType) ? rawType as MediaType : 'all';
+  return { query: q, mediaType };
+}
 
+export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [navSlot, setNavSlot]     = useState<HTMLElement | null>(null);
-  const [query, setQuery]         = useState(initial.query);
-  const [mediaType, setMediaType] = useState<MediaType>(initial.mediaType);
+  const [query, setQuery]         = useState(initialQuery);
+  const [mediaType, setMediaType] = useState<MediaType>(initialType);
   const [results, setResults]     = useState<SearchResult[]>([]);
-  const [status, setStatus]       = useState<SearchStatus>(initial.query ? 'loading' : 'idle');
+  const [status, setStatus]       = useState<SearchStatus>(initialQuery ? 'loading' : 'idle');
   const [missingProviders, setMissingProviders] = useState<string[]>([]);
   const [page, setPage]           = useState(1);
   const [hasMore, setHasMore]     = useState(false);
@@ -218,7 +220,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const skipNextPersistRef = useRef(true);
 
   useEffect(() => {
-    if (initialQuery) {
+    const urlParams = getUrlSearchParams();
+    if (urlParams) {
+      setQuery(urlParams.query);
+      setMediaType(urlParams.mediaType);
+      executeSearch(urlParams.query, urlParams.mediaType);
+    } else if (initialQuery) {
       executeSearch(initialQuery, initialType);
     } else {
       const saved = loadPersistedSearchState();
