@@ -198,6 +198,15 @@ const t    = useTranslations(lang);
     // Bail out if profile tab content is not present
     if (!document.getElementById('profile-tab-content')) return;
 
+    // Re-read on every navigation to this page, not just once at module load
+    // — Astro's view-transition navigation re-fires 'astro:page-load' and
+    // re-runs init(), but doesn't re-evaluate this script module's top-level
+    // `let activeTab = getTabFromHash()`. Without this, clicking a navbar
+    // media-type link (which deep-links to /profile?libtype=<type>#library)
+    // while already on Profile silently kept whatever tab was active before,
+    // ignoring the new #library hash in the URL.
+    activeTab = getTabFromHash();
+
     // The navbar's per-type library shortcuts (Navbar.astro) deep-link here
     // as /profile?libtype=<type>#library. switchTab()'s own replaceState
     // call below strips that query string from the URL before LibrarySection
