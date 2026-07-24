@@ -408,20 +408,25 @@
   /* The left inset must be padding, not margin — margin sits outside this
      element's own box, so the cursor crossing it (moving right from the
      card into the flyout) would briefly leave every hoverable element at
-     once and collapse the flyout before it's reached. */
-  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
+     once and collapse the flyout before it's reached. Padding is 0 at rest
+     and only grows to its real value on hover, alongside max-width — even
+     with box-sizing:border-box, max-width:0 can't shrink a box below its
+     own padding, so a fixed nonzero padding here always rendered a small
+     rounded sliver poking out past the card's right edge at rest. */
+  padding: 0;
   max-width: 0;
   overflow: hidden;
   background: color-mix(in srgb, var(--bg-base) 55%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 8px;
-  transition: max-width 0.35s ease;
+  transition: max-width 0.35s ease, padding 0.35s ease;
   pointer-events: none;
 }
 
 .library-card-cell--stacked:hover .library-card-stack-extra {
   max-width: 600px;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
   pointer-events: auto;
 }
 
