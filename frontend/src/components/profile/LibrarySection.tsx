@@ -166,14 +166,23 @@ export function LibrarySection() {
 
     if (filtered.length === 0) return [];
 
+    // Items with no finished_at (mainly "planning"/pending entries the user
+    // hasn't touched yet) have nothing of their own to sort by — fall back to
+    // the work's release date instead of lumping them all together unordered.
+    const releaseTimestamp = (i: Items[number]): number => {
+      const meta = catalogMap.get(i.external_id);
+      if (!meta?.release_year) return 0;
+      return new Date(meta.release_year, (meta.release_month ?? 1) - 1, meta.release_day ?? 1).getTime();
+    };
+
     const sortItems = (itemList: Items) => [...itemList].sort((a, b) => {
       if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
       if (sortBy === 'duration') return getItemMinutes(b, catalogMap) - getItemMinutes(a, catalogMap);
-      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
-      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : releaseTimestamp(a);
+      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : releaseTimestamp(b);
       if (dateA === 0 && dateB !== 0) return 1;
       if (dateB === 0 && dateA !== 0) return -1;
-      return dateB - dateA; // newest finished to oldest finished
+      return dateB - dateA; // newest finished/released to oldest
     });
 
     // "Al día" is a computed regrouping, not a stored status (see isCaughtUpOnReleasing).
