@@ -43,7 +43,16 @@ const lang = getLang(Astro.url);
     </div>
 
     <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); text-align: center;">
-      <button onclick="window.close()" class="btn btn--sm btn--primary" style="min-width: 120px;">Cerrar Ventana</button>
+      <button id="tos-close-btn" class="btn btn--sm btn--primary" style="min-width: 120px;">Cerrar Ventana</button>
     </div>
   </div>
 </BaseLayout>
+
+<script>
+  // .onclick assignment, not an inline onclick="" HTML attribute — the
+  // latter is a CSP script-src violation this app's packaged build actually
+  // enforces (unlike `tauri dev`'s devUrl-served HTML), so it silently did
+  // nothing once installed.
+  const closeBtn = document.getElementById('tos-close-btn');
+  if (closeBtn) closeBtn.onclick = () => window.close();
+</script>

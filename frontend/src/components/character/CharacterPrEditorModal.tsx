@@ -651,7 +651,7 @@ export function CharacterPrEditorModal() {
                     type="button"
                     className="pr-editor-char-remove"
                     onClick={() => removeCharacteristic(idx)}
-                    title="Eliminar característica"
+                    title={t.remove_characteristic}
                   >
                     ×
                   </button>
@@ -734,10 +734,10 @@ export function CharacterPrEditorModal() {
           <div className="pr-editor-section" style={{ marginTop: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <span className="pr-editor-section-title" style={{ margin: 0 }}>
-                Actores de Voz ({voiceActors.length})
+                {t.voice_actors} ({voiceActors.length})
               </span>
               <button type="button" className="pr-editor-add-btn" onClick={() => setVoiceActorSearchOpen(true)}>
-                + Añadir actor de voz
+                {t.add_voice_actor}
               </button>
             </div>
 
@@ -748,7 +748,7 @@ export function CharacterPrEditorModal() {
                     type="button"
                     className="pr-editor-media-card-remove"
                     onClick={() => removeVoiceActor(idx)}
-                    title="Eliminar actor de voz"
+                    title={t.remove_voice_actor}
                   >
                     ×
                   </button>
@@ -765,7 +765,7 @@ export function CharacterPrEditorModal() {
                       className="pr-editor-char-input"
                       value={va.name}
                       onChange={e => updateVoiceActor(idx, 'name', e.target.value)}
-                      placeholder="Nombre actor"
+                      placeholder={t.actor_name_ph}
                       style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.75rem' }}
                     />
                   </div>
@@ -775,7 +775,7 @@ export function CharacterPrEditorModal() {
                     className="pr-editor-char-input"
                     value={va.native}
                     onChange={e => updateVoiceActor(idx, 'native', e.target.value)}
-                    placeholder="Nombre nativo (Kanji)"
+                    placeholder={t.actor_native_ph}
                     style={{ fontSize: '0.7rem' }}
                   />
 

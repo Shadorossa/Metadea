@@ -335,6 +335,12 @@ export const en = {
     characteristics: 'Characteristics',
     char_label_ph: 'Label (e.g. Height)',
     char_value_ph: 'Value (e.g. 170 cm)',
+    remove_characteristic: 'Remove characteristic',
+    voice_actors: 'Voice Actors',
+    add_voice_actor: '+ Add voice actor',
+    remove_voice_actor: 'Remove voice actor',
+    actor_name_ph: 'Actor name',
+    actor_native_ph: 'Native name (Kanji)',
   },
   settings: {
     title: 'Settings',

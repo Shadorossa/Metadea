@@ -63,7 +63,7 @@ const translations = useTranslations(lang);
         <div class="character-hero-right-col">
           <div class="character-name-row">
             <h1 class="media-title-main" id="char-name-full"></h1>
-            <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" onclick="handleEditClick()" title="Editar datos del personaje">
+            <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
               Editar
             </button>
@@ -130,16 +130,6 @@ const translations = useTranslations(lang);
 <CharacterPrEditorModal client:load />
 
 <script>
-  window.handleEditClick = function() {
-    const charKeyEl = document.querySelector('[data-char-key]');
-    if (!charKeyEl) return;
-    const charKey = charKeyEl.getAttribute('data-char-key');
-    if (!charKey) return;
-    if (window.openCharacterEditor) {
-      window.openCharacterEditor(charKey);
-    }
-  };
-
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import { compareByReleaseDateDesc, mapExternalFormatToType } from '../lib/media/mapper-utils';
@@ -773,6 +763,21 @@ const translations = useTranslations(lang);
       // Reacciones y Favorito
       const charKeyStr = characterExternalId;
       contentEl.setAttribute('data-char-key', charKeyStr);
+
+      // Bound via .onclick assignment (re-runs every loadCharacterData call,
+      // same pattern as favBtn/reactionBtns below), not an inline
+      // onclick="" HTML attribute — the latter is a CSP script-src
+      // violation (this app's CSP has no 'unsafe-inline' for scripts) that
+      // Tauri only actually enforces once it's serving the packaged app
+      // itself, not the dev server behind `tauri dev`'s devUrl — so it
+      // silently did nothing in a built/installed app while still
+      // appearing to work in dev.
+      const editBtn = document.getElementById('char-edit-btn-header');
+      if (editBtn) {
+        editBtn.onclick = () => {
+          if (window.openCharacterEditor) window.openCharacterEditor(charKeyStr);
+        };
+      }
 
       const favBtn = document.getElementById('char-fav-btn');
       const reactionBtns = document.querySelectorAll('.char-action-btn[data-reaction]');
