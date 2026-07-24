@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "1cc7b069c031c8471cc7b069c031c847",
+    "external_id": "game:78115",
+    "type": "game",
+    "title_main": "The Legend of Heroes: Trails of Cold Steel IV",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:78115",
+      "related_media_external_id": "game:26564",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The Legend of Heroes: Trails of Cold Steel III",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobb5w.jpg"
+    },
+    {
+      "media_external_id": "game:78115",
+      "related_media_external_id": "game:136673",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "The Legend of Heroes: Trails into Reverie",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3bb2.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}

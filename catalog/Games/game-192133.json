@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "ef535f0555a10d2bef535f0555a10d2b",
+    "external_id": "game:192133",
+    "type": "game",
+    "title_main": "The Legend of Heroes: Zero no Kiseki",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:192133",
+      "related_media_external_id": "game:28101",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The Legend of Heroes: Trails in the Sky the 3rd",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co23da.jpg"
+    },
+    {
+      "media_external_id": "game:192133",
+      "related_media_external_id": "game:284036",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "The Legend of Heroes: Ao no Kiseki",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co7oqe.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
