@@ -55,6 +55,16 @@ function getProgressConfig(type: string, tm: Translations['media']): { label: st
   return { label, label2, step };
 }
 
+// No work catalogued here predates this — anything a user types earlier
+// (typo, wrong era) gets pulled up to it rather than silently accepted.
+const MIN_DATE_YEAR = 1950;
+
+function clampDateMinYear(value: string): string {
+  if (!value) return value;
+  const [year, month, day] = value.split('-');
+  return Number(year) < MIN_DATE_YEAR ? `${MIN_DATE_YEAR}-${month}-${day}` : value;
+}
+
 // Relation cards link to another media page via "/media?id=<externalId>" —
 // pull that id back out to look up/link the related game's own log.
 function extractExternalIdFromRelationUrl(url: string | null | undefined): string | undefined {
@@ -587,9 +597,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 {isMovie ? (
                   <HeaderField label={te.view_date || 'Fecha de visionado'}>
                     <input type="date" className="me-header-field-input me-header-field-input--date"
+                      min={`${MIN_DATE_YEAR}-01-01`}
                       value={activeLog.startedAt || activeLog.finishedAt}
                       onChange={e => {
-                        const val = e.target.value;
+                        const val = clampDateMinYear(e.target.value);
                         const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
                         if (val) {
                           updates.status = 'completed';
@@ -603,14 +614,16 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   <>
                     <HeaderField label={te.started}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
+                        min={`${MIN_DATE_YEAR}-01-01`}
                         value={activeLog.startedAt}
-                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })} />
+                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: clampDateMinYear(e.target.value) } })} />
                     </HeaderField>
                     <HeaderField label={te.ended}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
+                        min={`${MIN_DATE_YEAR}-01-01`}
                         value={activeLog.finishedAt}
                         onChange={e => {
-                          const val = e.target.value;
+                          const val = clampDateMinYear(e.target.value);
                           const updates: Partial<LogState> = { finishedAt: val };
                           if (val) {
                             updates.status = 'completed';
