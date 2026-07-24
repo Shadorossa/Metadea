@@ -17,6 +17,14 @@
 // identically regardless of which tab is currently active — see
 // setupHelpModals() in settings.astro, which is itself already generic
 // (data-help="x" opens #x-help-modal) and needed no changes for this.
+
+import type { Translations } from '../../i18n/index';
+
+interface Props {
+  t: Translations;
+}
+
+const { t } = Astro.props;
 ---
 
 <!-- GitHub -->
@@ -24,16 +32,16 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>¿Qué es GitHub?</h3>
+      <h3>{t.help.github_title}</h3>
       <button class="settings-help-modal-close" data-modal="github-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>GitHub</strong> es una plataforma de control de versiones que permite colaborar en proyectos de código.</p>
-      <p>En Metadea, se usa para:</p>
+      <p set:html={t.help.github_body1} />
+      <p>{t.help.github_body2}</p>
       <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
-        <li><strong>Contribuir cambios:</strong> Proponer ediciones a los datos de animes, mangas y personajes de forma colaborativa</li>
-        <li><strong>Ver historial:</strong> Revisar todas las contribuciones y cambios realizados al proyecto</li>
-        <li><strong>Colaboración segura:</strong> Los cambios se revisan antes de aplicarse, manteniendo la calidad de los datos</li>
+        <li set:html={t.help.github_item1} />
+        <li set:html={t.help.github_item2} />
+        <li set:html={t.help.github_item3} />
       </ul>
     </div>
   </div>
@@ -46,26 +54,26 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>AniList</h3>
+      <h3>{t.help.anilist_title}</h3>
       <button class="settings-help-modal-close" data-modal="anilist-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>AniList</strong> es una base de datos comunitaria de animes, mangas y personajes. En Metadea se usa para:</p>
+      <p set:html={t.help.anilist_body1} />
       <ul style="margin: 1rem 0 0 1.5rem; list-style: disc;">
-        <li><strong>Datos de animes y mangas:</strong> Sincronizar información como títulos, géneros, sinopsis y fechas</li>
-        <li><strong>Datos de personajes:</strong> Cargar información detallada de personajes, sus apareamientos y características</li>
-        <li><strong>Sincronizar biblioteca:</strong> Importar tu lista personal de animes y mangas desde AniList</li>
+        <li set:html={t.help.anilist_item1} />
+        <li set:html={t.help.anilist_item2} />
+        <li set:html={t.help.anilist_item3} />
       </ul>
-      <p style="margin-top: 1rem;">La búsqueda de anime y manga funciona sin clave propia — solo la necesitas si quieres <strong>conectar tu cuenta</strong> (iniciar sesión) para sincronizar tu lista. Para obtenerla:</p>
+      <p style="margin-top: 1rem;" set:html={t.help.anilist_body2} />
       <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
-        <li>Inicia sesión en <a href="https://anilist.co/settings/developer" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">anilist.co/settings/developer</a></li>
-        <li>Pulsa <strong>"Create New Client"</strong></li>
-        <li>Ponle cualquier nombre, por ejemplo "Metadea"</li>
-        <li>En <strong>"Redirect URL"</strong> pon exactamente <code style="background: var(--bg-elevated); padding: 0.1rem 0.35rem; border-radius: 3px;">https://anilist.co/api/v2/oauth/pin</code> — es la URL oficial de AniList para apps sin servidor propio; muestra el código en pantalla para que lo copies a mano</li>
-        <li>Guarda el cliente y copia el <strong>Client ID</strong> que te asigna</li>
-        <li>Pégalo en el campo de Entorno</li>
+        <li set:html={t.help.anilist_step1} />
+        <li set:html={t.help.anilist_step2} />
+        <li set:html={t.help.anilist_step3} />
+        <li set:html={t.help.anilist_step4} />
+        <li set:html={t.help.anilist_step5} />
+        <li set:html={t.help.anilist_step6} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">Al pulsar "Conectar" en Conexiones, se abrirá una pestaña de AniList donde aceptas el acceso y te muestra un código (PIN) — pégalo de vuelta en Metadea para completar la conexión.</p>
+      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.anilist_body3} />
     </div>
   </div>
 </div>
@@ -75,31 +83,30 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>¿Cómo obtener claves de IGDB?</h3>
+      <h3>{t.help.igdb_title}</h3>
       <button class="settings-help-modal-close" data-modal="igdb-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>IGDB</strong> es una base de datos de videojuegos. Sus claves se generan desde la consola de desarrolladores de <strong>Twitch</strong> (IGDB pertenece a Twitch/Amazon), así que necesitas una cuenta de Twitch para registrar la app.</p>
-      <p style="margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-left: 3px solid var(--color-error, #ff6b6b); background: color-mix(in srgb, var(--color-error, #ff6b6b) 10%, transparent); border-radius: 4px; font-size: 0.9em;">
-        ⚠️ <strong>Requisito:</strong> tu cuenta de Twitch necesita la <strong>autenticación en dos pasos (2FA)</strong> activada para poder crear aplicaciones en la consola de desarrolladores. Si no la tienes, Twitch te pedirá activarla antes de continuar.
-      </p>
+      <p set:html={t.help.igdb_body1} />
+      <p style="margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-left: 3px solid var(--color-error, #ff6b6b); background: color-mix(in srgb, var(--color-error, #ff6b6b) 10%, transparent); border-radius: 4px; font-size: 0.9em;" set:html={t.help.igdb_warning} />
       <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
-        <li>Inicia sesión con tu cuenta de Twitch en <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">dev.twitch.tv/console/apps</a></li>
-        <li>Activa la 2FA en tu cuenta si aún no la tienes (Twitch te redirigirá a hacerlo si intentas registrar una app sin ella)</li>
-        <li>Pulsa <strong>"Register Your Application"</strong></li>
-        <li>Rellena el formulario:
+        <li set:html={t.help.igdb_step1} />
+        <li set:html={t.help.igdb_step2} />
+        <li set:html={t.help.igdb_step3} />
+        <li>
+          {t.help.igdb_step4}
           <ul style="margin: 0.4rem 0 0 1.25rem; list-style: disc;">
-            <li><strong>Name:</strong> cualquier nombre, por ejemplo "Metadea"</li>
-            <li><strong>OAuth Redirect URLs:</strong> pon exactamente <code style="background: var(--bg-elevated); padding: 0.1rem 0.35rem; border-radius: 3px;">http://localhost</code> — no hace falta ningún puerto ni ruta adicional</li>
-            <li><strong>Category:</strong> "Application Integration" (o similar)</li>
+            <li set:html={t.help.igdb_step4_item1} />
+            <li set:html={t.help.igdb_step4_item2} />
+            <li set:html={t.help.igdb_step4_item3} />
           </ul>
         </li>
-        <li>Guarda la aplicación. Entra en ella y copia el <strong>Client ID</strong> que aparece</li>
-        <li>Pulsa <strong>"New Secret"</strong> para generar el <strong>Client Secret</strong> y cópialo también (solo se muestra una vez)</li>
-        <li>Pega ambas claves en los campos de arriba</li>
+        <li set:html={t.help.igdb_step5} />
+        <li set:html={t.help.igdb_step6} />
+        <li set:html={t.help.igdb_step7} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">🔒 Nunca compartas tu Client Secret con nadie ni lo pegues en sitios públicos (chats, capturas de pantalla, repositorios) — con él se puede hacer pasar por tu aplicación. Metadea lo guarda solo en tu equipo, no se envía a ningún servidor propio.</p>
-      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);">Más detalle oficial en <a href="https://api-docs.igdb.com/#getting-started" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">api-docs.igdb.com</a>.</p>
+      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.igdb_body2} />
+      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);" set:html={t.help.igdb_body3} />
     </div>
   </div>
 </div>
@@ -109,19 +116,19 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>¿Cómo obtener claves de TMDB?</h3>
+      <h3>{t.help.tmdb_title}</h3>
       <button class="settings-help-modal-close" data-modal="tmdb-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>TMDB</strong> (The Movie Database) es una base de datos de películas y series. Para obtener tus claves:</p>
+      <p set:html={t.help.tmdb_body1} />
       <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
-        <li>Ve a <a href="https://developer.themoviedb.org/docs/getting-started" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">developer.themoviedb.org</a></li>
-        <li>Sigue la guía de "Getting Started" en la documentación</li>
-        <li>Necesitarás crear una cuenta si no la tienes</li>
-        <li>Obtén tu <strong>API Key</strong> y <strong>Access Token</strong></li>
-        <li>Pega ambas claves en los campos correspondientes</li>
+        <li set:html={t.help.tmdb_step1} />
+        <li set:html={t.help.tmdb_step2} />
+        <li set:html={t.help.tmdb_step3} />
+        <li set:html={t.help.tmdb_step4} />
+        <li set:html={t.help.tmdb_step5} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">Nota: Ambos campos son necesarios para acceso completo a TMDB</p>
+      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">{t.help.tmdb_body2}</p>
     </div>
   </div>
 </div>
@@ -131,20 +138,18 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>¿Cómo obtener la clave de Comic Vine?</h3>
+      <h3>{t.help.comicvine_title}</h3>
       <button class="settings-help-modal-close" data-modal="comicvine-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>Comic Vine</strong> se usa para la búsqueda de la pestaña Cómics — es una base de datos curada específicamente para cómics, con menos duplicados que las alternativas genéricas de libros.</p>
+      <p set:html={t.help.comicvine_body1} />
       <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
-        <li>Crea una cuenta (o inicia sesión) en <a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a></li>
-        <li>Tu clave aparece directamente en esa misma página, sin más pasos</li>
-        <li>Pégala en el campo de arriba</li>
+        <li set:html={t.help.comicvine_step1} />
+        <li set:html={t.help.comicvine_step2} />
+        <li set:html={t.help.comicvine_step3} />
       </ol>
-      <p style="margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-left: 3px solid var(--color-error, #ff6b6b); background: color-mix(in srgb, var(--color-error, #ff6b6b) 10%, transparent); border-radius: 4px; font-size: 0.9em;">
-        ⚠️ Sus propios términos dicen textualmente: <em>"The API is strictly for non-commercial use only"</em>. No aclaran explícitamente si aceptar donaciones voluntarias para el proyecto cuenta como uso comercial — si tienes dudas sobre tu caso, te piden que les escribas directamente antes de asumir nada.
-      </p>
-      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);">Límite: 200 peticiones por hora.</p>
+      <p style="margin-top: 0.75rem; padding: 0.6rem 0.75rem; border-left: 3px solid var(--color-error, #ff6b6b); background: color-mix(in srgb, var(--color-error, #ff6b6b) 10%, transparent); border-radius: 4px; font-size: 0.9em;" set:html={t.help.comicvine_warning} />
+      <p style="margin-top: 0.5rem; font-size: 0.9em; color: var(--text-muted);">{t.help.comicvine_body2}</p>
     </div>
   </div>
 </div>
@@ -154,21 +159,21 @@
   <div class="settings-help-modal-overlay"></div>
   <div class="settings-help-modal-content">
     <div class="settings-help-modal-header">
-      <h3>¿Cómo obtener clave de Steam?</h3>
+      <h3>{t.help.steam_title}</h3>
       <button class="settings-help-modal-close" data-modal="steam-help-modal">&times;</button>
     </div>
     <div class="settings-help-modal-body">
-      <p><strong>Steam</strong> es la plataforma de distribución de videojuegos de Valve. Para obtener tu clave API:</p>
+      <p set:html={t.help.steam_body1} />
       <ol style="margin: 1rem 0 0 1.5rem; list-style: decimal;">
-        <li>Necesitas una <strong>cuenta de Steam</strong> con historial de compras</li>
-        <li>Ve a <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">steamcommunity.com/dev/apikey</a></li>
-        <li>Inicia sesión si es necesario</li>
-        <li>Introduce un <strong>nombre de dominio</strong> (puede ser localhost para desarrollo local)</li>
-        <li>Lee y acepta el acuerdo de licencia</li>
-        <li>Se generará tu <strong>API Key</strong> automáticamente</li>
-        <li>Copia la clave y pégala en el campo de abajo</li>
+        <li set:html={t.help.steam_step1} />
+        <li set:html={t.help.steam_step2} />
+        <li set:html={t.help.steam_step3} />
+        <li set:html={t.help.steam_step4} />
+        <li set:html={t.help.steam_step5} />
+        <li set:html={t.help.steam_step6} />
+        <li set:html={t.help.steam_step7} />
       </ol>
-      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">⚠️ No compartas tu API Key con otros; es personal y única para tu cuenta</p>
+      <p style="margin-top: 1rem; font-size: 0.9em; color: var(--text-muted);">{t.help.steam_body2}</p>
     </div>
   </div>
 </div>

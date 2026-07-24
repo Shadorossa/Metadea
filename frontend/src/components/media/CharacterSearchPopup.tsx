@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { search, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
+import { getT } from '../../i18n/client';
 
 export interface CharacterSearchPopupProps {
   onSelect: (result: ApiSearchResult) => void;
@@ -9,6 +10,8 @@ export interface CharacterSearchPopupProps {
 }
 
 export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: CharacterSearchPopupProps) {
+  const t = getT();
+  const ce = t.character_editor;
   const [query, setQuery] = useState('');
   const { results, isLoading } = useDebouncedSearch<ApiSearchResult>(
     query,
@@ -26,7 +29,7 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
         <div className="pr-editor-search-controls">
           <input
             type="text"
-            placeholder="Buscar personajes en AniList..."
+            placeholder={ce.search_placeholder}
             value={query}
             onChange={e => setQuery(e.target.value)}
             autoFocus
@@ -35,9 +38,9 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
           />
         </div>
         <div className="pr-editor-search-results pr-editor-search-results--grid">
-          {isLoading && <div className="pr-editor-search-loading">Buscando personajes...</div>}
+          {isLoading && <div className="pr-editor-search-loading">{ce.search_loading}</div>}
           {!isLoading && filteredResults.length === 0 && query && (
-            <div className="pr-editor-search-empty">No se encontraron personajes</div>
+            <div className="pr-editor-search-empty">{ce.search_no_results}</div>
           )}
           <div className="pr-editor-search-grid">
             {filteredResults.map(r => (
@@ -52,7 +55,7 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
                 {r.coverUrl ? (
                   <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
                 ) : (
-                  <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No Image</div>
+                  <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ce.no_image}</div>
                 )}
                 <div className="pr-editor-search-result-info">
                   <div className="pr-editor-search-result-id">{r.externalId}</div>

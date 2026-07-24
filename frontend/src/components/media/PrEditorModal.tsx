@@ -83,6 +83,7 @@ function recordsDiffer(a: Record<string, string>, b: Record<string, string>, nor
 export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal', nonGithubFields }: Props) {
   const t = getT();
   const tm = t.media;
+  const pe = t.pr_editor;
   // Shown in the editor, in the UI's own language.
   const relationLabels = tm.relations;
   // What actually gets persisted to type_label — always English, regardless
@@ -546,13 +547,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       <div className="pr-editor-overlay" onClick={onClose}>
         <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
           <div className="pr-editor-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', textAlign: 'center', padding: '3rem 2rem' }}>
-            <p className="pr-editor-title">Inicia sesión con GitHub para editar</p>
+            <p className="pr-editor-title">{pe.login_required_title}</p>
             <p className="pr-editor-subtitle">
               Cualquier edición aquí se propone como una Pull Request al catálogo comunitario —
               inicia sesión con GitHub en Settings antes de continuar.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose}>Cerrar</button>
+              <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={onClose}>{pe.close}</button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={() => { window.location.href = '/settings'; }}>
                 Ir a Settings
               </button>
@@ -670,7 +671,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            <span className="pr-editor-title">Edit Collaborative Catalog Entry</span>
+            <span className="pr-editor-title">{pe.edit_title}</span>
             <span className="pr-editor-subtitle">ID: {externalId}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -684,7 +685,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
               type="button"
               className="pr-editor-block-btn"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-              title="Descarga los datos oficiales de la API para rellenar únicamente las secciones y campos vacíos sin sobrescribir tus cambios."
+              title={pe.resync_tooltip}
               disabled={isResyncing}
               onClick={handleResync}
             >
@@ -696,7 +697,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
             <button
               type="button"
               className={`pr-editor-block-btn${entry.blocked_at ? ' pr-editor-block-btn--active' : ''}`}
-              title="Oculta esta entrada de búsqueda/relaciones/sagas para todos los usuarios — reserva el ID sin borrarlo. Vuelve a pulsar para deshacer."
+              title={pe.block_tooltip}
               onClick={() => handleChange('blocked_at', entry.blocked_at ? null : new Date().toISOString())}
             >
               Eliminar de Metadea
@@ -768,12 +769,12 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                       {entry.cover_url ? (
                         <img src={entry.cover_url} alt="" />
                       ) : (
-                        <span className="pr-editor-cover-placeholder">No Cover</span>
+                        <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
                       )}
                     </div>
                     <input
                       type="text"
-                      placeholder="Paste cover image URL..."
+                      placeholder={pe.cover_url_placeholder}
                       value={entry.cover_url || ''}
                       onChange={e => handleChange('cover_url', e.target.value)}
                     />

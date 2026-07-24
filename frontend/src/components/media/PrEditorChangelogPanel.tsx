@@ -1,4 +1,5 @@
 import { getCommunitySyncLog } from '../../lib/shared/community-sync-log';
+import { getT } from '../../i18n/client';
 
 function relativeTime(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
@@ -20,12 +21,13 @@ function relativeTime(timestamp: number): string {
 // triggers one.
 export function PrEditorChangelogPanel() {
   const log = getCommunitySyncLog();
+  const pe = getT().pr_editor;
 
   return (
     <div className="pr-editor-changelog-panel" onClick={e => e.stopPropagation()}>
-      <span className="pr-editor-changelog-title">Últimos cambios del catálogo comunitario</span>
+      <span className="pr-editor-changelog-title">{pe.changelog_title}</span>
       {log.length === 0 ? (
-        <p className="pr-editor-changelog-empty">Todavía no se ha sincronizado el catálogo comunitario en este equipo.</p>
+        <p className="pr-editor-changelog-empty">{pe.changelog_empty}</p>
       ) : (
         <ul className="pr-editor-changelog-list">
           {log.map((entry, i) => (

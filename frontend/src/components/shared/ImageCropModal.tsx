@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, createElement, type PointerEvent as ReactPointerEvent } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { wrapAssetUrl } from '../../lib/tauri';
+import { getT } from '../../i18n/client';
 
 // Fallback bounds while the image's natural size hasn't loaded yet.
 const DEFAULT_MIN_ZOOM = 100;
@@ -43,6 +44,7 @@ interface Props {
 }
 
 function ImageCropModal({ opts, onResolve }: Props) {
+  const t = getT().image_crop;
   const aspectRatio = opts.aspectRatio ?? 3 / 4;
 
   const [imageUrl, setImageUrl] = useState(opts.initialUrl);
@@ -238,7 +240,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
           ref={urlInputRef}
           type="text"
           className="img-crop-url"
-          placeholder="URL de la imagen..."
+          placeholder={t.url_placeholder}
           value={imageUrl}
           onChange={e => {
             hasCustomBgSizeRef.current = false;
@@ -275,7 +277,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
               transform: `translate(-${posX}%, -${posY}%)`,
             } : { visibility: 'hidden' }}
           />
-          {!imageUrl && <div className="img-crop-empty">Pega una URL de imagen arriba o arrastra un archivo aquí</div>}
+          {!imageUrl && <div className="img-crop-empty">{t.empty_hint}</div>}
         </div>
         <label className="img-crop-zoom-label">
           Zoom
@@ -296,7 +298,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
             ? <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'removed' })}>{opts.removeLabel}</button>
             : <span />}
           <div className="img-crop-actions-right">
-            <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'cancelled' })}>Cancelar</button>
+            <button type="button" className="list-btn list-btn--ghost" onClick={() => close({ action: 'cancelled' })}>{t.cancel}</button>
             <button
               type="button"
               className="list-btn list-btn--primary"

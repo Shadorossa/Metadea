@@ -1,4 +1,5 @@
 import React from 'react';
+import { getT } from '../../i18n/client';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from './utils/constants';
 
 interface PlatformSidebarProps {
@@ -9,6 +10,7 @@ interface PlatformSidebarProps {
 }
 
 export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, onFetchMetadata }: PlatformSidebarProps) {
+  const t = getT();
   return (
     <aside className="local-platform-sidebar">
       {LAUNCHER_ORDER.map(id => (
@@ -37,7 +39,7 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
         type="button"
         className="local-platform-btn local-metadata-btn"
         onClick={onFetchMetadata}
-        title="Obtener metadatos de IGDB"
+        title={t.local.fetch_igdb_metadata}
       >
         <span className="local-platform-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -45,7 +47,7 @@ export function PlatformSidebar({ activePlatform, availablePlatforms, onSelect, 
             <line x1="5" y1="21" x2="19" y2="21"/>
           </svg>
         </span>
-        <span className="local-platform-label">Metadatos</span>
+        <span className="local-platform-label">{t.local.metadata_label}</span>
       </button>
     </aside>
   );

@@ -78,12 +78,12 @@ const t    = useTranslations(lang);
     </div>
 
     <nav class="profile-tabs">
-      <button class="profile-tab active" data-tab="overview" title="Perfil" set:html={ICON_PROFILE_OVERVIEW}></button>
-      <button class="profile-tab" data-tab="library" title="Biblioteca" set:html={ICON_PROFILE_LIBRARY}></button>
-      <button class="profile-tab" data-tab="favorites" title="Favoritos" set:html={ICON_PROFILE_FAVORITES}></button>
-      <button class="profile-tab" data-tab="stats" title="Estadísticas" set:html={ICON_PROFILE_STATS}></button>
-      <button class="profile-tab" data-tab="reviews" title="Reseñas" set:html={ICON_PROFILE_REVIEWS}></button>
-      <button class="profile-tab" data-tab="lists" title="Listas" set:html={ICON_PROFILE_LISTS}></button>
+      <button class="profile-tab active" data-tab="overview" title={t.profile.tab_overview} set:html={ICON_PROFILE_OVERVIEW}></button>
+      <button class="profile-tab" data-tab="library" title={t.profile.tab_library} set:html={ICON_PROFILE_LIBRARY}></button>
+      <button class="profile-tab" data-tab="favorites" title={t.profile.favorites} set:html={ICON_PROFILE_FAVORITES}></button>
+      <button class="profile-tab" data-tab="stats" title={t.profile.tab_stats} set:html={ICON_PROFILE_STATS}></button>
+      <button class="profile-tab" data-tab="reviews" title={t.profile.reviews} set:html={ICON_PROFILE_REVIEWS}></button>
+      <button class="profile-tab" data-tab="lists" title={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
       <script is:inline>
         (function() {
           var hash = window.location.hash.replace('#', '');

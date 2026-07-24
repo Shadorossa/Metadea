@@ -1,4 +1,5 @@
 import type { MetaResolver } from '../../lib/media/sagaGrouping';
+import { getT } from '../../i18n/client';
 
 interface Props {
   externalId: string;
@@ -21,13 +22,14 @@ export function PrEditorSagaOrderSection({
   externalId, sagaName, onSagaNameChange, sagaOrder, sagaGroups,
   draggedIndex, onStartDrag, onRemove, onUpdateGroup, onOpenSearch, resolveMeta,
 }: Props) {
+  const pe = getT().pr_editor;
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
-        <label className="pr-editor-subsection-label">Saga Name</label>
+        <label className="pr-editor-subsection-label">{pe.saga_name_label}</label>
         <input
           type="text"
-          placeholder="Saga Name (e.g. Inazuma Eleven)"
+          placeholder={pe.saga_name_placeholder}
           value={sagaName}
           onChange={e => onSagaNameChange(e.target.value)}
           className="pr-editor-media-card-group-input"
@@ -35,7 +37,7 @@ export function PrEditorSagaOrderSection({
         />
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Saga order</label>
+        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>{pe.saga_order_label}</label>
         <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>+ Add to Saga</button>
       </div>
       <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
@@ -71,7 +73,7 @@ export function PrEditorSagaOrderSection({
               </div>
               <input
                 type="text"
-                placeholder="Concept Group..."
+                placeholder={pe.concept_group_placeholder}
                 value={sagaGroups[id] || ''}
                 onChange={e => onUpdateGroup(id, e.target.value)}
                 onPointerDown={e => e.stopPropagation()}

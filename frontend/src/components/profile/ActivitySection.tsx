@@ -214,7 +214,7 @@ export function ActivitySection({ catalogMap, p }: Props) {
               <line x1="10" y1="11" x2="10" y2="17" />
               <line x1="14" y1="11" x2="14" y2="17" />
             </svg>
-            <span>Eliminar actividad</span>
+            <span>{p.activity_delete}</span>
           </button>
         </div>,
         document.body

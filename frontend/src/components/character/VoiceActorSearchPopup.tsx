@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
+import { getT } from '../../i18n/client';
 
 export interface VoiceActorSearchPopupProps {
   onSelect: (result: AniListStaffSearchResult) => void;
@@ -12,6 +13,7 @@ export interface VoiceActorSearchPopupProps {
 // modeled there as Staff, see anilist.ts's searchAniListStaff); a TMDB person
 // search for live-action actors can plug in the same way later.
 export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: VoiceActorSearchPopupProps) {
+  const ce = getT().character_editor;
   const [query, setQuery] = useState('');
   const { results, isLoading } = useDebouncedSearch<AniListStaffSearchResult>(
     query,
@@ -29,7 +31,7 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
         <div className="pr-editor-search-controls">
           <input
             type="text"
-            placeholder="Buscar actor de voz en AniList..."
+            placeholder={ce.voice_actor_search_placeholder}
             value={query}
             onChange={e => setQuery(e.target.value)}
             autoFocus
@@ -38,9 +40,9 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
           />
         </div>
         <div className="pr-editor-search-results pr-editor-search-results--grid">
-          {isLoading && <div className="pr-editor-search-loading">Buscando actores de voz...</div>}
+          {isLoading && <div className="pr-editor-search-loading">{ce.voice_actor_search_loading}</div>}
           {!isLoading && filteredResults.length === 0 && query && (
-            <div className="pr-editor-search-empty">No se encontraron actores de voz</div>
+            <div className="pr-editor-search-empty">{ce.voice_actor_search_no_results}</div>
           )}
           <div className="pr-editor-search-grid">
             {filteredResults.map(r => (
@@ -53,7 +55,7 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
                 {r.image ? (
                   <img src={r.image} alt="" className="pr-editor-search-result-cover" />
                 ) : (
-                  <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No Image</div>
+                  <div className="pr-editor-cover-placeholder" style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{ce.no_image}</div>
                 )}
                 <div className="pr-editor-search-result-info">
                   <div className="pr-editor-search-result-title">{r.name}</div>

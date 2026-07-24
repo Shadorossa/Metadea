@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo } from '../../lib/tauri';
+import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { useLocalGames }        from './hooks/useLocalGames';
@@ -23,6 +24,7 @@ import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icon
 const ENTER_ANIM_MS = 340;
 
 export default function LocalLibrary() {
+  const t = getT();
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
   // On a full page load the Navbar's #nav-center-slot is already painted
   // before React hydrates, so a one-time getElementById resolves it fine.
@@ -163,7 +165,7 @@ export default function LocalLibrary() {
         <input
           type="text"
           className="local-tab-search"
-          placeholder="Buscar juego…"
+          placeholder={t.local.search_game_ph}
           value={filterName}
           onChange={e => setFilterName(e.target.value)}
         />
@@ -221,12 +223,12 @@ export default function LocalLibrary() {
                     {routes['videojuegos'] && (
                       <>
                         <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{routes['videojuegos']}</span>
-                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title="Quitar carpeta local" style={{ color: 'var(--color-error, #ff6b6b)' }}>
+                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title={t.local.remove_local_folder} style={{ color: 'var(--color-error, #ff6b6b)' }}>
                           <IconX />
                         </button>
                       </>
                     )}
-                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={routes['videojuegos'] ? 'Cambiar carpeta' : 'Añadir carpeta'}>
+                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={routes['videojuegos'] ? t.local.change_folder : t.local.add_folder}>
                       <IconFolder />
                     </button>
                     <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
@@ -243,7 +245,7 @@ export default function LocalLibrary() {
                 ) : gamesState === 'empty' ? (
                   <div className="local-state-placeholder">
                     <IconMonitor />
-                    <p>No se encontraron juegos instalados</p>
+                    <p>{t.local.no_games_found}</p>
                     <span>Steam, Epic, GOG, Xbox y EA son compatibles</span>
                     {scanError && (
                       <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
@@ -309,8 +311,8 @@ export default function LocalLibrary() {
                           {folderFiles.length} elemento{folderFiles.length !== 1 ? 's' : ''}
                         </span>
                       )}
-                      <button type="button" className="local-refresh-btn" onClick={() => setRoute(activeCategory)} title="Cambiar carpeta"><IconFolder /></button>
-                      <button type="button" className="local-refresh-btn" onClick={() => clearRoute(activeCategory)} title="Quitar ruta" style={{ color: 'var(--color-error, #ff6b6b)' }}><IconX /></button>
+                      <button type="button" className="local-refresh-btn" onClick={() => setRoute(activeCategory)} title={t.local.change_folder}><IconFolder /></button>
+                      <button type="button" className="local-refresh-btn" onClick={() => clearRoute(activeCategory)} title={t.local.remove_route} style={{ color: 'var(--color-error, #ff6b6b)' }}><IconX /></button>
                     </div>
                   </div>
                 )}
@@ -320,7 +322,7 @@ export default function LocalLibrary() {
                 ) : !routes[activeCategory] ? (
                   <div className="local-state-placeholder">
                     <IconFolder />
-                    <p>Sin carpeta asignada</p>
+                    <p>{t.local.no_folder_assigned}</p>
                     <span>Elige una carpeta para explorar tu colección de {CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()}</span>
                     <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>
                       <IconPlus /> Añadir ruta
@@ -329,8 +331,8 @@ export default function LocalLibrary() {
                 ) : folderFiles.length === 0 ? (
                   <div className="local-state-placeholder">
                     <IconFolder />
-                    <p>Carpeta vacía</p>
-                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>Cambiar carpeta</button>
+                    <p>{t.local.empty_folder}</p>
+                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>{t.local.change_folder}</button>
                   </div>
                 ) : (
                   <div className="local-folder-grid">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, type LocalGame, type IgdbCandidate } from '../../../lib/tauri';
+import { getT } from '../../../i18n/client';
 
 interface IgdbPickerModalProps {
   game:     LocalGame;
@@ -9,6 +10,7 @@ interface IgdbPickerModalProps {
 }
 
 export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProps) {
+  const t = getT();
   const [candidates, setCandidates] = useState<IgdbCandidate[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
     <div className="igdb-picker-overlay" onClick={onClose}>
       <div className="igdb-picker-modal" onClick={e => e.stopPropagation()}>
         <div className="igdb-picker-header">
-          <span>Seleccionar juego en IGDB</span>
+          <span>{t.local.select_igdb_game}</span>
           <button className="igdb-picker-close" onClick={onClose}>✕</button>
         </div>
         <div className="igdb-picker-search-bar">
@@ -83,7 +85,7 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
         ) : error ? (
           <div className="igdb-picker-loading" style={{ color: 'var(--text-danger, #f87171)' }}>Error: {error}</div>
         ) : candidates.length === 0 ? (
-          <div className="igdb-picker-loading">Sin resultados</div>
+          <div className="igdb-picker-loading">{t.local.no_results}</div>
         ) : (
           <div className="igdb-picker-grid">
             {candidates.map(c => (

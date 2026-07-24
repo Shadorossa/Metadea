@@ -1,4 +1,5 @@
 import { RelationTypeSelect } from './RelationTypeSelect';
+import { getT } from '../../i18n/client';
 
 interface EditableRelation {
   related_media_external_id: string;
@@ -26,10 +27,11 @@ export function PrEditorRelationsSection({
   editableRelations, relationOptions, relationLabels,
   draggedIndex, onStartDrag, onRemove, onUpdateType, onOpenSearch,
 }: Props) {
+  const pe = getT().pr_editor;
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>Relations</label>
+        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>{pe.relations_heading}</label>
         <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>+ Add Relation</button>
       </div>
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six" style={{ marginBottom: '1.25rem' }}>

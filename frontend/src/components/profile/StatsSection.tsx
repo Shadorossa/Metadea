@@ -108,7 +108,7 @@ export function StatsSection() {
         </div>
         <div className="stats-card">
           <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` }} />
-          <span className="stats-card-label">Temporadas</span>
+          <span className="stats-card-label">{p.stat_seasons}</span>
           <span className="stats-card-value">{totalSeasons.toLocaleString()}</span>
         </div>
         <div className="stats-card">
@@ -237,13 +237,13 @@ export function StatsSection() {
           })}
         </div>
         <div className="stats-heatmap-legend">
-          <span>Menos</span>
+          <span>{p.heatmap_less}</span>
           <div className="heatmap-legend-cell" style={{ background: 'rgba(255,255,255,0.02)' }} />
           <div className="heatmap-legend-cell" style={{ background: 'color-mix(in srgb, var(--accent) 25%, rgba(255,255,255,0.02))' }} />
           <div className="heatmap-legend-cell" style={{ background: 'color-mix(in srgb, var(--accent) 50%, rgba(255,255,255,0.02))' }} />
           <div className="heatmap-legend-cell" style={{ background: 'color-mix(in srgb, var(--accent) 75%, rgba(255,255,255,0.02))' }} />
           <div className="heatmap-legend-cell" style={{ background: 'var(--accent)', boxShadow: '0 0 4px var(--accent)' }} />
-          <span>Más</span>
+          <span>{p.heatmap_more}</span>
         </div>
       </div>
 

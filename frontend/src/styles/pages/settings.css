@@ -786,6 +786,43 @@
   font-weight: 800;
 }
 
+/* ── Language Picker ───────────────────────────────────────────────────── */
+.language-picker {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.language-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.5rem 0.3rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
+}
+
+.language-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.language-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* ── Color Picker ──────────────────────────────────────────────────────── */
 .color-input {
   width: 56px;

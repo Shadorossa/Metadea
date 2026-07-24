@@ -315,7 +315,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
           <input type="text" className="list-input list-meta-name-input" value={metaName} maxLength={60} placeholder={p.lists_name_ph} onChange={e => setMetaName(e.target.value)} />
           <input type="text" className="list-input list-meta-desc-input" value={metaDesc} maxLength={200} placeholder={p.lists_desc_ph} onChange={e => setMetaDesc(e.target.value)} />
           <div className="list-create-actions">
-            <button className="list-btn list-btn--primary" onClick={saveMeta}>Guardar</button>
+            <button className="list-btn list-btn--primary" onClick={saveMeta}>{p.lists_save}</button>
             <button className="list-btn list-btn--ghost" onClick={() => { setIsEditingMeta(false); setMetaName(list.name); setMetaDesc(list.description ?? ''); }}>{p.lists_cancel}</button>
           </div>
         </div>
@@ -348,7 +348,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
                   </button>
                 </div>
               );
-            }) : <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: '1rem 0' }}>Sin resultados</p>}
+            }) : <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: '1rem 0' }}>{p.lists_no_results}</p>}
           </div>
         </div>
       )}
@@ -372,7 +372,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
 
               return (
                 <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
-                  <span className="list-item-drag-handle" title="Arrastrar para reordenar">⠿</span>
+                  <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>
                   <a className="list-item-cover-link" href={url}>
                     {cover
                       ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" />
@@ -383,7 +383,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
                     {typeLabel && <span className="list-item-type">{typeLabel}</span>}
                     {ratingDisplay && <span className="list-item-rating">{ratingDisplay}</span>}
                   </div>
-                  <button className="list-item-remove" title="Quitar" onClick={() => handleRemove(item.external_id)}>
+                  <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                   </button>
                 </div>

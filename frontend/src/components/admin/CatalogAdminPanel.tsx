@@ -20,6 +20,7 @@ import { CatalogEntryCard } from './CatalogEntryCard';
 import { IconTrash } from '../local/ui/icons';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
 import { DIFF_FIELDS } from '../../lib/media/constants';
+import { getT } from '../../i18n/client';
 
 interface Props {
   i18n: Pick<Translations, 'media' | 'discord' | 'admin'>;
@@ -37,6 +38,7 @@ type Entity = 'media' | 'saga' | 'character';
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
   const t = i18n.admin;
+  const pe = getT().pr_editor;
 
   const [source, setSource] = useState<Source>('local');
   const [entity, setEntity] = useState<Entity>('media');
@@ -625,7 +627,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
             {!backfillRunning && backfillResults && (
               <div className="catalog-backfill-results">
                 {backfillResults.length === 0 ? (
-                  <p className="catalog-admin-status">No había nada que actualizar.</p>
+                  <p className="catalog-admin-status">{pe.backfill_nothing_to_update}</p>
                 ) : (
                   backfillResults.map(entry => (
                     <div key={entry.externalId} className="catalog-backfill-entry">

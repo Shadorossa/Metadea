@@ -23,10 +23,10 @@ const { activePage, i18n } = Astro.props;
         <line x1="16.5" y1="16.5" x2="22" y2="22"/>
       </svg>
     </a>
-    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title="Tier list">
+    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
       <span class="nav-tier-s">S</span>
     </a>
-    <a href="/local" data-nav="local" class={`nav-icon-btn${activePage === 'local' ? ' active' : ''}`} title="Biblioteca local">
+    <a href="/local" data-nav="local" class={`nav-icon-btn${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/>
         <line x1="8" y1="21" x2="16" y2="21"/>

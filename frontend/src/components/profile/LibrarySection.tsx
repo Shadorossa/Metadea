@@ -257,12 +257,12 @@ export function LibrarySection() {
         <p className="library-filters-title">{p.library_filters}</p>
 
         <div className="library-filter-group">
-          <label className="library-filter-label" htmlFor="filter-name">Nombre</label>
+          <label className="library-filter-label" htmlFor="filter-name">{p.library_filter_name}</label>
           <input
             type="text"
             id="filter-name"
             className="library-filter-input"
-            placeholder="Buscar por título..."
+            placeholder={p.library_filter_name_ph}
             value={nameFilter}
             onChange={e => setNameFilter(e.target.value)}
           />
@@ -270,14 +270,14 @@ export function LibrarySection() {
 
         {!subpagesEnabled && (
           <div className="library-filter-group">
-            <label className="library-filter-label">Tipo de Medio</label>
+            <label className="library-filter-label">{p.library_filter_media_type}</label>
             <div className="library-type-filters">
               {Object.entries(TYPE_ICON).map(([type, svg]) => (
                 <button
                   key={type}
                   type="button"
                   className={`library-type-btn ${selectedTypes.includes(type) ? 'active' : ''}`}
-                  title={TYPE_LABELS[type] || type}
+                  title={typeLabels[type as keyof typeof typeLabels] || TYPE_LABELS[type] || type}
                   onClick={() => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type])}
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
@@ -287,7 +287,7 @@ export function LibrarySection() {
         )}
 
         <div className="library-filter-group">
-          <label className="library-filter-label">Tipo de Edición</label>
+          <label className="library-filter-label">{p.library_filter_edition_type}</label>
           <div className="library-edition-filters">
             {EDITION_FILTER_OPTIONS.map(opt => (
               <button
@@ -305,7 +305,7 @@ export function LibrarySection() {
         </div>
 
         <div className="library-filter-group">
-          <label className="library-filter-label">Estado</label>
+          <label className="library-filter-label">{p.library_filter_status}</label>
           <div className="library-status-cycler">
             <button
               type="button"
@@ -351,7 +351,7 @@ export function LibrarySection() {
             </div>
           )}
           <div className="library-group-toggles">
-            <span className="library-sort-label">Agrupar por</span>
+            <span className="library-sort-label">{p.library_group_by}</span>
             <div className="library-group-toggle-icons">
               <button
                 type="button"
@@ -371,17 +371,17 @@ export function LibrarySection() {
           </div>
           <div className="library-header-divider" />
           <div className="library-filter-group select-sort">
-            <span className="library-sort-label">Ordenar por</span>
+            <span className="library-sort-label">{p.library_sort_by}</span>
             <div className="library-sort-options">
-              <button type="button" className={`library-sort-btn ${sortBy === 'rating' ? 'active' : ''}`} title="Calificación" onClick={() => setSortBy('rating')} dangerouslySetInnerHTML={{ __html: SORT_ICON_SCORE }} />
-              <button type="button" className={`library-sort-btn ${sortBy === 'date' ? 'active' : ''}`} title="Fecha" onClick={() => setSortBy('date')} dangerouslySetInnerHTML={{ __html: SORT_ICON_DATE }} />
-              <button type="button" className={`library-sort-btn ${sortBy === 'duration' ? 'active' : ''}`} title="Duración" onClick={() => setSortBy('duration')} dangerouslySetInnerHTML={{ __html: SORT_ICON_DURATION }} />
+              <button type="button" className={`library-sort-btn ${sortBy === 'rating' ? 'active' : ''}`} title={p.library_sort_rating} onClick={() => setSortBy('rating')} dangerouslySetInnerHTML={{ __html: SORT_ICON_SCORE }} />
+              <button type="button" className={`library-sort-btn ${sortBy === 'date' ? 'active' : ''}`} title={p.library_sort_date} onClick={() => setSortBy('date')} dangerouslySetInnerHTML={{ __html: SORT_ICON_DATE }} />
+              <button type="button" className={`library-sort-btn ${sortBy === 'duration' ? 'active' : ''}`} title={p.library_sort_duration} onClick={() => setSortBy('duration')} dangerouslySetInnerHTML={{ __html: SORT_ICON_DURATION }} />
             </div>
           </div>
         </div>
         <div className="library-sections-list">
           {sections && sections.length === 0 && (
-            <div className="library-empty-filtered">Sin resultados para los filtros aplicados</div>
+            <div className="library-empty-filtered">{p.library_no_results}</div>
           )}
           {sections?.map(sec => (
             <div className="library-section" key={sec.title}>

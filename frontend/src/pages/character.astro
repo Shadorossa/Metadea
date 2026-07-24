@@ -9,12 +9,12 @@ const lang = getLang(Astro.url);
 const translations = useTranslations(lang);
 ---
 
-<BaseLayout title="Detalle de Personaje — Metadea" lang={lang} activePage="search">
+<BaseLayout title={`${translations.character.page_title} — Metadea`} lang={lang} activePage="search">
   <div class="media-page">
 
     <!-- Estado de Carga -->
     <div id="character-loading" class="media-loading">
-      <p>Cargando información del personaje...</p>
+      <p>{translations.character.loading}</p>
     </div>
 
     <!-- Estado de Error -->
@@ -33,29 +33,29 @@ const translations = useTranslations(lang);
             <div class="character-avatar-wrap" id="char-avatar-container"></div>
           </div>
           <div class="character-action-row" id="char-action-row">
-            <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title="Favorito">
+            <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title={translations.character.action_favorite}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
               </svg>
-              <span>Favorito</span>
+              <span>{translations.character.action_favorite}</span>
             </button>
-            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title="Me gusta">
+            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title={translations.character.action_like}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
               </svg>
-              <span>Me gusta</span>
+              <span>{translations.character.action_like}</span>
             </button>
-            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title="Interesa">
+            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title={translations.character.action_interested}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
               </svg>
-              <span>Interesa</span>
+              <span>{translations.character.action_interested}</span>
             </button>
-            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title="No me gusta">
+            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title={translations.character.action_dislike}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
               </svg>
-              <span>No me gusta</span>
+              <span>{translations.character.action_dislike}</span>
             </button>
           </div>
         </div>
@@ -63,7 +63,7 @@ const translations = useTranslations(lang);
         <div class="character-hero-right-col">
           <div class="character-name-row">
             <h1 class="media-title-main" id="char-name-full"></h1>
-            <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" title="Editar datos del personaje">
+            <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" title={translations.character.edit_tooltip}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
               Editar
             </button>
@@ -81,7 +81,7 @@ const translations = useTranslations(lang);
         <!-- Columna 1: Biografía -->
         <div class="media-col-synopsis" id="char-bio-section" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Biografía</p>
+            <p class="section-label">{translations.character.biography}</p>
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-description-text" id="char-description"></div>
@@ -97,9 +97,9 @@ const translations = useTranslations(lang);
           
           <!-- Paginación -->
           <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-            <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">Anterior</button>
-            <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Página 1 de 1</span>
-            <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">Siguiente</button>
+            <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">{translations.character.pagination_prev}</button>
+            <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{translations.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
+            <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">{translations.character.pagination_next}</button>
           </div>
         </div>
 
@@ -135,6 +135,7 @@ const translations = useTranslations(lang);
   import { compareByReleaseDateDesc, mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
+  import { getT } from '../i18n/client';
   import {
     readUserFavorites,
     syncFavorites,
@@ -179,6 +180,7 @@ const translations = useTranslations(lang);
   }
 
   async function loadCharacterData() {
+    const t = getT().character;
     const lang = window.location.pathname.startsWith('/en') ? 'en' : 'es';
     window.ROLE_LABELS = {
       MAIN: lang === 'en' ? 'Main' : 'Principal',
@@ -487,17 +489,17 @@ const translations = useTranslations(lang);
       const addedLabels = new Set<string>();
 
       if (character.gender) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Género</span><span class="media-stat-value">${escapeHtml(character.gender)}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><span class="media-stat-value">${escapeHtml(character.gender)}</span></div>`;
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Edad</span><span class="media-stat-value">${escapeHtml(String(character.age))}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><span class="media-stat-value">${escapeHtml(String(character.age))}</span></div>`;
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Grupo Sanguíneo</span><span class="media-stat-value">${escapeHtml(character.bloodType)}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><span class="media-stat-value">${escapeHtml(character.bloodType)}</span></div>`;
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
@@ -505,7 +507,7 @@ const translations = useTranslations(lang);
         const day = character.dateOfBirth.day ?? '?';
         const month = character.dateOfBirth.month ?? '?';
         const year = character.dateOfBirth.year ? `/${character.dateOfBirth.year}` : '';
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">Cumpleaños</span><span class="media-stat-value">${day}/${month}${year}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_birthday)}</span><span class="media-stat-value">${day}/${month}${year}</span></div>`;
         addedLabels.add('birthday');
         addedLabels.add('cumpleaños');
       }
@@ -733,7 +735,7 @@ const translations = useTranslations(lang);
             `)
           .join('');
 
-        txtPage.textContent = `Página ${currentPage} de ${totalPages}`;
+        txtPage.textContent = t.pagination_page.replace('{page}', String(currentPage)).replace('{total}', String(totalPages));
         btnPrev.disabled = currentPage === 1;
         btnNext.disabled = currentPage >= totalPages;
         paginationEl.style.display = totalPages > 1 ? 'flex' : 'none';

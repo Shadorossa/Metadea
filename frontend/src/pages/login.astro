@@ -18,24 +18,24 @@ const t    = useTranslations(lang);
   <body class="login-body">
     <div class="login-card">
       <span class="login-logo">Metadea</span>
-      <p class="login-subtitle">Tu biblioteca personal de medios</p>
+      <p class="login-subtitle">{t.auth.login_subtitle}</p>
 
       <form id="login-form" style="width: 100%; display: flex; flex-direction: column; gap: 0.75rem;">
-        <input 
-          type="text" 
-          id="username-input" 
-          class="input-dark" 
-          placeholder="Nombre de usuario" 
-          required 
-          minlength="3" 
+        <input
+          type="text"
+          id="username-input"
+          class="input-dark"
+          placeholder={t.auth.username_placeholder}
+          required
+          minlength="3"
           maxlength="20"
         />
         <button type="submit" class="btn btn--primary" style="justify-content: center; width: 100%;">
-          Comenzar
+          {t.auth.start}
         </button>
       </form>
 
-      <p id="error-msg" class="login-error" style="display:none"></p>
+      <p id="error-msg" class="login-error" style="display:none" data-default-error={t.auth.login_error}></p>
     </div>
 
     <script>
@@ -61,7 +61,7 @@ const t    = useTranslations(lang);
             window.location.replace('/home');
           } catch (err) {
             if (errorMsg) {
-              errorMsg.textContent = (err instanceof Error ? err.message : null) || 'Error al iniciar sesión';
+              errorMsg.textContent = (err instanceof Error ? err.message : null) || errorMsg.dataset.defaultError || '';
               errorMsg.style.display = 'block';
             }
           }

@@ -1,18 +1,24 @@
 ---
 import { ICON_STAR, ICON_RATING_FACES } from "../../lib/shared/icon-strings";
 import type { Translations } from "../../i18n/index";
+import { LOCALES } from "../../i18n/index";
 
 interface Props {
   t: Translations;
 }
 const { t } = Astro.props;
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  es: 'Español', en: 'English', de: 'Deutsch', ja: '日本語',
+  it: 'Italiano', fr: 'Français', ca: 'Català', ru: 'Русский',
+};
 ---
 
 <!-- Tab: Preferencias -->
 <div class="settings-panel hidden" id="panel-preferences">
   <h2 class="settings-panel-title">{t.settings.tab_preferences}</h2>
 
-  <!-- Sistema de Calificación + Actividad -->
+  <!-- Sistema de Calificación + Idioma -->
   <div class="settings-divider settings-divider--row">
     <div class="settings-section" style="flex: 1;">
       <h3 class="settings-section-title">
@@ -23,7 +29,7 @@ const { t } = Astro.props;
           type="button"
           class="rating-system-btn"
           data-value="5-star"
-          title="5 estrellas"
+          title={t.settings.rating_5star_title}
           set:html={ICON_STAR}
         >
         </button>
@@ -31,7 +37,7 @@ const { t } = Astro.props;
           type="button"
           class="rating-system-btn"
           data-value="10-dec"
-          title="Nota sobre 10 (2 decimales)"
+          title={t.settings.rating_10dec_title}
         >
           <span class="rating-value-text">10.00</span>
         </button>
@@ -39,7 +45,7 @@ const { t } = Astro.props;
           type="button"
           class="rating-system-btn"
           data-value="10"
-          title="Nota sobre 10 (Entero)"
+          title={t.settings.rating_10int_title}
         >
           <span class="rating-value-text">10</span>
         </button>
@@ -47,7 +53,7 @@ const { t } = Astro.props;
           type="button"
           class="rating-system-btn"
           data-value="3-emoji"
-          title="3 caritas (9, 6 y 3)"
+          title={t.settings.rating_3emoji_title}
           set:html={ICON_RATING_FACES}
         >
         </button>
@@ -56,9 +62,49 @@ const { t } = Astro.props;
 
     <div class="settings-section" style="flex: 1;">
       <h3 class="settings-section-title">
-        {t.settings.activity_section}
+        {t.settings.language_section_title}
+      </h3>
+      <div class="language-picker" id="language-picker">
+        {LOCALES.map((code) => (
+          <button
+            type="button"
+            class="language-btn"
+            data-value={code}
+            title={LANGUAGE_NAMES[code] ?? code}
+          >
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      <p class="settings-hint">
+        {t.settings.language_hint}
+      </p>
+    </div>
+  </div>
+
+  <!-- Biblioteca + Contenido -->
+  <div class="settings-divider settings-divider--row">
+    <div class="settings-section" style="flex: 1;">
+      <h3 class="settings-section-title">
+        {t.settings.library_section_title}
       </h3>
       <div class="settings-checkbox-row">
+        <div class="settings-checkbox-group">
+          <label class="settings-checkbox-label">
+            <input
+              type="checkbox"
+              id="library-subpages-by-type"
+              class="settings-checkbox"
+            />
+            <span class="checkbox-label-text"
+              >{t.settings.library_subpages_by_type}</span
+            >
+          </label>
+          <p class="settings-hint">
+            {t.settings.library_subpages_by_type_hint}
+          </p>
+        </div>
+
         <div class="settings-checkbox-group">
           <label class="settings-checkbox-label">
             <input
@@ -74,7 +120,14 @@ const { t } = Astro.props;
             {t.settings.activity_batch_episodes_hint}
           </p>
         </div>
+      </div>
+    </div>
 
+    <div class="settings-section" style="flex: 1;">
+      <h3 class="settings-section-title">
+        {t.settings.content_section_title}
+      </h3>
+      <div class="settings-checkbox-row">
         <div class="settings-checkbox-group">
           <label class="settings-checkbox-label">
             <input
@@ -88,22 +141,6 @@ const { t } = Astro.props;
           </label>
           <p class="settings-hint">
             {t.settings.activity_adult_content_hint}
-          </p>
-        </div>
-
-        <div class="settings-checkbox-group">
-          <label class="settings-checkbox-label">
-            <input
-              type="checkbox"
-              id="library-subpages-by-type"
-              class="settings-checkbox"
-            />
-            <span class="checkbox-label-text"
-              >{t.settings.library_subpages_by_type}</span
-            >
-          </label>
-          <p class="settings-hint">
-            {t.settings.library_subpages_by_type_hint}
           </p>
         </div>
       </div>

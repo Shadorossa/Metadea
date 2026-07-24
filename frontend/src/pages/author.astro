@@ -2,12 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import '../styles/pages/media.css';
 import '../styles/pages/character.css';
-import { getLang } from '../i18n/index';
+import { getLang, useTranslations } from '../i18n/index';
 
 const lang = getLang(Astro.url);
+const t = useTranslations(lang);
 ---
 
-<BaseLayout title="Author Details — Metadea" lang={lang} activePage="search">
+<BaseLayout title={`${t.author_page.page_title} — Metadea`} lang={lang} activePage="search">
   <div class="media-page">
 
     <!-- Loading State -->
@@ -80,6 +81,7 @@ const lang = getLang(Astro.url);
   import { mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
+  import { getT } from '../i18n/client';
   import {
     getAuthor,
     getAuthorWorks,
@@ -249,6 +251,7 @@ const lang = getLang(Astro.url);
   }
 
   function renderAuthor(data: AuthorRenderData) {
+    const t = getT().author_page;
     document.getElementById('author-name-full')!.textContent = data.name;
     const nativeEl = document.getElementById('author-name-native')!;
     if (data.nameNative) {
@@ -276,11 +279,11 @@ const lang = getLang(Astro.url);
     statsList.innerHTML = '';
     let hasStats = false;
     if (data.birthDate) {
-      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">Fecha de nacimiento</span><span class="media-stat-value">${escapeHtml(data.birthDate)}</span></div>`;
+      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.birth_date)}</span><span class="media-stat-value">${escapeHtml(data.birthDate)}</span></div>`;
       hasStats = true;
     }
     if (data.deathDate) {
-      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">Fecha de fallecimiento</span><span class="media-stat-value">${escapeHtml(data.deathDate)}</span></div>`;
+      statsList.innerHTML += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.death_date)}</span><span class="media-stat-value">${escapeHtml(data.deathDate)}</span></div>`;
       hasStats = true;
     }
     document.getElementById('author-stats-card')!.style.display = hasStats ? 'block' : 'none';

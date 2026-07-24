@@ -18,31 +18,31 @@ const { t } = Astro.props;
     <!-- API Platforms Selector Bar -->
     <div class="api-platforms-selector">
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="igdb" title="IGDB (Videojuegos)">
+        <button type="button" class="api-platform-tab-btn" data-platform="igdb" title={t.settings.env_platform_igdb_title}>
           <img class="api-platform-logo" src="/API/IGDB_logo.png" alt="IGDB" />
         </button>
         <span class="api-platform-label">Videojuegos</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="tmdb" title="TheMovieDB (Cine & Series)">
+        <button type="button" class="api-platform-tab-btn" data-platform="tmdb" title={t.settings.env_platform_tmdb_title}>
           <img class="api-platform-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
         </button>
         <span class="api-platform-label">Cine y series</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="steam" title="Steam (Sincronización PC)">
+        <button type="button" class="api-platform-tab-btn" data-platform="steam" title={t.settings.env_platform_steam_title}>
           <img class="api-platform-logo" src="/platforms/steam_logo.png" alt="Steam" />
         </button>
         <span class="api-platform-label">Steam</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="anilist" title="AniList (Anime & Manga)">
+        <button type="button" class="api-platform-tab-btn" data-platform="anilist" title={t.settings.env_platform_anilist_title}>
           <img class="api-platform-logo" src="/API/Anilist_logo.png" alt="AniList" />
         </button>
         <span class="api-platform-label">Anime y manga</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="comicvine" title="Comic Vine (Cómics)">
+        <button type="button" class="api-platform-tab-btn" data-platform="comicvine" title={t.settings.env_platform_comicvine_title}>
           <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 3h13l3 3v15H4z"/>
             <path d="M17 3v3h3"/>
@@ -51,7 +51,7 @@ const { t } = Astro.props;
             <line x1="7" y1="17" x2="12" y2="17"/>
           </svg>
         </button>
-        <span class="api-platform-label">Cómics</span>
+        <span class="api-platform-label">{t.settings.env_platform_comics_label}</span>
       </div>
     </div>
 
@@ -61,15 +61,15 @@ const { t } = Astro.props;
       <!-- State: None selected (Default) -->
       <div class="api-keys-empty-placeholder" id="api-keys-placeholder">
         <span class="api-keys-placeholder-icon">🔑</span>
-        <h4>Elige una plataforma arriba</h4>
-        <p>Cada icono es un servicio distinto (videojuegos, cine/series, Steam, anime/manga, cómics). Al pulsarlo verás qué claves necesita y un botón de ayuda (?) para conseguirlas paso a paso.</p>
+        <h4>{t.settings.env_platform_empty_title}</h4>
+        <p>{t.settings.env_platform_empty_hint}</p>
       </div>
 
       <!-- Form: IGDB -->
       <div class="api-platform-form-block hidden" id="api-form-igdb">
         <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
           <span class="api-form-service-title">Twitch / IGDB API</span>
-          <button type="button" class="settings-help-btn" data-help="igdb" title="¿Cómo obtener las claves de IGDB?" style="position: absolute; top: 0; right: 0;">
+          <button type="button" class="settings-help-btn" data-help="igdb" title={t.settings.env_igdb_help_title} style="position: absolute; top: 0; right: 0;">
             <Fragment set:html={ICON_HELP_CIRCLE} />
           </button>
         </div>
@@ -102,7 +102,7 @@ const { t } = Astro.props;
       <div class="api-platform-form-block hidden" id="api-form-tmdb">
         <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
           <span class="api-form-service-title">TheMovieDB API</span>
-          <button type="button" class="settings-help-btn" data-help="tmdb" title="¿Cómo obtener las claves de TMDB?" style="position: absolute; top: 0; right: 0;">
+          <button type="button" class="settings-help-btn" data-help="tmdb" title={t.settings.env_tmdb_help_title} style="position: absolute; top: 0; right: 0;">
             <Fragment set:html={ICON_HELP_CIRCLE} />
           </button>
         </div>
@@ -134,7 +134,7 @@ const { t } = Astro.props;
       <div class="api-platform-form-block hidden" id="api-form-steam">
         <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
           <span class="api-form-service-title">Steam Web API</span>
-          <button type="button" class="settings-help-btn" data-help="steam" title="¿Cómo obtener la clave de Steam?" style="position: absolute; top: 0; right: 0;">
+          <button type="button" class="settings-help-btn" data-help="steam" title={t.settings.env_steam_help_title} style="position: absolute; top: 0; right: 0;">
             <Fragment set:html={ICON_HELP_CIRCLE} />
           </button>
         </div>
@@ -156,7 +156,7 @@ const { t } = Astro.props;
       <div class="api-platform-form-block hidden" id="api-form-anilist">
         <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
           <span class="api-form-service-title">AniList Developer API</span>
-          <button type="button" class="settings-help-btn" data-help="anilist" title="¿Cómo obtener la clave de AniList?" style="position: absolute; top: 0; right: 0;">
+          <button type="button" class="settings-help-btn" data-help="anilist" title={t.settings.env_anilist_help_title} style="position: absolute; top: 0; right: 0;">
             <Fragment set:html={ICON_HELP_CIRCLE} />
           </button>
         </div>
@@ -167,7 +167,7 @@ const { t } = Astro.props;
               class="env-input"
               type="text"
               id="anilist-client-id"
-              placeholder="Ej. 18343"
+              placeholder={t.settings.env_anilist_client_id_ph}
               autocomplete="off"
             />
           </div>
@@ -178,7 +178,7 @@ const { t } = Astro.props;
       <div class="api-platform-form-block hidden" id="api-form-comicvine">
         <div class="env-service-header" style="position: relative; margin-bottom: 1.25rem;">
           <span class="api-form-service-title">Comic Vine API</span>
-          <button type="button" class="settings-help-btn" data-help="comicvine" title="¿Cómo obtener la clave de Comic Vine?" style="position: absolute; top: 0; right: 0;">
+          <button type="button" class="settings-help-btn" data-help="comicvine" title={t.settings.env_comicvine_help_title} style="position: absolute; top: 0; right: 0;">
             <Fragment set:html={ICON_HELP_CIRCLE} />
           </button>
         </div>
@@ -210,8 +210,8 @@ const { t } = Astro.props;
 
   <!-- Local Routes -->
   <div class="settings-section" style="margin-top: 2rem;">
-    <h3 class="settings-section-title">Rutas locales</h3>
-    <p class="settings-hint">Carpetas locales para cada tipo de medio. Úsalas en la sección Biblioteca Local.</p>
+    <h3 class="settings-section-title">{t.settings.local_routes_title}</h3>
+    <p class="settings-hint">{t.settings.local_routes_hint}</p>
     <div id="local-routes-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
       <!-- Populated by JS -->
     </div>

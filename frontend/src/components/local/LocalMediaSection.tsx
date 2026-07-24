@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getT } from '../../i18n/client';
 import type { LocalFolderEntry } from '../../lib/tauri';
 import { useLocalMediaEntries } from './hooks/useLocalMediaEntries';
 import { LocalMediaCard } from './cards/LocalMediaCard';
@@ -20,6 +21,7 @@ interface LocalMediaSectionProps {
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
 export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute }: LocalMediaSectionProps) {
+  const t = getT();
   const { items, loading, refetch } = useLocalMediaEntries(category);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Looked up by id (rather than kept as its own object) so that after
@@ -39,12 +41,12 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
               {rootFolder && (
                 <>
                   <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{rootFolder}</span>
-                  <button type="button" className="local-refresh-btn" onClick={onClearRoute} title="Quitar carpeta local" style={{ color: 'var(--color-error, #ff6b6b)' }}>
+                  <button type="button" className="local-refresh-btn" onClick={onClearRoute} title={t.local.remove_local_folder} style={{ color: 'var(--color-error, #ff6b6b)' }}>
                     <IconX />
                   </button>
                 </>
               )}
-              <button type="button" className="local-refresh-btn" onClick={onSetRoute} title={rootFolder ? 'Cambiar carpeta' : 'Añadir carpeta'}>
+              <button type="button" className="local-refresh-btn" onClick={onSetRoute} title={rootFolder ? t.local.change_folder : t.local.add_folder}>
                 <IconFolder />
               </button>
             </div>
@@ -68,8 +70,8 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
           {!rootFolder && (
             <div className="local-state-placeholder" style={{ marginTop: '1rem' }}>
               <IconFolder />
-              <p>Sin carpeta asignada</p>
-              <span>Elige una carpeta para poder detectar tus episodios/capítulos locales</span>
+              <p>{t.local.no_folder_assigned}</p>
+              <span>{t.local.choose_folder_episodes_hint}</span>
               <button type="button" className="local-add-route-btn" onClick={onSetRoute}>
                 <IconPlus /> Añadir ruta
               </button>

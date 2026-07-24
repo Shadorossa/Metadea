@@ -28,4 +28,5 @@ export const STORAGE_KEYS = {
   librarySubpagesByType: 'metadea_library_subpages_by_type',
   searchState: 'metadea_search_state',
   updaterCheckedThisSession: 'metadea_updater_checked_this_session',
+  locale: 'metadea_locale',
 } as const;

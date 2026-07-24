@@ -81,7 +81,7 @@ const version = pkg.version;
     </div>
   </div>
 
-  <HelpModals />
+  <HelpModals t={t} />
 
   <!-- Toast -->
   <div class="settings-toast" id="settings-toast">{t.settings.env_saved}</div>
@@ -102,6 +102,7 @@ const version = pkg.version;
   import { initRatingSystem } from "../lib/settings/rating-system";
   import { initCustomColor } from "../lib/settings/custom-color";
   import { initActivitySettings } from "../lib/settings/activity";
+  import { initLanguageSwitcher } from "../lib/settings/language";
   import { initBio } from "../lib/settings/bio";
   import { initUpdater } from "../lib/settings/updater";
   import { initCommunityCatalogSync } from "../lib/settings/community-catalog";
@@ -186,6 +187,7 @@ const version = pkg.version;
     initRatingSystem(showToast);
     initCustomColor(showToast);
     initActivitySettings(showToast);
+    initLanguageSwitcher();
     initBio(showToast);
 
     // Lógica para alternar las plataformas de API (Paginado)

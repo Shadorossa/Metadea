@@ -115,7 +115,7 @@ function StatusDropdown({
     <div className="media-status-dropdown-container">
       <button
         className={`status-dropdown-trigger${status ? ` text-${status}` : ''}`}
-        aria-label="Cambiar estado"
+        aria-label={t.change_status_aria}
       >
         <IconTrayStatus status={status} />
       </button>
@@ -821,7 +821,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               type="button"
               className="media-banner-pr-btn"
               onClick={() => setShowPrEditor(true)}
-              title="Proponer cambios o añadir datos en GitHub"
+              title={tm.propose_github_changes}
             >
               <IconPlus />
             </button>
@@ -832,7 +832,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               className={`media-banner-pr-btn${retryingSync ? ' media-banner-pr-btn--spinning' : ''}`}
               onClick={handleRetrySync}
               disabled={retryingSync}
-              title="Reintentar sincronización"
+              title={tm.retry_sync}
             >
               <IconRefresh />
             </button>

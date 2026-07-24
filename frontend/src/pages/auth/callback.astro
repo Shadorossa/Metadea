@@ -1,14 +1,18 @@
 ---
+import { getLang, useTranslations } from '../../i18n/index';
 import '../../styles/core/global.css';
 import '../../styles/pages/login.css';
+
+const lang = getLang(Astro.url);
+const t    = useTranslations(lang);
 ---
-<html>
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
-    <title>Autenticando…</title>
+    <title>{t.auth.authenticating}</title>
   </head>
   <body class="callback-body">
-    <p id="status">Iniciando sesión…</p>
+    <p id="status" data-error-template={t.auth.callback_error} data-save-error-template={t.auth.save_session_error}>{t.auth.signing_in}</p>
 
     <script>
       import { storeAuthToken, initTauriDatabase } from '../../lib/tauri';
@@ -41,15 +45,18 @@ import '../../styles/pages/login.css';
         return res.json();
       }
 
+      const errorTemplate = status.dataset.errorTemplate || 'Error: {message}';
+      const saveErrorTemplate = status.dataset.saveErrorTemplate || 'Error saving session: {message}';
+
       if (error) {
-        status.textContent = `Error: ${decodeURIComponent(error)}`;
+        status.textContent = errorTemplate.replace('{message}', decodeURIComponent(error));
         setTimeout(() => { window.location.replace('/login'); }, 2000);
       } else if (code) {
         redeemCode()
           .then(({ token, username }) => storeAuthToken(token, username ?? ''))
           .then(() => { window.location.replace('/home'); })
           .catch((err) => {
-            status.textContent = `Error guardando sesión: ${err?.message ?? String(err)}`;
+            status.textContent = saveErrorTemplate.replace('{message}', err?.message ?? String(err));
             console.error('[callback] auth exchange failed:', err);
             setTimeout(() => { window.location.replace('/login'); }, 3000);
           });

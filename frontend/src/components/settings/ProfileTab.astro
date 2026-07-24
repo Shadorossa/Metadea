@@ -30,7 +30,7 @@ const { t } = Astro.props;
           type="text"
           id="display-name-input"
           class="font-preview-input"
-          placeholder="Tu nombre..."
+          placeholder={t.settings.display_name_placeholder}
           maxlength="40"
           autocomplete="off"
           spellcheck="false"
@@ -133,8 +133,8 @@ const { t } = Astro.props;
         <button
           class="btn btn--sm btn--ghost color-reset-btn"
           id="color-reset-btn"
-          title="Restaurar defecto"
-          aria-label="Restaurar defecto"
+          title={t.settings.color_reset_title}
+          aria-label={t.settings.color_reset_title}
           set:html={ICON_RESET_ARROW}
         ></button>
       </div>
@@ -172,7 +172,7 @@ const { t } = Astro.props;
           x2="9"
           y2="12"></line></svg
       >
-      Cerrar sesión
+      {t.profile.sign_out}
     </button>
   </div>
 </div>

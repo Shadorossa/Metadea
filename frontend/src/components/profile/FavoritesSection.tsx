@@ -328,7 +328,7 @@ export function FavoritesSection() {
                         <button
                           type="button"
                           className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
-                          title="Multimedia"
+                          title={p.favorites_multimedia}
                           onClick={e => { e.stopPropagation(); toggleCrown(item.external_id); }}
                           dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
                         />
@@ -336,7 +336,7 @@ export function FavoritesSection() {
                       <button
                         type="button"
                         className="fav-remove-btn"
-                        title="Quitar de favoritos"
+                        title={p.favorites_remove}
                         onClick={e => { e.stopPropagation(); e.preventDefault(); removeFavorite(item.external_id, item.type); }}
                         dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
                       />
@@ -345,7 +345,7 @@ export function FavoritesSection() {
                     <button
                       type="button"
                       className="fav-edit-image-btn"
-                      title="Editar imagen"
+                      title={p.favorites_edit_image}
                       onClick={e => { e.stopPropagation(); e.preventDefault(); editImage(item); }}
                       dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
                     />

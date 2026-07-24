@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getT } from '../../../i18n/client';
 
 export type MetaType = 'basic' | 'achievements';
 
@@ -13,6 +14,7 @@ const OPTIONS: { id: MetaType; label: string; desc: string }[] = [
 ];
 
 export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps) {
+  const t = getT();
   const [selected, setSelected] = useState<Set<MetaType>>(new Set(['basic']));
 
   const toggle = (t: MetaType) =>
@@ -25,8 +27,8 @@ export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps)
   return (
     <div className="meta-modal-overlay">
       <div className="meta-modal">
-        <h3 className="meta-modal-title">¿Qué metadatos descargar?</h3>
-        <p className="meta-modal-subtitle">Selecciona uno o varios tipos</p>
+        <h3 className="meta-modal-title">{t.local.meta_selector_title}</h3>
+        <p className="meta-modal-subtitle">{t.local.meta_selector_subtitle}</p>
         <div className="meta-type-list">
           {OPTIONS.map(({ id, label, desc }) => (
             <button
@@ -50,7 +52,7 @@ export function MetaTypeSelector({ onConfirm, onCancel }: MetaTypeSelectorProps)
           ))}
         </div>
         <div className="meta-modal-actions">
-          <button type="button" className="meta-modal-cancel" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="meta-modal-cancel" onClick={onCancel}>{t.local.cancel}</button>
           <button
             type="button"
             className="meta-modal-confirm"

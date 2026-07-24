@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
+import { getT } from '../../i18n/client';
 
 // Every media type an API search can plausibly return — a saga/bundled-in
 // relation isn't guaranteed to share the current entry's own type (e.g. a
@@ -77,6 +78,7 @@ export interface MediaSearchPopupProps {
  *  Closes only on an outside click (stopPropagation keeps that from also
  *  closing the parent PrEditorModal). */
 export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false }: MediaSearchPopupProps) {
+  const s = getT().search;
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
   const [sortBy, setSortBy] = useState<SearchSort>('relevance');
@@ -131,7 +133,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
         <div className="pr-editor-search-controls">
           <input
             type="text"
-            placeholder="Search titles across AniList, IGDB, TMDB, OpenLibrary, Comic Vine..."
+            placeholder={s.placeholder_multi_source}
             value={query}
             onChange={e => setQuery(e.target.value)}
             autoFocus
@@ -142,33 +144,33 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as MediaType | 'all')}
           >
-            <option value="all">All types</option>
-            <option value="anime">Anime</option>
-            <option value="manga">Manga</option>
-            <option value="lnovel">Light Novel</option>
-            <option value="game">Game</option>
-            <option value="vnovel">Visual Novel</option>
-            <option value="movie">Movie</option>
-            <option value="series">Series</option>
-            <option value="book">Book</option>
-            <option value="comic">Comic</option>
+            <option value="all">{s.types.all}</option>
+            <option value="anime">{s.types.anime}</option>
+            <option value="manga">{s.types.manga}</option>
+            <option value="lnovel">{s.types.lnovel}</option>
+            <option value="game">{s.types.game}</option>
+            <option value="vnovel">{s.types.vnovel}</option>
+            <option value="movie">{s.types.movie}</option>
+            <option value="series">{s.types.series}</option>
+            <option value="book">{s.types.book}</option>
+            <option value="comic">{s.types.comic}</option>
           </select>
           <select
             className="pr-editor-search-select"
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SearchSort)}
           >
-            <option value="relevance">Relevance</option>
-            <option value="title_asc">Title A-Z</option>
-            <option value="year_desc">Newest first</option>
-            <option value="year_asc">Oldest first</option>
-            <option value="score_desc">Highest score</option>
+            <option value="relevance">{s.sort_relevance}</option>
+            <option value="title_asc">{s.sort_title_az}</option>
+            <option value="year_desc">{s.sort_newest_first}</option>
+            <option value="year_asc">{s.sort_oldest_first}</option>
+            <option value="score_desc">{s.sort_highest_score}</option>
           </select>
         </div>
         <div className="pr-editor-search-results pr-editor-search-results--grid">
-          {isLoading && <div className="pr-editor-search-loading">Searching...</div>}
+          {isLoading && <div className="pr-editor-search-loading">{s.searching}</div>}
           {!isLoading && filteredResults.length === 0 && query && (
-            <div className="pr-editor-search-empty">No results</div>
+            <div className="pr-editor-search-empty">{s.no_results_generic}</div>
           )}
           <div className="pr-editor-search-grid">
             {filteredResults.map(r => (

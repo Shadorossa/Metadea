@@ -645,7 +645,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                 className={`me-header-icon-btn${ui.anilistImportStatus === 'error' ? ' me-header-icon-btn--error' : ''}${ui.anilistImportStatus === 'syncing' ? ' me-header-icon-btn--spinning' : ''}`}
                 onClick={handleImportFromAniList}
                 disabled={ui.anilistImportStatus === 'syncing'}
-                title={ui.anilistImportStatus === 'error' ? (ui.anilistImportError ?? 'AniList error') : te.import_from_anilist}>
+                title={ui.anilistImportStatus === 'error' ? (ui.anilistImportError ?? te.anilist_error) : te.import_from_anilist}>
                 {ui.anilistImportStatus === 'ok' ? <IconCheck size={16} strokeWidth={2.5} /> : <IconDownload />}
               </button>
             )}
@@ -827,7 +827,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       <><IconCheck size={12} strokeWidth={2.5} /><span>AniList</span></>
                     )}
                     {ui.anilistStatus === 'error' && (
-                      <><IconAlertCircle size={12} strokeWidth={2.5} /><span title={ui.anilistError ?? ''}>AniList error</span></>
+                      <><IconAlertCircle size={12} strokeWidth={2.5} /><span title={ui.anilistError ?? ''}>{te.anilist_error}</span></>
                     )}
                   </div>
                 )}

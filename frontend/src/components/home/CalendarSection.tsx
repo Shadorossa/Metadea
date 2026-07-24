@@ -29,9 +29,11 @@ function TypeTabs({ releases, activeType, tabClass, onSelect }: {
   const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
   if (orderedTypes.length < 2) return null;
 
+  const p = getT().profile;
+
   return (
     <>
-      <button type="button" className={`${tabClass} ${!activeType ? 'active' : ''}`} onClick={() => onSelect(null)}>Todos</button>
+      <button type="button" className={`${tabClass} ${!activeType ? 'active' : ''}`} onClick={() => onSelect(null)}>{p.calendar_all_types}</button>
       {orderedTypes.map(ty => (
         <button key={ty} type="button" className={`${tabClass} ${activeType === ty ? 'active' : ''}`} onClick={() => onSelect(ty)}>
           {TYPE_LABELS[ty] || ty}
@@ -48,6 +50,7 @@ function ReleaseThumb({ release }: { release: UpcomingRelease }) {
 }
 
 function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
+  const p = getT().profile;
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
@@ -70,7 +73,7 @@ function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
           />
         </div>
         {filtered.length === 0 ? (
-          <p className="stats-calendar-empty" style={{ padding: '0.75rem 0' }}>Nada de este tipo este día.</p>
+          <p className="stats-calendar-empty" style={{ padding: '0.75rem 0' }}>{p.calendar_no_releases_type}</p>
         ) : (
           <>
             <div className="calendar-popover-page active">

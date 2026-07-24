@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { STAR_PATH } from '../../lib/media/constants';
 import { getActiveRatingSystem, ratingToEmoji, type RatingSystem } from '../../lib/media/rating-utils';
+import { getT } from '../../i18n/client';
 
 interface Props {
   rating: number;
@@ -10,17 +11,18 @@ interface Props {
 
 function EmojiRating({ rating, onChange }: { rating: number; onChange: (v: number) => void }) {
   const { emoji: activeEmoji } = ratingToEmoji(rating);
+  const te = getT().media.editor;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       <button type="button" onClick={() => onChange(rating === 3 ? 0 : 3)}
         style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😞' ? 1 : 0.4, padding: '2px' }}
-        title="Triste (0-3.5)">😞</button>
+        title={te.rating_sad}>😞</button>
       <button type="button" onClick={() => onChange(rating === 5.5 ? 0 : 5.5)}
         style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😐' ? 1 : 0.4, padding: '2px' }}
-        title="Neutral (3.6-7)">😐</button>
+        title={te.rating_neutral}>😐</button>
       <button type="button" onClick={() => onChange(rating === 8.5 ? 0 : 8.5)}
         style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', opacity: activeEmoji === '😊' ? 1 : 0.4, padding: '2px' }}
-        title="Feliz (7.1-10)">😊</button>
+        title={te.rating_happy}>😊</button>
     </div>
   );
 }

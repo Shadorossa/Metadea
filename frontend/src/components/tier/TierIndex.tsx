@@ -110,8 +110,8 @@ export default function TierIndex() {
                 className="tier-index-card-delete-btn"
                 onClick={e => handleDelete(list, e)}
                 disabled={deletingId === list.id}
-                title="Eliminar tier list"
-                aria-label="Eliminar tier list"
+                title={t.delete_title}
+                aria-label={t.delete_title}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/>

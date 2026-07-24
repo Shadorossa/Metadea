@@ -4,6 +4,7 @@ import {
   saveEpisodeHistoryEntry, getEpisodeHistory, type EpisodeHistoryEntry,
   type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence,
 } from '../../../lib/tauri';
+import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { findMatchingFolder, findMatchingEpisodeFile, extractTitleSeason } from '../utils/folderMatch';
 import { formatWatchedAt } from '../utils/formatters';
@@ -32,6 +33,7 @@ const AUTO_MARK_THRESHOLD = 0.8;
 const POLL_INTERVAL_MS = 3000;
 
 export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onClose, onProgressSaved }: LocalMediaDetailPanelProps) {
+  const t = getT();
   const [subEntries, setSubEntries] = useState<LocalFolderEntry[] | null>(null);
   const [subLoading, setSubLoading] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
@@ -231,7 +233,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   return (
     <div className="local-game-detail-panel">
       <div className="local-game-detail-header">
-        <button className="local-game-detail-back" onClick={onClose} title="Cerrar panel">
+        <button className="local-game-detail-back" onClick={onClose} title={t.local.close_panel}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -271,7 +273,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             )}
             {isPlaying ? 'Reproduciendo' : 'Reproducir'}
           </button>
-          <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title="Editar log en el catálogo">
+          <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
             <IconPencil />
           </button>
           <a href={`/media?id=${item.externalId}`} className="local-game-detail-catalog-link">
@@ -291,7 +293,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         {!rootFolder ? (
           <div className="local-state-placeholder">
             <IconFolder />
-            <p>No hay carpeta asignada para esta categoría.</p>
+            <p>{t.local.no_folder_for_category}</p>
           </div>
         ) : rootLoading ? (
           <div className="local-state-placeholder"><div className="spinner" /></div>
@@ -312,7 +314,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
                   {nextFile ? <IconCheck /> : <IconAlertCircle />}
                   {nextFile
-                    ? <>Próximo episodio: <strong>{nextFile.name}</strong></>
+                    ? <>{t.local.next_episode_label} <strong>{nextFile.name}</strong></>
                     : `Próximo episodio (${nextNumber}) no encontrado`}
                 </span>
               )
@@ -322,12 +324,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
         {history.length > 0 && (
           <div className="local-media-history">
-            <p className="local-media-history-title">Historial</p>
+            <p className="local-media-history-title">{t.local.history_label}</p>
             <div className="local-media-history-feed">
               {history.map(h => (
                 <div key={h.id} className="local-media-history-item">
                   <IconCheck />
-                  <span>Episodio/capítulo <strong>{h.episode_number}</strong></span>
+                  <span>{t.local.episode_chapter_label} <strong>{h.episode_number}</strong></span>
                   <span className="local-media-history-date">{formatWatchedAt(h.watched_at)}</span>
                 </div>
               ))}

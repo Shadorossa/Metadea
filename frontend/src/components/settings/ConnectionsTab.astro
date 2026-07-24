@@ -26,7 +26,7 @@ const { t } = Astro.props;
           <div class="settings-auth-text">
             <div class="settings-auth-name-row">
               <span class="settings-auth-name">GitHub</span>
-              <button class="settings-help-btn" data-help="github" title="¿Qué es GitHub?">
+              <button class="settings-help-btn" data-help="github" title={t.settings.github_help_title}>
                 <Fragment set:html={ICON_HELP_CIRCLE} />
               </button>
             </div>
@@ -36,7 +36,7 @@ const { t } = Astro.props;
           </div>
         </div>
         <button class="btn btn--sm btn--primary" id="github-login-btn"
-          >Conectar</button
+          >{t.settings.connect}</button
         >
       </div>
 
@@ -49,7 +49,7 @@ const { t } = Astro.props;
           <div class="settings-auth-text">
             <div class="settings-auth-name-row">
               <span class="settings-auth-name">AniList</span>
-              <button class="settings-help-btn" data-help="anilist" title="¿Qué es AniList?">
+              <button class="settings-help-btn" data-help="anilist" title={t.settings.anilist_help_title}>
                 <Fragment set:html={ICON_HELP_CIRCLE} />
               </button>
             </div>
@@ -70,14 +70,14 @@ const { t } = Astro.props;
           <button
             class="btn btn--sm btn--primary"
             id="anilist-login-btn"
-            >Desconectar</button
+            >{t.settings.disconnect}</button
           >
         </div>
       </div>
 
       <!-- Import Modal -->
       <div id="anilist-import-choose-modal" class="settings-import-choose-modal">
-        <span class="settings-import-modal-title">¿Qué descargar de AniList?</span>
+        <span class="settings-import-modal-title">{t.settings.anilist_import_choose_title}</span>
 
         <div class="settings-import-groups">
           <div class="settings-import-group">
@@ -137,18 +137,18 @@ const { t } = Astro.props;
           <button
             class="btn btn--sm btn--secondary flex-1"
             id="anilist-sync-start-btn"
-          >Sincronizar</button>
+          >{t.settings.sync}</button>
           <button
             class="btn btn--sm btn--ghost"
             id="anilist-import-cancel-btn"
-          >Cancelar</button>
+          >{t.settings.cancel}</button>
         </div>
       </div>
     </div>
 
     <!-- GitHub Device Flow modal -->
     <div id="github-device-modal" class="settings-modal">
-      <span class="settings-modal-title">Iniciar Sesión en GitHub</span>
+      <span class="settings-modal-title">{t.settings.github_login_title}</span>
       <p class="settings-modal-hint">
         Entra en la web a continuación e introduce este código:
       </p>
@@ -165,13 +165,13 @@ const { t } = Astro.props;
       <button
         class="btn btn--sm btn--ghost"
         id="github-cancel-device-btn"
-        style="width: 100%;">Cancelar</button
+        style="width: 100%;">{t.settings.cancel}</button
       >
     </div>
 
     <!-- AniList token prompt modal -->
     <div id="anilist-token-modal" class="settings-modal">
-      <span class="settings-modal-title">Iniciar Sesión en AniList</span>
+      <span class="settings-modal-title">{t.settings.anilist_login_title}</span>
       <p class="settings-modal-hint">
         1. Haz clic en el botón de abajo para autorizar a Metadea en tu
         navegador.
@@ -182,7 +182,7 @@ const { t } = Astro.props;
         target="_blank"
         rel="noopener noreferrer"
         class="btn btn--sm btn--secondary settings-modal-link"
-        >Abrir página de autorización</a
+        >{t.settings.anilist_open_auth_page}</a
       >
       <p class="settings-modal-hint settings-modal-hint--spaced">
         2. Copia el token/código largo que te da la web y pégalo aquí:
@@ -190,7 +190,7 @@ const { t } = Astro.props;
       <input
         type="text"
         id="anilist-token-input"
-        placeholder="Pega el token aquí..."
+        placeholder={t.settings.anilist_token_placeholder}
         class="settings-modal-input"
       />
       <div class="settings-modal-actions">
@@ -202,7 +202,7 @@ const { t } = Astro.props;
         <button
           class="btn btn--sm btn--ghost"
           id="anilist-cancel-token-btn"
-          >Cancelar</button
+          >{t.settings.cancel}</button
         >
       </div>
     </div>
