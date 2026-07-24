@@ -8,7 +8,12 @@ export const ca = {
     notifications: 'Notificacions',
     account: 'El meu compte',
     tier: 'Tier list',
-    local: 'Biblioteca local',
+    local: 'Play',
+    list: 'Biblioteca',
+    browse: 'Explora',
+    dropdown_profile: 'Perfil',
+    dropdown_notifications: 'Notificacions',
+    dropdown_settings: 'Ajustos',
   },
   auth: {
     login: 'Iniciar sessió',

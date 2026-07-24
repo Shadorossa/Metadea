@@ -8,7 +8,12 @@ export const de = {
     notifications: 'Benachrichtigungen',
     account: 'Mein Konto',
     tier: 'Tier list',
-    local: 'Lokale Bibliothek',
+    local: 'Play',
+    list: 'Bibliothek',
+    browse: 'Durchsuchen',
+    dropdown_profile: 'Profil',
+    dropdown_notifications: 'Benachrichtigungen',
+    dropdown_settings: 'Einstellungen',
   },
   auth: {
     login: 'Anmelden',

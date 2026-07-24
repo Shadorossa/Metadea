@@ -8,7 +8,12 @@ export const fr = {
     notifications: 'Notifications',
     account: 'Mon compte',
     tier: 'Tier list',
-    local: 'Bibliothèque locale',
+    local: 'Play',
+    list: 'Bibliothèque',
+    browse: 'Parcourir',
+    dropdown_profile: 'Profil',
+    dropdown_notifications: 'Notifications',
+    dropdown_settings: 'Paramètres',
   },
   auth: {
     login: 'Se connecter',

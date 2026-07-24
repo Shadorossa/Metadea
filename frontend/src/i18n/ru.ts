@@ -8,7 +8,12 @@ export const ru = {
     notifications: 'Уведомления',
     account: 'Мой профиль',
     tier: 'Tier list',
-    local: 'Локальная библиотека',
+    local: 'Play',
+    list: 'Библиотека',
+    browse: 'Обзор',
+    dropdown_profile: 'Профиль',
+    dropdown_notifications: 'Уведомления',
+    dropdown_settings: 'Настройки',
   },
   auth: {
     login: 'Войти',

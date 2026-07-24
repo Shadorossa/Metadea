@@ -1,30 +1,29 @@
 ---
 import type { Translations } from '../i18n/index';
+import { ALL_MEDIA_TYPES } from '../lib/constants/media';
+import { typeIconMap } from '../lib/shared/icon-strings';
 
 interface Props {
   activePage?: 'home' | 'search' | 'local' | 'notifications' | 'profile' | 'tier' | 'admin';
   i18n: Translations['nav'];
+  typeLabels: Translations['search']['types'];
 }
-const { activePage, i18n } = Astro.props;
+const { activePage, i18n, typeLabels } = Astro.props;
+
+// Character has no place in the library shortcuts — it isn't something you
+// track a personal list of the way anime/manga/games/etc. are.
+const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
+const TYPE_ICON = typeIconMap(20);
 ---
 
 <header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
-  <!-- Izquierda: home + search -->
+  <!-- Izquierda: home + play (biblioteca local) + tier -->
   <div class="nav-group">
     <a href="/home"   data-nav="home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
         <polyline points="9 21 9 12 15 12 15 21"/>
       </svg>
-    </a>
-    <a href="/search" data-nav="search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.search}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="7"/>
-        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
-      </svg>
-    </a>
-    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
-      <span class="nav-tier-s">S</span>
     </a>
     <a href="/local" data-nav="local" class={`nav-icon-btn${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -33,32 +32,75 @@ const { activePage, i18n } = Astro.props;
         <line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     </a>
+    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
+      <span class="nav-tier-s">S</span>
+    </a>
   </div>
 
-  <!-- Centro: slot para contenido de página (ej. tabs de local) -->
-  <div id="nav-center-slot" class="nav-center-slot"></div>
+  <!-- Centro: por defecto, biblioteca + tipos — en /local y /search se
+       sustituye por las pestañas propias de esa página (portal React hacia
+       #nav-center-slot, ver LocalLibrary.tsx / SearchIsland.tsx). -->
+  <div class="nav-center-wrap">
+    <div id="nav-center-default" class="nav-group">
+      <a href="/profile#library" class="nav-icon-btn" title={i18n.list}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </a>
+      {LIBRARY_TYPES.map(type => (
+        <a
+          href={`/profile?libtype=${type}#library`}
+          class="nav-icon-btn"
+          title={typeLabels[type as keyof typeof typeLabels] ?? type}
+          set:html={TYPE_ICON[type]}
+        />
+      ))}
+    </div>
+    <div id="nav-center-slot" class="nav-center-slot"></div>
+  </div>
 
-  <!-- Derecha: notificaciones + usuario -->
+  <!-- Derecha: perfil (desplegable al pasar el cursor) + browse -->
   <div class="nav-group">
-    <a href="/notifications" data-nav="notifications" class={`nav-icon-btn${activePage === 'notifications' ? ' active' : ''}`} title={i18n.notifications}>
+    <div class="nav-profile-wrap">
+      <a
+        href="/profile"
+        id="nav-account-btn"
+        data-nav="account"
+        class={`nav-icon-btn${activePage === 'profile' ? ' active' : ''}`}
+        title={i18n.dropdown_profile}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+      </a>
+      <div class="nav-dropdown">
+        <div class="nav-dropdown-inner">
+          <a class="nav-dropdown-item" href="/profile">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+            </svg>
+            <span>{i18n.dropdown_profile}</span>
+          </a>
+          <a class="nav-dropdown-item" href="/notifications">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span>{i18n.dropdown_notifications}</span>
+          </a>
+          <a class="nav-dropdown-item" href="/settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>{i18n.dropdown_settings}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+    <a href="/search" data-nav="search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.browse}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-      </svg>
-    </a>
-    <a
-      href={activePage === 'profile' ? '/settings' : '/profile'}
-      id="nav-account-btn"
-      data-nav="account"
-      class={`nav-icon-btn${activePage === 'profile' ? ' active is-settings-mode' : ''}`}
-      title={i18n.account}
-    >
-      <svg class="nav-icon-account-profile" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-      </svg>
-      <svg class="nav-icon-account-settings" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
       </svg>
     </a>
   </div>
@@ -76,7 +118,6 @@ const { activePage, i18n } = Astro.props;
     if (pathname.startsWith('/search')) return 'search';
     if (pathname.startsWith('/tier')) return 'tier';
     if (pathname.startsWith('/admin')) return 'admin';
-    if (pathname.startsWith('/notifications')) return 'notifications';
     if (pathname.startsWith('/local')) return 'local';
     if (pathname.startsWith('/profile') || pathname.startsWith('/settings')) return 'account';
     return undefined;
@@ -90,11 +131,10 @@ const { activePage, i18n } = Astro.props;
     const navT = getT().nav;
     const titles: Record<string, string> = {
       home: navT.home,
-      search: navT.search,
+      search: navT.browse,
       tier: navT.tier,
       local: navT.local,
-      notifications: navT.notifications,
-      account: navT.account,
+      account: navT.dropdown_profile,
     };
     document.querySelectorAll('.navbar [data-nav]').forEach(el => {
       const navKey = el.getAttribute('data-nav');
@@ -104,16 +144,16 @@ const { activePage, i18n } = Astro.props;
       }
     });
 
-    const accountBtn = document.getElementById('nav-account-btn') as HTMLAnchorElement | null;
-    if (accountBtn) {
-      const onProfile = path.startsWith('/profile');
-      accountBtn.href = onProfile ? '/settings' : '/profile';
-      accountBtn.classList.toggle('is-settings-mode', onProfile);
+    // /local and /search portal their own tab bar into #nav-center-slot
+    // (see LocalLibrary.tsx / SearchIsland.tsx) — hide the default
+    // library/type shortcuts while that's the case so they don't double up.
+    const centerDefault = document.getElementById('nav-center-default');
+    if (centerDefault) {
+      centerDefault.classList.toggle('nav-hidden', path.startsWith('/local') || path.startsWith('/search'));
     }
   }
 
   // astro:page-load fires on initial load AND after every View Transitions
-  // navigation — that's all this persisted navbar needs now that the account
-  // button is a plain link instead of a dropdown.
+  // navigation — that's all this persisted navbar needs.
   document.addEventListener('astro:page-load', updateActiveNav);
 </script>

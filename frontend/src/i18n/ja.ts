@@ -8,7 +8,12 @@ export const ja = {
     notifications: '通知',
     account: 'アカウント',
     tier: 'ティアリスト',
-    local: 'ローカルライブラリ',
+    local: 'Play',
+    list: 'ライブラリ',
+    browse: '閲覧',
+    dropdown_profile: 'プロフィール',
+    dropdown_notifications: '通知',
+    dropdown_settings: '設定',
   },
   auth: {
     login: 'ログイン',

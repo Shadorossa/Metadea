@@ -18,8 +18,18 @@
 
 
 
+.nav-center-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .nav-center-slot {
   pointer-events: auto;
+}
+
+.nav-hidden {
+  display: none !important;
 }
 
 .nav-group {
@@ -94,15 +104,64 @@
   border: 1.5px solid currentColor;
 }
 
-/* ── Account button (profile ⇄ settings toggle) ──────────────────────────── */
-.nav-icon-account-settings {
-  display: none;
+/* ── Profile dropdown (Perfil / Notificaciones / Ajustes on hover) ───────── */
+.nav-profile-wrap {
+  position: relative;
 }
 
-#nav-account-btn.is-settings-mode .nav-icon-account-profile {
-  display: none;
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity var(--anim-fast) var(--anim-ease),
+              transform var(--anim-fast) var(--anim-ease),
+              visibility var(--anim-fast) var(--anim-ease);
+  pointer-events: none;
+  z-index: 60;
 }
 
-#nav-account-btn.is-settings-mode .nav-icon-account-settings {
-  display: block;
+.nav-profile-wrap:hover .nav-dropdown,
+.nav-profile-wrap:focus-within .nav-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.nav-dropdown-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 170px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.35rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--anim-fast), color var(--anim-fast);
+}
+
+.nav-dropdown-item svg {
+  flex-shrink: 0;
+}
+
+.nav-dropdown-item:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+  color: var(--text-main);
 }

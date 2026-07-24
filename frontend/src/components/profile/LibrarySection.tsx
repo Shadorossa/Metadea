@@ -82,6 +82,19 @@ export function LibrarySection() {
     return next;
   });
 
+  // The navbar's per-type library shortcuts (Navbar.astro) deep-link here as
+  // /profile?libtype=<type>#library — read it once on mount, then strip it
+  // so it doesn't linger in the URL bar or get replayed on a later remount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const libtype = params.get('libtype');
+    if (!libtype) return;
+    setActiveTypeTab(libtype);
+    params.delete('libtype');
+    const qs = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
