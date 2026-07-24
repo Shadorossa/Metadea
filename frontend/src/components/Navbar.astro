@@ -1,7 +1,6 @@
 ---
 import type { Translations } from '../i18n/index';
 import { ALL_MEDIA_TYPES } from '../lib/constants/media';
-import { typeIconMap } from '../lib/shared/icon-strings';
 
 interface Props {
   activePage?: 'home' | 'search' | 'local' | 'notifications' | 'profile' | 'tier' | 'admin';
@@ -13,7 +12,6 @@ const { activePage, i18n, typeLabels } = Astro.props;
 // Character has no place in the library shortcuts — it isn't something you
 // track a personal list of the way anime/manga/games/etc. are.
 const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
-const TYPE_ICON = typeIconMap(20);
 ---
 
 <header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
@@ -41,35 +39,35 @@ const TYPE_ICON = typeIconMap(20);
        sustituye por las pestañas propias de esa página (portal React hacia
        #nav-center-slot, ver LocalLibrary.tsx / SearchIsland.tsx). -->
   <div class="nav-center-wrap">
-    <div id="nav-center-default" class="nav-group">
-      <a href="/profile#library" class="nav-icon-btn" title={i18n.list}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-        </svg>
-      </a>
+    <div id="nav-center-default" class="nav-center-text">
+      <a href="/profile#library" class="nav-text-link">{i18n.list}</a>
       {LIBRARY_TYPES.map(type => (
-        <a
-          href={`/profile?libtype=${type}#library`}
-          class="nav-icon-btn"
-          title={typeLabels[type as keyof typeof typeLabels] ?? type}
-          set:html={TYPE_ICON[type]}
-        />
+        <a href={`/profile?libtype=${type}#library`} class="nav-text-link">
+          {typeLabels[type as keyof typeof typeLabels] ?? type}
+        </a>
       ))}
     </div>
     <div id="nav-center-slot" class="nav-center-slot"></div>
   </div>
 
-  <!-- Derecha: perfil (desplegable al pasar el cursor) + browse -->
+  <!-- Derecha: browse + perfil (avatar, desplegable al pasar el cursor) -->
   <div class="nav-group">
+    <a href="/search" data-nav="search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.browse}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+      </svg>
+    </a>
     <div class="nav-profile-wrap">
       <a
         href="/profile"
         id="nav-account-btn"
         data-nav="account"
-        class={`nav-icon-btn${activePage === 'profile' ? ' active' : ''}`}
+        class={`nav-icon-btn nav-icon-btn--avatar${activePage === 'profile' ? ' active' : ''}`}
         title={i18n.dropdown_profile}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" />
+        <svg id="nav-avatar-fallback" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="8" r="4"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
         </svg>
@@ -97,12 +95,6 @@ const TYPE_ICON = typeIconMap(20);
         </div>
       </div>
     </div>
-    <a href="/search" data-nav="search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.browse}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="7"/>
-        <line x1="16.5" y1="16.5" x2="22" y2="22"/>
-      </svg>
-    </a>
   </div>
 </header>
 
@@ -150,6 +142,28 @@ const TYPE_ICON = typeIconMap(20);
     const centerDefault = document.getElementById('nav-center-default');
     if (centerDefault) {
       centerDefault.classList.toggle('nav-hidden', path.startsWith('/local') || path.startsWith('/search'));
+    }
+
+    // profile.astro caches the resolved avatar (custom or Google) here on
+    // every visit so it can paint instantly next time — reused here so the
+    // navbar shows the real avatar instead of the generic person icon.
+    const avatarImg = document.getElementById('nav-avatar-img') as HTMLImageElement | null;
+    const avatarFallback = document.getElementById('nav-avatar-fallback');
+    const avatarSrc = localStorage.getItem('profile_avatar_cache');
+    if (avatarImg && avatarFallback) {
+      if (avatarSrc) {
+        avatarImg.onerror = () => {
+          avatarImg.style.display = 'none';
+          (avatarFallback as HTMLElement).style.display = 'block';
+        };
+        avatarImg.src = avatarSrc;
+        avatarImg.style.display = 'block';
+        (avatarFallback as HTMLElement).style.display = 'none';
+      } else {
+        avatarImg.removeAttribute('src');
+        avatarImg.style.display = 'none';
+        (avatarFallback as HTMLElement).style.display = 'block';
+      }
     }
   }
 
