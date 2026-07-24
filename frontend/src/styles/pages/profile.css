@@ -1539,21 +1539,28 @@
 
 .library-group-toggle-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   padding: 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color var(--anim-fast);
+  transition: all var(--anim-fast);
 }
 
 .library-group-toggle-btn:hover {
   color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
 }
 
+/* Just a color change (var(--accent)) reads as barely-there in themes like
+   newspaper-dark, where --accent and --text-muted are nearly the same
+   value — background + border make the on/off state actually legible. */
 .library-group-toggle-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -1590,22 +1597,28 @@
 
 .library-sort-btn {
   background: transparent !important;
-  border: none !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   padding: 0.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color var(--anim-fast);
+  transition: all var(--anim-fast);
   box-shadow: none !important;
 }
 
 .library-sort-btn:hover {
   color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
+/* Same reasoning as .library-group-toggle-btn.active — a color-only change
+   barely reads in themes where --accent sits close to --text-muted. */
 .library-sort-btn.active {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent) !important;
   color: var(--accent) !important;
 }
 
