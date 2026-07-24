@@ -41,11 +41,15 @@ async function compileLibrary(): Promise<unknown[]> {
   }));
 }
 
-export async function syncProfileToServer(): Promise<void> {
-  if (!navigator.onLine) return;
+// `force` skips the once-a-day gate below — used by the Settings > Perfil
+// "Sincronizar ahora" debug button (temporary, testing-only, see
+// ProfileTab.astro) to trigger a real sync on demand instead of waiting up
+// to 24h for the normal gate to expire.
+export async function syncProfileToServer(force = false): Promise<boolean> {
+  if (!navigator.onLine) return false;
 
   const session = await getAuthToken().catch(() => null);
-  if (!session || session.token === 'offline_token') return;
+  if (!session || session.token === 'offline_token') return false;
 
   // Turso is the only place that ever *assigns* this account's server id
   // (routes/auth.ts, keyed on the Google account, looked up on every login)
@@ -62,7 +66,7 @@ export async function syncProfileToServer(): Promise<void> {
   }
 
   const lastSync = localStorage.getItem(STORAGE_KEYS.profileSyncLastSync);
-  if (lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return;
+  if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return false;
 
   try {
     const [info, activity, library, favorites, monthlyHistory, customAvatar, customBanner] = await Promise.all([
@@ -105,7 +109,9 @@ export async function syncProfileToServer(): Promise<void> {
     if (res.ok) {
       localStorage.setItem(STORAGE_KEYS.profileSyncLastSync, String(Date.now()));
     }
+    return res.ok;
   } catch (error) {
     console.warn('[ProfileSync] Failed:', error);
+    return false;
   }
 }

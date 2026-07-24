@@ -157,6 +157,18 @@ const { t } = Astro.props;
     </div>
   </div>
 
+  <!-- TEST — botón temporal para forzar el sync del perfil al servidor sin
+       esperar la puerta de 24h, solo para pruebas del sistema social. Quitar
+       antes de release. -->
+  <div class="settings-divider">
+    <button
+      class="btn btn--sm btn--ghost"
+      id="settings-force-sync-btn"
+    >
+      [TEST] Sincronizar perfil ahora (forzar)
+    </button>
+  </div>
+
   <!-- Cerrar sesión -->
   <div class="settings-divider">
     <button

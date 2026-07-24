@@ -91,6 +91,7 @@ const version = pkg.version;
 
 <script>
   import { getAuthToken, clearAuthToken } from "../lib/tauri";
+  import { syncProfileToServer } from "../lib/social/profile-sync";
   import { decodeJwtPayload } from "../lib/profile/utils";
   import { initAvatar } from "../lib/settings/avatar";
   import { initBanner } from "../lib/settings/banner";
@@ -252,6 +253,20 @@ const version = pkg.version;
           if (targetForm) targetForm.classList.remove("hidden");
         }
       });
+    });
+
+    // TEST — temporary debug button, see ProfileTab.astro's comment.
+    document.getElementById("settings-force-sync-btn")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = "[TEST] Sincronizando...";
+      const ok = await syncProfileToServer(true).catch(() => false);
+      btn.textContent = ok ? "[TEST] Sincronizado ✓" : "[TEST] Falló ✗";
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 2000);
     });
 
     document.getElementById("settings-signout-btn")?.addEventListener("click", async () => {
