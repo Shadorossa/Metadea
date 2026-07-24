@@ -49,23 +49,6 @@
   border-color: var(--accent-border);
 }
 
-.quick-search-type-select {
-  flex-shrink: 0;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 0.55rem 0.7rem;
-  color: var(--text-main);
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.quick-search-type-select:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-
 .quick-search-hint {
   margin: 0.25rem 0;
   text-align: center;

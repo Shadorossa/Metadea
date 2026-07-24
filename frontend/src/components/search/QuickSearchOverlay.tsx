@@ -1,9 +1,9 @@
 // Navbar quick-search — opened by clicking the magnifying glass (see
 // Navbar.astro, which dispatches 'metadea:open-quick-search' instead of
-// navigating). A centered input with a category dropdown to its right
-// (Obra/Staff/Personaje/Usuario); results render as AniList-style sections
-// (one per media type when the category is "Obra", one section otherwise)
-// instead of a single long flat list.
+// navigating). A single centered input; every category (media types,
+// characters, staff, users) searches in parallel and renders as its own
+// AniList-style section, all merged into one grid instead of behind a
+// category filter.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
 import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
@@ -11,16 +11,15 @@ import { searchUsers, type UserSearchResult } from '../../lib/social/users';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
 
-type Category = 'media' | 'staff' | 'character' | 'user';
-
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
 const SECTION_CAP = 6;
-// Media-type sections render in a fixed 4-column grid (see .quick-search-sections) —
+// Sections render in a fixed 4-column grid (see .quick-search-sections) —
 // capped to 2 rows' worth so the box never grows past that regardless of how
-// many types a query matches.
+// many categories a query matches. Characters/Staff/Users always keep their
+// slot; media-type sections fill whatever's left.
 const SECTION_COLUMNS = 4;
-const MAX_MEDIA_SECTIONS = SECTION_COLUMNS * 2;
+const MAX_TOTAL_SECTIONS = SECTION_COLUMNS * 2;
 
 interface Row {
   key: string;
@@ -58,7 +57,6 @@ export function QuickSearchOverlay() {
   const s = getT().social;
   const typeLabels = getT().search.types;
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState<Category>('media');
   const [query, setQuery] = useState('');
   const [sections, setSections] = useState<Section[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,25 +94,30 @@ export function QuickSearchOverlay() {
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        if (category === 'media') {
-          const page = await searchMedia(query, 'all', controller.signal);
-          const byType = mediaRowsByType(page.results);
-          const built: Section[] = ALL_MEDIA_TYPES
-            .filter(t => t !== 'character' && byType.has(t))
-            .slice(0, MAX_MEDIA_SECTIONS)
-            .map(t => ({
-              key: t,
-              heading: typeLabels[t as keyof typeof typeLabels] ?? t,
-              rows: byType.get(t)!.slice(0, SECTION_CAP),
-              viewAllHref: `/search?type=${t}&q=${encodeURIComponent(query)}`,
-            }));
-          setSections(built);
-        } else if (category === 'character') {
-          const page = await searchMedia(query, 'character', controller.signal);
-          setSections([{
+        const [mediaPage, characterPage, staffPage, userResults] = await Promise.all([
+          searchMedia(query, 'all', controller.signal).catch(() => ({ results: [], hasMore: false })),
+          searchMedia(query, 'character', controller.signal).catch(() => ({ results: [], hasMore: false })),
+          searchAniListStaff(query, controller.signal).catch(() => ({ results: [], hasMore: false })),
+          searchUsers(query, controller.signal).catch(() => [] as UserSearchResult[]),
+        ]);
+        if (controller.signal.aborted) return;
+
+        const byType = mediaRowsByType(mediaPage.results);
+        const mediaSections: Section[] = ALL_MEDIA_TYPES
+          .filter(t => t !== 'character' && byType.has(t))
+          .map(t => ({
+            key: t,
+            heading: typeLabels[t as keyof typeof typeLabels] ?? t,
+            rows: byType.get(t)!.slice(0, SECTION_CAP),
+            viewAllHref: `/search?type=${t}&q=${encodeURIComponent(query)}`,
+          }));
+
+        const extraSections: Section[] = [];
+        if (characterPage.results.length > 0) {
+          extraSections.push({
             key: 'character',
             heading: s.search_section_characters,
-            rows: page.results.slice(0, SECTION_CAP).map(r => ({
+            rows: characterPage.results.slice(0, SECTION_CAP).map(r => ({
               key: r.externalId,
               title: r.titleMain,
               sub: '',
@@ -122,13 +125,13 @@ export function QuickSearchOverlay() {
               href: `/character?id=${encodeURIComponent(r.externalId.replace('character:', ''))}`,
             })),
             viewAllHref: `/search?type=character&q=${encodeURIComponent(query)}`,
-          }]);
-        } else if (category === 'staff') {
-          const page = await searchAniListStaff(query, controller.signal);
-          setSections([{
+          });
+        }
+        if (staffPage.results.length > 0) {
+          extraSections.push({
             key: 'staff',
             heading: s.search_section_staff,
-            rows: page.results.slice(0, SECTION_CAP).map((r: AniListStaffSearchResult) => ({
+            rows: staffPage.results.slice(0, SECTION_CAP).map((r: AniListStaffSearchResult) => ({
               key: `staff:${r.id}`,
               title: r.name,
               sub: r.nameNative ?? '',
@@ -136,13 +139,13 @@ export function QuickSearchOverlay() {
               href: `/author?id=person:a${r.id}`,
             })),
             viewAllHref: null,
-          }]);
-        } else {
-          const results = await searchUsers(query, controller.signal);
-          setSections([{
+          });
+        }
+        if (userResults.length > 0) {
+          extraSections.push({
             key: 'user',
             heading: s.search_section_users,
-            rows: results.slice(0, SECTION_CAP).map((r: UserSearchResult) => ({
+            rows: userResults.slice(0, SECTION_CAP).map((r: UserSearchResult) => ({
               key: r.userId,
               title: r.username,
               sub: '',
@@ -150,8 +153,13 @@ export function QuickSearchOverlay() {
               href: `/user?id=${encodeURIComponent(r.userId)}`,
             })),
             viewAllHref: null,
-          }]);
+          });
         }
+
+        // Characters/Staff/Users always get their slot; media-type sections
+        // (the more numerous, less "final destination" kind) yield first.
+        const maxMedia = Math.max(0, MAX_TOTAL_SECTIONS - extraSections.length);
+        setSections([...mediaSections.slice(0, maxMedia), ...extraSections]);
       } catch {
         if (!controller.signal.aborted) setSections([]);
       } finally {
@@ -159,7 +167,7 @@ export function QuickSearchOverlay() {
       }
     }, DEBOUNCE_MS);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, query, category, s, typeLabels]);
+  }, [open, query, s, typeLabels]);
 
   const totalRows = useMemo(() => sections?.reduce((sum, sec) => sum + sec.rows.length, 0) ?? 0, [sections]);
 
@@ -183,16 +191,6 @@ export function QuickSearchOverlay() {
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <select
-            className="quick-search-type-select"
-            value={category}
-            onChange={e => setCategory(e.target.value as Category)}
-          >
-            <option value="media">{s.search_type_media}</option>
-            <option value="staff">{s.search_type_staff}</option>
-            <option value="character">{s.search_type_character}</option>
-            <option value="user">{s.search_type_user}</option>
-          </select>
         </div>
 
         {query.trim().length > 0 && query.trim().length < MIN_CHARS && (
