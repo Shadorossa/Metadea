@@ -19,7 +19,10 @@ type SortBy = 'rating' | 'date' | 'duration';
 
 // A fixed subset of media_catalog.format values — anything else (or unset) passes through untouched.
 const EDITION_FILTER_OPTIONS = [
-  { key: 'GAME', label: 'Main' },
+  { key: 'MAIN', label: 'Main' },
+  { key: 'OVA', label: 'OVA' },
+  { key: 'ONA', label: 'ONA' },
+  { key: 'SPECIAL', label: 'Special' },
   { key: 'REMAKE', label: 'Remake' },
   { key: 'EXPANDED_GAME', label: 'Expanded Game' },
   { key: 'REMASTER', label: 'Remaster' },
@@ -27,8 +30,19 @@ const EDITION_FILTER_OPTIONS = [
   { key: 'SEASON', label: 'Season' },
   { key: 'ISSUE', label: 'Issue' },
 ] as const;
-const EDITION_FILTER_KEYS = new Set(EDITION_FILTER_OPTIONS.map(o => o.key));
-const DEFAULT_EDITION_FILTERS = ['GAME', 'REMAKE', 'EXPANDED_GAME', 'REMASTER'];
+const EDITION_FILTER_KEYS: Set<string> = new Set(EDITION_FILTER_OPTIONS.map(o => o.key));
+const DEFAULT_EDITION_FILTERS = ['MAIN', 'OVA', 'ONA', 'SPECIAL', 'REMAKE', 'EXPANDED_GAME', 'REMASTER'];
+// Base release formats across every media type — all bucket into the "Main" filter
+// instead of only matching the untyped/GAME fallback (anime/manga almost always have
+// an explicit format like TV/MANGA/NOVEL, so they never hit that fallback).
+const MAIN_EDITION_FORMATS = new Set([
+  'GAME', 'TV', 'TV_SHORT', 'MOVIE', 'MANGA', 'ONE_SHOT', 'NOVEL',
+  'VISUAL_NOVEL', 'TV_MOVIE', 'SHORT_FILM', 'MINISERIES',
+]);
+function normalizeEditionFormat(format: string | null | undefined): string {
+  if (!format || MAIN_EDITION_FORMATS.has(format)) return 'MAIN';
+  return format;
+}
 
 export function LibrarySection() {
   const p = getT().profile;
@@ -131,7 +145,7 @@ export function LibrarySection() {
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
       if (nameVal && !title.includes(nameVal)) return false;
       if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) return false;
-      const editionFormat = meta?.format || 'GAME';
+      const editionFormat = normalizeEditionFormat(meta?.format);
       if (EDITION_FILTER_KEYS.has(editionFormat) && !selectedEditionFormats.includes(editionFormat)) return false;
       if (statusKey) {
         if (statusKey === 'in_progress') { if (!isInProgressStatus(item.status)) return false; }
