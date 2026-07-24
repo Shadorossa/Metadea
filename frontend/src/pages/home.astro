@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/pages/home.css";
 import { getLang, useTranslations } from "../i18n/index";
 import { API_URL } from "../lib/config";
+import { ActivityFeedSection } from "../components/home/ActivityFeedSection";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -48,6 +49,11 @@ const t = useTranslations(lang);
     </div>
 
     <div id="home-calendar" class="home-calendar-section"></div>
+
+    <section class="home-activity-section">
+      <h2 class="home-activity-title">{t.profile.recent_activity}</h2>
+      <ActivityFeedSection client:load />
+    </section>
   </main>
 
   <script>

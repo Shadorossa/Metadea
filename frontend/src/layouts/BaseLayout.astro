@@ -142,6 +142,7 @@ const t = useTranslations(lang);
       let updaterChecked = false;
       let communityCatalogSynced = false;
       const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
+      let socialSynced = false;
 
       function isTauriRuntime() {
         return typeof window !== 'undefined' &&
@@ -265,6 +266,19 @@ const t = useTranslations(lang);
         if (!communityCatalogSynced) {
           communityCatalogSynced = true;
           setTimeout(syncCommunityCatalog, 3000);
+        }
+
+        // Daily profile snapshot upload + activity feed refresh (metadea-web)
+        // — both no-op for a local "offline_token" session, see their own
+        // files for the actual once-a-day gating.
+        if (!socialSynced) {
+          socialSynced = true;
+          setTimeout(async () => {
+            const { syncProfileToServer } = await import(/* @vite-ignore */ '../lib/social/profile-sync');
+            const { refreshActivityFeed } = await import(/* @vite-ignore */ '../lib/social/activity-feed');
+            syncProfileToServer().catch(() => {});
+            refreshActivityFeed().catch(() => {});
+          }, 4000);
         }
 
         // Si navegamos fuera de la ficha, aseguramos resetear presencia de Discord

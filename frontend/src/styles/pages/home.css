@@ -27,7 +27,82 @@
 .home-calendar-section {
   width: 100%;
   max-width: 720px;
-  margin: 1rem auto 4rem; /* Reducimos a 1rem superior para que quede más cerca y centrado */
+  margin: 1rem auto 2rem; /* Reducimos a 1rem superior para que quede más cerca y centrado */
+}
+
+/* ── Recent activity (people you follow) ────────────────────────────────── */
+.home-activity-section {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 2rem;
+}
+
+.home-activity-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin: 0 0 0.75rem;
+}
+
+.home-activity-empty {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.home-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.home-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+}
+
+.home-activity-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.home-activity-avatar--placeholder {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+}
+
+.home-activity-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.home-activity-text {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-activity-text strong {
+  color: var(--text-main);
 }
 
 /* Generic card wrapper — same look as profile's .stats-block-custom, kept as
