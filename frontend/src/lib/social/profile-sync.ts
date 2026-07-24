@@ -7,6 +7,8 @@
 import { API_URL } from '../config';
 import { getAuthToken, getUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { getImage } from '../storage/images';
+import { decodeJwtPayload } from '../profile/utils';
 
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
@@ -49,13 +51,23 @@ export async function syncProfileToServer(): Promise<void> {
   if (lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return;
 
   try {
-    const [info, activity, library, favorites, monthlyHistory] = await Promise.all([
+    const [info, activity, library, favorites, monthlyHistory, customAvatar, customBanner] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileRecentActivity(),
       compileLibrary(),
       readUserFavorites().catch(() => ({})),
       readMonthlyHistory().catch(() => ({})),
+      getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
+      getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),
     ]);
+
+    // Same "custom takes priority over Google's own" resolution profile.astro
+    // does for the local banner — without this, the server row is stuck
+    // forever with whatever Google gave it at first link (name + photo),
+    // never reflecting a display name or avatar customized afterward.
+    const payload = decodeJwtPayload(session.token);
+    const username = (info.display_name as string | undefined)?.trim() || session.username;
+    const avatarUrl = customAvatar || (payload.avatar as string | null) || null;
 
     const res = await fetch(`${API_URL}/api/profile/sync`, {
       method: 'POST',
@@ -64,6 +76,9 @@ export async function syncProfileToServer(): Promise<void> {
         Authorization: `Bearer ${session.token}`,
       },
       body: JSON.stringify({
+        username,
+        avatar_url: avatarUrl,
+        banner_url: customBanner ?? null,
         bio: (info.bio as string | undefined) ?? null,
         rating_system: localStorage.getItem(STORAGE_KEYS.ratingSystem),
         theme: localStorage.getItem(STORAGE_KEYS.appTheme),
