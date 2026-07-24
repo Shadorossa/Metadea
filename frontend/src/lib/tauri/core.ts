@@ -39,6 +39,14 @@ function getDbReadyPromise(): Promise<void> {
     dbReadyPromise = new Promise((resolve) => {
       resolveDbReady = resolve;
     });
+    // Safety net: initTauriDatabase() is expected to call markDbReady() no
+    // matter what, but if some future/edge path never does, every invoke()
+    // call gating on this promise would otherwise hang forever (blank pages,
+    // results that never load) instead of erroring — same failure mode as
+    // the bug this promise was patched for. Falling through after a timeout
+    // just means a caller hits its own normal error handling instead of
+    // hanging silently.
+    setTimeout(() => resolveDbReady?.(), 5000);
   }
   return dbReadyPromise;
 }
