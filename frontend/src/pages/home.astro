@@ -82,7 +82,13 @@ const t = useTranslations(lang);
         .getElementById("home-google-btn")
         ?.addEventListener("click", (e) => {
           e.preventDefault();
-          window.location.href = `${API_URL}/api/auth/google`;
+          // Tells the server where to redirect back to once Google's flow
+          // finishes — a plain top-level navigation like this never sends a
+          // usable Origin/Referer header, so there's no other way for the
+          // Worker to know whether this is a packaged build (tauri.localhost)
+          // or `tauri dev` (localhost:4321).
+          const origin = encodeURIComponent(window.location.origin);
+          window.location.href = `${API_URL}/api/auth/google?origin=${origin}`;
         });
 
       checkSession();
