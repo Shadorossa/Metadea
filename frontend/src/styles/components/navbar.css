@@ -81,8 +81,12 @@
   pointer-events: auto;
 }
 
+.nav-group--left {
+  margin-left: 2rem;
+}
+
 .nav-group--right {
-  margin-right: 0.75rem;
+  margin-right: 2rem;
 }
 
 .nav-icon-btn {
