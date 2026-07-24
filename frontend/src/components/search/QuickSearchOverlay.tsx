@@ -1,64 +1,61 @@
 // Navbar quick-search — opened by clicking the magnifying glass (see
 // Navbar.astro, which dispatches 'metadea:open-quick-search' instead of
-// navigating). A single centered input with a type selector to its right
-// (Media/Staff/Characters/Users), live results below as you type.
-import { useEffect, useRef, useState } from 'react';
+// navigating). A centered input with a category dropdown to its right
+// (Obra/Staff/Personaje/Usuario); results render as AniList-style sections
+// (one per media type when the category is "Obra", one section otherwise)
+// instead of a single long flat list.
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
 import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
+import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
 
-type QueryType = 'media' | 'staff' | 'character' | 'user';
+type Category = 'media' | 'staff' | 'character' | 'user';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
+const SECTION_CAP = 6;
 
-type Row =
-  | { kind: 'media'; key: string; title: string; sub: string; cover: string | null; href: string }
-  | { kind: 'staff'; key: string; title: string; sub: string; cover: string | null; href: string }
-  | { kind: 'user';  key: string; title: string; sub: string; cover: string | null; href: string };
-
-function mediaResultsToRows(results: SearchResult[]): Row[] {
-  return results.map(r => ({
-    kind: 'media',
-    key: r.externalId,
-    title: r.titleMain,
-    sub: r.type,
-    cover: r.coverUrl,
-    href: r.type === 'character'
-      ? `/character?id=${encodeURIComponent(r.externalId.replace('character:', ''))}`
-      : `/media?id=${encodeURIComponent(r.externalId)}`,
-  }));
+interface Row {
+  key: string;
+  title: string;
+  sub: string;
+  cover: string | null;
+  href: string;
 }
 
-function staffResultsToRows(results: AniListStaffSearchResult[]): Row[] {
-  return results.map(r => ({
-    kind: 'staff',
-    key: `staff:${r.id}`,
-    title: r.name,
-    sub: r.nameNative ?? '',
-    cover: r.image,
-    href: `/author?id=person:a${r.id}`,
-  }));
+interface Section {
+  key: string;
+  heading: string;
+  rows: Row[];
+  viewAllHref: string | null;
 }
 
-function userResultsToRows(results: UserSearchResult[]): Row[] {
-  return results.map(r => ({
-    kind: 'user',
-    key: r.userId,
-    title: r.username,
-    sub: '',
-    cover: r.avatarUrl,
-    href: `/user?id=${encodeURIComponent(r.userId)}`,
-  }));
+function mediaRowsByType(results: SearchResult[]): Map<string, Row[]> {
+  const byType = new Map<string, Row[]>();
+  for (const r of results) {
+    const row: Row = {
+      key: r.externalId,
+      title: r.titleMain,
+      sub: String(r.releaseYear ?? ''),
+      cover: r.coverUrl,
+      href: `/media?id=${encodeURIComponent(r.externalId)}`,
+    };
+    const list = byType.get(r.type) ?? [];
+    list.push(row);
+    byType.set(r.type, list);
+  }
+  return byType;
 }
 
 export function QuickSearchOverlay() {
   const s = getT().social;
+  const typeLabels = getT().search.types;
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<QueryType>('media');
+  const [category, setCategory] = useState<Category>('media');
   const [query, setQuery] = useState('');
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [sections, setSections] = useState<Section[] | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,7 +70,7 @@ export function QuickSearchOverlay() {
       requestAnimationFrame(() => inputRef.current?.focus());
     } else {
       setQuery('');
-      setRows(null);
+      setSections(null);
     }
   }, [open]);
 
@@ -86,7 +83,7 @@ export function QuickSearchOverlay() {
 
   useEffect(() => {
     if (!open || query.trim().length < MIN_CHARS) {
-      setRows(null);
+      setSections(null);
       setLoading(false);
       return;
     }
@@ -94,27 +91,71 @@ export function QuickSearchOverlay() {
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        if (type === 'media') {
+        if (category === 'media') {
           const page = await searchMedia(query, 'all', controller.signal);
-          setRows(mediaResultsToRows(page.results));
-        } else if (type === 'character') {
+          const byType = mediaRowsByType(page.results);
+          const built: Section[] = ALL_MEDIA_TYPES
+            .filter(t => t !== 'character' && byType.has(t))
+            .map(t => ({
+              key: t,
+              heading: typeLabels[t as keyof typeof typeLabels] ?? t,
+              rows: byType.get(t)!.slice(0, SECTION_CAP),
+              viewAllHref: `/search?type=${t}&q=${encodeURIComponent(query)}`,
+            }));
+          setSections(built);
+        } else if (category === 'character') {
           const page = await searchMedia(query, 'character', controller.signal);
-          setRows(mediaResultsToRows(page.results));
-        } else if (type === 'staff') {
+          setSections([{
+            key: 'character',
+            heading: s.search_section_characters,
+            rows: page.results.slice(0, SECTION_CAP * 2).map(r => ({
+              key: r.externalId,
+              title: r.titleMain,
+              sub: '',
+              cover: r.coverUrl,
+              href: `/character?id=${encodeURIComponent(r.externalId.replace('character:', ''))}`,
+            })),
+            viewAllHref: `/search?type=character&q=${encodeURIComponent(query)}`,
+          }]);
+        } else if (category === 'staff') {
           const page = await searchAniListStaff(query, controller.signal);
-          setRows(staffResultsToRows(page.results));
+          setSections([{
+            key: 'staff',
+            heading: s.search_section_staff,
+            rows: page.results.slice(0, SECTION_CAP * 2).map((r: AniListStaffSearchResult) => ({
+              key: `staff:${r.id}`,
+              title: r.name,
+              sub: r.nameNative ?? '',
+              cover: r.image,
+              href: `/author?id=person:a${r.id}`,
+            })),
+            viewAllHref: null,
+          }]);
         } else {
           const results = await searchUsers(query, controller.signal);
-          setRows(userResultsToRows(results));
+          setSections([{
+            key: 'user',
+            heading: s.search_section_users,
+            rows: results.slice(0, SECTION_CAP * 2).map((r: UserSearchResult) => ({
+              key: r.userId,
+              title: r.username,
+              sub: '',
+              cover: r.avatarUrl,
+              href: `/user?id=${encodeURIComponent(r.userId)}`,
+            })),
+            viewAllHref: null,
+          }]);
         }
       } catch {
-        if (!controller.signal.aborted) setRows([]);
+        if (!controller.signal.aborted) setSections([]);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     }, DEBOUNCE_MS);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, query, type]);
+  }, [open, query, category, s, typeLabels]);
+
+  const totalRows = useMemo(() => sections?.reduce((sum, sec) => sum + sec.rows.length, 0) ?? 0, [sections]);
 
   if (!open) return null;
 
@@ -136,21 +177,16 @@ export function QuickSearchOverlay() {
             value={query}
             onChange={e => setQuery(e.target.value)}
           />
-          <div className="quick-search-types">
-            {(['media', 'staff', 'character', 'user'] as QueryType[]).map(t => (
-              <button
-                key={t}
-                type="button"
-                className={`quick-search-type-btn ${type === t ? 'active' : ''}`}
-                onClick={() => setType(t)}
-              >
-                {t === 'media' ? s.search_type_media
-                  : t === 'staff' ? s.search_type_staff
-                  : t === 'character' ? s.search_type_character
-                  : s.search_type_user}
-              </button>
-            ))}
-          </div>
+          <select
+            className="quick-search-type-select"
+            value={category}
+            onChange={e => setCategory(e.target.value as Category)}
+          >
+            <option value="media">{s.search_type_media}</option>
+            <option value="staff">{s.search_type_staff}</option>
+            <option value="character">{s.search_type_character}</option>
+            <option value="user">{s.search_type_user}</option>
+          </select>
         </div>
 
         {query.trim().length > 0 && query.trim().length < MIN_CHARS && (
@@ -159,27 +195,36 @@ export function QuickSearchOverlay() {
 
         {loading && <p className="quick-search-hint">…</p>}
 
-        {!loading && rows !== null && rows.length === 0 && (
+        {!loading && sections !== null && totalRows === 0 && (
           <p className="quick-search-hint">{s.search_no_results}</p>
         )}
 
-        {!loading && rows !== null && rows.length > 0 && (
-          <div className="quick-search-results">
-            {rows.map(row => (
-              <button
-                key={row.key}
-                type="button"
-                className="quick-search-result"
-                onClick={() => goTo(row.href)}
-              >
-                {row.cover
-                  ? <img className="quick-search-result-cover" src={row.cover} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                  : <div className="quick-search-result-cover quick-search-result-cover--empty" />}
-                <span className="quick-search-result-text">
-                  <span className="quick-search-result-title">{row.title}</span>
-                  {row.sub && <span className="quick-search-result-sub">{row.sub}</span>}
-                </span>
-              </button>
+        {!loading && sections !== null && totalRows > 0 && (
+          <div className="quick-search-sections">
+            {sections.map(section => (
+              <div className="quick-search-section" key={section.key}>
+                <div className="quick-search-section-header">
+                  <h3 className="quick-search-section-title">{section.heading}</h3>
+                  {section.viewAllHref && (
+                    <button type="button" className="quick-search-view-all" onClick={() => goTo(section.viewAllHref!)}>
+                      {s.search_view_all}
+                    </button>
+                  )}
+                </div>
+                <div className="quick-search-section-grid">
+                  {section.rows.map(row => (
+                    <button key={row.key} type="button" className="quick-search-result" onClick={() => goTo(row.href)}>
+                      {row.cover
+                        ? <img className="quick-search-result-cover" src={row.cover} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                        : <div className="quick-search-result-cover quick-search-result-cover--empty" />}
+                      <span className="quick-search-result-text">
+                        <span className="quick-search-result-title">{row.title}</span>
+                        {row.sub && <span className="quick-search-result-sub">{row.sub}</span>}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
