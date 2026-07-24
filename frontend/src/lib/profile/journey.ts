@@ -18,16 +18,19 @@ export async function logJourneyEvent(
     const externalId = entry.external_id;
     const timestamp = new Date().toISOString();
 
-    // Only register 'complete' events (no 'start' events)
+    // Only register 'complete' events (no 'start' events) — and only when a
+    // real finish date was set. Without one there's no day to file the event
+    // under, and defaulting to "today" made every completion show up in the
+    // feed even for entries the user never actually dated.
     const wasNotCompleted = !existing || existing.status !== 'completed';
     const isNowCompleted = entry.status === 'completed';
-    if (wasNotCompleted && isNowCompleted) {
+    const finishDate = getCleanDate(entry.finished_at);
+    if (wasNotCompleted && isNowCompleted && finishDate) {
       // Remove any existing complete event for this media to avoid duplicates
       journey.forEach(day => {
         day.events = day.events.filter(e => !(e.externalId === externalId && e.type === 'complete'));
       });
 
-      const finishDate = getCleanDate(entry.finished_at) || today;
       let finishDayEntry = journey.find(d => d.date === finishDate);
       if (!finishDayEntry) {
         finishDayEntry = { date: finishDate, events: [] };
