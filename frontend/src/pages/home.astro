@@ -10,7 +10,7 @@ const t = useTranslations(lang);
 
 <BaseLayout title="Metadea" lang={lang} activePage="home">
   <main class="home-page-container">
-    <h1 class="home-title">
+    <h1 class="home-title" id="home-title">
       {t.home.title}
     </h1>
 
@@ -43,7 +43,7 @@ const t = useTranslations(lang);
             d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C41.4 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-3.9z"
           ></path>
         </svg>
-        Vincular con Google
+        <span id="home-google-btn-text">Vincular con Google</span>
       </a>
     </div>
 
@@ -55,6 +55,13 @@ const t = useTranslations(lang);
     import { API_URL } from "../lib/config";
     import { renderReleaseCalendar } from "../lib/home/render-calendar";
     import { STORAGE_KEYS } from "../lib/shared/storage-keys";
+    import { getT } from "../i18n/client";
+
+    const ht = getT();
+    const titleEl = document.getElementById("home-title");
+    if (titleEl && ht.home?.title) titleEl.textContent = ht.home.title;
+    const googleText = document.getElementById("home-google-btn-text");
+    if (googleText && (ht.auth as any)?.link_google) googleText.textContent = (ht.auth as any).link_google;
 
     async function checkSession() {
       const session = await getAuthToken();

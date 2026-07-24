@@ -18,8 +18,10 @@ function externalIdFromBranch(ref: string): string | null {
   return `${match[1]}:${match[2]}`;
 }
 
+import { getT } from '../../i18n/client';
+
 export function PullRequestList({ token, i18n }: Props) {
-  const t = i18n.notifications;
+  const t = getT().notifications;
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [pulls, setPulls] = useState<GitHubPull[]>([]);
   const [previewPr, setPreviewPr] = useState<GitHubPull | null>(null);

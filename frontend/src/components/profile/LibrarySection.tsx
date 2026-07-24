@@ -298,7 +298,7 @@ export function LibrarySection() {
                   prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key]
                 )}
               >
-                {opt.label}
+                {(getT().media?.formats as Record<string, string>)?.[opt.key] || opt.label}
               </button>
             ))}
           </div>

@@ -100,8 +100,11 @@ function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
 }
 
 export function CalendarSection() {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
+
   const t = getT();
-  const p = t.profile;
+  const p = isMounted ? t.profile : (getT().profile || t.profile);
 
   const now = useMemo(() => new Date(), []);
   const currentYear = now.getFullYear();
@@ -171,7 +174,7 @@ export function CalendarSection() {
 
   const isBusy = mode === 'mine' ? loading : generalLoading;
 
-  const dayHeaders = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const dayHeaders = p.calendar_days || ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
   return (
     <div className="home-card">
@@ -186,14 +189,14 @@ export function CalendarSection() {
             className={`home-calendar-toggle-btn ${mode === 'mine' ? 'active' : ''}`}
             onClick={() => { setMode('mine'); setTypeFilter(null); }}
           >
-            Para ti
+            {p.calendar_for_you}
           </button>
           <button
             type="button"
             className={`home-calendar-toggle-btn ${mode === 'general' ? 'active' : ''}`}
             onClick={() => { setMode('general'); setTypeFilter(null); }}
           >
-            General
+            {p.calendar_general}
           </button>
         </div>
         <div className="home-calendar-type-tabs">
@@ -202,7 +205,7 @@ export function CalendarSection() {
       </div>
       <div className="home-calendar-grid-mount">
         {isBusy ? (
-          <p className="stats-calendar-empty">Cargando...</p>
+          <p className="stats-calendar-empty">{getT().character.loading}</p>
         ) : (
           <div className="calendar-grid" ref={gridRef}>
             {dayHeaders.map(h => <div className="calendar-day-header" key={h}>{h}</div>)}

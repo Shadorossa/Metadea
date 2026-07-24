@@ -65,7 +65,7 @@ const translations = useTranslations(lang);
             <h1 class="media-title-main" id="char-name-full"></h1>
             <button type="button" class="btn btn--sm btn--secondary" id="char-edit-btn-header" title={translations.character.edit_tooltip}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-              Editar
+              {translations.character.edit_button}
             </button>
           </div>
           <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
@@ -90,7 +90,7 @@ const translations = useTranslations(lang);
         <!-- Columna 2: Apariciones en Obras -->
         <div class="media-col-related" id="char-appearances-section" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Apariciones en Obras</p>
+            <p class="section-label">{translations.character.appearances}</p>
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-relations-grid" id="char-appearances-grid"></div>
@@ -106,7 +106,7 @@ const translations = useTranslations(lang);
         <!-- Columna 3: Datos -->
         <div class="media-col-stats" id="char-stats-card" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Datos</p>
+            <p class="section-label">{translations.character.details}</p>
             <div class="media-section-header-line"></div>
             <div id="char-api-link-wrap"></div>
           </div>
@@ -181,11 +181,10 @@ const translations = useTranslations(lang);
 
   async function loadCharacterData() {
     const t = getT().character;
-    const lang = window.location.pathname.startsWith('/en') ? 'en' : 'es';
     window.ROLE_LABELS = {
-      MAIN: lang === 'en' ? 'Main' : 'Principal',
-      SUPPORTING: lang === 'en' ? 'Supporting' : 'Secundario',
-      BACKGROUND: 'Background',
+      MAIN: t.role_main,
+      SUPPORTING: t.role_supporting,
+      BACKGROUND: t.role_background,
     };
 
     const loadingEl = document.getElementById('character-loading');
@@ -199,23 +198,19 @@ const translations = useTranslations(lang);
 
     if (idParam.startsWith('comicvine:')) {
       loadingEl.style.display = 'none';
-      errorTextEl.textContent = 'La ficha de personajes de Comic Vine aún no está disponible.';
+      errorTextEl.textContent = t.error_comicvine;
       errorEl.style.display = 'block';
       return;
     }
 
     const cleanIdParam = idParam.replace(/\D/g, '');
     const characterId = parseInt(cleanIdParam, 10);
-    // Canonical local-DB key for this character — matches the `character:<id>`
-    // format every other write path already uses (anilist-mapper.ts's cast-list
-    // import, search/providers/anilist.ts's character search). `characterId`
-    // itself stays bare where it's an AniList API id, not a DB key (the
-    // fetchAniListCharacterDetail call and the anilist.co siteUrl fallback below).
+
     const characterExternalId = `character:${characterId}`;
 
     if (isNaN(characterId)) {
       loadingEl.style.display = 'none';
-      errorTextEl.textContent = 'ID de personaje no válido o no especificado';
+      errorTextEl.textContent = t.error_invalid_id;
       errorEl.style.display = 'block';
       return;
     }
@@ -294,7 +289,7 @@ const translations = useTranslations(lang);
       if (stickyImage) {
         avatarContainer.innerHTML = `<img src="${safeUrl(stickyImage)}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
       } else {
-        avatarContainer.innerHTML = `<div class="character-avatar-placeholder">Sin imagen</div>`;
+        avatarContainer.innerHTML = `<div class="character-avatar-placeholder">${escapeHtml(t.no_image)}</div>`;
       }
 
       // Parseo de biografía para extraer características

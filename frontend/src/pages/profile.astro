@@ -96,6 +96,24 @@ const t    = useTranslations(lang);
           }
         })();
       </script>
+      <script>
+        import { getT } from '../i18n/client';
+        const p = getT().profile;
+        const tabTitles: Record<string, string> = {
+          overview: p.tab_overview,
+          library: p.tab_library,
+          favorites: p.favorites,
+          stats: p.tab_stats,
+          reviews: p.reviews,
+          lists: p.lists,
+        };
+        document.querySelectorAll('.profile-tab').forEach(btn => {
+          const tab = (btn as HTMLElement).dataset.tab;
+          if (tab && tabTitles[tab]) {
+            btn.setAttribute('title', tabTitles[tab]);
+          }
+        });
+      </script>
     </nav>
 
     <div id="profile-tab-content" class="profile-tab-content"></div>

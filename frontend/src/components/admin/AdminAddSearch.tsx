@@ -198,9 +198,9 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
         </select>
       </div>
       <div className="pr-editor-search-results pr-editor-search-results--grid">
-        {isLoading && <div className="pr-editor-search-loading">Buscando...</div>}
+        {isLoading && <div className="pr-editor-search-loading">{getT().character.loading}</div>}
         {!isLoading && query.trim() && results.length === 0 && (
-          <div className="pr-editor-search-empty">Sin resultados.</div>
+          <div className="pr-editor-search-empty">{getT().media.no_results}</div>
         )}
         <div className="pr-editor-search-grid">
           {results.map(r => (

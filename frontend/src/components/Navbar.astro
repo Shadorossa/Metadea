@@ -82,16 +82,28 @@ const { activePage, i18n } = Astro.props;
     return undefined;
   }
 
+  import { getT } from '../i18n/client';
+
   function updateActiveNav() {
     const path = window.location.pathname;
     const key = computeActivePage(path);
+    const navT = getT().nav;
+    const titles: Record<string, string> = {
+      home: navT.home,
+      search: navT.search,
+      tier: navT.tier,
+      local: navT.local,
+      notifications: navT.notifications,
+      account: navT.account,
+    };
     document.querySelectorAll('.navbar [data-nav]').forEach(el => {
-      el.classList.toggle('active', el.getAttribute('data-nav') === key);
+      const navKey = el.getAttribute('data-nav');
+      el.classList.toggle('active', navKey === key);
+      if (navKey && titles[navKey]) {
+        el.setAttribute('title', titles[navKey]);
+      }
     });
 
-    // The account icon doubles as a profile/settings toggle: on /profile it
-    // shows the settings icon (and links there); everywhere else — including
-    // /settings itself — it shows the profile icon (and links to /profile).
     const accountBtn = document.getElementById('nav-account-btn') as HTMLAnchorElement | null;
     if (accountBtn) {
       const onProfile = path.startsWith('/profile');

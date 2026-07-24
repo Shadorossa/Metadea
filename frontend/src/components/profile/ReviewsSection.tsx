@@ -162,7 +162,7 @@ export function ReviewsSection() {
           })}
         </div>
       ) : (
-        <div className="profile-empty" style={{ padding: '2rem 0' }}><p>Sin resultados.</p></div>
+        <div className="profile-empty" style={{ padding: '2rem 0' }}><p>{t.media.no_results}</p></div>
       )}
     </div>
   );

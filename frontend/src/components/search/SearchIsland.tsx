@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { search, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
+import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
@@ -324,7 +325,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                   className={`search-tab${mediaType === typeId ? ' active' : ''}`}
                 >
                   {TAB_ICONS[typeId]}
-                  {i18n.types[typeId]}
+                  {getT().search?.types?.[typeId] || i18n.types[typeId]}
                 </button>
               ))}
             </div>,

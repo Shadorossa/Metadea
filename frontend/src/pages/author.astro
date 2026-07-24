@@ -48,7 +48,7 @@ const t = useTranslations(lang);
       <div class="media-body" style="padding-top: 2rem;">
         <div class="media-col-synopsis" id="author-bio-section" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Biography</p>
+            <p class="section-label">{t.character.biography}</p>
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-description-text" id="author-description"></div>
@@ -56,7 +56,7 @@ const t = useTranslations(lang);
 
         <div class="media-col-related" id="author-works-section" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Works</p>
+            <p class="section-label">{t.author_page.works}</p>
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-relations-grid" id="author-works-grid"></div>
@@ -64,7 +64,7 @@ const t = useTranslations(lang);
 
         <div class="media-col-stats" id="author-stats-card" style="display: none;">
           <div class="media-section-header-row">
-            <p class="section-label">Datos</p>
+            <p class="section-label">{t.character.details}</p>
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-stats-list" id="author-stats-list"></div>
@@ -264,7 +264,7 @@ const t = useTranslations(lang);
     const avatarContainer = document.getElementById('author-avatar-container')!;
     avatarContainer.innerHTML = data.image
       ? `<img src="${safeUrl(data.image)}" alt="${escapeHtml(data.name)}" class="character-avatar-img" />`
-      : `<div class="character-avatar-placeholder">Sin imagen</div>`;
+      : `<div class="character-avatar-placeholder">${escapeHtml(getT().character.no_image)}</div>`;
 
     const altNamesWrap = document.getElementById('author-alt-names-wrap')!;
     const altNamesContainer = document.getElementById('author-alt-names')!;
@@ -351,7 +351,7 @@ const t = useTranslations(lang);
         // TMDB doesn't have its own person-detail page/fetch built yet —
         // fail clearly instead of falling through to the AniList branch
         // below with a mismatched id.
-        throw new Error('La ficha de personal de TMDB aún no está disponible.');
+        throw new Error(getT().author_page.error_tmdb);
       }
       if (provider !== 'person' && provider !== 'author') {
         throw new Error(`Unsupported author provider: ${provider}`);

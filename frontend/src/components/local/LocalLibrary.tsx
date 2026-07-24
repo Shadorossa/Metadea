@@ -58,6 +58,9 @@ export default function LocalLibrary() {
   // descendant. Toggling the class off after it plays removes that whole
   // category of bug for any future change to this animation, not just the
   // one that already bit us.
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
+
   const [entering, setEntering] = useState(true);
   const [selectedGame,   setSelectedGame]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
@@ -147,6 +150,17 @@ export default function LocalLibrary() {
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
+const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.types> = {
+  'videojuegos':  'game',
+  'visual-novel': 'vnovel',
+  'anime':        'anime',
+  'manga':        'manga',
+  'light-novel':  'lnovel',
+  'books':        'book',
+  'series':       'series',
+  'movies':       'movie',
+};
+
   const tabBar = (
     <div className="local-tab-bar">
       <div className="local-tab-buttons">
@@ -157,7 +171,7 @@ export default function LocalLibrary() {
             className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
             onClick={() => setActiveCategory(cat.id)}
           >
-            {cat.label}
+            {isMounted ? (t.search?.types?.[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]] || cat.label) : cat.label}
           </button>
         ))}
       </div>
@@ -165,7 +179,7 @@ export default function LocalLibrary() {
         <input
           type="text"
           className="local-tab-search"
-          placeholder={t.local.search_game_ph}
+          placeholder={isMounted ? t.local.search_game_ph : 'Buscar juego…'}
           value={filterName}
           onChange={e => setFilterName(e.target.value)}
         />
@@ -217,7 +231,7 @@ export default function LocalLibrary() {
               <div className="local-content">
                 <div className="local-content-header">
                   <span className="local-content-count">
-                    {gamesState === 'done' ? `${games.length} juego${games.length !== 1 ? 's' : ''} encontrado${games.length !== 1 ? 's' : ''}` : ''}
+                    {gamesState === 'done' ? (games.length !== 1 ? t.local.games_count.replace('{count}', String(games.length)) : t.local.game_count.replace('{count}', String(games.length))) : ''}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {routes['videojuegos'] && (
@@ -231,7 +245,7 @@ export default function LocalLibrary() {
                     <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={routes['videojuegos'] ? t.local.change_folder : t.local.add_folder}>
                       <IconFolder />
                     </button>
-                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo'}>
+                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? t.local.scanning : t.local.scan_again}>
                       <IconRefresh />
                     </button>
                   </div>
@@ -240,13 +254,13 @@ export default function LocalLibrary() {
                 {gamesState === 'idle' || gamesState === 'loading' ? (
                   <div className="local-state-placeholder">
                     {gamesState === 'loading' && <div className="spinner" />}
-                    <p>{gamesState === 'loading' ? 'Buscando juegos instalados…' : ''}</p>
+                    <p>{gamesState === 'loading' ? t.local.scanning_installed : ''}</p>
                   </div>
                 ) : gamesState === 'empty' ? (
                   <div className="local-state-placeholder">
                     <IconMonitor />
                     <p>{t.local.no_games_found}</p>
-                    <span>Steam, Epic, GOG, Xbox y EA son compatibles</span>
+                    <span>{t.local.compatible_launchers}</span>
                     {scanError && (
                       <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
                         Error: {scanError}
@@ -257,7 +271,7 @@ export default function LocalLibrary() {
                       style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
                       onClick={() => debugScanInfo().then(setDebugInfo).catch(e => setDebugInfo(String(e)))}
                     >
-                      Diagnóstico
+                      {t.local.diagnostics}
                     </button>
                     {debugInfo && (
                       <pre style={{ fontSize: '0.65rem', textAlign: 'left', marginTop: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: '4px', maxWidth: '500px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

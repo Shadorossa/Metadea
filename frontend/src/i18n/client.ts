@@ -9,24 +9,39 @@ import { ru } from './ru';
 import { LOCALES, type Locale, type Translations } from './index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
 
-const translations: Record<Locale, Translations> = {
+function deepMerge<T extends object>(fallback: T, target: any): T {
+  if (!target || typeof target !== 'object') return fallback;
+  const result: any = Array.isArray(fallback) ? [...fallback] : { ...fallback };
+  for (const key of Object.keys(target)) {
+    const val = target[key];
+    const fbVal = (fallback as any)[key];
+    if (val !== undefined) {
+      if (typeof val === 'object' && val !== null && !Array.isArray(val) && typeof fbVal === 'object' && fbVal !== null && !Array.isArray(fbVal)) {
+        result[key] = deepMerge(fbVal, val);
+      } else {
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
+const rawTranslations: Record<Locale, any> = {
   es,
-  en: en as unknown as Translations,
-  de: de as unknown as Translations,
-  ja: ja as unknown as Translations,
-  it: it as unknown as Translations,
-  fr: fr as unknown as Translations,
-  ca: ca as unknown as Translations,
-  ru: ru as unknown as Translations,
+  en,
+  de,
+  ja,
+  it,
+  fr,
+  ca,
+  ru,
 };
 
-// Astro's own i18n URL-prefix routing (see index.ts's getLang()) never
-// actually produces per-locale static pages for this app's `output: 'static'`
-// Tauri build — there is no /en/, /de/, etc. route to navigate to, so every
-// server-rendered .astro page is always built in Spanish regardless of that
-// mechanism. React islands are the one place a runtime language switch is
-// actually possible, so they read the user's chosen locale straight from
-// localStorage instead of the (always-'es') <html lang> attribute.
+const translations: Record<string, Translations> = {};
+for (const locale of LOCALES) {
+  translations[locale] = locale === 'es' ? es : deepMerge(es, rawTranslations[locale]);
+}
+
 export function getLangCode(): string {
   if (typeof window === 'undefined') return 'es';
   const stored = window.localStorage.getItem(STORAGE_KEYS.locale);

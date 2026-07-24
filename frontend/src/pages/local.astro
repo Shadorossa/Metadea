@@ -10,7 +10,7 @@ const lang = getLang(Astro.url);
 const t    = useTranslations(lang);
 ---
 
-<BaseLayout title="Biblioteca local — Metadea" lang={lang} activePage="local">
+<BaseLayout title={`${t.nav.local} — Metadea`} lang={lang} activePage="local">
   <div class="local-page">
     <LocalLibrary client:load />
   </div>
