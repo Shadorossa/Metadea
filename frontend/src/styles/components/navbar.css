@@ -41,9 +41,9 @@
 }
 
 .nav-text-link {
-  color: var(--text-main);
+  color: color-mix(in srgb, var(--text-main) 75%, var(--text-muted));
   font-size: 0.85rem;
-  font-weight: 900;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-decoration: none;
