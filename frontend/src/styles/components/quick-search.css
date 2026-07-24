@@ -151,6 +151,17 @@
   display: block;
 }
 
+.quick-search-result-avatar {
+  width: auto;
+  height: 46px;
+  max-width: none;
+  border-radius: 0;
+  border: none;
+  object-fit: contain;
+  background: none;
+  flex-shrink: 0;
+}
+
 .quick-search-result-text {
   display: flex;
   flex-direction: column;

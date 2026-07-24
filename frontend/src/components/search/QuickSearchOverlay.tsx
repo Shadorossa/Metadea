@@ -32,6 +32,9 @@ interface Row {
   sub: string;
   cover: string | null;
   href: string;
+  // Users render their avatar borderless and without the fixed media-cover
+  // width — a profile picture, not a cover art aspect ratio.
+  isAvatar?: boolean;
 }
 
 interface Section {
@@ -206,6 +209,7 @@ export function QuickSearchOverlay() {
               sub: '',
               cover: r.avatarUrl,
               href: `/user?id=${encodeURIComponent(r.userId)}`,
+              isAvatar: true,
             })),
             viewAllHref: null,
           });
@@ -274,7 +278,13 @@ export function QuickSearchOverlay() {
                   {section.rows.map(row => (
                     <button key={row.key} type="button" className="quick-search-result" onClick={() => goTo(row.href)}>
                       {row.cover
-                        ? <img className="quick-search-result-cover" src={row.cover} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                        ? <img
+                            className={row.isAvatar ? 'quick-search-result-avatar' : 'quick-search-result-cover'}
+                            src={row.cover}
+                            alt=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
                         : <div className="quick-search-result-cover quick-search-result-cover--empty" />}
                       <span className="quick-search-result-text">
                         <span className="quick-search-result-title">{row.title}</span>
