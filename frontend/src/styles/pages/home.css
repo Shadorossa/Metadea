@@ -117,6 +117,15 @@
   object-fit: cover;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
+  /* Same fix as .library-card-thumb img (profile.css) and .media-relation-thumb
+     img (media.css): covers are saved at their largest available size but
+     shown here in a small grid slot — a large enough downscale that
+     Chromium/WebView2 falls back to a cheaper, jaggier ("pixelada") scaling
+     path instead of properly filtering. Promoting the image to its own GPU
+     layer forces the higher-quality raster/downscale path. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: auto;
 }
 
 .home-currently-cover--empty {
