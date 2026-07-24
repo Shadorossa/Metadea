@@ -1,0 +1,24 @@
+{
+  "media_catalog": {
+    "id": "6240c8ed016a4ed76240c8ed016a4ed7",
+    "external_id": "vnovel:329687",
+    "type": "vnovel",
+    "title_main": "The House in Fata Morgana: Reincarnation",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "vnovel:329687",
+      "related_media_external_id": "vnovel:56006",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The House in Fata Morgana: A Requiem for Innocence",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
