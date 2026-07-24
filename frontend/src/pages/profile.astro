@@ -46,7 +46,13 @@ const t    = useTranslations(lang);
             var fontFile = fontFiles[fontCache];
             if (fontFile) {
               var s = document.createElement('style');
-              s.textContent = '@font-face { font-family: "profile-font"; src: url("/fonts/' + fontFile + '") format("woff2"); font-display: block; }';
+              // A unique family name per font (not a shared "profile-font"
+              // constant) so switching fonts in Settings is guaranteed to
+              // actually change the h1's rendered font-family value and
+              // force a repaint — reusing the same family name across
+              // navigations relied on the browser silently rebinding an
+              // already-painted @font-face, which isn't reliable.
+              s.textContent = '@font-face { font-family: "pf-' + fontCache + '"; src: url("/fonts/' + fontFile + '") format("woff2"); font-display: block; }';
               document.head.appendChild(s);
             }
 
@@ -65,7 +71,7 @@ const t    = useTranslations(lang);
                 : '<div class="profile-avatar-placeholder">' + (nameCache[0] || '?').toUpperCase() + '</div>';
               var container = document.getElementById('banner-content');
               if (container) {
-                container.innerHTML = avatarHtml + '<h1 class="profile-username-large" style="font-family: \'profile-font\', sans-serif;">' + nameCache + '</h1>';
+                container.innerHTML = avatarHtml + '<h1 class="profile-username-large" style="font-family: \'pf-' + fontCache + '\', sans-serif;">' + nameCache + '</h1>';
               }
             }
           })();
@@ -257,13 +263,17 @@ const t    = useTranslations(lang);
       const fontId = (userInfo.font as string | undefined) ?? 'inter';
       localStorage.setItem('profile_font_cache', fontId);
       const fontSrc = getFontFile(fontId);
+      const fontFamily = `pf-${fontId}`;
       if (fontSrc) {
         const s = document.createElement('style');
-        s.textContent = `@font-face { font-family: "profile-font"; src: url("/fonts/${fontSrc}") format("woff2"); font-display: swap; }`;
+        // Unique family name per font — see the inline early-paint script's
+        // own comment above for why a shared "profile-font" name doesn't
+        // reliably force a repaint when you switch fonts in Settings.
+        s.textContent = `@font-face { font-family: "${fontFamily}"; src: url("/fonts/${fontSrc}") format("woff2"); font-display: swap; }`;
         document.head.appendChild(s);
       }
 
-      const newHTML = `${avatarHtml}<h1 class="profile-username-large" style="font-family: 'profile-font', sans-serif;">${username}</h1>`;
+      const newHTML = `${avatarHtml}<h1 class="profile-username-large" style="font-family: '${fontFamily}', sans-serif;">${username}</h1>`;
       const norm = (h) => h.replace(/\s+/g, ' ').replace(/'/g, '"').trim();
       if (norm(bannerContent.innerHTML) !== norm(newHTML)) {
         bannerContent.innerHTML = newHTML;
