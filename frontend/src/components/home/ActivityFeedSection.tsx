@@ -84,6 +84,7 @@ export function ActivityFeedSection({ title }: { title: string }) {
         >
           {p.activity_tab_friends}
         </button>
+        <span className="home-activity-tab-divider">|</span>
         <button
           type="button"
           className={`home-activity-tab${tab === 'general' ? ' active' : ''}`}

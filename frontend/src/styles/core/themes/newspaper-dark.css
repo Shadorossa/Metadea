@@ -625,3 +625,112 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   margin-left: 0.75rem;
   align-self: center;
 }
+
+/* Home release calendar body — month label, day-of-week headers, and the
+   day popover's release cards were still using the base theme's rounded
+   pill tabs and plain box, unlike the double-border/serif treatment the
+   rest of this theme's card-like boxes get. */
+[data-theme="newspaper-dark"] .stats-calendar-month,
+[data-theme="newspaper-dark"] .stats-calendar-empty {
+  font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .calendar-day-header {
+  font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn.active {
+  background: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+  border-color: var(--text-main) !important;
+  text-decoration: underline !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-type-tab,
+[data-theme="newspaper-dark"] .calendar-popover-type-tab {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-type-tab:hover,
+[data-theme="newspaper-dark"] .calendar-popover-type-tab:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-type-tab.active,
+[data-theme="newspaper-dark"] .calendar-popover-type-tab.active {
+  background: var(--bg-elevated) !important;
+  color: var(--accent) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .calendar-day {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .calendar-day-popover {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .calendar-popover-cover {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .calendar-popover-title {
+  font-style: italic;
+}
+
+/* Home activity feed's Amigos/General toggle — same ink-press treatment as
+   the settings tabs elsewhere in this theme. */
+[data-theme="newspaper-dark"] .home-activity-tab:hover {
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .home-activity-tab.active {
+  text-decoration: underline !important;
+}
+
+[data-theme="newspaper-dark"] .home-activity-tab-divider {
+  font-style: italic;
+}
+
+/* Home activity feed cards — same treatment as the quick-search results
+   above (this theme's covers/context boxes are always square, never
+   rounded, and hover inverts to an ink-press block). */
+[data-theme="newspaper-dark"] .act-card {
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .act-card:hover {
+  background-color: var(--text-main) !important;
+  border-color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .act-card:hover .act-card-text,
+[data-theme="newspaper-dark"] .act-card:hover .act-card-meta,
+[data-theme="newspaper-dark"] .act-card:hover .act-card-bold-title {
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .act-card-cover,
+[data-theme="newspaper-dark"] .act-card-cover-fallback {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .act-empty {
+  font-style: italic;
+}

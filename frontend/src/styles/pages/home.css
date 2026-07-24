@@ -156,8 +156,15 @@
 
 .home-activity-tabs {
   display: flex;
-  gap: 1.25rem;
+  align-items: center;
+  gap: 0.6rem;
   flex-shrink: 0;
+}
+
+.home-activity-tab-divider {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  opacity: 0.5;
 }
 
 .home-activity-tab {
