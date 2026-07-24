@@ -76,7 +76,6 @@ pub async fn save_user_info(
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
-    upsert_profile_row(&conn).str_err()?;
 
     let obj = info.as_object().ok_or("Expected JSON object")?;
     let allowed = [
@@ -87,23 +86,31 @@ pub async fn save_user_info(
         if !allowed.contains(&k.as_str()) {
             continue;
         }
-        let sql = format!("UPDATE user_profile SET {} = ?1, updated_at = ?2 WHERE id = 1", k);
-        match v {
+        // Single atomic upsert per field instead of a separate "ensure row
+        // exists" INSERT followed by an UPDATE — the two-step version relied
+        // on the row from the first statement being visible to the second,
+        // which holds within one locked connection, but this collapses it
+        // to one statement so there's no separate step to double-check at all.
+        let sql = format!(
+            "INSERT INTO user_profile (id, {col}, updated_at) VALUES (1, ?1, ?2)
+             ON CONFLICT(id) DO UPDATE SET {col} = excluded.{col}, updated_at = excluded.updated_at",
+            col = k
+        );
+        let changed = match v {
             serde_json::Value::Bool(b) => {
-                conn.execute(&sql, rusqlite::params![*b as i64, now])
-                    .str_err()?;
+                conn.execute(&sql, rusqlite::params![*b as i64, now]).str_err()?
             }
-            serde_json::Value::Number(n) => {
-                if let Some(i) = n.as_i64() {
-                    conn.execute(&sql, rusqlite::params![i, now])
-                        .str_err()?;
-                }
-            }
+            serde_json::Value::Number(n) => match n.as_i64() {
+                Some(i) => conn.execute(&sql, rusqlite::params![i, now]).str_err()?,
+                None => continue,
+            },
             serde_json::Value::String(s) => {
-                conn.execute(&sql, rusqlite::params![s, now])
-                    .str_err()?;
+                conn.execute(&sql, rusqlite::params![s, now]).str_err()?
             }
-            _ => {}
+            _ => continue,
+        };
+        if changed == 0 {
+            return Err(format!("save_user_info: writing '{}' affected 0 rows", k));
         }
     }
     Ok(())
