@@ -67,7 +67,6 @@ export function CurrentlySection() {
                 {meta?.cover_url
                   ? <img className="home-currently-cover" src={wrapAssetUrl(meta.cover_url)} alt="" loading="lazy" />
                   : <div className="home-currently-cover home-currently-cover--empty" />}
-                <p className="home-currently-title">{meta?.title_main ?? entry.external_id}</p>
               </a>
             ))}
             {/* Keeps every row the same width (5 slots) regardless of how
