@@ -39,19 +39,19 @@ const translations = useTranslations(lang);
               </svg>
               <span>{translations.character.action_favorite}</span>
             </button>
-            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title={translations.character.action_like}>
+            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title={translations.character.action_like} disabled>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
               </svg>
               <span>{translations.character.action_like}</span>
             </button>
-            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title={translations.character.action_interested}>
+            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title={translations.character.action_interested} disabled>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
               </svg>
               <span>{translations.character.action_interested}</span>
             </button>
-            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title={translations.character.action_dislike}>
+            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title={translations.character.action_dislike} disabled>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
               </svg>

@@ -95,6 +95,8 @@ export const ca = {
     reviews_search: 'Cerca una ressenya...',
     reviews_sort_date: 'Més recent',
     reviews_sort_rating: 'Millor puntuació',
+    reviews_count_singular: '{count} ressenya',
+    reviews_count_plural: '{count} ressenyes',
     lists: 'Llistes',
     lists_empty: 'Encara no has creat cap llista personalitzada.',
     lists_new: 'Nova llista',

@@ -95,6 +95,8 @@ export const en = {
     reviews_search: 'Search review...',
     reviews_sort_date: 'Most recent',
     reviews_sort_rating: 'Highest rated',
+    reviews_count_singular: '{count} review',
+    reviews_count_plural: '{count} reviews',
     lists: 'Lists',
     lists_empty: "You haven't created any custom lists yet.",
     lists_new: 'New list',

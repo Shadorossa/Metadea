@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getT } from '../../i18n/client';
 import { igdbSearchUnfiltered, igdbImageUrl } from '../../lib/tauri';
 import { graphqlPost, fetchJson } from '../../lib/api/client';
 import { API_ENDPOINTS } from '../../lib/api/endpoints';
@@ -200,7 +201,7 @@ export function AdminAddSearch({ onSelect }: AdminAddSearchProps) {
       <div className="pr-editor-search-results pr-editor-search-results--grid">
         {isLoading && <div className="pr-editor-search-loading">{getT().character.loading}</div>}
         {!isLoading && query.trim() && results.length === 0 && (
-          <div className="pr-editor-search-empty">{getT().media.no_results}</div>
+          <div className="pr-editor-search-empty">{getT().search.no_results_generic}</div>
         )}
         <div className="pr-editor-search-grid">
           {results.map(r => (

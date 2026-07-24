@@ -95,6 +95,8 @@ export const ru = {
     reviews_search: 'Поиск рецензии...',
     reviews_sort_date: 'Сначала новые',
     reviews_sort_rating: 'Лучшая оценка',
+    reviews_count_singular: '{count} рецензия',
+    reviews_count_plural: '{count} рецензий',
     lists: 'Списки',
     lists_empty: 'Ты ещё не создал ни одного собственного списка.',
     lists_new: 'Новый список',

@@ -95,6 +95,8 @@ export const es = {
     reviews_search: 'Buscar reseña...',
     reviews_sort_date: 'Más reciente',
     reviews_sort_rating: 'Mejor puntuación',
+    reviews_count_singular: '{count} reseña',
+    reviews_count_plural: '{count} reseñas',
     lists: 'Listas',
     lists_empty: 'Aún no has creado ninguna lista personalizada.',
     lists_new: 'Nueva lista',

@@ -12,6 +12,7 @@ import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating } from './library-grouping';
+import { compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
 import { LibraryCard, TYPE_ICON } from './LibraryCard';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -142,6 +143,33 @@ export function LibrarySection() {
     };
   }, []);
 
+  // Same union-find approach as refineSagaGroups (SEQUEL/PREQUEL/ALTERNATIVE
+  // chains) but just to answer "are these two the same saga" for the date-sort
+  // tiebreaker below — grouping stays a separate, opt-in concern.
+  const sagaComponentOf = useMemo(() => {
+    const parent = new Map<string, string>();
+    const find = (id: string): string => {
+      let cur = id;
+      while (parent.get(cur) !== cur) cur = parent.get(cur)!;
+      return cur;
+    };
+    const union = (a: string, b: string) => {
+      if (!parent.has(a)) parent.set(a, a);
+      if (!parent.has(b)) parent.set(b, b);
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent.set(ra, rb);
+    };
+    for (const rel of sagaRelations) {
+      const isSequel = rel.relation_type === 'SEQUEL' || rel.relation_type === 'SECUELA';
+      const isPrequel = rel.relation_type === 'PREQUEL' || rel.relation_type === 'PRECUELA';
+      const isAlternative = rel.relation_type === 'ALTERNATIVE';
+      if (!isSequel && !isPrequel && !isAlternative) continue;
+      if (!rel.media_external_id) continue;
+      union(rel.media_external_id, rel.related_media_external_id);
+    }
+    return (id: string) => (parent.has(id) ? find(id) : null);
+  }, [sagaRelations]);
+
   const sections = useMemo(() => {
     if (!items) return null;
 
@@ -182,6 +210,16 @@ export function LibrarySection() {
       const dateB = b.finished_at ? new Date(b.finished_at).getTime() : releaseTimestamp(b);
       if (dateA === 0 && dateB !== 0) return 1;
       if (dateB === 0 && dateA !== 0) return -1;
+      if (dateA === dateB && dateA !== 0) {
+        // Same finished date + same saga: break the tie by release order
+        // instead of leaving it arbitrary, so e.g. Season 1 sits below
+        // Season 2 rather than the order flip-flopping on every reload.
+        const compA = sagaComponentOf(a.external_id);
+        const compB = sagaComponentOf(b.external_id);
+        if (compA && compA === compB) {
+          return compareByReleaseDateDesc(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {});
+        }
+      }
       return dateB - dateA; // newest finished/released to oldest
     });
 
@@ -231,7 +269,7 @@ export function LibrarySection() {
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaNames, nameFilter, selectedTypes, subpagesEnabled, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, selectedTypes, subpagesEnabled, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
     if (!items) return [];

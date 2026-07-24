@@ -95,6 +95,8 @@ export const fr = {
     reviews_search: 'Rechercher une critique...',
     reviews_sort_date: 'Plus récent',
     reviews_sort_rating: 'Meilleure note',
+    reviews_count_singular: '{count} avis',
+    reviews_count_plural: '{count} avis',
     lists: 'Listes',
     lists_empty: "Vous n'avez pas encore créé de liste personnalisée.",
     lists_new: 'Nouvelle liste',

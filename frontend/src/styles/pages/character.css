@@ -100,6 +100,19 @@
   transform: translateY(-2px);
 }
 
+/* Like/Interesa/No me gusta are disabled for now (see character.astro) — no
+   hover lift, no pointer, half-opacity so it reads as unavailable rather than
+   just unstyled. */
+.char-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.char-action-btn:disabled:hover {
+  color: var(--text-dim);
+  transform: none;
+}
+
 .char-action-btn.active svg {
   fill: currentColor;
 }
