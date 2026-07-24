@@ -189,13 +189,14 @@
 .nav-icon-btn--plain {
   background: none;
   border: none;
-  filter: none;
+  color: var(--text-main);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
 .nav-icon-btn--plain:hover {
   background: none;
   border-color: transparent;
-  color: var(--text-main);
+  color: var(--accent);
 }
 
 .nav-icon-btn--plain.active {

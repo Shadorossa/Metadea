@@ -78,11 +78,19 @@ function isComicBook(book: OpenLibraryBook): boolean {
 
 // Manga has its own tab (and its own AniList-backed search) — OpenLibrary
 // just tags it as a book subject ("Manga", "Manga comics", "Japanese comic
-// books", ...), so without this it leaked into the Books results alongside
-// actual novels. Comics search doesn't need this: overlapping OpenLibrary
-// listings that are both manga and comic already match isComicBook above.
+// books", "Japanese Graphic Novels", ...), so without this it leaked into
+// the Books results alongside actual novels. Comics search doesn't need
+// this: overlapping OpenLibrary listings that are both manga and comic
+// already match isComicBook above. Catches two shapes: any subject that
+// literally says "manga", or a Japan subject combined with a comic/graphic-
+// novel one (OpenLibrary usually splits those across separate subject tags
+// rather than one combined string, e.g. ["Graphic novels", "Japan"]).
 function isMangaBook(book: OpenLibraryBook): boolean {
-  return (book.subject ?? []).some(s => s.toLowerCase().includes('manga'));
+  const subjects = (book.subject ?? []).map(s => s.toLowerCase());
+  if (subjects.some(s => s.includes('manga'))) return true;
+  const mentionsJapan = subjects.some(s => s.includes('japan'));
+  const mentionsComicLike = subjects.some(s => s.includes('comic') || s.includes('graphic novel'));
+  return mentionsJapan && mentionsComicLike;
 }
 
 function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResult {
