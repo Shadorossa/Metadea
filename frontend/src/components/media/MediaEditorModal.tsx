@@ -600,7 +600,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       min={`${MIN_DATE_YEAR}-01-01`}
                       value={activeLog.startedAt || activeLog.finishedAt}
                       onChange={e => {
-                        const val = clampDateMinYear(e.target.value);
+                        const val = e.target.value;
                         const updates: Partial<LogState> = { startedAt: val, finishedAt: val };
                         if (val) {
                           updates.status = 'completed';
@@ -608,6 +608,14 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
+                      }}
+                      // Clamped on blur, not on every keystroke — while the year
+                      // is still being typed digit by digit every partial value
+                      // reads as "less than 1950" and would otherwise get
+                      // force-corrected before the user finishes typing it.
+                      onBlur={e => {
+                        const val = clampDateMinYear(e.target.value);
+                        if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val, finishedAt: val } });
                       }} />
                   </HeaderField>
                 ) : (
@@ -616,14 +624,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         min={`${MIN_DATE_YEAR}-01-01`}
                         value={activeLog.startedAt}
-                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: clampDateMinYear(e.target.value) } })} />
+                        onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })}
+                        onBlur={e => {
+                          const val = clampDateMinYear(e.target.value);
+                          if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val } });
+                        }} />
                     </HeaderField>
                     <HeaderField label={te.ended}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         min={`${MIN_DATE_YEAR}-01-01`}
                         value={activeLog.finishedAt}
                         onChange={e => {
-                          const val = clampDateMinYear(e.target.value);
+                          const val = e.target.value;
                           const updates: Partial<LogState> = { finishedAt: val };
                           if (val) {
                             updates.status = 'completed';
@@ -631,6 +643,10 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                             if (data.totalCount_2 && data.totalCount_2 > 0) updates.progressCount2 = data.totalCount_2;
                           }
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
+                        }}
+                        onBlur={e => {
+                          const val = clampDateMinYear(e.target.value);
+                          if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: val } });
                         }} />
                     </HeaderField>
                   </>
