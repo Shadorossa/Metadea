@@ -60,10 +60,16 @@
 
 /* ── Currently watching/reading/playing ─────────────────────────────────── */
 .home-currently-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 1.5rem;
   margin-bottom: 1.75rem;
+}
+
+@media (max-width: 600px) {
+  .home-currently-groups {
+    grid-template-columns: 1fr;
+  }
 }
 
 .home-currently-group-label {
