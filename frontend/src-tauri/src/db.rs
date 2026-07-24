@@ -753,6 +753,22 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN server_user_id TEXT", []);
         mark_migration(conn, 36)?;
     }
+    if v < 37 {
+        // custom_color has been part of the base (fresh-install) schema for
+        // a long time, but never had a matching migration here — any
+        // database created before it was added is missing this column
+        // entirely. get_user_info's SELECT names it explicitly, so on those
+        // databases *every* call failed outright with "no such column:
+        // custom_color" — silently swallowed by the frontend's tauriTry
+        // fallback into `{}`, making bio/display_name/font/theme/
+        // rating_system all silently read back as their hardcoded JS
+        // defaults on every load, even though save_user_info was writing
+        // the real values correctly the whole time. `let _ =`: a fresh
+        // database already has this column, so "duplicate column" here is
+        // expected and harmless.
+        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN custom_color TEXT NOT NULL DEFAULT '#c084fc'", []);
+        mark_migration(conn, 37)?;
+    }
 
     Ok(())
 }
