@@ -192,6 +192,14 @@ const t    = useTranslations(lang);
     // Bail out if profile tab content is not present
     if (!document.getElementById('profile-tab-content')) return;
 
+    // The navbar's per-type library shortcuts (Navbar.astro) deep-link here
+    // as /profile?libtype=<type>#library. switchTab()'s own replaceState
+    // call below strips that query string from the URL before LibrarySection
+    // ever mounts, so it can't just read location.search — stash it here,
+    // before switchTab runs, for LibrarySection to pick up once and discard.
+    const pendingLibType = new URLSearchParams(location.search).get('libtype');
+    if (pendingLibType) sessionStorage.setItem(STORAGE_KEYS.pendingLibraryType, pendingLibType);
+
     // Immediately cache profile path to make reloads solid
     localStorage.setItem(STORAGE_KEYS.lastVisitedPath, window.location.pathname + window.location.search + window.location.hash);
 

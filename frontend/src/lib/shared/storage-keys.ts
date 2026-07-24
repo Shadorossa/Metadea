@@ -33,4 +33,5 @@ export const STORAGE_KEYS = {
   activityFeedCache: 'metadea_activity_feed_cache',
   generalActivityFeedLastFetch: 'metadea_general_activity_feed_last_fetch',
   generalActivityFeedCache: 'metadea_general_activity_feed_cache',
+  pendingLibraryType: 'metadea_pending_library_type',
 } as const;

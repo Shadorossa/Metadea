@@ -13,6 +13,7 @@ import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating } from './library-grouping';
 import { compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
+import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { LibraryCard, TYPE_ICON } from './LibraryCard';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -76,16 +77,15 @@ export function LibrarySection() {
   });
 
   // The navbar's per-type library shortcuts (Navbar.astro) deep-link here as
-  // /profile?libtype=<type>#library — read it once on mount, then strip it
-  // so it doesn't linger in the URL bar or get replayed on a later remount.
+  // /profile?libtype=<type>#library. profile.astro's switchTab() strips that
+  // query string via replaceState before this component ever mounts, so it
+  // can't be read from location.search here — profile.astro stashes it in
+  // sessionStorage instead, read once on mount and discarded.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const libtype = params.get('libtype');
+    const libtype = sessionStorage.getItem(STORAGE_KEYS.pendingLibraryType);
     if (!libtype) return;
     setActiveTypeTab(libtype);
-    params.delete('libtype');
-    const qs = params.toString();
-    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash);
+    sessionStorage.removeItem(STORAGE_KEYS.pendingLibraryType);
   }, []);
 
   useEffect(() => {
