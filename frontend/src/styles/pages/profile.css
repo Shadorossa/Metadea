@@ -337,12 +337,21 @@
      column (and every card in it) was stretching wider than the 1fr share
      to fit whatever it contained. min-width:0 is the standard override. */
   min-width: 0;
+  z-index: 1;
+  /* Dropping back to z-index:1 is delayed by the same 0.35s the flyout's
+     own max-width takes to close (see .library-card-stack-extra) — without
+     this, :hover ending drops the elevation instantly while the flyout is
+     still visibly sliding shut, so it renders underneath the next card
+     over instead of on top of it for that last stretch. */
+  transition: z-index 0s 0.35s;
 }
 
 .library-card-cell:hover {
   /* Raised above sibling grid cells so the flyout below renders on top of
-     whatever it slides over, not underneath. */
+     whatever it slides over, not underneath. Rises immediately (no delay)
+     on hover-in — only hover-out (the base rule above) is delayed. */
   z-index: 10;
+  transition: z-index 0s 0s;
 }
 
 .library-card {
