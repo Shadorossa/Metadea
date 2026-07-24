@@ -33,25 +33,42 @@ export function getCachedActivityFeed(): ActivityFeedEntry[] {
   }
 }
 
-export async function refreshActivityFeed(): Promise<void> {
+export function getCachedGeneralActivityFeed(): ActivityFeedEntry[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.generalActivityFeedCache);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function refreshFeed(endpoint: string, cacheKey: string, lastFetchKey: string): Promise<void> {
   if (!navigator.onLine) return;
 
   const session = await getAuthToken().catch(() => null);
   if (!session || session.token === 'offline_token') return;
 
-  const lastFetch = localStorage.getItem(STORAGE_KEYS.activityFeedLastFetch);
+  const lastFetch = localStorage.getItem(lastFetchKey);
   if (lastFetch && Date.now() - parseInt(lastFetch, 10) < FETCH_INTERVAL_MS) return;
 
   try {
-    const res = await fetch(`${API_URL}/api/activity/feed`, {
+    const res = await fetch(`${API_URL}${endpoint}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     });
     if (!res.ok) return;
 
     const { entries } = await res.json() as { entries: ActivityFeedEntry[] };
-    localStorage.setItem(STORAGE_KEYS.activityFeedCache, JSON.stringify(entries));
-    localStorage.setItem(STORAGE_KEYS.activityFeedLastFetch, String(Date.now()));
+    localStorage.setItem(cacheKey, JSON.stringify(entries));
+    localStorage.setItem(lastFetchKey, String(Date.now()));
   } catch (error) {
-    console.warn('[ActivityFeed] Refresh failed:', error);
+    console.warn(`[ActivityFeed] Refresh failed for ${endpoint}:`, error);
   }
+}
+
+export async function refreshActivityFeed(): Promise<void> {
+  await refreshFeed('/api/activity/feed', STORAGE_KEYS.activityFeedCache, STORAGE_KEYS.activityFeedLastFetch);
+}
+
+export async function refreshGeneralActivityFeed(): Promise<void> {
+  await refreshFeed('/api/activity/general', STORAGE_KEYS.generalActivityFeedCache, STORAGE_KEYS.generalActivityFeedLastFetch);
 }

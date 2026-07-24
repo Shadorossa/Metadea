@@ -55,6 +55,8 @@ export const ca = {
     monthly_history: 'Historial mensual',
     recent_activity: 'Activitat recent',
     no_activity: 'Sense activitat registrada',
+    activity_tab_friends: 'Amics',
+    activity_tab_general: 'General',
     status_planning: 'Pendent',
     status_watching: 'Veient',
     status_reading: 'Llegint',

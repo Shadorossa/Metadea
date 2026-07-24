@@ -55,6 +55,8 @@ export const ja = {
     monthly_history: '月別履歴',
     recent_activity: '最近のアクティビティ',
     no_activity: 'アクティビティの記録がありません',
+    activity_tab_friends: 'フレンド',
+    activity_tab_general: '全体',
     status_planning: '未着手',
     status_watching: '視聴中',
     status_reading: '読書中',

@@ -2,10 +2,12 @@
 // the once-a-day cache (see lib/social/activity-feed.ts; this component never
 // hits the network itself, BaseLayout.astro's daily refresh already did).
 import { useEffect, useMemo, useState } from 'react';
-import { getCachedActivityFeed, type ActivityFeedEntry } from '../../lib/social/activity-feed';
+import { getCachedActivityFeed, getCachedGeneralActivityFeed, type ActivityFeedEntry } from '../../lib/social/activity-feed';
 import { getCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { typeIconMap } from '../../lib/shared/icon-strings';
+
+type FeedTab = 'friends' | 'general';
 
 const TYPE_ICON = typeIconMap(14);
 const MAX_EVENTS_SHOWN = 15;
@@ -28,8 +30,12 @@ function interpolate(template: string, vars: Record<string, string | number>): s
 
 export function ActivityFeedSection() {
   const p = getT().profile;
-  const [entries] = useState<ActivityFeedEntry[]>(() => getCachedActivityFeed());
+  const [tab, setTab] = useState<FeedTab>('friends');
+  const [friendEntries] = useState<ActivityFeedEntry[]>(() => getCachedActivityFeed());
+  const [generalEntries] = useState<ActivityFeedEntry[]>(() => getCachedGeneralActivityFeed());
   const [titles, setTitles] = useState<Record<string, string>>({});
+
+  const entries = tab === 'friends' ? friendEntries : generalEntries;
 
   const events = useMemo<FlatEvent[]>(() => {
     const flat = entries.flatMap(entry =>
@@ -60,11 +66,33 @@ export function ActivityFeedSection() {
     return () => { cancelled = true; };
   }, [events]);
 
+  const tabs = (
+    <div className="home-activity-tabs">
+      <button
+        type="button"
+        className={`home-activity-tab${tab === 'friends' ? ' active' : ''}`}
+        onClick={() => setTab('friends')}
+      >
+        {p.activity_tab_friends}
+      </button>
+      <button
+        type="button"
+        className={`home-activity-tab${tab === 'general' ? ' active' : ''}`}
+        onClick={() => setTab('general')}
+      >
+        {p.activity_tab_general}
+      </button>
+    </div>
+  );
+
   if (events.length === 0) {
     return (
-      <div className="home-activity-empty">
-        <p>{p.no_activity}</p>
-      </div>
+      <>
+        {tabs}
+        <div className="home-activity-empty">
+          <p>{p.no_activity}</p>
+        </div>
+      </>
     );
   }
 
@@ -82,7 +110,9 @@ export function ActivityFeedSection() {
   };
 
   return (
-    <div className="home-activity-list">
+    <>
+      {tabs}
+      <div className="home-activity-list">
       {events.map((ev, i) => (
         <div className="home-activity-item" key={`${ev.userId}-${ev.externalId}-${ev.timestamp}-${i}`}>
           {ev.avatarUrl
@@ -94,6 +124,7 @@ export function ActivityFeedSection() {
           </p>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }

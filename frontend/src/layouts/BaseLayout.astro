@@ -275,9 +275,10 @@ const t = useTranslations(lang);
           socialSynced = true;
           setTimeout(async () => {
             const { syncProfileToServer } = await import(/* @vite-ignore */ '../lib/social/profile-sync');
-            const { refreshActivityFeed } = await import(/* @vite-ignore */ '../lib/social/activity-feed');
+            const { refreshActivityFeed, refreshGeneralActivityFeed } = await import(/* @vite-ignore */ '../lib/social/activity-feed');
             syncProfileToServer().catch(() => {});
             refreshActivityFeed().catch(() => {});
+            refreshGeneralActivityFeed().catch(() => {});
           }, 4000);
         }
 

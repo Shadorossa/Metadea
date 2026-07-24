@@ -55,6 +55,8 @@ export const ru = {
     monthly_history: 'История по месяцам',
     recent_activity: 'Недавняя активность',
     no_activity: 'Активность не зафиксирована',
+    activity_tab_friends: 'Друзья',
+    activity_tab_general: 'Общее',
     status_planning: 'Запланировано',
     status_watching: 'Смотрю',
     status_reading: 'Читаю',

@@ -32,4 +32,6 @@ export const STORAGE_KEYS = {
   profileSyncLastSync: 'metadea_profile_sync_last_sync',
   activityFeedLastFetch: 'metadea_activity_feed_last_fetch',
   activityFeedCache: 'metadea_activity_feed_cache',
+  generalActivityFeedLastFetch: 'metadea_general_activity_feed_last_fetch',
+  generalActivityFeedCache: 'metadea_general_activity_feed_cache',
 } as const;

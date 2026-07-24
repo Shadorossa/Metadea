@@ -55,6 +55,8 @@ export const en = {
     monthly_history: 'Monthly History',
     recent_activity: 'Recent Activity',
     no_activity: 'No activity recorded',
+    activity_tab_friends: 'Friends',
+    activity_tab_general: 'General',
     status_planning: 'Planned',
     status_watching: 'Watching',
     status_reading: 'Reading',
