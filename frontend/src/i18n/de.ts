@@ -9,7 +9,6 @@ export const de = {
     account: 'Mein Konto',
     tier: 'Tier list',
     local: 'Play',
-    list: 'Bibliothek',
     browse: 'Durchsuchen',
     dropdown_profile: 'Profil',
     dropdown_notifications: 'Benachrichtigungen',

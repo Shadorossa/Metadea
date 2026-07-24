@@ -9,7 +9,6 @@ export const ca = {
     account: 'El meu compte',
     tier: 'Tier list',
     local: 'Play',
-    list: 'Biblioteca',
     browse: 'Explora',
     dropdown_profile: 'Perfil',
     dropdown_notifications: 'Notificacions',

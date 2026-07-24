@@ -9,7 +9,6 @@ export const it = {
     account: 'Il mio account',
     tier: 'Tier list',
     local: 'Play',
-    list: 'Libreria',
     browse: 'Esplora',
     dropdown_profile: 'Profilo',
     dropdown_notifications: 'Notifiche',

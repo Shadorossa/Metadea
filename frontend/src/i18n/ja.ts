@@ -9,7 +9,6 @@ export const ja = {
     account: 'アカウント',
     tier: 'ティアリスト',
     local: 'Play',
-    list: 'ライブラリ',
     browse: '閲覧',
     dropdown_profile: 'プロフィール',
     dropdown_notifications: '通知',

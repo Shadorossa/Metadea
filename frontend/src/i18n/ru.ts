@@ -9,7 +9,6 @@ export const ru = {
     account: 'Мой профиль',
     tier: 'Tier list',
     local: 'Play',
-    list: 'Библиотека',
     browse: 'Обзор',
     dropdown_profile: 'Профиль',
     dropdown_notifications: 'Уведомления',
