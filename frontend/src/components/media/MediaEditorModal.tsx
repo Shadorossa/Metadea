@@ -65,6 +65,11 @@ function clampDateMinYear(value: string): string {
   return Number(year) < MIN_DATE_YEAR ? `${MIN_DATE_YEAR}-${month}-${day}` : value;
 }
 
+// ISO YYYY-MM-DD strings compare correctly lexicographically.
+function clampNotBefore(value: string, floor: string): string {
+  return value && floor && value < floor ? floor : value;
+}
+
 // Relation cards link to another media page via "/media?id=<externalId>" —
 // pull that id back out to look up/link the related game's own log.
 function extractExternalIdFromRelationUrl(url: string | null | undefined): string | undefined {
@@ -627,12 +632,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })}
                         onBlur={e => {
                           const val = clampDateMinYear(e.target.value);
-                          if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: val } });
+                          const updates: Partial<LogState> = {};
+                          if (val !== e.target.value) updates.startedAt = val;
+                          // Pushing the start date past an already-set end date
+                          // would otherwise leave end < start.
+                          if (activeLog.finishedAt && val > activeLog.finishedAt) updates.finishedAt = val;
+                          if (Object.keys(updates).length > 0) dispatchEntry({ type: 'UPDATE_LOG', updates });
                         }} />
                     </HeaderField>
                     <HeaderField label={te.ended}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
-                        min={`${MIN_DATE_YEAR}-01-01`}
+                        min={activeLog.startedAt || `${MIN_DATE_YEAR}-01-01`}
                         value={activeLog.finishedAt}
                         onChange={e => {
                           const val = e.target.value;
@@ -645,7 +655,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                           dispatchEntry({ type: 'UPDATE_LOG', updates });
                         }}
                         onBlur={e => {
-                          const val = clampDateMinYear(e.target.value);
+                          const val = clampNotBefore(clampDateMinYear(e.target.value), activeLog.startedAt);
                           if (val !== e.target.value) dispatchEntry({ type: 'UPDATE_LOG', updates: { finishedAt: val } });
                         }} />
                     </HeaderField>
