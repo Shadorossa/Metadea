@@ -15,7 +15,7 @@ type Category = 'media' | 'staff' | 'character' | 'user';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
-const SECTION_CAP = 6;
+const SECTION_CAP = 2;
 
 interface Row {
   key: string;
@@ -108,7 +108,7 @@ export function QuickSearchOverlay() {
           setSections([{
             key: 'character',
             heading: s.search_section_characters,
-            rows: page.results.slice(0, SECTION_CAP * 2).map(r => ({
+            rows: page.results.slice(0, SECTION_CAP).map(r => ({
               key: r.externalId,
               title: r.titleMain,
               sub: '',
@@ -122,7 +122,7 @@ export function QuickSearchOverlay() {
           setSections([{
             key: 'staff',
             heading: s.search_section_staff,
-            rows: page.results.slice(0, SECTION_CAP * 2).map((r: AniListStaffSearchResult) => ({
+            rows: page.results.slice(0, SECTION_CAP).map((r: AniListStaffSearchResult) => ({
               key: `staff:${r.id}`,
               title: r.name,
               sub: r.nameNative ?? '',
@@ -136,7 +136,7 @@ export function QuickSearchOverlay() {
           setSections([{
             key: 'user',
             heading: s.search_section_users,
-            rows: results.slice(0, SECTION_CAP * 2).map((r: UserSearchResult) => ({
+            rows: results.slice(0, SECTION_CAP).map((r: UserSearchResult) => ({
               key: r.userId,
               title: r.username,
               sub: '',
