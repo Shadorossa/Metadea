@@ -4,6 +4,7 @@ import "../styles/pages/home.css";
 import { getLang, useTranslations } from "../i18n/index";
 import { API_URL } from "../lib/config";
 import { ActivityFeedSection } from "../components/home/ActivityFeedSection";
+import { CurrentlySection } from "../components/home/CurrentlySection";
 
 const lang = getLang(Astro.url);
 const t = useTranslations(lang);
@@ -48,12 +49,19 @@ const t = useTranslations(lang);
       </a>
     </div>
 
-    <div id="home-calendar" class="home-calendar-section"></div>
+    <div class="home-content-grid">
+      <div class="home-main-col">
+        <CurrentlySection client:load />
+        <div id="home-calendar" class="home-calendar-section"></div>
+      </div>
 
-    <section class="home-activity-section">
-      <h2 class="home-activity-title">{t.profile.recent_activity}</h2>
-      <ActivityFeedSection client:load />
-    </section>
+      <aside class="home-side-col">
+        <section class="home-activity-section">
+          <h2 class="home-activity-title">{t.profile.recent_activity}</h2>
+          <ActivityFeedSection client:load />
+        </section>
+      </aside>
+    </div>
   </main>
 
   <script>
