@@ -147,29 +147,6 @@ const t = useTranslations(lang);
       const COMMUNITY_CATALOG_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 1/day
       let socialSynced = false;
 
-      // F12 opens devtools even in a release/installed build (normally only
-      // auto-opened on startup in debug builds — see lib.rs) — lets a bug
-      // that only reproduces in a packaged build actually be inspected
-      // instead of guessed at blind. sessionStorage (not just the in-memory
-      // flag) guards this: this script tag re-runs on every Astro page
-      // transition, but `document` itself never gets recreated, so a
-      // listener bound by an earlier run is still attached — re-binding on
-      // every navigation would just stack duplicate listeners.
-      function bindDevtoolsShortcut() {
-        if (sessionStorage.getItem('metadea_devtools_shortcut_bound')) return;
-        sessionStorage.setItem('metadea_devtools_shortcut_bound', '1');
-        document.addEventListener('keydown', async (e) => {
-          if (e.key !== 'F12') return;
-          e.preventDefault();
-          try {
-            const { invoke } = await import(/* @vite-ignore */ '../lib/tauri');
-            await invoke('open_devtools');
-          } catch (err) {
-            console.error('Failed to open devtools:', err);
-          }
-        });
-      }
-
       function isTauriRuntime() {
         return typeof window !== 'undefined' &&
           ('__TAURI_IPC__' in window || '__TAURI_INTERNALS__' in window || '__TAURI__' in window || '__TAURI_OAM__' in window);
@@ -277,7 +254,6 @@ const t = useTranslations(lang);
           console.error(e);
         }
         initAuthModal();
-        bindDevtoolsShortcut();
         setTimeout(rememberCurrentPath, 0);
 
         // sessionStorage, not just the in-memory updaterChecked flag below —

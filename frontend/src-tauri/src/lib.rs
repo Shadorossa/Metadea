@@ -33,16 +33,6 @@ mod vestigial_cleanup;
 
 use tauri::Manager;
 
-// Debug builds already auto-open devtools on startup (see .setup() below) —
-// this lets a release/installed build open them on demand too (wired to a
-// keyboard shortcut in the frontend, see BaseLayout.astro), so a bug that
-// only reproduces in a packaged build (network errors, CSP violations, ...)
-// can actually be inspected instead of guessed at blind.
-#[tauri::command]
-fn open_devtools(window: tauri::WebviewWindow) {
-    window.open_devtools();
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -86,7 +76,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            open_devtools,
             auth::init_database,
             auth::store_auth_token,
             auth::get_auth_token,
