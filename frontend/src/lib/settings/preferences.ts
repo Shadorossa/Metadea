@@ -19,3 +19,11 @@ export function isLibraryGroupByBundleEnabled(): boolean {
 export function setLibraryGroupByBundleEnabled(enabled: boolean): void {
   localStorage.setItem(STORAGE_KEYS.libraryGroupByBundle, enabled.toString());
 }
+
+export function isLibrarySubpagesByTypeEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEYS.librarySubpagesByType) === 'true';
+}
+
+export function setLibrarySubpagesByTypeEnabled(enabled: boolean): void {
+  localStorage.setItem(STORAGE_KEYS.librarySubpagesByType, enabled.toString());
+}

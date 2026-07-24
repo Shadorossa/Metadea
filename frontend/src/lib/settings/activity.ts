@@ -1,4 +1,4 @@
-import { isAdultContentEnabled, setAdultContentEnabled } from './preferences';
+import { isAdultContentEnabled, setAdultContentEnabled, isLibrarySubpagesByTypeEnabled, setLibrarySubpagesByTypeEnabled } from './preferences';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { byId } from '../shared/dom';
 
@@ -17,6 +17,15 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     adultContentCheckbox.checked = isAdultContentEnabled();
     adultContentCheckbox.addEventListener('change', () => {
       setAdultContentEnabled(adultContentCheckbox.checked);
+      showToast();
+    });
+  }
+
+  const librarySubpagesCheckbox = byId<HTMLInputElement>('library-subpages-by-type');
+  if (librarySubpagesCheckbox) {
+    librarySubpagesCheckbox.checked = isLibrarySubpagesByTypeEnabled();
+    librarySubpagesCheckbox.addEventListener('change', () => {
+      setLibrarySubpagesByTypeEnabled(librarySubpagesCheckbox.checked);
       showToast();
     });
   }

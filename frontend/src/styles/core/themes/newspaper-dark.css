@@ -97,6 +97,11 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-family: 'Georgia', 'Times New Roman', serif !important;
 }
 
+/* Library subpages-by-type tab bar */
+[data-theme="newspaper-dark"] .library-type-tab {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
 [data-theme="newspaper-dark"] .search-tab:hover {
   background: none !important;
   color: var(--text-main) !important;

@@ -1320,15 +1320,76 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Header bar for sorting */
+/* Subpages-by-type tab bar (Settings > Preferencias toggle) — underline-style
+   tabs instead of boxed filter buttons, since these switch the whole view
+   rather than toggle a filter on top of it. Shares the sort row's bottom
+   border instead of having its own (see .library-content-header). */
+.library-type-tabs {
+  display: flex;
+  align-items: flex-end;
+  align-self: stretch;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+
+.library-type-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color var(--anim-fast);
+}
+
+.library-type-tab svg {
+  opacity: 0.7;
+  transition: opacity var(--anim-fast);
+}
+
+.library-type-tab:hover {
+  color: var(--text-main);
+}
+
+.library-type-tab.active {
+  color: var(--accent);
+}
+
+.library-type-tab.active svg {
+  opacity: 1;
+}
+
+/* Active indicator sits flush on the header's own bottom border (see
+   .library-content-header below) instead of a border-bottom on the tab
+   itself, which would draw a separate line just above it. */
+.library-type-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0.4rem;
+  right: 0.4rem;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* Header bar for sorting — also hosts the type tabs (when enabled) on the
+   left, sharing this same row and bottom border instead of stacking above it. */
 .library-content-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  /* Align sort to the right */
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.75rem;
+}
+
+.library-content-header .select-sort {
+  margin-left: auto;
 }
 
 /* Icon type filters grid */
@@ -1482,6 +1543,7 @@
 /* ── Library Sorting ────────────────────────────────────────────────────── */
 .select-sort {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.75rem;
 }

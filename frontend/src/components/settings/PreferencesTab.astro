@@ -90,6 +90,22 @@ const { t } = Astro.props;
             {t.settings.activity_adult_content_hint}
           </p>
         </div>
+
+        <div class="settings-checkbox-group">
+          <label class="settings-checkbox-label">
+            <input
+              type="checkbox"
+              id="library-subpages-by-type"
+              class="settings-checkbox"
+            />
+            <span class="checkbox-label-text"
+              >{t.settings.library_subpages_by_type}</span
+            >
+          </label>
+          <p class="settings-hint">
+            {t.settings.library_subpages_by_type_hint}
+          </p>
+        </div>
       </div>
     </div>
   </div>

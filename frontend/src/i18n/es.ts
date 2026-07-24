@@ -390,6 +390,8 @@ export const es = {
     activity_batch_episodes_hint: 'Agrupa los episodios vistos el mismo día en una única entrada de actividad.',
     activity_adult_content: 'Mostrar contenido +18',
     activity_adult_content_hint: 'Activa la búsqueda de contenido adulto en AniList (anime y manga).',
+    library_subpages_by_type: 'Subpáginas por tipo de medio',
+    library_subpages_by_type_hint: 'Divide tu biblioteca en una pestaña por tipo de medio (anime, manga, juegos...) además de una de "Todos", en vez de mostrar todo junto.',
     tab_application: 'Conexiones',
     tab_novedades: 'Novedades',
     tab_preferences: 'Preferencias',

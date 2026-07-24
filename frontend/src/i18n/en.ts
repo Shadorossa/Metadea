@@ -390,6 +390,8 @@ export const en = {
     activity_batch_episodes_hint: 'Groups episodes watched on the same day into a single activity entry.',
     activity_adult_content: 'Show +18 content',
     activity_adult_content_hint: 'Enables adult content search on AniList (anime and manga).',
+    library_subpages_by_type: 'Subpages by media type',
+    library_subpages_by_type_hint: 'Splits your library into one tab per media type (anime, manga, games...) plus an "All" tab, instead of showing everything together.',
     tab_application: 'Connections',
     tab_novedades: "What's New",
     tab_preferences: 'Preferences',
