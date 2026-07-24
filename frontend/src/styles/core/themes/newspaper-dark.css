@@ -489,3 +489,85 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border: 1px solid var(--border-color) !important;
   box-shadow: none !important;
 }
+
+/* Navbar quick-search overlay — same vintage double-border/serif treatment
+   as the rest of this theme's inputs and card-like boxes. */
+[data-theme="newspaper-dark"] .quick-search-input {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-input:focus {
+  border-color: var(--text-main) !important;
+  background: var(--bg-elevated) !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-section {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+/* The generic h2/h3 rule above underlines only the title's own text width —
+   for this header (title + "Ver todos" sharing one row) the rule needs to
+   continue across the gap between them instead, same "label left, rule
+   fills the rest" trick .library-section-title already uses elsewhere in
+   this theme. */
+[data-theme="newspaper-dark"] .quick-search-section-header {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  gap: 0.75rem;
+}
+
+[data-theme="newspaper-dark"] .quick-search-section-title {
+  display: flex !important;
+  align-items: baseline !important;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .quick-search-section-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+  margin-left: 0.75rem;
+  align-self: center;
+}
+
+[data-theme="newspaper-dark"] .quick-search-result,
+[data-theme="newspaper-dark"] .quick-search-result-title,
+[data-theme="newspaper-dark"] .quick-search-result-sub {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-result:hover {
+  background: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-result:hover .quick-search-result-title,
+[data-theme="newspaper-dark"] .quick-search-result:hover .quick-search-result-sub {
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-result-cover {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-view-all {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px !important;
+}
+
+[data-theme="newspaper-dark"] .quick-search-hint {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-style: italic;
+}
