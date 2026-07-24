@@ -17,20 +17,20 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
 <header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
   <!-- Izquierda: home + play (biblioteca local) + tier -->
   <div class="nav-group nav-group--left">
-    <a href="/home"   data-nav="home"   class={`nav-icon-btn${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
+    <a href="/home"   data-nav="home"   class={`nav-icon-btn nav-icon-btn--plain${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
         <polyline points="9 21 9 12 15 12 15 21"/>
       </svg>
     </a>
-    <a href="/local" data-nav="local" class={`nav-icon-btn${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
+    <a href="/local" data-nav="local" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/>
         <line x1="8" y1="21" x2="16" y2="21"/>
         <line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     </a>
-    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
+    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
       <span class="nav-tier-s">S</span>
     </a>
   </div>
