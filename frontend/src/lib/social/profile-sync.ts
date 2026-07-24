@@ -5,7 +5,7 @@
 // Google-linked session; the local "offline_token" mode has no server
 // identity to sync to.
 import { API_URL } from '../config';
-import { getAuthToken, getUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory } from '../tauri';
+import { getAuthToken, getUserInfo, saveUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { getImage } from '../storage/images';
 import { decodeJwtPayload } from '../profile/utils';
@@ -47,6 +47,20 @@ export async function syncProfileToServer(): Promise<void> {
   const session = await getAuthToken().catch(() => null);
   if (!session || session.token === 'offline_token') return;
 
+  // Turso is the only place that ever *assigns* this account's server id
+  // (routes/auth.ts, keyed on the Google account, looked up on every login)
+  // — this just mirrors it locally from the already-signed JWT so other
+  // local code can reference "my own server id" without a network round
+  // trip. Runs every session, independent of the once-a-day gate below,
+  // since it's a cheap local write with no server call of its own.
+  const payload = decodeJwtPayload(session.token);
+  if (typeof payload.userId === 'string') {
+    const local = await getUserInfo().catch(() => ({} as Record<string, unknown>));
+    if (local.server_user_id !== payload.userId) {
+      saveUserInfo({ server_user_id: payload.userId }).catch(() => {});
+    }
+  }
+
   const lastSync = localStorage.getItem(STORAGE_KEYS.profileSyncLastSync);
   if (lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return;
 
@@ -65,7 +79,6 @@ export async function syncProfileToServer(): Promise<void> {
     // does for the local banner — without this, the server row is stuck
     // forever with whatever Google gave it at first link (name + photo),
     // never reflecting a display name or avatar customized afterward.
-    const payload = decodeJwtPayload(session.token);
     const username = (info.display_name as string | undefined)?.trim() || session.username;
     const avatarUrl = customAvatar || (payload.avatar as string | null) || null;
 

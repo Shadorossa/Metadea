@@ -81,8 +81,7 @@ pub async fn save_user_info(
     let obj = info.as_object().ok_or("Expected JSON object")?;
     let allowed = [
         "bio", "custom_color", "display_name", "dynamic_theme", "font",
-        "language", "rating_system", "source_avatar_url", "source_name",
-        "source_username", "theme",
+        "language", "rating_system", "server_user_id", "theme",
     ];
     for (k, v) in obj {
         if !allowed.contains(&k.as_str()) {
@@ -118,22 +117,20 @@ pub async fn get_user_info(
     let row: Option<serde_json::Value> = conn
         .query_row(
             "SELECT bio, custom_color, display_name, dynamic_theme, font, language,
-                    rating_system, source_avatar_url, source_name, source_username, theme
+                    rating_system, server_user_id, theme
              FROM user_profile WHERE id = 1",
             [],
             |r| {
                 Ok(serde_json::json!({
-                    "bio":               r.get::<_, String>(0).unwrap_or_default(),
-                    "custom_color":      r.get::<_, String>(1).unwrap_or("#c084fc".into()),
-                    "display_name":      r.get::<_, String>(2).unwrap_or_default(),
-                    "dynamic_theme":     r.get::<_, i64>(3).unwrap_or(0) != 0,
-                    "font":              r.get::<_, String>(4).unwrap_or_default(),
-                    "language":          r.get::<_, String>(5).unwrap_or("es".into()),
-                    "rating_system":     r.get::<_, String>(6).unwrap_or("5-star".into()),
-                    "source_avatar_url": r.get::<_, String>(7).unwrap_or_default(),
-                    "source_name":       r.get::<_, String>(8).unwrap_or_default(),
-                    "source_username":   r.get::<_, String>(9).unwrap_or_default(),
-                    "theme":             r.get::<_, String>(10).unwrap_or("nebula".into()),
+                    "bio":            r.get::<_, String>(0).unwrap_or_default(),
+                    "custom_color":   r.get::<_, String>(1).unwrap_or("#c084fc".into()),
+                    "display_name":   r.get::<_, String>(2).unwrap_or_default(),
+                    "dynamic_theme":  r.get::<_, i64>(3).unwrap_or(0) != 0,
+                    "font":           r.get::<_, String>(4).unwrap_or_default(),
+                    "language":       r.get::<_, String>(5).unwrap_or("es".into()),
+                    "rating_system":  r.get::<_, String>(6).unwrap_or("5-star".into()),
+                    "server_user_id": r.get::<_, Option<String>>(7).unwrap_or(None),
+                    "theme":          r.get::<_, String>(8).unwrap_or("nebula".into()),
                 }))
             },
         )

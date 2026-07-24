@@ -6,8 +6,13 @@
 // already know" privacy model the activity feed uses.
 import { useEffect, useState } from 'react';
 import { getPublicProfile, followUser, unfollowUser, type PublicProfile } from '../../lib/social/users';
-import { getCatalogEntry, wrapAssetUrl } from '../../lib/tauri';
+import { getCatalogEntry, wrapAssetUrl, getUserInfo } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
+
+async function goToOwnProfile(): Promise<void> {
+  const { navigate } = await import('astro:transitions/client');
+  navigate('/profile');
+}
 
 function useQueryUserId(): string | null {
   const [id, setId] = useState<string | null>(null);
@@ -30,17 +35,44 @@ export function UserProfileView() {
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resolvedLibrary, setResolvedLibrary] = useState<ResolvedLibraryItem[]>([]);
+  const [isRedirectingSelf, setIsRedirectingSelf] = useState(false);
 
+  // Your own profile is never read from Turso — it's your real, always-local
+  // /profile page (full library editor, stats, etc.), not the sparse
+  // read-only Turso snapshot other users get. server_user_id is cached
+  // locally by profile-sync.ts, so this redirect fires without waiting on
+  // any network call.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    getUserInfo().then(info => {
+      if (cancelled) return;
+      if (info.server_user_id === userId) {
+        setIsRedirectingSelf(true);
+        goToOwnProfile();
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || isRedirectingSelf) return;
+    let cancelled = false;
     getPublicProfile(userId).then(p => {
       if (cancelled) return;
+      // Fallback for the rare case the local server_user_id cache wasn't
+      // ready yet (e.g. right after linking Google, before the first
+      // profile-sync ran) — the server itself also knows this is you.
+      if (p?.isSelf) {
+        setIsRedirectingSelf(true);
+        goToOwnProfile();
+        return;
+      }
       setProfile(p);
       setFollowing(p?.isFollowing ?? false);
     });
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, isRedirectingSelf]);
 
   useEffect(() => {
     if (!profile) return;
@@ -66,7 +98,7 @@ export function UserProfileView() {
     setBusy(false);
   }
 
-  if (profile === undefined) return null;
+  if (isRedirectingSelf || profile === undefined) return null;
 
   if (profile === null) {
     return (

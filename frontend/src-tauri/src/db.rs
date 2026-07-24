@@ -736,6 +736,23 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_catalog DROP COLUMN authors_csv", []);
         mark_migration(conn, 35)?;
     }
+    if v < 36 {
+        // source_avatar_url/source_name/source_username were meant to hold
+        // the raw Google-provided identity separately from the user's own
+        // customized display_name/avatar_data, but no code ever wrote to
+        // them — dead columns. server_user_id replaces them with something
+        // that IS used: a local, read-only cache of the UUID Turso already
+        // assigned this account (see routes/auth.ts in metadea-web) once
+        // Google-linked. Turso stays the only place that ever *assigns* it —
+        // this column is just mirrored from the signed JWT after the fact,
+        // never written from anywhere else, so there's no path for a client
+        // to invent or overwrite another account's id.
+        let _ = conn.execute("ALTER TABLE user_profile DROP COLUMN source_avatar_url", []);
+        let _ = conn.execute("ALTER TABLE user_profile DROP COLUMN source_name", []);
+        let _ = conn.execute("ALTER TABLE user_profile DROP COLUMN source_username", []);
+        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN server_user_id TEXT", []);
+        mark_migration(conn, 36)?;
+    }
 
     Ok(())
 }
@@ -1165,9 +1182,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     font              TEXT NOT NULL DEFAULT '',
     language          TEXT NOT NULL DEFAULT 'es',
     rating_system     TEXT NOT NULL DEFAULT '5-star',
-    source_avatar_url TEXT NOT NULL DEFAULT '',
-    source_name       TEXT NOT NULL DEFAULT '',
-    source_username   TEXT NOT NULL DEFAULT '',
+    server_user_id    TEXT,
     theme             TEXT NOT NULL DEFAULT 'nebula',
     created_at        TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at        TEXT DEFAULT CURRENT_TIMESTAMP
