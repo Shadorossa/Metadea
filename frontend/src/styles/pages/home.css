@@ -52,6 +52,7 @@
 .home-main-col {
   min-width: 0; /* lets the calendar grid shrink instead of overflowing its column */
   width: 100%;
+  max-width: 640px;
   box-sizing: border-box;
 }
 
