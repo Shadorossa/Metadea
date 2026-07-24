@@ -10,39 +10,39 @@ const { t } = Astro.props;
 
 <!-- Tab: Entorno -->
 <div class="settings-panel hidden" id="panel-environment">
-  <h2 class="settings-panel-title">{t.settings.tab_environment}</h2>
+  <h2 class="settings-panel-title" data-i18n="settings.tab_environment">{t.settings.tab_environment}</h2>
 
   <div class="settings-section">
-    <h3 class="settings-section-title">{t.settings.env_title}</h3>
+    <h3 class="settings-section-title" data-i18n="settings.env_title">{t.settings.env_title}</h3>
 
     <!-- API Platforms Selector Bar -->
     <div class="api-platforms-selector">
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="igdb" title={t.settings.env_platform_igdb_title}>
+        <button type="button" class="api-platform-tab-btn" data-platform="igdb" data-i18n-title="settings.env_platform_igdb_title" title={t.settings.env_platform_igdb_title}>
           <img class="api-platform-logo" src="/API/IGDB_logo.png" alt="IGDB" />
         </button>
-        <span class="api-platform-label">Videojuegos</span>
+        <span class="api-platform-label" data-i18n="settings.env_platform_games_label">Videojuegos</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="tmdb" title={t.settings.env_platform_tmdb_title}>
+        <button type="button" class="api-platform-tab-btn" data-platform="tmdb" data-i18n-title="settings.env_platform_tmdb_title" title={t.settings.env_platform_tmdb_title}>
           <img class="api-platform-logo" src="/API/Tmdb.new.logo.png" alt="TMDB" />
         </button>
-        <span class="api-platform-label">Cine y series</span>
+        <span class="api-platform-label" data-i18n="settings.env_platform_movies_label">Cine y series</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="steam" title={t.settings.env_platform_steam_title}>
+        <button type="button" class="api-platform-tab-btn" data-platform="steam" data-i18n-title="settings.env_platform_steam_title" title={t.settings.env_platform_steam_title}>
           <img class="api-platform-logo" src="/platforms/steam_logo.png" alt="Steam" />
         </button>
         <span class="api-platform-label">Steam</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="anilist" title={t.settings.env_platform_anilist_title}>
+        <button type="button" class="api-platform-tab-btn" data-platform="anilist" data-i18n-title="settings.env_platform_anilist_title" title={t.settings.env_platform_anilist_title}>
           <img class="api-platform-logo" src="/API/Anilist_logo.png" alt="AniList" />
         </button>
-        <span class="api-platform-label">Anime y manga</span>
+        <span class="api-platform-label" data-i18n="settings.env_platform_anime_label">Anime y manga</span>
       </div>
       <div class="api-platform-item">
-        <button type="button" class="api-platform-tab-btn" data-platform="comicvine" title={t.settings.env_platform_comicvine_title}>
+        <button type="button" class="api-platform-tab-btn" data-platform="comicvine" data-i18n-title="settings.env_platform_comicvine_title" title={t.settings.env_platform_comicvine_title}>
           <svg class="api-platform-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 3h13l3 3v15H4z"/>
             <path d="M17 3v3h3"/>
@@ -51,7 +51,7 @@ const { t } = Astro.props;
             <line x1="7" y1="17" x2="12" y2="17"/>
           </svg>
         </button>
-        <span class="api-platform-label">{t.settings.env_platform_comics_label}</span>
+        <span class="api-platform-label" data-i18n="settings.env_platform_comics_label">{t.settings.env_platform_comics_label}</span>
       </div>
     </div>
 
@@ -61,8 +61,8 @@ const { t } = Astro.props;
       <!-- State: None selected (Default) -->
       <div class="api-keys-empty-placeholder" id="api-keys-placeholder">
         <span class="api-keys-placeholder-icon">🔑</span>
-        <h4>{t.settings.env_platform_empty_title}</h4>
-        <p>{t.settings.env_platform_empty_hint}</p>
+        <h4 data-i18n="settings.env_platform_empty_title">{t.settings.env_platform_empty_title}</h4>
+        <p data-i18n="settings.env_platform_empty_hint">{t.settings.env_platform_empty_hint}</p>
       </div>
 
       <!-- Form: IGDB -->

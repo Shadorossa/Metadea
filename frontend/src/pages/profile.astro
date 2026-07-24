@@ -78,12 +78,12 @@ const t    = useTranslations(lang);
     </div>
 
     <nav class="profile-tabs">
-      <button class="profile-tab active" data-tab="overview" title={t.profile.tab_overview} set:html={ICON_PROFILE_OVERVIEW}></button>
-      <button class="profile-tab" data-tab="library" title={t.profile.tab_library} set:html={ICON_PROFILE_LIBRARY}></button>
-      <button class="profile-tab" data-tab="favorites" title={t.profile.favorites} set:html={ICON_PROFILE_FAVORITES}></button>
-      <button class="profile-tab" data-tab="stats" title={t.profile.tab_stats} set:html={ICON_PROFILE_STATS}></button>
-      <button class="profile-tab" data-tab="reviews" title={t.profile.reviews} set:html={ICON_PROFILE_REVIEWS}></button>
-      <button class="profile-tab" data-tab="lists" title={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
+      <button class="profile-tab active" data-tab="overview" data-tooltip={t.profile.tab_overview} set:html={ICON_PROFILE_OVERVIEW}></button>
+      <button class="profile-tab" data-tab="library" data-tooltip={t.profile.tab_library} set:html={ICON_PROFILE_LIBRARY}></button>
+      <button class="profile-tab" data-tab="favorites" data-tooltip={t.profile.favorites} set:html={ICON_PROFILE_FAVORITES}></button>
+      <button class="profile-tab" data-tab="stats" data-tooltip={t.profile.tab_stats} set:html={ICON_PROFILE_STATS}></button>
+      <button class="profile-tab" data-tab="reviews" data-tooltip={t.profile.reviews} set:html={ICON_PROFILE_REVIEWS}></button>
+      <button class="profile-tab" data-tab="lists" data-tooltip={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
       <script is:inline>
         (function() {
           var hash = window.location.hash.replace('#', '');
@@ -110,7 +110,7 @@ const t    = useTranslations(lang);
         document.querySelectorAll('.profile-tab').forEach(btn => {
           const tab = (btn as HTMLElement).dataset.tab;
           if (tab && tabTitles[tab]) {
-            btn.setAttribute('title', tabTitles[tab]);
+            btn.setAttribute('data-tooltip', tabTitles[tab]);
           }
         });
       </script>

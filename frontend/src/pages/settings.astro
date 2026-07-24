@@ -28,45 +28,47 @@ const version = pkg.version;
     <div class="settings-container">
       <!-- Sidebar vertical -->
       <aside class="settings-sidebar">
-        <span class="section-label settings-sidebar-label"
+        <span class="section-label settings-sidebar-label" data-i18n="settings.section_account"
           >{t.settings.section_account}</span
         >
         <button class="settings-tab active" data-tab="profile">
           <Fragment set:html={ICON_SETTINGS_APPEARANCE} />
-          {t.settings.section_appearance}
+          <span data-i18n="settings.section_appearance">{t.settings.section_appearance}</span>
         </button>
         <button class="settings-tab" data-tab="preferences">
           <Fragment set:html={ICON_SETTINGS_PREFERENCES} />
-          {t.settings.tab_preferences}
+          <span data-i18n="settings.tab_preferences">{t.settings.tab_preferences}</span>
         </button>
         <button class="settings-tab" data-tab="application">
           <Fragment set:html={ICON_SETTINGS_CONNECTIONS} />
-          {t.settings.tab_application}
+          <span data-i18n="settings.tab_application">{t.settings.tab_application}</span>
         </button>
 
         <span
           class="section-label settings-sidebar-label"
           style="margin-top: 1rem; display: block;"
+          data-i18n="settings.section_application"
           >{t.settings.section_application}</span
         >
         <button class="settings-tab" data-tab="environment">
           <Fragment set:html={ICON_SETTINGS_ENVIRONMENT} />
-          {t.settings.tab_environment}
+          <span data-i18n="settings.tab_environment">{t.settings.tab_environment}</span>
         </button>
         <button class="settings-tab" data-tab="novedades">
           <Fragment set:html={ICON_SETTINGS_NOVEDADES} />
-          {t.settings.tab_novedades}
+          <span data-i18n="settings.tab_novedades">{t.settings.tab_novedades}</span>
         </button>
 
         <span
           class="section-label settings-sidebar-label"
           id="settings-admin-label"
           style="margin-top: 1rem;"
+          data-i18n="settings.section_admin"
           >{t.settings.section_admin}</span
         >
         <a href="/admin/catalog" class="settings-tab" id="settings-admin-link">
           <Fragment set:html={ICON_SETTINGS_ADMIN} />
-          {t.settings.tab_admin}
+          <span data-i18n="settings.tab_admin">{t.settings.tab_admin}</span>
         </a>
       </aside>
 
@@ -174,6 +176,42 @@ const version = pkg.version;
     const payload = decodeJwtPayload(session.token);
     const googleAvatar = payload.avatar as string | null;
     const username = session.username;
+
+    function updateSettingsI18n() {
+      const t = getT();
+      document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(el => {
+        const keyPath = el.getAttribute('data-i18n');
+        if (!keyPath) return;
+        const parts = keyPath.split('.');
+        let val: any = t;
+        for (const p of parts) {
+          val = val?.[p];
+        }
+        if (typeof val === 'string') {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+            const attr = el.getAttribute('data-i18n-attr') || 'placeholder';
+            el.setAttribute(attr, val);
+          } else {
+            el.textContent = val;
+          }
+        }
+      });
+
+      document.querySelectorAll<HTMLElement>('[data-i18n-title]').forEach(el => {
+        const keyPath = el.getAttribute('data-i18n-title');
+        if (!keyPath) return;
+        const parts = keyPath.split('.');
+        let val: any = t;
+        for (const p of parts) {
+          val = val?.[p];
+        }
+        if (typeof val === 'string') {
+          el.setAttribute('title', val);
+        }
+      });
+    }
+
+    updateSettingsI18n();
 
     initAvatar(googleAvatar, username, showToast);
     initBanner(showToast);

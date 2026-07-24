@@ -16,7 +16,7 @@ const { t } = Astro.props;
 
 <!-- Tab: Apariencia (Perfil) -->
 <div class="settings-panel" id="panel-profile">
-  <h2 class="settings-panel-title">{t.settings.section_appearance}</h2>
+  <h2 class="settings-panel-title" data-i18n="settings.section_appearance">{t.settings.section_appearance}</h2>
 
   <!-- Avatar + Banner en la misma fila -->
   <div class="profile-media-row">
@@ -24,22 +24,24 @@ const { t } = Astro.props;
          nombre ES el preview de la fuente, en vez de dos controles que
          mostraban/editaban el mismo nombre por separado. -->
     <div class="settings-section settings-section--display-name">
-      <h3 class="settings-section-title">{t.settings.display_name_title}</h3>
+      <h3 class="settings-section-title" data-i18n="settings.display_name_title">{t.settings.display_name_title}</h3>
       <div class="font-picker">
         <input
           type="text"
           id="display-name-input"
           class="font-preview-input"
+          data-i18n="settings.display_name_placeholder"
           placeholder={t.settings.display_name_placeholder}
           maxlength="40"
           autocomplete="off"
           spellcheck="false"
         />
-        <h3 class="settings-section-title font-picker-title">{t.settings.font_title}</h3>
+        <h3 class="settings-section-title font-picker-title" data-i18n="settings.font_title">{t.settings.font_title}</h3>
         <div class="font-picker-controls">
           <button
             class="font-arrow"
             id="font-prev"
+            data-i18n-title="settings.font_prev"
             aria-label={t.settings.font_prev}
             set:html={ICON_CHEVRON_LEFT}
           />
@@ -47,6 +49,7 @@ const { t } = Astro.props;
           <button
             class="font-arrow"
             id="font-next"
+            data-i18n-title="settings.font_next"
             aria-label={t.settings.font_next}
             set:html={ICON_CHEVRON_RIGHT}
           />
@@ -56,7 +59,7 @@ const { t } = Astro.props;
 
     <!-- Avatar -->
     <div class="settings-section settings-section--avatar">
-      <h3 class="settings-section-title">{t.settings.avatar_title}</h3>
+      <h3 class="settings-section-title" data-i18n="settings.avatar_title">{t.settings.avatar_title}</h3>
       <div class="avatar-preview-wrap" id="avatar-preview">
         <!-- populated by script -->
       </div>
@@ -64,6 +67,7 @@ const { t } = Astro.props;
         <button
           class="btn btn--sm btn--secondary btn--icon-only"
           id="avatar-upload-btn"
+          data-i18n-title="settings.avatar_upload"
           title={t.settings.avatar_upload}
           aria-label={t.settings.avatar_upload}
           set:html={ICON_UPLOAD_IMAGE}
@@ -71,6 +75,7 @@ const { t } = Astro.props;
         <button
           class="btn btn--sm btn--ghost btn--icon-only"
           id="avatar-remove-btn"
+          data-i18n-title="settings.avatar_remove"
           title={t.settings.avatar_remove}
           aria-label={t.settings.avatar_remove}
           set:html={ICON_TRASH}
@@ -81,18 +86,18 @@ const { t } = Astro.props;
 
     <!-- Banner -->
     <div class="settings-section settings-section--banner">
-      <h3 class="settings-section-title">{t.settings.banner_title}</h3>
+      <h3 class="settings-section-title" data-i18n="settings.banner_title">{t.settings.banner_title}</h3>
       <div class="banner-drop-zone" id="banner-drop-zone">
         <div class="banner-drop-hint">
           <Fragment set:html={ICON_UPLOAD_IMAGE} />
-          <span>{t.settings.banner_drag}</span>
+          <span data-i18n="settings.banner_drag">{t.settings.banner_drag}</span>
         </div>
       </div>
       <div class="banner-actions">
-        <button class="btn btn--sm btn--secondary" id="banner-upload-btn"
+        <button class="btn btn--sm btn--secondary" id="banner-upload-btn" data-i18n="settings.banner_upload"
           >{t.settings.banner_upload}</button
         >
-        <button class="btn btn--sm btn--ghost" id="banner-remove-btn"
+        <button class="btn btn--sm btn--ghost" id="banner-remove-btn" data-i18n="settings.banner_remove"
           >{t.settings.banner_remove}</button
         >
       </div>
@@ -104,10 +109,11 @@ const { t } = Astro.props;
   <div class="settings-divider settings-divider--row settings-divider--wrap">
     <!-- Biografía -->
     <div class="settings-section flex-1">
-      <h3 class="settings-section-title">{t.settings.bio_title}</h3>
+      <h3 class="settings-section-title" data-i18n="settings.bio_title">{t.settings.bio_title}</h3>
       <textarea
         id="bio-textarea"
         class="settings-textarea"
+        data-i18n="settings.bio_placeholder"
         placeholder={t.settings.bio_placeholder}
         maxlength="500"
         rows="5"
@@ -120,7 +126,7 @@ const { t } = Astro.props;
 
     <!-- Color Personalizado -->
     <div class="settings-section settings-section--color">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.custom_color_title">
         {t.settings.custom_color_title}
       </h3>
       <div class="color-picker-container">
@@ -133,6 +139,7 @@ const { t } = Astro.props;
         <button
           class="btn btn--sm btn--ghost color-reset-btn"
           id="color-reset-btn"
+          data-i18n-title="settings.color_reset_title"
           title={t.settings.color_reset_title}
           aria-label={t.settings.color_reset_title}
           set:html={ICON_RESET_ARROW}
@@ -142,10 +149,10 @@ const { t } = Astro.props;
 
     <!-- Selector de Fondo Dinámico -->
     <div class="settings-section settings-section--theme">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.appearance_bg_title">
         {t.settings.appearance_bg_title}
       </h3>
-      <p class="settings-hint">{t.settings.appearance_bg_hint}</p>
+      <p class="settings-hint" data-i18n="settings.appearance_bg_hint">{t.settings.appearance_bg_hint}</p>
       <div class="theme-grid" id="theme-grid"></div>
     </div>
   </div>
@@ -172,7 +179,7 @@ const { t } = Astro.props;
           x2="9"
           y2="12"></line></svg
       >
-      {t.profile.sign_out}
+      <span data-i18n="profile.sign_out">{t.profile.sign_out}</span>
     </button>
   </div>
 </div>

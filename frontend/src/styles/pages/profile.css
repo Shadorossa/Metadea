@@ -155,8 +155,8 @@
 }
 
 /* Tooltip */
-.profile-tab[title]::after {
-  content: attr(title);
+.profile-tab[data-tooltip]::after {
+  content: attr(data-tooltip);
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
@@ -173,7 +173,7 @@
   transition: opacity var(--anim-fast);
 }
 
-.profile-tab:hover[title]::after {
+.profile-tab:hover[data-tooltip]::after {
   opacity: 1;
 }
 

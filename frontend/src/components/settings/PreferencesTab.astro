@@ -16,12 +16,12 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 <!-- Tab: Preferencias -->
 <div class="settings-panel hidden" id="panel-preferences">
-  <h2 class="settings-panel-title">{t.settings.tab_preferences}</h2>
+  <h2 class="settings-panel-title" data-i18n="settings.tab_preferences">{t.settings.tab_preferences}</h2>
 
   <!-- Sistema de Calificación + Idioma -->
   <div class="settings-divider settings-divider--row">
     <div class="settings-section" style="flex: 1;">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.rating_system_title">
         {t.settings.rating_system_title}
       </h3>
       <div class="rating-system-picker">
@@ -29,6 +29,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
           type="button"
           class="rating-system-btn"
           data-value="5-star"
+          data-i18n-title="settings.rating_5star_title"
           title={t.settings.rating_5star_title}
           set:html={ICON_STAR}
         >
@@ -37,6 +38,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
           type="button"
           class="rating-system-btn"
           data-value="10-dec"
+          data-i18n-title="settings.rating_10dec_title"
           title={t.settings.rating_10dec_title}
         >
           <span class="rating-value-text">10.00</span>
@@ -45,6 +47,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
           type="button"
           class="rating-system-btn"
           data-value="10"
+          data-i18n-title="settings.rating_10int_title"
           title={t.settings.rating_10int_title}
         >
           <span class="rating-value-text">10</span>
@@ -53,6 +56,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
           type="button"
           class="rating-system-btn"
           data-value="3-emoji"
+          data-i18n-title="settings.rating_3emoji_title"
           title={t.settings.rating_3emoji_title}
           set:html={ICON_RATING_FACES}
         >
@@ -61,7 +65,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
     </div>
 
     <div class="settings-section" style="flex: 1;">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.language_section_title">
         {t.settings.language_section_title}
       </h3>
       <div class="language-picker" id="language-picker">
@@ -76,7 +80,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
           </button>
         ))}
       </div>
-      <p class="settings-hint">
+      <p class="settings-hint" data-i18n="settings.language_hint">
         {t.settings.language_hint}
       </p>
     </div>
@@ -85,7 +89,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   <!-- Biblioteca + Contenido -->
   <div class="settings-divider settings-divider--row">
     <div class="settings-section" style="flex: 1;">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.library_section_title">
         {t.settings.library_section_title}
       </h3>
       <div class="settings-checkbox-row">
@@ -96,11 +100,11 @@ const LANGUAGE_NAMES: Record<string, string> = {
               id="library-subpages-by-type"
               class="settings-checkbox"
             />
-            <span class="checkbox-label-text"
+            <span class="checkbox-label-text" data-i18n="settings.library_subpages_by_type"
               >{t.settings.library_subpages_by_type}</span
             >
           </label>
-          <p class="settings-hint">
+          <p class="settings-hint" data-i18n="settings.library_subpages_by_type_hint">
             {t.settings.library_subpages_by_type_hint}
           </p>
         </div>
@@ -112,11 +116,11 @@ const LANGUAGE_NAMES: Record<string, string> = {
               id="activity-batch-episodes"
               class="settings-checkbox"
             />
-            <span class="checkbox-label-text"
+            <span class="checkbox-label-text" data-i18n="settings.activity_batch_episodes"
               >{t.settings.activity_batch_episodes}</span
             >
           </label>
-          <p class="settings-hint">
+          <p class="settings-hint" data-i18n="settings.activity_batch_episodes_hint">
             {t.settings.activity_batch_episodes_hint}
           </p>
         </div>
@@ -124,7 +128,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
     </div>
 
     <div class="settings-section" style="flex: 1;">
-      <h3 class="settings-section-title">
+      <h3 class="settings-section-title" data-i18n="settings.content_section_title">
         {t.settings.content_section_title}
       </h3>
       <div class="settings-checkbox-row">
@@ -135,11 +139,11 @@ const LANGUAGE_NAMES: Record<string, string> = {
               id="activity-adult-content"
               class="settings-checkbox"
             />
-            <span class="checkbox-label-text"
+            <span class="checkbox-label-text" data-i18n="settings.activity_adult_content"
               >{t.settings.activity_adult_content}</span
             >
           </label>
-          <p class="settings-hint">
+          <p class="settings-hint" data-i18n="settings.activity_adult_content_hint">
             {t.settings.activity_adult_content_hint}
           </p>
         </div>
