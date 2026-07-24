@@ -70,6 +70,13 @@ export function CurrentlySection() {
                 <p className="home-currently-title">{meta?.title_main ?? entry.external_id}</p>
               </a>
             ))}
+            {/* Keeps every row the same width (5 slots) regardless of how
+                many in-progress works that type actually has right now. */}
+            {Array.from({ length: MAX_PER_TYPE - group.items.length }).map((_, i) => (
+              <div className="home-currently-item home-currently-item--empty" key={`empty-${i}`}>
+                <div className="home-currently-cover home-currently-cover--empty" />
+              </div>
+            ))}
           </div>
         </div>
       ))}
