@@ -65,11 +65,30 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         class={`nav-icon-btn nav-icon-btn--avatar${activePage === 'profile' ? ' active' : ''}`}
         title={i18n.dropdown_profile}
       >
-        <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" />
-        <svg id="nav-avatar-fallback" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" style="display: none;" />
+        <svg id="nav-avatar-fallback" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
           <circle cx="12" cy="8" r="4"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
         </svg>
+        <script is:inline>
+          // Runs synchronously during HTML parse, before the bundled
+          // astro:page-load script below even loads — on a hard refresh
+          // (F5) that gap was long enough to flash the fallback person icon
+          // before swapping to the real avatar. Both elements start
+          // display:none in the markup above so neither one flashes first;
+          // this picks the right one immediately.
+          (function () {
+            var img = document.getElementById('nav-avatar-img');
+            var fallback = document.getElementById('nav-avatar-fallback');
+            var src = localStorage.getItem('profile_avatar_cache');
+            if (src && img && fallback) {
+              img.src = src;
+              img.style.display = 'block';
+            } else if (fallback) {
+              fallback.style.display = 'block';
+            }
+          })();
+        </script>
       </a>
       <div class="nav-dropdown">
         <div class="nav-dropdown-inner">
