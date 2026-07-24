@@ -11,13 +11,34 @@ export interface UserSearchResult {
   avatarUrl: string | null;
 }
 
+export interface PublicProfileActivityEvent {
+  externalId: string;
+  type: string;
+  mediaType?: string | null;
+  date?: string | null;
+  timestamp: string;
+  progressStart?: number | null;
+  progressEnd?: number | null;
+}
+
+export interface PublicProfileList {
+  key: string;
+  name: string;
+  description: string;
+  is_fav: boolean;
+  items: string[];
+}
+
 export interface PublicProfile {
   userId: string;
   username: string;
   avatarUrl: string | null;
   bannerUrl: string | null;
   bio: string | null;
-  library: Array<{ external_id: string; rating?: number | null; started_at?: string | null; finished_at?: string | null }>;
+  library: Array<{ external_id: string; rating?: number | null; started_at?: string | null; finished_at?: string | null; notes?: string | null; tags?: string | null }>;
+  activity: PublicProfileActivityEvent[];
+  monthlyHistory: Record<string, string[]>;
+  lists: PublicProfileList[];
   updatedAt: string | null;
   isFollowing: boolean;
   isSelf: boolean;

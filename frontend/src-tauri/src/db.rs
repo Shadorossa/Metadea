@@ -1171,6 +1171,62 @@ CREATE TABLE IF NOT EXISTS user_lists (
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+-- ── Social: cached OTHER users' downloaded profile data (never your own) ──
+-- Mirrors user_library/user_activity/monthly_history/user_lists/
+-- user_list_items, keyed additionally by social_user_id since these hold
+-- data for many different visited profiles at once. Fully replaced (DELETE
+-- + re-INSERT scoped to one social_user_id) by hydrate_social_profile every
+-- time a profile is (re)synced — see social_profile.rs.
+CREATE TABLE IF NOT EXISTS social_user_list (
+    social_user_id TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    rating         REAL,
+    started_at     TEXT,
+    finished_at    TEXT,
+    notes          TEXT,
+    tags           TEXT,
+    PRIMARY KEY (social_user_id, external_id)
+);
+
+CREATE TABLE IF NOT EXISTS social_user_activity (
+    social_user_id TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    media_type     TEXT,
+    event_type     TEXT NOT NULL,
+    progress_start INTEGER,
+    progress_end   INTEGER,
+    date           TEXT,
+    timestamp      TEXT NOT NULL,
+    PRIMARY KEY (social_user_id, timestamp, external_id)
+);
+
+CREATE TABLE IF NOT EXISTS social_monthly_history (
+    social_user_id TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    month          TEXT NOT NULL,
+    position       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (social_user_id, month, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_social_monthly_history ON social_monthly_history(social_user_id, month, position);
+
+CREATE TABLE IF NOT EXISTS social_user_lists (
+    social_user_id TEXT NOT NULL,
+    key            TEXT NOT NULL,
+    name           TEXT NOT NULL DEFAULT '',
+    description    TEXT NOT NULL DEFAULT '',
+    is_fav         INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (social_user_id, key)
+);
+
+CREATE TABLE IF NOT EXISTS social_user_list_items (
+    social_user_id TEXT NOT NULL,
+    list_key       TEXT NOT NULL,
+    external_id    TEXT NOT NULL,
+    position       INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (social_user_id, list_key, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_social_user_list_items ON social_user_list_items(social_user_id, list_key, position);
+
 CREATE TABLE IF NOT EXISTS user_profile (
     id                INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     avatar_data       TEXT NOT NULL DEFAULT '',

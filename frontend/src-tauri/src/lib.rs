@@ -20,6 +20,7 @@ mod media_relations;
 mod platform_scanning;
 mod proposal_bundle;
 mod sagas;
+mod social_profile;
 mod steam;
 mod sync_state;
 mod tier_lists;
@@ -181,6 +182,12 @@ pub fn run() {
             user_metadata::remove_user_image,
             user_metadata::save_user_info,
             user_metadata::get_user_info,
+            social_profile::hydrate_social_profile,
+            social_profile::get_social_library,
+            social_profile::get_social_activity,
+            social_profile::get_social_monthly_history,
+            social_profile::get_social_lists,
+            social_profile::get_social_list_items,
             steam::steam_achievements_download,
             steam::steam_achievement_icon,
             steam::steam_get_owned_games,

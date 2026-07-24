@@ -30,3 +30,4 @@ export * from './anime-local';
 export * from './steam';
 export * from './discord';
 export * from './sync-state';
+export * from './social-profile';

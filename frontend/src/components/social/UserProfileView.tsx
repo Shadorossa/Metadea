@@ -1,13 +1,31 @@
 // Public view of another user's profile — reached from the navbar
 // quick-search's "Usuarios" tab (or any /user?id=<userId> link). Shows what
-// they've chosen to sync (banner/avatar/bio/library snapshot) plus a
-// Follow/Unfollow toggle. Library items only ever resolve a title/cover
-// against the VIEWER's own local catalog — same "you only see what you
-// already know" privacy model the activity feed uses.
+// they've chosen to sync (banner/avatar/bio/library) plus a Follow/Unfollow
+// toggle.
+//
+// Rendering reads from the LOCAL social_user_* tables (see
+// src-tauri/src/social_profile.rs), never straight from the fetched JSON —
+// hydrateSocialProfile() writes the server snapshot into them at most once a
+// day per visited profile (gated below), so opening a profile you already
+// looked at today doesn't re-fetch/re-write anything. Every entry renders
+// regardless of whether YOUR OWN media_catalog recognizes it — your catalog
+// is what resolves title/cover (or not), it's never a filter on what's
+// shown. An unresolved entry falls back to its bare external_id
+// ("anime:12345") until your own catalog catches up, at which point the
+// exact same cached row resolves correctly next render.
 import { useEffect, useState } from 'react';
 import { getPublicProfile, followUser, unfollowUser, type PublicProfile } from '../../lib/social/users';
-import { getCatalogEntry, wrapAssetUrl, getUserInfo } from '../../lib/tauri';
+import {
+  wrapAssetUrl, getUserInfo,
+  hydrateSocialProfile, getSocialLibrary, type SocialLibraryItem,
+} from '../../lib/tauri';
 import { getT } from '../../i18n/client';
+
+const HYDRATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+function lastHydrateKey(userId: string): string {
+  return `metadea_social_profile_sync_${userId}`;
+}
 
 async function goToOwnProfile(): Promise<void> {
   const { navigate } = await import('astro:transitions/client');
@@ -22,10 +40,29 @@ function useQueryUserId(): string | null {
   return id;
 }
 
-interface ResolvedLibraryItem {
-  externalId: string;
-  title: string;
-  cover: string | null;
+// Re-hydrates the local social_user_* cache for this profile at most once a
+// day — visiting 900 profiles doesn't mean 900 daily server round trips,
+// only the ones you actually open again after the gate expires.
+async function hydrateIfStale(userId: string, profile: PublicProfile): Promise<void> {
+  const last = localStorage.getItem(lastHydrateKey(userId));
+  if (last && Date.now() - parseInt(last, 10) < HYDRATE_INTERVAL_MS) return;
+
+  await hydrateSocialProfile(
+    userId,
+    profile.library.map(item => ({
+      external_id: item.external_id,
+      rating: item.rating ?? null,
+      started_at: item.started_at ?? null,
+      finished_at: item.finished_at ?? null,
+      notes: item.notes ?? null,
+      tags: item.tags ?? null,
+    })),
+    profile.activity,
+    profile.monthlyHistory,
+    profile.lists.map(l => ({ key: l.key, name: l.name, description: l.description, is_fav: l.is_fav, items: l.items })),
+  ).catch(() => {});
+
+  localStorage.setItem(lastHydrateKey(userId), String(Date.now()));
 }
 
 export function UserProfileView() {
@@ -34,14 +71,14 @@ export function UserProfileView() {
   const [profile, setProfile] = useState<PublicProfile | null | undefined>(undefined);
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [resolvedLibrary, setResolvedLibrary] = useState<ResolvedLibraryItem[]>([]);
+  const [library, setLibrary] = useState<SocialLibraryItem[]>([]);
   const [isRedirectingSelf, setIsRedirectingSelf] = useState(false);
 
   // Your own profile is never read from Turso — it's your real, always-local
-  // /profile page (full library editor, stats, etc.), not the sparse
-  // read-only Turso snapshot other users get. server_user_id is cached
-  // locally by profile-sync.ts, so this redirect fires without waiting on
-  // any network call.
+  // /profile page (full library editor, stats, etc.), not the read-only
+  // Turso snapshot other users get. server_user_id is cached locally by
+  // profile-sync.ts, so this redirect fires without waiting on any network
+  // call.
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -58,7 +95,7 @@ export function UserProfileView() {
   useEffect(() => {
     if (!userId || isRedirectingSelf) return;
     let cancelled = false;
-    getPublicProfile(userId).then(p => {
+    getPublicProfile(userId).then(async p => {
       if (cancelled) return;
       // Fallback for the rare case the local server_user_id cache wasn't
       // ready yet (e.g. right after linking Google, before the first
@@ -70,25 +107,14 @@ export function UserProfileView() {
       }
       setProfile(p);
       setFollowing(p?.isFollowing ?? false);
+      if (p) {
+        await hydrateIfStale(userId, p);
+        if (cancelled) return;
+        setLibrary(await getSocialLibrary(userId).catch(() => []));
+      }
     });
     return () => { cancelled = true; };
   }, [userId, isRedirectingSelf]);
-
-  useEffect(() => {
-    if (!profile) return;
-    let cancelled = false;
-    Promise.all(
-      profile.library.map(async item => {
-        const entry = await getCatalogEntry(item.external_id).catch(() => null);
-        if (!entry?.title_main) return null;
-        return { externalId: item.external_id, title: entry.title_main, cover: entry.cover_url ?? null };
-      })
-    ).then(results => {
-      if (cancelled) return;
-      setResolvedLibrary(results.filter((r): r is ResolvedLibraryItem => r !== null));
-    });
-    return () => { cancelled = true; };
-  }, [profile]);
 
   async function toggleFollow() {
     if (!profile || busy) return;
@@ -133,20 +159,23 @@ export function UserProfileView() {
 
         {profile.bio && <p className="user-profile-bio">{profile.bio}</p>}
 
-        {resolvedLibrary.length === 0 ? (
+        {library.length === 0 ? (
           <p className="user-profile-library-empty">{s.library_empty}</p>
         ) : (
           <div className="user-profile-library-grid">
-            {resolvedLibrary.map(item => (
+            {library.map(item => (
               <a
-                key={item.externalId}
+                key={item.external_id}
                 className="user-profile-library-item"
-                href={`/media?id=${encodeURIComponent(item.externalId)}`}
-                title={item.title}
+                href={`/media?id=${encodeURIComponent(item.external_id)}`}
+                title={item.title_main ?? item.external_id}
               >
-                {item.cover
-                  ? <img className="user-profile-library-cover" src={wrapAssetUrl(item.cover)} alt="" loading="lazy" />
+                {item.cover_url
+                  ? <img className="user-profile-library-cover" src={wrapAssetUrl(item.cover_url)} alt="" loading="lazy" />
                   : <div className="user-profile-library-cover user-profile-library-cover--empty" />}
+                {!item.title_main && (
+                  <span className="user-profile-library-item-fallback">{item.external_id}</span>
+                )}
               </a>
             ))}
           </div>

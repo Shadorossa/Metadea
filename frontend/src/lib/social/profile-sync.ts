@@ -5,7 +5,7 @@
 // Google-linked session; the local "offline_token" mode has no server
 // identity to sync to.
 import { API_URL } from '../config';
-import { getAuthToken, getUserInfo, saveUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory } from '../tauri';
+import { getAuthToken, getUserInfo, saveUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory, getAllUserLists, getListItems } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { getImage } from '../storage/images';
 import { decodeJwtPayload } from '../profile/utils';
@@ -41,6 +41,22 @@ async function compileLibrary(): Promise<unknown[]> {
   }));
 }
 
+// Custom lists (Favoritos/curated lists from the Listas tab) — not the
+// per-type "_fav" lists (those are covered by `favorites` already), just
+// the user-created ones, since those are what someone else's profile has
+// any use rendering.
+async function compileLists(): Promise<unknown[]> {
+  const lists = await getAllUserLists().catch(() => []);
+  const custom = lists.filter(l => !l.is_fav);
+  return Promise.all(custom.map(async l => ({
+    key: l.key,
+    name: l.name,
+    description: l.description,
+    is_fav: false,
+    items: await getListItems(l.key).catch(() => []),
+  })));
+}
+
 // `force` skips the once-a-day gate below — used by the Settings > Perfil
 // "Sincronizar ahora" debug button (temporary, testing-only, see
 // ProfileTab.astro) to trigger a real sync on demand instead of waiting up
@@ -69,12 +85,13 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return false;
 
   try {
-    const [info, activity, library, favorites, monthlyHistory, customAvatar, customBanner] = await Promise.all([
+    const [info, activity, library, favorites, monthlyHistory, lists, customAvatar, customBanner] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileRecentActivity(),
       compileLibrary(),
       readUserFavorites().catch(() => ({})),
       readMonthlyHistory().catch(() => ({})),
+      compileLists(),
       getImage(STORAGE_KEYS.profileAvatarCustom).catch(() => null),
       getImage(STORAGE_KEYS.profileBannerCustom).catch(() => null),
     ]);
@@ -107,6 +124,7 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
         library,
         favorites,
         monthly_history: monthlyHistory,
+        lists,
       }),
     });
 
