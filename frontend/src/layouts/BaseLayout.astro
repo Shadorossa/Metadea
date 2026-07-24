@@ -2,9 +2,11 @@
 import '../styles/core/global.css';
 import '../styles/components/components.css';
 import '../styles/components/navbar.css';
+import '../styles/components/quick-search.css';
 import '../styles/components/footer.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
+import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
@@ -71,6 +73,7 @@ const t = useTranslations(lang);
   <body data-page={activePage}>
     <div id="app-bg" aria-hidden="true" transition:persist></div>
     <Navbar activePage={activePage} i18n={t.nav} typeLabels={t.search.types} />
+    <QuickSearchOverlay client:load />
     <div id="page-content" transition:name="page-content">
       <slot />
     </div>

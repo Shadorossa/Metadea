@@ -51,12 +51,12 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
 
   <!-- Derecha: browse + perfil (avatar, desplegable al pasar el cursor) -->
   <div class="nav-group nav-group--right">
-    <a href="/search" data-nav="search" class={`nav-icon-btn${activePage === 'search' ? ' active' : ''}`} title={i18n.browse}>
+    <button type="button" id="nav-quick-search-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.browse}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="7"/>
         <line x1="16.5" y1="16.5" x2="22" y2="22"/>
       </svg>
-    </a>
+    </button>
     <div class="nav-profile-wrap">
       <a
         href="/profile"
@@ -169,4 +169,11 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   // astro:page-load fires on initial load AND after every View Transitions
   // navigation — that's all this persisted navbar needs.
   document.addEventListener('astro:page-load', updateActiveNav);
+
+  // The navbar itself is transition:persist'd, so this button is never
+  // recreated across navigations — a one-time listener here is enough,
+  // unlike updateActiveNav above which has to re-run per page-load.
+  document.getElementById('nav-quick-search-btn')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('metadea:open-quick-search'));
+  });
 </script>

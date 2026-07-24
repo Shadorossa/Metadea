@@ -185,6 +185,25 @@
   object-fit: contain;
 }
 
+/* ── Plain icon buttons (search) — no background/border box ──────────────── */
+.nav-icon-btn--plain {
+  background: none;
+  border: none;
+  filter: none;
+}
+
+.nav-icon-btn--plain:hover {
+  background: none;
+  border-color: transparent;
+  color: var(--text-main);
+}
+
+.nav-icon-btn--plain.active {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 /* ── Profile dropdown (Perfil / Notificaciones / Ajustes on hover) ───────── */
 .nav-profile-wrap {
   position: relative;

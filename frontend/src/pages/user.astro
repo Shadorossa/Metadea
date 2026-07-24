@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/pages/profile.css';
+import '../styles/pages/user-profile.css';
+import { getLang } from '../i18n/index';
+import { UserProfileView } from '../components/social/UserProfileView';
+
+const lang = getLang(Astro.url);
+---
+
+<BaseLayout title={`Metadea`} lang={lang}>
+  <main class="profile-page">
+    <UserProfileView client:load />
+  </main>
+</BaseLayout>
