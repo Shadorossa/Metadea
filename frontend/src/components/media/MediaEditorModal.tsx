@@ -628,6 +628,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     <HeaderField label={te.started}>
                       <input type="date" className="me-header-field-input me-header-field-input--date"
                         min={`${MIN_DATE_YEAR}-01-01`}
+                        max={activeLog.finishedAt || undefined}
                         value={activeLog.startedAt}
                         onChange={e => dispatchEntry({ type: 'UPDATE_LOG', updates: { startedAt: e.target.value } })}
                         onBlur={e => {
