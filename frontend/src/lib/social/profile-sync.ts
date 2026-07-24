@@ -5,7 +5,7 @@
 // Google-linked session; the local "offline_token" mode has no server
 // identity to sync to.
 import { API_URL } from '../config';
-import { getAuthToken, getUserInfo, readUserJourney } from '../tauri';
+import { getAuthToken, getUserInfo, readUserJourney, getAllLibraryEntries, readUserFavorites, readMonthlyHistory } from '../tauri';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +23,22 @@ async function compileRecentActivity(): Promise<unknown[]> {
   return flat.slice(0, MAX_ACTIVITY_ENTRIES);
 }
 
+// Trimmed to exactly what a viewer needs (id to resolve against their own
+// local catalog, score, dates, review text, tags) — not the full row, which
+// also carries per-machine bookkeeping (progress, minutes_spent,
+// selected_platform/version, ...) nobody else has a use for.
+async function compileLibrary(): Promise<unknown[]> {
+  const entries = await getAllLibraryEntries().catch(() => []);
+  return entries.map(e => ({
+    external_id: e.external_id,
+    rating:      e.rating,
+    started_at:  e.started_at,
+    finished_at: e.finished_at,
+    notes:       e.notes,
+    tags:        e.tags,
+  }));
+}
+
 export async function syncProfileToServer(): Promise<void> {
   if (!navigator.onLine) return;
 
@@ -33,9 +49,12 @@ export async function syncProfileToServer(): Promise<void> {
   if (lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return;
 
   try {
-    const [info, activity] = await Promise.all([
+    const [info, activity, library, favorites, monthlyHistory] = await Promise.all([
       getUserInfo().catch(() => ({} as Record<string, unknown>)),
       compileRecentActivity(),
+      compileLibrary(),
+      readUserFavorites().catch(() => ({})),
+      readMonthlyHistory().catch(() => ({})),
     ]);
 
     const res = await fetch(`${API_URL}/api/profile/sync`, {
@@ -49,6 +68,9 @@ export async function syncProfileToServer(): Promise<void> {
         rating_system: localStorage.getItem(STORAGE_KEYS.ratingSystem),
         theme: localStorage.getItem(STORAGE_KEYS.appTheme),
         activity,
+        library,
+        favorites,
+        monthly_history: monthlyHistory,
       }),
     });
 
