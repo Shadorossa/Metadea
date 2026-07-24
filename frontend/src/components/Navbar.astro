@@ -30,9 +30,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         <line x1="12" y1="17" x2="12" y2="21"/>
       </svg>
     </a>
-    <a href="/tier" data-nav="tier" class={`nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier${activePage === 'tier' ? ' active' : ''}`} title={i18n.tier}>
+    <span class="nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier nav-icon-btn--disabled" aria-disabled="true" title={i18n.tier}>
       <span class="nav-tier-s">S</span>
-    </a>
+    </span>
   </div>
 
   <!-- Centro: por defecto, biblioteca + tipos — en /local y /search se

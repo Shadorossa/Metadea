@@ -198,6 +198,12 @@
   color: var(--accent);
 }
 
+.nav-icon-btn--disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .nav-icon-btn--plain.active {
   background: none;
   border-color: transparent;
