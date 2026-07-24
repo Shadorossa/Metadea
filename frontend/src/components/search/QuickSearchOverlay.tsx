@@ -15,7 +15,12 @@ type Category = 'media' | 'staff' | 'character' | 'user';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
-const SECTION_CAP = 2;
+const SECTION_CAP = 6;
+// Media-type sections render in a fixed 4-column grid (see .quick-search-sections) —
+// capped to 2 rows' worth so the box never grows past that regardless of how
+// many types a query matches.
+const SECTION_COLUMNS = 4;
+const MAX_MEDIA_SECTIONS = SECTION_COLUMNS * 2;
 
 interface Row {
   key: string;
@@ -96,6 +101,7 @@ export function QuickSearchOverlay() {
           const byType = mediaRowsByType(page.results);
           const built: Section[] = ALL_MEDIA_TYPES
             .filter(t => t !== 'character' && byType.has(t))
+            .slice(0, MAX_MEDIA_SECTIONS)
             .map(t => ({
               key: t,
               heading: typeLabels[t as keyof typeof typeLabels] ?? t,
