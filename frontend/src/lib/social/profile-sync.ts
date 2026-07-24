@@ -25,14 +25,18 @@ async function compileRecentActivity(): Promise<unknown[]> {
   return flat.slice(0, MAX_ACTIVITY_ENTRIES);
 }
 
-// Trimmed to exactly what a viewer needs (id to resolve against their own
-// local catalog, score, dates, review text, tags) — not the full row, which
-// also carries per-machine bookkeeping (progress, minutes_spent,
-// selected_platform/version, ...) nobody else has a use for.
+// Trimmed to what a viewer/importer needs — id (+ type, so it doesn't have
+// to be re-derived by parsing the id string), status/progress (so another
+// device can restore a real library, not just a title list), score, dates,
+// review text, tags. Still leaves out genuinely per-machine bookkeeping
+// (minutes_spent, selected_platform/version, ...) nobody else has a use for.
 async function compileLibrary(): Promise<unknown[]> {
   const entries = await getAllLibraryEntries().catch(() => []);
   return entries.map(e => ({
     external_id: e.external_id,
+    type:        e.type,
+    status:      e.status,
+    progress:    e.progress,
     rating:      e.rating,
     started_at:  e.started_at,
     finished_at: e.finished_at,
