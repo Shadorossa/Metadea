@@ -315,25 +315,6 @@ export function LibrarySection() {
             </button>
           </div>
         </div>
-
-        <div className="library-filter-group">
-          <button
-            type="button"
-            className={`library-toggle-btn ${groupByEdition ? 'active' : ''}`}
-            onClick={() => setGroupByEdition(g => !g)}
-          >
-            <span dangerouslySetInnerHTML={{ __html: GROUP_EDITIONS_ICON }} />
-            <span>{p.library_group_editions}</span>
-          </button>
-          <button
-            type="button"
-            className={`library-toggle-btn ${groupByBundle ? 'active' : ''}`}
-            onClick={toggleGroupByBundle}
-          >
-            <span dangerouslySetInnerHTML={{ __html: GROUP_BUNDLE_ICON }} />
-            <span>{p.library_group_bundle}</span>
-          </button>
-        </div>
       </aside>
 
       <div className="library-content">
@@ -360,6 +341,26 @@ export function LibrarySection() {
               ))}
             </div>
           )}
+          <div className="library-group-toggles">
+            <span className="library-sort-label">Agrupar por</span>
+            <div className="library-group-toggle-icons">
+              <button
+                type="button"
+                className={`library-group-toggle-btn ${groupByEdition ? 'active' : ''}`}
+                title={p.library_group_editions}
+                onClick={() => setGroupByEdition(g => !g)}
+                dangerouslySetInnerHTML={{ __html: GROUP_EDITIONS_ICON }}
+              />
+              <button
+                type="button"
+                className={`library-group-toggle-btn ${groupByBundle ? 'active' : ''}`}
+                title={p.library_group_bundle}
+                onClick={toggleGroupByBundle}
+                dangerouslySetInnerHTML={{ __html: GROUP_BUNDLE_ICON }}
+              />
+            </div>
+          </div>
+          <div className="library-header-divider" />
           <div className="library-filter-group select-sort">
             <span className="library-sort-label">Ordenar por</span>
             <div className="library-sort-options">

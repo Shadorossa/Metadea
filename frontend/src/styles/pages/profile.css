@@ -1382,13 +1382,20 @@
    left, sharing this same row and bottom border instead of stacking above it. */
 .library-content-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
 }
 
+.library-content-header .library-group-toggles,
 .library-content-header .select-sort {
+  /* Matches .library-type-tab's own bottom padding so every column in this
+     row keeps the same gap between its content and the shared border line. */
+  padding-bottom: 0.65rem;
+}
+
+.library-content-header .library-group-toggles {
   margin-left: auto;
 }
 
@@ -1510,51 +1517,69 @@
   flex: 1;
 }
 
-/* Group-by-edition toggle */
-.library-toggle-btn {
+/* Group-by-saga/bundle toggles — icon-only, label shown via title tooltip
+   on hover, sitting in the sort row (left of "Ordenar por") instead of the
+   filters sidebar. */
+.library-group-toggles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-group-toggles .library-sort-label {
+  text-align: center;
+}
+
+.library-group-toggle-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.library-group-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  width: 100%;
-  height: 38px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--anim-fast);
+  transition: color var(--anim-fast);
 }
 
-.library-toggle-btn:hover {
-  border-color: var(--accent);
+.library-group-toggle-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.06);
 }
 
-.library-toggle-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+.library-group-toggle-btn.active {
   color: var(--accent);
 }
 
 /* ── Library Sorting ────────────────────────────────────────────────────── */
 .select-sort {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.35rem;
 }
 
 .library-sort-label {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
   white-space: nowrap;
+  text-align: center;
+}
+
+.library-header-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--border-color);
+  margin: 0 0.9rem 0.65rem;
 }
 
 .library-sort-options {
