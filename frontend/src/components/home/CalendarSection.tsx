@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getAllLibraryEntries, getAllCatalogEntries, wrapAssetUrl } from '../../lib/tauri';
 import type { MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
-import { TYPE_LABELS, getTypeLabel } from '../../lib/constants/media';
+import { ALL_MEDIA_TYPES, getTypeLabel } from '../../lib/constants/media';
 import {
   computeUpcomingPlanningReleases,
   computeCalendarMonth,
@@ -24,9 +24,7 @@ function TypeTabs({ releases, activeType, tabClass, onSelect }: {
   onSelect: (type: string | null) => void;
 }) {
   const present = new Set(releases.map(r => r.type));
-  // Keeps TYPE_LABELS' order rather than first-seen order, so tabs don't
-  // jump around as the underlying release list changes.
-  const orderedTypes = Object.keys(TYPE_LABELS).filter(ty => present.has(ty));
+  const orderedTypes = ALL_MEDIA_TYPES.filter(ty => present.has(ty));
   if (orderedTypes.length < 2) return null;
 
   const p = getT().profile;

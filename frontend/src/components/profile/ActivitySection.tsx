@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { readUserJourney, writeUserJourney } from '../../lib/tauri';
 import type { DayJourney, UserJourneyEvent, MediaCatalogEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/shared/icon-strings';
-import { TYPE_LABELS } from '../../lib/constants/media';
+import { getTypeLabel } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import type { getT } from '../../i18n/client';
@@ -155,7 +155,7 @@ export function ActivitySection({ catalogMap, p }: Props) {
           }
 
           const typeIc = TYPE_ICON[mType] ?? '';
-          const typeLabelText = TYPE_LABELS[mType] || mType;
+          const typeLabelText = getTypeLabel(mType);
           const fallbackBg = HOF_GRADIENTS[mType] || 'linear-gradient(160deg, #374151 0%, #1f2937 100%)';
           // text embeds the title as a bolded fragment — the template comes
           // from user-configurable i18n strings with a single {media}

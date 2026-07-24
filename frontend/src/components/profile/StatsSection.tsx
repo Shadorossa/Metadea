@@ -5,7 +5,7 @@ import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
-import { TYPE_LABELS, getTypeLabel } from '../../lib/constants/media';
+import { getTypeLabel, getGenreLabel } from '../../lib/constants/media';
 import {
   computeOverviewAggregate,
   computeTypeBreakdown,
@@ -115,7 +115,11 @@ export function StatsSection() {
           <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CLOCK }} />
           <span className="stats-card-label">{p.stat_hours}</span>
           <span className="stats-card-value">{totalHours.toFixed(0)}</span>
-          {totalHours > 0 && <span className="stats-card-sub">{totalDays} d · {avgPerWork} h/obra</span>}
+          {totalHours > 0 && (
+            <span className="stats-card-sub">
+              {(p.stats_hours_sub || '{days} d · {avg} h/obra').replace('{days}', String(totalDays)).replace('{avg}', String(avgPerWork))}
+            </span>
+          )}
         </div>
         <div className="stats-card">
           <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STAR }} />
@@ -184,7 +188,7 @@ export function StatsSection() {
               <div className="stats-histogram">
                 {topGenres.map(([genre, count]) => (
                   <div className="stats-hist-row" key={genre}>
-                    <span className="stats-hist-label">{genre}</span>
+                    <span className="stats-hist-label">{getGenreLabel(genre)}</span>
                     <progress className="stats-hist-bar-outer" value={count} max={maxGenreCount} />
                     <span className="stats-hist-count">{count}</span>
                   </div>
@@ -232,7 +236,10 @@ export function StatsSection() {
         <div className="stats-heatmap-grid">
           {heatmapData.map(({ date, dateKey, count, level }) => {
             const formattedDate = formatDateShort(date);
-            const tooltipText = `${formattedDate}: ${count} ${count === 1 ? 'actividad' : 'actividades'}`;
+            const actStr = count === 1
+              ? (p.stats_activity_singular || '{count} actividad').replace('{count}', String(count))
+              : (p.stats_activity_plural || '{count} actividades').replace('{count}', String(count));
+            const tooltipText = `${formattedDate}: ${actStr}`;
             return <div className={`heatmap-cell level-${level}`} key={dateKey} data-date={dateKey} data-tooltip={tooltipText} />;
           })}
         </div>

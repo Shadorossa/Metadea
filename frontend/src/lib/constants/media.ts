@@ -23,18 +23,6 @@ export const DETAIL_SUPPORTED_TYPES = [
 
 import { getT } from '../../i18n/client';
 
-export const TYPE_LABELS: Record<string, string> = {
-  anime:  'Anime',
-  manga:  'Manga',
-  lnovel: 'Light Novel',
-  game:   'Game',
-  vnovel: 'Visual Novel',
-  series: 'Series',
-  movie:  'Movie',
-  book:   'Book',
-  comic:  'Comic',
-};
-
 export function getTypeLabel(type: string): string {
   const t = getT();
   const searchTypeMap: Record<string, string | undefined> = {
@@ -47,22 +35,16 @@ export function getTypeLabel(type: string): string {
     movie: t.search?.types?.movie,
     book: t.search?.types?.book,
     comic: t.search?.types?.comic,
+    character: t.search?.types?.character,
   };
-  return searchTypeMap[type] || TYPE_LABELS[type] || type;
+  return searchTypeMap[type] || type;
 }
 
-const FAV_LABELS: Record<string, string> = {
-  anime_fav:     'Anime',
-  manga_fav:     'Manga',
-  lnovel_fav:    'Light Novels',
-  game_fav:      'Games',
-  vnovel_fav:    'Visual Novels',
-  series_fav:    'Series',
-  movie_fav:     'Movies',
-  book_fav:      'Books',
-  multimedia_fav:'Multimedia',
-  character_fav: 'Characters',
-};
+export function getGenreLabel(genre: string): string {
+  const t = getT();
+  const genres = (t as any).genres as Record<string, string> | undefined;
+  return genres?.[genre] || genre;
+}
 
 // ─── AniList formats ──────────────────────────────────────────────────────────
 

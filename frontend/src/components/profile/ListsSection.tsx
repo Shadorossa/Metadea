@@ -9,7 +9,7 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
-import { TYPE_LABELS } from '../../lib/constants/media';
+import { getTypeLabel } from '../../lib/constants/media';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P = ReturnType<typeof getT>['profile'];
@@ -367,7 +367,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
               const title = item.title_main ?? item.external_id;
               const cover = item.cover_url ?? '';
               const url = `/media?id=${encodeURIComponent(item.external_id)}`;
-              const typeLabel = TYPE_LABELS[item.media_type ?? ''] ?? (item.media_type ?? '');
+              const typeLabel = getTypeLabel(item.media_type ?? '');
               const ratingDisplay = item.rating ? `★ ${dbRatingToStars5(item.rating).toFixed(1)}` : null;
 
               return (

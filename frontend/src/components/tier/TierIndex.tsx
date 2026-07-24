@@ -8,23 +8,7 @@ export default function TierIndex() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
-  const t = isMounted ? getT().tier : {
-    title: 'Tier Lists',
-    create: 'Nueva Tier List',
-    create_first: 'Crear tu primera Tier List',
-    search_ph: 'Buscar tier list...',
-    search_soon: 'Búsqueda disponible próximamente...',
-    no_saved_lists: 'No tienes tier lists guardadas aún.',
-    create_modal_title: 'Nueva Tier List',
-    name_label: 'Nombre de la tier list',
-    name_ph: 'Nombre de la tier list...',
-    type_label: 'Tipo de lista',
-    type_works: 'Obras',
-    type_characters: 'Personajes',
-    create_confirm: 'Crear Tier List',
-    create_cancel: 'Cancelar',
-    delete_title: 'Eliminar tier list',
-  };
+  const t = getT().tier;
 
   const [search, setSearch]     = useState('');
   const [lists, setLists]       = useState<TierListInfo[]>([]);
@@ -80,7 +64,7 @@ export default function TierIndex() {
   return (
     <div className="tier-index">
       <div className="tier-index-header">
-        <h1 className="tier-index-title">{t.title}</h1>
+        <h1 suppressHydrationWarning className="tier-index-title">{t.title}</h1>
         <button type="button" className="tier-index-create-btn" onClick={() => setShowCreate(true)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>

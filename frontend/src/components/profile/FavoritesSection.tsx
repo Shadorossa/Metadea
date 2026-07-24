@@ -109,7 +109,7 @@ export function FavoritesSection() {
     { key: 'series', label: s.series, icon: TYPE_ICON['series'] },
     { key: 'movie', label: s.movie, icon: TYPE_ICON['movie'] },
     { key: 'book', label: s.book, icon: TYPE_ICON['book'] },
-    { key: 'character', label: 'Personajes', icon: CHARACTER_TAB_ICON },
+    { key: 'character', label: s.character || 'Personajes', icon: CHARACTER_TAB_ICON },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [p, s]);
 

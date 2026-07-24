@@ -7,7 +7,7 @@ import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem } from '../../lib/media/rating-utils';
 import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON } from '../../lib/shared/icon-strings';
 import { isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled, isLibrarySubpagesByTypeEnabled } from '../../lib/settings/preferences';
-import { TYPE_LABELS, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
+import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
@@ -277,7 +277,7 @@ export function LibrarySection() {
                   key={type}
                   type="button"
                   className={`library-type-btn ${selectedTypes.includes(type) ? 'active' : ''}`}
-                  title={typeLabels[type as keyof typeof typeLabels] || TYPE_LABELS[type] || type}
+                  title={typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
                   onClick={() => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type])}
                   dangerouslySetInnerHTML={{ __html: svg }}
                 />
@@ -345,7 +345,7 @@ export function LibrarySection() {
                   onClick={() => setActiveTypeTab(type)}
                 >
                   <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[type] }} />
-                  {typeLabels[type as keyof typeof typeLabels] || TYPE_LABELS[type] || type}
+                  {typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
                 </button>
               ))}
             </div>

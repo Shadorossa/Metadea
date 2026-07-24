@@ -1,5 +1,5 @@
 import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
-import { isInProgressStatus, TYPE_LABELS } from '../constants/media';
+import { isInProgressStatus, ALL_MEDIA_TYPES } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -135,7 +135,7 @@ export function computeTypeBreakdown(items: Items, catalogMap: Map<string, Media
   const nonEditionItems = getNonEditionItems(items, catalogMap);
   const byTypeMap = new Map<string, { count: number; minutes: number }>();
 
-  for (const type of Object.keys(TYPE_LABELS)) {
+  for (const type of ALL_MEDIA_TYPES) {
     byTypeMap.set(type, { count: 0, minutes: 0 });
   }
 
