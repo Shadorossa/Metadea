@@ -57,8 +57,7 @@ const t = useTranslations(lang);
 
       <aside class="home-side-col">
         <section class="home-activity-section">
-          <h2 class="home-activity-title">{t.profile.recent_activity}</h2>
-          <ActivityFeedSection client:load />
+          <ActivityFeedSection client:load title={t.profile.recent_activity} />
         </section>
       </aside>
     </div>

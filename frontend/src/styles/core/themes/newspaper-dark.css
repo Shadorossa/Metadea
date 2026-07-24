@@ -563,11 +563,65 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .quick-search-view-all {
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  text-decoration: underline !important;
-  text-decoration-thickness: 1px !important;
+  text-decoration: none !important;
 }
 
 [data-theme="newspaper-dark"] .quick-search-hint {
   font-family: 'Georgia', 'Times New Roman', serif !important;
   font-style: italic;
+}
+
+/* Home release calendar header ("CALENDARIO DE LANZAMIENTOS" + month) — same
+   "label left, rule fills the rest" trick as .library-section-title, so the
+   generic h3 underline continues across to the month label instead of
+   stopping right after the title's own text. */
+[data-theme="newspaper-dark"] .stats-calendar-header {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .stats-calendar-header .home-card-title {
+  display: flex !important;
+  align-items: baseline !important;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .stats-calendar-header .home-card-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+  margin-left: 0.75rem;
+  align-self: center;
+}
+
+/* Home "Actividad reciente" header — same trick, with the friends/general
+   toggle moved onto the title row so it sits to the right of the line
+   instead of centered underneath it (see ActivityFeedSection.tsx). */
+[data-theme="newspaper-dark"] .home-activity-header {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .home-activity-title {
+  display: flex !important;
+  align-items: baseline !important;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .home-activity-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+  margin-left: 0.75rem;
+  align-self: center;
 }

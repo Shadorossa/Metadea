@@ -28,7 +28,7 @@ function interpolate(template: string, vars: Record<string, string | number>): s
   return Object.entries(vars).reduce((acc, [key, val]) => acc.replace(`{${key}}`, String(val)), template);
 }
 
-export function ActivityFeedSection() {
+export function ActivityFeedSection({ title }: { title: string }) {
   const p = getT().profile;
   const [tab, setTab] = useState<FeedTab>('friends');
   const [friendEntries] = useState<ActivityFeedEntry[]>(() => getCachedActivityFeed());
@@ -66,29 +66,32 @@ export function ActivityFeedSection() {
     return () => { cancelled = true; };
   }, [events]);
 
-  const tabs = (
-    <div className="home-activity-tabs">
-      <button
-        type="button"
-        className={`home-activity-tab${tab === 'friends' ? ' active' : ''}`}
-        onClick={() => setTab('friends')}
-      >
-        {p.activity_tab_friends}
-      </button>
-      <button
-        type="button"
-        className={`home-activity-tab${tab === 'general' ? ' active' : ''}`}
-        onClick={() => setTab('general')}
-      >
-        {p.activity_tab_general}
-      </button>
+  const header = (
+    <div className="home-activity-header">
+      <h2 className="home-activity-title">{title}</h2>
+      <div className="home-activity-tabs">
+        <button
+          type="button"
+          className={`home-activity-tab${tab === 'friends' ? ' active' : ''}`}
+          onClick={() => setTab('friends')}
+        >
+          {p.activity_tab_friends}
+        </button>
+        <button
+          type="button"
+          className={`home-activity-tab${tab === 'general' ? ' active' : ''}`}
+          onClick={() => setTab('general')}
+        >
+          {p.activity_tab_general}
+        </button>
+      </div>
     </div>
   );
 
   if (events.length === 0) {
     return (
       <>
-        {tabs}
+        {header}
         <div className="home-activity-empty">
           <p>{p.no_activity}</p>
         </div>
@@ -111,7 +114,7 @@ export function ActivityFeedSection() {
 
   return (
     <>
-      {tabs}
+      {header}
       <div className="home-activity-list">
       {events.map((ev, i) => (
         <div className="home-activity-item" key={`${ev.userId}-${ev.externalId}-${ev.timestamp}-${i}`}>

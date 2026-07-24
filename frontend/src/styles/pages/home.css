@@ -128,20 +128,27 @@
   width: 100%;
 }
 
+.home-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .home-activity-title {
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
-  margin: 0 0 0.75rem;
+  margin: 0;
 }
 
 .home-activity-tabs {
   display: flex;
-  justify-content: center;
   gap: 1.25rem;
-  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .home-activity-tab {
