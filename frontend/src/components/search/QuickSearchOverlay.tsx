@@ -6,7 +6,7 @@
 // category filter.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { search as searchMedia, type SearchResult } from '../../lib/search';
-import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
+import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
@@ -20,6 +20,11 @@ const SECTION_CAP = 6;
 // slot; media-type sections fill whatever's left.
 const SECTION_COLUMNS = 4;
 const MAX_TOTAL_SECTIONS = SECTION_COLUMNS * 2;
+// How many top staff matches get their full work list fetched to backfill
+// the media sections (e.g. searching "Sorachi" surfacing Gintama under
+// Anime/Manga/Novela Ligera even though the title itself never matched) —
+// kept small since each one is an extra network round-trip.
+const STAFF_BACKFILL_LIMIT = 2;
 
 interface Row {
   key: string;
@@ -34,6 +39,37 @@ interface Section {
   heading: string;
   rows: Row[];
   viewAllHref: string | null;
+}
+
+// AniList only tracks anime/manga (light novels are manga + format NOVEL) —
+// staffMedia has no equivalent for games/movies/books/comics, so this can
+// only ever backfill those three sections.
+function staffMediaType(node: { type: string; format: string | null }): string | null {
+  if (node.type === 'ANIME') return 'anime';
+  if (node.type === 'MANGA') return node.format === 'NOVEL' ? 'lnovel' : 'manga';
+  return null;
+}
+
+async function fetchStaffBackfill(staffId: number, signal: AbortSignal): Promise<Array<{ type: string; row: Row }>> {
+  const detail = await fetchAniListStaffDetail(staffId).catch(() => null);
+  if (!detail || signal.aborted) return [];
+  const out: Array<{ type: string; row: Row }> = [];
+  for (const edge of detail.staffMedia.edges) {
+    const type = staffMediaType(edge.node);
+    if (!type) continue;
+    const externalId = `${type}:${edge.node.id}`;
+    out.push({
+      type,
+      row: {
+        key: externalId,
+        title: edge.node.title.english || edge.node.title.romaji || externalId,
+        sub: edge.staffRole,
+        cover: edge.node.coverImage?.medium ?? null,
+        href: `/media?id=${encodeURIComponent(externalId)}`,
+      },
+    });
+  }
+  return out;
 }
 
 function mediaRowsByType(results: SearchResult[]): Map<string, Row[]> {
@@ -103,6 +139,25 @@ export function QuickSearchOverlay() {
         if (controller.signal.aborted) return;
 
         const byType = mediaRowsByType(mediaPage.results);
+
+        // Backfill: a staff hit's own known works (e.g. "Sorachi" -> Gintama)
+        // get merged into their media-type section even when the query never
+        // matched any title directly. Skips a work already found by title
+        // search so it isn't duplicated.
+        const topStaff = staffPage.results.slice(0, STAFF_BACKFILL_LIMIT);
+        const backfillLists = await Promise.all(
+          topStaff.map((st: AniListStaffSearchResult) => fetchStaffBackfill(st.id, controller.signal))
+        );
+        if (controller.signal.aborted) return;
+        for (const list of backfillLists) {
+          for (const { type, row } of list) {
+            const existing = byType.get(type) ?? [];
+            if (existing.some(r => r.key === row.key)) continue;
+            existing.push(row);
+            byType.set(type, existing);
+          }
+        }
+
         const mediaSections: Section[] = ALL_MEDIA_TYPES
           .filter(t => t !== 'character' && byType.has(t))
           .map(t => ({
