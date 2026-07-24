@@ -181,47 +181,140 @@
   color: var(--accent);
 }
 
-.home-activity-empty {
-  padding: 1.5rem;
-  text-align: center;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-}
-
-.home-activity-list {
+/* Card format below is copied from the profile page's own "Actividad
+   reciente" (.act-card and friends, profile.css) so both feeds look and
+   behave the same — home.astro doesn't import profile.css, so the rules
+   are duplicated here rather than pulling in that entire stylesheet.
+   .act-card-user-avatar is the one addition: a small friend-avatar badge,
+   since this feed spans multiple people instead of just the local user. */
+.activity-feed {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
-.home-activity-item {
+.act-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.act-card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  background: var(--bg-card);
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md, 8px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  min-height: 52px;
 }
 
-.home-activity-avatar {
-  width: 28px;
-  height: 28px;
+.act-card:hover {
+  transform: translateY(-1.5px);
+  border-color: var(--accent);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.act-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.act-card-cover {
+  width: 32px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 4px);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.act-card-cover-fallback {
+  width: 32px;
+  height: 44px;
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.act-card-user-avatar {
+  position: absolute;
+  left: 0.65rem;
+  bottom: 0.4rem;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  border: 1.5px solid var(--bg-card);
 }
 
-.home-activity-avatar--placeholder {
+.act-card-user-avatar--placeholder {
   background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
 }
 
-.home-activity-icon {
+.act-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.act-card-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.act-card-bold-title {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.act-card:hover .act-card-bold-title {
+  color: var(--accent);
+}
+
+.act-card-meta {
   display: flex;
   align-items: center;
+  gap: 0.3rem;
+  font-size: 0.65rem;
   color: var(--text-dim);
-  flex-shrink: 0;
+}
+
+.act-card-type-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+}
+
+.act-card-type-label {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.act-card-date {
+  margin-left: auto;
+  color: var(--text-dim);
 }
 
 .home-activity-text {
