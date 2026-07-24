@@ -83,9 +83,13 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
     // does for the local banner — without this, the server row is stuck
     // forever with whatever Google gave it at first link (name + photo),
     // never reflecting a display name or avatar customized afterward.
-    const username = (info.display_name as string | undefined)?.trim() || session.username;
-    const avatarUrl = customAvatar || (payload.avatar as string | null) || null;
+    const displayName = (info.display_name as string | undefined)?.trim() || session.username;
+    const avatarData = customAvatar || (payload.avatar as string | null) || null;
 
+    // Request body keys match the Turso column names 1:1 (see
+    // saveProfileSnapshot in metadea-web) — info.theme is user_profile's own
+    // theme column (see theme.ts, which now writes there instead of only
+    // localStorage), the actual local source of truth for this.
     const res = await fetch(`${API_URL}/api/profile/sync`, {
       method: 'POST',
       headers: {
@@ -93,12 +97,12 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
         Authorization: `Bearer ${session.token}`,
       },
       body: JSON.stringify({
-        username,
-        avatar_url: avatarUrl,
-        banner_url: customBanner ?? null,
+        display_name: displayName,
+        avatar_data: avatarData,
+        banner_data: customBanner ?? null,
         bio: (info.bio as string | undefined) ?? null,
         rating_system: localStorage.getItem(STORAGE_KEYS.ratingSystem),
-        theme: localStorage.getItem(STORAGE_KEYS.appTheme),
+        theme: (info.theme as string | undefined) ?? localStorage.getItem(STORAGE_KEYS.appTheme),
         activity,
         library,
         favorites,

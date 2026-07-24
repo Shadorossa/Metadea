@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '../shared/storage-keys';
+import { saveUserInfo } from '../tauri';
 
 const THEMES = [
   {
@@ -92,6 +93,11 @@ export function initThemePicker(showToast: (msg?: string) => void) {
     card.addEventListener('click', () => {
       const id = card.dataset.themeId!;
       localStorage.setItem(STORAGE_KEYS.appTheme, id);
+      // localStorage stays the fast, synchronous read BaseLayout's inline
+      // startup script needs to paint the right theme before hydration —
+      // user_profile.theme is the durable copy that reaches metadea-web on
+      // the next profile sync (see profile-sync.ts).
+      saveUserInfo({ theme: id }).catch(() => {});
       if (typeof window.__updateTheme === 'function') {
         window.__updateTheme(id);
       } else {
