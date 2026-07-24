@@ -6,7 +6,7 @@ import { notifyNewEpisode } from '../../lib/shared/notifications';
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem } from '../../lib/media/rating-utils';
 import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON } from '../../lib/shared/icon-strings';
-import { isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled, isLibrarySubpagesByTypeEnabled } from '../../lib/settings/preferences';
+import { isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled } from '../../lib/settings/preferences';
 import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
@@ -63,13 +63,6 @@ export function LibrarySection() {
   const [sagaNames, setSagaNames] = useState<Record<string, string>>({});
 
   const [nameFilter, setNameFilter] = useState('');
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  // Settings > Preferencias toggle: replaces the multi-select type filter with
-  // single-select tabs ("Todos" + one per type present) instead of showing
-  // every media type mixed together. Read once per mount, same as
-  // groupByBundle below — a change in Settings takes effect next time this
-  // component (re)mounts, not live mid-session.
-  const [subpagesEnabled] = useState(isLibrarySubpagesByTypeEnabled);
   const [activeTypeTab, setActiveTypeTab] = useState('');
   const [selectedEditionFormats, setSelectedEditionFormats] = useState<string[]>(DEFAULT_EDITION_FILTERS);
   const [statusIndex, setStatusIndex] = useState(0);
@@ -193,9 +186,7 @@ export function LibrarySection() {
       const meta = catalogMap.get(item.external_id);
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
       if (nameVal && !title.includes(nameVal)) return false;
-      if (subpagesEnabled) {
-        if (activeTypeTab && item.type !== activeTypeTab) return false;
-      } else if (selectedTypes.length > 0 && !selectedTypes.includes(item.type)) return false;
+      if (activeTypeTab && item.type !== activeTypeTab) return false;
       const editionFormat = normalizeEditionFormat(meta?.format);
       if (EDITION_FILTER_KEYS.has(editionFormat) && !selectedEditionFormats.includes(editionFormat)) return false;
       if (statusKey) {
@@ -282,7 +273,7 @@ export function LibrarySection() {
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, selectedTypes, subpagesEnabled, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
     if (!items) return [];
@@ -318,24 +309,6 @@ export function LibrarySection() {
             onChange={e => setNameFilter(e.target.value)}
           />
         </div>
-
-        {!subpagesEnabled && (
-          <div className="library-filter-group">
-            <label className="library-filter-label">{p.library_filter_media_type}</label>
-            <div className="library-type-filters">
-              {Object.entries(TYPE_ICON).map(([type, svg]) => (
-                <button
-                  key={type}
-                  type="button"
-                  className={`library-type-btn ${selectedTypes.includes(type) ? 'active' : ''}`}
-                  title={typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
-                  onClick={() => setSelectedTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type])}
-                  dangerouslySetInnerHTML={{ __html: svg }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="library-filter-group">
           <label className="library-filter-label">{p.library_filter_edition_type}</label>
@@ -379,28 +352,26 @@ export function LibrarySection() {
 
       <div className="library-content">
         <div className="library-content-header">
-          {subpagesEnabled && (
-            <div className="library-type-tabs">
+          <div className="library-type-tabs">
+            <button
+              type="button"
+              className={`library-type-tab ${activeTypeTab === '' ? 'active' : ''}`}
+              onClick={() => setActiveTypeTab('')}
+            >
+              {typeLabels.all}
+            </button>
+            {presentTypes.map(type => (
               <button
+                key={type}
                 type="button"
-                className={`library-type-tab ${activeTypeTab === '' ? 'active' : ''}`}
-                onClick={() => setActiveTypeTab('')}
+                className={`library-type-tab ${activeTypeTab === type ? 'active' : ''}`}
+                onClick={() => setActiveTypeTab(type)}
               >
-                {typeLabels.all}
+                <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[type] }} />
+                {typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
               </button>
-              {presentTypes.map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  className={`library-type-tab ${activeTypeTab === type ? 'active' : ''}`}
-                  onClick={() => setActiveTypeTab(type)}
-                >
-                  <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[type] }} />
-                  {typeLabels[type as keyof typeof typeLabels] || getTypeLabel(type)}
-                </button>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
           <div className="library-group-toggles">
             <span className="library-sort-label">{p.library_group_by}</span>
             <div className="library-group-toggle-icons">
