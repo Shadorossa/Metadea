@@ -21,6 +21,8 @@ export const DETAIL_SUPPORTED_TYPES = [
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
 
+import { getT } from '../../i18n/client';
+
 export const TYPE_LABELS: Record<string, string> = {
   anime:  'Anime',
   manga:  'Manga',
@@ -32,6 +34,22 @@ export const TYPE_LABELS: Record<string, string> = {
   book:   'Book',
   comic:  'Comic',
 };
+
+export function getTypeLabel(type: string): string {
+  const t = getT();
+  const searchTypeMap: Record<string, string | undefined> = {
+    anime: t.search?.types?.anime,
+    manga: t.search?.types?.manga,
+    lnovel: t.search?.types?.lnovel,
+    game: t.search?.types?.game,
+    vnovel: t.search?.types?.vnovel,
+    series: t.search?.types?.series,
+    movie: t.search?.types?.movie,
+    book: t.search?.types?.book,
+    comic: t.search?.types?.comic,
+  };
+  return searchTypeMap[type] || TYPE_LABELS[type] || type;
+}
 
 const FAV_LABELS: Record<string, string> = {
   anime_fav:     'Anime',

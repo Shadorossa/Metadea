@@ -5,7 +5,7 @@ import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
-import { TYPE_LABELS } from '../../lib/constants/media';
+import { TYPE_LABELS, getTypeLabel } from '../../lib/constants/media';
 import {
   computeOverviewAggregate,
   computeTypeBreakdown,
@@ -157,7 +157,7 @@ export function StatsSection() {
             <h3 className="stats-block-title">{p.stats_by_time}</h3>
             <div className="stats-time-bars">
               {byType.map(tEntry => {
-                const label = TYPE_LABELS[tEntry.type] || tEntry.type;
+                const label = getTypeLabel(tEntry.type);
                 return (
                   <div className="stats-time-row" key={tEntry.type}>
                     <div className="stats-time-meta">

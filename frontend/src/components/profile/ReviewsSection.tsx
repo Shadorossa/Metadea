@@ -5,7 +5,7 @@ import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from 
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { TYPE_LABELS } from '../../lib/constants/media';
+import { getTypeLabel } from '../../lib/constants/media';
 
 type SortMode = 'date' | 'rating';
 
@@ -49,13 +49,20 @@ export function ReviewsSection() {
         return title.toLowerCase().includes(q) || (i.notes ?? '').toLowerCase().includes(q);
       });
     }
-    if (sortMode === 'date') {
-      return res.slice().sort((a, b) =>
-        (b.updated_at ?? b.added_at ?? '').localeCompare(a.updated_at ?? a.added_at ?? '')
-      );
+
+    if (sortMode === 'rating') {
+      res = [...res].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    } else {
+      res = [...res].sort((a, b) => {
+        const da = a.updated_at ?? a.added_at ?? '';
+        const db = b.updated_at ?? b.added_at ?? '';
+        return db.localeCompare(da);
+      });
     }
-    return res.slice().sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    return res;
   }, [reviewed, filterType, searchQuery, sortMode, catalogMap]);
+
+  const system = getActiveRatingSystem();
 
   if (loading) {
     return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
@@ -70,7 +77,9 @@ export function ReviewsSection() {
     );
   }
 
-  const system = getActiveRatingSystem();
+  const reviewsCountText = filtered.length === 1
+    ? (p.reviews_count_singular || '{count} reseña').replace('{count}', String(filtered.length))
+    : (p.reviews_count_plural || '{count} reseñas').replace('{count}', String(filtered.length));
 
   return (
     <div className="reviews-layout">
@@ -98,7 +107,7 @@ export function ReviewsSection() {
               onClick={() => setFilterType(tp)}
             >
               <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[tp] ?? TYPE_ICON['book'] }} />
-              <span>{TYPE_LABELS[tp] ?? tp}</span>
+              <span>{getTypeLabel(tp)}</span>
             </button>
           ))}
         </div>
@@ -119,7 +128,7 @@ export function ReviewsSection() {
           </button>
         </div>
       </div>
-      <p className="reviews-count">{filtered.length} {filtered.length === 1 ? 'reseña' : 'reseñas'}</p>
+      <p className="reviews-count">{reviewsCountText}</p>
       {filtered.length > 0 ? (
         <div className="reviews-list">
           {filtered.map(item => {
@@ -149,7 +158,7 @@ export function ReviewsSection() {
                     <a href={url} className="review-card-title">{title}</a>
                     <div className="review-card-meta">
                       <span className="review-card-type">
-                        <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[item.type] ?? '' }} /> {TYPE_LABELS[item.type] ?? item.type}
+                        <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[item.type] ?? '' }} /> {getTypeLabel(item.type)}
                       </span>
                       <span className="review-card-rating" dangerouslySetInnerHTML={{ __html: ratingHtml }} />
                       {date && <time className="review-card-date">{date}</time>}

@@ -237,15 +237,15 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     {routes['videojuegos'] && (
                       <>
                         <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{routes['videojuegos']}</span>
-                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title={t.local.remove_local_folder} style={{ color: 'var(--color-error, #ff6b6b)' }}>
+                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title={isMounted ? t.local.remove_local_folder : 'Quitar carpeta local'} style={{ color: 'var(--color-error, #ff6b6b)' }}>
                           <IconX />
                         </button>
                       </>
                     )}
-                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={routes['videojuegos'] ? t.local.change_folder : t.local.add_folder}>
+                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={isMounted ? (routes['videojuegos'] ? t.local.change_folder : t.local.add_folder) : (routes['videojuegos'] ? 'Cambiar carpeta' : 'Añadir carpeta')}>
                       <IconFolder />
                     </button>
-                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={gamesState === 'loading' ? t.local.scanning : t.local.scan_again}>
+                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={isMounted ? (gamesState === 'loading' ? t.local.scanning : t.local.scan_again) : (gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
                       <IconRefresh />
                     </button>
                   </div>

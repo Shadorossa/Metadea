@@ -5,7 +5,26 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 
 export default function TierIndex() {
-  const t = getT().tier;
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
+
+  const t = isMounted ? getT().tier : {
+    title: 'Tier Lists',
+    create: 'Nueva Tier List',
+    create_first: 'Crear tu primera Tier List',
+    search_ph: 'Buscar tier list...',
+    search_soon: 'Búsqueda disponible próximamente...',
+    no_saved_lists: 'No tienes tier lists guardadas aún.',
+    create_modal_title: 'Nueva Tier List',
+    name_label: 'Nombre de la tier list',
+    name_ph: 'Nombre de la tier list...',
+    type_label: 'Tipo de lista',
+    type_works: 'Obras',
+    type_characters: 'Personajes',
+    create_confirm: 'Crear Tier List',
+    create_cancel: 'Cancelar',
+    delete_title: 'Eliminar tier list',
+  };
 
   const [search, setSearch]     = useState('');
   const [lists, setLists]       = useState<TierListInfo[]>([]);

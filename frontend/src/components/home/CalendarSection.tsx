@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getAllLibraryEntries, getAllCatalogEntries, wrapAssetUrl } from '../../lib/tauri';
 import type { MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
-import { TYPE_LABELS } from '../../lib/constants/media';
+import { TYPE_LABELS, getTypeLabel } from '../../lib/constants/media';
 import {
   computeUpcomingPlanningReleases,
   computeCalendarMonth,
@@ -36,7 +36,7 @@ function TypeTabs({ releases, activeType, tabClass, onSelect }: {
       <button type="button" className={`${tabClass} ${!activeType ? 'active' : ''}`} onClick={() => onSelect(null)}>{p.calendar_all_types}</button>
       {orderedTypes.map(ty => (
         <button key={ty} type="button" className={`${tabClass} ${activeType === ty ? 'active' : ''}`} onClick={() => onSelect(ty)}>
-          {TYPE_LABELS[ty] || ty}
+          {getTypeLabel(ty)}
         </button>
       ))}
     </>
@@ -81,7 +81,7 @@ function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
                 <a key={r.externalId} className="calendar-popover-item" href={`/media?id=${encodeURIComponent(r.externalId)}`} title={r.title}>
                   <ReleaseThumb release={r} />
                   <p className="calendar-popover-title">{r.title}</p>
-                  <p className="calendar-popover-meta">{TYPE_LABELS[r.type] || r.type}</p>
+                  <p className="calendar-popover-meta">{getTypeLabel(r.type)}</p>
                 </a>
               ))}
             </div>
