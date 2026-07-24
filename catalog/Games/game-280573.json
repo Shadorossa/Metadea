@@ -1,0 +1,24 @@
+{
+  "media_catalog": {
+    "id": "a8744d3d76b2c02ba8744d3d76b2c02b",
+    "external_id": "game:280573",
+    "type": "game",
+    "title_main": "The Legend of Heroes: Trails Beyond the Horizon",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:280573",
+      "related_media_external_id": "game:185864",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The Legend of Heroes: Trails Through Daybreak II",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8l3f.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
