@@ -41,7 +41,11 @@ export async function logJourneyEvent(
         externalId,
         type: 'complete',
         mediaType,
-        timestamp
+        // Anchored to the finish date itself, not "now" — this is what
+        // both the local feed's sort order and the synced social feed
+        // order by, so an old work completed/dated today must never
+        // outrank genuinely recent activity just because it was edited now.
+        timestamp: new Date(`${finishDate}T12:00:00`).toISOString(),
       });
     }
 
