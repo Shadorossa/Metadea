@@ -34,7 +34,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Yakuza 6: The Song of Life",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co492w.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co492w.jpg"
     },
     {
       "media_external_id": "game:36550",
@@ -42,10 +42,10 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Like a Dragon Gaiden: The Man Who Erased His Name",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6ln4.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co6ln4.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza"
+  "saga_name": "Yakuza 0"
 }
