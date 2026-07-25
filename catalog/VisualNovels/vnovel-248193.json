@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "850e7898cef34a0f850e7898cef34a0f",
+    "external_id": "vnovel:248193",
+    "type": "vnovel",
+    "title_main": "Higurashi no Naku Koro ni: Ch.3 Tatarigoroshi-hen",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "vnovel:248193",
+      "related_media_external_id": "vnovel:248185",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Higurashi no Naku Koro ni: Ch.2 Watanagashi-hen",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6fzo.jpg"
+    },
+    {
+      "media_external_id": "vnovel:248193",
+      "related_media_external_id": "vnovel:248194",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Higurashi no Naku Koro ni: Ch.4 Himatsubushi-hen",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6g08.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
