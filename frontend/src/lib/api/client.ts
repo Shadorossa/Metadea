@@ -6,6 +6,7 @@
 
 import { API_ENDPOINTS } from './endpoints';
 import { anilistRateLimiter } from './rate-limiter';
+import { logSearchRequest } from './request-log';
 
 export interface FetchJsonOptions extends RequestInit {
   /** Aborts the request after this many ms if no signal was already provided. */
@@ -34,6 +35,7 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    logSearchRequest(url);
     const response = await fetch(url, { ...init, signal: controller.signal });
     if (!response.ok) return null;
     return await response.json() as T;
@@ -87,6 +89,7 @@ export async function graphqlPost<T>(
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
   try {
+    logSearchRequest(endpoint);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
