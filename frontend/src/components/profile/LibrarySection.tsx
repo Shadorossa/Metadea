@@ -5,8 +5,12 @@ import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache
 import { notifyNewEpisode } from '../../lib/shared/notifications';
 import { getT } from '../../i18n/client';
 import { syncActiveRatingSystem } from '../../lib/media/rating-utils';
-import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON } from '../../lib/shared/icon-strings';
-import { isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled } from '../../lib/settings/preferences';
+import { SORT_ICON_SCORE, SORT_ICON_DATE, SORT_ICON_DURATION, GROUP_EDITIONS_ICON, GROUP_BUNDLE_ICON, RATING_SLOT_1_ICON, RATING_SLOT_2_ICON } from '../../lib/shared/icon-strings';
+import {
+  isLibraryGroupByBundleEnabled, setLibraryGroupByBundleEnabled,
+  isDualRatingEnabled, getRatingName1, getRatingName2,
+  getActiveRatingSlot, setActiveRatingSlot, type RatingSlot,
+} from '../../lib/settings/preferences';
 import { getTypeLabel, ALL_MEDIA_TYPES, isInProgressStatus } from '../../lib/constants/media';
 import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
@@ -92,6 +96,23 @@ export function LibrarySection({
     setLibraryGroupByBundleEnabled(next);
     return next;
   });
+
+  // Settings > Preferencias' opt-in "doble calificación" — the selector to
+  // pick which one this view sorts/displays by only shows up at all once
+  // enabled there (someone else's profile, via overrideItems, has no
+  // concept of the viewer's own dual-rating setup, so it's never relevant
+  // on a read-only view either).
+  const dualRatingEnabled = !overrideItems && isDualRatingEnabled();
+  const [ratingSlot, setRatingSlotState] = useState<RatingSlot>(getActiveRatingSlot);
+  const changeRatingSlot = (slot: RatingSlot) => {
+    setActiveRatingSlot(slot);
+    setRatingSlotState(slot);
+  };
+  const settingsT = getT().settings;
+  const ratingSlotLabel = (slot: RatingSlot) =>
+    slot === 'rating_2'
+      ? getRatingName2(settingsT.dual_rating_default_name2)
+      : getRatingName1(settingsT.dual_rating_default_name1);
 
   // The navbar's per-type library shortcuts (Navbar.astro) deep-link here as
   // /profile?libtype=<type>#library. profile.astro's switchTab() strips that
@@ -227,7 +248,11 @@ export function LibrarySection({
     };
 
     const sortItems = (itemList: Items) => [...itemList].sort((a, b) => {
-      if (sortBy === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
+      if (sortBy === 'rating') {
+        return dualRatingEnabled && ratingSlot === 'rating_2'
+          ? (b.rating_2 ?? 0) - (a.rating_2 ?? 0)
+          : (b.rating ?? 0) - (a.rating ?? 0);
+      }
       if (sortBy === 'duration') return getItemMinutes(b, catalogMap) - getItemMinutes(a, catalogMap);
       const dateA = a.finished_at ? new Date(a.finished_at).getTime() : releaseTimestamp(a);
       const dateB = b.finished_at ? new Date(b.finished_at).getTime() : releaseTimestamp(b);
@@ -277,7 +302,10 @@ export function LibrarySection({
           const isAggB = !!b.bundleMeta || !!b.aggregateStats;
           const aWorks = isAggA ? (a.bundleMeta ? a.grouped : [a.item, ...a.grouped]) : [a.item];
           const bWorks = isAggB ? (b.bundleMeta ? b.grouped : [b.item, ...b.grouped]) : [b.item];
-          if (sortBy === 'rating') return (averageRating(bWorks) ?? 0) - (averageRating(aWorks) ?? 0);
+          if (sortBy === 'rating') {
+            const activeSlot = dualRatingEnabled && ratingSlot === 'rating_2' ? 'rating_2' : 'rating';
+            return (averageRating(bWorks, activeSlot) ?? 0) - (averageRating(aWorks, activeSlot) ?? 0);
+          }
           if (sortBy === 'duration') {
             const sum = (arr: Items[number][]) => arr.reduce((acc, it) => acc + getItemMinutes(it, catalogMap), 0);
             return sum(bWorks) - sum(aWorks);
@@ -292,7 +320,7 @@ export function LibrarySection({
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
     if (!items) return [];
@@ -391,6 +419,30 @@ export function LibrarySection({
               </button>
             ))}
           </div>
+          {dualRatingEnabled && (
+            <>
+              <div className="library-rating-slot-toggle">
+                <span className="library-sort-label">{p.library_sort_rating}</span>
+                <div className="library-group-toggle-icons">
+                  <button
+                    type="button"
+                    className={`library-group-toggle-btn ${ratingSlot === 'rating' ? 'active' : ''}`}
+                    title={ratingSlotLabel('rating')}
+                    onClick={() => changeRatingSlot('rating')}
+                    dangerouslySetInnerHTML={{ __html: RATING_SLOT_1_ICON }}
+                  />
+                  <button
+                    type="button"
+                    className={`library-group-toggle-btn ${ratingSlot === 'rating_2' ? 'active' : ''}`}
+                    title={ratingSlotLabel('rating_2')}
+                    onClick={() => changeRatingSlot('rating_2')}
+                    dangerouslySetInnerHTML={{ __html: RATING_SLOT_2_ICON }}
+                  />
+                </div>
+              </div>
+              <div className="library-header-divider" />
+            </>
+          )}
           <div className="library-group-toggles">
             <span className="library-sort-label">{p.library_group_by}</span>
             <div className="library-group-toggle-icons">
@@ -438,6 +490,7 @@ export function LibrarySection({
                     catalogMap={catalogMap}
                     p={p}
                     readOnly={readOnly}
+                    ratingSlot={dualRatingEnabled ? ratingSlot : 'rating'}
                     key={bundleMeta?.external_id ?? item.external_id}
                   />
                 ))}

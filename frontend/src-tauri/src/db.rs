@@ -778,6 +778,17 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE social_user_list ADD COLUMN progress REAL", []);
         mark_migration(conn, 38)?;
     }
+    if v < 39 {
+        // Optional second, independent rating dimension per library entry
+        // (Settings > Preferencias' opt-in "doble calificación") — e.g. a
+        // "gustos" score alongside a separate "objetivo" one, each with its
+        // own name and its own rating system, entirely orthogonal to the
+        // existing per-version log system (each version/edition already has
+        // its own row here; this is one more field on each of those rows,
+        // not a new dimension of versioning).
+        let _ = conn.execute("ALTER TABLE user_library ADD COLUMN rating_2 REAL", []);
+        mark_migration(conn, 39)?;
+    }
 
     Ok(())
 }
@@ -1164,6 +1175,7 @@ CREATE TABLE IF NOT EXISTS user_library (
     progress          REAL DEFAULT 0,
     progress_2        REAL DEFAULT 0,
     rating            REAL,
+    rating_2          REAL,
     selected_platform TEXT,
     selected_version  TEXT,
     started_at        TEXT,

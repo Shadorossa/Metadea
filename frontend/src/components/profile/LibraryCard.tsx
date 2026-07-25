@@ -2,6 +2,7 @@
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
+import { getRating2System, type RatingSlot } from '../../lib/settings/preferences';
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
@@ -23,7 +24,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly }: {
+export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -39,6 +40,9 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
    * (a stray save would write it into the viewer's own library under this
    * external_id). Goes straight to the media page instead, same as a bundle. */
   readOnly?: boolean;
+  /** Settings > Preferencias' opt-in "doble calificación" selector, forwarded from
+   * LibrarySection — which field the badge shows and which one the editor opens on. */
+  ratingSlot?: RatingSlot;
 }) {
   const meta = catalogMap.get(item.external_id);
   const isAggregate = !!bundleMeta || !!aggregateStats;
@@ -57,9 +61,10 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   // groupBundles' `grouped` already includes the representative item;
   // refineSagaGroups' `grouped` is just "the others", so only the saga case re-adds `item`.
   const aggregateMembers = bundleMeta ? orderedGrouped : [item, ...orderedGrouped];
+  const isSecondaryRating = ratingSlot === 'rating_2';
   const ratingHtml = isAggregate
-    ? formatRatingHtml(averageRating(aggregateMembers), getActiveRatingSystem(), 'library-card-rating')
-    : formatRatingHtml(item.rating, getActiveRatingSystem(), 'library-card-rating');
+    ? formatRatingHtml(averageRating(aggregateMembers, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating')
+    : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating');
   // Earliest started_at / latest finished_at across every member by actual
   // date value — not by release order (a bundle/saga's earliest-released
   // work isn't necessarily the one the user started first), which used to
@@ -89,7 +94,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
       return;
     }
     window.dispatchEvent(new CustomEvent('open-profile-editor', {
-      detail: { externalId: item.external_id, libraryEntry: item, catalogEntry: meta },
+      detail: { externalId: item.external_id, libraryEntry: item, catalogEntry: meta, ratingSlot },
     }));
   };
 

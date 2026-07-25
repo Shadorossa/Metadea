@@ -33,4 +33,9 @@ export const STORAGE_KEYS = {
   generalActivityFeedLastFetch: 'metadea_general_activity_feed_last_fetch',
   generalActivityFeedCache: 'metadea_general_activity_feed_cache',
   pendingLibraryType: 'metadea_pending_library_type',
+  dualRatingEnabled: 'metadea_dual_rating_enabled',
+  ratingName1: 'metadea_rating_name_1',
+  ratingName2: 'metadea_rating_name_2',
+  rating2System: 'metadea_rating_2_system',
+  libraryActiveRatingSlot: 'metadea_library_active_rating_slot',
 } as const;

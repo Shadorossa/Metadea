@@ -1455,10 +1455,24 @@
 }
 
 .library-content-header .library-group-toggles,
-.library-content-header .select-sort {
+.library-content-header .select-sort,
+.library-content-header .library-rating-slot-toggle {
   /* Matches .library-type-tab's own bottom padding so every column in this
      row keeps the same gap between its content and the shared border line. */
   padding-bottom: 0.65rem;
+}
+
+/* Whichever of these two comes first in the markup is the one that should
+   eat the leftover space — .library-rating-slot-toggle only renders before
+   .library-group-toggles (see LibrarySection.tsx), so when it's present it
+   claims the auto margin instead, keeping both pinned to the right and
+   sitting flush against each other rather than leaving a gap between them. */
+.library-content-header .library-rating-slot-toggle {
+  margin-left: auto;
+}
+
+.library-content-header .library-rating-slot-toggle ~ .library-group-toggles {
+  margin-left: 0;
 }
 
 .library-content-header .library-group-toggles {
@@ -1640,6 +1654,18 @@
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Doble calificación (Settings > Preferencias) — which of the two ratings
+   this view sorts/displays by; only rendered when that setting is enabled.
+   Same column layout as .library-group-toggles/.select-sort (label on top,
+   controls below) — this used to be a row, which squeezed the "Calificación"
+   label right up against the Nota/Nota 2 buttons instead of stacking them. */
+.library-rating-slot-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 /* ── Library Sorting ────────────────────────────────────────────────────── */

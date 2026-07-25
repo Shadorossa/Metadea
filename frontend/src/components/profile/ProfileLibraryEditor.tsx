@@ -4,12 +4,14 @@ import { fetchMediaData, mapCatalogEntryToPartialData, fetchExtraRelations, patc
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import type { Translations } from '../../i18n/index';
+import type { RatingSlot } from '../../lib/settings/preferences';
 
 interface OpenEditorEvent extends Event {
   detail?: {
     externalId: string;
     libraryEntry?: LibraryEntry;
     catalogEntry?: MediaCatalogEntry;
+    ratingSlot?: RatingSlot;
   };
 }
 
@@ -17,6 +19,7 @@ interface EditorState {
   externalId: string;
   mediaData: MediaPageData;
   libraryEntry: LibraryEntry | undefined;
+  ratingSlot: RatingSlot;
 }
 
 interface Props {
@@ -39,6 +42,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
       const id           = detail?.externalId;
       const catalogEntry = detail?.catalogEntry;
       const libraryEntry = detail?.libraryEntry;
+      const ratingSlot   = detail?.ratingSlot ?? 'rating';
 
       if (!id) return;
       activeIdRef.current = id;
@@ -59,7 +63,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
             progressLabel: t.progress_in_progress,
           };
 
-      setState({ externalId: id, mediaData: basicData, libraryEntry });
+      setState({ externalId: id, mediaData: basicData, libraryEntry, ratingSlot });
 
       fetchMediaData(id)
         .then(data => {
@@ -91,6 +95,7 @@ export function ProfileLibraryEditor({ i18n }: Props) {
       data={state.mediaData}
       i18n={t}
       initialEntry={state.libraryEntry}
+      activeRatingSlot={state.ratingSlot}
       onClose={() => setState(null)}
       // refresh-profile-library is now dispatched centrally by
       // saveLibraryEntry/deleteLibraryEntry themselves (lib/tauri/library.ts)

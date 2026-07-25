@@ -245,8 +245,8 @@ export function refineSagaGroups<T extends { external_id: string }>(
 // Averages the ratings of every work a bundle groups together, ignoring
 // unrated ones — e.g. Adventures rated 8, Resolve unrated → the bundle
 // shows 8, not a skewed average against a missing score.
-export function averageRating(entries: LibraryEntry[]): number | null {
-  const rated = entries.map(e => e.rating).filter((r): r is number => r != null);
+export function averageRating(entries: LibraryEntry[], slot: 'rating' | 'rating_2' = 'rating'): number | null {
+  const rated = entries.map(e => slot === 'rating_2' ? e.rating_2 : e.rating).filter((r): r is number => r != null);
   if (rated.length === 0) return null;
   return rated.reduce((a, b) => a + b, 0) / rated.length;
 }

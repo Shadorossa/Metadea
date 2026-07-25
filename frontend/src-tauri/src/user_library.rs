@@ -14,6 +14,7 @@ pub struct LibraryEntry {
     pub entry_type: String,
     pub status: Option<String>,
     pub rating: Option<f64>,
+    pub rating_2: Option<f64>,
     #[serde(default)]
     pub progress: f64,
     #[serde(default)]
@@ -41,7 +42,7 @@ fn default_user() -> String {
 const SELECT_BASE: &str = "
     SELECT id, user_id, external_id, type, status, rating, progress, progress_2,
            minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
-           selected_platform, selected_version, started_at, finished_at
+           selected_platform, selected_version, started_at, finished_at, rating_2
     FROM user_library";
 
 
@@ -68,6 +69,7 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<LibraryEntry> {
         selected_version: row.get(16)?,
         started_at:       row.get(17)?,
         finished_at:      row.get(18)?,
+        rating_2:         row.get(19)?,
     })
 }
 
@@ -104,15 +106,15 @@ pub async fn save_library_entry(
         "INSERT OR REPLACE INTO user_library (
             id, user_id, external_id, type, status, rating, progress, progress_2,
             minutes_spent, is_favorite, is_platinum, tags, notes, added_at, updated_at,
-            selected_platform, selected_version, started_at, finished_at
-        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)",
+            selected_platform, selected_version, started_at, finished_at, rating_2
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20)",
         rusqlite::params![
             &entry.id, &entry.user_id, &entry.external_id, &entry.entry_type,
             &entry.status, &entry.rating, entry.progress, entry.progress_2,
             entry.minutes_spent, entry.is_favorite, entry.is_platinum,
             &tags_json, &entry.notes, &entry.added_at, &entry.updated_at,
             &entry.selected_platform, &entry.selected_version,
-            &entry.started_at, &entry.finished_at,
+            &entry.started_at, &entry.finished_at, &entry.rating_2,
         ],
     ).str_err()?;
 

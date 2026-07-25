@@ -746,7 +746,8 @@
   justify-content: center;
 }
 
-.rating-system-btn {
+.rating-system-btn,
+.rating-system-btn-2 {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,12 +761,14 @@
   transition: background var(--anim-fast), border-color var(--anim-fast), color var(--anim-fast);
 }
 
-.rating-system-btn:hover {
+.rating-system-btn:hover,
+.rating-system-btn-2:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.rating-system-btn.active {
+.rating-system-btn.active,
+.rating-system-btn-2.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -774,6 +777,57 @@
 .rating-value-text {
   font-size: 0.75rem;
   font-weight: 800;
+}
+
+/* ── Doble calificación ───────────────────────────────────────────────────── */
+.dual-rating-config {
+  /* No margin-top — .settings-section's own gap (0.85rem) already
+     separates this from the checkbox row above it; adding one here just
+     stacked on top of that and made the whole block taller than it needs
+     to be. */
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dual-rating-name-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dual-rating-field {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* The system-2 picker sits inline to the right of the enable checkbox
+   (see PreferencesTab.astro) rather than tucked away in the config box
+   below it — align them on the same baseline instead of the default
+   stretch, and keep the picker's own label+buttons stacked. */
+.dual-rating-toggle-row {
+  align-items: center;
+}
+
+.dual-rating-toggle-row .dual-rating-system-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Tighter than the default .settings-section gap (0.85rem) — this section
+   is just a checkbox + a couple of compact rows, not full sub-blocks with
+   their own headings, so the generic spacing read as too airy. */
+.settings-section--dual-rating {
+  gap: 0.5rem;
+}
+
+.dual-rating-system-row .rating-system-picker {
+  margin-top: 0.3rem;
+  justify-content: flex-start;
 }
 
 /* ── Language Picker ───────────────────────────────────────────────────── */

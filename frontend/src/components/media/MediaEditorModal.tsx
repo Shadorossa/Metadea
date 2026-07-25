@@ -17,6 +17,7 @@ import {
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
 import { MODAL_CLOSE_TRANSITION_MS } from '../../lib/shared/useClosingTransition';
+import { getRatingName2, getRating2System, type RatingSlot } from '../../lib/settings/preferences';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,12 @@ interface Props {
   onDeleted: () => void;
   initialEntry?: LibraryEntry;
   initialActiveLogId?: string;
+  // Which rating this editor session edits — always 'rating' (the default,
+  // app-wide-system one) except when opened from the profile library with
+  // its own "doble calificación" selector on rating_2 (see LibraryCard's
+  // open-profile-editor dispatch). Every other entry point (media page,
+  // local library, search) always means the primary rating.
+  activeRatingSlot?: RatingSlot;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -120,9 +127,15 @@ function NumberField({ label, value, max, step, onChange }: {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry, initialActiveLogId }: Props) {
+export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onDeleted, initialEntry, initialActiveLogId, activeRatingSlot = 'rating' }: Props) {
   const t  = i18n;
   const te = t.editor;
+  // rating_2's own name/system are read once at mount — this modal's whole
+  // lifetime is one edit session, no need to react to a settings change
+  // happening in a different window/tab mid-edit.
+  const isSecondaryRating = activeRatingSlot === 'rating_2';
+  const ratingLabel = isSecondaryRating ? getRatingName2(te.score) : te.score;
+  const rating2System = useMemo(() => getRating2System(), []);
   // Any work whose whole "total" is a single unit (a movie, an anime movie,
   // an OVA/special with just one episode, etc.) gets the same one-shot
   // "viewing date" field as a movie instead of a started/finished range —
@@ -303,6 +316,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         const isEmpty =
           !entryLog.status &&
           entryLog.rating === 0 &&
+          entryLog.rating2 === 0 &&
           entryLog.progress === 0 &&
           !entryLog.notes &&
           !entryLog.isFavorite &&
@@ -322,6 +336,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           type:             data.type,
           status:           entryLog.status || null,
           rating:           entryLog.rating > 0 ? entryLog.rating : null,
+          rating_2:         entryLog.rating2 > 0 ? entryLog.rating2 : null,
           progress:         entryLog.progress,
           progress_2:       entryLog.progressCount2,
           minutes_spent:    entryLog.progress * 60,
@@ -592,10 +607,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   </div>
                 )}
 
-                {/* Rating */}
-                <HeaderField label={te.score}>
-                  <RatingInput rating={activeLog.rating}
-                    onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } })} />
+                {/* Rating — rating_2 (its own name/system) only when this
+                    session was opened from the profile library with that
+                    slot selected; every other entry point always edits the
+                    primary rating. */}
+                <HeaderField label={ratingLabel}>
+                  {isSecondaryRating ? (
+                    <RatingInput rating={activeLog.rating2} system={rating2System}
+                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating2: v } })} />
+                  ) : (
+                    <RatingInput rating={activeLog.rating}
+                      onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating: v } })} />
+                  )}
                 </HeaderField>
 
                 {/* Dates */}

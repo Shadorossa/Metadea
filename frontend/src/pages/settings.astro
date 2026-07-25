@@ -105,6 +105,7 @@ const version = pkg.version;
   import { initRatingSystem } from "../lib/settings/rating-system";
   import { initCustomColor } from "../lib/settings/custom-color";
   import { initActivitySettings } from "../lib/settings/activity";
+  import { initDualRating } from "../lib/settings/dual-rating";
   import { initLanguageSwitcher } from "../lib/settings/language";
   import { initBio } from "../lib/settings/bio";
   import { initUpdater } from "../lib/settings/updater";
@@ -226,6 +227,7 @@ const version = pkg.version;
     initRatingSystem(showToast);
     initCustomColor(showToast);
     initActivitySettings(showToast);
+    initDualRating(showToast);
     initLanguageSwitcher();
     initBio(showToast);
 

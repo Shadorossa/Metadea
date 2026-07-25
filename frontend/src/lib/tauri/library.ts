@@ -8,6 +8,7 @@ export interface LibraryEntry {
   type: string;
   status: string | null;
   rating: number | null;
+  rating_2: number | null;
   progress: number;
   progress_2: number;
   minutes_spent: number;

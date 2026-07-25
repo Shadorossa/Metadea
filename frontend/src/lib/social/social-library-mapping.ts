@@ -19,6 +19,9 @@ export function toLibraryEntry(item: SocialLibraryItem): LibraryEntry {
     type: item.external_id.split(':')[0] ?? item.media_type ?? '',
     status: item.status,
     rating: item.rating,
+    // Dual rating is a personal, device-level preference (Settings >
+    // Preferencias) — never synced as part of someone else's profile data.
+    rating_2: null,
     progress: item.progress ?? 0,
     progress_2: 0,
     minutes_spent: 0,

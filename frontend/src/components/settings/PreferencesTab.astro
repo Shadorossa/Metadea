@@ -62,6 +62,82 @@ const LANGUAGE_NAMES: Record<string, string> = {
       </div>
     </div>
 
+    <div class="settings-section settings-section--dual-rating" style="flex: 1;">
+      <h3 class="settings-section-title" data-i18n="settings.dual_rating_section_title">
+        {t.settings.dual_rating_section_title}
+      </h3>
+      <div class="settings-checkbox-row dual-rating-toggle-row">
+        <div class="settings-checkbox-group">
+          <label class="settings-checkbox-label">
+            <input type="checkbox" id="dual-rating-enabled" class="settings-checkbox" />
+            <span class="checkbox-label-text" data-i18n="settings.dual_rating_enable"
+              >{t.settings.dual_rating_enable}</span
+            >
+          </label>
+        </div>
+
+        <div id="dual-rating-system-row" class="dual-rating-system-row dual-rating-config hidden">
+          <div class="rating-system-picker" id="rating-system-picker-2">
+            <button
+              type="button"
+              class="rating-system-btn-2"
+              data-value="5-star"
+              title={t.settings.rating_5star_title}
+              set:html={ICON_STAR}
+            >
+            </button>
+            <button
+              type="button"
+              class="rating-system-btn-2"
+              data-value="10-dec"
+              title={t.settings.rating_10dec_title}
+            >
+              <span class="rating-value-text">10.00</span>
+            </button>
+            <button
+              type="button"
+              class="rating-system-btn-2"
+              data-value="10"
+              title={t.settings.rating_10int_title}
+            >
+              <span class="rating-value-text">10</span>
+            </button>
+            <button
+              type="button"
+              class="rating-system-btn-2"
+              data-value="3-emoji"
+              title={t.settings.rating_3emoji_title}
+              set:html={ICON_RATING_FACES}
+            >
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="dual-rating-config" class="dual-rating-config hidden">
+        <div class="dual-rating-name-row">
+          <div class="dual-rating-field">
+            <input
+              type="text"
+              id="rating-name-1"
+              class="settings-modal-input"
+              placeholder={t.settings.dual_rating_name1_label}
+              maxlength="20"
+            />
+          </div>
+          <div class="dual-rating-field">
+            <input
+              type="text"
+              id="rating-name-2"
+              class="settings-modal-input"
+              placeholder={t.settings.dual_rating_name2_label}
+              maxlength="20"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="settings-section" style="flex: 1;">
       <h3 class="settings-section-title" data-i18n="settings.language_section_title">
         {t.settings.language_section_title}

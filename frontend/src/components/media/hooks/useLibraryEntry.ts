@@ -45,7 +45,7 @@ export function useLibraryEntry(currentId: string, mediaType: string | undefined
   const updateLocal = useCallback((overrides: Partial<LibraryEntry>): LibraryEntry => {
     const draft: LibraryEntry = {
       id: '', user_id: 'local', external_id: currentId, type: mediaType ?? '',
-      status: null, rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+      status: null, rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
       is_favorite: 0, is_platinum: 0, tags: null, notes: null,
       added_at: null, updated_at: null, selected_platform: null, selected_version: null,
       started_at: null, finished_at: null,

@@ -11,6 +11,11 @@ export interface LogState {
   existing:        LibraryEntry | null;
   status:          string;
   rating:          number;
+  // Second, independent rating dimension (Settings > Preferencias' opt-in
+  // "doble calificación") — orthogonal to the log/version system itself:
+  // each version already has its own row/LogState, this is one more field
+  // on it, not a new kind of version.
+  rating2:         number;
   progress:        number;
   progressCount2:  number;
   notes:           string;
@@ -69,7 +74,7 @@ export type UiAction =
 // linked as a version) before it's ever been loaded or saved.
 export function createDefaultLog(status = ''): LogState {
   return {
-    existing: null, status, rating: 0, progress: 0, progressCount2: 0,
+    existing: null, status, rating: 0, rating2: 0, progress: 0, progressCount2: 0,
     notes: '', startedAt: '', finishedAt: '', isFavorite: false, isPlatinum: false,
     tags: [], platform: '', selectedVersion: '',
   };
@@ -89,6 +94,7 @@ export function libraryEntryToLog(e: LibraryEntry): LogState {
     existing: e,
     status:        e.status        ?? '',
     rating:        e.rating        ?? 0,
+    rating2:       e.rating_2      ?? 0,
     progress:      e.progress      ?? 0,
     progressCount2: e.progress_2 ?? 0,
     notes:         e.notes         ?? '',
@@ -167,7 +173,7 @@ export function uiReducer(state: UiState, action: UiAction): UiState {
 export function createEmptyVersionEntry(versionId: string): LibraryEntry {
   return {
     id: '', user_id: 'local', external_id: versionId, type: 'game',
-    status: '', rating: null, progress: 0, progress_2: 0, minutes_spent: 0,
+    status: '', rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
     is_favorite: 0, is_platinum: 0, tags: null, notes: null, added_at: null, updated_at: null,
     selected_platform: null, selected_version: null, started_at: null, finished_at: null,
   };
