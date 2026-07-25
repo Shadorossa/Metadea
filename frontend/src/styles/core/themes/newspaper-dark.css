@@ -734,3 +734,25 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .act-empty {
   font-style: italic;
 }
+
+/* Stats tab block titles ("Por estado", "Géneros favoritos", ...) — same
+   underline-too-short problem as the other section titles fixed above: the
+   generic h2/h3 rule sizes the line to the title's own text width instead
+   of the full card. No sibling to reach here (unlike the calendar/quick-
+   search headers), so the ::after just fills the rest of the title's own
+   row instead. */
+[data-theme="newspaper-dark"] .stats-block-title {
+  display: flex !important;
+  align-items: baseline !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .stats-block-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+  margin-left: 0.75rem;
+  align-self: center;
+}
