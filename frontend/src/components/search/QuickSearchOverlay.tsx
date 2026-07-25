@@ -306,8 +306,6 @@ export function QuickSearchOverlay() {
           <p className="quick-search-hint">{s.search_min_chars}</p>
         )}
 
-        {loading && <p className="quick-search-hint">…</p>}
-
         {!loading && sections !== null && totalRows === 0 && (
           <p className="quick-search-hint">{s.search_no_results}</p>
         )}
