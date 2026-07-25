@@ -12,6 +12,33 @@
   "media_relations": [
     {
       "media_external_id": "game:217623",
+      "related_media_external_id": "game:288217",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Like a Dragon: Infinite Wealth - Master Vacation Bundle",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s3j.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:217623",
+      "related_media_external_id": "game:288219",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Like a Dragon: Infinite Wealth - Special Job Set",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87z3.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:217623",
+      "related_media_external_id": "game:319033",
+      "relation_type": "STANDALONE",
+      "type_label": "Standalone Expansion",
+      "title": "Like a Dragon: Infinite Wealth Special Trial",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coadu9.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:217623",
       "related_media_external_id": "game:217624",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",

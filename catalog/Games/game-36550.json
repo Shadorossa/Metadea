@@ -11,20 +11,22 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:36550",
       "related_media_external_id": "game:156200",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Yakuza: Like a Dragon - Job Set",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8ir5.jpg",
-      "media_external_id": "game:36550"
+      "format": null
     },
     {
+      "media_external_id": "game:36550",
       "related_media_external_id": "game:382341",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Yakuza: Like a Dragon - Pachislot Machines",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cob32v.jpg",
-      "media_external_id": "game:36550"
+      "format": null
     },
     {
       "media_external_id": "game:36550",

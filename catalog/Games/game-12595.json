@@ -12,11 +12,20 @@
   "media_relations": [
     {
       "media_external_id": "game:12595",
+      "related_media_external_id": "game:2059",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Yakuza",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co29tp.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:12595",
       "related_media_external_id": "game:11397",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Yakuza 0",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co252x.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co252x.jpg"
     },
     {
       "media_external_id": "game:12595",
