@@ -748,6 +748,76 @@ pub async fn igdb_upcoming_releases(
     Ok(serde_json::Value::Array(games))
 }
 
+// Calendar-quarter (season) + year -> the half-open unix timestamp range
+// IGDB's first_release_date (also unix) needs for a `where` clause. Season
+// alone (no year) has no fixed year to anchor a range to, so returns None.
+fn unix_range_from_filters(year: Option<i64>, season: Option<&str>) -> Option<(i64, i64)> {
+    let year = year?;
+    let (from_month, to_month): (u32, u32) = match season {
+        Some("WINTER") => (1, 3),
+        Some("SPRING") => (4, 6),
+        Some("SUMMER") => (7, 9),
+        Some("FALL") => (10, 12),
+        _ => (1, 12),
+    };
+    let start = chrono::NaiveDate::from_ymd_opt(year as i32, from_month, 1)?
+        .and_hms_opt(0, 0, 0)?.and_utc().timestamp();
+    let (next_year, next_month) = if to_month == 12 { (year as i32 + 1, 1) } else { (year as i32, to_month + 1) };
+    let end = chrono::NaiveDate::from_ymd_opt(next_year, next_month, 1)?
+        .and_hms_opt(0, 0, 0)?.and_utc().timestamp();
+    Some((start, end))
+}
+
+// IGDB's genre taxonomy is a small, stable, publicly documented set of ids
+// (https://api-docs.igdb.com/#genre) that's barely changed in years — a
+// dedicated request just to resolve names to ids for this filter would be
+// wasted traffic for values this stable. Only names IGDB's own genres.name
+// field can actually return are listed.
+fn igdb_genre_id(name: &str) -> Option<u32> {
+    match name {
+        "Point-and-click" => Some(2),
+        "Fighting" => Some(4),
+        "Shooter" => Some(5),
+        "Music" => Some(7),
+        "Platform" => Some(8),
+        "Puzzle" => Some(9),
+        "Racing" => Some(10),
+        "Real Time Strategy (RTS)" => Some(11),
+        "Role-playing (RPG)" => Some(12),
+        "Simulator" => Some(13),
+        "Sport" => Some(14),
+        "Strategy" => Some(15),
+        "Turn-based strategy (TBS)" => Some(16),
+        "Tactical" => Some(24),
+        "Hack and slash/Beat 'em up" => Some(25),
+        "Quiz/Trivia" => Some(26),
+        "Pinball" => Some(30),
+        "Adventure" => Some(31),
+        "Indie" => Some(32),
+        "Arcade" => Some(33),
+        "Visual Novel" => Some(34),
+        "Card & Board Game" => Some(35),
+        "MOBA" => Some(36),
+        _ => None,
+    }
+}
+
+// Extra `where` clause fragments (each starting with `&`) for the optional
+// year/season/genre filters — empty string when none apply.
+fn build_filter_conditions(filter_year: Option<i64>, filter_season: Option<&str>, filter_genres: Option<&[String]>) -> String {
+    let mut conditions = String::new();
+    if let Some((start, end)) = unix_range_from_filters(filter_year, filter_season) {
+        conditions.push_str(&format!(" & first_release_date >= {start} & first_release_date < {end}"));
+    }
+    if let Some(genres) = filter_genres {
+        let ids: Vec<String> = genres.iter().filter_map(|g| igdb_genre_id(g)).map(|id| id.to_string()).collect();
+        if !ids.is_empty() {
+            conditions.push_str(&format!(" & genres = ({})", ids.join(",")));
+        }
+    }
+    conditions
+}
+
 #[tauri::command]
 pub async fn igdb_search(
     app_handle: tauri::AppHandle,
@@ -761,6 +831,11 @@ pub async fn igdb_search(
     // the categories plain search deliberately excludes. `None` keeps the
     // normal behavior.
     only_categories: Option<Vec<u64>>,
+    // Real server-side narrowing (a fresh page matching these criteria),
+    // not a client-side filter over whatever page was already fetched.
+    filter_year: Option<i64>,
+    filter_season: Option<String>,
+    filter_genres: Option<Vec<String>>,
 ) -> Result<serde_json::Value, String> {
     let cfg = load_env_config(&app_handle)?;
     let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
@@ -779,11 +854,15 @@ pub async fn igdb_search(
     let page = page.unwrap_or(1).max(1) as usize;
     let offset = (page - 1) * PAGE_SIZE;
 
-    // An empty query still shows something (the top 50 by rating) instead
+    let filter_conditions = build_filter_conditions(filter_year, filter_season.as_deref(), filter_genres.as_deref());
+
+    // An empty query still shows something (the top 100 by rating) instead
     // of a blank tab until you type — IGDB has no `search` term to rank by
     // relevance in that case, so this sorts by rating instead. `search`
     // and `sort` are mutually exclusive in APIcalypse (a sort alongside a
-    // search term is ignored), hence the two separate query shapes.
+    // search term is ignored), hence the two separate query shapes — but
+    // `search`/`sort` and `where` aren't, so filter_conditions applies to
+    // both branches.
     let filter_clause = format!(
         "fields id,name,cover.image_id,rating,first_release_date,status,\
          genres.id,genres.name,category,game_type,\
@@ -796,9 +875,9 @@ pub async fn igdb_search(
             // sitting at 85 from thousands of ratings. rating_count >= 50
             // keeps "top rated" meaning "well-regarded by a real audience",
             // not "the few obscure titles that got lucky with 1-2 raters".
-            "where cover != null & rating != null & rating_count >= 50; sort rating desc;".to_string()
+            format!("where cover != null & rating != null & rating_count >= 50{filter_conditions}; sort rating desc;")
         } else {
-            format!("search \"{}\"; where cover != null;", safe_query)
+            format!("search \"{}\"; where cover != null{filter_conditions};", safe_query)
         },
         PAGE_SIZE, offset
     );

@@ -274,6 +274,7 @@ export const en = {
     filter_genre: 'Filter by genre',
     filter_all: 'All',
     filter_clear: 'Clear filter',
+    filter_apply: 'Apply',
     season_winter: 'Winter',
     season_spring: 'Spring',
     season_summer: 'Summer',

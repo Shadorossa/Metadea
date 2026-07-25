@@ -1,5 +1,6 @@
 import { readEnvConfig } from '../../tauri';
-import type { MediaType, SearchResult, SearchPage } from '../index';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
+import { SEASON_MONTHS } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
 import { getLangCode } from '../../../i18n/client';
@@ -175,6 +176,14 @@ const TMDB_TV_GENRES: Record<number, string> = {
   10767: 'Talk', 10768: 'War & Politics', 37: 'Western',
 };
 
+function reverseGenreMap(map: Record<number, string>): Record<string, number> {
+  return Object.fromEntries(Object.entries(map).map(([id, name]) => [name, Number(id)]));
+}
+const TMDB_MOVIE_GENRE_IDS = reverseGenreMap(TMDB_MOVIE_GENRES);
+const TMDB_TV_GENRE_IDS = reverseGenreMap(TMDB_TV_GENRES);
+export const TMDB_MOVIE_GENRE_NAMES = Object.values(TMDB_MOVIE_GENRES);
+export const TMDB_TV_GENRE_NAMES = Object.values(TMDB_TV_GENRES);
+
 function mapTmdbMovieToSearchResult(movie: TmdbMovie, mediaType: MediaType): SearchResult {
   const { year, month, day } = parseDateParts(movie.release_date ?? movie.first_air_date);
   const genreMap = mediaType === 'series' ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
@@ -272,14 +281,50 @@ export const searchMovies = (searchQuery: string, signal: AbortSignal, page = 1)
 export const searchSeries = (searchQuery: string, signal: AbortSignal, page = 1) =>
   fetchTmdbPage('search/tv', `query=${encodeURIComponent(searchQuery)}`, 'series', signal, page);
 
+// TMDB's /discover endpoint (unlike /search) has no free-text query param at
+// all, but does support the year/genre filters this app's toolbar offers —
+// year+season become a primary_release_date/first_air_date range (same
+// calendar-quarter convention used everywhere else), genre names are mapped
+// back to TMDB's own stable ids. sort_by + a vote_count floor keep "top
+// rated" meaning the same thing discover's own default (popularity) doesn't:
+// well-regarded by a real audience, not lucky with a couple of 10/10 votes.
+function discoverParamsFromFilters(mediaType: 'movie' | 'series', filters?: SearchFilters): string {
+  const params = ['sort_by=vote_average.desc', 'vote_count.gte=50'];
+  const genreIds = mediaType === 'series' ? TMDB_TV_GENRE_IDS : TMDB_MOVIE_GENRE_IDS;
+
+  if (filters?.genres?.length) {
+    const ids = filters.genres.map(g => genreIds[g]).filter((id): id is number => id != null);
+    if (ids.length > 0) params.push(`with_genres=${ids.join(',')}`);
+  }
+
+  if (filters?.year) {
+    const [fromMonth, toMonth] = filters.season ? SEASON_MONTHS[filters.season] : [1, 12];
+    const lastDay = new Date(filters.year, toMonth, 0).getDate();
+    const dateField = mediaType === 'series' ? 'first_air_date' : 'primary_release_date';
+    params.push(`${dateField}.gte=${filters.year}-${String(fromMonth).padStart(2, '0')}-01`);
+    params.push(`${dateField}.lte=${filters.year}-${String(toMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+  }
+
+  return params.join('&');
+}
+
+function hasActiveFilters(filters?: SearchFilters): boolean {
+  return !!(filters?.year || filters?.genres?.length);
+}
+
 // No text query — TMDB's own curated "top rated" endpoints, used when the
 // search box is empty so a type tab isn't just blank until you type
-// something.
-export const topRatedMovies = (signal: AbortSignal, page = 1) =>
-  fetchTmdbPage('movie/top_rated', '', 'movie', signal, page);
+// something. Switches to /discover instead whenever a season/year/genre
+// filter is active, since /top_rated takes no filter params of its own.
+export const topRatedMovies = (signal: AbortSignal, page = 1, filters?: SearchFilters) =>
+  hasActiveFilters(filters)
+    ? fetchTmdbPage('discover/movie', discoverParamsFromFilters('movie', filters), 'movie', signal, page)
+    : fetchTmdbPage('movie/top_rated', '', 'movie', signal, page);
 
-export const topRatedSeries = (signal: AbortSignal, page = 1) =>
-  fetchTmdbPage('tv/top_rated', '', 'series', signal, page);
+export const topRatedSeries = (signal: AbortSignal, page = 1, filters?: SearchFilters) =>
+  hasActiveFilters(filters)
+    ? fetchTmdbPage('discover/tv', discoverParamsFromFilters('series', filters), 'series', signal, page)
+    : fetchTmdbPage('tv/top_rated', '', 'series', signal, page);
 
 // Full detail fetch for the media page — search results only carry title/
 // cover/date/score, not overview, genres, runtime or production companies.

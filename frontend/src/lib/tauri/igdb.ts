@@ -33,8 +33,25 @@ export interface IgdbSearchPage {
   hasMore: boolean;
 }
 
-export async function igdbSearch(query: string, isVisualNovel = false, page = 1, onlyCategories?: number[]): Promise<IgdbSearchPage> {
-  return invoke<IgdbSearchPage>('igdb_search', { query, isVisualNovel, page, onlyCategories });
+export interface IgdbSearchFilters {
+  filterYear?: number;
+  filterSeason?: string;
+  filterGenres?: string[];
+}
+
+export async function igdbSearch(
+  query: string,
+  isVisualNovel = false,
+  page = 1,
+  onlyCategories?: number[],
+  filters?: IgdbSearchFilters,
+): Promise<IgdbSearchPage> {
+  return invoke<IgdbSearchPage>('igdb_search', {
+    query, isVisualNovel, page, onlyCategories,
+    filterYear: filters?.filterYear,
+    filterSeason: filters?.filterSeason,
+    filterGenres: filters?.filterGenres,
+  });
 }
 
 export async function igdbSearchUnfiltered(query: string, page = 1): Promise<IgdbSearchPage> {

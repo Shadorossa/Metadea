@@ -1,7 +1,37 @@
-import type { MediaType, SearchResult, SearchPage } from '../index';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
+import { SEASON_MONTHS } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
+
+// AniList's own fixed genre list (GenreCollection) — stable for years, not
+// worth a dedicated request to re-fetch on every mount just for a filter's
+// checkbox list.
+export const ANILIST_GENRES = [
+  'Action', 'Adventure', 'Comedy', 'Drama', 'Ecchi', 'Fantasy', 'Hentai',
+  'Horror', 'Mahou Shoujo', 'Mecha', 'Music', 'Mystery', 'Psychological',
+  'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural', 'Thriller',
+];
+
+// AniList's FuzzyDateInt is YYYYMMDD as a plain integer — lexicographic
+// integer comparison matches chronological order within a single year (the
+// only thing startDate_greater/startDate_lesser are ever used for here),
+// so no date-library needed to build one.
+function fuzzyDateInt(year: number, month: number, day: number): number {
+  return year * 10000 + month * 100 + day;
+}
+
+// Builds the optional startDate_greater/startDate_lesser pair for a
+// year+season filter — season alone (no year) has no fixed year to anchor
+// a range to, so it's a no-op without one.
+function dateRangeFromFilters(filters?: SearchFilters): { startDate_greater?: number; startDate_lesser?: number } {
+  if (!filters?.year) return {};
+  const [fromMonth, toMonth] = filters.season ? SEASON_MONTHS[filters.season] : [1, 12];
+  return {
+    startDate_greater: fuzzyDateInt(filters.year, fromMonth, 1) - 1,
+    startDate_lesser: fuzzyDateInt(filters.year, toMonth, 31) + 1,
+  };
+}
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
@@ -234,12 +264,15 @@ const SEARCH_QUERY_WITH_FORMAT = `
 `;
 
 // No `search` term — an empty search box still shows something (the top
-// 50 by rating) instead of a blank tab until you type.
+// 100 by rating) instead of a blank tab until you type. startDate_greater/
+// startDate_lesser/genre_in are all nullable — a caller with no active
+// filter just omits those variables (JSON.stringify drops undefined keys),
+// so this same query serves both plain browsing and filtered browsing.
 const TOP_RATED_QUERY = `
-  query TopRated($type: MediaType!, $page: Int, $isAdult: Boolean) {
+  query TopRated($type: MediaType!, $page: Int, $isAdult: Boolean, $startDate_greater: FuzzyDateInt, $startDate_lesser: FuzzyDateInt, $genre_in: [String]) {
     Page(page: $page, perPage: 50) {
       pageInfo { hasNextPage }
-      media(type: $type, isAdult: $isAdult, sort: SCORE_DESC) {
+      media(type: $type, isAdult: $isAdult, sort: SCORE_DESC, startDate_greater: $startDate_greater, startDate_lesser: $startDate_lesser, genre_in: $genre_in) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore genres
       }
@@ -248,10 +281,10 @@ const TOP_RATED_QUERY = `
 `;
 
 const TOP_RATED_QUERY_WITH_FORMAT = `
-  query TopRated($type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean) {
+  query TopRated($type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean, $startDate_greater: FuzzyDateInt, $startDate_lesser: FuzzyDateInt, $genre_in: [String]) {
     Page(page: $page, perPage: 50) {
       pageInfo { hasNextPage }
-      media(type: $type, format: $format, isAdult: $isAdult, sort: SCORE_DESC) {
+      media(type: $type, format: $format, isAdult: $isAdult, sort: SCORE_DESC, startDate_greater: $startDate_greater, startDate_lesser: $startDate_lesser, genre_in: $genre_in) {
         id format title { romaji native } coverImage { large }
         startDate { year month day } averageScore genres
       }
@@ -351,12 +384,15 @@ export async function topRatedAniList(
   signal: AbortSignal,
   format?: string,
   page = 1,
+  filters?: SearchFilters,
 ): Promise<SearchPage> {
   const isAdult = isAdultContentEnabled() ? null : false;
   const query = format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY;
+  const dateRange = dateRangeFromFilters(filters);
+  const genre_in = filters?.genres?.length ? filters.genres : undefined;
   const buildVariables = (subPage: number) => format
-    ? { type: anilistType, page: subPage, format, isAdult }
-    : { type: anilistType, page: subPage, isAdult };
+    ? { type: anilistType, page: subPage, format, isAdult, ...dateRange, genre_in }
+    : { type: anilistType, page: subPage, isAdult, ...dateRange, genre_in };
   return fetchAniListDoubledPage(query, buildVariables, mediaType, signal, page);
 }
 

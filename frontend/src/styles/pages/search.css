@@ -203,7 +203,11 @@
 .search-filter-panel {
   position: absolute;
   top: 100%;
-  right: 0;
+  /* Centered under its own trigger button, not hugging the right edge —
+     left:50%/translateX(-50%) instead of the old right:0, which pinned the
+     panel's right edge to the button and let it grow lopsidedly to the left. */
+  left: 50%;
+  transform: translateX(-50%);
   margin-top: 0.4rem;
   z-index: 70;
   display: flex;
@@ -217,16 +221,21 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
-/* Sort panel: Fecha/Nota side by side, no extra chrome. */
+/* Sort panel (Fecha/Nota) and the season-select+year row both use this —
+   needs flex-direction set explicitly since it shares an element with
+   .search-filter-panel, whose own column direction would otherwise win
+   (same specificity, .search-filter-panel comes first in the stylesheet but
+   this rule not setting the property at all meant it never actually
+   overrode it, stacking these vertically instead of side by side). */
 .search-filter-panel--row {
   display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 0.35rem;
 }
 
 .search-filter-panel--genres {
-  flex-direction: row;
-  flex-wrap: wrap;
-  max-width: 280px;
+  min-width: 200px;
 }
 
 .search-filter-chip {
@@ -251,8 +260,24 @@
   border-color: var(--accent);
 }
 
+.search-filter-select {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.search-filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .search-filter-year-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 0.4rem 0.6rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
@@ -276,8 +301,46 @@
   -moz-appearance: textfield;
 }
 
+/* Genre panel: a scrollable checkbox list, not chips — supports selecting
+   several genres at once. */
+.search-filter-genre-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-filter-genre-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.2rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--anim-fast), background var(--anim-fast);
+}
+.search-filter-genre-item:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+.search-filter-genre-item input[type='checkbox'] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.search-filter-panel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .search-filter-clear {
-  align-self: flex-start;
   padding: 0;
   background: none;
   border: none;
@@ -288,6 +351,22 @@
 }
 .search-filter-clear:hover {
   text-decoration: underline;
+}
+
+.search-filter-apply {
+  margin-left: auto;
+  padding: 0.4rem 0.9rem;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--bg-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity var(--anim-fast);
+}
+.search-filter-apply:hover {
+  opacity: 0.85;
 }
 
 

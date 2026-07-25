@@ -271,6 +271,7 @@ export const ca = {
     filter_genre: 'Filtra per gènere',
     filter_all: 'Tots',
     filter_clear: 'Esborra el filtre',
+    filter_apply: 'Aplica',
     season_winter: 'Hivern',
     season_spring: 'Primavera',
     season_summer: 'Estiu',

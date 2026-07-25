@@ -53,6 +53,27 @@ export interface SearchResult {
   genres: string[];
 }
 
+// A "season" is a calendar quarter (3 months) — Winter/Spring/Summer/Fall,
+// same grouping anime seasons already use, just applied uniformly across
+// every media type via release month/year instead of being anime-specific.
+export type SeasonId = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL';
+export const SEASON_MONTHS: Record<SeasonId, [number, number]> = {
+  WINTER: [1, 3],
+  SPRING: [4, 6],
+  SUMMER: [7, 9],
+  FALL: [10, 12],
+};
+
+// Real server-side narrowing (a fresh 100-result page matching these
+// criteria), not a client-side filter over whatever page was already
+// fetched — season only takes effect together with a year (a season alone
+// has no fixed year to anchor a date range to).
+export interface SearchFilters {
+  year?: number;
+  season?: SeasonId;
+  genres?: string[];
+}
+
 // One page of search results, capped at ~50 per provider (see each
 // provider's own file) so a single search never has to wait on an unbounded
 // "fetch every page until exhausted" loop before showing anything — that
@@ -277,17 +298,18 @@ function fetchTopRatedFromApi(
   mediaType: Exclude<MediaType, 'all' | 'character' | 'book' | 'comic'>,
   signal: AbortSignal,
   page: number,
+  filters?: SearchFilters,
 ): Promise<SearchPage> {
   switch (mediaType) {
-    case 'anime':  return topRatedAniList('ANIME', 'anime', signal, undefined, page);
-    case 'manga':  return topRatedAniList('MANGA', 'manga', signal, undefined, page);
-    case 'lnovel': return topRatedAniList('MANGA', 'lnovel', signal, 'NOVEL', page);
+    case 'anime':  return topRatedAniList('ANIME', 'anime', signal, undefined, page, filters);
+    case 'manga':  return topRatedAniList('MANGA', 'manga', signal, undefined, page, filters);
+    case 'lnovel': return topRatedAniList('MANGA', 'lnovel', signal, 'NOVEL', page, filters);
     // IGDB's own search command already treats an empty query as "browse,
     // sorted by rating" (see igdb.rs) — no separate function needed.
-    case 'game':   return searchGames('', 'game', signal, page);
-    case 'vnovel': return searchGames('', 'vnovel', signal, page);
-    case 'movie':  return topRatedMovies(signal, page);
-    case 'series': return topRatedSeries(signal, page);
+    case 'game':   return searchGames('', 'game', signal, page, filters);
+    case 'vnovel': return searchGames('', 'vnovel', signal, page, filters);
+    case 'movie':  return topRatedMovies(signal, page, filters);
+    case 'series': return topRatedSeries(signal, page, filters);
   }
 }
 
@@ -297,9 +319,9 @@ function fetchTopRatedFromApi(
 // outright, even a wildcard; Comic Vine's /search/ endpoint is relevance-
 // only with no sort option) — those two, plus 'all' and 'character', just
 // return empty here and keep the existing empty-until-typed behavior.
-export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1): Promise<SearchPage> {
+export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1, filters?: SearchFilters): Promise<SearchPage> {
   if (mediaType === 'all' || mediaType === 'character' || mediaType === 'book' || mediaType === 'comic') {
     return { results: [], hasMore: false };
   }
-  return filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page));
+  return filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters));
 }

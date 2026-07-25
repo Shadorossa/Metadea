@@ -1,18 +1,31 @@
 import { API_URL } from '../../config';
 import { igdbSearch, igdbImageUrl, isTauri, readEnvConfig } from '../../tauri';
-import type { MediaType, SearchResult, SearchPage } from '../index';
+import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../index';
 import { cleanEditionTitle } from '../../media/title-utils';
 import { unixToDateParts } from '../../media/mapper-utils';
 import { MissingApiKeyError } from '../errors';
+
+// Mirrors igdb_genre_id in igdb.rs (same source, IGDB's own stable genre
+// taxonomy) — keep both lists in sync by hand if it ever changes. Rust maps
+// name -> id for the `where genres = (...)` filter; this side only needs
+// the names themselves, for the filter's own checkbox list.
+export const IGDB_GENRES = [
+  'Point-and-click', 'Fighting', 'Shooter', 'Music', 'Platform', 'Puzzle',
+  'Racing', 'Real Time Strategy (RTS)', 'Role-playing (RPG)', 'Simulator',
+  'Sport', 'Strategy', 'Turn-based strategy (TBS)', 'Tactical',
+  "Hack and slash/Beat 'em up", 'Quiz/Trivia', 'Pinball', 'Adventure',
+  'Indie', 'Arcade', 'Visual Novel', 'Card & Board Game', 'MOBA',
+];
 
 export async function searchGames(
   searchQuery: string,
   mediaType: MediaType,
   signal: AbortSignal,
   page = 1,
+  filters?: SearchFilters,
 ): Promise<SearchPage> {
   if (isTauri()) {
-    return searchGamesLocal(searchQuery, mediaType, signal, page);
+    return searchGamesLocal(searchQuery, mediaType, signal, page, filters);
   }
 
   const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=${mediaType}&page=${page}`;
@@ -94,6 +107,7 @@ async function searchGamesLocal(
   mediaType: MediaType,
   _signal: AbortSignal,
   page: number,
+  filters?: SearchFilters,
 ): Promise<SearchPage> {
   const cfg = await readEnvConfig().catch(() => ({}));
   if (!cfg.igdb_client_id || !cfg.igdb_client_secret) {
@@ -102,7 +116,11 @@ async function searchGamesLocal(
 
   let pageResult;
   try {
-    pageResult = await igdbSearch(searchQuery, mediaType === 'vnovel', page);
+    pageResult = await igdbSearch(searchQuery, mediaType === 'vnovel', page, undefined, {
+      filterYear: filters?.year,
+      filterSeason: filters?.season,
+      filterGenres: filters?.genres,
+    });
   } catch (e) {
     throw new Error(typeof e === 'string' ? e : 'IGDB error');
   }

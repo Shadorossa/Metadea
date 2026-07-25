@@ -1,6 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { search, topRated, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
+import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
+import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
+import { IGDB_GENRES } from '../../lib/search/providers/igdb';
+import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
@@ -31,17 +34,6 @@ const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
 
-// A "season" is a calendar quarter (3 months) — release-date filter groups
-// results the same way anime seasons already work (Winter/Spring/Summer/
-// Fall), just applied uniformly across every media type via releaseMonth,
-// which every provider already fills in.
-type SeasonId = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL';
-const SEASON_MONTHS: Record<SeasonId, number[]> = {
-  WINTER: [1, 2, 3],
-  SPRING: [4, 5, 6],
-  SUMMER: [7, 8, 9],
-  FALL: [10, 11, 12],
-};
 const SEASON_ORDER: SeasonId[] = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
 const SEASON_LABELS = (i18n: SearchTranslations): Record<SeasonId, string> => ({
   WINTER: i18n.season_winter,
@@ -70,6 +62,20 @@ const PROVIDER_SETTINGS_LINK: Record<string, string> = {
 // after the fact; a repeat search always hits the API again.
 
 const inFlightSearches = new Map<string, ReturnType<typeof search>>();
+
+// A fixed genre list per type — not derived from whatever's currently on
+// screen, so the filter can search for a genre regardless of whether it
+// happens to appear in the current page. Books/comics/character/all have no
+// server-side genre support (see providers), so no genre panel at all.
+const GENRE_OPTIONS: Partial<Record<MediaType, string[]>> = {
+  anime: ANILIST_GENRES,
+  manga: ANILIST_GENRES,
+  lnovel: ANILIST_GENRES,
+  game: IGDB_GENRES,
+  vnovel: IGDB_GENRES,
+  movie: TMDB_MOVIE_GENRE_NAMES,
+  series: TMDB_TV_GENRE_NAMES,
+};
 
 interface Props {
   initialQuery?: string;
@@ -163,9 +169,17 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // Only one of the three toolbar dropdowns (sort / season+year / genre) open
   // at a time — opening one closes whichever else was open.
   const [openDropdown, setOpenDropdown] = useState<'sort' | 'season' | 'genre' | null>(null);
-  const [seasonFilter, setSeasonFilter] = useState<SeasonId | null>(null);
+  // Draft values edited inside the panels — only take effect (a real 100-
+  // result re-search with these as query parameters, not a client-side
+  // narrowing of whatever page was already loaded) once "Aplicar" is
+  // pressed, so picking a season/typing a year/checking genres doesn't fire
+  // a request per keystroke.
+  const [seasonFilter, setSeasonFilter] = useState<SeasonId | ''>('');
   const [yearFilter, setYearFilter] = useState('');
-  const [genreFilter, setGenreFilter] = useState<string | null>(null);
+  const [genreFilters, setGenreFilters] = useState<string[]>([]);
+  // What the *last applied* search actually used — reflected in the filter
+  // button's "has a value" state and re-sent on "Load more"/sort changes.
+  const [appliedFilters, setAppliedFilters] = useState<SearchFilters>({});
 
   // Closes whichever toolbar dropdown is open on any click outside it —
   // these are click-toggled (not hover), so without this they'd only ever
@@ -223,11 +237,15 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // was the main reason results took so long to appear). pageNum > 1 is a
   // "Load more" click: appends instead of replacing and uses isLoadingMore
   // instead of the full loading state so the existing grid doesn't flash.
-  const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1) => {
-    // A completely empty box still shows something — the type's own top 50
+  const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1, filters?: SearchFilters) => {
+    // A completely empty box still shows something — the type's own top 100
     // by rating — instead of leaving the tab blank until you type (see
     // lib/search/index.ts's topRated; 'all'/'character'/book/comic have no
-    // such browse mode and just come back empty, same as before).
+    // such browse mode and just come back empty, same as before). Season/
+    // year/genre filters only ever apply here (a real server-side re-search,
+    // not a narrowing of whatever was already fetched) — search()'s own
+    // free-text mode doesn't accept them, since TMDB in particular has no
+    // way to combine a text query with its filter params.
     const isBrowseMode = searchQuery.length === 0;
     if (!isBrowseMode && searchQuery.length < 2) {
       setStatus('idle');
@@ -239,17 +257,17 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     if (pageNum === 1) setStatus('loading');
     else setIsLoadingMore(true);
 
-    // If the exact same type+query+page is already in flight (e.g. debounce
-    // and Enter racing each other), ride that request instead of firing
-    // another one — this is the only thing avoided, no results are ever
-    // reused later.
-    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}`;
+    // If the exact same type+query+page+filters is already in flight (e.g.
+    // debounce and Enter racing each other), ride that request instead of
+    // firing another one — this is the only thing avoided, no results are
+    // ever reused later.
+    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}`;
     let promise = inFlightSearches.get(key);
     if (!promise) {
       if (pageNum === 1) abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
       promise = (isBrowseMode
-        ? topRated(type, abortControllerRef.current.signal, pageNum)
+        ? topRated(type, abortControllerRef.current.signal, pageNum, filters)
         : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
       ).finally(() => inFlightSearches.delete(key));
       inFlightSearches.set(key, promise);
@@ -295,7 +313,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   const handleLoadMore = () => {
     if (isLoadingMore || !hasMore) return;
-    executeSearch(query, mediaType, page + 1);
+    executeSearch(query, mediaType, page + 1, appliedFilters);
   };
 
   // Skips the very first persist-effect run — its closure still holds this
@@ -382,13 +400,20 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     setResults([]);
     setHasMore(false);
     setPage(1);
+    // A genre/season picked for one type's own catalog rarely means anything
+    // for a different type (a movie genre list isn't an anime genre list) —
+    // clean slate per tab, same as query/results already reset above.
+    setSeasonFilter('');
+    setYearFilter('');
+    setGenreFilters([]);
+    setAppliedFilters({});
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
     currentUrl.searchParams.delete('q');
     // See executeSearch's replaceState above for why history.state (not
     // null) has to be passed through here.
     history.replaceState(history.state, '', currentUrl.toString());
-    // Empty query -> browse mode (top 50 by rating for this type) instead
+    // Empty query -> browse mode (top 100 by rating for this type) instead
     // of just idling on a blank tab. executeSearch's own abort() at
     // pageNum===1 replaces the manual abortControllerRef.abort() this used
     // to do here directly.
@@ -436,6 +461,40 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
   };
 
+  // Applying season/year/genre re-searches for a fresh 100-result page
+  // matching them (see executeSearch's own comment) instead of narrowing
+  // whatever page was already on screen — that means clearing the typed
+  // query too, since filtered browsing and free-text search can't combine
+  // (TMDB's /discover has no query param at all).
+  const applyFilters = () => {
+    const filters: SearchFilters = {
+      year: yearFilter ? Number(yearFilter) : undefined,
+      season: seasonFilter || undefined,
+      genres: genreFilters.length > 0 ? genreFilters : undefined,
+    };
+    setAppliedFilters(filters);
+    setOpenDropdown(null);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    setQuery('');
+    executeSearch('', mediaType, 1, filters);
+  };
+
+  const clearFilters = () => {
+    setSeasonFilter('');
+    setYearFilter('');
+    setGenreFilters([]);
+    setAppliedFilters({});
+    setOpenDropdown(null);
+    executeSearch(query, mediaType, 1);
+  };
+
+  const toggleGenreFilter = (genre: string) => {
+    setGenreFilters(prev => prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]);
+  };
+
   // Función para ordenar los resultados en base a los estados
   const sortedResults = [...results].sort((a, b) => {
     if (sortField === 'releaseDate') {
@@ -459,19 +518,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
   });
 
-  // Genre dropdown options come from whatever's actually in the current
-  // result set (not a fixed master list per provider) — Open Library/Comic
-  // Vine results just never contribute any, same graceful degradation as
-  // the season/year filter working off releaseMonth every provider already
-  // fills in.
-  const availableGenres = [...new Set(results.flatMap(r => r.genres))].sort((a, b) => a.localeCompare(b));
-
-  const filteredResults = sortedResults.filter(r => {
-    if (yearFilter && r.releaseYear !== Number(yearFilter)) return false;
-    if (seasonFilter && (!r.releaseMonth || !SEASON_MONTHS[seasonFilter].includes(r.releaseMonth))) return false;
-    if (genreFilter && !r.genres.includes(genreFilter)) return false;
-    return true;
-  });
+  const availableGenres = GENRE_OPTIONS[mediaType] ?? [];
 
   const activeMediaTypeLabel = i18n.types[mediaType].toLowerCase();
 
@@ -594,12 +641,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 )}
               </div>
 
-              {/* Temporada (trimestre) + año */}
+              {/* Temporada (trimestre) + año — un select y el año a su derecha */}
               <div className="search-filter-wrap">
                 <button
                   type="button"
                   onClick={() => setOpenDropdown(openDropdown === 'season' ? null : 'season')}
-                  className={`search-filter-btn${openDropdown === 'season' ? ' active' : ''}${seasonFilter || yearFilter ? ' has-value' : ''}`}
+                  className={`search-filter-btn${openDropdown === 'season' ? ' active' : ''}${appliedFilters.season || appliedFilters.year ? ' has-value' : ''}`}
                   title={i18n.filter_season_year}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -609,44 +656,47 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 {openDropdown === 'season' && (
                   <div className="search-filter-panel">
                     <div className="search-filter-panel--row">
-                      {SEASON_ORDER.map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          className={`search-filter-chip${seasonFilter === s ? ' active' : ''}`}
-                          onClick={() => setSeasonFilter(prev => prev === s ? null : s)}
-                        >
-                          {SEASON_LABELS(i18n)[s]}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="number"
-                      className="search-filter-year-input"
-                      placeholder={i18n.filter_year}
-                      value={yearFilter}
-                      onChange={e => setYearFilter(e.target.value)}
-                    />
-                    {(seasonFilter || yearFilter) && (
-                      <button
-                        type="button"
-                        className="search-filter-clear"
-                        onClick={() => { setSeasonFilter(null); setYearFilter(''); }}
+                      <select
+                        className="search-filter-select"
+                        value={seasonFilter}
+                        onChange={e => setSeasonFilter(e.target.value as SeasonId | '')}
                       >
-                        {i18n.filter_clear}
+                        <option value="">{i18n.filter_all}</option>
+                        {SEASON_ORDER.map(s => (
+                          <option key={s} value={s}>{SEASON_LABELS(i18n)[s]}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        className="search-filter-year-input"
+                        placeholder={i18n.filter_year}
+                        value={yearFilter}
+                        onChange={e => setYearFilter(e.target.value)}
+                      />
+                    </div>
+                    <div className="search-filter-panel-actions">
+                      {(seasonFilter || yearFilter) && (
+                        <button type="button" className="search-filter-clear" onClick={clearFilters}>
+                          {i18n.filter_clear}
+                        </button>
+                      )}
+                      <button type="button" className="search-filter-apply" onClick={applyFilters}>
+                        {i18n.filter_apply}
                       </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Género — solo se ofrece si el resultado actual trae alguno */}
+              {/* Género — lista con checkboxes, selección múltiple. Solo se
+                  ofrece para tipos cuyo proveedor de verdad soporta filtrar
+                  por género server-side (ver GENRE_OPTIONS). */}
               {availableGenres.length > 0 && (
                 <div className="search-filter-wrap">
                   <button
                     type="button"
                     onClick={() => setOpenDropdown(openDropdown === 'genre' ? null : 'genre')}
-                    className={`search-filter-btn${openDropdown === 'genre' ? ' active' : ''}${genreFilter ? ' has-value' : ''}`}
+                    className={`search-filter-btn${openDropdown === 'genre' ? ' active' : ''}${appliedFilters.genres?.length ? ' has-value' : ''}`}
                     title={i18n.filter_genre}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -656,23 +706,30 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                   </button>
                   {openDropdown === 'genre' && (
                     <div className="search-filter-panel search-filter-panel--genres">
-                      <button
-                        type="button"
-                        className={`search-filter-chip${!genreFilter ? ' active' : ''}`}
-                        onClick={() => setGenreFilter(null)}
-                      >
-                        {i18n.filter_all}
-                      </button>
-                      {availableGenres.map(g => (
-                        <button
-                          key={g}
-                          type="button"
-                          className={`search-filter-chip${genreFilter === g ? ' active' : ''}`}
-                          onClick={() => setGenreFilter(prev => prev === g ? null : g)}
-                        >
-                          {g}
+                      <ul className="search-filter-genre-list">
+                        {availableGenres.map(g => (
+                          <li key={g}>
+                            <label className="search-filter-genre-item">
+                              <input
+                                type="checkbox"
+                                checked={genreFilters.includes(g)}
+                                onChange={() => toggleGenreFilter(g)}
+                              />
+                              {g}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="search-filter-panel-actions">
+                        {(genreFilters.length > 0) && (
+                          <button type="button" className="search-filter-clear" onClick={clearFilters}>
+                            {i18n.filter_clear}
+                          </button>
+                        )}
+                        <button type="button" className="search-filter-apply" onClick={applyFilters}>
+                          {i18n.filter_apply}
                         </button>
-                      ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -719,13 +776,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {status === 'done' && results.length > 0 && filteredResults.length === 0 && (
-          <div className="results-empty">{i18n.no_results_generic}</div>
-        )}
-
-        {filteredResults.length > 0 && (() => {
+        {sortedResults.length > 0 && (() => {
           const seen = new Set<string>();
-          const deduped = filteredResults.filter(result => {
+          const deduped = sortedResults.filter(result => {
             if (seen.has(result.externalId)) return false;
             seen.add(result.externalId);
             return true;
