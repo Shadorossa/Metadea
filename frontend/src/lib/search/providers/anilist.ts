@@ -275,32 +275,6 @@ function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): Sea
   };
 }
 
-export async function searchAniList(
-  searchQuery: string,
-  anilistType: 'ANIME' | 'MANGA',
-  mediaType: MediaType,
-  signal: AbortSignal,
-  format?: string,
-  page = 1,
-): Promise<SearchPage> {
-  // Adult content is opt-in (Settings → Actividad). Off by default: filter to
-  // isAdult: false. When enabled, omit the filter entirely (null) so both
-  // adult and non-adult results are returned.
-  const isAdult = isAdultContentEnabled() ? null : false;
-
-  const variables = format
-    ? { searchQuery, type: anilistType, page, format, isAdult }
-    : { searchQuery, type: anilistType, page, isAdult };
-  const { ok, result } = await graphqlPost<AniListResponse['data']>(
-    API_ENDPOINTS.ANILIST,
-    format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY,
-    variables,
-    { signal },
-  );
-
-  return toSearchPage(ok, result, mediaType);
-}
-
 // Shared by searchAniList and topRatedAniList — both hit the same Page.media
 // shape, just with a different sort/no search term.
 function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']> | null, mediaType: MediaType): SearchPage {
@@ -323,7 +297,51 @@ function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']
   };
 }
 
-// No text query — an empty search box shows the top 50 by rating instead
+// AniList server-enforces a 50-per-page cap regardless of what `perPage` a
+// query asks for (confirmed live: requesting 100 silently comes back with
+// pageInfo.perPage: 50) — this app's own page size is 100 across every
+// provider, so one logical page here means two AniList sub-pages (its own
+// pages 2N-1 and 2N) fetched in parallel and merged. hasMore reflects
+// whichever sub-page actually had results.
+async function fetchAniListDoubledPage(
+  query: string,
+  buildVariables: (subPage: number) => Record<string, unknown>,
+  mediaType: MediaType,
+  signal: AbortSignal,
+  page: number,
+): Promise<SearchPage> {
+  const [a, b] = await Promise.all([
+    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), { signal }),
+    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), { signal }),
+  ]);
+  const pageA = toSearchPage(a.ok, a.result, mediaType);
+  const pageB = toSearchPage(b.ok, b.result, mediaType);
+  return {
+    results: [...pageA.results, ...pageB.results],
+    hasMore: pageB.results.length > 0 ? pageB.hasMore : pageA.hasMore,
+  };
+}
+
+export async function searchAniList(
+  searchQuery: string,
+  anilistType: 'ANIME' | 'MANGA',
+  mediaType: MediaType,
+  signal: AbortSignal,
+  format?: string,
+  page = 1,
+): Promise<SearchPage> {
+  // Adult content is opt-in (Settings → Actividad). Off by default: filter to
+  // isAdult: false. When enabled, omit the filter entirely (null) so both
+  // adult and non-adult results are returned.
+  const isAdult = isAdultContentEnabled() ? null : false;
+  const query = format ? SEARCH_QUERY_WITH_FORMAT : SEARCH_QUERY;
+  const buildVariables = (subPage: number) => format
+    ? { searchQuery, type: anilistType, page: subPage, format, isAdult }
+    : { searchQuery, type: anilistType, page: subPage, isAdult };
+  return fetchAniListDoubledPage(query, buildVariables, mediaType, signal, page);
+}
+
+// No text query — an empty search box shows the top 100 by rating instead
 // of a blank tab until you type. AniList's own SCORE_DESC sort.
 export async function topRatedAniList(
   anilistType: 'ANIME' | 'MANGA',
@@ -333,16 +351,11 @@ export async function topRatedAniList(
   page = 1,
 ): Promise<SearchPage> {
   const isAdult = isAdultContentEnabled() ? null : false;
-  const variables = format
-    ? { type: anilistType, page, format, isAdult }
-    : { type: anilistType, page, isAdult };
-  const { ok, result } = await graphqlPost<AniListResponse['data']>(
-    API_ENDPOINTS.ANILIST,
-    format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY,
-    variables,
-    { signal },
-  );
-  return toSearchPage(ok, result, mediaType);
+  const query = format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY;
+  const buildVariables = (subPage: number) => format
+    ? { type: anilistType, page: subPage, format, isAdult }
+    : { type: anilistType, page: subPage, isAdult };
+  return fetchAniListDoubledPage(query, buildVariables, mediaType, signal, page);
 }
 
 interface AniListCharacterSearch {

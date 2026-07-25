@@ -775,7 +775,7 @@ pub async fn igdb_search(
     // game search felt so much slower than every other provider. `page` is
     // our own 1-based, 50-results-per-page unit (matching the other
     // providers), independent of IGDB's own `limit`/`offset` query syntax.
-    const PAGE_SIZE: usize = 50;
+    const PAGE_SIZE: usize = 100;
     let page = page.unwrap_or(1).max(1) as usize;
     let offset = (page - 1) * PAGE_SIZE;
 
@@ -898,7 +898,7 @@ pub async fn igdb_search_unfiltered(
     let client = get_http_client();
     let safe_query = query.replace('"', "");
 
-    const PAGE_SIZE: usize = 50;
+    const PAGE_SIZE: usize = 100;
     let page = page.unwrap_or(1).max(1) as usize;
     let offset = (page - 1) * PAGE_SIZE;
 

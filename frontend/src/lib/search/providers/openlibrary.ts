@@ -124,7 +124,7 @@ function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResu
 // for a broad query, one sequential request each) before returning anything
 // at all, which was the main reason book/comic search felt so much slower
 // than every other provider (a single request each).
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 async function searchOpenLibraryDocs(
   searchQuery: string,

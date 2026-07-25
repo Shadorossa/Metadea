@@ -34,7 +34,7 @@ type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
 // Every provider caps a single page at (or under) this — see each provider
 // file in lib/search/providers. Below this count, there's nothing left to
 // page into regardless of what a stale/aggregated hasMore might say.
-const SEARCH_PAGE_SIZE = 50;
+const SEARCH_PAGE_SIZE = 100;
 
 // Search-provider ids -> the settings page's API-platform sub-tab that
 // configures them (see EnvironmentTab.astro's data-platform buttons).
@@ -640,14 +640,6 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     </div>
   );
 }
-
-// Hover-intent delay before prefetching a card's detail data — quickly
-// scanning across many results used to fire a prefetch (and for anime/manga
-// with a large cast, a burst of AniList character-page requests) per card,
-// which could exhaust AniList's rate limit before the user even opened one.
-// Cancelled on mouse-leave, so a card the user actually pauses on still
-// prefetches exactly as before.
-const HOVER_PREFETCH_DELAY_MS = 300;
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);

@@ -155,7 +155,7 @@ pub async fn comicvine_search(
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = get_http_client().str_err()?;
 
-    const PAGE_SIZE: i64 = 50;
+    const PAGE_SIZE: i64 = 100;
     let page = page.unwrap_or(1).max(1) as i64;
     let offset = (page - 1) * PAGE_SIZE;
     let limit_str = PAGE_SIZE.to_string();
@@ -208,7 +208,7 @@ pub async fn comicvine_search_characters(
     let api_key = comicvine_api_key(&app_handle).await?;
     let client = get_http_client().str_err()?;
 
-    const PAGE_SIZE: i64 = 50;
+    const PAGE_SIZE: i64 = 100;
     let page = page.unwrap_or(1).max(1) as i64;
     let offset = (page - 1) * PAGE_SIZE;
     let limit_str = PAGE_SIZE.to_string();

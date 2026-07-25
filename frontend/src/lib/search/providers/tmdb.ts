@@ -196,6 +196,11 @@ export function tmdbLocale(): string {
   return getLangCode() === 'en' ? 'en-US' : 'es-ES';
 }
 
+// TMDB's own page size is fixed at 20 (not adjustable via any request param)
+// — this app's own page size is 100 across every provider, so one logical
+// page here means 5 TMDB sub-pages fetched in parallel and merged.
+const TMDB_SUBPAGES_PER_PAGE = 5;
+
 async function fetchTmdbPage(
   endpoint: string,
   extraParams: string,
@@ -206,26 +211,35 @@ async function fetchTmdbPage(
   const auth = await getTmdbAuth();
   if (!auth) throw new MissingApiKeyError(['tmdb']);
 
-  // TMDB's own page size is fixed at 20 (not adjustable) — "page" here is
-  // just TMDB's own page number, one request each, same as every other
-  // provider's own pagination unit. extraParams is empty for the
-  // query-less "top rated" endpoints.
-  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?${extraParams ? `${extraParams}&` : ''}page=${page}&language=${tmdbLocale()}`;
   const headers: Record<string, string> = {};
-
   if (auth.accessToken) {
     headers['Authorization'] = `Bearer ${auth.accessToken}`;
   }
 
-  if (auth.apiKey) {
-    url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
-  }
+  const buildUrl = (tmdbPage: number) => {
+    let url = `${API_ENDPOINTS.TMDB}/${endpoint}?${extraParams ? `${extraParams}&` : ''}page=${tmdbPage}&language=${tmdbLocale()}`;
+    if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+    return url;
+  };
 
-  const data = await fetchJson<TmdbPageResponse>(url, { signal, headers });
-  const results = (data?.results ?? [])
-    .filter(movie => !isAnime(movie))
-    .map(movie => mapTmdbMovieToSearchResult(movie, mediaType));
-  const hasMore = !!(data?.page && data?.total_pages && data.page < data.total_pages);
+  const firstSubPage = (page - 1) * TMDB_SUBPAGES_PER_PAGE + 1;
+  const subPages = await Promise.all(
+    Array.from({ length: TMDB_SUBPAGES_PER_PAGE }, (_, i) =>
+      fetchJson<TmdbPageResponse>(buildUrl(firstSubPage + i), { signal, headers }),
+    ),
+  );
+
+  const results: SearchResult[] = [];
+  let hasMore = false;
+  for (const data of subPages) {
+    if (!data) continue;
+    results.push(
+      ...(data.results ?? [])
+        .filter(movie => !isAnime(movie))
+        .map(movie => mapTmdbMovieToSearchResult(movie, mediaType)),
+    );
+    if (data.page && data.total_pages && data.page < data.total_pages) hasMore = true;
+  }
   return { results, hasMore };
 }
 
