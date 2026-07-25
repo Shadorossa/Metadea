@@ -687,25 +687,29 @@
   }
 
   .library-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.6rem;
   }
 
   .library-card {
     height: auto;
     aspect-ratio: 2 / 3;
-    padding: 0;
+    /* Small gutter instead of 0 — .library-card-bg (the blurred, scaled-up
+       cover used as a backdrop in normal mode) is absolutely positioned
+       with inset:-6px regardless of padding, so keeping a little padding
+       here is what lets that same atmospheric blur peek through around
+       the sharp thumb, instead of the thumb just covering it completely
+       edge-to-edge. */
+    padding: 0.3rem;
   }
 
-  .library-card-info,
-  .library-card::after {
+  .library-card-info {
     display: none;
   }
 
   .library-card-thumb {
     width: 100%;
     height: 100%;
-    border-radius: 0;
   }
 }
 
@@ -1578,6 +1582,50 @@
   color: var(--text-main);
   text-align: center;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The sidebar column itself already narrows at this breakpoint (see
+   .library-layout above) — its own contents need to scale down to
+   actually fit that narrower column instead of just getting cramped or
+   overflowing it. */
+@media (max-width: 1080px) {
+  .library-filters {
+    gap: 1rem;
+  }
+
+  .library-filters-title {
+    font-size: 0.72rem;
+  }
+
+  .library-filter-label {
+    font-size: 0.65rem;
+  }
+
+  .library-filter-input {
+    padding: 0.45rem 0.5rem;
+    font-size: 0.72rem;
+  }
+
+  .library-edition-btn {
+    font-size: 0.62rem;
+    padding: 0.3rem 0.25rem;
+  }
+
+  .library-status-cycler {
+    height: 32px;
+  }
+
+  .library-status-arrow {
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .library-status-val {
+    font-size: 0.7rem;
+  }
 }
 
 /* Group-by-saga/bundle toggles — icon-only, label shown via title tooltip
