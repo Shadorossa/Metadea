@@ -25,9 +25,18 @@
       "type_label": "Sequel",
       "title": "Yakuza 2",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2egu.jpg"
+    },
+    {
+      "media_external_id": "game:2059",
+      "related_media_external_id": "game:12595",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Yakuza Kiwami",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob1qh.jpg",
+      "format": null
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza"
+  "saga_name": "Yakuza 0"
 }
