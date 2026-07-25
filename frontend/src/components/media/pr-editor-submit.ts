@@ -282,6 +282,10 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   }
 
   // Bundled In is reciprocal: the target needs an EPISODE relation back here, re-synced each save.
+  // Same gap the saga propagation above used to have: the local DB write was
+  // always correct, but without removedRelationIds on its own proposal entry
+  // the GitHub PR's merge against the upstream JSON had nothing telling it to
+  // drop a reciprocal edge that just got unbundled, so it silently kept it.
   const currentBundledIds = new Set(p.bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
   const bundledTargetsToSync = new Set([...currentBundledIds, ...p.originalBundledIds]);
   for (const targetId of bundledTargetsToSync) {
@@ -290,7 +294,8 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const kept = (existing || []).filter(r =>
         !(r.relation_type === 'EPISODE' && r.related_media_external_id === externalId)
       );
-      const rows = currentBundledIds.has(targetId)
+      const isStillBundled = currentBundledIds.has(targetId);
+      const rows = isStillBundled
         ? [...kept, {
             related_media_external_id: externalId,
             relation_type: 'EPISODE',
@@ -301,6 +306,13 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
         : kept;
       await saveMediaRelations(targetId, rows);
       invalidateCachedMediaData(targetId);
+
+      const targetEntry = await getCatalogEntry(targetId).catch(() => null);
+      if (targetEntry && mode !== 'local') {
+        otherProposalEntries.push(
+          buildRelatedProposalBundle(targetId, targetEntry, rows, p.sagaName, isStillBundled ? [] : [externalId]),
+        );
+      }
     } catch (err) {
       console.error(`Failed to propagate bundled-in relation to ${targetId}:`, err);
     }
@@ -315,7 +327,8 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const kept = (existing || []).filter(r =>
         !(r.relation_type === 'PART_OF' && r.related_media_external_id === externalId)
       );
-      const rows = currentContainedIds.has(childId)
+      const isStillContained = currentContainedIds.has(childId);
+      const rows = isStillContained
         ? [...kept, {
             related_media_external_id: externalId,
             relation_type: 'PART_OF',
@@ -326,6 +339,13 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
         : kept;
       await saveMediaRelations(childId, rows);
       invalidateCachedMediaData(childId);
+
+      const childEntry = await getCatalogEntry(childId).catch(() => null);
+      if (childEntry && mode !== 'local') {
+        otherProposalEntries.push(
+          buildRelatedProposalBundle(childId, childEntry, rows, p.sagaName, isStillContained ? [] : [externalId]),
+        );
+      }
     } catch (err) {
       console.error(`Failed to propagate contains relation to ${childId}:`, err);
     }
@@ -356,6 +376,31 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     saga_name: p.sagaName || undefined,
   };
 
+  // Each buildOutgoingContent commit merges against whatever's on `main`
+  // independently — it has no idea about another entry in this same batch
+  // for the same externalId, so two separate entries for the same id would
+  // become two sequential commits to the same file, the second silently
+  // discarding the first's relation changes. Can genuinely happen here: the
+  // same otherId may be both a saga-chain member and a bundled/contained
+  // target of the primary entry, each loop above pushing its own entry.
+  const dedupedOtherEntries = new Map<string, Extract<ProposalFileEntry, { kind: 'media' }>>();
+  for (const otherEntry of otherProposalEntries) {
+    const already = dedupedOtherEntries.get(otherEntry.externalId);
+    if (!already) {
+      dedupedOtherEntries.set(otherEntry.externalId, otherEntry);
+      continue;
+    }
+    dedupedOtherEntries.set(otherEntry.externalId, {
+      ...already,
+      bundle: {
+        ...already.bundle,
+        media_relations: dedupeRelations([...already.bundle.media_relations, ...otherEntry.bundle.media_relations])
+          .map(r => ({ ...r, media_external_id: otherEntry.externalId })),
+      },
+      removedRelationIds: [...new Set([...(already.removedRelationIds ?? []), ...(otherEntry.removedRelationIds ?? [])])],
+    });
+  }
+
   const proposalEntries: ProposalFileEntry[] = [
     {
       kind: 'media', externalId, bundle,
@@ -363,7 +408,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       removedCharacterIds: p.removedCharacterIds,
       removedAuthorIds: p.removedAuthorIds,
     },
-    ...otherProposalEntries,
+    ...dedupedOtherEntries.values(),
   ];
   const prUrl = await submitCollaborativeProposal(externalId, proposalEntries, p.changeSummary, p.setStatusMsg);
   if (prUrl) openUrlInBrowser(prUrl);
