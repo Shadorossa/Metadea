@@ -29,14 +29,6 @@
     },
     {
       "media_external_id": "game:2063",
-      "related_media_external_id": "game:12527",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Yakuza 6: The Song of Life",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co492w.jpg"
-    },
-    {
-      "media_external_id": "game:2063",
       "related_media_external_id": "game:11397",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
@@ -46,5 +38,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza 0"
+  "saga_name": "Yakuza / Like a Dragon"
 }
