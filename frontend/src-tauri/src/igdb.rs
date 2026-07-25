@@ -848,11 +848,20 @@ pub async fn igdb_search(
     // (100 at a time) before returning anything at all, which for a broad
     // query could be dozens of sequential requests and was the main reason
     // game search felt so much slower than every other provider. `page` is
-    // our own 1-based, 50-results-per-page unit (matching the other
+    // our own 1-based, 100-results-per-page unit (matching the other
     // providers), independent of IGDB's own `limit`/`offset` query syntax.
     const PAGE_SIZE: usize = 100;
+    // The category/edition-word/VN-vs-game filtering below rejects a real
+    // chunk of whatever IGDB returns (bundles, remasters, sequels tagged as
+    // their own main_game, non-matching genre, ...) — fetching exactly
+    // PAGE_SIZE raw candidates and filtering those left far fewer than
+    // PAGE_SIZE actually displayed (e.g. only ~50-55 games out of a 100-item
+    // raw page). Fetches a wider raw batch per logical page instead, so
+    // filtering has enough headroom to still land near PAGE_SIZE.
+    const RAW_MULTIPLIER: usize = 3;
+    let raw_limit = PAGE_SIZE * RAW_MULTIPLIER;
     let page = page.unwrap_or(1).max(1) as usize;
-    let offset = (page - 1) * PAGE_SIZE;
+    let offset = (page - 1) * raw_limit;
 
     let mut filter_conditions = build_filter_conditions(filter_year, filter_season.as_deref(), filter_genres.as_deref());
     // Visual novels are such a small slice of IGDB's catalog that a plain
@@ -895,17 +904,19 @@ pub async fn igdb_search(
         } else {
             format!("search \"{}\"; where cover != null{filter_conditions};", safe_query)
         },
-        PAGE_SIZE, offset
+        raw_limit, offset
     );
 
     let raw = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &filter_clause).await?;
 
     let items = raw.as_array().cloned().unwrap_or_default();
-    // IGDB returning a full page doesn't guarantee there's a next one (the
-    // last page can happen to be exactly PAGE_SIZE long), but it's the only
+    // A full raw batch doesn't guarantee there's a next one (the last batch
+    // can happen to be exactly raw_limit long), but it's the only signal
+    // available without a second request — worst case, one "Load more"
+    // click comes back empty and the UI just stops offering it.
+    let raw_batch_was_full = items.len() == raw_limit;
     // signal available without a second request — worst case, one "Load
     // more" click comes back empty and the UI just stops offering it.
-    let has_more = items.len() == PAGE_SIZE;
 
     let mut games: Vec<serde_json::Value> = Vec::new();
     for item in items {
@@ -969,6 +980,15 @@ pub async fn igdb_search(
             games.push(item);
         }
     }
+
+    // More filtered games survived this widened raw batch than one logical
+    // page needs, or the raw batch itself maxed out (more raw candidates
+    // likely exist beyond it, even if fewer than PAGE_SIZE survived
+    // filtering here) — either way, there's reason to expect a next page
+    // would turn up more. Neither holding means filtering has already
+    // exhausted everything IGDB actually had to offer.
+    let has_more = games.len() > PAGE_SIZE || raw_batch_was_full;
+    games.truncate(PAGE_SIZE);
 
     Ok(serde_json::json!({ "games": games, "hasMore": has_more }))
 }
