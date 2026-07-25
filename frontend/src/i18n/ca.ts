@@ -189,7 +189,7 @@ export const ca = {
     follow: 'Seguir',
     unfollow: 'Deixar de seguir',
     user_not_found: 'Usuari no trobat',
-    library_empty: 'Sense obres en comú amb la teva biblioteca.',
+    library_empty: 'Aquest usuari no té cap obra a la seva biblioteca.',
   },
   admin: {
     title: 'Editor de catàleg',
@@ -712,7 +712,6 @@ export const ca = {
     comicvine_step1: 'Crea un compte (o inicia sessió) a <a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a>',
     comicvine_step2: 'La teva clau apareix directament en aquesta mateixa pàgina, sense més passos',
     comicvine_step3: 'Enganxa-la al camp de dalt',
-    comicvine_warning: '⚠️ Els seus propis termes diuen textualment: <em>"The API is strictly for non-commercial use only"</em>. No aclareixen explícitament si acceptar donacions voluntàries per al projecte compta com a ús comercial — si tens dubtes sobre el teu cas, et demanen que els escriguis directament abans d\'assumir res.',
     comicvine_body2: 'Límit: 200 peticions per hora.',
     steam_title: 'Com aconseguir la clau de Steam?',
     steam_body1: '<strong>Steam</strong> és la plataforma de distribució de videojocs de Valve. Per obtenir la teva clau API:',

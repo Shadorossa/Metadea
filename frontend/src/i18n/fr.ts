@@ -189,7 +189,7 @@ export const fr = {
     follow: 'Suivre',
     unfollow: 'Ne plus suivre',
     user_not_found: 'Utilisateur introuvable',
-    library_empty: 'Aucune œuvre en commun avec votre bibliothèque.',
+    library_empty: "Cet utilisateur n'a aucune œuvre dans sa bibliothèque.",
   },
   admin: {
     title: 'Éditeur de catalogue',
@@ -712,7 +712,6 @@ export const fr = {
     comicvine_step1: 'Créez un compte (ou connectez-vous) sur <a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a>',
     comicvine_step2: 'Votre clé apparaît directement sur cette même page, sans étape supplémentaire',
     comicvine_step3: 'Collez-la dans le champ ci-dessus',
-    comicvine_warning: '⚠️ Leurs propres conditions indiquent textuellement : <em>"The API is strictly for non-commercial use only"</em>. Elles ne précisent pas explicitement si l\'acceptation de dons volontaires pour le projet constitue un usage commercial — en cas de doute sur votre situation, ils vous demandent de leur écrire directement avant de tirer des conclusions.',
     comicvine_body2: 'Limite : 200 requêtes par heure.',
     steam_title: 'Comment obtenir la clé Steam ?',
     steam_body1: '<strong>Steam</strong> est la plateforme de distribution de jeux vidéo de Valve. Pour obtenir votre clé API :',
