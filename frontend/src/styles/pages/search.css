@@ -189,15 +189,28 @@
   margin-top: 0.85rem;
 }
 
+/* Label to the left, a line filling the rest of the row — not the label
+   sitting above a full-width line below it. */
 .results-type-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
   margin: 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0;
+  border-bottom: none;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
+}
+
+.results-type-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+  align-self: center;
 }
 
 .results-empty {

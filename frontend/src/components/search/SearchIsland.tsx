@@ -112,6 +112,22 @@ function getUrlSearchParams(): { query: string; mediaType: MediaType } | null {
   return { query: q, mediaType };
 }
 
+// Mirrors .results-grid's own breakpoints (search.css) so Todos' per-type
+// sections can cap themselves to exactly one row — row height there is
+// fluid (each card's height is proportional to its own 1fr width, which
+// changes with the column count), so a fixed CSS max-height can't do this
+// on its own the way it could for a fixed-height row.
+const RESULTS_GRID_BREAKPOINTS: Array<[minWidth: number, columns: number]> = [
+  [1280, 12], [1024, 10], [768, 8], [640, 7], [480, 6],
+];
+function getResultsGridColumns(): number {
+  const w = window.innerWidth;
+  for (const [minWidth, columns] of RESULTS_GRID_BREAKPOINTS) {
+    if (w >= minWidth) return columns;
+  }
+  return 5;
+}
+
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [navSlot, setNavSlot]     = useState<HTMLElement | null>(null);
@@ -125,6 +141,16 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Starts at the smallest breakpoint's column count (matching SSR/first
+  // paint, avoiding a hydration mismatch) and corrects to the real value
+  // right after mount.
+  const [gridColumns, setGridColumns] = useState(5);
+  useEffect(() => {
+    const onResize = () => setGridColumns(getResultsGridColumns());
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef        = useRef<AbortController | null>(null);
@@ -550,7 +576,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                 <div className="results-type-section" key={t}>
                   <h3 className="results-type-title">{i18n.types[t as keyof typeof i18n.types]}</h3>
                   <div className="results-grid">
-                    {byType.get(t)!.map(result => <MediaCard key={result.externalId} result={result} />)}
+                    {byType.get(t)!.slice(0, gridColumns).map(result => <MediaCard key={result.externalId} result={result} />)}
                   </div>
                 </div>
               ))}

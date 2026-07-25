@@ -777,3 +777,16 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   height: 2px;
   background: var(--text-main);
 }
+
+/* Todos' per-type section titles ("MANGA", ...) — same generic h3 issue:
+   the theme's own border-bottom (with !important) would otherwise win
+   back over search.css's plain (non-!important) border-bottom:none, and
+   sit below the full-width title instead of flanking it on the right. */
+[data-theme="newspaper-dark"] .results-type-title {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .results-type-title::after {
+  background: var(--text-main);
+}
