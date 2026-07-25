@@ -329,15 +329,6 @@
   gap: 0.85rem;
 }
 
-@media (max-width: 820px) {
-  .library-layout {
-    grid-template-columns: 1fr;
-  }
-  .library-filters {
-    position: static;
-  }
-}
-
 /* Grid item / positioning host for a card + its (optional) saga/edition
    flyout. Kept separate from .library-card itself so the card can have
    overflow:hidden *permanently* (it clips its own blurred cover background,
@@ -676,6 +667,55 @@
 .library-card-type svg {
   width: 20px;
   height: 20px;
+}
+
+/* Below this width the horizontal card (cover + title + rating + date
+   range) doesn't have room for that text without wrapping — instead of
+   fighting for space, drop the text entirely and show a plain cover-only
+   poster grid. Group/tag badges stay: they're already absolutely
+   positioned independent of .library-card-info, so they keep showing
+   over the cover. Kept after the 820px full-stack query below (in source
+   order) so it correctly wins the cascade at widths narrower than 820px
+   too, instead of the wider 1080px query's own sidebar width silently
+   winning back over the full single-column stack. */
+@media (max-width: 1080px) {
+  .library-layout {
+    /* Filters sidebar narrows a step before the full single-column stack
+       (see the 820px query below) — gives the grid more room without
+       giving up the sidebar outright yet. */
+    grid-template-columns: 190px 1fr;
+  }
+
+  .library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .library-card {
+    height: auto;
+    aspect-ratio: 2 / 3;
+    padding: 0;
+  }
+
+  .library-card-info,
+  .library-card::after {
+    display: none;
+  }
+
+  .library-card-thumb {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 820px) {
+  .library-layout {
+    grid-template-columns: 1fr;
+  }
+  .library-filters {
+    position: static;
+  }
 }
 
 /* ── Empty / placeholder ──────────────────────────────────────────────────── */

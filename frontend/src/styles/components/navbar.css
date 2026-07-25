@@ -14,6 +14,9 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
+  /* Hard guarantee that nothing can ever visually spill past the bar's own
+     edge regardless of what any child's flex/overflow math assumes. */
+  overflow: hidden;
 }
 
 
@@ -21,7 +24,14 @@
 .nav-center-wrap {
   display: flex;
   align-items: center;
+  /* flex-grow:0 (the default) left this sized to its own content instead
+     of being capped to whatever space .nav-group--left/--right didn't
+     use — min-width:0 alone lets it shrink, but flex:1 is what actually
+     forces it down to the remaining space so its child's overflow-x:auto
+     (below) has a real boundary to clip/scroll against. */
+  flex: 1 1 0%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .nav-center-slot {
