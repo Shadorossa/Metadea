@@ -264,6 +264,7 @@ export const ru = {
     sort_newest_first: 'Сначала новые',
     sort_oldest_first: 'Сначала старые',
     sort_highest_score: 'Самая высокая оценка',
+    view_all: 'Показать все',
   },
   media: {
     not_found: 'Тайтл не найден.',

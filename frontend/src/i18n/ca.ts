@@ -264,6 +264,7 @@ export const ca = {
     sort_newest_first: 'Més recents primer',
     sort_oldest_first: 'Més antics primer',
     sort_highest_score: 'Puntuació més alta',
+    view_all: 'Veure-ho tot',
   },
   media: {
     not_found: 'No s\'ha trobat l\'obra.',

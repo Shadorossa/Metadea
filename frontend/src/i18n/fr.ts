@@ -264,6 +264,7 @@ export const fr = {
     sort_newest_first: 'Plus récents en premier',
     sort_oldest_first: 'Plus anciens en premier',
     sort_highest_score: 'Meilleure note',
+    view_all: 'Voir tout',
   },
   media: {
     not_found: "L'œuvre est introuvable.",

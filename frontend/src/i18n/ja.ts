@@ -267,6 +267,7 @@ export const ja = {
     sort_newest_first: '新しい順',
     sort_oldest_first: '古い順',
     sort_highest_score: '評価が高い順',
+    view_all: 'すべて表示',
   },
   media: {
     not_found: '作品が見つかりませんでした。',

@@ -264,6 +264,7 @@ export const de = {
     sort_newest_first: 'Neueste zuerst',
     sort_oldest_first: 'Älteste zuerst',
     sort_highest_score: 'Höchste Bewertung',
+    view_all: 'Alle anzeigen',
   },
   media: {
     not_found: 'Werk nicht gefunden.',

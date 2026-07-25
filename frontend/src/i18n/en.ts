@@ -267,6 +267,7 @@ export const en = {
     sort_newest_first: 'Newest first',
     sort_oldest_first: 'Oldest first',
     sort_highest_score: 'Highest score',
+    view_all: 'View all',
   },
   media: {
     not_found: 'Media not found.',

@@ -14,9 +14,13 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
-  /* Hard guarantee that nothing can ever visually spill past the bar's own
-     edge regardless of what any child's flex/overflow math assumes. */
-  overflow: hidden;
+  /* No overflow clipping here — .nav-center-wrap/.nav-center-text already
+     self-clip horizontally (that's the actual spillover risk on a narrow
+     window). overflow:hidden here used to also clip the profile dropdown
+     (Perfil/Notificaciones/Ajustes), which has to render below the bar's
+     own 48px height to be visible at all — even overflow-x: hidden alone
+     doesn't fix it, since a non-'visible' x forces the y axis to compute
+     as 'auto' (CSS overflow spec), which still clips the same way. */
 }
 
 

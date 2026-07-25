@@ -264,6 +264,7 @@ export const it = {
     sort_newest_first: 'Più recenti prima',
     sort_oldest_first: 'Più vecchi prima',
     sort_highest_score: 'Punteggio più alto',
+    view_all: 'Vedi tutto',
   },
   media: {
     not_found: 'Opera non trovata.',

@@ -267,6 +267,7 @@ export const es = {
     sort_newest_first: 'Más recientes primero',
     sort_oldest_first: 'Más antiguos primero',
     sort_highest_score: 'Puntuación más alta',
+    view_all: 'Ver todo',
   },
   media: {
     not_found: 'No se encontró la obra.',

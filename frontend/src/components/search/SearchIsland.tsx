@@ -357,6 +357,30 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     executeSearch('', selectedType);
   };
 
+  // Todos' per-type "Ver todo" — same idea as quick search's own "Ver
+  // todos" (QuickSearchOverlay.tsx): switches to that type's tab with the
+  // same query, reusing the results this component already fetched (the
+  // 'all' search already returns every matching type's full list — the
+  // one-row cap on Todos is a display-only slice, not a smaller fetch) so
+  // there's no redundant re-fetch. No sessionStorage handoff needed like
+  // the quick-search version — this stays on the very same component/page.
+  const handleViewAllType = (type: MediaType, typeResults: SearchResult[]) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    abortControllerRef.current?.abort();
+    setMediaType(type);
+    setResults(typeResults);
+    setHasMore(hasMore);
+    setPage(1);
+    setStatus('done');
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('type', type);
+    currentUrl.searchParams.set('q', query);
+    history.replaceState(history.state, '', currentUrl.toString());
+  };
+
   const handleSearchSubmit = () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -574,7 +598,16 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
             <div className="results-by-type animate-fade-in">
               {typeOrder.filter(t => byType.has(t)).map(t => (
                 <div className="results-type-section" key={t}>
-                  <h3 className="results-type-title">{i18n.types[t as keyof typeof i18n.types]}</h3>
+                  <h3 className="results-type-title">
+                    {i18n.types[t as keyof typeof i18n.types]}
+                    <button
+                      type="button"
+                      className="results-type-view-all"
+                      onClick={() => handleViewAllType(t as MediaType, byType.get(t)!)}
+                    >
+                      {i18n.view_all}
+                    </button>
+                  </h3>
                   <div className="results-grid">
                     {byType.get(t)!.slice(0, gridColumns).map(result => <MediaCard key={result.externalId} result={result} />)}
                   </div>
