@@ -54,8 +54,8 @@ export async function getAllLibraryEntries(): Promise<LibraryEntry[]> {
   return tauriCmd<LibraryEntry[]>('get_all_library_entries', []);
 }
 
-export async function clearAllNotes(): Promise<void> {
-  await tauriRun('clear_all_notes', {});
+export async function clearAllRatings(): Promise<void> {
+  await tauriRun('clear_all_ratings', {});
   notifyLibraryChanged();
 }
 

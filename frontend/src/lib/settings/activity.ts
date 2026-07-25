@@ -1,7 +1,7 @@
 import { isAdultContentEnabled, setAdultContentEnabled } from './preferences';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 import { byId } from '../shared/dom';
-import { clearAllNotes } from '../tauri/library';
+import { clearAllRatings } from '../tauri/library';
 import { getT } from '../../i18n/client';
 
 export function initActivitySettings(showToast: (msg?: string) => void) {
@@ -23,17 +23,17 @@ export function initActivitySettings(showToast: (msg?: string) => void) {
     });
   }
 
-  initClearAllNotes(showToast);
+  initClearAllRatings(showToast);
 }
 
-// "Eliminar todas las notas" (Contenido) — irreversible and affects every
-// logged work at once, so the confirm button starts disabled and only
-// becomes clickable after a fixed 5s delay (also shown as a countdown, so
-// the wait itself doesn't just look broken/unresponsive), on top of the
-// modal's own explicit Cancel option.
+// "Eliminar todas las notas" (Contenido) — clears every work's own rating
+// score. Irreversible and affects the whole library at once, so the confirm
+// button starts disabled and only becomes clickable after a fixed 5s delay
+// (also shown as a countdown, so the wait itself doesn't just look broken/
+// unresponsive), on top of the modal's own explicit Cancel option.
 const CONFIRM_DELAY_MS = 5000;
 
-function initClearAllNotes(showToast: (msg?: string) => void) {
+function initClearAllRatings(showToast: (msg?: string) => void) {
   const openBtn = byId<HTMLButtonElement>('clear-all-notes-btn');
   const modal = byId<HTMLElement>('clear-notes-modal');
   const closeBtn = byId<HTMLButtonElement>('clear-notes-modal-close');
@@ -81,11 +81,11 @@ function initClearAllNotes(showToast: (msg?: string) => void) {
     if (confirmBtn!.disabled) return;
     confirmBtn!.disabled = true;
     try {
-      await clearAllNotes();
+      await clearAllRatings();
       closeModal();
       showToast(getT().settings.clear_notes_done);
     } catch (err) {
-      console.error('Failed to clear all notes:', err);
+      console.error('Failed to clear all ratings:', err);
       confirmBtn!.disabled = false;
     }
   });

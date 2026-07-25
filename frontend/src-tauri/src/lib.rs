@@ -116,7 +116,7 @@ pub fn run() {
             user_library::get_library_entry,
             user_library::delete_library_entry,
             user_library::get_all_library_entries,
-            user_library::clear_all_notes,
+            user_library::clear_all_ratings,
             user_library::read_monthly_history,
             user_library::write_monthly_history,
             user_library::read_user_journey,
