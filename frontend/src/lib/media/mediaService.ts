@@ -132,6 +132,19 @@ const NEW_DATA_COMPARE_FIELDS = [
   'source_url', 'country_code',
 ] as const;
 
+// AniList's own cover URL encodes its actual tier as a path segment, one
+// step below what the GraphQL field that returned it implies (extraLarge
+// -> ".../cover/large/...", large -> ".../cover/medium/...", medium ->
+// ".../cover/small/..." — confirmed live). cover_url is normally sticky
+// (see contentFields below) — but a stub row whose cover got seeded from a
+// lower AniList tier (e.g. via a relation whose own extraLarge was missing,
+// see anilist-mapper.ts) would otherwise never get repaired, since a fresh,
+// better data.cover from this very fetch would just be discarded in favor
+// of the stale low-tier one every time "Reintentar sincronización" ran.
+function isLowTierAniListCover(url: string | null | undefined): boolean {
+  return !!url && /anilist\.co\/.*\/cover\/(medium|small)\//.test(url);
+}
+
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
@@ -143,7 +156,9 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       title_romaji: existing?.title_romaji || data.titleRomaji || null,
       title_english: existing?.title_english || data.titleEnglish || null,
       synopsis: existing?.synopsis || data.description || null,
-      cover_url: existing?.cover_url || data.cover || null,
+      cover_url: (existing?.cover_url && !isLowTierAniListCover(existing.cover_url))
+        ? existing.cover_url
+        : (data.cover || existing?.cover_url || null),
       status: existing?.status || data.status || null,
       score_global: existing?.score_global ?? (data.scoreGlobal || null),
       total_count: existing?.total_count ?? (data.totalCount || null),
