@@ -1,0 +1,42 @@
+{
+  "media_catalog": {
+    "id": "0937f4fd2bfd96d30937f4fd2bfd96d3",
+    "external_id": "game:2060",
+    "type": "game",
+    "title_main": "Yakuza 2",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:2060",
+      "related_media_external_id": "game:2059",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yakuza",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co29tp.jpg"
+    },
+    {
+      "media_external_id": "game:2060",
+      "related_media_external_id": "game:55090",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Yakuza Kiwami 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob1qc.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:2060",
+      "related_media_external_id": "game:2061",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Yakuza 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3rej.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Yakuza / Like a Dragon"
+}
