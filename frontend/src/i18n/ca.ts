@@ -507,6 +507,7 @@ export const ca = {
     app_checking_update: 'Cercant...',
     app_up_to_date: 'Ja tens l\'última versió!',
     app_update_found: 'Nova versió {version} disponible. Vols instal·lar-la?',
+    rate_limit_wait: 'Esperant el límit de peticions de {provider}...',
     community_catalog_sync_label: 'Catàleg comunitari',
     community_catalog_sync_btn: 'Sincronitzar ara',
     community_catalog_syncing: 'Sincronitzant...',

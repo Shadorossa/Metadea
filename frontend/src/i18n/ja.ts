@@ -510,6 +510,7 @@ export const ja = {
     app_checking_update: '確認中...',
     app_up_to_date: '最新バージョンです!',
     app_update_found: '新しいバージョン{version}が利用可能です。インストールしますか?',
+    rate_limit_wait: '{provider}のリクエスト制限を待っています...',
     community_catalog_sync_label: 'コミュニティカタログ',
     community_catalog_sync_btn: '今すぐ同期',
     community_catalog_syncing: '同期中...',

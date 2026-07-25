@@ -517,6 +517,7 @@ export const en = {
     app_checking_update: 'Checking...',
     app_up_to_date: 'You are on the latest version!',
     app_update_found: 'New version {version} available. Do you want to install it?',
+    rate_limit_wait: 'Waiting on {provider}\'s rate limit...',
     community_catalog_sync_label: 'Community catalog',
     community_catalog_sync_btn: 'Sync now',
     community_catalog_syncing: 'Syncing...',

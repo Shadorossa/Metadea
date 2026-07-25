@@ -509,6 +509,7 @@ export const ru = {
     app_checking_update: 'Проверка...',
     app_up_to_date: 'У тебя установлена последняя версия!',
     app_update_found: 'Доступна новая версия {version}. Установить её?',
+    rate_limit_wait: 'Ожидание лимита запросов {provider}...',
     community_catalog_sync_label: 'Каталог сообщества',
     community_catalog_sync_btn: 'Синхронизировать',
     community_catalog_syncing: 'Синхронизация...',

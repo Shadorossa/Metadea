@@ -186,6 +186,19 @@ const t = useTranslations(lang);
         document.getElementById('global-toast')?.classList.remove('visible');
       }
 
+      // Own rate limiter (lib/api/rate-limiter.ts) dispatches this whenever
+      // it has to delay an AniList call to stay under budget — shown on
+      // every page (not gated to Home like the updater toast above) since
+      // it can fire from Search, a media page, the library import, etc.
+      let rateLimitToastTimer: ReturnType<typeof setTimeout> | undefined;
+      window.addEventListener('metadea:rate-limit-wait', (async (e: CustomEvent<{ provider: string; waitMs: number }>) => {
+        const { getT } = await import('../i18n/client');
+        const template = getT().settings.rate_limit_wait || 'Waiting on {provider}\'s rate limit...';
+        showGlobalToast(template.replace('{provider}', e.detail.provider));
+        clearTimeout(rateLimitToastTimer);
+        rateLimitToastTimer = setTimeout(hideGlobalToast, e.detail.waitMs);
+      }) as EventListener);
+
       // The toast is only ever shown on Home — every other page stays silent
       // (still checks and still shows the "new version" confirm() dialog if
       // one is actually found, just without the "checking.../up to date"

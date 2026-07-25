@@ -33,6 +33,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
     <span class="nav-icon-btn nav-icon-btn--plain nav-icon-btn--tier nav-icon-btn--disabled" aria-disabled="true" title={i18n.tier}>
       <span class="nav-tier-s">S</span>
     </span>
+    <a href="/search" data-nav="search" class={`nav-browse-link${activePage === 'search' ? ' active' : ''}`}>
+      {i18n.browse}
+    </a>
   </div>
 
   <!-- Centro: por defecto, biblioteca + tipos — en /local y /search se

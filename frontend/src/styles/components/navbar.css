@@ -179,6 +179,26 @@
   border-color: color-mix(in srgb, var(--border-color) 60%, transparent);
 }
 
+.nav-browse-link {
+  margin-left: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--anim-fast) var(--anim-ease);
+}
+
+.nav-browse-link:hover {
+  color: var(--text-main);
+}
+
+.nav-browse-link.active {
+  color: var(--accent);
+}
+
 .nav-tier-s {
   display: flex;
   align-items: center;

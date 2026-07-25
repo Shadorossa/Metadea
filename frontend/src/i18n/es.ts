@@ -517,6 +517,7 @@ export const es = {
     app_checking_update: 'Buscando...',
     app_up_to_date: '¡Estás en la última versión!',
     app_update_found: 'Nueva versión {version} disponible. ¿Quieres instalarla?',
+    rate_limit_wait: 'Esperando el límite de peticiones a {provider}...',
     community_catalog_sync_label: 'Catálogo comunitario',
     community_catalog_sync_btn: 'Sincronizar ahora',
     community_catalog_syncing: 'Sincronizando...',

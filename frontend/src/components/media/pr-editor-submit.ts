@@ -49,12 +49,20 @@ function dedupeRelations(relations: DbMediaRelation[]): DbMediaRelation[] {
 
 // Self-contained proposal bundle for a saga member other than the one open
 // in the editor — only its relations changed, so no scalar catalog fields.
+// removedRelationIds has to be passed through explicitly: mergeListByKey
+// (submitCollaborativeProposal.ts) only ever deletes a key it's told to
+// remove — without it, a member that just left the saga (its stale
+// PREQUEL/SEQUEL to former saga-mates already stripped from `relations`
+// below) would still have those upstream relations preserved in the PR's
+// merge against whatever's already on GitHub, since nothing told it to drop
+// them.
 function buildRelatedProposalBundle(
   externalId: string,
   catalogEntry: MediaCatalogEntry,
   relations: DbMediaRelation[],
   sagaName: string,
-): { kind: 'media'; externalId: string; bundle: ProposalBundle } {
+  removedRelationIds: string[],
+): { kind: 'media'; externalId: string; bundle: ProposalBundle; removedRelationIds: string[] } {
   return {
     kind: 'media',
     externalId,
@@ -65,6 +73,7 @@ function buildRelatedProposalBundle(
       media_authors: [],
       saga_name: sagaName || undefined,
     },
+    removedRelationIds,
   };
 }
 
@@ -250,11 +259,21 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       const otherRelations = dedupeRelations([...kept, ...newRows]);
       await saveMediaRelations(otherId, otherRelations);
 
+      // Targets that had a chain-type edge to a former saga-mate but no
+      // longer do (dropped entirely, not just replaced by a new edge to the
+      // same id) — these are what actually have to be told to the GitHub
+      // merge as removals, or it'll keep whatever's already published there.
+      const otherRelationIdsAfter = new Set(otherRelations.map(r => r.related_media_external_id));
+      const removedForOther = (existing || [])
+        .filter(r => ALL_CHAIN_RELATION_TYPES.includes(r.relation_type) && p.originalSagaOrder.includes(r.related_media_external_id))
+        .map(r => r.related_media_external_id)
+        .filter(id => !otherRelationIdsAfter.has(id));
+
       // saveMediaRelations already tombstoned any dropped pair, so a resync won't reintroduce it.
       const otherEntry = await getCatalogEntry(otherId).catch(() => null);
       if (otherEntry && mode !== 'local') {
         otherProposalEntries.push(
-          buildRelatedProposalBundle(otherId, otherEntry, otherRelations, p.sagaName),
+          buildRelatedProposalBundle(otherId, otherEntry, otherRelations, p.sagaName, removedForOther),
         );
       }
     } catch (err) {

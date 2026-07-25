@@ -4,6 +4,9 @@
  * duplicated across each provider file (AniList, TMDB, Open Library, ...).
  */
 
+import { API_ENDPOINTS } from './endpoints';
+import { anilistRateLimiter } from './rate-limiter';
+
 export interface FetchJsonOptions extends RequestInit {
   /** Aborts the request after this many ms if no signal was already provided. */
   timeoutMs?: number;
@@ -59,6 +62,18 @@ export async function graphqlPost<T>(
 ): Promise<{ ok: boolean; status: number; result: GraphQLResult<T> | null }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`;
+
+  // graphqlPost is currently only ever called against AniList's own
+  // endpoint — gated on it explicitly (rather than unconditionally) so a
+  // future second GraphQL provider added here doesn't silently inherit
+  // AniList's own rate budget. Must run BEFORE the request's own timeout
+  // timer starts below — a queued wait here can take longer than
+  // DEFAULT_TIMEOUT_MS on its own, which would otherwise abort the request
+  // before it even had a chance to fire.
+  if (endpoint === API_ENDPOINTS.ANILIST) {
+    if (opts.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    await anilistRateLimiter.acquire();
+  }
 
   // Same merged timeout+cancellation as fetchJson — an unreachable AniList
   // used to hang on the OS's own TCP timeout since this had no timeout of
