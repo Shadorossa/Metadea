@@ -16,7 +16,8 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Like a Dragon: Ishin!",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co59yh.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co59yh.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:2059",
@@ -38,5 +39,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza / Like a Dragon"
+  "saga_name": "Yakuza 0"
 }
