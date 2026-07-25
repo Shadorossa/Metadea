@@ -105,7 +105,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   }));
 
   const relations: MediaRelation[] = raw.relations.edges
-    .filter(e => e.relationType !== 'CHARACTER' && e.node.format !== 'MUSIC' && (e.node.coverImage?.extraLarge || e.node.coverImage?.medium))
+    .filter(e => e.relationType !== 'CHARACTER' && e.node.format !== 'MUSIC' && (e.node.coverImage?.extraLarge || e.node.coverImage?.large || e.node.coverImage?.medium))
     .sort((a, b) => {
       const typePriority = (RELATION_PRIORITY[a.relationType] ?? 99) - (RELATION_PRIORITY[b.relationType] ?? 99);
       if (typePriority !== 0) return typePriority;
@@ -130,8 +130,12 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
         // related title's own page too (via save_media_relations' stub-row
         // insert), not just this small relation card, so `medium` alone
         // used to look pixelated/blurry the first time that title's own
-        // page was opened before a live fetch replaced it.
-        cover: e.node.coverImage?.extraLarge ?? e.node.coverImage?.medium ?? undefined,
+        // page was opened before a live fetch replaced it. `large` (AniList's
+        // standard, near-always-populated size) as the middle fallback: when
+        // extraLarge is missing this used to skip straight to `medium` (a
+        // genuinely tiny thumbnail), stretched to fill that title's own full
+        // page cover before its first live fetch replaced it.
+        cover: e.node.coverImage?.extraLarge ?? e.node.coverImage?.large ?? e.node.coverImage?.medium ?? undefined,
         url:   `/media?id=${relatedExternalId}`,
         relatedExternalId,
         format: e.node.format ?? undefined,

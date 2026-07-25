@@ -68,7 +68,7 @@ interface AniListRelationEdge {
     type: string;
     format: string | null;
     title: { romaji: string | null };
-    coverImage: { extraLarge: string | null; medium: string | null };
+    coverImage: { extraLarge: string | null; large: string | null; medium: string | null };
     startDate: { year: number | null; month: number | null; day: number | null } | null;
   };
 }
@@ -140,7 +140,7 @@ const DETAIL_QUERY = `
       relations {
         edges {
           relationType
-          node { id type format title { romaji } coverImage { extraLarge medium } startDate { year month day } }
+          node { id type format title { romaji } coverImage { extraLarge large medium } startDate { year month day } }
         }
       }
       staff(perPage: 25) {
