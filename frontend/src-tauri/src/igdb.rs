@@ -854,7 +854,17 @@ pub async fn igdb_search(
     let page = page.unwrap_or(1).max(1) as usize;
     let offset = (page - 1) * PAGE_SIZE;
 
-    let filter_conditions = build_filter_conditions(filter_year, filter_season.as_deref(), filter_genres.as_deref());
+    let mut filter_conditions = build_filter_conditions(filter_year, filter_season.as_deref(), filter_genres.as_deref());
+    // Visual novels are such a small slice of IGDB's catalog that a plain
+    // "top N by rating" (or even a broad text search) rarely turns up more
+    // than a couple by chance — detect_vn's stricter check below still runs
+    // either way, but without this, the 100-result fetch itself was mostly
+    // non-VN games that detect_vn then had to reject, leaving almost
+    // nothing to show. Narrows the fetch itself to genre-tagged candidates
+    // first (genre 34 = Visual Novel), same id detect_vn already checks for.
+    if is_visual_novel {
+        filter_conditions.push_str(" & genres = (34)");
+    }
 
     // An empty query still shows something (the top 100 by rating) instead
     // of a blank tab until you type — IGDB has no `search` term to rank by
