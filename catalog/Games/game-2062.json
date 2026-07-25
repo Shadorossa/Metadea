@@ -11,13 +11,12 @@
   },
   "media_relations": [
     {
-      "media_external_id": "game:2062",
       "related_media_external_id": "game:103016",
       "relation_type": "REMASTER",
       "type_label": "Remaster",
       "title": "Yakuza 4 Remastered",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2s10.jpg",
-      "format": null
+      "media_external_id": "game:2062"
     },
     {
       "media_external_id": "game:2062",
@@ -38,5 +37,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza 0"
+  "saga_name": "Yakuza / Like a Dragon"
 }
