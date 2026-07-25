@@ -326,6 +326,43 @@ pub async fn get_blocked_external_ids(
     Ok(expanded)
 }
 
+// Which of these game/vnovel search results have already been reclassified
+// to the other type locally — a work IGDB still returns as vnovel:<id>
+// (say) whose numeric id already has its own row filed under game:<id> here
+// shouldn't need an explicit block to disappear from the vnovel tab: the
+// local catalog reclassifying it IS the signal, same cross-type id lookup
+// get_catalog_entry already relies on. Only meaningful for game/vnovel —
+// every other type has its own disjoint id space, no sibling to check.
+#[tauri::command]
+pub async fn get_reclassified_external_ids(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_ids: Vec<String>,
+) -> Result<Vec<String>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut reclassified = Vec::new();
+    for id in &external_ids {
+        let Some((prefix, num_id)) = id.split_once(':') else { continue };
+        let sibling_prefix = match prefix {
+            "vnovel" => "game",
+            "game" => "vnovel",
+            _ => continue,
+        };
+        let sibling_id = format!("{sibling_prefix}:{num_id}");
+        let exists: Option<i64> = conn
+            .query_row(
+                "SELECT 1 FROM media_catalog WHERE external_id = ?1 LIMIT 1",
+                [&sibling_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .str_err()?;
+        if exists.is_some() {
+            reclassified.push(id.clone());
+        }
+    }
+    Ok(reclassified)
+}
+
 #[tauri::command]
 pub async fn get_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,

@@ -4,7 +4,7 @@ import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './p
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
-import { searchCatalog, getBlockedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
+import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -282,6 +282,24 @@ async function filterBlocked(page: SearchPage): Promise<SearchPage> {
   return { ...page, results: page.results.filter(r => !blockedSet.has(r.externalId)) };
 }
 
+// game/vnovel are the only two types sharing an id space here (the same
+// IGDB numeric id, just filed under whichever of the two this app's own
+// catalog considers it to be) — a work reclassified from one to the other
+// locally doesn't need an explicit block to stop showing under its old
+// type: the live API (which has no idea we split IGDB's games into two
+// buckets) still happily returns it there, but the local catalog already
+// filing it under the other type is signal enough on its own.
+async function filterReclassified(page: SearchPage): Promise<SearchPage> {
+  const candidateIds = page.results
+    .filter(r => r.type === 'game' || r.type === 'vnovel')
+    .map(r => r.externalId);
+  if (candidateIds.length === 0) return page;
+  const reclassified = await getReclassifiedExternalIds(candidateIds).catch(() => [] as string[]);
+  if (reclassified.length === 0) return page;
+  const reclassifiedSet = new Set(reclassified);
+  return { ...page, results: page.results.filter(r => !reclassifiedSet.has(r.externalId)) };
+}
+
 export async function search(
   searchQuery: string,
   mediaType: MediaType,
@@ -291,7 +309,8 @@ export async function search(
   const page_ = mediaType === 'all'
     ? await searchAll(searchQuery, signal, page)
     : await searchOne(mediaType, searchQuery, signal, page);
-  return mediaType === 'character' ? page_ : filterBlocked(page_);
+  if (mediaType === 'character') return page_;
+  return filterReclassified(await filterBlocked(page_));
 }
 
 function fetchTopRatedFromApi(
@@ -323,5 +342,5 @@ export async function topRated(mediaType: MediaType, signal: AbortSignal, page =
   if (mediaType === 'all' || mediaType === 'character' || mediaType === 'book' || mediaType === 'comic') {
     return { results: [], hasMore: false };
   }
-  return filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters));
+  return filterReclassified(await filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters)));
 }

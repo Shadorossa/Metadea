@@ -77,6 +77,13 @@ export async function getBlockedExternalIds(): Promise<string[]> {
   return tauriCmd<string[]>('get_blocked_external_ids', []);
 }
 
+// Which of these game/vnovel search results already have their numeric id
+// filed locally under the other type — no explicit block needed, the local
+// reclassification is itself the signal (see get_reclassified_external_ids).
+export async function getReclassifiedExternalIds(externalIds: string[]): Promise<string[]> {
+  return tauriCmd<string[]>('get_reclassified_external_ids', [], { externalIds });
+}
+
 export async function deleteCatalogEntry(externalId: string): Promise<void> {
   return tauriRun('delete_catalog_entry', { externalId });
 }

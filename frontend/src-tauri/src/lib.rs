@@ -134,6 +134,7 @@ pub fn run() {
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::get_blocked_external_ids,
+            media_catalog::get_reclassified_external_ids,
             media_catalog::update_catalog_genres,
             media_catalog::delete_catalog_entry,
             media_catalog::get_all_catalog_entries,
