@@ -31,6 +31,11 @@ const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
 
+// Every provider caps a single page at (or under) this — see each provider
+// file in lib/search/providers. Below this count, there's nothing left to
+// page into regardless of what a stale/aggregated hasMore might say.
+const SEARCH_PAGE_SIZE = 50;
+
 // Search-provider ids -> the settings page's API-platform sub-tab that
 // configures them (see EnvironmentTab.astro's data-platform buttons).
 const PROVIDER_SETTINGS_LINK: Record<string, string> = {
@@ -509,7 +514,14 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {status === 'done' && hasMore && (
+        {/* Providers cap a page at ~50 results and only ever report hasMore
+            when a full page came back — but the handoff from quick search's
+            "Ver todos" (see goToViewAll in QuickSearchOverlay.tsx) reuses a
+            single all-types-aggregate hasMore for every individual type
+            section, which can read true even for a type with only a
+            handful of matches. Gating on the actual count caught here
+            regardless of why hasMore might be stale. */}
+        {status === 'done' && hasMore && results.length >= SEARCH_PAGE_SIZE && (
           <div className="search-load-more-row">
             <button
               type="button"
