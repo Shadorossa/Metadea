@@ -16,7 +16,7 @@
       "relation_type": "PARENT",
       "type_label": "Source",
       "title": "Yakuza 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3rej.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3rej.jpg",
       "format": null
     },
     {
@@ -30,5 +30,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza"
+  "saga_name": "Yakuza 0"
 }

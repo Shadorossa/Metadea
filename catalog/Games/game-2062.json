@@ -25,7 +25,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Yakuza 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3rej.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3rej.jpg"
     },
     {
       "media_external_id": "game:2062",
@@ -38,5 +38,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza"
+  "saga_name": "Yakuza 0"
 }

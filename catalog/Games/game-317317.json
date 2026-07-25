@@ -11,12 +11,13 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:317317",
       "related_media_external_id": "game:374432",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Like a Dragon: Pirate Yakuza in Hawaii - Ship Customization Pack",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coappr.jpg",
-      "media_external_id": "game:317317"
+      "format": null
     },
     {
       "media_external_id": "game:317317",
@@ -24,10 +25,10 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Like a Dragon: Infinite Wealth",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8356.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8356.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza"
+  "saga_name": "Yakuza 0"
 }
