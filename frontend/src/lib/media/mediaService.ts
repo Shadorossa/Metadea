@@ -297,10 +297,27 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
   return data;
 }
 
-// Fire-and-forget: call on hover to warm the cache.
+// Fire-and-forget: call on hover to warm the local reads (catalog row +
+// relations/characters/staff/companies) that fetchMediaDataWithFallback's
+// own onPartial path reads fresh on every real visit anyway — local-only,
+// never hits AniList/IGDB/TMDB/OpenLibrary/ComicVine. An entry that isn't
+// already in the local media_catalog (nobody's opened its page yet) simply
+// doesn't get prefetched, rather than sweeping the cursor across a browse
+// grid quietly firing a live API request per card it merely passed over.
+// Deliberately doesn't write to the shared media_cache_v3 cache: that cache
+// means "this is the final, live-merged page", and fetchMediaDataWithFallback
+// treats any hit there as reason to skip its own live refresh entirely — a
+// local-only partial snapshot passed off as final would freeze that page on
+// stale data.
 export function prefetchMediaData(rawId: string): void {
   if (getCachedMediaData(rawId)) return;
-  fetchMediaData(rawId).catch(() => {});
+  getCatalogEntry(rawId)
+    .then(async catalog => {
+      if (!catalog || !catalog.title_main) return;
+      const localData = mapCatalogEntryToPartialData(catalog);
+      await enrichLocalData(rawId, catalog, localData).catch(() => {});
+    })
+    .catch(() => {});
 }
 
 // Every mapper's display line is always the 'publisher' role (games: the

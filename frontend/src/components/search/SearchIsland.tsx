@@ -672,28 +672,12 @@ function MediaCard({ result }: { result: SearchResult }) {
     if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
   }
 
-  // Fires only after a short dwell instead of on every mouseenter — sweeping
-  // the cursor across a browse grid (up to 50 cards, no query needed to
-  // populate it) used to fire one detail prefetch per card the pointer
-  // merely passed over, each its own AniList/TMDB/etc request, burning
-  // through the shared rate budget for cards the user was never actually
-  // going to open. Cancelled on mouseleave, so only a card you actually
-  // paused on gets prefetched.
-  const hoverPrefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const HOVER_PREFETCH_DELAY_MS = 300;
-
+  // prefetchMediaData (mediaService.ts) is local-only now — reads the entry
+  // from media_catalog if it's already there, never calls out to AniList/
+  // IGDB/TMDB/OpenLibrary/ComicVine, so firing it on every hover has no
+  // external-request cost to worry about.
   function handleMouseEnter() {
-    if (!hasDetail || result.type === 'character') return;
-    hoverPrefetchTimerRef.current = setTimeout(() => {
-      prefetchMediaData(result.externalId);
-    }, HOVER_PREFETCH_DELAY_MS);
-  }
-
-  function handleMouseLeave() {
-    if (hoverPrefetchTimerRef.current) {
-      clearTimeout(hoverPrefetchTimerRef.current);
-      hoverPrefetchTimerRef.current = null;
-    }
+    if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
   }
 
   async function handleClick() {
@@ -719,7 +703,6 @@ function MediaCard({ result }: { result: SearchResult }) {
       className={`group flex flex-col card-cursor${hasDetail ? ' card-clickable' : ''}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       role={hasDetail ? 'button' : undefined}
       tabIndex={hasDetail ? 0 : undefined}
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
