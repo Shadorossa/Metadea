@@ -16,16 +16,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Yakuza",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co29tp.jpg"
-    },
-    {
-      "media_external_id": "game:2060",
-      "related_media_external_id": "game:368182",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Yakuza Kiwami 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coay0x.jpg",
-      "format": null
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co29tp.jpg"
     },
     {
       "media_external_id": "game:2060",
@@ -47,5 +38,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza 0"
+  "saga_name": "Yakuza / Like a Dragon"
 }
