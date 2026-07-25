@@ -47,7 +47,6 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .hof-card,
 [data-theme="newspaper-dark"] .search-input,
 [data-theme="newspaper-dark"] .search-action-btn,
-[data-theme="newspaper-dark"] .search-sort-btn,
 [data-theme="newspaper-dark"] .media-banner-date-badge,
 [data-theme="newspaper-dark"] .media-library-widget-box,
 [data-theme="newspaper-dark"] .status-dropdown-trigger,
@@ -58,6 +57,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-transform: capitalize !important;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
+}
+
+/* Plain icon, no double-border box like every other themed button gets —
+   these live inside the sort dropdown's own small panel, not a standalone
+   toolbar button. */
+[data-theme="newspaper-dark"] .search-sort-btn {
+  border: none !important;
+  background: none !important;
 }
 
 /* Fine 1px border for covers */

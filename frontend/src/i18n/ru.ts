@@ -271,7 +271,6 @@ export const ru = {
     filter_genre: 'Фильтр по жанру',
     filter_all: 'Все',
     filter_clear: 'Сбросить фильтр',
-    filter_apply: 'Применить',
     season_winter: 'Зима',
     season_spring: 'Весна',
     season_summer: 'Лето',

@@ -274,7 +274,6 @@ export const ja = {
     filter_genre: 'ジャンルで絞り込む',
     filter_all: 'すべて',
     filter_clear: 'フィルターを解除',
-    filter_apply: '適用',
     season_winter: '冬',
     season_spring: '春',
     season_summer: '夏',

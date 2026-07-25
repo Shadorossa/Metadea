@@ -271,7 +271,6 @@ export const it = {
     filter_genre: 'Filtra per genere',
     filter_all: 'Tutti',
     filter_clear: 'Rimuovi filtro',
-    filter_apply: 'Applica',
     season_winter: 'Inverno',
     season_spring: 'Primavera',
     season_summer: 'Estate',

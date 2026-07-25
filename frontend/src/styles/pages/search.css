@@ -264,8 +264,18 @@
 
 .search-filter-select {
   flex: 1;
-  padding: 0.4rem 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
+  /* appearance:none replaces the browser's own arrow (barely visible/
+     inconsistent across platforms) with the chevron below; color-scheme
+     tells the browser to render the native dropdown's OPEN option list in
+     dark colors too — without it, the closed box could be themed but the
+     popup itself stayed a stark light-mode list regardless of any CSS
+     applied to <option>, which Chromium mostly ignores. */
+  appearance: none;
+  color-scheme: dark;
+  padding: 0.4rem 1.6rem 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239c8f80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+    no-repeat right 0.4rem center / 0.9rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-main);
@@ -277,23 +287,58 @@
   border-color: var(--accent);
 }
 
+/* One pill-shaped box (like the tier-list "< Todos >" pager) instead of
+   three separately-bordered segments — arrows flush at the edges, the
+   year bold and centered in the middle. */
+.search-filter-year-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
 .search-filter-year-input {
   flex: 1;
   min-width: 0;
-  padding: 0.4rem 0.6rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
+  width: 0;
+  background: none;
+  border: none;
   color: var(--text-main);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.35rem 0;
 }
-.search-filter-year-input::placeholder { color: var(--text-muted); }
+.search-filter-year-input::placeholder { color: var(--text-muted); font-weight: 500; }
 .search-filter-year-input:focus {
   outline: none;
-  border-color: var(--accent);
 }
-/* Hides the number input's native up/down spinner arrows — this is a plain
-   year field, not a stepper. */
+
+.search-filter-year-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: color var(--anim-fast), background var(--anim-fast);
+}
+.search-filter-year-step:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.07);
+}
+/* Hides the number input's own native up/down spinner arrows — redundant
+   with the dedicated +/- buttons flanking it. */
 .search-filter-year-input::-webkit-outer-spin-button,
 .search-filter-year-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -313,6 +358,12 @@
   flex-direction: column;
   max-height: 220px;
   overflow-y: auto;
+  /* Still scrollable, just no visible scrollbar track/thumb. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.search-filter-genre-list::-webkit-scrollbar {
+  display: none;
 }
 
 .search-filter-genre-item {
@@ -338,11 +389,13 @@
 .search-filter-panel-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .search-filter-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   padding: 0;
   background: none;
   border: none;

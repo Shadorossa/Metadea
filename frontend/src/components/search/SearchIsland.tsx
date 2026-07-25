@@ -175,7 +175,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // pressed, so picking a season/typing a year/checking genres doesn't fire
   // a request per keystroke.
   const [seasonFilter, setSeasonFilter] = useState<SeasonId | ''>('');
-  const [yearFilter, setYearFilter] = useState('');
+  // Defaults to the current year (not blank) — picking just a season without
+  // touching the year still filters against something sensible instead of
+  // an unset value.
+  const [yearFilter, setYearFilter] = useState(() => String(new Date().getFullYear()));
   const [genreFilters, setGenreFilters] = useState<string[]>([]);
   // What the *last applied* search actually used — reflected in the filter
   // button's "has a value" state and re-sent on "Load more"/sort changes.
@@ -404,7 +407,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // for a different type (a movie genre list isn't an anime genre list) —
     // clean slate per tab, same as query/results already reset above.
     setSeasonFilter('');
-    setYearFilter('');
+    setYearFilter(String(new Date().getFullYear()));
     setGenreFilters([]);
     setAppliedFilters({});
     const currentUrl = new URL(window.location.href);
@@ -461,19 +464,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
   };
 
-  // Applying season/year/genre re-searches for a fresh 100-result page
-  // matching them (see executeSearch's own comment) instead of narrowing
-  // whatever page was already on screen — that means clearing the typed
-  // query too, since filtered browsing and free-text search can't combine
-  // (TMDB's /discover has no query param at all).
-  const applyFilters = () => {
+  // Every filter change re-searches immediately (a fresh 100-result page
+  // matching the new criteria, see executeSearch's own comment) instead of
+  // needing an extra "Aplicar" step — that means clearing the typed query
+  // too, since filtered browsing and free-text search can't combine (TMDB's
+  // /discover has no query param at all). Takes explicit override values
+  // rather than reading state directly: React state updates aren't visible
+  // yet in this same handler, so a just-changed value has to be threaded
+  // through by hand instead of read back from seasonFilter/yearFilter/
+  // genreFilters.
+  const runFilterSearch = (overrides: { season?: SeasonId | ''; year?: string; genres?: string[] }) => {
+    const season = overrides.season !== undefined ? overrides.season : seasonFilter;
+    const year = overrides.year !== undefined ? overrides.year : yearFilter;
+    const genres = overrides.genres !== undefined ? overrides.genres : genreFilters;
     const filters: SearchFilters = {
-      year: yearFilter ? Number(yearFilter) : undefined,
-      season: seasonFilter || undefined,
-      genres: genreFilters.length > 0 ? genreFilters : undefined,
+      year: year ? Number(year) : undefined,
+      season: season || undefined,
+      genres: genres.length > 0 ? genres : undefined,
     };
     setAppliedFilters(filters);
-    setOpenDropdown(null);
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
@@ -482,9 +491,24 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     executeSearch('', mediaType, 1, filters);
   };
 
+  const changeSeasonFilter = (season: SeasonId | '') => {
+    setSeasonFilter(season);
+    runFilterSearch({ season });
+  };
+
+  const changeYearFilter = (year: string) => {
+    setYearFilter(year);
+    runFilterSearch({ year });
+  };
+
+  const stepYearFilter = (delta: number) => {
+    const base = yearFilter ? Number(yearFilter) : new Date().getFullYear();
+    changeYearFilter(String(base + delta));
+  };
+
   const clearFilters = () => {
     setSeasonFilter('');
-    setYearFilter('');
+    setYearFilter(String(new Date().getFullYear()));
     setGenreFilters([]);
     setAppliedFilters({});
     setOpenDropdown(null);
@@ -492,7 +516,9 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   };
 
   const toggleGenreFilter = (genre: string) => {
-    setGenreFilters(prev => prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]);
+    const next = genreFilters.includes(genre) ? genreFilters.filter(g => g !== genre) : [...genreFilters, genre];
+    setGenreFilters(next);
+    runFilterSearch({ genres: next });
   };
 
   // Función para ordenar los resultados en base a los estados
@@ -659,31 +685,51 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                       <select
                         className="search-filter-select"
                         value={seasonFilter}
-                        onChange={e => setSeasonFilter(e.target.value as SeasonId | '')}
+                        onChange={e => changeSeasonFilter(e.target.value as SeasonId | '')}
                       >
                         <option value="">{i18n.filter_all}</option>
                         {SEASON_ORDER.map(s => (
                           <option key={s} value={s}>{SEASON_LABELS(i18n)[s]}</option>
                         ))}
                       </select>
-                      <input
-                        type="number"
-                        className="search-filter-year-input"
-                        placeholder={i18n.filter_year}
-                        value={yearFilter}
-                        onChange={e => setYearFilter(e.target.value)}
-                      />
+                      <div className="search-filter-year-group">
+                        <button
+                          type="button"
+                          className="search-filter-year-step"
+                          onClick={() => stepYearFilter(-1)}
+                          aria-label="-1"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          className="search-filter-year-input"
+                          placeholder={String(new Date().getFullYear())}
+                          value={yearFilter}
+                          onChange={e => setYearFilter(e.target.value)}
+                          onBlur={() => changeYearFilter(yearFilter)}
+                          onKeyDown={e => e.key === 'Enter' && changeYearFilter(yearFilter)}
+                        />
+                        <button
+                          type="button"
+                          className="search-filter-year-step"
+                          onClick={() => stepYearFilter(1)}
+                          aria-label="+1"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div className="search-filter-panel-actions">
-                      {(seasonFilter || yearFilter) && (
-                        <button type="button" className="search-filter-clear" onClick={clearFilters}>
+                    {(appliedFilters.season || appliedFilters.year) && (
+                      <div className="search-filter-panel-actions">
+                        <button type="button" className="search-filter-clear" onClick={clearFilters} title={i18n.filter_clear}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
                           {i18n.filter_clear}
                         </button>
-                      )}
-                      <button type="button" className="search-filter-apply" onClick={applyFilters}>
-                        {i18n.filter_apply}
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -720,16 +766,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                           </li>
                         ))}
                       </ul>
-                      <div className="search-filter-panel-actions">
-                        {(genreFilters.length > 0) && (
+                      {(genreFilters.length > 0) && (
+                        <div className="search-filter-panel-actions">
                           <button type="button" className="search-filter-clear" onClick={clearFilters}>
                             {i18n.filter_clear}
                           </button>
-                        )}
-                        <button type="button" className="search-filter-apply" onClick={applyFilters}>
-                          {i18n.filter_apply}
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
