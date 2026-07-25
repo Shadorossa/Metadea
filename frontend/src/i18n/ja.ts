@@ -192,7 +192,6 @@ export const ja = {
     follow: 'フォロー',
     unfollow: 'フォロー解除',
     user_not_found: 'ユーザーが見つかりません',
-    library_empty: 'あなたのライブラリと共通する作品がありません。',
   },
   admin: {
     title: 'カタログエディター',
@@ -718,7 +717,6 @@ export const ja = {
     comicvine_step1: '<a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a>でアカウントを作成(またはログイン)します',
     comicvine_step2: 'キーは追加の手順なしで、同じページに直接表示されます',
     comicvine_step3: '上のフィールドに貼り付けます',
-    comicvine_warning: '⚠️ 公式の規約には次のように明記されています: <em>"The API is strictly for non-commercial use only"</em>。プロジェクトへの任意の寄付を受け付けることが商業利用に該当するかどうかは明確にされていません — 自分のケースに不安がある場合は、何も仮定せず直接問い合わせるよう案内されています。',
     comicvine_body2: '制限: 1時間あたり200リクエストまで。',
     steam_title: 'Steamのキーはどうやって取得しますか?',
     steam_body1: '<strong>Steam</strong>はValveのビデオゲーム配信プラットフォームです。APIキーを取得するには:',

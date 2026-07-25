@@ -762,10 +762,6 @@ pub async fn igdb_search(
     // normal behavior.
     only_categories: Option<Vec<u64>>,
 ) -> Result<serde_json::Value, String> {
-    if query.is_empty() {
-        return Ok(serde_json::json!({ "games": [], "hasMore": false }));
-    }
-
     let cfg = load_env_config(&app_handle)?;
     let client_id = cfg.igdb_client_id.ok_or("Missing IGDB client_id")?;
     let client_secret = cfg.igdb_client_secret.ok_or("Missing IGDB client_secret")?;
@@ -783,21 +779,25 @@ pub async fn igdb_search(
     let page = page.unwrap_or(1).max(1) as usize;
     let offset = (page - 1) * PAGE_SIZE;
 
-    let raw = igdb_query(
-        &client,
-        &client_id,
-        &token,
-        IGDB_API_GAMES,
-        &format!(
-            "fields id,name,cover.image_id,rating,first_release_date,status,\
-             genres.id,genres.name,category,game_type,\
-             version_parent.id,version_parent.genres.id,\
-             parent_game.id,parent_game.genres.id; \
-             search \"{}\"; where cover != null; limit {}; offset {};",
-            safe_query, PAGE_SIZE, offset
-        ),
-    )
-    .await?;
+    // An empty query still shows something (the top 50 by rating) instead
+    // of a blank tab until you type — IGDB has no `search` term to rank by
+    // relevance in that case, so this sorts by rating instead. `search`
+    // and `sort` are mutually exclusive in APIcalypse (a sort alongside a
+    // search term is ignored), hence the two separate query shapes.
+    let filter_clause = format!(
+        "fields id,name,cover.image_id,rating,first_release_date,status,\
+         genres.id,genres.name,category,game_type,\
+         version_parent.id,version_parent.genres.id,\
+         parent_game.id,parent_game.genres.id; {} limit {}; offset {};",
+        if safe_query.is_empty() {
+            "where cover != null & rating != null; sort rating desc;".to_string()
+        } else {
+            format!("search \"{}\"; where cover != null;", safe_query)
+        },
+        PAGE_SIZE, offset
+    );
+
+    let raw = igdb_query(&client, &client_id, &token, IGDB_API_GAMES, &filter_clause).await?;
 
     let items = raw.as_array().cloned().unwrap_or_default();
     // IGDB returning a full page doesn't guarantee there's a next one (the

@@ -44,12 +44,13 @@ function ListCard({ list, catalogMap, p, onClick }: {
   );
 }
 
-function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen }: {
+function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
   customLists: ListInfo[];
   catalogMap: Map<string, MediaCatalogEntry>;
   p: P;
   onCreate: (name: string, description: string) => void;
   onOpen: (key: string) => void;
+  readOnly?: boolean;
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [name, setName] = useState('');
@@ -59,12 +60,14 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen }: {
     <div className="lists-layout">
       <div className="lists-header">
         <h2 className="lists-title">{p.lists}</h2>
-        <button className="list-btn list-btn--primary" onClick={() => setIsCreating(true)}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          {p.lists_new}
-        </button>
+        {!readOnly && (
+          <button className="list-btn list-btn--primary" onClick={() => setIsCreating(true)}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            {p.lists_new}
+          </button>
+        )}
       </div>
-      {isCreating && (
+      {!readOnly && isCreating && (
         <div className="list-create-form">
           <input type="text" className="list-input list-create-name" placeholder={p.lists_name_ph} maxLength={60} autoFocus value={name} onChange={e => setName(e.target.value)} />
           <input type="text" className="list-input list-create-desc" placeholder={p.lists_desc_ph} maxLength={200} value={description} onChange={e => setDescription(e.target.value)} />
@@ -102,7 +105,7 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen }: {
 
 /* ── Detail view ────────────────────────────────────────────────────────── */
 
-function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved, onCountChanged }: {
+function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
   list: ListInfo;
   items: Items;
   catalogMap: Map<string, MediaCatalogEntry>;
@@ -111,6 +114,10 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
   onDeleted: () => void;
   onMetaSaved: (name: string, description: string) => void;
   onCountChanged: (delta: number) => void;
+  // Someone else's profile (UserProfileView) has no local list to read via
+  // getListItemsFull — this fetches from the social cache instead.
+  readOnly?: boolean;
+  fetchItems?: (listKey: string) => Promise<ListItemFull[]>;
 }) {
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,9 +132,9 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
 
   useEffect(() => {
     let cancelled = false;
-    getListItemsFull(list.key).catch(() => [] as ListItemFull[]).then(res => { if (!cancelled) setListItems(res); });
+    (fetchItems ?? getListItemsFull)(list.key).catch(() => [] as ListItemFull[]).then(res => { if (!cancelled) setListItems(res); });
     return () => { cancelled = true; };
-  }, [list.key]);
+  }, [list.key, fetchItems]);
 
   const currentIds = useMemo(() => new Set(listItems.map(i => i.external_id)), [listItems]);
 
@@ -304,13 +311,15 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>
           {p.lists_back}
         </button>
-        <div className="list-detail-actions">
-          <button className="list-btn list-btn--ghost" onClick={() => setIsEditingMeta(true)}>{p.lists_edit}</button>
-          <button className="list-btn list-btn--danger" onClick={handleDelete}>{p.lists_delete}</button>
-        </div>
+        {!readOnly && (
+          <div className="list-detail-actions">
+            <button className="list-btn list-btn--ghost" onClick={() => setIsEditingMeta(true)}>{p.lists_edit}</button>
+            <button className="list-btn list-btn--danger" onClick={handleDelete}>{p.lists_delete}</button>
+          </div>
+        )}
       </div>
 
-      {isEditingMeta ? (
+      {!readOnly && isEditingMeta ? (
         <div className="list-detail-meta-edit">
           <input type="text" className="list-input list-meta-name-input" value={metaName} maxLength={60} placeholder={p.lists_name_ph} onChange={e => setMetaName(e.target.value)} />
           <input type="text" className="list-input list-meta-desc-input" value={metaDesc} maxLength={200} placeholder={p.lists_desc_ph} onChange={e => setMetaDesc(e.target.value)} />
@@ -326,7 +335,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
         </div>
       )}
 
-      {showAddPanel && (
+      {!readOnly && showAddPanel && (
         <div className="list-add-panel">
           <div className="list-add-search-row">
             <input type="text" className="list-add-search" placeholder={p.lists_search_library} value={searchQuery} autoFocus onChange={e => setSearchQuery(e.target.value)} />
@@ -356,10 +365,12 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
       <div className="list-detail-content">
         <div className="list-detail-header-row">
           <span className="list-detail-count">{listItems.length} {p.lists_items}</span>
-          <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            {p.lists_add_items}
-          </button>
+          {!readOnly && (
+            <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              {p.lists_add_items}
+            </button>
+          )}
         </div>
         {listItems.length > 0 ? (
           <div className="list-items-grid" ref={gridRef}>
@@ -372,7 +383,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
 
               return (
                 <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
-                  <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>
+                  {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
                   <a className="list-item-cover-link" href={url}>
                     {cover
                       ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" />
@@ -383,9 +394,11 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
                     {typeLabel && <span className="list-item-type">{typeLabel}</span>}
                     {ratingDisplay && <span className="list-item-rating">{ratingDisplay}</span>}
                   </div>
-                  <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                  </button>
+                  {!readOnly && (
+                    <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -400,16 +413,29 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
 
 /* ── Top-level ──────────────────────────────────────────────────────────── */
 
-export function ListsSection() {
+interface ListsSectionProps {
+  // Someone else's profile (UserProfileView) already has their lists and
+  // the viewer's own catalogMap in hand — passing them in skips this
+  // component's own local-only fetch. readOnly hides every create/edit/
+  // reorder/remove affordance and reads list items via overrideFetchItems
+  // (the social cache) instead of getListItemsFull (the viewer's own).
+  overrideLists?: ListInfo[];
+  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideFetchItems?: (listKey: string) => Promise<ListItemFull[]>;
+  readOnly?: boolean;
+}
+
+export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchItems, readOnly }: ListsSectionProps = {}) {
   const p = getT().profile;
 
-  const [items, setItems] = useState<Items | null>(null);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
+  const [items, setItems] = useState<Items | null>(overrideLists ? [] : null);
+  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [username, setUsername] = useState('user');
-  const [customLists, setCustomLists] = useState<ListInfo[]>([]);
+  const [customLists, setCustomLists] = useState<ListInfo[]>(overrideLists ?? []);
   const [activeListKey, setActiveListKey] = useState<string | null>(null);
 
   useEffect(() => {
+    if (overrideLists) return;
     let cancelled = false;
     (async () => {
       const [{ items: libItems, catalog: catalogEntries }, allLists, profile] = await Promise.all([
@@ -429,7 +455,7 @@ export function ListsSection() {
       setCustomLists(allLists.filter(l => !l.is_fav));
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideLists]);
 
   if (items === null) return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
 
@@ -446,6 +472,8 @@ export function ListsSection() {
         onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
         onMetaSaved={(name, description) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description } : l))}
         onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
+        readOnly={readOnly}
+        fetchItems={overrideFetchItems}
       />
     );
   }
@@ -456,6 +484,7 @@ export function ListsSection() {
       catalogMap={catalogMap}
       p={p}
       onOpen={setActiveListKey}
+      readOnly={readOnly}
       onCreate={async (name, description) => {
         const key = await createUserList(username, name, description).catch(() => null);
         if (!key) return;

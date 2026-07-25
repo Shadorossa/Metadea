@@ -156,9 +156,8 @@ body[data-theme="cyberpunk"], html[data-theme="cyberpunk"] body {
 }
 
 /* Headers style with yellow border underneath */
-[data-theme="cyberpunk"] h2, 
-[data-theme="cyberpunk"] h3, 
-[data-theme="cyberpunk"] .settings-panel-title, 
+[data-theme="cyberpunk"] h2,
+[data-theme="cyberpunk"] h3,
 [data-theme="cyberpunk"] .section-label {
   border-bottom: 2px solid var(--border-color) !important;
   color: var(--text-main) !important;

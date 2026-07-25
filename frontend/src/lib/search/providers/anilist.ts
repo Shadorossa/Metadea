@@ -1,7 +1,7 @@
 import type { MediaType, SearchResult, SearchPage } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
-import { graphqlPost } from '../../api/client';
+import { graphqlPost, type GraphQLResult } from '../../api/client';
 
 // ── Detail types ──────────────────────────────────────────────────────────────
 
@@ -232,6 +232,32 @@ const SEARCH_QUERY_WITH_FORMAT = `
   }
 `;
 
+// No `search` term — an empty search box still shows something (the top
+// 50 by rating) instead of a blank tab until you type.
+const TOP_RATED_QUERY = `
+  query TopRated($type: MediaType!, $page: Int, $isAdult: Boolean) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(type: $type, isAdult: $isAdult, sort: SCORE_DESC) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore
+      }
+    }
+  }
+`;
+
+const TOP_RATED_QUERY_WITH_FORMAT = `
+  query TopRated($type: MediaType!, $page: Int, $format: MediaFormat!, $isAdult: Boolean) {
+    Page(page: $page, perPage: 50) {
+      pageInfo { hasNextPage }
+      media(type: $type, format: $format, isAdult: $isAdult, sort: SCORE_DESC) {
+        id format title { romaji native } coverImage { large }
+        startDate { year month day } averageScore
+      }
+    }
+  }
+`;
+
 function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): SearchResult {
   return {
     externalId: `${mediaType}:${media.id}`,
@@ -272,6 +298,12 @@ export async function searchAniList(
     { signal },
   );
 
+  return toSearchPage(ok, result, mediaType);
+}
+
+// Shared by searchAniList and topRatedAniList — both hit the same Page.media
+// shape, just with a different sort/no search term.
+function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']> | null, mediaType: MediaType): SearchPage {
   if (!ok) return { results: [], hasMore: false };
   const pageData = result?.data?.Page;
   if (!pageData) return { results: [], hasMore: false };
@@ -289,6 +321,28 @@ export async function searchAniList(
     results: media.map(m => mapAniListMediaToResult(m, mediaType)),
     hasMore: pageData.pageInfo?.hasNextPage ?? false,
   };
+}
+
+// No text query — an empty search box shows the top 50 by rating instead
+// of a blank tab until you type. AniList's own SCORE_DESC sort.
+export async function topRatedAniList(
+  anilistType: 'ANIME' | 'MANGA',
+  mediaType: MediaType,
+  signal: AbortSignal,
+  format?: string,
+  page = 1,
+): Promise<SearchPage> {
+  const isAdult = isAdultContentEnabled() ? null : false;
+  const variables = format
+    ? { type: anilistType, page, format, isAdult }
+    : { type: anilistType, page, isAdult };
+  const { ok, result } = await graphqlPost<AniListResponse['data']>(
+    API_ENDPOINTS.ANILIST,
+    format ? TOP_RATED_QUERY_WITH_FORMAT : TOP_RATED_QUERY,
+    variables,
+    { signal },
+  );
+  return toSearchPage(ok, result, mediaType);
 }
 
 interface AniListCharacterSearch {

@@ -23,7 +23,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p }: {
+export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -33,6 +33,12 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   aggregateStats?: boolean;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
+  /** Someone else's profile (LibrarySection, fed via UserProfileView) — `item` is a synthesized
+   * LibraryEntry that doesn't really exist in the viewer's own library, so
+   * clicking must never open the local editor pre-filled with their data
+   * (a stray save would write it into the viewer's own library under this
+   * external_id). Goes straight to the media page instead, same as a bundle. */
+  readOnly?: boolean;
 }) {
   const meta = catalogMap.get(item.external_id);
   const isAggregate = !!bundleMeta || !!aggregateStats;
@@ -76,8 +82,9 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
     : [startDateStr, endDateStr].filter(Boolean).join(' → ');
 
   const openEditor = () => {
-    if (bundleMeta) {
-      // A bundle has no library log of its own — go to its media page instead.
+    if (bundleMeta || readOnly) {
+      // A bundle has no library log of its own, and read-only (someone
+      // else's profile) has no local log to open — go to the media page.
       window.location.href = mediaUrl;
       return;
     }

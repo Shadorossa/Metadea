@@ -30,7 +30,7 @@ impl DiscordState {
                                     .large_text("Metadea");
                                 
                                 let button = activity::Button::new(
-                                    "Download Metadea",
+                                    "Try Metadea",
                                     "https://github.com/Shadorossa/Metadea"
                                 );
 
@@ -88,7 +88,7 @@ fn apply_activity(
     }
 
     let download_button = activity::Button::new(
-        "Download Metadea",
+        "Try Metadea",
         "https://github.com/Shadorossa/Metadea"
     );
 

@@ -306,8 +306,6 @@ export function QuickSearchOverlay() {
           <p className="quick-search-hint">{s.search_min_chars}</p>
         )}
 
-        {loading && <p className="quick-search-hint">…</p>}
-
         {!loading && sections !== null && totalRows === 0 && (
           <p className="quick-search-hint">{s.search_no_results}</p>
         )}
@@ -347,7 +345,14 @@ export function QuickSearchOverlay() {
             ))}
           </div>
         )}
+
       </div>
+
+      {loading && (
+        <div className="quick-search-loading-bar">
+          <div className="quick-search-loading-bar-fill" />
+        </div>
+      )}
     </div>
   );
 }

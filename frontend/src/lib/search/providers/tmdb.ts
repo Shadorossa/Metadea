@@ -196,9 +196,9 @@ export function tmdbLocale(): string {
   return getLangCode() === 'en' ? 'en-US' : 'es-ES';
 }
 
-async function fetchFromTmdb(
+async function fetchTmdbPage(
   endpoint: string,
-  searchQuery: string,
+  extraParams: string,
   mediaType: MediaType,
   signal: AbortSignal,
   page: number,
@@ -208,8 +208,9 @@ async function fetchFromTmdb(
 
   // TMDB's own page size is fixed at 20 (not adjustable) — "page" here is
   // just TMDB's own page number, one request each, same as every other
-  // provider's own pagination unit.
-  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?query=${encodeURIComponent(searchQuery)}&page=${page}&language=${tmdbLocale()}`;
+  // provider's own pagination unit. extraParams is empty for the
+  // query-less "top rated" endpoints.
+  let url = `${API_ENDPOINTS.TMDB}/${endpoint}?${extraParams ? `${extraParams}&` : ''}page=${page}&language=${tmdbLocale()}`;
   const headers: Record<string, string> = {};
 
   if (auth.accessToken) {
@@ -229,10 +230,19 @@ async function fetchFromTmdb(
 }
 
 export const searchMovies = (searchQuery: string, signal: AbortSignal, page = 1) =>
-  fetchFromTmdb('search/movie', searchQuery, 'movie', signal, page);
+  fetchTmdbPage('search/movie', `query=${encodeURIComponent(searchQuery)}`, 'movie', signal, page);
 
 export const searchSeries = (searchQuery: string, signal: AbortSignal, page = 1) =>
-  fetchFromTmdb('search/tv', searchQuery, 'series', signal, page);
+  fetchTmdbPage('search/tv', `query=${encodeURIComponent(searchQuery)}`, 'series', signal, page);
+
+// No text query — TMDB's own curated "top rated" endpoints, used when the
+// search box is empty so a type tab isn't just blank until you type
+// something.
+export const topRatedMovies = (signal: AbortSignal, page = 1) =>
+  fetchTmdbPage('movie/top_rated', '', 'movie', signal, page);
+
+export const topRatedSeries = (signal: AbortSignal, page = 1) =>
+  fetchTmdbPage('tv/top_rated', '', 'series', signal, page);
 
 // Full detail fetch for the media page — search results only carry title/
 // cover/date/score, not overview, genres, runtime or production companies.

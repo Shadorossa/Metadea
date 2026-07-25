@@ -28,7 +28,15 @@ pub struct SocialLibraryInput {
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
     pub notes: Option<String>,
-    pub tags: Option<String>,
+    // Matches LibraryEntry.tags (frontend/src/lib/tauri/library.ts) — a real
+    // JS string[], not a flat string. This used to be typed Option<String>,
+    // which made Tauri's argument deserialization fail outright (silently,
+    // via hydrateIfStale's own .catch) for any profile whose synced library
+    // had real tags on any item — the whole hydrate_social_profile call
+    // never ran, leaving social_user_list empty for that profile.
+    pub tags: Option<Vec<String>>,
+    pub status: Option<String>,
+    pub progress: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,7 +71,9 @@ pub struct SocialLibraryItem {
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
     pub notes: Option<String>,
-    pub tags: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub status: Option<String>,
+    pub progress: Option<f64>,
     pub title_main: Option<String>,
     pub cover_url: Option<String>,
     pub media_type: Option<String>,
@@ -119,13 +129,17 @@ pub async fn hydrate_social_profile(
 
     tx.execute("DELETE FROM social_user_list WHERE social_user_id = ?1", [&social_user_id]).str_err()?;
     for item in &library {
+        // JSON-encoded, matching user_library.rs's own tags column — this is
+        // a Vec<String>, not a flat string.
+        let tags_json = item.tags.as_ref().map(|t| serde_json::to_string(t).unwrap_or_default());
         tx.execute(
             "INSERT OR IGNORE INTO social_user_list
-             (social_user_id, external_id, rating, started_at, finished_at, notes, tags)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             (social_user_id, external_id, rating, started_at, finished_at, notes, tags, status, progress)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             rusqlite::params![
                 social_user_id, item.external_id, item.rating,
-                item.started_at, item.finished_at, item.notes, item.tags,
+                item.started_at, item.finished_at, item.notes, tags_json,
+                item.status, item.progress,
             ],
         ).str_err()?;
     }
@@ -182,6 +196,7 @@ pub async fn get_social_library(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare(
         "SELECT sl.external_id, sl.rating, sl.started_at, sl.finished_at, sl.notes, sl.tags,
+                sl.status, sl.progress,
                 COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url), mc.type
          FROM social_user_list sl
          LEFT JOIN media_catalog mc ON mc.external_id = sl.external_id
@@ -191,16 +206,19 @@ pub async fn get_social_library(
     ).str_err()?;
 
     let items: Vec<SocialLibraryItem> = stmt.query_map([&social_user_id], |r| {
+        let tags_json: Option<String> = r.get(5)?;
         Ok(SocialLibraryItem {
             external_id: r.get(0)?,
             rating:      r.get(1)?,
             started_at:  r.get(2)?,
             finished_at: r.get(3)?,
             notes:       r.get(4)?,
-            tags:        r.get(5)?,
-            title_main:  r.get(6)?,
-            cover_url:   r.get(7)?,
-            media_type:  r.get(8)?,
+            tags:        tags_json.as_deref().and_then(|s| serde_json::from_str(s).ok()),
+            status:      r.get(6)?,
+            progress:    r.get(7)?,
+            title_main:  r.get(8)?,
+            cover_url:   r.get(9)?,
+            media_type:  r.get(10)?,
         })
     }).str_err()?.filter_map(|r| r.ok()).collect();
 

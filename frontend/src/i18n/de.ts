@@ -189,7 +189,6 @@ export const de = {
     follow: 'Folgen',
     unfollow: 'Entfolgen',
     user_not_found: 'Benutzer nicht gefunden',
-    library_empty: 'Keine Überschneidung mit deiner eigenen Bibliothek.',
   },
   admin: {
     title: 'Katalog-Editor',
@@ -712,7 +711,6 @@ export const de = {
     comicvine_step1: 'Erstelle ein Konto (oder melde dich an) bei <a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a>',
     comicvine_step2: 'Dein Schlüssel erscheint direkt auf dieser Seite, ohne weitere Schritte',
     comicvine_step3: 'Füge ihn in das obige Feld ein',
-    comicvine_warning: '⚠️ Ihre eigenen Bedingungen besagen wörtlich: <em>"The API is strictly for non-commercial use only"</em>. Es wird nicht ausdrücklich geklärt, ob die Annahme freiwilliger Spenden für das Projekt als kommerzielle Nutzung gilt — falls du Zweifel an deinem Fall hast, bitten sie dich, ihnen direkt zu schreiben, bevor du etwas annimmst.',
     comicvine_body2: 'Limit: 200 Anfragen pro Stunde.',
     steam_title: 'Wie erhalte ich einen Steam-Schlüssel?',
     steam_body1: '<strong>Steam</strong> ist die Vertriebsplattform für Videospiele von Valve. So erhältst du deinen API-Schlüssel:',

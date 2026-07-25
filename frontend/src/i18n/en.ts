@@ -192,7 +192,6 @@ export const en = {
     follow: 'Follow',
     unfollow: 'Unfollow',
     user_not_found: 'User not found',
-    library_empty: 'No overlap with your own library.',
   },
   admin: {
     title: 'Catalog editor',
@@ -741,7 +740,6 @@ export const en = {
     comicvine_step1: 'Create an account (or log in) at <a href="https://comicvine.gamespot.com/api/" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">comicvine.gamespot.com/api</a>',
     comicvine_step2: 'Your key appears directly on that same page, with no further steps',
     comicvine_step3: 'Paste it into the field above',
-    comicvine_warning: '⚠️ Their own terms state verbatim: <em>"The API is strictly for non-commercial use only"</em>. They do not explicitly clarify whether accepting voluntary donations for the project counts as commercial use — if you have doubts about your case, they ask you to write to them directly before assuming anything.',
     comicvine_body2: 'Limit: 200 requests per hour.',
     steam_title: 'How do I get a Steam key?',
     steam_body1: '<strong>Steam</strong> is Valve\'s video game distribution platform. To get your API key:',

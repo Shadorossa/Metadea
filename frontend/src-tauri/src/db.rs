@@ -769,6 +769,15 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN custom_color TEXT NOT NULL DEFAULT '#c084fc'", []);
         mark_migration(conn, 37)?;
     }
+    if v < 38 {
+        // social_user_list shipped in v0.3.81 without status/progress —
+        // needed so a visited profile's Overview tab can compute the same
+        // completed/in-progress/planning stats bar the local profile page
+        // does, instead of only ever having rating/dates/notes to show.
+        let _ = conn.execute("ALTER TABLE social_user_list ADD COLUMN status TEXT", []);
+        let _ = conn.execute("ALTER TABLE social_user_list ADD COLUMN progress REAL", []);
+        mark_migration(conn, 38)?;
+    }
 
     Ok(())
 }
@@ -1201,6 +1210,8 @@ CREATE TABLE IF NOT EXISTS social_user_list (
     finished_at    TEXT,
     notes          TEXT,
     tags           TEXT,
+    status         TEXT,
+    progress       REAL,
     PRIMARY KEY (social_user_id, external_id)
 );
 

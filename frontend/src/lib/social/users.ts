@@ -35,10 +35,12 @@ export interface PublicProfile {
   avatarUrl: string | null;
   bannerUrl: string | null;
   bio: string | null;
-  library: Array<{ external_id: string; rating?: number | null; started_at?: string | null; finished_at?: string | null; notes?: string | null; tags?: string | null }>;
+  library: Array<{ external_id: string; rating?: number | null; started_at?: string | null; finished_at?: string | null; notes?: string | null; tags?: string[] | null; status?: string | null; progress?: number | null }>;
   activity: PublicProfileActivityEvent[];
   monthlyHistory: Record<string, string[]>;
   lists: PublicProfileList[];
+  /** Hall of Fame picks — { multimedia: string[], character: string[] } (same shape lib/tauri/favorites.ts's readUserFavorites returns for the viewer's own). */
+  favorites: Record<string, string[]>;
   updatedAt: string | null;
   isFollowing: boolean;
   isSelf: boolean;

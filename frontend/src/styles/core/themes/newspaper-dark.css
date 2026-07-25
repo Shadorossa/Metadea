@@ -186,8 +186,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Header underlines looking like newspaper section dividers */
 [data-theme="newspaper-dark"] h2,
-[data-theme="newspaper-dark"] h3,
-[data-theme="newspaper-dark"] .settings-panel-title {
+[data-theme="newspaper-dark"] h3 {
   border-bottom: 2px solid var(--text-main) !important;
   font-style: italic;
   padding-bottom: 4px;
@@ -733,4 +732,61 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .act-empty {
   font-style: italic;
+}
+
+/* Stats tab block titles ("Por estado", "Géneros favoritos", ...) — same
+   underline-too-short problem as the other section titles fixed above: the
+   generic h2/h3 rule sizes the line to the title's own text width instead
+   of the full card. No sibling to reach here (unlike the calendar/quick-
+   search headers), so the ::after just fills the rest of the title's own
+   row instead. */
+[data-theme="newspaper-dark"] .stats-block-title {
+  display: flex !important;
+  align-items: baseline !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .stats-block-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+  margin-left: 0.75rem;
+  align-self: center;
+}
+
+/* Settings > Apariencia section titles ("Nombre", "Foto de perfil",
+   "Banner", ...) — these are already centered (settings.css), but the
+   generic h3 rule above still only underlines the text itself. Same line-
+   fill trick, but symmetric (::before AND ::after) instead of one-sided,
+   so it reads as a line flanking a centered title rather than a title
+   sitting above a line. */
+[data-theme="newspaper-dark"] .settings-section-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .settings-section-title::before,
+[data-theme="newspaper-dark"] .settings-section-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: var(--text-main);
+}
+
+/* Todos' per-type section titles ("MANGA", ...) — same generic h3 issue:
+   the theme's own border-bottom (with !important) would otherwise win
+   back over search.css's plain (non-!important) border-bottom:none, and
+   sit below the full-width title instead of flanking it on the right. */
+[data-theme="newspaper-dark"] .results-type-title {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .results-type-title::after {
+  background: var(--text-main);
 }

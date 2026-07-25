@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { search, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
+import { search, topRated, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
@@ -112,6 +112,22 @@ function getUrlSearchParams(): { query: string; mediaType: MediaType } | null {
   return { query: q, mediaType };
 }
 
+// Mirrors .results-grid's own breakpoints (search.css) so Todos' per-type
+// sections can cap themselves to exactly one row — row height there is
+// fluid (each card's height is proportional to its own 1fr width, which
+// changes with the column count), so a fixed CSS max-height can't do this
+// on its own the way it could for a fixed-height row.
+const RESULTS_GRID_BREAKPOINTS: Array<[minWidth: number, columns: number]> = [
+  [1280, 12], [1024, 10], [768, 8], [640, 7], [480, 6],
+];
+function getResultsGridColumns(): number {
+  const w = window.innerWidth;
+  for (const [minWidth, columns] of RESULTS_GRID_BREAKPOINTS) {
+    if (w >= minWidth) return columns;
+  }
+  return 5;
+}
+
 export default function SearchIsland({ initialQuery = '', initialType = 'all', i18n }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [navSlot, setNavSlot]     = useState<HTMLElement | null>(null);
@@ -125,6 +141,16 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Starts at the smallest breakpoint's column count (matching SSR/first
+  // paint, avoiding a hydration mismatch) and corrects to the real value
+  // right after mount.
+  const [gridColumns, setGridColumns] = useState(5);
+  useEffect(() => {
+    const onResize = () => setGridColumns(getResultsGridColumns());
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef        = useRef<AbortController | null>(null);
@@ -160,7 +186,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // "Load more" click: appends instead of replacing and uses isLoadingMore
   // instead of the full loading state so the existing grid doesn't flash.
   const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1) => {
-    if (searchQuery.length < 2) {
+    // A completely empty box still shows something — the type's own top 50
+    // by rating — instead of leaving the tab blank until you type (see
+    // lib/search/index.ts's topRated; 'all'/'character'/book/comic have no
+    // such browse mode and just come back empty, same as before).
+    const isBrowseMode = searchQuery.length === 0;
+    if (!isBrowseMode && searchQuery.length < 2) {
       setStatus('idle');
       setResults([]);
       setHasMore(false);
@@ -174,13 +205,15 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // and Enter racing each other), ride that request instead of firing
     // another one — this is the only thing avoided, no results are ever
     // reused later.
-    const key = `${type}:${searchQuery.toLowerCase()}:${pageNum}`;
+    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}`;
     let promise = inFlightSearches.get(key);
     if (!promise) {
       if (pageNum === 1) abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
-      promise = search(searchQuery, type, abortControllerRef.current.signal, pageNum)
-        .finally(() => inFlightSearches.delete(key));
+      promise = (isBrowseMode
+        ? topRated(type, abortControllerRef.current.signal, pageNum)
+        : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
+      ).finally(() => inFlightSearches.delete(key));
       inFlightSearches.set(key, promise);
     }
 
@@ -189,8 +222,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       setResults(prev => pageNum === 1 ? pageResults : [...prev, ...pageResults]);
       setHasMore(more);
       setPage(pageNum);
-      setStatus('done');
-      if (pageNum === 1) {
+      // Browse mode with nothing back (book/comic — no browse API for
+      // those) falls back to idle instead of a misleading "no matches".
+      setStatus(isBrowseMode && pageNum === 1 && pageResults.length === 0 ? 'idle' : 'done');
+      if (pageNum === 1 && !isBrowseMode) {
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('type', type);
         currentUrl.searchParams.set('q', searchQuery);
@@ -202,6 +237,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
       if (isAbort) return;
+      if (isBrowseMode) {
+        // A background nicety, not something the user explicitly asked
+        // for — falls back to idle instead of surfacing a missing-API-key
+        // prompt for a query the user never typed.
+        setStatus('idle');
+        return;
+      }
       if (error instanceof MissingApiKeyError) {
         setMissingProviders(error.providers);
         setStatus('missing-keys');
@@ -297,19 +339,22 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    abortControllerRef.current?.abort();
     setMediaType(selectedType);
     setQuery('');
     setResults([]);
     setHasMore(false);
     setPage(1);
-    setStatus('idle');
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
     currentUrl.searchParams.delete('q');
     // See executeSearch's replaceState above for why history.state (not
     // null) has to be passed through here.
     history.replaceState(history.state, '', currentUrl.toString());
+    // Empty query -> browse mode (top 50 by rating for this type) instead
+    // of just idling on a blank tab. executeSearch's own abort() at
+    // pageNum===1 replaces the manual abortControllerRef.abort() this used
+    // to do here directly.
+    executeSearch('', selectedType);
   };
 
   const handleSearchSubmit = () => {
@@ -497,22 +542,47 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {sortedResults.length > 0 && (
-          <div className="results-grid animate-fade-in">
-            {(() => {
-              const seen = new Set();
-              return sortedResults
-                .filter(result => {
-                  if (seen.has(result.externalId)) return false;
-                  seen.add(result.externalId);
-                  return true;
-                })
-                .map(result => (
-                  <MediaCard key={result.externalId} result={result} />
-                ));
-            })()}
-          </div>
-        )}
+        {sortedResults.length > 0 && (() => {
+          const seen = new Set<string>();
+          const deduped = sortedResults.filter(result => {
+            if (seen.has(result.externalId)) return false;
+            seen.add(result.externalId);
+            return true;
+          });
+
+          // Todos mixes every type into the same relevance-agnostic sort,
+          // which read as one undifferentiated pile — grouped by type
+          // instead (each group keeping the same date/score sort), same
+          // as a single-type tab shows on its own.
+          if (mediaType !== 'all') {
+            return (
+              <div className="results-grid animate-fade-in">
+                {deduped.map(result => <MediaCard key={result.externalId} result={result} />)}
+              </div>
+            );
+          }
+
+          const byType = new Map<string, SearchResult[]>();
+          for (const result of deduped) {
+            const list = byType.get(result.type) ?? [];
+            list.push(result);
+            byType.set(result.type, list);
+          }
+          const typeOrder = (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character');
+
+          return (
+            <div className="results-by-type animate-fade-in">
+              {typeOrder.filter(t => byType.has(t)).map(t => (
+                <div className="results-type-section" key={t}>
+                  <h3 className="results-type-title">{i18n.types[t as keyof typeof i18n.types]}</h3>
+                  <div className="results-grid">
+                    {byType.get(t)!.slice(0, gridColumns).map(result => <MediaCard key={result.externalId} result={result} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Providers cap a page at ~50 results and only ever report hasMore
             when a full page came back — but the handoff from quick search's
@@ -548,39 +618,25 @@ const HOVER_PREFETCH_DELAY_MS = 300;
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
-  const [isValidCover, setIsValidCover] = useState<boolean | null>(result.coverUrl ? null : true);
-  // Some providers (OpenLibrary especially — its cover proxy sometimes
-  // redirects through archive.org on first request, which can be slow or
-  // fail outright in the webview even though the URL is genuinely valid)
-  // occasionally fail to actually load the image. The probe below used to
-  // treat img.onerror the same as "valid, portrait" and let the real <img>
-  // render with the same broken URL anyway — showing a broken-image icon +
-  // alt text instead of the placeholder, and (since a broken image's
-  // intrinsic box isn't governed by object-fit the same way) breaking the
-  // uniform card size the rest of the grid relies on. Tracked separately
-  // from isValidCover so a genuinely-failed load always falls back to the
-  // placeholder instead of attempting the real <img> at all.
+  // Landscape "covers" (rare provider mixups — a banner/splash image
+  // instead of a real poster) look bad even center-cropped, so those fall
+  // back to the placeholder instead. This used to be checked via a
+  // separate, invisible new Image() probe fired eagerly (not lazily) for
+  // every single result on mount — meaning every cover was fetched twice
+  // (once by the probe, once by the real <img>), and the whole card
+  // returned null while its own probe was pending, unmounting/remounting
+  // grid items as each of up to 50 probes resolved at its own pace. That's
+  // what made the grid look like it kept reflowing into different sizes.
+  // Checking the real (already lazy-loaded) <img>'s own onLoad instead
+  // needs no extra request and never removes the card itself from the
+  // grid — only its cover swaps to the placeholder, and only once actually
+  // known to be landscape.
+  const [isLandscape, setIsLandscape] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  useEffect(() => {
-    if (!result.coverUrl) return;
-    const img = new Image();
-    img.src = result.coverUrl;
-    img.onload = () => {
-      if (img.naturalWidth > img.naturalHeight) {
-        setIsValidCover(false);
-      } else {
-        setIsValidCover(true);
-      }
-    };
-    img.onerror = () => {
-      setLoadFailed(true);
-      setIsValidCover(true);
-    };
-  }, [result.coverUrl]);
-
-  if (isValidCover === false || isValidCover === null) {
-    return null;
+  function handleCoverLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
   }
 
   function handleMouseEnter() {
@@ -615,12 +671,13 @@ function MediaCard({ result }: { result: SearchResult }) {
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
     >
       <div className="card-media-base mb-1.5">
-        {result.coverUrl && !loadFailed ? (
+        {result.coverUrl && !loadFailed && !isLandscape ? (
           <img
             src={result.coverUrl}
             alt={result.titleMain}
             className="card-media-img"
             loading="lazy"
+            onLoad={handleCoverLoad}
             onError={() => setLoadFailed(true)}
           />
         ) : (

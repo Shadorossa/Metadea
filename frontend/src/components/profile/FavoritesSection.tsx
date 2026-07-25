@@ -23,16 +23,33 @@ const EMPTY_ICON = `<svg class="fav-empty-icon" width="48" height="48" viewBox="
 
 interface FavItem { external_id: string; type: string; }
 
-export function FavoritesSection() {
+interface Props {
+  // Someone else's profile (UserProfileView) already has the mapped
+  // library, the viewer's own catalogMap/characterMap, and the full synced
+  // favData (profile-sync.ts sends the whole readUserFavorites() record,
+  // every per-type key included, not just multimedia/character) in hand —
+  // passing them in skips this component's own local-only fetch and the
+  // is_favorite-reconciliation write below (which would be both wrong and
+  // pointless against someone else's data). readOnly hides every crown/
+  // remove/edit-image/reorder affordance — custom crop images aren't
+  // synced either, so covers always show the plain, uncropped version.
+  overrideItems?: Items;
+  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideCharacterMap?: Map<string, CharacterEntry>;
+  overrideFavData?: FavData;
+  readOnly?: boolean;
+}
+
+export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCharacterMap, overrideFavData, readOnly }: Props = {}) {
   const t = getT();
   const p = t.profile;
   const s = t.search.types;
 
-  const [items, setItems] = useState<Items | null>(null);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
-  const [characterMap, setCharacterMap] = useState<Map<string, CharacterEntry>>(new Map());
+  const [items, setItems] = useState<Items | null>(overrideItems ?? null);
+  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [characterMap, setCharacterMap] = useState<Map<string, CharacterEntry>>(overrideCharacterMap ?? new Map());
   const [customImageMap, setCustomImageMap] = useState<Map<string, FavoriteCustomImage>>(new Map());
-  const [favData, setFavData] = useState<FavData>({});
+  const [favData, setFavData] = useState<FavData>(overrideFavData ?? {});
   const [activeCatKey, setActiveCatKey] = useState('multimedia');
   const [reorderModeActive, setReorderModeActive] = useState(false);
 
@@ -43,6 +60,7 @@ export function FavoritesSection() {
   activeCatKeyRef.current = activeCatKey;
 
   useEffect(() => {
+    if (overrideItems) return;
     let cancelled = false;
     (async () => {
       const [{ items: libItems, catalog: catalogEntries }, characterEntries, customImages, rawFavData] = await Promise.all([
@@ -85,7 +103,7 @@ export function FavoritesSection() {
       setFavData(rawFavData);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideItems]);
 
   const getOrderedItems = (catKey: string): FavItem[] => {
     const ids = favData[catKey] || [];
@@ -163,7 +181,7 @@ export function FavoritesSection() {
   // same rAF-throttled approach used elsewhere (e.g. Lists' item reorder):
   // committing to React state and persisting only happens on mouseup.
   useEffect(() => {
-    if (!reorderModeActive) return;
+    if (readOnly || !reorderModeActive) return;
     const container = gridRef.current;
     if (!container) return;
 
@@ -293,13 +311,15 @@ export function FavoritesSection() {
             );
           })}
         </div>
-        <button
-          type="button"
-          className={`fav-tab-btn fav-reorder-btn ${reorderModeActive ? 'active' : ''}`}
-          title={p.reorder}
-          onClick={() => setReorderModeActive(a => !a)}
-          dangerouslySetInnerHTML={{ __html: REORDER_ICON }}
-        />
+        {!readOnly && (
+          <button
+            type="button"
+            className={`fav-tab-btn fav-reorder-btn ${reorderModeActive ? 'active' : ''}`}
+            title={p.reorder}
+            onClick={() => setReorderModeActive(a => !a)}
+            dangerouslySetInnerHTML={{ __html: REORDER_ICON }}
+          />
+        )}
       </div>
       <div className="fav-grid-container">
         {catItems.length > 0 ? (
@@ -322,34 +342,36 @@ export function FavoritesSection() {
                   <a className="fav-card-link" href={mediaUrl} />
                   <div className="fav-badge">#{idx + 1}</div>
 
-                  <div className="fav-card-icons">
-                    <div className="fav-card-icons-row">
-                      {activeCatKey !== 'multimedia' && item.type !== 'character' && (
+                  {!readOnly && (
+                    <div className="fav-card-icons">
+                      <div className="fav-card-icons-row">
+                        {activeCatKey !== 'multimedia' && item.type !== 'character' && (
+                          <button
+                            type="button"
+                            className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
+                            title={p.favorites_multimedia}
+                            onClick={e => { e.stopPropagation(); toggleCrown(item.external_id); }}
+                            dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
+                          />
+                        )}
                         <button
                           type="button"
-                          className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
-                          title={p.favorites_multimedia}
-                          onClick={e => { e.stopPropagation(); toggleCrown(item.external_id); }}
-                          dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
+                          className="fav-remove-btn"
+                          title={p.favorites_remove}
+                          onClick={e => { e.stopPropagation(); e.preventDefault(); removeFavorite(item.external_id, item.type); }}
+                          dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
                         />
-                      )}
+                      </div>
+                      {/* Hover-only trigger, see .fav-edit-image-btn CSS */}
                       <button
                         type="button"
-                        className="fav-remove-btn"
-                        title={p.favorites_remove}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); removeFavorite(item.external_id, item.type); }}
-                        dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
+                        className="fav-edit-image-btn"
+                        title={p.favorites_edit_image}
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); editImage(item); }}
+                        dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
                       />
                     </div>
-                    {/* Hover-only trigger, see .fav-edit-image-btn CSS */}
-                    <button
-                      type="button"
-                      className="fav-edit-image-btn"
-                      title={p.favorites_edit_image}
-                      onClick={e => { e.stopPropagation(); e.preventDefault(); editImage(item); }}
-                      dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
-                    />
-                  </div>
+                  )}
 
                   {customImg ? (
                     <div

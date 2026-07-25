@@ -69,16 +69,6 @@
 .settings-panel { display: flex; flex-direction: column; gap: 1.5rem; }
 .settings-panel.hidden { display: none; }
 
-.settings-panel-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-main);
-  letter-spacing: -0.02em;
-  margin: 0 0 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
 /* ── Section ──────────────────────────────────────────────────────────────── */
 .settings-section {
   display: flex;

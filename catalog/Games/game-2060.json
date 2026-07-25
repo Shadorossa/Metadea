@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "0937f4fd2bfd96d30937f4fd2bfd96d3",
+    "external_id": "game:2060",
+    "type": "game",
+    "title_main": "Yakuza 2",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:2060",
+      "related_media_external_id": "game:2059",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yakuza",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co29tp.jpg"
+    },
+    {
+      "media_external_id": "game:2060",
+      "related_media_external_id": "game:368182",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Yakuza Kiwami 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coay0x.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Yakuza"
+}
