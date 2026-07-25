@@ -156,9 +156,15 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       title_romaji: existing?.title_romaji || data.titleRomaji || null,
       title_english: existing?.title_english || data.titleEnglish || null,
       synopsis: existing?.synopsis || data.description || null,
-      cover_url: (existing?.cover_url && !isLowTierAniListCover(existing.cover_url))
-        ? existing.cover_url
-        : (data.cover || existing?.cover_url || null),
+      // data-first, not existing-first like every field above: this runs
+      // right after applyStickyLocalFields, which already resolved data.cover
+      // to whichever is actually best (existing.cover_url as-is if it's a
+      // good tier, or the live fetch's own fresh one if existing was a low
+      // AniList tier that needed upgrading) — re-deriving that choice here
+      // via existing?.cover_url || data.cover would just re-pick the stale
+      // low-tier value every time, undoing the upgrade applyStickyLocalFields
+      // just made.
+      cover_url: data.cover || existing?.cover_url || null,
       status: existing?.status || data.status || null,
       score_global: existing?.score_global ?? (data.scoreGlobal || null),
       total_count: existing?.total_count ?? (data.totalCount || null),
