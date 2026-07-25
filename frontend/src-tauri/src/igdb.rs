@@ -884,8 +884,14 @@ pub async fn igdb_search(
             // with a single 100 rating outranks a genuinely popular game
             // sitting at 85 from thousands of ratings. rating_count >= 50
             // keeps "top rated" meaning "well-regarded by a real audience",
-            // not "the few obscure titles that got lucky with 1-2 raters".
-            format!("where cover != null & rating != null & rating_count >= 50{filter_conditions}; sort rating desc;")
+            // not "the few obscure titles that got lucky with 1-2 raters" —
+            // but visual novels get nowhere near mainstream games' rating
+            // volume even when well-known, so that same floor left barely
+            // more than a dozen VNs passing it at all. 10 keeps the same
+            // "not just 1-2 lucky raters" intent without gutting an already
+            // niche genre's own candidate pool a second time.
+            let min_rating_count = if is_visual_novel { 10 } else { 50 };
+            format!("where cover != null & rating != null & rating_count >= {min_rating_count}{filter_conditions}; sort rating desc;")
         } else {
             format!("search \"{}\"; where cover != null{filter_conditions};", safe_query)
         },
