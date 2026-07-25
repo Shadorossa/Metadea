@@ -22,14 +22,23 @@
 
 
 .nav-center-wrap {
+  /* Taken out of the flex row entirely and centered on the bar itself
+     instead of participating in justify-content:space-between — as a
+     flex item, "centered" only ever meant centered within whatever space
+     was left over between .nav-group--left/--right, which drifted off
+     true center whenever those two groups weren't the same width (they
+     aren't: 3 icons vs. search+avatar). Absolute + left:50% centers it
+     on the bar regardless of how wide either side group is. */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  /* flex-grow:0 (the default) left this sized to its own content instead
-     of being capped to whatever space .nav-group--left/--right didn't
-     use — min-width:0 alone lets it shrink, but flex:1 is what actually
-     forces it down to the remaining space so its child's overflow-x:auto
-     (below) has a real boundary to clip/scroll against. */
-  flex: 1 1 0%;
+  /* Leaves room on either side for the fixed-width icon groups — anything
+     still too wide to fit falls to .nav-center-text's own overflow-x:auto
+     scroll below rather than overlapping them. */
+  max-width: min(65vw, 70rem);
   min-width: 0;
   overflow: hidden;
 }
