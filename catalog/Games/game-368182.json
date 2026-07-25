@@ -1,0 +1,34 @@
+{
+  "media_catalog": {
+    "id": "2e82dc455b1f4ab32e82dc455b1f4ab3",
+    "external_id": "game:368182",
+    "type": "game",
+    "title_main": "Yakuza Kiwami 3",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:368182",
+      "related_media_external_id": "game:2061",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Yakuza 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3rej.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:368182",
+      "related_media_external_id": "game:2060",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Yakuza 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2egu.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Yakuza"
+}
