@@ -9,19 +9,31 @@ import { getTypeLabel } from '../../lib/constants/media';
 
 type SortMode = 'date' | 'rating';
 
-export function ReviewsSection() {
+interface Props {
+  // Someone else's profile (UserProfileView) already has the mapped
+  // library + the viewer's own catalogMap in hand — passing them in skips
+  // this component's own local-only fetch entirely, and readOnly is a no-op
+  // here since this tab has no edit affordances to hide in the first place.
+  overrideItems?: LibraryEntry[];
+  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+}
+
+export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}) {
   const t = getT();
   const p = t.profile;
   const TYPE_ICON = useMemo(() => typeIconMap(14), []);
 
-  const [loading, setLoading] = useState(true);
-  const [reviewed, setReviewed] = useState<LibraryEntry[]>([]);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
+  const [loading, setLoading] = useState(overrideItems === undefined);
+  const [reviewed, setReviewed] = useState<LibraryEntry[]>(
+    overrideItems ? overrideItems.filter(item => item.notes && item.notes.trim().length > 0) : []
+  );
+  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    if (overrideItems) return;
     let cancelled = false;
     (async () => {
       const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
@@ -34,7 +46,7 @@ export function ReviewsSection() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideItems]);
 
   const types = useMemo(() => [...new Set(reviewed.map(i => i.type))], [reviewed]);
 

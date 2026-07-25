@@ -3,7 +3,7 @@ import { getAllLibraryEntries, readUserJourney } from '../../lib/tauri';
 import type { MediaCatalogEntry } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { getT } from '../../i18n/client';
-import { syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
+import { getActiveRatingSystem, syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
 import { getTypeLabel, getGenreLabel } from '../../lib/constants/media';
 import {
@@ -25,12 +25,27 @@ interface StatsData {
   journey: Awaited<ReturnType<typeof readUserJourney>>;
 }
 
-export function StatsSection() {
+interface Props {
+  // Someone else's profile (UserProfileView) already has the mapped
+  // library, the viewer's own catalogMap, and the reshaped activity journey
+  // in hand — passing them in skips this component's own local-only fetch.
+  // Every stat here is computed purely from those three inputs, so nothing
+  // else needs to change for it to work on someone else's data — minutes
+  // spent/hours will just read 0 since that isn't synced.
+  overrideItems?: Items;
+  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideJourney?: StatsData['journey'];
+}
+
+export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourney }: Props = {}) {
   const t = getT();
   const p = t.profile;
-  const [data, setData] = useState<StatsData | null>(null);
+  const [data, setData] = useState<StatsData | null>(
+    overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [] } : null
+  );
 
   useEffect(() => {
+    if (overrideItems) return;
     let cancelled = false;
     (async () => {
       const [{ items, catalog: catalogEntries }, system, journey] = await Promise.all([
@@ -43,7 +58,7 @@ export function StatsSection() {
       setData({ items, catalogMap, system, journey });
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideItems]);
 
   if (!data) {
     return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
@@ -56,7 +71,7 @@ export function StatsSection() {
       <div className="profile-empty">
         <span className="profile-empty-icon">📊</span>
         <p>{p.stats_empty}</p>
-        <a href="/search">{p.empty_cta}</a>
+        {!overrideItems && <a href="/search">{p.empty_cta}</a>}
       </div>
     );
   }

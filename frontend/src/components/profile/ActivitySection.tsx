@@ -34,6 +34,13 @@ function interpolate(template: string, vars: Record<string, string | number>): s
 interface Props {
   catalogMap: Map<string, MediaCatalogEntry>;
   p: P;
+  // Someone else's profile (UserProfileView) has no local journey to read
+  // via readUserJourney — it passes the social_user_activity cache,
+  // reshaped into the same DayJourney[] grouping, instead. readOnly hides
+  // the delete-event context menu (there's no local journey entry to
+  // remove — this isn't the viewer's own data).
+  overrideJourney?: DayJourney[];
+  readOnly?: boolean;
 }
 
 interface ContextMenuState {
@@ -42,16 +49,17 @@ interface ContextMenuState {
   event: ActivityEvent;
 }
 
-export function ActivitySection({ catalogMap, p }: Props) {
-  const [journey, setJourney] = useState<DayJourney[] | null>(null);
+export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Props) {
+  const [journey, setJourney] = useState<DayJourney[] | null>(overrideJourney ?? null);
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
   const j = p.journey || {};
 
   useEffect(() => {
+    if (overrideJourney) return;
     let cancelled = false;
     readUserJourney().then(res => { if (!cancelled) setJourney(Array.isArray(res) ? res : []); });
     return () => { cancelled = true; };
-  }, []);
+  }, [overrideJourney]);
 
   useEffect(() => {
     if (!menu) return;
@@ -170,7 +178,7 @@ export function ActivitySection({ catalogMap, p }: Props) {
             <div
               className="act-card"
               key={`${event.date}_${event.externalId}_${event.type}_${event.timestamp}`}
-              onContextMenu={e => {
+              onContextMenu={readOnly ? undefined : e => {
                 e.preventDefault();
                 e.stopPropagation();
                 setMenu({ x: e.pageX, y: e.pageY, event });

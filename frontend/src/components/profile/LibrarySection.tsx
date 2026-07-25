@@ -46,7 +46,24 @@ function normalizeEditionFormat(format: string | null | undefined): string {
   return format;
 }
 
-export function LibrarySection() {
+interface LibrarySectionProps {
+  // Someone else's profile (UserProfileView) already has their mapped
+  // library, the viewer's own catalogMap, and catalog-wide saga/relation
+  // data in hand — passing them in skips this component's own local-only
+  // fetch (and the resync-on-view / new-episode-notification side effects
+  // below, which refresh the shared catalog and notify about "your"
+  // library, neither of which make sense for a page you're just visiting).
+  // readOnly disables click-to-edit on every card (see LibraryCard).
+  overrideItems?: Items;
+  overrideCatalogMap?: Map<string, MediaCatalogEntry>;
+  overrideSagaRelations?: DbMediaRelation[];
+  overrideSagaNames?: Record<string, string>;
+  readOnly?: boolean;
+}
+
+export function LibrarySection({
+  overrideItems, overrideCatalogMap, overrideSagaRelations, overrideSagaNames, readOnly,
+}: LibrarySectionProps = {}) {
   const p = getT().profile;
   const typeLabels = getT().search.types;
   const STATUS_LIST = useMemo(() => [
@@ -58,10 +75,10 @@ export function LibrarySection() {
     { key: 'dropped', label: p.status_dropped },
   ], [p]);
 
-  const [items, setItems] = useState<Items | null>(null);
-  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(new Map());
-  const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>([]);
-  const [sagaNames, setSagaNames] = useState<Record<string, string>>({});
+  const [items, setItems] = useState<Items | null>(overrideItems ?? null);
+  const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [sagaRelations, setSagaRelations] = useState<DbMediaRelation[]>(overrideSagaRelations ?? []);
+  const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
 
   const [nameFilter, setNameFilter] = useState('');
   const [activeTypeTab, setActiveTypeTab] = useState('');
@@ -69,7 +86,7 @@ export function LibrarySection() {
   const [statusIndex, setStatusIndex] = useState(0);
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [groupByEdition, setGroupByEdition] = useState(false);
-  const [groupByBundle, setGroupByBundle] = useState(isLibraryGroupByBundleEnabled);
+  const [groupByBundle, setGroupByBundle] = useState(overrideItems ? false : isLibraryGroupByBundleEnabled);
   const toggleGroupByBundle = () => setGroupByBundle(prev => {
     const next = !prev;
     setLibraryGroupByBundleEnabled(next);
@@ -82,13 +99,15 @@ export function LibrarySection() {
   // can't be read from location.search here — profile.astro stashes it in
   // sessionStorage instead, read once on mount and discarded.
   useEffect(() => {
+    if (overrideItems) return;
     const libtype = sessionStorage.getItem(STORAGE_KEYS.pendingLibraryType);
     if (!libtype) return;
     setActiveTypeTab(libtype);
     sessionStorage.removeItem(STORAGE_KEYS.pendingLibraryType);
-  }, []);
+  }, [overrideItems]);
 
   useEffect(() => {
+    if (overrideItems) return;
     let cancelled = false;
 
     const load = async () => {
@@ -147,7 +166,7 @@ export function LibrarySection() {
       cancelled = true;
       window.removeEventListener('refresh-profile-library', load);
     };
-  }, []);
+  }, [overrideItems]);
 
   // Same union-find approach as refineSagaGroups (SEQUEL/PREQUEL/ALTERNATIVE
   // chains) but just to answer "are these two the same saga" for the date-sort
@@ -288,7 +307,7 @@ export function LibrarySection() {
       <div className="profile-empty">
         <span className="profile-empty-icon">📚</span>
         <p>{p.empty}</p>
-        <a href="/search">{p.empty_cta}</a>
+        {!readOnly && <a href="/search">{p.empty_cta}</a>}
       </div>
     );
   }
@@ -418,6 +437,7 @@ export function LibrarySection() {
                     aggregateStats={aggregateStats}
                     catalogMap={catalogMap}
                     p={p}
+                    readOnly={readOnly}
                     key={bundleMeta?.external_id ?? item.external_id}
                   />
                 ))}
