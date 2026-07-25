@@ -228,7 +228,8 @@ export const de = {
     concept_group_placeholder: 'Konzeptgruppe...',
     relations_heading: 'Beziehungen',
     changelog_title: 'Letzte Änderungen des Community-Katalogs',
-    changelog_empty: 'Der Community-Katalog wurde in diesem Team noch nicht synchronisiert.',
+    changelog_loading: 'Verlauf wird geladen...',
+    changelog_empty: 'Für diesen Eintrag sind noch keine Änderungen verzeichnet.',
     backfill_nothing_to_update: 'Es gab nichts zu aktualisieren.',
   },
   search: {

@@ -228,7 +228,8 @@ export const ca = {
     concept_group_placeholder: 'Grup conceptual...',
     relations_heading: 'Relacions',
     changelog_title: 'Últims canvis del catàleg comunitari',
-    changelog_empty: 'Encara no s\'ha sincronitzat el catàleg comunitari en aquest equip.',
+    changelog_loading: 'Carregant historial...',
+    changelog_empty: 'Encara no hi ha canvis registrats per a aquesta entrada.',
     backfill_nothing_to_update: 'No hi havia res per actualitzar.',
   },
   search: {

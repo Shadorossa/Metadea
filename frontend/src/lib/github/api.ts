@@ -105,6 +105,46 @@ export async function mergePull(token: string, number: number): Promise<void> {
   });
 }
 
+export interface CatalogFileCommit {
+  sha: string;
+  message: string;
+  author: string | null;
+  timestamp: number;
+}
+
+// Per-file commit history straight from GitHub — the collaborative editor's
+// changelog panel used to show lib/shared/community-sync-log.ts's log
+// instead, which only ever records "a bulk community-catalog sync
+// happened", the same handful of entries regardless of which specific media
+// page the editor was opened from. This shows the history of the one file
+// actually being edited. No token required (public repo, unauthenticated
+// commits endpoint) — a signed-in token is only used when present, to avoid
+// GitHub's much lower unauthenticated rate limit.
+export async function fetchCommitHistoryForPath(token: string | null, path: string, perPage = 10): Promise<CatalogFileCommit[]> {
+  const res = await fetch(
+    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=${encodeURIComponent(path)}&per_page=${perPage}`,
+    {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        ...(token ? { 'Authorization': `token ${token}` } : {}),
+      },
+    },
+  );
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => null) as Array<{
+    sha: string;
+    commit: { message: string; author: { date: string } | null };
+    author: { login: string } | null;
+  }> | null;
+  if (!data) return [];
+  return data.map(c => ({
+    sha: c.sha,
+    message: c.commit.message.split('\n')[0],
+    author: c.author?.login ?? null,
+    timestamp: c.commit.author ? new Date(c.commit.author.date).getTime() : Date.now(),
+  }));
+}
+
 export async function closePull(token: string, number: number): Promise<void> {
   await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${number}`, {
     method: 'PATCH',

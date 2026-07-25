@@ -228,7 +228,8 @@ export const ru = {
     concept_group_placeholder: 'Концептуальная группа...',
     relations_heading: 'Связи',
     changelog_title: 'Последние изменения в каталоге сообщества',
-    changelog_empty: 'Каталог сообщества ещё не синхронизировался на этом устройстве.',
+    changelog_loading: 'Загрузка истории...',
+    changelog_empty: 'Для этой записи пока нет зарегистрированных изменений.',
     backfill_nothing_to_update: 'Обновлять было нечего.',
   },
   search: {

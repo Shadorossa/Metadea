@@ -228,7 +228,8 @@ export const it = {
     concept_group_placeholder: 'Gruppo concettuale...',
     relations_heading: 'Relazioni',
     changelog_title: 'Ultime modifiche del catalogo comunitario',
-    changelog_empty: 'Il catalogo comunitario non è ancora stato sincronizzato su questo dispositivo.',
+    changelog_loading: 'Caricamento cronologia...',
+    changelog_empty: 'Non ci sono ancora modifiche registrate per questa voce.',
     backfill_nothing_to_update: 'Non c\'era nulla da aggiornare.',
   },
   search: {

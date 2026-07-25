@@ -21,7 +21,6 @@ export const STORAGE_KEYS = {
   profileAvatarCustom: 'profile_avatar_custom',
   profileBannerCustom: 'profile_banner_custom',
   communityCatalogLastSync: 'community_catalog_last_sync',
-  communityCatalogSyncLog: 'community_catalog_sync_log',
   lastVisitedPath: 'metadea_last_visited_path',
   homeCalendarGeneralCache: 'metadea_home_calendar_general_cache',
   libraryGroupByBundle: 'metadea_library_group_by_bundle',

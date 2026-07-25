@@ -867,7 +867,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         </div>
       </div>
 
-      <PrEditorChangelogPanel />
+      <PrEditorChangelogPanel externalId={externalId} />
 
       {searchPopupMode === 'saga' && (
         <MediaSearchPopup

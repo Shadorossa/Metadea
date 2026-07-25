@@ -228,7 +228,8 @@ export const fr = {
     concept_group_placeholder: 'Groupe conceptuel...',
     relations_heading: 'Relations',
     changelog_title: 'Derniers changements du catalogue communautaire',
-    changelog_empty: "Le catalogue communautaire n'a pas encore été synchronisé sur cet appareil.",
+    changelog_loading: "Chargement de l'historique...",
+    changelog_empty: "Aucun changement enregistré pour cette entrée pour le moment.",
     backfill_nothing_to_update: "Il n'y avait rien à mettre à jour.",
   },
   search: {

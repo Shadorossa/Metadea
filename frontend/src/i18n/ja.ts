@@ -231,7 +231,8 @@ export const ja = {
     concept_group_placeholder: 'コンセプトグループ...',
     relations_heading: '関連作品',
     changelog_title: 'コミュニティカタログの最新の変更',
-    changelog_empty: 'このチームではまだコミュニティカタログが同期されていません。',
+    changelog_loading: '履歴を読み込み中...',
+    changelog_empty: 'このエントリーにはまだ変更履歴がありません。',
     backfill_nothing_to_update: '更新するものはありませんでした。',
   },
   search: {

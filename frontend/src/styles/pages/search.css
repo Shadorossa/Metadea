@@ -171,6 +171,20 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 0.65rem;
 }
+
+/* A grid item's default min-width is "auto" — the width of its longest
+   unbreakable content (e.g. a title with no spaces to wrap at, like "HUNTER
+   ×HUNTER" or "Kusuriya no..."), not 0. Whichever column that card happens
+   to land in gets its whole track forced wider than its fair 1fr share to
+   fit it — and since every card's cover height is a fixed % of ITS OWN
+   column's width (.card-media-base's padding-top trick), that one column
+   ends up both wider AND taller than the rest, in every row, regardless of
+   what's actually in it. Looked like "one column always has bigger covers"
+   because the same tracks get set up for the whole grid, not just the row
+   the long title happened to be in. */
+.results-grid > * {
+  min-width: 0;
+}
 @media (min-width: 480px)  { .results-grid { grid-template-columns: repeat(6,  1fr); } }
 @media (min-width: 640px)  { .results-grid { grid-template-columns: repeat(7,  1fr); } }
 @media (min-width: 768px)  { .results-grid { grid-template-columns: repeat(8,  1fr); } }

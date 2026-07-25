@@ -1,4 +1,7 @@
-import { getCommunitySyncLog } from '../../lib/shared/community-sync-log';
+import { useEffect, useState } from 'react';
+import { invoke } from '../../lib/tauri';
+import { fetchCommitHistoryForPath, type CatalogFileCommit } from '../../lib/github/api';
+import { catalogFilePath } from '../../lib/github/catalogPaths';
 import { getT } from '../../i18n/client';
 
 function relativeTime(timestamp: number): string {
@@ -12,32 +15,47 @@ function relativeTime(timestamp: number): string {
   return `hace ${days} d`;
 }
 
-// Small side panel next to the collaborative catalog editor showing the
-// last few community-catalog syncs (manual button in Settings > Entorno,
-// or BaseLayout.astro's own once-a-day auto sync) — see
-// lib/shared/community-sync-log.ts for where these entries come from.
-// Read once at mount: this panel doesn't need to react to a sync that
-// happens while the editor itself is open, since nothing in this modal
-// triggers one.
-export function PrEditorChangelogPanel() {
-  const log = getCommunitySyncLog();
+interface Props {
+  externalId: string;
+}
+
+// Small side panel next to the collaborative catalog editor showing this
+// specific entry's own GitHub commit history (catalog/<Type>/<id>.json) —
+// previously showed lib/shared/community-sync-log.ts's log instead, which
+// only ever recorded "a bulk community-catalog sync happened" (the manual
+// button in Settings > Entorno, or BaseLayout.astro's once-a-day auto sync),
+// the same few entries no matter which media page the editor was opened
+// from, not this entry's own history.
+export function PrEditorChangelogPanel({ externalId }: Props) {
+  const [commits, setCommits] = useState<CatalogFileCommit[] | null>(null);
   const pe = getT().pr_editor;
+
+  useEffect(() => {
+    let cancelled = false;
+    setCommits(null);
+    (async () => {
+      const token = await invoke<string | null>('get_github_token').catch(() => null);
+      const result = await fetchCommitHistoryForPath(token, catalogFilePath(externalId)).catch(() => []);
+      if (!cancelled) setCommits(result);
+    })();
+    return () => { cancelled = true; };
+  }, [externalId]);
 
   return (
     <div className="pr-editor-changelog-panel" onClick={e => e.stopPropagation()}>
       <span className="pr-editor-changelog-title">{pe.changelog_title}</span>
-      {log.length === 0 ? (
+      {commits === null ? (
+        <p className="pr-editor-changelog-empty">{pe.changelog_loading}</p>
+      ) : commits.length === 0 ? (
         <p className="pr-editor-changelog-empty">{pe.changelog_empty}</p>
       ) : (
         <ul className="pr-editor-changelog-list">
-          {log.map((entry, i) => (
-            <li key={i} className="pr-editor-changelog-item">
+          {commits.map(c => (
+            <li key={c.sha} className="pr-editor-changelog-item">
               <span className="pr-editor-changelog-item-text">
-                {entry.changes > 0
-                  ? `Se descargaron nuevos datos de la comunidad`
-                  : 'Ya estabas al día'}
+                {c.message}{c.author ? ` — @${c.author}` : ''}
               </span>
-              <span className="pr-editor-changelog-item-time">{relativeTime(entry.timestamp)}</span>
+              <span className="pr-editor-changelog-item-time">{relativeTime(c.timestamp)}</span>
             </li>
           ))}
         </ul>

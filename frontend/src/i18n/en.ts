@@ -231,7 +231,8 @@ export const en = {
     concept_group_placeholder: 'Concept Group...',
     relations_heading: 'Relations',
     changelog_title: 'Latest community catalog changes',
-    changelog_empty: "The community catalog hasn't been synced on this device yet.",
+    changelog_loading: 'Loading history...',
+    changelog_empty: 'No changes recorded yet for this entry.',
     backfill_nothing_to_update: 'There was nothing to update.',
   },
   search: {

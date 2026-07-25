@@ -231,7 +231,8 @@ export const es = {
     concept_group_placeholder: 'Grupo conceptual...',
     relations_heading: 'Relaciones',
     changelog_title: 'Últimos cambios del catálogo comunitario',
-    changelog_empty: 'Todavía no se ha sincronizado el catálogo comunitario en este equipo.',
+    changelog_loading: 'Cargando historial...',
+    changelog_empty: 'Todavía no hay cambios registrados para esta entrada.',
     backfill_nothing_to_update: 'No había nada que actualizar.',
   },
   search: {
