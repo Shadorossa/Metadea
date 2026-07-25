@@ -790,7 +790,13 @@ pub async fn igdb_search(
          version_parent.id,version_parent.genres.id,\
          parent_game.id,parent_game.genres.id; {} limit {}; offset {};",
         if safe_query.is_empty() {
-            "where cover != null & rating != null; sort rating desc;".to_string()
+            // rating alone is IGDB's average of however many user ratings a
+            // game happens to have — with no floor on that count, a title
+            // with a single 100 rating outranks a genuinely popular game
+            // sitting at 85 from thousands of ratings. rating_count >= 50
+            // keeps "top rated" meaning "well-regarded by a real audience",
+            // not "the few obscure titles that got lucky with 1-2 raters".
+            "where cover != null & rating != null & rating_count >= 50; sort rating desc;".to_string()
         } else {
             format!("search \"{}\"; where cover != null;", safe_query)
         },
