@@ -305,7 +305,25 @@ pub async fn get_blocked_external_ids(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare("SELECT external_id FROM blocked_media_catalog").str_err()?;
     let rows = stmt.query_map([], |row| row.get::<_, String>(0)).str_err()?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    let ids: Vec<String> = rows.filter_map(|r| r.ok()).collect();
+
+    // A blocked vnovel:<id> also blocks the same numeric id under game:
+    // (and vice versa) — IGDB ids are never reused across our two type
+    // buckets, so a work reclassified from one to the other still needs
+    // its old type-prefixed key suppressed from live API results even
+    // after its own local catalog row is gone (see get_catalog_entry's
+    // own cross-type lookup, same reasoning).
+    let mut expanded = ids.clone();
+    for id in &ids {
+        if let Some((prefix, num_id)) = id.split_once(':') {
+            match prefix {
+                "vnovel" => expanded.push(format!("game:{num_id}")),
+                "game" => expanded.push(format!("vnovel:{num_id}")),
+                _ => {}
+            }
+        }
+    }
+    Ok(expanded)
 }
 
 #[tauri::command]
