@@ -156,9 +156,8 @@ html[data-theme="pipboy"]::after {
 }
 
 /* Typography Terminal dividers */
-[data-theme="pipboy"] h2, 
-[data-theme="pipboy"] h3, 
-[data-theme="pipboy"] .settings-panel-title, 
+[data-theme="pipboy"] h2,
+[data-theme="pipboy"] h3,
 [data-theme="pipboy"] .section-label {
   border-bottom: 2px dashed var(--border-color) !important;
   font-family: 'Consolas', 'Courier New', Courier, monospace !important;

@@ -134,9 +134,8 @@ body[data-theme="glassmorphism"], html[data-theme="glassmorphism"] body {
   box-shadow: 0 8px 32px 0 rgba(147, 51, 234, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1) !important;
 }
 
-[data-theme="glassmorphism"] h2, 
-[data-theme="glassmorphism"] h3, 
-[data-theme="glassmorphism"] .settings-panel-title, 
+[data-theme="glassmorphism"] h2,
+[data-theme="glassmorphism"] h3,
 [data-theme="glassmorphism"] .section-label {
   color: var(--text-main) !important;
   font-weight: 700;

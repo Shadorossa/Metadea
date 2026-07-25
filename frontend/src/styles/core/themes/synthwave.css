@@ -148,9 +148,8 @@ body[data-theme="synthwave"], html[data-theme="synthwave"] body {
 }
 
 /* Typography with Neon Sunset Glow */
-[data-theme="synthwave"] h2, 
-[data-theme="synthwave"] h3, 
-[data-theme="synthwave"] .settings-panel-title, 
+[data-theme="synthwave"] h2,
+[data-theme="synthwave"] h3,
 [data-theme="synthwave"] .section-label {
   border-bottom: 2px solid var(--border-color) !important;
   color: var(--text-main) !important;
