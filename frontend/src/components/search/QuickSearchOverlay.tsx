@@ -10,6 +10,7 @@ import { searchAniListStaff, fetchAniListStaffDetail, type AniListStaffSearchRes
 import { searchUsers, type UserSearchResult } from '../../lib/social/users';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
+import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
@@ -101,6 +102,18 @@ export function QuickSearchOverlay() {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Full (unsliced, un-Row-transformed) results behind each media/character
+  // section — "Ver todos" hands these to /search via sessionStorage instead
+  // of letting SearchIsland re-run the exact same query+type fetch it just
+  // watched this component make. Not React state: only ever read at click
+  // time, never rendered.
+  const handoffRef = useRef<{
+    byType: Map<string, SearchResult[]>;
+    hasMore: boolean;
+    characterResults: SearchResult[];
+    characterHasMore: boolean;
+  }>({ byType: new Map(), hasMore: false, characterResults: [], characterHasMore: false });
+
   useEffect(() => {
     const onOpen = () => setOpen(true);
     window.addEventListener('metadea:open-quick-search', onOpen);
@@ -141,6 +154,19 @@ export function QuickSearchOverlay() {
         ]);
         if (controller.signal.aborted) return;
 
+        const rawByType = new Map<string, SearchResult[]>();
+        for (const r of mediaPage.results) {
+          const list = rawByType.get(r.type) ?? [];
+          list.push(r);
+          rawByType.set(r.type, list);
+        }
+        handoffRef.current = {
+          byType: rawByType,
+          hasMore: mediaPage.hasMore,
+          characterResults: characterPage.results,
+          characterHasMore: characterPage.hasMore,
+        };
+
         const byType = mediaRowsByType(mediaPage.results);
 
         // Backfill: a staff hit's own known works (e.g. "Sorachi" -> Gintama)
@@ -167,7 +193,7 @@ export function QuickSearchOverlay() {
             key: t,
             heading: typeLabels[t as keyof typeof typeLabels] ?? t,
             rows: byType.get(t)!.slice(0, SECTION_CAP),
-            viewAllHref: `/search?type=${t}&q=${encodeURIComponent(query)}`,
+            viewAllHref: `/search?type=${t}&q=${encodeURIComponent(query.trim())}`,
           }));
 
         const extraSections: Section[] = [];
@@ -182,7 +208,7 @@ export function QuickSearchOverlay() {
               cover: r.coverUrl,
               href: `/character?id=${encodeURIComponent(r.externalId.replace('character:', ''))}`,
             })),
-            viewAllHref: `/search?type=character&q=${encodeURIComponent(query)}`,
+            viewAllHref: `/search?type=character&q=${encodeURIComponent(query.trim())}`,
           });
         }
         if (staffPage.results.length > 0) {
@@ -238,6 +264,30 @@ export function QuickSearchOverlay() {
     navigate(href);
   }
 
+  // "Ver todos" already has this exact query+type's results in hand — hands
+  // them to /search (SearchIsland reads this same sessionStorage key) instead
+  // of letting it re-run the identical fetch this component just made.
+  function goToViewAll(section: Section) {
+    if (!section.viewAllHref) return;
+    const results = section.key === 'character' ? handoffRef.current.characterResults : handoffRef.current.byType.get(section.key);
+    const hasMore = section.key === 'character' ? handoffRef.current.characterHasMore : handoffRef.current.hasMore;
+    if (results && results.length > 0) {
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.searchState, JSON.stringify({
+          query: query.trim(),
+          mediaType: section.key,
+          results,
+          status: 'done',
+          page: 1,
+          hasMore,
+          sortField: 'releaseDate',
+          sortDirection: 'desc',
+        }));
+      } catch { /* handoff is a pure optimization — a normal fetch still works without it */ }
+    }
+    goTo(section.viewAllHref);
+  }
+
   return (
     <div className="quick-search-backdrop" onClick={() => setOpen(false)}>
       <div className="quick-search-box" onClick={e => e.stopPropagation()}>
@@ -269,7 +319,7 @@ export function QuickSearchOverlay() {
                 <div className="quick-search-section-header">
                   <h3 className="quick-search-section-title">{section.heading}</h3>
                   {section.viewAllHref && (
-                    <button type="button" className="quick-search-view-all" onClick={() => goTo(section.viewAllHref!)}>
+                    <button type="button" className="quick-search-view-all" onClick={() => goToViewAll(section)}>
                       {s.search_view_all}
                     </button>
                   )}

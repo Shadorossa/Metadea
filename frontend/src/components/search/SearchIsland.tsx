@@ -224,7 +224,22 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     if (urlParams) {
       setQuery(urlParams.query);
       setMediaType(urlParams.mediaType);
-      executeSearch(urlParams.query, urlParams.mediaType);
+
+      // Quick search's "Ver todos" already ran this exact query+type and
+      // stashes its results here before navigating (same key this component
+      // persists its own state to) — reuse them instead of re-fetching from
+      // scratch and losing the seconds that first fetch already cost.
+      const handoff = loadPersistedSearchState();
+      if (handoff && handoff.query === urlParams.query && handoff.mediaType === urlParams.mediaType) {
+        setResults(handoff.results);
+        setStatus(handoff.status === 'loading' ? (handoff.results.length ? 'done' : 'idle') : handoff.status);
+        setPage(handoff.page);
+        setHasMore(handoff.hasMore);
+        setSortField(handoff.sortField);
+        setSortDirection(handoff.sortDirection);
+      } else {
+        executeSearch(urlParams.query, urlParams.mediaType);
+      }
     } else if (initialQuery) {
       executeSearch(initialQuery, initialType);
     } else {
