@@ -9,7 +9,17 @@
     "updated_at": "",
     "blocked_at": null,
     "title_romaji": "Gyakuten Kenji 2",
-    "format": "GAME"
+    "format": "GAME",
+    "title_native": "Turnabout Prosecutor 2",
+    "synopsis": "Gyakuten Kenji 2, also referred to as \"Ace Attorney Investigations 2\" by Capcom staff, is the sequel to \"Gyakuten Kenji\" (known as \"Ace Attorney Investigations: Miles Edgeworth\" in English) and the sixth game in the \"Ace Attorney\" series of text adventure video games.",
+    "cover_url": "https://images.igdb.com/igdb/image/upload/t_1080p/co9ov1.jpg",
+    "banners_csv": "https://images.igdb.com/igdb/image/upload/t_1080p/qx0ckbpgu5i0y7tmpxha.jpg",
+    "release_year": 2011,
+    "release_month": 2,
+    "release_day": 3,
+    "genres_csv": "Adventure,Visual Novel",
+    "genres_tag_csv": "Point-and-click",
+    "platforms_csv": "Android,iOS,Nintendo DS"
   },
   "media_relations": [
     {
@@ -22,6 +32,5 @@
     }
   ],
   "characters": [],
-  "media_authors": [],
-  "saga_groups": {}
+  "media_authors": []
 }
