@@ -158,6 +158,138 @@
   border-color: var(--accent);
 }
 
+/* ── Toolbar: sort / season+year / genre — each its own square trigger that
+   drops its own panel straight down, to the right of the search box. ────── */
+.search-toolbar {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.search-filter-wrap {
+  position: relative;
+}
+
+.search-filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--anim-fast) var(--anim-ease);
+}
+.search-filter-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.search-filter-btn.active {
+  color: var(--text-main);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+/* A filter with a value picked, but its panel currently closed — same accent
+   as .active but without implying the panel is open. */
+.search-filter-btn.has-value:not(.active) {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.search-filter-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.4rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 220px;
+  padding: 0.6rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Sort panel: Fecha/Nota side by side, no extra chrome. */
+.search-filter-panel--row {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.search-filter-panel--genres {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: 280px;
+}
+
+.search-filter-chip {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--anim-fast) var(--anim-ease);
+}
+.search-filter-chip:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.search-filter-chip.active {
+  color: var(--bg-primary);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.search-filter-year-input {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.78rem;
+}
+.search-filter-year-input::placeholder { color: var(--text-muted); }
+.search-filter-year-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+/* Hides the number input's native up/down spinner arrows — this is a plain
+   year field, not a stepper. */
+.search-filter-year-input::-webkit-outer-spin-button,
+.search-filter-year-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.search-filter-year-input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.search-filter-clear {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.search-filter-clear:hover {
+  text-decoration: underline;
+}
+
 
 /* ── Results zone ────────────────────────────────────────────────────────── */
 .results-zone {

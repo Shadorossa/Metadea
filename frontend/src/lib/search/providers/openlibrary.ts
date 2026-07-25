@@ -116,6 +116,10 @@ function mapBook(book: OpenLibraryBook, mediaType: 'book' | 'comic'): SearchResu
     scoreGlobal:  book.ratings_average ? Math.round(book.ratings_average * 2 * 10) / 10 : null,
     authorNames:  book.author_name ?? null,
     authorKey:    book.author_key?.[0] ?? null,
+    // book.subject exists but is too noisy to pass off as "genres" (library
+    // classification codes, character names, list-membership tags, ...) —
+    // left empty rather than surfacing that noise in a genre filter.
+    genres:       [],
   };
 }
 

@@ -155,8 +155,30 @@ export function parseDateParts(dateString?: string): { year: number | null; mont
   };
 }
 
+// TMDB's genre id -> name lists are static/public and haven't changed in
+// years, but movie and TV shows use two DIFFERENT id spaces (e.g. 10759 is
+// "Action & Adventure" for TV, unused for movies; 28 is "Action" for movies,
+// unused for TV) — https://developer.themoviedb.org/reference/genre-movie-list
+// and .../genre-tv-list. A dedicated request just to fetch these would be
+// wasted traffic for values this stable.
+const TMDB_MOVIE_GENRES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Science Fiction',
+  10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+};
+
+const TMDB_TV_GENRES: Record<number, string> = {
+  10759: 'Action & Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 10762: 'Kids', 9648: 'Mystery',
+  10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap',
+  10767: 'Talk', 10768: 'War & Politics', 37: 'Western',
+};
+
 function mapTmdbMovieToSearchResult(movie: TmdbMovie, mediaType: MediaType): SearchResult {
   const { year, month, day } = parseDateParts(movie.release_date ?? movie.first_air_date);
+  const genreMap = mediaType === 'series' ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
+  const genres = (movie.genre_ids ?? []).map(id => genreMap[id]).filter((g): g is string => !!g);
   return {
     externalId: `${mediaType}:${movie.id}`,
     type: mediaType,
@@ -170,6 +192,7 @@ function mapTmdbMovieToSearchResult(movie: TmdbMovie, mediaType: MediaType): Sea
     releaseMonth: month,
     releaseDay: day,
     scoreGlobal: movie.vote_average ? Math.round(movie.vote_average * 10) / 10 : null,
+    genres,
   };
 }
 

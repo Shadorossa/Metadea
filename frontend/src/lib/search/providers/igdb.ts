@@ -60,6 +60,7 @@ async function searchGamesByCategories(
         releaseMonth: dateParts?.month ?? null,
         releaseDay:   dateParts?.day ?? null,
         scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
+        genres:       g.genres?.map(genre => genre.name) ?? [],
       };
     });
 
@@ -126,6 +127,7 @@ async function searchGamesLocal(
       releaseMonth: dateParts?.month ?? null,
       releaseDay:   dateParts?.day ?? null,
       scoreGlobal:  g.rating != null ? Math.round(g.rating) / 10 : null,
+      genres:       g.genres?.map(genre => genre.name) ?? [],
     };
   });
 

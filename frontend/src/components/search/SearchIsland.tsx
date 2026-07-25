@@ -31,6 +31,25 @@ const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error' | 'missing-keys';
 
+// A "season" is a calendar quarter (3 months) — release-date filter groups
+// results the same way anime seasons already work (Winter/Spring/Summer/
+// Fall), just applied uniformly across every media type via releaseMonth,
+// which every provider already fills in.
+type SeasonId = 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL';
+const SEASON_MONTHS: Record<SeasonId, number[]> = {
+  WINTER: [1, 2, 3],
+  SPRING: [4, 5, 6],
+  SUMMER: [7, 8, 9],
+  FALL: [10, 11, 12],
+};
+const SEASON_ORDER: SeasonId[] = ['WINTER', 'SPRING', 'SUMMER', 'FALL'];
+const SEASON_LABELS = (i18n: SearchTranslations): Record<SeasonId, string> => ({
+  WINTER: i18n.season_winter,
+  SPRING: i18n.season_spring,
+  SUMMER: i18n.season_summer,
+  FALL: i18n.season_fall,
+});
+
 // Every provider caps a single page at (or under) this — see each provider
 // file in lib/search/providers. Below this count, there's nothing left to
 // page into regardless of what a stale/aggregated hasMore might say.
@@ -141,6 +160,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sortField, setSortField] = useState<'releaseDate' | 'scoreGlobal'>('releaseDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Only one of the three toolbar dropdowns (sort / season+year / genre) open
+  // at a time — opening one closes whichever else was open.
+  const [openDropdown, setOpenDropdown] = useState<'sort' | 'season' | 'genre' | null>(null);
+  const [seasonFilter, setSeasonFilter] = useState<SeasonId | null>(null);
+  const [yearFilter, setYearFilter] = useState('');
+  const [genreFilter, setGenreFilter] = useState<string | null>(null);
+
+  // Closes whichever toolbar dropdown is open on any click outside it —
+  // these are click-toggled (not hover), so without this they'd only ever
+  // close via their own trigger or by opening a different one.
+  useEffect(() => {
+    if (!openDropdown) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.search-filter-wrap')) setOpenDropdown(null);
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [openDropdown]);
+
   // Starts at the smallest breakpoint's column count (matching SSR/first
   // paint, avoiding a hydration mismatch) and corrects to the real value
   // right after mount.
@@ -413,12 +451,26 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       }
       const aDay = a.releaseDay ?? 0;
       const bDay = b.releaseDay ?? 0;
-      return sortDirection === 'desc' ? bDay - aDay : aDay - aDay;
+      return sortDirection === 'desc' ? bDay - aDay : aDay - bDay;
     } else {
       const aScore = a.scoreGlobal ?? -1;
       const bScore = b.scoreGlobal ?? -1;
       return sortDirection === 'desc' ? bScore - aScore : aScore - bScore;
     }
+  });
+
+  // Genre dropdown options come from whatever's actually in the current
+  // result set (not a fixed master list per provider) — Open Library/Comic
+  // Vine results just never contribute any, same graceful degradation as
+  // the season/year filter working off releaseMonth every provider already
+  // fills in.
+  const availableGenres = [...new Set(results.flatMap(r => r.genres))].sort((a, b) => a.localeCompare(b));
+
+  const filteredResults = sortedResults.filter(r => {
+    if (yearFilter && r.releaseYear !== Number(yearFilter)) return false;
+    if (seasonFilter && (!r.releaseMonth || !SEASON_MONTHS[seasonFilter].includes(r.releaseMonth))) return false;
+    if (genreFilter && !r.genres.includes(genreFilter)) return false;
+    return true;
   });
 
   const activeMediaTypeLabel = i18n.types[mediaType].toLowerCase();
@@ -482,48 +534,149 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
             )}
           </button>
 
-          {/* Botones de ordenación (solo iconos minimalistas, siempre visibles) */}
+          {/* Barra de filtros: orden, temporada+año y género — cada uno un
+              cuadrado que despliega su propio panel debajo. */}
           {isMounted && (
-            <div className="search-sort-group" style={{ display: 'flex', gap: '0.25rem' }}>
-              {/* Ordenar por Fecha */}
-              <button
-                onClick={() => toggleSort('releaseDate')}
-                className={`search-sort-btn${sortField === 'releaseDate' ? ' active' : ''}`}
-                title={i18n.sort_date}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className="search-toolbar">
+              {/* Ordenar: un único cuadrado, Fecha y Nota lado a lado en el panel */}
+              <div className="search-filter-wrap">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'sort' ? null : 'sort')}
+                  className={`search-filter-btn${openDropdown === 'sort' ? ' active' : ''}`}
+                  title={i18n.sort_date}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18M6 12h12M10 18h4"/>
+                  </svg>
+                </button>
+                {openDropdown === 'sort' && (
+                  <div className="search-filter-panel search-filter-panel--row">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('releaseDate')}
+                      className={`search-sort-btn${sortField === 'releaseDate' ? ' active' : ''}`}
+                      title={i18n.sort_date}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        {sortField === 'releaseDate' ? (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+                          </svg>
+                        ) : (
+                          <span style={{ width: '10px' }} />
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort('scoreGlobal')}
+                      className={`search-sort-btn${sortField === 'scoreGlobal' ? ' active' : ''}`}
+                      title={i18n.sort_rating}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        {sortField === 'scoreGlobal' ? (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+                          </svg>
+                        ) : (
+                          <span style={{ width: '10px' }} />
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Temporada (trimestre) + año */}
+              <div className="search-filter-wrap">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'season' ? null : 'season')}
+                  className={`search-filter-btn${openDropdown === 'season' ? ' active' : ''}${seasonFilter || yearFilter ? ' has-value' : ''}`}
+                  title={i18n.filter_season_year}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
-                  {sortField === 'releaseDate' ? (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
-                    </svg>
-                  ) : (
-                    <span style={{ width: '10px' }} />
-                  )}
-                </div>
-              </button>
+                </button>
+                {openDropdown === 'season' && (
+                  <div className="search-filter-panel">
+                    <div className="search-filter-panel--row">
+                      {SEASON_ORDER.map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          className={`search-filter-chip${seasonFilter === s ? ' active' : ''}`}
+                          onClick={() => setSeasonFilter(prev => prev === s ? null : s)}
+                        >
+                          {SEASON_LABELS(i18n)[s]}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="number"
+                      className="search-filter-year-input"
+                      placeholder={i18n.filter_year}
+                      value={yearFilter}
+                      onChange={e => setYearFilter(e.target.value)}
+                    />
+                    {(seasonFilter || yearFilter) && (
+                      <button
+                        type="button"
+                        className="search-filter-clear"
+                        onClick={() => { setSeasonFilter(null); setYearFilter(''); }}
+                      >
+                        {i18n.filter_clear}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
-              {/* Ordenar por Calificación */}
-              <button
-                onClick={() => toggleSort('scoreGlobal')}
-                className={`search-sort-btn${sortField === 'scoreGlobal' ? ' active' : ''}`}
-                title={i18n.sort_rating}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                  </svg>
-                  {sortField === 'scoreGlobal' ? (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      {sortDirection === 'desc' ? <polyline points="6 9 12 15 18 9"/> : <polyline points="18 15 12 9 6 15"/>}
+              {/* Género — solo se ofrece si el resultado actual trae alguno */}
+              {availableGenres.length > 0 && (
+                <div className="search-filter-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'genre' ? null : 'genre')}
+                    className={`search-filter-btn${openDropdown === 'genre' ? ' active' : ''}${genreFilter ? ' has-value' : ''}`}
+                    title={i18n.filter_genre}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/>
+                      <circle cx="7.5" cy="7.5" r="1"/>
                     </svg>
-                  ) : (
-                    <span style={{ width: '10px' }} />
+                  </button>
+                  {openDropdown === 'genre' && (
+                    <div className="search-filter-panel search-filter-panel--genres">
+                      <button
+                        type="button"
+                        className={`search-filter-chip${!genreFilter ? ' active' : ''}`}
+                        onClick={() => setGenreFilter(null)}
+                      >
+                        {i18n.filter_all}
+                      </button>
+                      {availableGenres.map(g => (
+                        <button
+                          key={g}
+                          type="button"
+                          className={`search-filter-chip${genreFilter === g ? ' active' : ''}`}
+                          onClick={() => setGenreFilter(prev => prev === g ? null : g)}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </button>
+              )}
             </div>
           )}
         </div>
@@ -566,9 +719,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {sortedResults.length > 0 && (() => {
+        {status === 'done' && results.length > 0 && filteredResults.length === 0 && (
+          <div className="results-empty">{i18n.no_results_generic}</div>
+        )}
+
+        {filteredResults.length > 0 && (() => {
           const seen = new Set<string>();
-          const deduped = sortedResults.filter(result => {
+          const deduped = filteredResults.filter(result => {
             if (seen.has(result.externalId)) return false;
             seen.add(result.externalId);
             return true;

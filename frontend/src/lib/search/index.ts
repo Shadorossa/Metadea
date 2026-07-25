@@ -46,6 +46,11 @@ export interface SearchResult {
   authorNames?: string[] | null;
   /** First author key e.g. "/authors/OL26320A" — OpenLibrary only */
   authorKey?: string | null;
+  /** Genre names, when the provider's own search response already carries
+   *  them at no extra request cost (AniList, IGDB, TMDB). Open Library and
+   *  Comic Vine's search endpoints don't expose genre data, so this is
+   *  always empty for book/comic results. */
+  genres: string[];
 }
 
 // One page of search results, capped at ~50 per provider (see each
@@ -116,6 +121,7 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
     releaseMonth: entry.release_month ?? null,
     releaseDay: entry.release_day ?? null,
     scoreGlobal: entry.score_global ?? null,
+    genres: entry.genres_csv ? entry.genres_csv.split(',').map(g => g.trim()).filter(Boolean) : [],
   };
 }
 

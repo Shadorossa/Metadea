@@ -202,6 +202,7 @@ interface AniListMedia {
   coverImage: { large: string | null } | null;
   startDate: { year: number | null; month: number | null; day: number | null } | null;
   averageScore: number | null;
+  genres: string[] | null;
 }
 
 interface AniListResponse {
@@ -214,7 +215,7 @@ const SEARCH_QUERY = `
       pageInfo { hasNextPage }
       media(search: $searchQuery, type: $type, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
-        startDate { year month day } averageScore
+        startDate { year month day } averageScore genres
       }
     }
   }
@@ -226,7 +227,7 @@ const SEARCH_QUERY_WITH_FORMAT = `
       pageInfo { hasNextPage }
       media(search: $searchQuery, type: $type, format: $format, isAdult: $isAdult, sort: SEARCH_MATCH) {
         id format title { romaji native } coverImage { large }
-        startDate { year month day } averageScore
+        startDate { year month day } averageScore genres
       }
     }
   }
@@ -240,7 +241,7 @@ const TOP_RATED_QUERY = `
       pageInfo { hasNextPage }
       media(type: $type, isAdult: $isAdult, sort: SCORE_DESC) {
         id format title { romaji native } coverImage { large }
-        startDate { year month day } averageScore
+        startDate { year month day } averageScore genres
       }
     }
   }
@@ -252,7 +253,7 @@ const TOP_RATED_QUERY_WITH_FORMAT = `
       pageInfo { hasNextPage }
       media(type: $type, format: $format, isAdult: $isAdult, sort: SCORE_DESC) {
         id format title { romaji native } coverImage { large }
-        startDate { year month day } averageScore
+        startDate { year month day } averageScore genres
       }
     }
   }
@@ -272,6 +273,7 @@ function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): Sea
     releaseMonth: media.startDate?.month ?? null,
     releaseDay: media.startDate?.day ?? null,
     scoreGlobal: media.averageScore ? media.averageScore / 10 : null,
+    genres: media.genres ?? [],
   };
 }
 
@@ -411,6 +413,7 @@ export async function searchAniListCharacters(
     releaseMonth: null,
     releaseDay: null,
     scoreGlobal: null,
+    genres: [],
   }));
   return { results, hasMore: pageData.pageInfo?.hasNextPage ?? false };
 }

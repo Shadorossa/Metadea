@@ -35,6 +35,8 @@ function mapVolume(volume: ComicVineVolume): SearchResult {
     releaseDay:   null,
     // Comic Vine's volume resource has no rating/score field.
     scoreGlobal:  null,
+    // No genre data on Comic Vine's volume search resource.
+    genres:       [],
   };
 }
 
@@ -174,6 +176,7 @@ export async function searchComicVineCharacters(searchQuery: string, _signal: Ab
       releaseMonth: null,
       releaseDay: null,
       scoreGlobal: null,
+      genres: [],
     }));
 
   return { results, hasMore: pageResult.has_more };
