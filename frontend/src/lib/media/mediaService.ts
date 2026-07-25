@@ -235,7 +235,13 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
   if (existing.title_native) data.titleNative = existing.title_native;
   if (existing.title_english) data.titleEnglish = existing.title_english;
   if (existing.synopsis) data.description = existing.synopsis;
-  if (existing.cover_url) data.cover = existing.cover_url;
+  // Same upgrade exception persistToCatalog applies below — without it,
+  // this always overwrote the live fetch's fresh (already extraLarge-
+  // preferring) data.cover with the stale low-tier one first, so by the
+  // time persistToCatalog's own isLowTierAniListCover check ran, data.cover
+  // had already been clobbered into matching existing.cover_url exactly —
+  // there was nothing better left to upgrade to anymore.
+  if (existing.cover_url && !isLowTierAniListCover(existing.cover_url)) data.cover = existing.cover_url;
   if (existing.banners_csv) data.bannerImage = existing.banners_csv.split(',')[0];
   if (existing.genres_csv) data.genreDots = existing.genres_csv.split(',').join(' · ');
   if (existing.genres_tag_csv) data.genreTagDots = existing.genres_tag_csv.split(',').join(' · ');
