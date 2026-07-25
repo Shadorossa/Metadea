@@ -1447,3 +1447,68 @@
 .settings-help-modal-body li {
   margin-bottom: 0.75rem;
 }
+
+/* ── Danger action: delete all notes ─────────────────────────────────────── */
+.settings-danger-btn {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: var(--radius-md);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--anim-fast), border-color var(--anim-fast);
+}
+.settings-danger-btn:hover {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.55);
+}
+
+.settings-danger-modal-content {
+  max-width: 420px;
+}
+
+.settings-danger-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+}
+
+.settings-btn-cancel {
+  padding: 0.55rem 1.1rem;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--anim-fast);
+}
+.settings-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Stays visibly disabled (dimmed, no pointer) for the 5s safety delay the
+   button's own init script enforces before this can be clicked at all. */
+.settings-btn-danger-confirm {
+  padding: 0.55rem 1.1rem;
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--anim-fast), opacity var(--anim-fast);
+}
+.settings-btn-danger-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+}
+.settings-btn-danger-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

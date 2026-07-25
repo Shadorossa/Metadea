@@ -171,6 +171,26 @@ pub async fn delete_library_entry(
         .str_err()
 }
 
+// Settings > Preferencias > Contenido's "delete all notes" — wipes the
+// review/notes text off every library entry without touching anything else
+// (rating, progress, status, ...). A single UPDATE, not per-row saves
+// through save_library_entry, so this can't partially fail mid-way and
+// doesn't churn added_at/other fields save_library_entry would otherwise
+// also rewrite.
+#[tauri::command]
+pub async fn clear_all_notes(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE user_library SET notes = NULL, updated_at = ?1 WHERE notes IS NOT NULL",
+        [&now],
+    )
+    .map(|_| ())
+    .str_err()
+}
+
 #[tauri::command]
 pub async fn get_all_library_entries(
     state: tauri::State<'_, crate::db::MetadeaDb>,

@@ -129,6 +129,41 @@ const LANGUAGE_NAMES: Record<string, string> = {
             {t.settings.activity_adult_content_hint}
           </p>
         </div>
+        <div class="settings-checkbox-group">
+          <button
+            type="button"
+            id="clear-all-notes-btn"
+            class="settings-danger-btn"
+            data-i18n="settings.clear_notes_btn"
+          >
+            {t.settings.clear_notes_btn}
+          </button>
+          <p class="settings-hint" data-i18n="settings.clear_notes_hint">
+            {t.settings.clear_notes_hint}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmación: eliminar todas las notas -->
+<div class="settings-help-modal hidden" id="clear-notes-modal">
+  <div class="settings-help-modal-overlay"></div>
+  <div class="settings-help-modal-content settings-danger-modal-content">
+    <div class="settings-help-modal-header">
+      <h3 data-i18n="settings.clear_notes_confirm_title">{t.settings.clear_notes_confirm_title}</h3>
+      <button type="button" class="settings-help-modal-close" id="clear-notes-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="settings-help-modal-body">
+      <p data-i18n="settings.clear_notes_confirm_warning">{t.settings.clear_notes_confirm_warning}</p>
+      <div class="settings-danger-modal-actions">
+        <button type="button" class="settings-btn-cancel" id="clear-notes-cancel-btn" data-i18n="settings.clear_notes_cancel">
+          {t.settings.clear_notes_cancel}
+        </button>
+        <button type="button" class="settings-btn-danger-confirm" id="clear-notes-confirm-btn" disabled>
+          {t.settings.clear_notes_confirm_yes}
+        </button>
       </div>
     </div>
   </div>
