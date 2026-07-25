@@ -192,7 +192,6 @@ export const en = {
     follow: 'Follow',
     unfollow: 'Unfollow',
     user_not_found: 'User not found',
-    library_empty: 'This user has no works in their library yet.',
   },
   admin: {
     title: 'Catalog editor',

@@ -192,7 +192,6 @@ export const es = {
     follow: 'Seguir',
     unfollow: 'Dejar de seguir',
     user_not_found: 'Usuario no encontrado',
-    library_empty: 'Este usuario no tiene obras en su biblioteca.',
   },
   admin: {
     title: 'Editor de catálogo',

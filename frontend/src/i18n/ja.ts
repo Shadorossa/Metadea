@@ -192,7 +192,6 @@ export const ja = {
     follow: 'フォロー',
     unfollow: 'フォロー解除',
     user_not_found: 'ユーザーが見つかりません',
-    library_empty: 'このユーザーのライブラリにはまだ作品がありません。',
   },
   admin: {
     title: 'カタログエディター',

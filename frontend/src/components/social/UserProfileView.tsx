@@ -175,15 +175,13 @@ function OverviewTab({ data, p }: { data: ProfileData; p: ReturnType<typeof getT
 
   return (
     <>
-      <div id="hof-mount">
-        <HofSection
-          items={hofItems}
-          catalogMap={catalogMap}
-          p={p}
-          charFavIds={favorites.character ?? []}
-          characterMap={characterMap}
-        />
-      </div>
+      <HofSection
+        items={hofItems}
+        catalogMap={catalogMap}
+        p={p}
+        charFavIds={favorites.character ?? []}
+        characterMap={characterMap}
+      />
       <div className="profile-stats-bar">
         {([
           [p.stat_total, pad(stats.total)],

@@ -189,7 +189,6 @@ export const de = {
     follow: 'Folgen',
     unfollow: 'Entfolgen',
     user_not_found: 'Benutzer nicht gefunden',
-    library_empty: 'Dieser Nutzer hat noch keine Werke in seiner Bibliothek.',
   },
   admin: {
     title: 'Katalog-Editor',

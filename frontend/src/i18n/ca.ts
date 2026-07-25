@@ -189,7 +189,6 @@ export const ca = {
     follow: 'Seguir',
     unfollow: 'Deixar de seguir',
     user_not_found: 'Usuari no trobat',
-    library_empty: 'Aquest usuari no té cap obra a la seva biblioteca.',
   },
   admin: {
     title: 'Editor de catàleg',

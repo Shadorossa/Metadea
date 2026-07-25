@@ -33,7 +33,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   aggregateStats?: boolean;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: ReturnType<typeof getT>['profile'];
-  /** Someone else's profile (SocialLibraryTab) — `item` is a synthesized
+  /** Someone else's profile (LibrarySection, fed via UserProfileView) — `item` is a synthesized
    * LibraryEntry that doesn't really exist in the viewer's own library, so
    * clicking must never open the local editor pre-filled with their data
    * (a stray save would write it into the viewer's own library under this
