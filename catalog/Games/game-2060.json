@@ -24,7 +24,8 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Yakuza Kiwami 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coay0x.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coay0x.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:2060",
@@ -46,5 +47,5 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_name": "Yakuza / Like a Dragon"
+  "saga_name": "Yakuza 0"
 }
