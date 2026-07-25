@@ -313,11 +313,29 @@
   background: var(--border-color);
 }
 
-/* ── Library grid (5 columnas de cards horizontales grandes) ─────────────────────── */
+/* ── Library grid (cards horizontales grandes) ─────────────────────────── */
+/* Was a fixed repeat(5, 1fr) — at 5 columns a card's info column often
+   isn't wide enough for its date range ("29/03/2026 → 30/03/2026") to fit
+   on one line, wrapping it to two cramped lines instead. auto-fill with a
+   floor lets the grid drop to fewer, wider columns exactly when a track
+   would otherwise go narrower than that floor — self-adjusting to
+   whatever width the date needs instead of guessing viewport breakpoints.
+   300px keeps every card comfortably above the width where that wrap
+   starts (75px thumb + padding/gap + a info column wide enough for the
+   date on one line). */
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 0.85rem;
+}
+
+@media (max-width: 820px) {
+  .library-layout {
+    grid-template-columns: 1fr;
+  }
+  .library-filters {
+    position: static;
+  }
 }
 
 /* Grid item / positioning host for a card + its (optional) saga/edition
@@ -1670,6 +1688,22 @@
   box-sizing: border-box;
 }
 
+/* The +30rem/-15rem breakout above is only safe when the viewport has
+   30rem (480px) to spare beyond the normal column — below that, the box
+   became wider than the window itself with no scrollbar to reach the
+   part that fell off both edges (a card cropped at the left edge with no
+   way to scroll to it). Disabling the breakout here just falls back to
+   .profile-tab-content's own (narrower, but always on-screen) column;
+   .fav-grid's auto-fit already reflows to fewer columns on its own.
+   .fav-tabs-row's matching override lives just after its own base rule
+   below, so it wins the cascade against it. */
+@media (max-width: 1400px) {
+  .fav-layout {
+    width: 100%;
+    margin: 0;
+  }
+}
+
 @media (max-width: 1024px) {
   .fav-layout {
     padding: 0 1rem;
@@ -1700,6 +1734,13 @@
   width: calc(100% - 30rem);
   max-width: 100%;
   margin: 0 auto;
+}
+
+/* Matches .fav-layout's own breakout-disabling override above. */
+@media (max-width: 1400px) {
+  .fav-tabs-row {
+    width: 100%;
+  }
 }
 
 .fav-tabs-row::after {
@@ -2687,11 +2728,17 @@
 .act-card-type-label {
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .act-card-date {
   margin-left: auto;
   color: var(--text-dim);
+  /* Without this, a narrow card (e.g. Home's sidebar at a narrow window
+     width) wrapped this word-by-word into a tall, cramped column instead
+     of just staying on one line. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ── Custom Context Menu ────────────────────────────────────────────────────── */

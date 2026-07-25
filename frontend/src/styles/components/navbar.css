@@ -38,6 +38,18 @@
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  /* On a narrow window there just isn't room for every type shortcut on
+     one line — scrolls instead of overflowing into (visually overlapping)
+     the avatar/search group, since wrapping to a second line isn't an
+     option inside this bar's fixed 48px height. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-center-text::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-text-link {
@@ -81,11 +93,15 @@
 }
 
 .nav-group--left {
-  margin-left: 9rem;
+  /* Scales down as the window narrows instead of always reserving a fixed
+     9rem — that fixed margin left no room for .nav-center-text's type
+     shortcuts on a narrow window, pushing them into (visually overlapping)
+     the avatar/search group on the right. */
+  margin-left: clamp(1rem, 6vw, 9rem);
 }
 
 .nav-group--right {
-  margin-right: 9rem;
+  margin-right: clamp(1rem, 6vw, 9rem);
 }
 
 .nav-icon-btn {
