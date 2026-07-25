@@ -117,18 +117,24 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
       {/* 1. KPI Cards */}
       <div className="stats-grid-5">
         <div className="stats-card">
-          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STACK }} />
-          <span className="stats-card-label">{p.stat_total}</span>
+          <div className="stats-card-header">
+            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STACK }} />
+            <span className="stats-card-label">{p.stat_total}</span>
+          </div>
           <span className="stats-card-value">{totalWorks.toLocaleString()}</span>
         </div>
         <div className="stats-card">
-          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` }} />
-          <span className="stats-card-label">{p.stat_seasons}</span>
+          <div className="stats-card-header">
+            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` }} />
+            <span className="stats-card-label">{p.stat_seasons}</span>
+          </div>
           <span className="stats-card-value">{totalSeasons.toLocaleString()}</span>
         </div>
         <div className="stats-card">
-          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CLOCK }} />
-          <span className="stats-card-label">{p.stat_hours}</span>
+          <div className="stats-card-header">
+            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CLOCK }} />
+            <span className="stats-card-label">{p.stat_hours}</span>
+          </div>
           <span className="stats-card-value">{totalHours.toFixed(0)}</span>
           {totalHours > 0 && (
             <span className="stats-card-sub">
@@ -137,13 +143,17 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
           )}
         </div>
         <div className="stats-card">
-          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STAR }} />
-          <span className="stats-card-label">{p.stat_avg}</span>
+          <div className="stats-card-header">
+            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STAR }} />
+            <span className="stats-card-label">{p.stat_avg}</span>
+          </div>
           <span className="stats-card-value">{avgScoreStr}</span>
         </div>
         <div className="stats-card">
-          <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CHART }} />
-          <span className="stats-card-label">{p.stats_rated}</span>
+          <div className="stats-card-header">
+            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CHART }} />
+            <span className="stats-card-label">{p.stats_rated}</span>
+          </div>
           <span className="stats-card-value">{ratedItems.length.toLocaleString()}</span>
         </div>
       </div>

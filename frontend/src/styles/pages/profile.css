@@ -2186,6 +2186,12 @@
   gap: 0.5rem;
 }
 
+.stats-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .stats-card-icon {
   color: var(--accent);
   opacity: 0.8;
