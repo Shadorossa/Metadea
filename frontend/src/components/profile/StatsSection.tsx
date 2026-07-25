@@ -179,11 +179,9 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
                 const label = getTypeLabel(tEntry.type);
                 return (
                   <div className="stats-time-row" key={tEntry.type}>
-                    <div className="stats-time-meta">
-                      <span className="stats-time-label">{label}</span>
-                      <span className="stats-time-value">{tEntry.hours.toFixed(0)} h <span className="stats-time-count">({tEntry.count})</span></span>
-                    </div>
+                    <span className="stats-time-label">{label}</span>
                     <progress className="stats-bar-outer stats-bar-outer--time" value={tEntry.hours} max={maxHours} />
+                    <span className="stats-time-value">{tEntry.hours.toFixed(0)} h <span className="stats-time-count">({tEntry.count})</span></span>
                   </div>
                 );
               })}

@@ -2472,23 +2472,26 @@
 
 .stats-time-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.stats-time-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 0.78rem;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .stats-time-label {
+  flex-shrink: 0;
+  width: 110px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
   color: var(--text-muted);
   font-weight: 600;
 }
 
 .stats-time-value {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 0.78rem;
   color: var(--text-main);
   font-weight: 800;
 }
