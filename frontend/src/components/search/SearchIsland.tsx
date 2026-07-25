@@ -719,17 +719,17 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                           +
                         </button>
                       </div>
+                      <button
+                        type="button"
+                        className="search-filter-clear-x"
+                        onClick={clearFilters}
+                        title={i18n.filter_clear}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
                     </div>
-                    {(appliedFilters.season || appliedFilters.year) && (
-                      <div className="search-filter-panel-actions">
-                        <button type="button" className="search-filter-clear" onClick={clearFilters} title={i18n.filter_clear}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                          </svg>
-                          {i18n.filter_clear}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

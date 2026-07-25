@@ -208,7 +208,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-width: 220px;
+  min-width: 250px;
   padding: 0.6rem;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
@@ -287,23 +287,26 @@
   border-color: var(--accent);
 }
 
-/* One pill-shaped box (like the tier-list "< Todos >" pager) instead of
-   three separately-bordered segments — arrows flush at the edges, the
-   year bold and centered in the middle. */
+/* One box (like the tier-list "< Todos >" pager) instead of three
+   separately-bordered segments — arrows flush at the edges, the year bold
+   and centered in the middle. Uses the theme's own --radius-sm rather than
+   a hardcoded pill shape, so newspaper-dark (which zeroes every --radius-*
+   variable) renders it square like every other themed control instead of
+   the one stray rounded shape on the page. */
 .search-filter-year-group {
   display: flex;
   align-items: center;
-  flex: 1;
-  min-width: 0;
+  flex: 1.2;
+  min-width: 6.5rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .search-filter-year-input {
   flex: 1;
-  min-width: 0;
+  min-width: 2.6rem;
   width: 0;
   background: none;
   border: none;
@@ -403,6 +406,25 @@
   font-size: 0.7rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Season/year panel: always available (not gated on a filter already being
+   applied) — icon-only, right at the end of the select+year row. */
+.search-filter-clear-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--anim-fast);
+}
+.search-filter-clear-x:hover {
+  color: var(--accent);
 }
 .search-filter-clear:hover {
   text-decoration: underline;
