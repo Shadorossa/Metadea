@@ -676,16 +676,9 @@
    positioned independent of .library-card-info, so they keep showing
    over the cover. Kept after the 820px full-stack query below (in source
    order) so it correctly wins the cascade at widths narrower than 820px
-   too, instead of the wider 1080px query's own sidebar width silently
-   winning back over the full single-column stack. */
+   too. (The sidebar's own width no longer needs an override here — it
+   already narrows continuously via .library-layout's own clamp().) */
 @media (max-width: 1080px) {
-  .library-layout {
-    /* Filters sidebar narrows a step before the full single-column stack
-       (see the 820px query below) — gives the grid more room without
-       giving up the sidebar outright yet. */
-    grid-template-columns: 190px 1fr;
-  }
-
   .library-grid {
     grid-template-columns: repeat(5, 1fr);
     gap: 0.6rem;
@@ -1314,7 +1307,11 @@
 
 .library-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  /* clamp(), not a fixed 260px — the sidebar column now narrows smoothly
+     as the window does, same as its own contents (see .library-filters),
+     instead of staying full width right up until a single breakpoint
+     snapped it to 190px. */
+  grid-template-columns: clamp(150px, 18vw, 260px) 1fr;
   gap: 1.5rem;
   align-items: start;
   width: 100%;
