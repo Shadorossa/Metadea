@@ -1,6 +1,6 @@
-import { searchAniList, searchAniListCharacters } from './providers/anilist';
+import { searchAniList, searchAniListCharacters, topRatedAniList } from './providers/anilist';
 import { searchGames, searchGameBundles, searchGameExpandedEditions, searchGameRemasters } from './providers/igdb';
-import { searchMovies, searchSeries }  from './providers/tmdb';
+import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
@@ -265,4 +265,35 @@ export async function search(
     ? await searchAll(searchQuery, signal, page)
     : await searchOne(mediaType, searchQuery, signal, page);
   return mediaType === 'character' ? page_ : filterBlocked(page_);
+}
+
+function fetchTopRatedFromApi(
+  mediaType: Exclude<MediaType, 'all' | 'character' | 'book' | 'comic'>,
+  signal: AbortSignal,
+  page: number,
+): Promise<SearchPage> {
+  switch (mediaType) {
+    case 'anime':  return topRatedAniList('ANIME', 'anime', signal, undefined, page);
+    case 'manga':  return topRatedAniList('MANGA', 'manga', signal, undefined, page);
+    case 'lnovel': return topRatedAniList('MANGA', 'lnovel', signal, 'NOVEL', page);
+    // IGDB's own search command already treats an empty query as "browse,
+    // sorted by rating" (see igdb.rs) — no separate function needed.
+    case 'game':   return searchGames('', 'game', signal, page);
+    case 'vnovel': return searchGames('', 'vnovel', signal, page);
+    case 'movie':  return topRatedMovies(signal, page);
+    case 'series': return topRatedSeries(signal, page);
+  }
+}
+
+// No text query — a type tab shows its top 50 by rating instead of
+// staying blank until you type. Books and Comics have no such browse mode
+// in their own APIs (OpenLibrary rejects anything under 3 real characters
+// outright, even a wildcard; Comic Vine's /search/ endpoint is relevance-
+// only with no sort option) — those two, plus 'all' and 'character', just
+// return empty here and keep the existing empty-until-typed behavior.
+export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1): Promise<SearchPage> {
+  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'book' || mediaType === 'comic') {
+    return { results: [], hasMore: false };
+  }
+  return filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page));
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { search, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
+import { search, topRated, type MediaType, type SearchResult, MissingApiKeyError } from '../../lib/search/index';
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
@@ -160,7 +160,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // "Load more" click: appends instead of replacing and uses isLoadingMore
   // instead of the full loading state so the existing grid doesn't flash.
   const executeSearch = useCallback(async (searchQuery: string, type: MediaType, pageNum = 1) => {
-    if (searchQuery.length < 2) {
+    // A completely empty box still shows something — the type's own top 50
+    // by rating — instead of leaving the tab blank until you type (see
+    // lib/search/index.ts's topRated; 'all'/'character'/book/comic have no
+    // such browse mode and just come back empty, same as before).
+    const isBrowseMode = searchQuery.length === 0;
+    if (!isBrowseMode && searchQuery.length < 2) {
       setStatus('idle');
       setResults([]);
       setHasMore(false);
@@ -174,13 +179,15 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // and Enter racing each other), ride that request instead of firing
     // another one — this is the only thing avoided, no results are ever
     // reused later.
-    const key = `${type}:${searchQuery.toLowerCase()}:${pageNum}`;
+    const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}`;
     let promise = inFlightSearches.get(key);
     if (!promise) {
       if (pageNum === 1) abortControllerRef.current?.abort();
       abortControllerRef.current = new AbortController();
-      promise = search(searchQuery, type, abortControllerRef.current.signal, pageNum)
-        .finally(() => inFlightSearches.delete(key));
+      promise = (isBrowseMode
+        ? topRated(type, abortControllerRef.current.signal, pageNum)
+        : search(searchQuery, type, abortControllerRef.current.signal, pageNum)
+      ).finally(() => inFlightSearches.delete(key));
       inFlightSearches.set(key, promise);
     }
 
@@ -189,8 +196,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       setResults(prev => pageNum === 1 ? pageResults : [...prev, ...pageResults]);
       setHasMore(more);
       setPage(pageNum);
-      setStatus('done');
-      if (pageNum === 1) {
+      // Browse mode with nothing back (book/comic — no browse API for
+      // those) falls back to idle instead of a misleading "no matches".
+      setStatus(isBrowseMode && pageNum === 1 && pageResults.length === 0 ? 'idle' : 'done');
+      if (pageNum === 1 && !isBrowseMode) {
         const currentUrl = new URL(window.location.href);
         currentUrl.searchParams.set('type', type);
         currentUrl.searchParams.set('q', searchQuery);
@@ -202,6 +211,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     } catch (error) {
       const isAbort = error instanceof Error && error.name === 'AbortError';
       if (isAbort) return;
+      if (isBrowseMode) {
+        // A background nicety, not something the user explicitly asked
+        // for — falls back to idle instead of surfacing a missing-API-key
+        // prompt for a query the user never typed.
+        setStatus('idle');
+        return;
+      }
       if (error instanceof MissingApiKeyError) {
         setMissingProviders(error.providers);
         setStatus('missing-keys');
@@ -297,19 +313,22 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    abortControllerRef.current?.abort();
     setMediaType(selectedType);
     setQuery('');
     setResults([]);
     setHasMore(false);
     setPage(1);
-    setStatus('idle');
     const currentUrl = new URL(window.location.href);
     currentUrl.searchParams.set('type', selectedType);
     currentUrl.searchParams.delete('q');
     // See executeSearch's replaceState above for why history.state (not
     // null) has to be passed through here.
     history.replaceState(history.state, '', currentUrl.toString());
+    // Empty query -> browse mode (top 50 by rating for this type) instead
+    // of just idling on a blank tab. executeSearch's own abort() at
+    // pageNum===1 replaces the manual abortControllerRef.abort() this used
+    // to do here directly.
+    executeSearch('', selectedType);
   };
 
   const handleSearchSubmit = () => {
