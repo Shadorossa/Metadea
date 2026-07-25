@@ -516,22 +516,47 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {sortedResults.length > 0 && (
-          <div className="results-grid animate-fade-in">
-            {(() => {
-              const seen = new Set();
-              return sortedResults
-                .filter(result => {
-                  if (seen.has(result.externalId)) return false;
-                  seen.add(result.externalId);
-                  return true;
-                })
-                .map(result => (
-                  <MediaCard key={result.externalId} result={result} />
-                ));
-            })()}
-          </div>
-        )}
+        {sortedResults.length > 0 && (() => {
+          const seen = new Set<string>();
+          const deduped = sortedResults.filter(result => {
+            if (seen.has(result.externalId)) return false;
+            seen.add(result.externalId);
+            return true;
+          });
+
+          // Todos mixes every type into the same relevance-agnostic sort,
+          // which read as one undifferentiated pile — grouped by type
+          // instead (each group keeping the same date/score sort), same
+          // as a single-type tab shows on its own.
+          if (mediaType !== 'all') {
+            return (
+              <div className="results-grid animate-fade-in">
+                {deduped.map(result => <MediaCard key={result.externalId} result={result} />)}
+              </div>
+            );
+          }
+
+          const byType = new Map<string, SearchResult[]>();
+          for (const result of deduped) {
+            const list = byType.get(result.type) ?? [];
+            list.push(result);
+            byType.set(result.type, list);
+          }
+          const typeOrder = (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character');
+
+          return (
+            <div className="results-by-type animate-fade-in">
+              {typeOrder.filter(t => byType.has(t)).map(t => (
+                <div className="results-type-section" key={t}>
+                  <h3 className="results-type-title">{i18n.types[t as keyof typeof i18n.types]}</h3>
+                  <div className="results-grid">
+                    {byType.get(t)!.map(result => <MediaCard key={result.externalId} result={result} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Providers cap a page at ~50 results and only ever report hasMore
             when a full page came back — but the handoff from quick search's
@@ -567,39 +592,25 @@ const HOVER_PREFETCH_DELAY_MS = 300;
 
 function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
-  const [isValidCover, setIsValidCover] = useState<boolean | null>(result.coverUrl ? null : true);
-  // Some providers (OpenLibrary especially — its cover proxy sometimes
-  // redirects through archive.org on first request, which can be slow or
-  // fail outright in the webview even though the URL is genuinely valid)
-  // occasionally fail to actually load the image. The probe below used to
-  // treat img.onerror the same as "valid, portrait" and let the real <img>
-  // render with the same broken URL anyway — showing a broken-image icon +
-  // alt text instead of the placeholder, and (since a broken image's
-  // intrinsic box isn't governed by object-fit the same way) breaking the
-  // uniform card size the rest of the grid relies on. Tracked separately
-  // from isValidCover so a genuinely-failed load always falls back to the
-  // placeholder instead of attempting the real <img> at all.
+  // Landscape "covers" (rare provider mixups — a banner/splash image
+  // instead of a real poster) look bad even center-cropped, so those fall
+  // back to the placeholder instead. This used to be checked via a
+  // separate, invisible new Image() probe fired eagerly (not lazily) for
+  // every single result on mount — meaning every cover was fetched twice
+  // (once by the probe, once by the real <img>), and the whole card
+  // returned null while its own probe was pending, unmounting/remounting
+  // grid items as each of up to 50 probes resolved at its own pace. That's
+  // what made the grid look like it kept reflowing into different sizes.
+  // Checking the real (already lazy-loaded) <img>'s own onLoad instead
+  // needs no extra request and never removes the card itself from the
+  // grid — only its cover swaps to the placeholder, and only once actually
+  // known to be landscape.
+  const [isLandscape, setIsLandscape] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  useEffect(() => {
-    if (!result.coverUrl) return;
-    const img = new Image();
-    img.src = result.coverUrl;
-    img.onload = () => {
-      if (img.naturalWidth > img.naturalHeight) {
-        setIsValidCover(false);
-      } else {
-        setIsValidCover(true);
-      }
-    };
-    img.onerror = () => {
-      setLoadFailed(true);
-      setIsValidCover(true);
-    };
-  }, [result.coverUrl]);
-
-  if (isValidCover === false || isValidCover === null) {
-    return null;
+  function handleCoverLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
   }
 
   function handleMouseEnter() {
@@ -634,12 +645,13 @@ function MediaCard({ result }: { result: SearchResult }) {
       onKeyDown={hasDetail ? (e) => e.key === 'Enter' && handleClick() : undefined}
     >
       <div className="card-media-base mb-1.5">
-        {result.coverUrl && !loadFailed ? (
+        {result.coverUrl && !loadFailed && !isLandscape ? (
           <img
             src={result.coverUrl}
             alt={result.titleMain}
             className="card-media-img"
             loading="lazy"
+            onLoad={handleCoverLoad}
             onError={() => setLoadFailed(true)}
           />
         ) : (

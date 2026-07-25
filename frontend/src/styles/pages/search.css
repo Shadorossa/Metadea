@@ -177,6 +177,29 @@
 @media (min-width: 1024px) { .results-grid { grid-template-columns: repeat(10, 1fr); } }
 @media (min-width: 1280px) { .results-grid { grid-template-columns: repeat(12, 1fr); } }
 
+/* Todos, grouped by type instead of one mixed grid — each section reuses
+   .results-grid as-is. */
+.results-by-type {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.results-type-section .results-grid {
+  margin-top: 0.85rem;
+}
+
+.results-type-title {
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
 .results-empty {
   padding: 5rem 0;
   text-align: center;
