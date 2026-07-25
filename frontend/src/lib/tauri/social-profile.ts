@@ -9,7 +9,9 @@ export interface SocialLibraryItem {
   started_at: string | null;
   finished_at: string | null;
   notes: string | null;
-  tags: string | null;
+  tags: string[] | null;
+  status: string | null;
+  progress: number | null;
   title_main: string | null;
   cover_url: string | null;
   media_type: string | null;
@@ -53,7 +55,9 @@ export interface SocialLibraryInput {
   started_at?: string | null;
   finished_at?: string | null;
   notes?: string | null;
-  tags?: string | null;
+  tags?: string[] | null;
+  status?: string | null;
+  progress?: number | null;
 }
 
 export interface SocialActivityInput {
