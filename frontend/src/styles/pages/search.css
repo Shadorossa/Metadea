@@ -132,7 +132,7 @@
   animation: spin 0.7s linear infinite;
 }
 
-/* Botones de ordenación */
+/* Botones de ordenación — icono suelto, sin caja de fondo/borde. */
 .search-sort-btn {
   display: flex;
   align-items: center;
@@ -140,22 +140,17 @@
   width: 2.25rem;
   height: 2.25rem;
   flex-shrink: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  border: 1px solid var(--border-color);
+  background: none;
+  border: none;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--anim-fast) var(--anim-ease);
+  transition: color var(--anim-fast) var(--anim-ease);
 }
 .search-sort-btn:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.12);
 }
 .search-sort-btn.active {
-  color: var(--text-main);
-  background: var(--accent-soft);
-  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── Toolbar: sort / season+year / genre — each its own square trigger that
@@ -219,6 +214,13 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Sort panel only holds two small icon buttons — the 220px min-width every
+   other panel wants left a lot of dead space next to them. */
+.search-filter-panel.search-filter-panel--row {
+  min-width: 0;
+  width: max-content;
 }
 
 /* Sort panel (Fecha/Nota) and the season-select+year row both use this —
