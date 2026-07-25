@@ -26,17 +26,19 @@
   overflow: hidden;
 }
 
-/* Indeterminate loading bar — some visible response to a query in flight
-   beyond the "…" hint, since results can take a moment (character/staff
-   backfill fetches an extra network round trip each). */
+/* Indeterminate loading bar — some visible response to a query in flight,
+   since results can take a moment (character/staff backfill fetches an
+   extra network round trip each). A sibling of .quick-search-box (not a
+   child) so it can sit flush against the window's own bottom edge
+   instead of just the box's — the box is vertically centered and usually
+   far shorter than the viewport. */
 .quick-search-loading-bar {
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.4rem;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   height: 2px;
   overflow: hidden;
-  border-radius: 999px;
   background: color-mix(in srgb, var(--border-color) 60%, transparent);
 }
 

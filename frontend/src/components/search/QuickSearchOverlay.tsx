@@ -346,12 +346,13 @@ export function QuickSearchOverlay() {
           </div>
         )}
 
-        {loading && (
-          <div className="quick-search-loading-bar">
-            <div className="quick-search-loading-bar-fill" />
-          </div>
-        )}
       </div>
+
+      {loading && (
+        <div className="quick-search-loading-bar">
+          <div className="quick-search-loading-bar-fill" />
+        </div>
+      )}
     </div>
   );
 }
