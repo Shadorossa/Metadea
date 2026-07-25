@@ -395,21 +395,16 @@ pub async fn delete_catalog_entry(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,
 ) -> Result<(), String> {
+    // Exact match only — unlike get_catalog_entry's OR'd vnovel:/game: lookup
+    // (a deliberate "find whichever type this got filed under" read), a
+    // delete has to remove precisely the row asked for. The same OR match
+    // here would silently delete a work's *other*, still-correct type row
+    // too whenever both happened to exist locally at once (e.g. mid-cleanup
+    // after a vnovel->game reclassification).
     let conn = state.conn.lock().str_err()?;
-    if let Some((_, num_id)) = external_id.split_once(':') {
-        let vnovel_id = format!("vnovel:{num_id}");
-        let game_id = format!("game:{num_id}");
-        conn.execute(
-            "DELETE FROM media_catalog WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3",
-            [&external_id, &vnovel_id, &game_id],
-        )
+    conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
         .map(|_| ())
         .str_err()
-    } else {
-        conn.execute("DELETE FROM media_catalog WHERE external_id = ?1", [&external_id])
-            .map(|_| ())
-            .str_err()
-    }
 }
 
 #[derive(Debug, Serialize)]
