@@ -142,21 +142,20 @@ export function UserProfileView() {
             ? <img className="profile-avatar" src={profile.avatarUrl} alt={profile.username} referrerPolicy="no-referrer" />
             : <div className="profile-avatar-placeholder">{(profile.username[0] ?? '?').toUpperCase()}</div>}
           <h1 className="profile-username-large">{profile.username}</h1>
+          {!profile.isSelf && (
+            <button
+              type="button"
+              className={`user-profile-follow-btn${following ? ' active' : ''}`}
+              onClick={toggleFollow}
+              disabled={busy}
+            >
+              {following ? s.unfollow : s.follow}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="user-profile-body">
-        {!profile.isSelf && (
-          <button
-            type="button"
-            className={`user-profile-follow-btn${following ? ' active' : ''}`}
-            onClick={toggleFollow}
-            disabled={busy}
-          >
-            {following ? s.unfollow : s.follow}
-          </button>
-        )}
-
         {profile.bio && <p className="user-profile-bio">{profile.bio}</p>}
 
         {library.length === 0 ? (
