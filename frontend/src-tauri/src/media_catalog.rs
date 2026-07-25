@@ -298,6 +298,16 @@ pub async fn update_catalog_genres(
 
 // Lets the frontend strip blocked entries out of a live API fetch's raw
 // relations, which have no idea a title was blocked locally.
+//
+// No cross-type (vnovel:/game:) expansion here on purpose, unlike
+// get_catalog_entry's own OR'd lookup below: get_reclassified_external_ids
+// already excludes a game/vnovel live-search hit whenever its sibling
+// type's row exists in media_catalog at all, blocked or not (a block
+// doesn't delete the row, just flags it) — so a blocked entry's sibling
+// was always already covered by that check once it's applied alongside
+// this one (see filterReclassified, always run right after filterBlocked
+// in lib/search/index.ts). Expanding here too would just be the same
+// exclusion computed twice.
 #[tauri::command]
 pub async fn get_blocked_external_ids(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -305,25 +315,7 @@ pub async fn get_blocked_external_ids(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn.prepare("SELECT external_id FROM blocked_media_catalog").str_err()?;
     let rows = stmt.query_map([], |row| row.get::<_, String>(0)).str_err()?;
-    let ids: Vec<String> = rows.filter_map(|r| r.ok()).collect();
-
-    // A blocked vnovel:<id> also blocks the same numeric id under game:
-    // (and vice versa) — IGDB ids are never reused across our two type
-    // buckets, so a work reclassified from one to the other still needs
-    // its old type-prefixed key suppressed from live API results even
-    // after its own local catalog row is gone (see get_catalog_entry's
-    // own cross-type lookup, same reasoning).
-    let mut expanded = ids.clone();
-    for id in &ids {
-        if let Some((prefix, num_id)) = id.split_once(':') {
-            match prefix {
-                "vnovel" => expanded.push(format!("game:{num_id}")),
-                "game" => expanded.push(format!("vnovel:{num_id}")),
-                _ => {}
-            }
-        }
-    }
-    Ok(expanded)
+    Ok(rows.filter_map(|r| r.ok()).collect())
 }
 
 // Which of these game/vnovel search results have already been reclassified
