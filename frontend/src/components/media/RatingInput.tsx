@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { STAR_PATH } from '../../lib/media/constants';
 import { getActiveRatingSystem, ratingToEmoji, type RatingSystem } from '../../lib/media/rating-utils';
 import { getT } from '../../i18n/client';
@@ -62,37 +62,54 @@ function StarRating({ rating, onChange }: { rating: number; onChange: (v: number
   );
 }
 
+// Keeps its own text buffer instead of mirroring `rating` on every keystroke,
+// so clearing the field to type a new value doesn't get immediately snapped
+// back to min/max mid-edit. The value only gets parsed/clamped and reported
+// to onChange once the field loses focus (or the user types something
+// already-valid, so onChange fires as they go for e.g. keyboard steppers).
+function NumberRatingInput({ rating, onChange, min, max, decimals }: {
+  rating: number; onChange: (v: number) => void; min: number; max: number; decimals: boolean;
+}) {
+  const format = (v: number) => decimals ? v.toFixed(2) : String(Math.round(v));
+  const [text, setText] = useState(() => format(rating));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(format(rating));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rating, focused]);
+
+  return (
+    <input type="number" className="me-header-field-input" min={min} max={max} step={decimals ? 0.01 : 1}
+      value={text}
+      onFocus={() => setFocused(true)}
+      onChange={e => {
+        setText(e.target.value);
+        const v = decimals ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+        if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        let v = decimals ? parseFloat(text) : parseInt(text, 10);
+        if (!Number.isFinite(v)) v = min;
+        v = Math.min(max, Math.max(min, v));
+        onChange(v);
+        setText(format(v));
+      }}
+      placeholder={decimals ? '0.00' : '0'}
+      style={{ width: decimals ? '65px' : '50px' }} />
+  );
+}
+
 export function RatingInput({ rating, onChange, system: systemProp, min = 0, max = 10 }: Props) {
   const system = systemProp ?? getActiveRatingSystem();
 
   if (system === '10-dec') {
-    return (
-      <input type="number" className="me-header-field-input" min={min} max={max} step={0.01}
-        value={rating}
-        onChange={e => {
-          let v = parseFloat(e.target.value);
-          if (!Number.isFinite(v)) v = min;
-          v = Math.min(max, Math.max(min, v));
-          onChange(v);
-        }}
-        placeholder="0.00"
-        style={{ width: '65px' }} />
-    );
+    return <NumberRatingInput rating={rating} onChange={onChange} min={min} max={max} decimals />;
   }
 
   if (system === '10') {
-    return (
-      <input type="number" className="me-header-field-input" min={min} max={max} step={1}
-        value={Math.round(rating)}
-        onChange={e => {
-          let v = parseInt(e.target.value, 10);
-          if (!Number.isFinite(v)) v = min;
-          v = Math.min(max, Math.max(min, v));
-          onChange(v);
-        }}
-        placeholder="0"
-        style={{ width: '50px' }} />
-    );
+    return <NumberRatingInput rating={rating} onChange={onChange} min={min} max={max} decimals={false} />;
   }
 
   if (system === '3-emoji') {
