@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "487aeb8cace6d1e3487aeb8cace6d1e3",
+    "external_id": "vnovel:221280",
+    "type": "game",
+    "title_main": "Gyakuten Saiban",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null,
+    "format": "GAME"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:1426",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Phoenix Wright: Ace Attorney",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8s.jpg",
+      "media_external_id": "vnovel:221280"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
