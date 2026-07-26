@@ -131,7 +131,11 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
         const currentDate = (raw.startDate?.year ?? 0) * 12 + (raw.startDate?.month ?? 0);
         const relatedDate = (e.node.startDate?.year ?? 0) * 12 + (e.node.startDate?.month ?? 0);
         if (currentDate > 0 && relatedDate > 0 && currentDate !== relatedDate) {
-          relationType = currentDate < relatedDate ? 'SOURCE' : 'ADAPTATION';
+          // The label describes the RELATED node's role relative to current,
+          // not the other way around: if related came out earlier, related
+          // is the source (this one adapted it); if related came later, this
+          // one came first and related is the adaptation.
+          relationType = relatedDate < currentDate ? 'SOURCE' : 'ADAPTATION';
         }
       }
       const typeLabel = lookupLabel(canonicalRelationLabels, relationType, relationType);
