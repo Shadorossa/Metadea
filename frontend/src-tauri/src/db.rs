@@ -789,6 +789,13 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE user_library ADD COLUMN rating_2 REAL", []);
         mark_migration(conn, 39)?;
     }
+    if v < 40 {
+        // character:<N> id scheme unification (AniList/Comic Vine/TMDB) —
+        // see fix_character_ids' own doc comment in vestigial_cleanup.rs,
+        // which is where this temporary fixup actually lives.
+        crate::vestigial_cleanup::fix_character_ids(conn);
+        mark_migration(conn, 40)?;
+    }
 
     Ok(())
 }

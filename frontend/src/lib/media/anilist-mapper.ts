@@ -94,7 +94,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const genreTagDots = genreTags.join(' · ')  || undefined;
 
   const characters = raw.characters.edges.map(e => ({
-    id:    e.node.id ? `character:${e.node.id}` : undefined,
+    id:    e.node.id ? `character:a:${e.node.id}` : undefined,
     name:  e.node.name.full,
     // Prefer large — this seeds that character's own local DB row via
     // saveCharactersSkeleton, which becomes the sticky-preferred portrait

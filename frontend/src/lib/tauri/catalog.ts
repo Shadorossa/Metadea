@@ -273,3 +273,12 @@ export async function syncCommunityCatalog(): Promise<number> {
   if (!isTauri()) return 0;
   return invoke<number>('sync_community_catalog');
 }
+
+// TEMPORARY — manual trigger for the character:<N> id scheme fixup (see
+// fix_character_ids in vestigial_cleanup.rs). Settings > Novedades' own
+// button, for anyone whose db already ran the migration before it covered
+// comicvine:/tmdb: rows and favorite_custom_images.
+export async function fixCharacterIds(): Promise<void> {
+  if (!isTauri()) return;
+  return invoke<void>('fix_character_ids_command');
+}

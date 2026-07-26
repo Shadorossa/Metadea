@@ -57,6 +57,25 @@ const { t, version } = Astro.props;
         >
         </div>
       </div>
+
+      <!-- TEMPORARY — see fix_character_ids in vestigial_cleanup.rs. Remove
+           this card (and lib/settings/fix-character-ids.ts) alongside it. -->
+      <div style="flex: 1; min-width: 0;">
+        <div class="settings-version-card">
+          <div>
+            <span class="settings-auth-name">{t.settings.fix_character_ids_label}</span>
+          </div>
+          <button
+            class="btn btn--sm btn--secondary"
+            id="fix-character-ids-btn">{t.settings.fix_character_ids_btn}</button
+          >
+        </div>
+        <div
+          id="fix-character-ids-status"
+          style="font-size: 0.8rem; color: var(--text-muted); text-align: center; display: none; margin-top: 0.5rem;"
+        >
+        </div>
+      </div>
     </div>
   </div>
 </div>

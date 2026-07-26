@@ -51,7 +51,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
     : volume.deck ?? undefined;
 
   const characters: MediaCharacter[] = volume.character_credits.map(c => ({
-    id: `character:comicvine:${c.id}`,
+    id: `character:co:${c.id}`,
     name: c.name,
     image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));
@@ -131,7 +131,7 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
 // parentGame) instead of only existing as a relation card under the volume.
 export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId: string): MediaPageData {
   const characters: MediaCharacter[] = issue.character_credits.map(c => ({
-    id: `character:comicvine:${c.id}`,
+    id: `character:co:${c.id}`,
     name: c.name,
     image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));

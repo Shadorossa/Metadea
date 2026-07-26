@@ -164,7 +164,7 @@ export async function searchComicVineCharacters(searchQuery: string, _signal: Ab
   const results: SearchResult[] = pageResult.characters
     .filter(c => (c.image?.medium_url || c.image?.small_url) && !isMangaCharacter(c))
     .map(c => ({
-      externalId: `character:comicvine:${c.id}`,
+      externalId: `character:co:${c.id}`,
       type: 'character' as MediaType,
       format: '',
       source: 'comicvine' as const,

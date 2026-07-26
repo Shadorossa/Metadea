@@ -136,6 +136,7 @@ commands.allow = [
   "get_sync_states",
   "mark_synced",
   "mark_sync_failed",
-  "set_sync_state"
+  "set_sync_state",
+  "fix_character_ids_command"
 ]
 

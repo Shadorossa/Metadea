@@ -196,17 +196,35 @@ const translations = useTranslations(lang);
     const urlParams = new URLSearchParams(window.location.search);
     const idParam = urlParams.get('id') ?? '';
 
-    if (idParam.startsWith('comicvine:')) {
+    // idParam arrives in one of two shapes depending on the caller: already
+    // stripped of the "character:" prefix (search results/favorites strip it
+    // before building this URL) or still carrying it (MediaPage.tsx's own
+    // cast grid passes its card's id straight through) — tolerate both
+    // instead of assuming one. What's left is "<providerCode>:<rawId>",
+    // e.g. "a:12345" (AniList), "co:678" (Comic Vine), "ms:5256c8a2..." (TMDB).
+    const bareId = idParam.startsWith('character:') ? idParam.slice('character:'.length) : idParam;
+    const sepIndex = bareId.indexOf(':');
+    const providerCode = sepIndex === -1 ? '' : bareId.slice(0, sepIndex);
+    const rawId = sepIndex === -1 ? '' : bareId.slice(sepIndex + 1);
+
+    if (!providerCode || !rawId) {
       loadingEl.style.display = 'none';
-      errorTextEl.textContent = t.error_comicvine;
+      errorTextEl.textContent = t.error_invalid_id;
       errorEl.style.display = 'block';
       return;
     }
 
-    const cleanIdParam = idParam.replace(/\D/g, '');
-    const characterId = parseInt(cleanIdParam, 10);
+    // Only AniList ('a') has a live detail fetch implemented — Comic Vine
+    // ('co') and TMDB ('ms') characters can be found via search/cast grids
+    // but don't have their own detail page yet.
+    if (providerCode !== 'a') {
+      loadingEl.style.display = 'none';
+      errorTextEl.textContent = t.error_unsupported_source;
+      errorEl.style.display = 'block';
+      return;
+    }
 
-    const characterExternalId = `character:${characterId}`;
+    const characterId = parseInt(rawId, 10);
 
     if (isNaN(characterId)) {
       loadingEl.style.display = 'none';
@@ -214,6 +232,8 @@ const translations = useTranslations(lang);
       errorEl.style.display = 'block';
       return;
     }
+
+    const characterExternalId = `character:a:${characterId}`;
 
     try {
       // Fetched once, reused below for every field the PR editor lets you

@@ -437,7 +437,7 @@ export async function searchAniListCharacters(
 
   const chars = pageData.characters ?? [];
   const results: SearchResult[] = chars.map(char => ({
-    externalId: `character:${char.id}`,
+    externalId: `character:a:${char.id}`,
     type: 'character' as MediaType,
     format: '',
     source: 'anilist' as const,

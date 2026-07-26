@@ -159,7 +159,7 @@ export function mapTmdbToMedia(
   const characters: MediaCharacter[] = (raw.credits?.cast ?? [])
     .slice(0, CAST_LIMIT)
     .map(c => ({
-      id: `character:tmdb:${c.credit_id ?? `${c.id}-${c.character ?? ''}`}`,
+      id: `character:ms:${c.credit_id ?? `${c.id}-${c.character ?? ''}`}`,
       // TMDB appends "(voice)"/"(voice)  " to animated/dubbed roles right in
       // the character string itself (e.g. "Woody (voice)") — stripped since
       // this card is the character's name, not a credit annotation.

@@ -161,6 +161,7 @@ pub fn run() {
             media_authors::get_author_works,
             community_sync::sync_community_catalog,
             community_sync::get_community_characters,
+            vestigial_cleanup::fix_character_ids_command,
             characters::save_character,
             characters::get_character,
             characters::get_all_characters,

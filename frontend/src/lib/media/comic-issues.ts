@@ -81,7 +81,7 @@ export async function fetchComicIssues(
 
   const cast = isComic ? await fetchComicVineVolumeCast(issues.map(i => i.id)) : { characters: [], concepts: [] };
   const characters: MediaCharacter[] = cast.characters.map(c => ({
-    id: `character:comicvine:${c.id}`,
+    id: `character:co:${c.id}`,
     name: c.name,
     image: c.image?.medium_url ?? c.image?.small_url ?? undefined,
   }));
