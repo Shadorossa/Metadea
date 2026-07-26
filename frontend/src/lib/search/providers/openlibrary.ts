@@ -179,10 +179,22 @@ export interface OpenLibAuthorDetail {
   works: OpenLibWorkEntry[];
 }
 
+// authorKey arrives as either the bare id ("OL48230A") or the full path
+// ("/authors/OL48230A") — the latter is what ends up embedded in this app's
+// own external_id (see mediaService.ts, which stores whatever OpenLibrary's
+// own Work.authors[].author.key already gives it, unprefixed by us).
+// Unconditionally prepending "/authors/" here used to double it up into
+// ".../authors//authors/OL48230A.json", which OpenLibrary 303-redirects in a
+// way the browser's CORS check then rejects.
+function authorKeyPath(authorKey: string): string {
+  return authorKey.startsWith('/authors/') ? authorKey : `/authors/${authorKey}`;
+}
+
 export async function fetchOpenLibAuthorFullDetail(authorKey: string): Promise<OpenLibAuthorDetail | null> {
+  const keyPath = authorKeyPath(authorKey);
   const [detail, worksRes] = await Promise.all([
-    fetchJson<OpenLibAuthorDetailRaw>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}.json`),
-    fetchJson<{ entries?: OpenLibWorkEntry[] }>(`${API_ENDPOINTS.OPENLIBRARY}/authors/${authorKey}/works.json?limit=50`),
+    fetchJson<OpenLibAuthorDetailRaw>(`${API_ENDPOINTS.OPENLIBRARY}${keyPath}.json`),
+    fetchJson<{ entries?: OpenLibWorkEntry[] }>(`${API_ENDPOINTS.OPENLIBRARY}${keyPath}/works.json?limit=50`),
   ]);
   if (!detail) return null;
   const works = (worksRes?.entries || []).map(entry => ({
