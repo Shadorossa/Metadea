@@ -11,12 +11,12 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:47676",
       "related_media_external_id": "game:47675",
-      "relation_type": "EXPANDED_GAME",
-      "type_label": "Expanded Edition",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative Version #0",
       "title": "Inazuma Eleven 3: Lightning Bolt",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407r.jpg",
-      "media_external_id": "game:47676"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
     },
     {
       "media_external_id": "game:47676",
@@ -49,29 +49,9 @@
       "type_label": "Sequel",
       "title": "Inazuma Eleven Go: Light",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407o.jpg"
-    },
-    {
-      "media_external_id": "game:47676",
-      "related_media_external_id": "game:47675",
-      "relation_type": "ALTERNATIVE",
-      "type_label": "Alternative Version #0",
-      "title": "Inazuma Eleven 3: Lightning Bolt",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co407r.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {
-    "game:47673": "IEGO",
-    "game:47716": "IE2",
-    "game:47835": "IE2",
-    "game:62739": "IEGOGX",
-    "game:134112": "IEGOGX",
-    "game:9693": "IEGOCS",
-    "game:23220": "IEGOCS",
-    "game:9685": "IEGO",
-    "game:47676": "IE3",
-    "game:47675": "IE3"
-  },
   "saga_name": "Inazuma Eleven"
 }
