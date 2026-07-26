@@ -1,0 +1,60 @@
+{
+  "media_catalog": {
+    "id": "446b4631bce0754f446b4631bce0754f",
+    "external_id": "game:55163",
+    "type": "game",
+    "title_main": "Resident Evil Village",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:230951",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Resident Evil Village: Shadows of Rose",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5zol.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:230974",
+      "relation_type": "DLC",
+      "type_label": "DLC",
+      "title": "Resident Evil Village: The Mercenaries - Additional Orders",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5zqd.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:142743",
+      "relation_type": "STANDALONE",
+      "type_label": "Standalone Expansion",
+      "title": "Maiden",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2otg.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:19562",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil 7: Biohazard",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtwh.jpg"
+    },
+    {
+      "media_external_id": "game:55163",
+      "related_media_external_id": "game:347668",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Resident Evil Requiem",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobmj0.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Resident Evil"
+}
