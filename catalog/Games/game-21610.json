@@ -11,11 +11,20 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:21610",
       "related_media_external_id": "vnovel:1428",
       "relation_type": "EPISODE",
       "type_label": "Episode",
       "title": "Phoenix Wright: Ace Attorney - Trials and Tribulations",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8u.jpg",
+      "format": null
+    },
+    {
+      "related_media_external_id": "vnovel:1427",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Phoenix Wright: Ace Attorney - Justice for All",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8t.jpg",
       "media_external_id": "game:21610"
     }
   ],
