@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "47a716572ba08b7347a716572ba08b73",
+    "external_id": "vnovel:1427",
+    "type": "vnovel",
+    "title_main": "Phoenix Wright: Ace Attorney - Justice for All",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:221289",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Gyakuten Saiban 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co691v.jpg",
+      "media_external_id": "vnovel:1427"
+    },
+    {
+      "related_media_external_id": "game:21610",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Phoenix Wright: Ace Attorney Trilogy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa7iv.jpg",
+      "media_external_id": "vnovel:1427"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
