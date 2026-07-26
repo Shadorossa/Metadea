@@ -1,0 +1,24 @@
+{
+  "media_catalog": {
+    "id": "f9b620c2c260a943f9b620c2c260a943",
+    "external_id": "game:21610",
+    "type": "game",
+    "title_main": "Phoenix Wright: Ace Attorney Trilogy",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:1428",
+      "relation_type": "EPISODE",
+      "type_label": "Episode",
+      "title": "Phoenix Wright: Ace Attorney - Trials and Tribulations",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8u.jpg",
+      "media_external_id": "game:21610"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}

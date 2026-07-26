@@ -1,0 +1,32 @@
+{
+  "media_catalog": {
+    "id": "e3532639d0e2b3cbe3532639d0e2b3cb",
+    "external_id": "vnovel:1428",
+    "type": "vnovel",
+    "title_main": "Phoenix Wright: Ace Attorney - Trials and Tribulations",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "vnovel:221290",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Gyakuten Saiban 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5gpb.jpg",
+      "media_external_id": "vnovel:1428"
+    },
+    {
+      "related_media_external_id": "game:21610",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Phoenix Wright: Ace Attorney Trilogy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa7iv.jpg",
+      "media_external_id": "vnovel:1428"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
