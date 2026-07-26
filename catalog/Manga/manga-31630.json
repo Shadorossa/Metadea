@@ -1,0 +1,51 @@
+{
+  "media_catalog": {
+    "id": "816fc32ceb7b9e93816fc32ceb7b9e93",
+    "external_id": "manga:31630",
+    "type": "manga",
+    "title_main": "JoJo no Kimyou na Bouken: Sentou Chouryuu",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "manga:31630",
+      "related_media_external_id": "anime:14719",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "JoJo no Kimyou na Bouken (TV)",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx14719-VT5dRzTBSZ0w.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:31630",
+      "related_media_external_id": "lnovel:76604",
+      "relation_type": "SPIN_OFF",
+      "type_label": "Spin-off",
+      "title": "JORGE JOESTAR",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx76604-ikwW1qOzcXbB.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:31630",
+      "related_media_external_id": "manga:31517",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "JoJo no Kimyou na Bouken: Phantom Blood",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx31517-Y3pL6OTH74Iq.png"
+    },
+    {
+      "media_external_id": "manga:31630",
+      "related_media_external_id": "lnovel:184613",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "JoJo no Kimyou na Bouken - Mugen no Ou",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx184613-fwy6ANIHPljI.png"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "JoJo no Kimyou na Bouken - Mugen no Ou"
+}
