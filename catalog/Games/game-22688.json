@@ -25,22 +25,18 @@
       "type_label": "Sequel",
       "title": "Inazuma Eleven 2: Firestorm",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co407m.jpg"
+    },
+    {
+      "media_external_id": "game:22688",
+      "related_media_external_id": "game:317592",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Inazuma Eleven Re",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8upm.jpg",
+      "format": null
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {
-    "game:9685": "IEGO",
-    "game:47673": "IEGO",
-    "game:9693": "IEGOCS",
-    "game:47674": "IE3",
-    "game:47675": "IE3",
-    "game:134112": "IEGOGX",
-    "game:23220": "IEGOCS",
-    "game:47676": "IE3",
-    "game:47716": "IE2",
-    "game:47835": "IE2",
-    "game:62739": "IEGOGX"
-  },
   "saga_name": "Inazuma Eleven"
 }
