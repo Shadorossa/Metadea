@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "9e0d3ee16c7cc0eb9e0d3ee16c7cc0eb",
+    "external_id": "game:1426",
+    "type": "game",
+    "title_main": "Phoenix Wright: Ace Attorney",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:1426",
+      "related_media_external_id": "vnovel:221280",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Gyakuten Saiban",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5gp9.jpg",
+      "format": null
+    },
+    {
+      "related_media_external_id": "game:21610",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "Phoenix Wright: Ace Attorney Trilogy",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coa7iv.jpg",
+      "media_external_id": "game:1426"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
