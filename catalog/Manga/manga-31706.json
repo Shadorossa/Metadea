@@ -1,0 +1,570 @@
+{
+  "media_catalog": {
+    "id": "096a7942fe3efa7b096a7942fe3efa7b",
+    "external_id": "manga:31706",
+    "type": "manga",
+    "title_main": "JoJo no Kimyou na Bouken: Steel Ball Run",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "anime:190327",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "JoJo no Kimyou na Bouken: Steel Ball Run - 1st STAGE",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx190327-riJNCFL7w9y4.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "anime:210482",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "JoJo no Kimyou na Bouken: Steel Ball Run - 2nd - 3rd STAGE",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx210482-P1VNKbqdJ6Zj.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405855",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#1 — 1890-Nen 9-Gatsu 25-Nichi: San Diego Beach",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064396-01.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405856",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#2 — 1st Stage: 15,000 Metre",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064423-02.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405857",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#3 — 2nd Stage: Arizona Sabaku Goe",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064424-03.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405858",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#4 — Gyro Zeppeli no Shukumei",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064426-04.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405859",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#5 — Daitōryō no Inbō",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064429-05.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405860",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#6 — Scary Monsters",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064427-06.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405861",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#7 — Hiroi Hiroi Daisōgen no Chiisana Bohyō",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064428-07.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405862",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#8 — Otoko no Sekai e",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064434-08.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405863",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#9 — Arashi no Yoru ga Yatte Kuru",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064430-09.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405864",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#10 — Illinois Skyline, Michigan Lakeline",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064432-10.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405865",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#11 — Ōgon Chōhōkei wo Tsukure!",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064431-11.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405866",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#12 — Itai e no Jōken, Yūjō e no Jōken",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064433-12.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405867",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#13 — Kowareyuku Tekkyū",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064436-13.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405868",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#14 — Shōrisha e no Shikaku",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064438-14.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405869",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#15 — Gettysburg no Yume",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11133/111331711/6446300-volume_95.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405870",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#16 — Itomo Tayasuku Okonawareru Egutsunai Kōi",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064441-16.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405871",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#17 — D4C",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064442-17.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405872",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#18 — Ticket to Ride",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064439-18.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405873",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#19 — Okane Mochi ni wa Narenai",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064440-19.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405874",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#20 — Love Train - Sekai wa Hitotsu",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064444-20.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405875",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#21 — Ball Breaker",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064445-21.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405876",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#22 — Break My Heart, Break Your Heart",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064447-22.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405877",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#23 — High Voltage",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064443-23.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "related_media_external_id": "manga:issue-405878",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#24 — Seijōki yo, Eien Nare",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/3064446-24.jpg",
+      "media_external_id": "manga:31706"
+    },
+    {
+      "media_external_id": "manga:31706",
+      "related_media_external_id": "manga:33009",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "JoJo no Kimyou na Bouken: Stone Ocean",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx33009-jF9dqLJcZC4n.png"
+    },
+    {
+      "media_external_id": "manga:31706",
+      "related_media_external_id": "manga:55515",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "JoJo no Kimyou na Bouken: JoJolion",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx55515-HhCsfAsd7VK1.png"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:20148",
+      "name": "Diego Brando",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b20148-mVGqsVJ2t27v.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:19492",
+      "name": "Johnny Joestar",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b19492-gvMnKxhUhT9V.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23651",
+      "name": "Lucy Steel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n23651-fWU7JnUMHH8U.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:20147",
+      "name": "Funny Valentine",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b20147-paS2fNaB3yOv.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:11772",
+      "name": "Gyro Zeppeli",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b11772-p7MO37Mk0f5g.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:37446",
+      "name": "D-I-S-C-O",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n37446-PbfUzr0AFIMH.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:130205",
+      "name": "Ferdinand Hakase",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n130205-qNFmq4go1WiX.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172165",
+      "name": "Gaucho",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172165-RCfFfNaOa0wz.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172173",
+      "name": "Rina Higashikata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172173-ZF2EmIovqquE.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172181",
+      "name": "Norisuke  Higashikata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172181-ZJbZQLuSxukI.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:27042",
+      "name": "Wekapipo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b27042-yZsByUKCujCt.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:130206",
+      "name": "Scarlet Valentine",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n130206-TyyRL2sn3i0K.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172166",
+      "name": "Andre Boom Boom",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172166-IGBGKHf5sO90.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172174",
+      "name": "Nicholas Joestar",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172174-a7hS6ScxTaTq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172182",
+      "name": "Wekapipo no Ane",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172182-RrQbQqf7WKwD.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:28967",
+      "name": "Sandman",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b28967-ShW5sAxzZDny.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:130207",
+      "name": "Blackmore",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n130207-jh3obmhj00PP.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172167",
+      "name": "Mrs.  Robinson",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172167-lCzKtP18UATh.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172175",
+      "name": "L. A. Boom Boom",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172175-sMhLBv28kBhf.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172183",
+      "name": "Adam Pendleton",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172183-SKehjNbF6bj6.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:28968",
+      "name": "Pocoloco",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b28968-fUKdmdflOwcv.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:130208",
+      "name": "Mike O.",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n130208-oNr1V7SWJD87.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172168",
+      "name": "Dot Han",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172168-IwENapSp5EvY.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172176",
+      "name": "Potato Killer",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172176-tCFNsTWWvNfE.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172184",
+      "name": "Benjamin  Boom Boom",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172184-9RSsngkye1aR.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:87201",
+      "name": "Jesus Christ",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n87201-D5g2n9pL6uqW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:130209",
+      "name": "Axl RO",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n130209-gDI9HCt1JZ4p.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172169",
+      "name": "Urmd  Avdol",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172169-lWLiXRMOj1Y0.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172179",
+      "name": "Diego no Haha",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172179-jr0WaQQe3jrU.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:180500",
+      "name": "George Joestar",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b180500-ARxVv0kyGGm6.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:28990",
+      "name": "Mountain Tim",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b28990-rOK1FsEOdabY.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:37442",
+      "name": "Sugar Mountain",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b37442-eSNMPz9pd7S9.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:139789",
+      "name": "Gregorio Zeppeli",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b139789-3SrJmZJr8WZ1.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172170",
+      "name": "Wekapipo Giri no Ani",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172170-sOSrpxnCIxRW.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172177",
+      "name": "Joseph of Arimathea",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172177-RSHUeJhBMnYR.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23650",
+      "name": "Hot Pants",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b23650-awMG2DtHsm8N.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23649",
+      "name": "Ringo Roadagain",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n23649-nXSheGwY1gAW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157251",
+      "name": "Oyecomova",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157251-HQpQCUK2xDVt.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172171",
+      "name": "Captain Valentine",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172171-MlWOqbmYF3R4.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172178",
+      "name": "Fritz von Stroheim",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172178-KHr0pPmeYxrf.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32640",
+      "name": "Magenta Magenta",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n32640-yAQx3a7e0OzI.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:23652",
+      "name": "Steven Steel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n23652-fJf6jduDv3iY.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:167880",
+      "name": "Pork Pie Hat Kozou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b167880-1G3lfIGYYLIF.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172172",
+      "name": "Mrs. Zeppeli",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172172-HVoI9GyvCvNS.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:172180",
+      "name": "Neapolitan Noble",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b172180-IjVBocYuAMc3.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a97619",
+      "name": "Hirohiko Araki",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n97619-IWURoFca9uNY.jpg",
+      "role": "Story & Art",
+      "url": "/author?id=person:a97619",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "JoJo no Kimyou na Bouken - Mugen no Ou"
+}
