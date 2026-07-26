@@ -17,7 +17,7 @@ import {
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
 import { MODAL_CLOSE_TRANSITION_MS } from '../../lib/shared/useClosingTransition';
-import { getRatingName2, getRating2System, type RatingSlot } from '../../lib/settings/preferences';
+import { getRatingName2, getRating2System, getRating2Min, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -210,6 +210,11 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   const isSecondaryRating = activeRatingSlot === 'rating_2';
   const ratingLabel = isSecondaryRating ? getRatingName2(te.score) : te.score;
   const rating2System = useMemo(() => getRating2System(), []);
+  // Custom range only matters for '10-dec'/'10' — getRating2Min/Max default
+  // to 0/10 anyway, so passing them unconditionally for every system is
+  // harmless (5-star/3-emoji never read these props).
+  const rating2Min = useMemo(() => getRating2Min(), []);
+  const rating2Max = useMemo(() => getRating2Max(), []);
   // Any work whose whole "total" is a single unit (a movie, an anime movie,
   // an OVA/special with just one episode, etc.) gets the same one-shot
   // "viewing date" field as a movie instead of a started/finished range —
@@ -700,7 +705,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     primary rating. */}
                 <HeaderField label={ratingLabel}>
                   {isSecondaryRating ? (
-                    <RatingInput rating={activeLog.rating2} system={rating2System}
+                    <RatingInput rating={activeLog.rating2} system={rating2System} min={rating2Min} max={rating2Max}
                       onChange={v => dispatchEntry({ type: 'UPDATE_LOG', updates: { rating2: v } })} />
                   ) : (
                     <RatingInput rating={activeLog.rating}

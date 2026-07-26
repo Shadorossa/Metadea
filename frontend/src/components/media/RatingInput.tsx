@@ -7,6 +7,10 @@ interface Props {
   rating: number;
   onChange: (value: number) => void;
   system?: RatingSystem;
+  // Only meaningful for '10-dec'/'10' — rating_2's own custom range
+  // (Settings > Preferencias), never the primary rating's fixed 0-10.
+  min?: number;
+  max?: number;
 }
 
 function EmojiRating({ rating, onChange }: { rating: number; onChange: (v: number) => void }) {
@@ -58,14 +62,19 @@ function StarRating({ rating, onChange }: { rating: number; onChange: (v: number
   );
 }
 
-export function RatingInput({ rating, onChange, system: systemProp }: Props) {
+export function RatingInput({ rating, onChange, system: systemProp, min = 0, max = 10 }: Props) {
   const system = systemProp ?? getActiveRatingSystem();
 
   if (system === '10-dec') {
     return (
-      <input type="number" className="me-header-field-input" min={0} max={10} step={0.01}
-        value={rating || ''}
-        onChange={e => { let v = parseFloat(e.target.value) || 0; if (v > 10) v = 10; onChange(v); }}
+      <input type="number" className="me-header-field-input" min={min} max={max} step={0.01}
+        value={rating}
+        onChange={e => {
+          let v = parseFloat(e.target.value);
+          if (!Number.isFinite(v)) v = min;
+          v = Math.min(max, Math.max(min, v));
+          onChange(v);
+        }}
         placeholder="0.00"
         style={{ width: '65px' }} />
     );
@@ -73,9 +82,14 @@ export function RatingInput({ rating, onChange, system: systemProp }: Props) {
 
   if (system === '10') {
     return (
-      <input type="number" className="me-header-field-input" min={0} max={10} step={1}
-        value={rating ? Math.round(rating) : ''}
-        onChange={e => { let v = parseInt(e.target.value, 10) || 0; if (v > 10) v = 10; onChange(v); }}
+      <input type="number" className="me-header-field-input" min={min} max={max} step={1}
+        value={Math.round(rating)}
+        onChange={e => {
+          let v = parseInt(e.target.value, 10);
+          if (!Number.isFinite(v)) v = min;
+          v = Math.min(max, Math.max(min, v));
+          onChange(v);
+        }}
         placeholder="0"
         style={{ width: '50px' }} />
     );

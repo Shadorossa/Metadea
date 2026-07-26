@@ -37,5 +37,7 @@ export const STORAGE_KEYS = {
   ratingName1: 'metadea_rating_name_1',
   ratingName2: 'metadea_rating_name_2',
   rating2System: 'metadea_rating_2_system',
+  rating2Min: 'metadea_rating_2_min',
+  rating2Max: 'metadea_rating_2_max',
   libraryActiveRatingSlot: 'metadea_library_active_rating_slot',
 } as const;

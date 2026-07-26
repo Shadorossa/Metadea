@@ -519,6 +519,8 @@ export const ca = {
     dual_rating_name2_label: 'Nom de la segona qualificació',
     dual_rating_default_name1: 'Nota',
     dual_rating_default_name2: 'Nota 2',
+    dual_rating_min_label: 'Mínim',
+    dual_rating_max_label: 'Màxim',
     tab_application: 'Connexions',
     tab_novedades: 'Novetats',
     tab_preferences: 'Preferències',

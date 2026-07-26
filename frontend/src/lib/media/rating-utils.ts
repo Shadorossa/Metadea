@@ -50,7 +50,8 @@ function starFullClipped(clipRightPct: string): string {
   return `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="${STAR_STROKE_WIDTH}" style="${STAR_BASE_STYLE}clip-path:inset(0 ${clipRightPct}% 0 0);"><path d="${STAR_PATH}"/></svg>`;
 }
 
-/** Formats an average rating value (DB 0-10 scale) per the active rating system, with no unit suffix. */
+/** Formats an average rating value (DB 0-10 scale, or rating_2's own custom
+ *  range) per the active rating system, with no unit suffix. */
 export function formatAverageScore(avgVal: number, system: RatingSystem): string {
   if (system === '10-dec') return avgVal.toFixed(2);
   if (system === '10') return Math.round(avgVal).toString();
@@ -61,10 +62,13 @@ export function formatAverageScore(avgVal: number, system: RatingSystem): string
   return (avgVal / 2).toFixed(1);
 }
 
-/** Unit suffix to append after formatAverageScore's output (empty for the emoji system, which is self-contained). */
-export function averageScoreSuffix(system: RatingSystem): string {
+/** Unit suffix to append after formatAverageScore's output (empty for the
+ *  emoji system, which is self-contained). `max` only matters for '10-dec'/
+ *  '10' — rating_2's own custom range (getRating2Max) instead of the
+ *  primary rating's fixed 10; every other caller keeps the default. */
+export function averageScoreSuffix(system: RatingSystem, max = 10): string {
   if (system === '3-emoji') return '';
-  return system === '10-dec' || system === '10' ? ' / 10' : ' / 5';
+  return system === '10-dec' || system === '10' ? ` / ${max}` : ' / 5';
 }
 
 // Fills each star to its exact fraction (e.g. a 4.25-star rating fills the
@@ -100,14 +104,17 @@ export function formatRatingHtml(
   rating: number | null | undefined,
   system: RatingSystem,
   cssClass: string,
+  // Only meaningful for '10-dec'/'10' — rating_2's own custom range
+  // (getRating2Max) instead of the primary rating's fixed 10.
+  max = 10,
 ): string {
   if (!rating) return `<span class="${cssClass}"></span>`;
 
   if (system === '10-dec') {
-    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Number(rating).toFixed(2)} / 10</span>`;
+    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Number(rating).toFixed(2)} / ${max}</span>`;
   }
   if (system === '10') {
-    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Math.round(rating)} / 10</span>`;
+    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Math.round(rating)} / ${max}</span>`;
   }
   if (system === '3-emoji') {
     const { emoji, color } = ratingToEmoji(rating);

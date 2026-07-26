@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
-import { getRating2System, type RatingSlot } from '../../lib/settings/preferences';
+import { getRating2System, getRating2Max, type RatingSlot } from '../../lib/settings/preferences';
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
@@ -64,8 +64,8 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const aggregateMembers = bundleMeta ? orderedGrouped : [item, ...orderedGrouped];
   const isSecondaryRating = ratingSlot === 'rating_2';
   const ratingHtml = isAggregate
-    ? formatRatingHtml(averageRating(aggregateMembers, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating')
-    : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating');
+    ? formatRatingHtml(averageRating(aggregateMembers, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10)
+    : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
   // Earliest started_at / latest finished_at across every member by actual
   // date value — not by release order (a bundle/saga's earliest-released
   // work isn't necessarily the one the user started first), which used to

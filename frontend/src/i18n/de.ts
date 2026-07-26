@@ -519,6 +519,8 @@ export const de = {
     dual_rating_name2_label: 'Name der zweiten Bewertung',
     dual_rating_default_name1: 'Bewertung',
     dual_rating_default_name2: 'Bewertung 2',
+    dual_rating_min_label: 'Minimum',
+    dual_rating_max_label: 'Maximum',
     tab_application: 'Verbindungen',
     tab_novedades: 'Neuigkeiten',
     tab_preferences: 'Einstellungen',

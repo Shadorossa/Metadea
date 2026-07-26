@@ -111,6 +111,29 @@ const LANGUAGE_NAMES: Record<string, string> = {
             >
             </button>
           </div>
+
+          <!-- Only meaningful for the '10-dec'/'10' systems (a numeric
+               range) — toggled by dual-rating.ts alongside the picker. -->
+          <div id="dual-rating-range-row" class="dual-rating-range-row hidden">
+            <div class="dual-rating-field">
+              <input
+                type="number"
+                id="rating-2-min"
+                class="settings-modal-input"
+                placeholder={t.settings.dual_rating_min_label}
+                step="1"
+              />
+            </div>
+            <div class="dual-rating-field">
+              <input
+                type="number"
+                id="rating-2-max"
+                class="settings-modal-input"
+                placeholder={t.settings.dual_rating_max_label}
+                step="1"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

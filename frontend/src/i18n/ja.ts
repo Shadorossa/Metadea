@@ -522,6 +522,8 @@ export const ja = {
     dual_rating_name2_label: '2つ目の評価の名前',
     dual_rating_default_name1: '評価',
     dual_rating_default_name2: '評価2',
+    dual_rating_min_label: '最小値',
+    dual_rating_max_label: '最大値',
     tab_application: '連携',
     tab_novedades: 'お知らせ',
     tab_preferences: '基本設定',

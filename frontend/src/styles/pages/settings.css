@@ -779,6 +779,18 @@
   font-weight: 800;
 }
 
+/* Rating_2's own picker sits inline next to the enable checkbox and now
+   the min/max fields too (PreferencesTab.astro) — smaller than the
+   primary rating system's picker so that whole row stays compact. */
+.rating-system-btn-2 {
+  width: 40px;
+  height: 40px;
+}
+
+.rating-system-btn-2 .rating-value-text {
+  font-size: 0.62rem;
+}
+
 /* ── Doble calificación ───────────────────────────────────────────────────── */
 .dual-rating-config {
   /* No margin-top — .settings-section's own gap (0.85rem) already
@@ -798,7 +810,7 @@
 
 .dual-rating-field {
   flex: 1;
-  min-width: 160px;
+  min-width: 100px;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -807,15 +819,34 @@
 /* The system-2 picker sits inline to the right of the enable checkbox
    (see PreferencesTab.astro) rather than tucked away in the config box
    below it — align them on the same baseline instead of the default
-   stretch, and keep the picker's own label+buttons stacked. */
+   stretch, and keep the picker/range-row side by side within it. */
 .dual-rating-toggle-row {
   align-items: center;
 }
 
 .dual-rating-toggle-row .dual-rating-system-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  /* .dual-rating-config's own flex-direction:column still applied here
+     otherwise — this rule's higher specificity only overrides the
+     properties it actually redeclares, and flex-direction wasn't one of
+     them, so the picker and range-row kept stacking instead of sitting
+     side by side. */
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Same field styling as the Nombre de calificación/calificación secundaria
+   inputs (.dual-rating-field), just narrower — these are 2-3 digit numbers,
+   not names. */
+.dual-rating-range-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.dual-rating-range-row .dual-rating-field {
+  min-width: 80px;
+  flex: 0 0 80px;
 }
 
 /* Tighter than the default .settings-section gap (0.85rem) — this section
@@ -1172,6 +1203,16 @@
   color: var(--text-main);
   font-size: 0.8rem;
   text-align: center;
+}
+
+/* Remove number input spinner arrows (rating-2 min/max fields) */
+.settings-modal-input[type=number]::-webkit-outer-spin-button,
+.settings-modal-input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.settings-modal-input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .settings-modal-actions {

@@ -521,6 +521,8 @@ export const ru = {
     dual_rating_name2_label: 'Название второй оценки',
     dual_rating_default_name1: 'Оценка',
     dual_rating_default_name2: 'Оценка 2',
+    dual_rating_min_label: 'Минимум',
+    dual_rating_max_label: 'Максимум',
     tab_application: 'Подключения',
     tab_novedades: 'Новости',
     tab_preferences: 'Предпочтения',

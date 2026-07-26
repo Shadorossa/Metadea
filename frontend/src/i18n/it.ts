@@ -519,6 +519,8 @@ export const it = {
     dual_rating_name2_label: 'Nome della seconda valutazione',
     dual_rating_default_name1: 'Voto',
     dual_rating_default_name2: 'Voto 2',
+    dual_rating_min_label: 'Minimo',
+    dual_rating_max_label: 'Massimo',
     tab_application: 'Connessioni',
     tab_novedades: 'Novità',
     tab_preferences: 'Preferenze',

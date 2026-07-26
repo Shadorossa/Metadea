@@ -529,6 +529,8 @@ export const es = {
     dual_rating_name2_label: 'Nombre de la segunda calificación',
     dual_rating_default_name1: 'Nota',
     dual_rating_default_name2: 'Nota 2',
+    dual_rating_min_label: 'Mínimo',
+    dual_rating_max_label: 'Máximo',
     tab_application: 'Conexiones',
     tab_novedades: 'Novedades',
     tab_preferences: 'Preferencias',

@@ -529,6 +529,8 @@ export const en = {
     dual_rating_name2_label: 'Second rating name',
     dual_rating_default_name1: 'Rating',
     dual_rating_default_name2: 'Rating 2',
+    dual_rating_min_label: 'Minimum',
+    dual_rating_max_label: 'Maximum',
     tab_application: 'Connections',
     tab_novedades: "What's New",
     tab_preferences: 'Preferences',

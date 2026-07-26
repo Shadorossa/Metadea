@@ -60,6 +60,32 @@ export function setRating2System(system: RatingSystem): void {
   localStorage.setItem(STORAGE_KEYS.rating2System, system);
 }
 
+// Custom min/max for rating_2 — only meaningful for the '10-dec'/'10'
+// systems (a numeric range), never 5-star/3-emoji, which have no such
+// range to customize. Scoped to rating_2 only: the primary rating always
+// uses the app-wide 0-10 scale everyone else's ratings/averages/sorting
+// already assume. Existing saved ratings are never rescaled when this
+// changes — a "7" stays a raw "7" even if the range around it moves.
+export function getRating2Min(): number {
+  const raw = localStorage.getItem(STORAGE_KEYS.rating2Min);
+  const parsed = raw === null ? NaN : parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function setRating2Min(min: number): void {
+  localStorage.setItem(STORAGE_KEYS.rating2Min, String(min));
+}
+
+export function getRating2Max(): number {
+  const raw = localStorage.getItem(STORAGE_KEYS.rating2Max);
+  const parsed = raw === null ? NaN : parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : 10;
+}
+
+export function setRating2Max(max: number): void {
+  localStorage.setItem(STORAGE_KEYS.rating2Max, String(max));
+}
+
 // Which rating the profile library's own selector currently shows/sorts by
 // — persisted so it doesn't reset to the primary one on every visit.
 export type RatingSlot = 'rating' | 'rating_2';
