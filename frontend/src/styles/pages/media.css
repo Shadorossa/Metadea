@@ -422,6 +422,21 @@
   align-items: start;
 }
 
+/* Pinned to their own explicit track (1/2/3) instead of relying on grid
+   auto-placement in DOM order — a page with no biography (common for
+   OpenLibrary book authors, unlike AniList staff which almost always has
+   some description) sets .media-col-synopsis to display:none, which
+   removes it from the grid entirely; auto-placement then slid Obras into
+   the narrow 1.1fr track meant for the bio and Datos into the wide 3fr
+   one meant for Obras, instead of just leaving the first track empty. */
+.media-col-synopsis {
+  grid-column: 1;
+}
+
+.media-col-stats {
+  grid-column: 3;
+}
+
 .media-col-synopsis,
 .media-col-stats {
   display: flex;
@@ -430,6 +445,7 @@
 }
 
 .media-col-related {
+  grid-column: 2;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

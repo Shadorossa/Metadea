@@ -162,15 +162,39 @@ const t = useTranslations(lang);
       return realParts[0];
     };
 
-    const works = (staff.staffMedia?.edges || [])
-      .map(edge => ({ edge, role: pickDisplayRole(edge.staffRole || '') }))
-      .filter((e): e is { edge: typeof e.edge; role: string } => e.role !== null)
-      .map(({ edge, role }) => {
-        const item = edge.node;
-        const type = mapExternalFormatToType(item.type, item.format);
+    // AniList usually combines several roles on the same media into one
+    // comma-separated staffRole string on a single edge (handled by
+    // pickDisplayRole above) — but not always: it can also hand back
+    // genuinely separate edges for the same media id with different roles
+    // (e.g. one edge "Chief Supervisor", another "Original Creator" on the
+    // exact same title), which used to render as duplicate cards for the
+    // same work. Grouped by media id so every role it found lands on one
+    // card instead.
+    const worksByMediaId = new Map<string, { url: string; title: string; cover: string | null; roles: string[] }>();
+    for (const edge of staff.staffMedia?.edges || []) {
+      const role = pickDisplayRole(edge.staffRole || '');
+      if (role === null) continue;
+      const item = edge.node;
+      const type = mapExternalFormatToType(item.type, item.format);
+      const key = `${type}:${item.id}`;
+      const existing = worksByMediaId.get(key);
+      if (existing) {
+        if (!existing.roles.includes(role)) existing.roles.push(role);
+      } else {
         const title = item.title.english || item.title.romaji || 'Unknown Title';
-        return { url: `/media?id=${type}:${item.id}`, title, cover: item.coverImage?.medium || null, role };
-      });
+        worksByMediaId.set(key, { url: `/media?id=${key}`, title, cover: item.coverImage?.medium || null, roles: [role] });
+      }
+    }
+    const rolePriorityIndex = (r: string) => {
+      const idx = ROLE_DISPLAY_PRIORITY.findIndex(p => r.toLowerCase().startsWith(p.toLowerCase()));
+      return idx === -1 ? ROLE_DISPLAY_PRIORITY.length : idx;
+    };
+    const works = Array.from(worksByMediaId.values()).map(w => ({
+      url: w.url,
+      title: w.title,
+      cover: w.cover,
+      role: [...w.roles].sort((a, b) => rolePriorityIndex(a) - rolePriorityIndex(b)).join(', '),
+    }));
 
     const dbAuthor: DbMediaAuthor = {
       external_id: externalId,
