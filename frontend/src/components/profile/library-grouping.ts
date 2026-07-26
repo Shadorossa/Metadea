@@ -150,8 +150,10 @@ export function groupBundles<T extends { external_id: string; started_at: string
   return [...remaining, ...bundleGroups];
 }
 
-// Games (IGDB) carry real SEQUEL/PREQUEL rows too, not just AniList types.
-const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel']);
+// Games (IGDB) carry real SEQUEL/PREQUEL rows too, not just AniList types —
+// and so can movies/series (TMDB), curated manually since TMDB itself has
+// no equivalent field this app maps automatically (unlike AniList/IGDB).
+const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series']);
 
 // Third pass: merges standalone groups belonging to the same saga, walking
 // the WHOLE catalog's PREQUEL/SEQUEL graph (not just relations between owned
@@ -176,6 +178,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
     if (ra !== rb) parent.set(ra, rb);
   };
 
+  const directSagaIds = new Set<string>();
   for (const rel of relations) {
     // SECUELA/PRECUELA: pre-fix Spanish labels some libraries still have on disk.
     // ALTERNATIVE: classifySagaChain's Concept Group edge — a saga step without an order.
@@ -191,7 +194,54 @@ export function refineSagaGroups<T extends { external_id: string }>(
     if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
     if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
     union(a, b);
+    directSagaIds.add(a);
+    directSagaIds.add(b);
   }
+
+  // originalOf[editionId] = the base work it's a remake/remaster/expanded
+  // edition of (chain-flattened, same rootOf technique groupEditions uses
+  // for selected_version chains) — a catalog-wide fact, not scoped to what's
+  // owned.
+  const EDITION_SOURCE_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
+  const originalOf = new Map<string, string>();
+  for (const rel of relations) {
+    if (!rel.media_external_id) continue;
+    if (!EDITION_SOURCE_RELATION_TYPES.has(rel.relation_type)) continue;
+    originalOf.set(rel.related_media_external_id, rel.media_external_id);
+  }
+  const ultimateOriginalOf = (id: string): string => {
+    let cur = id;
+    const seen = new Set<string>();
+    while (originalOf.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = originalOf.get(cur)!;
+    }
+    return cur;
+  };
+  const familyOf = new Map<string, string[]>();
+  for (const id of originalOf.keys()) {
+    const orig = ultimateOriginalOf(id);
+    const list = familyOf.get(orig) ?? [];
+    list.push(id);
+    familyOf.set(orig, list);
+  }
+
+  // A remake/remaster only borrows its original's saga identity when no
+  // edition in its own family (the remake/remaster versions themselves, not
+  // the original) has a saga relation of its own — e.g. Umineko's remake
+  // versions have their own separate PREQUEL/SEQUEL chain curated
+  // independently of the visual novel originals', so those keep their own
+  // identity instead of redirecting. Returns undefined when there's nothing
+  // to redirect to (not an edition, or its family already has its own saga
+  // elsewhere and this specific edition still has no direct edge of its
+  // own — it just stays ungrouped, same as before this existed).
+  const sagaIdentityOf = (id: string): string | undefined => {
+    if (directSagaIds.has(id)) return id;
+    if (!originalOf.has(id)) return undefined;
+    const original = ultimateOriginalOf(id);
+    const familyHasOwnSaga = (familyOf.get(original) ?? []).some(sib => directSagaIds.has(sib));
+    return familyHasOwnSaga ? undefined : original;
+  };
 
   // A bundle member (either side of EPISODE/PART_OF) never joins a saga
   // cluster, even with "Agrupar por bundle" off (bundleMeta unset then).
@@ -202,39 +252,91 @@ export function refineSagaGroups<T extends { external_id: string }>(
     bundleParticipantIds.add(rel.related_media_external_id);
   }
 
-  // An edition-fused group still joins the saga cluster if either member touches the graph. Bundles are excluded.
-  const byComponent = new Map<string, number[]>();
+  // Resolve exactly one saga "slot" per owned group — its own id if it (or
+  // an edition-fused sibling) has a direct saga edge, else whichever
+  // original a remake/remaster redirects to. Two owned groups landing on
+  // the same slot (e.g. TLOU2 original + TLOU2 remaster both owned) are the
+  // same work for saga purposes, not two — resolved below.
+  const slotOf = new Map<number, string>();
   groups.forEach((g, i) => {
     if (g.bundleMeta) return;
     const memberIds = [g.item.external_id, ...g.grouped.map(m => m.external_id)];
     if (memberIds.some(id => bundleParticipantIds.has(id))) return;
-    const rootId = memberIds.find(id => parent.has(id));
-    if (!rootId) return;
-    const comp = find(rootId);
+    for (const id of memberIds) {
+      const slot = sagaIdentityOf(id);
+      if (slot && parent.has(slot)) {
+        slotOf.set(i, slot);
+        return;
+      }
+    }
+  });
+
+  // Collapse same-slot duplicates. Direct ownership of the slot's own real
+  // id wins as the visible representative over a remake/remaster
+  // redirecting into it (arbitrary first-wins if somehow neither is direct,
+  // e.g. two different remasters of the same original both owned); the
+  // loser is consumed — removed from the grid as its own stray card,
+  // without ever surfacing as a visible saga member (title, "+N" count) —
+  // just silently folded in so it doesn't clutter the library. Contrast
+  // with a family whose original isn't owned at all: there, the remake/
+  // remaster IS the slot's sole representative and stays fully visible.
+  const representativeForSlot = new Map<string, number>();
+  const consumed = new Set<number>();
+  for (const [i, slot] of slotOf) {
+    const existing = representativeForSlot.get(slot);
+    if (existing === undefined) {
+      representativeForSlot.set(slot, i);
+      continue;
+    }
+    const isDirect = (idx: number) => groups[idx].item.external_id === slot || groups[idx].grouped.some(m => m.external_id === slot);
+    if (isDirect(i) && !isDirect(existing)) {
+      consumed.add(existing);
+      representativeForSlot.set(slot, i);
+    } else {
+      consumed.add(i);
+    }
+  }
+
+  const idxToSlot = new Map<number, string>();
+  const byComponent = new Map<string, number[]>();
+  for (const [slot, i] of representativeForSlot) {
+    idxToSlot.set(i, slot);
+    const comp = find(slot);
     const list = byComponent.get(comp) ?? [];
     list.push(i);
     byComponent.set(comp, list);
-  });
+  }
 
-  const consumed = new Set<number>();
   const sagaGroups: Array<{ item: T; grouped: T[]; titleOverride?: string; aggregateStats: boolean }> = [];
 
   for (const indices of byComponent.values()) {
     if (indices.length < 2) continue; // nothing to merge — leave the lone entry exactly as-is
 
-    const allMembers: T[] = [];
+    // Sorted by the ORIGINAL's release date whenever a member is standing in
+    // for one (a remake/remaster with no saga of its own, redirected onto
+    // its original's slot) — its own real release date is almost always
+    // much later than where it actually belongs in the saga (e.g. RE1
+    // Remake, 2002, standing in for RE1, 1996, ahead of RE2, 1998 — sorting
+    // by the remake's own date would wrongly put RE2 first).
+    const allMembers: Array<{ member: T; sortId: string }> = [];
     for (const idx of indices) {
       const g = groups[idx];
-      allMembers.push(g.item, ...g.grouped);
+      const slot = idxToSlot.get(idx)!;
+      for (const member of [g.item, ...g.grouped]) {
+        const sortId = member.external_id !== slot && sagaIdentityOf(member.external_id) === slot
+          ? slot
+          : member.external_id;
+        allMembers.push({ member, sortId });
+      }
       consumed.add(idx);
     }
 
     // Earliest release first — the group sits over its first work.
     const sorted = [...allMembers].sort((a, b) =>
-      compareByReleaseDate(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {})
-    );
+      compareByReleaseDate(catalogMap.get(a.sortId) ?? {}, catalogMap.get(b.sortId) ?? {})
+    ).map(({ member }) => member);
     const [rep, ...rest] = sorted;
-    const sagaName = allMembers.map(m => sagaNames[m.external_id]).find(Boolean);
+    const sagaName = sorted.map(m => sagaNames[m.external_id]).find(Boolean);
     sagaGroups.push({ item: rep, grouped: rest, titleOverride: sagaName, aggregateStats: true });
   }
 
