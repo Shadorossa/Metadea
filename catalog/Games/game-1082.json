@@ -24,7 +24,16 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Resident Evil 7: Biohazard",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtwh.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobtwh.jpg"
+    },
+    {
+      "media_external_id": "game:1082",
+      "related_media_external_id": "game:41858",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Resident Evil 6 Remastered",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co89lz.jpg",
+      "format": null
     }
   ],
   "characters": [],

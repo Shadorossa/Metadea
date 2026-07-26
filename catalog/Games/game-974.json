@@ -12,19 +12,46 @@
   "media_relations": [
     {
       "media_external_id": "game:974",
-      "related_media_external_id": "game:966",
-      "relation_type": "PREQUEL",
-      "type_label": "Prequel",
-      "title": "Resident Evil 3: Nemesis",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2vvb.jpg"
-    },
-    {
-      "media_external_id": "game:974",
       "related_media_external_id": "game:847",
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Resident Evil 5",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobtgs.jpg"
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:132181",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Resident Evil 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6bo0.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:172560",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Resident Evil 4 VR",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3zab.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:145191",
+      "relation_type": "EXPANDED_GAME",
+      "type_label": "Expanded Edition",
+      "title": "Resident Evil 4",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2wki.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:974",
+      "related_media_external_id": "game:968",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil Code: Veronica",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vzn.jpg"
     }
   ],
   "characters": [],
