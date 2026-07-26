@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "65152a33a262095365152a33a2620953",
+    "external_id": "game:1442",
+    "type": "game",
+    "title_main": "Fire Emblem: Radiant Dawn",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:1442",
+      "related_media_external_id": "game:1441",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fire Emblem: Path of Radiance",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1ofh.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Fire Emblem: Path of Radiance"
+}

@@ -11,17 +11,18 @@
   },
   "media_relations": [
     {
+      "media_external_id": "vnovel:36278",
       "related_media_external_id": "vnovel:144844",
       "relation_type": "REMASTER",
       "type_label": "Remaster",
       "title": "The House in Fata Morgana: Novectacle",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5peu.jpg",
-      "media_external_id": "vnovel:36278"
+      "format": null
     },
     {
       "related_media_external_id": "vnovel:119577",
-      "relation_type": "EXPANDED_GAME",
-      "type_label": "Expanded Edition",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
       "title": "The House in Fata Morgana: Dreams of the Revenants",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobf78.jpg",
       "media_external_id": "vnovel:36278"
@@ -32,7 +33,8 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "The House in Fata Morgana: A Requiem for Innocence",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg",
+      "format": null
     }
   ],
   "characters": [],

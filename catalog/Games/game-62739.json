@@ -33,22 +33,17 @@
       "type_label": "Alternative Version #0",
       "title": "Inazuma Eleven Go Galaxy: Supernova",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    },
+    {
+      "media_external_id": "game:62739",
+      "related_media_external_id": "game:72812",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven: Victory Road",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9nsw.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {
-    "game:9685": "IEGO",
-    "game:47673": "IEGO",
-    "game:9693": "IEGOCS",
-    "game:47674": "IE3",
-    "game:47675": "IE3",
-    "game:134112": "IEGOGX",
-    "game:23220": "IEGOCS",
-    "game:47676": "IE3",
-    "game:47716": "IE2",
-    "game:47835": "IE2",
-    "game:62739": "IEGOGX"
-  },
-  "saga_name": "Inazuma Eleven"
+  "saga_name": "Inazuma Eleven Go Galaxy: Supernova"
 }

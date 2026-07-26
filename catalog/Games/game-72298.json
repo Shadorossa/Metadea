@@ -17,8 +17,17 @@
       "type_label": "Sequel",
       "title": "Rance II: Hangyaku no Shoujo-tachi",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2zof.jpg"
+    },
+    {
+      "related_media_external_id": "game:132708",
+      "relation_type": "REMAKE",
+      "type_label": "Remake",
+      "title": "Rance 01: Quest for Hikari",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5x1e.jpg",
+      "media_external_id": "game:72298"
     }
   ],
   "characters": [],
-  "media_authors": []
+  "media_authors": [],
+  "saga_name": "Rance"
 }

@@ -16,7 +16,8 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "The House in Fata Morgana",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co23cn.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co23cn.jpg",
+      "format": null
     },
     {
       "media_external_id": "vnovel:56006",
@@ -24,7 +25,16 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "The House in Fata Morgana: Reincarnation",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9qpf.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9qpf.jpg",
+      "format": null
+    },
+    {
+      "related_media_external_id": "vnovel:119577",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "The House in Fata Morgana: Dreams of the Revenants",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobf78.jpg",
+      "media_external_id": "vnovel:56006"
     }
   ],
   "characters": [],

@@ -1,0 +1,674 @@
+{
+  "media_catalog": {
+    "id": "aec082c2bee5f83faec082c2bee5f83f",
+    "external_id": "anime:21879",
+    "type": "ANIME",
+    "title_main": "Inazuma Eleven: Ares no Tenbin",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:21879",
+      "related_media_external_id": "game:62739",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven GO: Galaxy Big Bang",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
+    },
+    {
+      "media_external_id": "anime:21879",
+      "related_media_external_id": "game:134112",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven Go Galaxy: Supernova",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s8s.jpg"
+    },
+    {
+      "media_external_id": "anime:21879",
+      "related_media_external_id": "anime:104077",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven: Orion no Kokuin",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/nx104077-Huh0rmL67Z6d.jpg"
+    },
+    {
+      "related_media_external_id": "anime:5231",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Inazuma Eleven",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx5231-SuMNWJQQK8jl.png",
+      "media_external_id": "anime:21879"
+    },
+    {
+      "related_media_external_id": "manga:138858",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Inazuma Eleven: Ares no Tenbin\t",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx138858-9hoJmOZswwrZ.jpg",
+      "media_external_id": "anime:21879"
+    },
+    {
+      "media_external_id": "anime:21879",
+      "related_media_external_id": "anime:99059",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Inazuma Eleven: Outer Code",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx99059-kA7alh9r8L9Y.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:126872",
+      "name": "Ryouhei Haizaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/126872-RSoCI9WYE0aA.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141763",
+      "name": "Yuuma  Nosaka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141763-LvxWOReDnGMN.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141758",
+      "name": "Asuto  Inamori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141758-6AQdOst21lqF.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:29851",
+      "name": "Ryuugo Someoka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b29851-ZYdIel2caMLW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:29849",
+      "name": "Ichirouta Kazemaru",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b29849-QKc7shA3MHEy.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:36805",
+      "name": "Shimozuru Arata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/36805.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141761",
+      "name": "Seiya  Nishikage",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141761-dYVADjlyt8uE.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209717",
+      "name": "Masakatsu Hiyori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209717-f6evFQzl3ydf.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210017",
+      "name": "Li Kobun",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210017-b5H6GnD1RR7W.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210025",
+      "name": "Yuriko Inamori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210025-jbzSQmmAtD3G.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210034",
+      "name": "Sameharu Uoshima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210034-ab8YRmG4FHlf.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210255",
+      "name": "Nao Oma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210255-wVos2rmFJnbf.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:43268",
+      "name": "Kazumichi Banjou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/43268.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126873",
+      "name": "Seiryuu Mizukamiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/126873-TR2TRfYqvY6r.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:36807",
+      "name": "Reina Yagami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b36807-09nAjTdkhIuy.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31943",
+      "name": "Hiroto Kiyama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31943-6l9496U8O08O.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:81619",
+      "name": "Oushou Kakuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b81619-XmnzFKP9PjwM.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141762",
+      "name": "Takashi  Iwato",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141762-h8t9STQqBFmi.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209718",
+      "name": "Tatsumi Michinari",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209718-SfjwxUjkjXxb.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210018",
+      "name": "Munetada Midouin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210018-pdWMvgsUtkHo.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210026",
+      "name": "Kanbei Shiratoya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210026-0wVwFWhjLDyH.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210035",
+      "name": "Tomio Kotono",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210035-UEG5na16c9Y4.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210256",
+      "name": "Hakamada",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210256-kAz8TZ5l9CNq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:74563",
+      "name": "Shuugo Nikaidou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b74563-VWPtPAF5Ntb4.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32307",
+      "name": "Ryuuji Midorikawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32307-cmzddWV4BU5T.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:36729",
+      "name": "Michiya Kudou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/36729.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31784",
+      "name": "Aki Kino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31784-BRzqLmNjXMsQ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31781",
+      "name": "Hitomiko Kira",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/31781.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209719",
+      "name": "Hiro Okuiri",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209719-2ziBenx4UXBf.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210019",
+      "name": "Yukinori Kameda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210019-OjdfJMKMODp7.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210027",
+      "name": "Mitsuko Haizaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210027-hQa8GPHrQacN.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210036",
+      "name": "Tsumuki Shiratori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210036-2J4ChDjjIKXz.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217422",
+      "name": "Ponko Tanukigahara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217422-OpBX1Oc13VeR.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:74561",
+      "name": "Tomo Mukata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b74561-qcP4ODdJligU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32156",
+      "name": "Reiji Kageyama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32156-aVGpcDv7UNru.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:16412",
+      "name": "Mamoru Endou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b16412-ZsvITu2WWg6Q.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31771",
+      "name": "Fuusuke Suzuno",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31771-KIoBu26nxc7N.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31772",
+      "name": "Haruya Nagumo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31772-FzCRgubuqj5Y.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:145279",
+      "name": "Hiroto Kira",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b145279-B0OY3IXVhsxU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209720",
+      "name": "Tetsunosuke Goujin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209720-GN3zJVCpaHBG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210020",
+      "name": "Noboru Sakanoue",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210020-b6kvSNNKBiuR.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210028",
+      "name": "Masamichi Amano",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210028-5QSxhWMtCMpW.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210037",
+      "name": "Tetsuya Futagotamagawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210037-Zy4Y5UTedBQ2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217425",
+      "name": "Mizuho Kaname",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217425-6SI5k9uAAlDP.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:74557",
+      "name": "Masaru Mukata",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b74557-23yduP4wXcHl.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:16413",
+      "name": "Shuuya Gouenji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b16413-CpiNlFdblxau.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32309",
+      "name": "Koujirou Genda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32309-eoy1kqokbSPm.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32306",
+      "name": "Jirou Sakuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/32306.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32308",
+      "name": "Akio Fudou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32308-dTBRrI4iDYig.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:81481",
+      "name": "Konko Araya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b81481-vJqdw4muSS7z.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209721",
+      "name": "Sasuke Kozoumaru",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209721-DzDL3M3kEPmZ.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210021",
+      "name": "Nae Shiratoya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210021-m0NtizpoxxIZ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210030",
+      "name": "Fuyuki Orio",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210030-x19qWdR3UGgM.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210251",
+      "name": "Tetsu Hadeno",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210251-HJuyuLeFqH2i.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217428",
+      "name": "Jou Muhyou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217428-sVhM2myKW74e.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:33986",
+      "name": "Seigou Hibiki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/33986.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:29850",
+      "name": "Heigorou Kabeyama",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b29850-oTdYJzgWrlig.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31006",
+      "name": "Terumi Afuro",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31006-nO3HCi08kkKy.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:36806",
+      "name": "Daiki Jimon",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/36806.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:81477",
+      "name": "Tetsu Hakoda",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b81477-kLwlMwLgljOP.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210015",
+      "name": "Tsukushi Ootani",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210015-TemfTIxMH8I3.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210022",
+      "name": "Kanemasa Kakuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210022-ZSBM2YHYxytt.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210031",
+      "name": "Katsumi Yagihara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210031-mGHuiiNsDNod.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210252",
+      "name": "Arisu Heruse",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210252-7LSTtPhslada.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217429",
+      "name": "Kouji Genba",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217429-uKRGIjt3fbEi.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:26939",
+      "name": "Shirou Fubuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b26939-mVxxr0JrtdGf.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:32155",
+      "name": "Osamu Saginuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b32155-0dvGLJeuhCcx.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:74555",
+      "name": "Mamoru Nishigaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b74555-D3C7VdgIBlOO.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141759",
+      "name": "Kirina  Hiura",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141759-PnFSlX0lXfdI.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209715",
+      "name": "Norika Umihara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209715-347JOXOPldEu.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210014",
+      "name": "Zhao Jinyun",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210014-GER1BPkyjG1x.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210023",
+      "name": "Akane Miyano",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210023-KIWN0ibcU974.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210032",
+      "name": "Seiya Saotome",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210032-ixMztqOxCGo3.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210253",
+      "name": "Donji Posei",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210253-dRaQIT9GMJKY.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:217432",
+      "name": "Kakeru Shimomachi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b217432-gquWPBIt4XtW.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:38599",
+      "name": "Atsuya Fubuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/38599.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:22737",
+      "name": "Yuuto Kidou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b22737-wpLDlU5r2mat.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:31779",
+      "name": "Haruna Otonashi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b31779-iQco10alzUvi.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:141760",
+      "name": "Hanta  Hattori",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b141760-XsBGl8WRUle0.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:209716",
+      "name": "Yuuichirou Mansaku",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b209716-Ue2znmpYxzYh.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210016",
+      "name": "Anna Mikado",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210016-qsgOKv8PO9NU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210024",
+      "name": "Masatatsu Goujin",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210024-jPl3gi3zWVXf.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210033",
+      "name": "Eiji Sasotsuka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210033-o16ZZyGrzvuZ.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:210254",
+      "name": "Kageru Shimerigawa",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b210254-xRO8WaUAoxOq.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:84007",
+      "name": "Shinzou Hirai",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b84007-egpuVcMqgWcj.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a118906",
+      "name": "Yumi Kamakura",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/default.jpg",
+      "role": "Director",
+      "url": "/author?id=person:a118906",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "Inazuma Eleven (Ares & Orion)"
+}

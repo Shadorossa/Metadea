@@ -17,10 +17,17 @@
       "type_label": "Sequel",
       "title": "Bayonetta 2",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cob9e9.jpg"
+    },
+    {
+      "related_media_external_id": "game:238884",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Bayonetta",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9xp1.jpg",
+      "media_external_id": "game:2136"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {},
   "saga_name": "Bayonetta"
 }
