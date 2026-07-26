@@ -112,7 +112,11 @@ function HeaderField({ label, children }: { label: string; children: React.React
 // regardless of OS locale, so a Spanish-locale "10,3" silently failed to
 // parse as anything).
 function formatHoursColon(decimalHours: number): string {
-  if (!decimalHours) return '0:00';
+  // Empty, not "0:00" — matches NumberField's own value={value || ''}: an
+  // unlogged/zero entry starts blank (with "0:00" as a greyed-out
+  // placeholder hint) so typing "6" or "6:45" works immediately instead of
+  // first having to clear out baked-in text.
+  if (!decimalHours) return '';
   let h = Math.floor(decimalHours);
   let m = Math.round((decimalHours - h) * 60);
   if (m === 60) { m = 0; h += 1; }

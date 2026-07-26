@@ -347,20 +347,28 @@
      to fit whatever it contained. min-width:0 is the standard override. */
   min-width: 0;
   z-index: 1;
-  /* Dropping back to z-index:1 is delayed by the same 0.35s the flyout's
-     own max-width takes to close (see .library-card-stack-extra) — without
-     this, :hover ending drops the elevation instantly while the flyout is
-     still visibly sliding shut, so it renders underneath the next card
-     over instead of on top of it for that last stretch. */
-  transition: z-index 0s 0.35s;
 }
 
 .library-card-cell:hover {
   /* Raised above sibling grid cells so the flyout below renders on top of
-     whatever it slides over, not underneath. Rises immediately (no delay)
-     on hover-in — only hover-out (the base rule above) is delayed. */
+     whatever it slides over, not underneath. Deliberately the *highest*
+     value of the three states here — the card the cursor is on right now
+     always wins, even over a neighbor still mid-way through closing its
+     own flyout (below): confirmed live (a throwaway CDP repro driving a
+     real hover, not just reasoning about it) that giving --closing a
+     higher value than this let a *just-left* neighbor's residual elevation
+     outrank the card actually being hovered right now, covering its flyout
+     instead of the other way around. */
+  z-index: 11;
+}
+
+/* Held for the same 0.35s the flyout takes to slide shut after the cursor
+   leaves (see LibraryCard.tsx's handleMouseLeave) — higher than the plain
+   base z-index so the closing animation still renders above an *unrelated,
+   un-hovered* sibling instead of underneath it, but lower than :hover above
+   so a neighbor the cursor has actually just moved onto still wins. */
+.library-card-cell--closing {
   z-index: 10;
-  transition: z-index 0s 0s;
 }
 
 .library-card {
@@ -449,6 +457,21 @@
   max-width: min(90vw, 2400px);
   padding: 0.4rem 0.4rem 0.4rem 0.8rem;
   pointer-events: auto;
+}
+
+/* A card sitting near the right edge of the grid would otherwise open this
+   off the edge of the window with no way to reach the later covers — see
+   checkFlyoutDirection (LibraryCard.tsx), which measures on hover and adds
+   this modifier instead. Same box, mirrored to the other side: right:100%
+   in place of left:100%, and the bigger padding inset flips to the side
+   that now sits flush against the card. */
+.library-card-cell--flyout-left .library-card-stack-extra {
+  left: auto;
+  right: 100%;
+}
+
+.library-card-cell--flyout-left.library-card-cell--stacked:hover .library-card-stack-extra {
+  padding: 0.4rem 0.8rem 0.4rem 0.4rem;
 }
 
 .library-card-stack-extra-item {

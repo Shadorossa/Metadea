@@ -1,4 +1,5 @@
 // Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
+import { useEffect, useRef, useState } from 'react';
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -86,6 +87,52 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
     ? startDateStr
     : [startDateStr, endDateStr].filter(Boolean).join(' → ');
 
+  // A wide stack-extra flyout (see below) normally opens to the right of the
+  // card — for a card sitting near the right edge of the grid, that runs it
+  // off-screen with no way to reach the later covers. Measured on hover
+  // (not e.g. once on mount) since the grid can reflow — window resize,
+  // sidebar toggling, filters changing the column count — and a stale
+  // measurement would flip the wrong cards.
+  const cellRef = useRef<HTMLDivElement>(null);
+  const flyoutRef = useRef<HTMLDivElement>(null);
+  const [flyoutOnLeft, setFlyoutOnLeft] = useState(false);
+  const checkFlyoutDirection = () => {
+    if (!cellRef.current || !flyoutRef.current) return;
+    const cellRect = cellRef.current.getBoundingClientRect();
+    // scrollWidth reads the flyout's real content width regardless of its
+    // own collapsed max-width (0 at rest) — every item inside has a fixed
+    // 75px width, so this doesn't depend on the slide-open transition
+    // having played out at all.
+    const flyoutWidth = flyoutRef.current.scrollWidth;
+    setFlyoutOnLeft(cellRect.right + flyoutWidth > window.innerWidth);
+  };
+
+  // Keeps this cell's z-index elevated for the same 0.35s the flyout takes
+  // to slide shut after the cursor leaves — otherwise, moving straight from
+  // this card onto a neighbor it visually overlaps (its own flyout, whether
+  // sliding right or left) would raise that neighbor to the *same* z-index
+  // this one already has, and the closing flyout (mid-animation, still very
+  // visible) could end up rendered behind the freshly-hovered neighbor
+  // instead of on top of it for that last stretch. A plain CSS
+  // transition-delay can't win that tie (the held value is identical to the
+  // hover value, 10, same as the neighbor's) — this deliberately holds a
+  // *higher* one instead, so it always wins regardless of what any neighbor
+  // is doing.
+  const [isClosing, setIsClosing] = useState(false);
+  const closingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(closingTimeoutRef.current), []);
+  const handleMouseLeave = () => {
+    if (grouped.length === 0) return;
+    setIsClosing(true);
+    clearTimeout(closingTimeoutRef.current);
+    closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 350);
+  };
+  const handleMouseEnter = () => {
+    clearTimeout(closingTimeoutRef.current);
+    setIsClosing(false);
+    checkFlyoutDirection();
+  };
+
   const openEditor = () => {
     if (bundleMeta || readOnly) {
       // A bundle has no library log of its own, and read-only (someone
@@ -99,7 +146,12 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   };
 
   return (
-    <div className={`library-card-cell${grouped.length > 0 ? ' library-card-cell--stacked' : ''}`}>
+    <div
+      ref={cellRef}
+      className={`library-card-cell${grouped.length > 0 ? ' library-card-cell--stacked' : ''}${flyoutOnLeft ? ' library-card-cell--flyout-left' : ''}${isClosing ? ' library-card-cell--closing' : ''}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* stack-extra is a sibling of .library-card, not a child — the card needs
           overflow:hidden permanently (clips its blurred bg), so the flyout escapes via the wrapper instead. */}
       <div className="library-card" data-id={item.external_id} onClick={openEditor}>
@@ -133,7 +185,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
       </div>
       {grouped.length > 0 && (
         // Hidden until hover (.library-card--stacked:hover in profile.css) — a peek at the "+N" badge's contents.
-        <div className="library-card-stack-extra">
+        <div className="library-card-stack-extra" ref={flyoutRef}>
           {orderedGrouped.map(g => {
             const gMeta = catalogMap.get(g.external_id);
             const gTitle = gMeta?.title_main ?? g.external_id;
