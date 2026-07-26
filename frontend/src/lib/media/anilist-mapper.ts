@@ -119,15 +119,21 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     .map(e => {
       const relatedIsAnime = e.node.type?.toUpperCase() === 'ANIME';
       // AniList's own relation data isn't always reciprocally curated — many
-      // adaptation pairs only ever got "ADAPTATION" set on both edges instead
-      // of the anime side using "SOURCE", which made the source manga/novel
-      // read as "Adaptation" on the anime's own page (and, once cached, the
-      // reciprocal insert in save_media_relations then mislabeled the other
-      // side too). Normalize by the actual media types instead of trusting
-      // AniList's raw label for this one edge.
-      const relationType = (resolvedType === 'anime' && !relatedIsAnime && e.relationType === 'ADAPTATION') ? 'SOURCE'
-        : (resolvedType !== 'anime' && relatedIsAnime && e.relationType === 'SOURCE') ? 'ADAPTATION'
-        : e.relationType;
+      // adaptation pairs only ever set "ADAPTATION" on both edges instead of
+      // "SOURCE" for whichever side came later, which made the actual
+      // original work read as "Adaptation" on its own derivative's page (and,
+      // once cached, the reciprocal insert in save_media_relations then
+      // mislabeled the other side too). Media type alone can't decide this —
+      // manga-original (One Piece) and anime-original (Code Geass) franchises
+      // both exist — so whichever of the two released first wins as SOURCE.
+      let relationType = e.relationType;
+      if (relationType === 'ADAPTATION' || relationType === 'SOURCE') {
+        const currentDate = (raw.startDate?.year ?? 0) * 12 + (raw.startDate?.month ?? 0);
+        const relatedDate = (e.node.startDate?.year ?? 0) * 12 + (e.node.startDate?.month ?? 0);
+        if (currentDate > 0 && relatedDate > 0 && currentDate !== relatedDate) {
+          relationType = currentDate < relatedDate ? 'SOURCE' : 'ADAPTATION';
+        }
+      }
       const typeLabel = lookupLabel(canonicalRelationLabels, relationType, relationType);
       const relType = relatedIsAnime ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'
