@@ -50,13 +50,15 @@ function getProgressConfig(type: string, tm: Translations['media']): { label: st
   if (type === 'game' || type === 'vnovel')            label = tm.progress_hours;
   else if (type === 'anime' || type === 'series')      label = tm.progress_episodes;
   else if (type === 'manga' || type === 'light-novel') label = tm.progress_chapters;
-  else if (type === 'books')                           label = tm.progress_percent;
+  // 'book' (singular) — 'books' here never matched anything real, so a
+  // book's progress fell through to the generic label below and its
+  // total (page count) was never wired up at all.
+  else if (type === 'book')                            label = tm.progress_pages;
   else                                                 label = tm.editor.progress;
 
   const label2 =
     base === 'anime' || base === 'series'      ? tm.progress_seasons :
-    base === 'manga' || base === 'light-novel' ? tm.progress_volumes :
-    base === 'books'                           ? tm.progress_books : null;
+    base === 'manga' || base === 'light-novel' ? tm.progress_volumes : null;
 
   const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;
   return { label, label2, step };

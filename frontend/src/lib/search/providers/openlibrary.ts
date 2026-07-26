@@ -204,6 +204,7 @@ export interface OpenLibEdition {
   publishers?: string[];
   languages?: { key: string }[];
   physical_format?: string;
+  number_of_pages?: number;
 }
 
 interface OpenLibEditionsResponse {
@@ -219,7 +220,7 @@ export async function fetchOpenLibEditions(workId: string): Promise<OpenLibEditi
   let total = Infinity;
 
   while (offset < total) {
-    const url = `${API_ENDPOINTS.OPENLIBRARY}/works/${workId}/editions.json?limit=${LIMIT}&offset=${offset}&fields=key,title,covers,publish_date,publishers,languages,physical_format`;
+    const url = `${API_ENDPOINTS.OPENLIBRARY}/works/${workId}/editions.json?limit=${LIMIT}&offset=${offset}&fields=key,title,covers,publish_date,publishers,languages,physical_format,number_of_pages`;
     const data = await fetchJson<OpenLibEditionsResponse>(url);
     if (!data) break;
 

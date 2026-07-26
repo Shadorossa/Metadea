@@ -92,6 +92,10 @@ export async function updateCatalogGenres(externalId: string, genresCsv: string 
   return tauriRun('update_catalog_genres', { externalId, genresCsv, genresTagCsv });
 }
 
+export async function updateCatalogTotalCount(externalId: string, totalCount: number): Promise<void> {
+  return tauriRun('update_catalog_total_count', { externalId, totalCount });
+}
+
 export async function getAllCatalogEntries(): Promise<MediaCatalogEntry[]> {
   return tauriCmd<MediaCatalogEntry[]>('get_all_catalog_entries', []);
 }

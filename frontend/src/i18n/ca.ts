@@ -407,10 +407,9 @@ export const ca = {
     progress_hours: 'Hores',
     progress_episodes: 'Episodis',
     progress_chapters: 'Capítols',
-    progress_percent: '% completat',
+    progress_pages: 'Pàgines',
     progress_seasons: 'Temporades',
     progress_volumes: 'Volums',
-    progress_books: 'Llibres',
     progress_in_progress: 'En curs',
   },
   character_editor: {

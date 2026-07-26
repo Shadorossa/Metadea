@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres } from '../../lib/tauri';
+import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount } from '../../lib/tauri';
 import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -482,15 +482,21 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         }
 
         if (full.type === 'book') {
-          fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(relations => {
-            if (cancelled || !relations) return;
+          fetchBookEditions(currentId, full.relations, tm.relations.EDITIONS).then(result => {
+            if (cancelled || !result) return;
+            const { relations, totalPages } = result;
             patchCachedRelations(currentId, relations);
-            patchIfCurrent({ relations });
+            patchIfCurrent(totalPages !== null ? { relations, totalCount: totalPages } : { relations });
             // Same gap the base-game relation walk used to have: caching
             // this in sessionStorage only meant editions rendered fine here
             // but never showed up as an editable relation in the
             // collaborative catalog editor, which reads straight from the DB.
             mergeAndPersistRelations(currentId, relations).catch(console.error);
+            // OpenLibrary has no page count on the Work itself, only on its
+            // editions (see fetchBookEditions) — persisted here the same way
+            // a comic's aggregated genres are, once this background fetch
+            // actually finds one.
+            if (totalPages !== null) updateCatalogTotalCount(currentId, totalPages).catch(console.error);
           });
         }
 

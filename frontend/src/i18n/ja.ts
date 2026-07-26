@@ -410,10 +410,9 @@ export const ja = {
     progress_hours: '時間',
     progress_episodes: '話',
     progress_chapters: '話',
-    progress_percent: '% 完了',
+    progress_pages: 'ページ',
     progress_seasons: 'シーズン',
     progress_volumes: '巻',
-    progress_books: '冊',
     progress_in_progress: '進行中',
   },
   character_editor: {

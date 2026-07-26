@@ -296,6 +296,24 @@ pub async fn update_catalog_genres(
     Ok(())
 }
 
+// Narrow update for a book's page count — only discoverable from a
+// background OpenLibrary editions fetch (see fetch_book_editions,
+// mediaService.ts), never the initial work-level fetch, since OpenLibrary
+// has no page count field on a Work at all, only on its editions.
+#[tauri::command]
+pub async fn update_catalog_total_count(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+    total_count: i32,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "UPDATE media_catalog SET total_count = ?2 WHERE external_id = ?1",
+        rusqlite::params![external_id, total_count],
+    ).str_err()?;
+    Ok(())
+}
+
 // Lets the frontend strip blocked entries out of a live API fetch's raw
 // relations, which have no idea a title was blocked locally.
 //

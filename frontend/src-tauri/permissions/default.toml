@@ -56,6 +56,7 @@ commands.allow = [
   "get_catalog_entry",
   "get_blocked_external_ids",
   "update_catalog_genres",
+  "update_catalog_total_count",
   "delete_catalog_entry",
   "get_all_catalog_entries",
   "find_catalog_health_issues",

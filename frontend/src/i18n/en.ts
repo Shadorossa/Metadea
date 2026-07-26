@@ -414,10 +414,9 @@ export const en = {
     progress_hours: 'Hours',
     progress_episodes: 'Episodes',
     progress_chapters: 'Chapters',
-    progress_percent: '% complete',
+    progress_pages: 'Pages',
     progress_seasons: 'Seasons',
     progress_volumes: 'Volumes',
-    progress_books: 'Books',
     progress_in_progress: 'In progress',
   },
   character_editor: {

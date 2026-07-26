@@ -407,10 +407,9 @@ export const ru = {
     progress_hours: 'Часы',
     progress_episodes: 'Серии',
     progress_chapters: 'Главы',
-    progress_percent: '% выполнено',
+    progress_pages: 'Страницы',
     progress_seasons: 'Сезоны',
     progress_volumes: 'Тома',
-    progress_books: 'Книги',
     progress_in_progress: 'В процессе',
   },
   character_editor: {
