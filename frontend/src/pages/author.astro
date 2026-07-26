@@ -60,6 +60,13 @@ const t = useTranslations(lang);
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-relations-grid" id="author-works-grid"></div>
+
+          <!-- Paginación — same pattern as character.astro's Apariciones. -->
+          <div id="author-works-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <button class="btn btn--sm btn--secondary" id="btn-prev-works" style="min-width: 100px;">{t.character.pagination_prev}</button>
+            <span id="txt-works-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{t.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
+            <button class="btn btn--sm btn--secondary" id="btn-next-works" style="min-width: 100px;">{t.character.pagination_next}</button>
+          </div>
         </div>
 
         <div class="media-col-stats" id="author-stats-card" style="display: none;">
@@ -326,8 +333,23 @@ const t = useTranslations(lang);
 
     const worksGrid = document.getElementById('author-works-grid')!;
     const worksSection = document.getElementById('author-works-section')!;
-    if (data.works.length > 0) {
-      worksGrid.innerHTML = data.works
+    const paginationEl = document.getElementById('author-works-pagination')!;
+    const btnPrev = document.getElementById('btn-prev-works') as HTMLButtonElement;
+    const btnNext = document.getElementById('btn-next-works') as HTMLButtonElement;
+    const txtPage = document.getElementById('txt-works-page')!;
+
+    // 4 rows x .media-relations-grid's own 4 columns (media.css) per page —
+    // same paginated pattern as character.astro's Apariciones.
+    const WORKS_PER_PAGE = 16;
+    let currentPage = 1;
+
+    function renderWorksPage() {
+      const totalPages = Math.ceil(data.works.length / WORKS_PER_PAGE);
+      if (currentPage > totalPages) currentPage = totalPages || 1;
+      const start = (currentPage - 1) * WORKS_PER_PAGE;
+      const slice = data.works.slice(start, start + WORKS_PER_PAGE);
+
+      worksGrid.innerHTML = slice
         .map(w => `
           <a href="${w.url}" class="media-relation-card">
             ${w.cover ? `<div class="media-relation-bg-layer"><img src="${safeUrl(w.cover)}" alt="" loading="lazy" /></div>` : ''}
@@ -344,7 +366,21 @@ const t = useTranslations(lang);
           </a>
         `)
         .join('');
+
+      txtPage.textContent = getT().character.pagination_page.replace('{page}', String(currentPage)).replace('{total}', String(totalPages));
+      btnPrev.disabled = currentPage === 1;
+      btnNext.disabled = currentPage >= totalPages;
+      paginationEl.style.display = totalPages > 1 ? 'flex' : 'none';
+    }
+
+    if (data.works.length > 0) {
       worksSection.style.display = 'block';
+      renderWorksPage();
+      btnPrev.onclick = () => { if (currentPage > 1) { currentPage--; renderWorksPage(); } };
+      btnNext.onclick = () => {
+        const totalPages = Math.ceil(data.works.length / WORKS_PER_PAGE);
+        if (currentPage < totalPages) { currentPage++; renderWorksPage(); }
+      };
     } else {
       worksSection.style.display = 'none';
     }
