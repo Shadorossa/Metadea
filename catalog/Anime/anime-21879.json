@@ -35,20 +35,22 @@
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx104077-Huh0rmL67Z6d.jpg"
     },
     {
+      "media_external_id": "anime:21879",
       "related_media_external_id": "anime:5231",
       "relation_type": "PARENT",
       "type_label": "Source",
       "title": "Inazuma Eleven",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx5231-SuMNWJQQK8jl.png",
-      "media_external_id": "anime:21879"
+      "format": null
     },
     {
+      "media_external_id": "anime:21879",
       "related_media_external_id": "manga:138858",
       "relation_type": "ALTERNATIVE",
       "type_label": "Alternative",
       "title": "Inazuma Eleven: Ares no Tenbin\t",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx138858-9hoJmOZswwrZ.jpg",
-      "media_external_id": "anime:21879"
+      "format": null
     },
     {
       "media_external_id": "anime:21879",
@@ -669,6 +671,5 @@
       "birth_date": null,
       "death_date": null
     }
-  ],
-  "saga_name": "Inazuma Eleven"
+  ]
 }
