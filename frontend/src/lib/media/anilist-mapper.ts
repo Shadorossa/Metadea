@@ -7,7 +7,7 @@ import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 const RELATION_PRIORITY: Record<string, number> = {
-  PARENT: 1, ADAPTATION: 2, PREQUEL: 3, SEQUEL: 4,
+  PARENT: 1, ADAPTATION: 2, SOURCE: 2, PREQUEL: 3, SEQUEL: 4,
   SPIN_OFF: 5, ALTERNATIVE: 6, SUMMARY: 7,
 };
 
@@ -117,14 +117,25 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
       return (aYear * 12 + aMonth) - (bYear * 12 + bMonth);
     })
     .map(e => {
-      const typeLabel = lookupLabel(canonicalRelationLabels, e.relationType, e.relationType);
-      const relType = e.node.type?.toUpperCase() === 'ANIME' ? 'anime'
+      const relatedIsAnime = e.node.type?.toUpperCase() === 'ANIME';
+      // AniList's own relation data isn't always reciprocally curated — many
+      // adaptation pairs only ever got "ADAPTATION" set on both edges instead
+      // of the anime side using "SOURCE", which made the source manga/novel
+      // read as "Adaptation" on the anime's own page (and, once cached, the
+      // reciprocal insert in save_media_relations then mislabeled the other
+      // side too). Normalize by the actual media types instead of trusting
+      // AniList's raw label for this one edge.
+      const relationType = (resolvedType === 'anime' && !relatedIsAnime && e.relationType === 'ADAPTATION') ? 'SOURCE'
+        : (resolvedType !== 'anime' && relatedIsAnime && e.relationType === 'SOURCE') ? 'ADAPTATION'
+        : e.relationType;
+      const typeLabel = lookupLabel(canonicalRelationLabels, relationType, relationType);
+      const relType = relatedIsAnime ? 'anime'
         : e.node.format === 'NOVEL' ? 'lnovel'
         : 'manga';
       const relatedExternalId = `${relType}:${e.node.id}`;
       return {
         typeLabel,
-        relationType: e.relationType,
+        relationType,
         title: e.node.title.romaji ?? '',
         // Prefer the high-res cover — this becomes the FULL cover on that
         // related title's own page too (via save_media_relations' stub-row
