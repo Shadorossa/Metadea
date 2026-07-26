@@ -1,0 +1,825 @@
+{
+  "media_catalog": {
+    "id": "37dbdeeb4ded9e5f37dbdeeb4ded9e5f",
+    "external_id": "manga:33008",
+    "type": "manga",
+    "title_main": "JoJo no Kimyou na Bouken: Ougon no Kaze",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "anime:102883",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "JoJo no Kimyou na Bouken: Ougon no Kaze",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx102883-S9KzdMJhDswJ.png",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "lnovel:71865",
+      "relation_type": "SPIN_OFF",
+      "type_label": "Spin-off",
+      "title": "Hajishirazu no Purple Haze: JoJo no Kimyou na Bouken",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/41865.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "lnovel:191280",
+      "relation_type": "SPIN_OFF",
+      "type_label": "Spin-off",
+      "title": "JoJo no Kimyou na Bouken: Akai Yuigon",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx191280-UZRXa73Xwwn1.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "lnovel:65907",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Jojo no Kimyou na Bouken II: Golden Heart, Golden Ring",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx65907-tmF2D0tN9bLi.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-546330",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#1 — Vol. 1",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5400311-01.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554219",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#2 — Vol. 2",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490875-02.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554220",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#3 — Vol. 3",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490876-03.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554221",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#4 — Vol. 4",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490877-04.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554222",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#5 — Vol. 5",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490878-05.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554223",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#6 — Vol. 6",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490879-06.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554224",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#7 — Vol. 7",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490880-07.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554225",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#8 — Vol. 8",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490881-08.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554226",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#9 — Vol. 9",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490882-09.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554227",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#10 — Vol. 10",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490883-10.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554228",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#11 — Vol. 11",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490884-11.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554229",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#12 — Vol. 12",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490885-12.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554230",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#13 — Vol. 13",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490886-13.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554231",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#14 — Vol. 14",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490887-14.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554232",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#15 — Vol. 15",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490888-15.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554233",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#16 — Vol. 16",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490889-16.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554234",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#17 — Vol. 17",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490890-17.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554235",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#18 — Vol. 18",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490891-18.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554236",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#19 — Vol. 19",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490895-19.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554237",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#20 — Vol. 20",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490896-20.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554238",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#21 — Vol. 21",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490897-21.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554239",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#22 — Vol. 22",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490898-22.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554240",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#23 — Vol. 23",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490899-23.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554241",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#24 — Vol. 24",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490900-24.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554242",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#25 — Vol. 25",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490901-25.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554243",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#26 — Vol. 26",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490902-26.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554244",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#27 — Vol. 27",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490903-27.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554245",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#28 — Vol. 28",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490904-28.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554246",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#29 — Vol. 29",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490905-29.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554247",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#30 — Vol. 30",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490906-30.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554248",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#31 — Vol. 31",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490907-31.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554249",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#32 — Vol. 32",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490908-32.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554250",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#33 — Vol. 33",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490909-33.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554251",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#34 — Vol. 34",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490912-34.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554252",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#35 — Vol. 35",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490913-35.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554253",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#36 — Vol. 36",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490910-36.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554254",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#37 — Vol. 37",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490911-37.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554255",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#38 — Vol. 38",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490914-38.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554256",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#39 — Vol. 39",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490915-39.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554257",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#40 — Vol. 40",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490916-40.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554258",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#41 — Vol. 41",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490917-41.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554259",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#42 — Vol. 42",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490918-42.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554260",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#43 — Vol. 43",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490919-43.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554261",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#44 — Vol. 44",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490920-44.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554262",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#45 — Vol. 45",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490921-45.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554263",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#46 — Vol. 46",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490922-46.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554264",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#47 — Vol. 47",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490923-47.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554265",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#48 — Vol. 48",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490924-48.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554266",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#49 — Vol. 49",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490925-49.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554267",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#50 — Vol. 50",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490926-50.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554268",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#51 — Vol. 51",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490927-51.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554269",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#52 — Vol. 52",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490928-52.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554270",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#53 — Vol. 53",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490929-53.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554271",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#54 — Vol. 54",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490930-54.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554272",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#55 — Vol. 55",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490931-55.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554273",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#56 — Vol. 56",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490932-56.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554274",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#57 — Vol. 57",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490933-57.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554275",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#58 — Vol. 58",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490934-58.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554276",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#59 — Vol. 59",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490935-59.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554277",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#60 — Vol. 60",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490936-60.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554278",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#61 — Vol. 61",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490937-61.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554279",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#62 — Vol. 62",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490938-62.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554280",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#63 — Vol. 63",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490939-63.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554281",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#64 — Vol. 64",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490940-64.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554282",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#65 — Vol. 65",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490941-65.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554283",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#66 — Vol. 66",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490942-66.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554284",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#67 — Vol. 67",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490943-67.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-554285",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#68 — Vol. 68",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5490944-68.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-600203",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#69 — Vol. 69",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5885352-69.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-640922",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#70 — Vol. 70",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6154682-70.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-665207",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#71 — Vol. 71",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6369389-71.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-692986",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#72 — Vol. 72",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6699015-72.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826102",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#73 — Vol. 73",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777944-73.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826103",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#74 — Vol. 74",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777945-74.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826104",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#75 — Vol. 75",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777946-75.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826105",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#76 — Vol. 76",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777947-76.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826106",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#77 — Vol. 77",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777948-77.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826107",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#78 — Vol. 78",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777949-78.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-826108",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#79 — Vol. 79",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777950-79.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-849139",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#80 — Vol. 80",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7969830-80.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-959620",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#81 — Vol. 81",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11145/111450787/8749732-1646043635-71TyW.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-968669",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#82 — Vol. 82",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11145/111450787/8809185-1486289091-61oLQ.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-968670",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#83 — Vol. 83",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11145/111450787/8809187-1466137926-61bX%2B.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:issue-968671",
+      "relation_type": "ISSUE",
+      "type_label": "Número",
+      "title": "#84 — Vol. 84",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11145/111450787/8809194-8693011158-51JXh.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:33006",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "JoJo no Kimyou na Bouken: Diamond wa Kudakenai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx33006-uFu4BInfxXNx.png"
+    },
+    {
+      "media_external_id": "manga:33008",
+      "related_media_external_id": "manga:33009",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "JoJo no Kimyou na Bouken: Stone Ocean",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx33009-jF9dqLJcZC4n.png"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "JoJo no Kimyou na Bouken - Mugen no Ou"
+}
