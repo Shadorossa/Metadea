@@ -12,12 +12,29 @@
   },
   "media_relations": [
     {
+      "media_external_id": "vnovel:221289",
       "related_media_external_id": "vnovel:1427",
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Phoenix Wright: Ace Attorney - Justice for All",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5z8t.jpg",
-      "media_external_id": "vnovel:221289"
+      "format": null
+    },
+    {
+      "media_external_id": "vnovel:221289",
+      "related_media_external_id": "vnovel:221280",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Gyakuten Saiban",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5gp9.jpg"
+    },
+    {
+      "media_external_id": "vnovel:221289",
+      "related_media_external_id": "vnovel:221290",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Gyakuten Saiban 3",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5gpb.jpg"
     }
   ],
   "characters": [],
