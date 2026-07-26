@@ -25,6 +25,15 @@
       "type_label": "Sequel",
       "title": "Resident Evil 6",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobgod.jpg"
+    },
+    {
+      "media_external_id": "game:847",
+      "related_media_external_id": "game:23215",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "Resident Evil 5 Remastered",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cobj1q.jpg",
+      "format": null
     }
   ],
   "characters": [],
