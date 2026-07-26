@@ -33,17 +33,8 @@
       "type_label": "Alternative Version #1",
       "title": "Inazuma Eleven GO: Galaxy Big Bang",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3dnd.jpg"
-    },
-    {
-      "media_external_id": "game:134112",
-      "related_media_external_id": "anime:21879",
-      "relation_type": "SEQUEL",
-      "type_label": "Sequel",
-      "title": "Inazuma Eleven: Ares no Tenbin",
-      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21879-h5RaJDRqPg8N.jpg"
     }
   ],
   "characters": [],
-  "media_authors": [],
-  "saga_name": "Inazuma Eleven"
+  "media_authors": []
 }
