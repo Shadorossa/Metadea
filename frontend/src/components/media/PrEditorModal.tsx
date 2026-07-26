@@ -905,6 +905,14 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           onClose={() => setSearchPopupMode(null)}
           excludeIds={[externalId, ...editableRelations.map(r => r.related_media_external_id)]}
           closeOnSelect={false}
+          // Unlike Bundled In/Contains, this general Relations picker isn't
+          // scoped to one specific relation kind — a curator manually fixing
+          // up a REMASTER/REMAKE/expanded-edition/bundle link (e.g. one the
+          // live sync failed to pick up) needs to find it here too, not just
+          // via those dedicated pickers.
+          includeIgdbBundles
+          includeIgdbExpandedEditions
+          includeRemasters
         />
       )}
 
