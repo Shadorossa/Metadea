@@ -400,14 +400,18 @@ async function enrichLocalData(rawId: string, catalog: MediaCatalogEntry, localD
 export function fetchMediaDataWithFallback(
   rawId: string,
   onPartial: (data: MediaPageData) => void,
-  onFull:    (data: MediaPageData) => void,
+  // isFinal is false exactly once: the stub/local-data render below that's
+  // about to be followed by a background resync. Callers that show a
+  // "still loading" indicator should key it off this instead of onFull
+  // firing at all, since onFull already fires early for that stub data.
+  onFull:    (data: MediaPageData, isFinal: boolean) => void,
   onError:   () => void,
   // Lets the caller skip the background refresh once the user has navigated away.
   isCancelled: () => boolean = () => false,
 ): void {
   const cached = getCachedMediaData(rawId);
   if (cached) {
-    onFull(cached);
+    onFull(cached, true);
     return;
   }
 
@@ -440,7 +444,13 @@ export function fetchMediaDataWithFallback(
       // Catalog data is the final answer for this render — a resync (if due) only refreshes in the background.
       if (hasLocalData && localData) {
         fullArrived = true;
-        onFull(localData);
+        const syncState = await syncStatePromise;
+        const dueForResync = needsResync(syncState ? {
+          status: catalogEntry?.status,
+          last_synced_at: syncState.last_synced_at,
+          sync_failed_count: syncState.sync_failed_count,
+        } : null);
+        onFull(localData, !(catalogEntry && dueForResync));
         // The background resync's own result used to just be discarded here
         // — persistToCatalog (inside fetchMediaData) only ever writes
         // media_catalog's own scalar columns, never characters/staff, so
@@ -454,15 +464,9 @@ export function fetchMediaDataWithFallback(
         // does fixes that, at the cost of onFull's other one-time work
         // (extra relations walk, etc.) also re-running — acceptable since
         // needsResync() already gates how often this happens at all.
-        const syncState = await syncStatePromise;
-        const dueForResync = needsResync(syncState ? {
-          status: catalogEntry?.status,
-          last_synced_at: syncState.last_synced_at,
-          sync_failed_count: syncState.sync_failed_count,
-        } : null);
         if (catalogEntry && dueForResync && !isCancelled()) {
           fetchMediaData(rawId).then(fresh => {
-            if (fresh && !isCancelled()) onFull(fresh);
+            if (fresh && !isCancelled()) onFull(fresh, true);
           }).catch(() => {});
         }
         return;
@@ -473,7 +477,7 @@ export function fetchMediaDataWithFallback(
         .then(data => {
           fullArrived = true;
           if (data) {
-            onFull(data);
+            onFull(data, true);
           } else {
             onError();
           }

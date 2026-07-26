@@ -425,11 +425,15 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         setData(partial);
         setPageState('ready');
       },
-      full    => {
+      (full, isFinal) => {
         if (cancelled) return;
         setData(full);
         setPageState('ready');
-        setIsFetchingFull(false);
+        // isFinal is false for a stub/local-data row that's about to be
+        // followed by a background live resync (see fetchMediaDataWithFallback)
+        // — the bottom progress bar must stay up through that resync, not
+        // disappear the moment the mostly-empty stub renders.
+        if (isFinal) setIsFetchingFull(false);
 
         // Background fetches below resolve after the user may have already
         // navigated to a different media page — this guards every merge so
