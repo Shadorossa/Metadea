@@ -275,25 +275,36 @@ export function LibrarySection({
     const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
 
     const sectionsData = [
-      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i))) },
-      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i))) },
-      { title: p.section_completed, items: sortItems(filtered.filter(i => i.status === 'completed')) },
-      { title: p.section_planning, items: sortItems(filtered.filter(i => i.status === 'planning')) },
-      { title: p.section_paused, items: sortItems(filtered.filter(i => i.status === 'paused')) },
-      { title: p.section_dropped, items: sortItems(filtered.filter(i => i.status === 'dropped')) },
+      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i))), isCompletedSection: false },
+      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i))), isCompletedSection: false },
+      { title: p.section_completed, items: sortItems(filtered.filter(i => i.status === 'completed')), isCompletedSection: true },
+      { title: p.section_planning, items: sortItems(filtered.filter(i => i.status === 'planning')), isCompletedSection: false },
+      { title: p.section_paused, items: sortItems(filtered.filter(i => i.status === 'paused')), isCompletedSection: false },
+      { title: p.section_dropped, items: sortItems(filtered.filter(i => i.status === 'dropped')), isCompletedSection: false },
     ];
+
+    // Every completed work's own id — regardless of the current name/type/
+    // edition filters, which shouldn't change whether a saga/bundle
+    // elsewhere in the library already has a finished anchor. Used below to
+    // suppress merging in every OTHER section: a saga/bundle with a
+    // completed member shouldn't also show as one aggregate card among your
+    // dropped/pending/paused/in-progress ones — each of those stays its own
+    // individual entry instead of being folded together, since "Completado"
+    // already represents that saga/bundle's own real anchor point.
+    const completedIds = new Set((items ?? []).filter(i => i.status === 'completed').map(i => i.external_id));
 
     return sectionsData
       .filter(sec => sec.items.length > 0)
       // Edition/saga-chain grouping is gated behind "Agrupar por entrega"; bundle grouping has its own toggle.
       .map(sec => {
+        const suppressIds = sec.isCompletedSection ? undefined : completedIds;
         const editionGroups = groupEditions(sec.items, catalogMap, groupByEdition);
         let cards: Array<{ item: Items[number]; grouped: Items[number][]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> = editionGroups;
         if (groupByBundle) {
-          cards = groupBundles(cards, catalogMap, sagaRelations);
+          cards = groupBundles(cards, catalogMap, sagaRelations, suppressIds);
         }
         if (groupByEdition) {
-          cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames);
+          cards = refineSagaGroups(cards, catalogMap, sagaRelations, sagaNames, suppressIds);
         }
 
         // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.

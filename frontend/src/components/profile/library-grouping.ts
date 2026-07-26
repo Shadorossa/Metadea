@@ -76,6 +76,11 @@ export function groupBundles<T extends { external_id: string; started_at: string
   groups: Array<{ item: T; grouped: T[] }>,
   catalogMap: Map<string, MediaCatalogEntry>,
   relations: DbMediaRelation[],
+  // Every completed work's own id, only passed by non-"Completado" sections
+  // (undefined there) — a bundle that already has a completed member
+  // shouldn't also form an aggregate card among your dropped/pending/
+  // paused/in-progress ones; each stays its own individual entry instead.
+  suppressIfCompletedElsewhere?: Set<string>,
 ): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry }> {
   const rootIndexOf = new Map<string, number>();
   groups.forEach((g, i) => {
@@ -129,6 +134,14 @@ export function groupBundles<T extends { external_id: string; started_at: string
     );
     if (matchedChildIds.size < 2) continue;
 
+    // The container itself or any of its children (owned or not — this is
+    // a catalog-wide relation fact, not scoped to what's in this section)
+    // already completed elsewhere — leave every matched child as its own
+    // individual card here instead of also forming this aggregate.
+    if (suppressIfCompletedElsewhere && (
+      suppressIfCompletedElsewhere.has(containerId) || childIds.some(id => suppressIfCompletedElsewhere.has(id))
+    )) continue;
+
     const matchedRootIndices = new Set([...matchedChildIds].map(id => rootIndexOf.get(id)!));
 
     let merged: T[] = [];
@@ -164,6 +177,11 @@ export function refineSagaGroups<T extends { external_id: string }>(
   catalogMap: Map<string, MediaCatalogEntry>,
   relations: DbMediaRelation[],
   sagaNames: Record<string, string>,
+  // Every completed work's own id, only passed by non-"Completado" sections
+  // (undefined there) — a saga that already has a completed member
+  // shouldn't also form an aggregate card among your dropped/pending/
+  // paused/in-progress ones; each stays its own individual entry instead.
+  suppressIfCompletedElsewhere?: Set<string>,
 ): Array<{ item: T; grouped: T[]; bundleMeta?: MediaCatalogEntry; titleOverride?: string; aggregateStats?: boolean }> {
   const parent = new Map<string, string>();
   const find = (id: string): string => {
@@ -307,10 +325,21 @@ export function refineSagaGroups<T extends { external_id: string }>(
     byComponent.set(comp, list);
   }
 
+  // Which saga components already have a completed member — catalog-wide
+  // (via the same union-find graph above), not scoped to what's owned in
+  // this particular section.
+  const completedComponents = new Set<string>();
+  if (suppressIfCompletedElsewhere) {
+    for (const id of suppressIfCompletedElsewhere) {
+      if (parent.has(id)) completedComponents.add(find(id));
+    }
+  }
+
   const sagaGroups: Array<{ item: T; grouped: T[]; titleOverride?: string; aggregateStats: boolean }> = [];
 
-  for (const indices of byComponent.values()) {
+  for (const [comp, indices] of byComponent) {
     if (indices.length < 2) continue; // nothing to merge — leave the lone entry exactly as-is
+    if (completedComponents.has(comp)) continue; // has a completed member elsewhere — stays split, not merged here
 
     // Sorted by the ORIGINAL's release date whenever a member is standing in
     // for one (a remake/remaster with no saga of its own, redirected onto
