@@ -11,19 +11,20 @@
   },
   "media_relations": [
     {
+      "media_external_id": "vnovel:1428",
       "related_media_external_id": "vnovel:221290",
       "relation_type": "PARENT",
       "type_label": "Source",
       "title": "Gyakuten Saiban 3",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5gpb.jpg",
-      "media_external_id": "vnovel:1428"
+      "format": null
     },
     {
       "related_media_external_id": "game:21610",
       "relation_type": "PART_OF",
       "type_label": "Part of",
       "title": "Phoenix Wright: Ace Attorney Trilogy",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coa7iv.jpg",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coa7iv.jpg",
       "media_external_id": "vnovel:1428"
     }
   ],
