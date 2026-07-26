@@ -944,9 +944,6 @@ function MediaCard({ result }: { result: SearchResult }) {
       if (result.authorNames?.length) {
         sessionStorage.setItem(`book_authors:${result.externalId}`, JSON.stringify(result.authorNames));
       }
-      if (result.authorKey) {
-        sessionStorage.setItem(`book_author_key:${result.externalId}`, result.authorKey);
-      }
       navigate(`/media?id=${result.externalId}`);
     }
   }

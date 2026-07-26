@@ -209,7 +209,11 @@ const t = useTranslations(lang);
     const author = await fetchOpenLibAuthorFullDetail(idVal);
     if (!author) return null;
 
-    const authorPhotoUrl = author.photos?.length ? `https://covers.openlibrary.org/a/id/${author.photos[0]}-L.jpg` : null;
+    // OpenLibrary uses -1 as a sentinel for "explicitly no photo" rather than
+    // omitting the field (same gotcha as fetchOpenLibAuthor, openlibrary.ts)
+    // — .length alone doesn't catch it, [-1] still has length 1.
+    const realPhotoId = author.photos?.find(id => id > 0);
+    const authorPhotoUrl = realPhotoId ? `https://covers.openlibrary.org/a/id/${realPhotoId}-L.jpg` : null;
     const bioText = (typeof author.bio === 'object' ? author.bio?.value : author.bio) || null;
     const works = (author.works || []).map(work => ({
       url: `/media?id=book:${bookIdFromWorkKey(work.key)}`,

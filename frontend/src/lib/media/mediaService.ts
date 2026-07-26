@@ -91,30 +91,30 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
 
   if (type === 'book') {
     const idStr = rawId.slice(rawId.indexOf(':') + 1);
-    const cachedNames   = sessionStorage.getItem(`book_authors:${rawId}`);
-    const cachedKey     = sessionStorage.getItem(`book_author_key:${rawId}`);
+    const cachedNames = sessionStorage.getItem(`book_authors:${rawId}`);
     const preloadNames: string[] | null = cachedNames ? JSON.parse(cachedNames) : null;
 
-    const workPromise   = fetchOpenLibWork(idStr);
-    const authorPromise = cachedKey
-      ? fetchOpenLibAuthor(cachedKey)
-      : workPromise.then(w => {
-          const key = w?.authors?.[0]?.author?.key ?? null;
-          return key ? fetchOpenLibAuthor(key) : null;
-        });
-
-    const [work, authorDetail] = await Promise.all([workPromise, authorPromise]);
+    const work = await fetchOpenLibWork(idStr);
     if (!work) return null;
 
-    let richAuthors: MediaAuthor[] = [];
-    if (authorDetail) {
-      richAuthors.push({
-        external_id: authorDetail.key ? `author:${authorDetail.key}` : `author:${authorDetail.name}`,
-        name: authorDetail.name,
-        image: authorDetail.image || undefined,
-        url: authorDetail.key ? `/author?id=author:${authorDetail.key}` : undefined
-      });
-    } else if (preloadNames) {
+    // Every author, not just the first — the search result's own cached key
+    // (book_author_key) only ever carries one, since SearchResult.authorKey
+    // is itself documented as "first author key... OpenLibrary only"; the
+    // Work's own `authors` list is the only place co-authors show up at all.
+    const authorKeys = (work.authors ?? []).map(a => a.author?.key).filter((k): k is string => !!k);
+    const authorDetails = authorKeys.length
+      ? await Promise.all(authorKeys.map(k => fetchOpenLibAuthor(k)))
+      : [];
+
+    let richAuthors: MediaAuthor[] = authorDetails
+      .filter((a): a is NonNullable<typeof a> => a !== null)
+      .map(a => ({
+        external_id: a.key ? `author:${a.key}` : `author:${a.name}`,
+        name: a.name,
+        image: a.image || undefined,
+        url: a.key ? `/author?id=author:${a.key}` : undefined,
+      }));
+    if (richAuthors.length === 0 && preloadNames) {
       richAuthors = preloadNames.map(name => ({ external_id: `author:${name}`, name }));
     }
     return mapOpenLibToMedia(work, richAuthors, rawId, type);

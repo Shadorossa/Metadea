@@ -63,8 +63,12 @@ export async function fetchOpenLibWork(workKey: string): Promise<OpenLibWork | n
 export async function fetchOpenLibAuthor(authorKey: string): Promise<{ name: string; image?: string; key: string } | null> {
   const data = await fetchJson<{ name: string; photos?: number[] }>(`${API_ENDPOINTS.OPENLIBRARY}${authorKey}.json`);
   if (!data) return null;
+  // OpenLibrary uses -1 as a sentinel for "this author explicitly has no
+  // photo" rather than omitting the field — that's still truthy, so it
+  // built a URL like ".../a/id/-1-M.jpg" that 404s, rendering as no image
+  // anyway but silently, instead of this just not claiming one at all.
   const photoId = data.photos?.[0];
-  const image = photoId ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : undefined;
+  const image = photoId && photoId > 0 ? `https://covers.openlibrary.org/a/id/${photoId}-M.jpg` : undefined;
   return { name: data.name, image, key: authorKey };
 }
 
