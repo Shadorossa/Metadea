@@ -246,6 +246,7 @@ export const ru = {
       book: 'Книги',
       comic: 'Комиксы',
       character: 'Персонажи',
+      staff: 'Персонал',
     },
     placeholder: 'Поиск: {type}...',
     idle_label: 'Искать {type}',

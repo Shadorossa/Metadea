@@ -246,6 +246,7 @@ export const fr = {
       book: 'Livres',
       comic: 'Comics',
       character: 'Personnages',
+      staff: 'Staff',
     },
     placeholder: 'Rechercher {type}...',
     idle_label: 'Rechercher {type}',

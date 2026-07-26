@@ -222,7 +222,7 @@ export function QuickSearchOverlay() {
               cover: r.image,
               href: `/author?id=person:a${r.id}`,
             })),
-            viewAllHref: null,
+            viewAllHref: `/search?type=staff&q=${encodeURIComponent(query.trim())}`,
           });
         }
         if (userResults.length > 0) {

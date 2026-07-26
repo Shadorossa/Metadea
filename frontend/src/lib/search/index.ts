@@ -1,4 +1,4 @@
-import { searchAniList, searchAniListCharacters, topRatedAniList } from './providers/anilist';
+import { searchAniList, searchAniListCharacters, searchAniListStaff, topRatedAniList } from './providers/anilist';
 import { searchGames, searchGameBundles, searchGameExpandedEditions, searchGameRemasters } from './providers/igdb';
 import { searchMovies, searchSeries, topRatedMovies, topRatedSeries }  from './providers/tmdb';
 import { searchBooks }                 from './providers/openlibrary';
@@ -11,7 +11,7 @@ export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
 
 export type MediaType =
   | 'all' | 'anime' | 'manga' | 'lnovel' | 'game'
-  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'character';
+  | 'vnovel'  | 'movie' | 'series' | 'book' | 'comic' | 'character' | 'staff';
 
 /**
  * Subset of media_catalog columns available from search APIs.
@@ -108,8 +108,35 @@ function fetchFromApi(
     case 'book':      return searchBooks(searchQuery, signal, page);
     case 'comic':     return searchComics(searchQuery, signal, page);
     case 'character': return searchCharacters(searchQuery, signal, page);
+    case 'staff':     return searchStaff(searchQuery, signal, page);
     default:          return Promise.resolve({ results: [], hasMore: false });
   }
+}
+
+// AniList staff only — no other provider has an equivalent searchable
+// entity. Reuses the same person:a<id> id scheme quick search's staff
+// results already link to (see QuickSearchOverlay.tsx), which the existing
+// /author page already resolves via fetchAniListStaffDetail.
+async function searchStaff(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
+  const { results, hasMore } = await searchAniListStaff(searchQuery, signal, page);
+  return {
+    results: results.map(s => ({
+      externalId: `person:a${s.id}`,
+      type: 'staff' as MediaType,
+      format: '',
+      source: 'anilist' as const,
+      titleMain: s.name,
+      titleRomaji: null,
+      titleNative: s.nameNative,
+      coverUrl: s.image,
+      releaseYear: null,
+      releaseMonth: null,
+      releaseDay: null,
+      scoreGlobal: null,
+      genres: [],
+    })),
+    hasMore,
+  };
 }
 
 // Fans out to every provider with real, independently-searchable character
@@ -171,7 +198,7 @@ function titleHasEditionWord(title: string): boolean {
 // they're already in the local catalog. Not paginated — only checked on
 // page 1, merged in without overriding an API hit for the same id (the live
 // result is generally fresher/richer).
-async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character'>): Promise<SearchResult[]> {
+async function searchLocalCatalog(searchQuery: string, mediaType: Exclude<MediaType, 'all' | 'character' | 'staff'>): Promise<SearchResult[]> {
   const entries = await searchCatalog(searchQuery).catch(() => [] as MediaCatalogEntry[]);
   return entries
     .filter(e => e.type === mediaType)
@@ -192,7 +219,7 @@ async function searchOne(
   page: number,
 ): Promise<SearchPage> {
   const apiPromise = fetchFromApi(mediaType, searchQuery, signal, page);
-  if (mediaType === 'character' || page !== 1) return apiPromise;
+  if (mediaType === 'character' || mediaType === 'staff' || page !== 1) return apiPromise;
 
   const [apiOutcome, localResults] = await Promise.all([
     apiPromise.then(p => ({ ok: true as const, page: p })).catch(err => ({ ok: false as const, err })),
@@ -309,12 +336,12 @@ export async function search(
   const page_ = mediaType === 'all'
     ? await searchAll(searchQuery, signal, page)
     : await searchOne(mediaType, searchQuery, signal, page);
-  if (mediaType === 'character') return page_;
+  if (mediaType === 'character' || mediaType === 'staff') return page_;
   return filterReclassified(await filterBlocked(page_));
 }
 
 function fetchTopRatedFromApi(
-  mediaType: Exclude<MediaType, 'all' | 'character' | 'book' | 'comic'>,
+  mediaType: Exclude<MediaType, 'all' | 'character' | 'staff' | 'book' | 'comic'>,
   signal: AbortSignal,
   page: number,
   filters?: SearchFilters,
@@ -339,7 +366,7 @@ function fetchTopRatedFromApi(
 // only with no sort option) — those two, plus 'all' and 'character', just
 // return empty here and keep the existing empty-until-typed behavior.
 export async function topRated(mediaType: MediaType, signal: AbortSignal, page = 1, filters?: SearchFilters): Promise<SearchPage> {
-  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'book' || mediaType === 'comic') {
+  if (mediaType === 'all' || mediaType === 'character' || mediaType === 'staff' || mediaType === 'book' || mediaType === 'comic') {
     return { results: [], hasMore: false };
   }
   return filterReclassified(await filterBlocked(await fetchTopRatedFromApi(mediaType, signal, page, filters)));

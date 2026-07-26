@@ -246,6 +246,7 @@ export const it = {
       book: 'Libri',
       comic: 'Fumetti',
       character: 'Personaggi',
+      staff: 'Staff',
     },
     placeholder: 'Cerca {type}...',
     idle_label: 'Cerca {type}',

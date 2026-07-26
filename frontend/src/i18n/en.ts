@@ -249,6 +249,7 @@ export const en = {
       book: 'Books',
       comic: 'Comics',
       character: 'Characters',
+      staff: 'Staff',
     },
     placeholder: 'Search {type}...',
     idle_label: 'Search {type}',

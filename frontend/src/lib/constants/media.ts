@@ -11,12 +11,15 @@ export const ALL_MEDIA_TYPES = [
 
 // Search tab order (includes 'all' sentinel)
 export const SEARCH_TAB_TYPES = [
-  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'character',
+  'all', 'anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series', 'book', 'comic', 'character', 'staff',
 ] as const;
 
-// Types that have a dedicated detail page
+// Types that have a dedicated detail page. 'staff' isn't in ALL_MEDIA_TYPES
+// (it can't be favorited/added to a library like a character can) but does
+// have one — it resolves to the existing /author page (person:a<id>, same
+// as an AniList staff link from quick search), not a new /staff page.
 export const DETAIL_SUPPORTED_TYPES = [
-  'anime', 'manga', 'lnovel', 'book', 'comic', 'game', 'vnovel', 'movie', 'series', 'character',
+  'anime', 'manga', 'lnovel', 'book', 'comic', 'game', 'vnovel', 'movie', 'series', 'character', 'staff',
 ] as const;
 
 // ─── Labels ───────────────────────────────────────────────────────────────────
@@ -36,6 +39,7 @@ export function getTypeLabel(type: string): string {
     book: t.search?.types?.book,
     comic: t.search?.types?.comic,
     character: t.search?.types?.character,
+    staff: t.search?.types?.staff,
   };
   return searchTypeMap[type] || type;
 }

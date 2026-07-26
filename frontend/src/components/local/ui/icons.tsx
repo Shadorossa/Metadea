@@ -185,6 +185,13 @@ export function IconCharacter(p: SvgProps) {
   return <Svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Svg>;
 }
 
+// A crew ID badge — distinct from IconCharacter's plain person silhouette,
+// since this represents the people who made a work (director/writer/...)
+// rather than a character within it.
+export function IconStaff(p: SvgProps) {
+  return <Svg {...p}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M6 16h12"/></Svg>;
+}
+
 // ── Status icons (editor modal, profile render) ───────────────────────────────
 
 export function IconStatusPlanning(p: SvgProps) {

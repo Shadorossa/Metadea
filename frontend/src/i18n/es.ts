@@ -249,6 +249,7 @@ export const es = {
       book: 'Libros',
       comic: 'Comics',
       character: 'Personajes',
+      staff: 'Staff',
     },
     placeholder: 'Busca {type}...',
     idle_label: 'Busca {type}',

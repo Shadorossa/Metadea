@@ -7,7 +7,7 @@ import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/pr
 import { prefetchMediaData } from '../../lib/media/mediaService';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
-import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter } from '../local/ui/icons';
+import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter, IconStaff } from '../local/ui/icons';
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
@@ -28,6 +28,7 @@ const TAB_ICONS: Record<MediaType, JSX.Element> = {
   book:      <IconBook />,
   comic:     <IconComic />,
   character: <IconCharacter />,
+  staff:     <IconStaff />,
 };
 
 const MEDIA_TYPE_IDS = SEARCH_TAB_TYPES as unknown as MediaType[];
@@ -845,7 +846,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
             list.push(result);
             byType.set(result.type, list);
           }
-          const typeOrder = (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character');
+          const typeOrder = (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character' && t !== 'staff');
 
           return (
             <div className="results-by-type animate-fade-in">
@@ -922,7 +923,7 @@ function MediaCard({ result }: { result: SearchResult }) {
   // IGDB/TMDB/OpenLibrary/ComicVine, so firing it on every hover has no
   // external-request cost to worry about.
   function handleMouseEnter() {
-    if (hasDetail && result.type !== 'character') prefetchMediaData(result.externalId);
+    if (hasDetail && result.type !== 'character' && result.type !== 'staff') prefetchMediaData(result.externalId);
   }
 
   async function handleClick() {
@@ -931,6 +932,13 @@ function MediaCard({ result }: { result: SearchResult }) {
       if (result.type === 'character') {
         const rawId = result.externalId.replace('character:', '');
         navigate(`/character?id=${rawId}`);
+        return;
+      }
+      if (result.type === 'staff') {
+        // externalId is already "person:a<id>" (see searchStaff, lib/search/index.ts) —
+        // the same id scheme quick search's staff results use, resolved by
+        // the existing /author page (fetchLiveAniListStaff).
+        navigate(`/author?id=${result.externalId}`);
         return;
       }
       if (result.authorNames?.length) {

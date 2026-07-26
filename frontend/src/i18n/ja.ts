@@ -249,6 +249,7 @@ export const ja = {
       book: '書籍',
       comic: 'コミック',
       character: 'キャラクター',
+      staff: 'スタッフ',
     },
     placeholder: '{type}を検索...',
     idle_label: '{type}を検索',

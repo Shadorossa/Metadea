@@ -246,6 +246,7 @@ export const ca = {
       book: 'Llibres',
       comic: 'Còmics',
       character: 'Personatges',
+      staff: 'Staff',
     },
     placeholder: 'Cerca {type}...',
     idle_label: 'Cerca {type}',

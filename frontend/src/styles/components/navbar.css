@@ -41,8 +41,11 @@
   align-items: center;
   /* Leaves room on either side for the fixed-width icon groups — anything
      still too wide to fit falls to .nav-center-text's own overflow-x:auto
-     scroll below rather than overlapping them. */
-  max-width: min(65vw, 70rem);
+     scroll below (or .search-tabs-inner's, on /search) rather than
+     overlapping them. Widened from 65vw/70rem — with 11-12 search tabs
+     that cap kicked in on ordinary window widths, forcing a scroll for
+     content that should just fit. */
+  max-width: min(88vw, 92rem);
   min-width: 0;
   overflow: hidden;
 }
