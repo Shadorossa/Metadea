@@ -16,7 +16,16 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "The House in Fata Morgana: A Requiem for Innocence",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg",
+      "format": null
+    },
+    {
+      "related_media_external_id": "vnovel:119577",
+      "relation_type": "PART_OF",
+      "type_label": "Part of",
+      "title": "The House in Fata Morgana: Dreams of the Revenants",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobf78.jpg",
+      "media_external_id": "vnovel:329687"
     }
   ],
   "characters": [],
