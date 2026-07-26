@@ -51,7 +51,6 @@ interface IgdbDetailGame {
   // Relaciones de versiones
   remakes?: IgdbSubGame[];
   remasters?: IgdbSubGame[];
-  dlcs?: IgdbSubGame[];
   expansions?: IgdbSubGame[];
   standalone_expansions?: IgdbSubGame[];
   expanded_games?: IgdbSubGame[];
@@ -245,8 +244,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // edition" (remake/remaster/expanded/port/fork) — e.g. a remaster's own
   // standalone_expansions pointing at the original's expansion. So those
   // types only get their Fuente relation below, nothing from their own
-  // record. DLC/expansion/standalone genuinely belong to whichever specific
+  // record. Expansion/standalone genuinely belong to whichever specific
   // game IGDB links them to, so they keep their full relations regardless.
+  // DLC is deliberately never surfaced as a relation at all — IGDB's
+  // dlc_addon category is almost always cosmetic/minor content (costume
+  // packs, weapon skins, ...) with nothing distinct to actually play, not
+  // worth its own card cluttering a game's relations.
   const IS_FULL_EDITION_TYPE = new Set([8, 9, 10, 11, 12]); // remake, remaster, expanded_game, port, fork
   if (!IS_FULL_EDITION_TYPE.has(gameType)) {
     addRelations(game.remakes, 'REMAKE');
@@ -254,7 +257,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     addRelations(game.expanded_games, 'EXPANDED_GAME');
     addRelations(game.forks, 'FORK');
   }
-  addRelations(game.dlcs, 'DLC');
   addRelations(game.expansions, 'EXPANSION');
   addRelations(game.standalone_expansions, 'STANDALONE');
 
@@ -364,7 +366,6 @@ export interface RelationGraphNode {
 const VIA_TO_RELATION_TYPE: Record<string, string> = {
   remakes: 'REMAKE',
   remasters: 'REMASTER',
-  dlcs: 'DLC',
   expansions: 'EXPANSION',
   standalone_expansions: 'STANDALONE',
   expanded_games: 'EXPANDED_GAME',

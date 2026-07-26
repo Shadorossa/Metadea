@@ -1078,7 +1078,6 @@ pub async fn igdb_get_game_detail(
          external_games.category,external_games.url,\
          remakes.id,remakes.name,remakes.cover.image_id,remakes.first_release_date,remakes.genres.id,remakes.game_type,\
          remasters.id,remasters.name,remasters.cover.image_id,remasters.first_release_date,remasters.genres.id,remasters.game_type,\
-         dlcs.id,dlcs.name,dlcs.cover.image_id,dlcs.first_release_date,dlcs.genres.id,dlcs.game_type,\
          expansions.id,expansions.name,expansions.cover.image_id,expansions.first_release_date,expansions.genres.id,expansions.game_type,\
          standalone_expansions.id,standalone_expansions.name,standalone_expansions.cover.image_id,standalone_expansions.first_release_date,standalone_expansions.genres.id,standalone_expansions.game_type,\
          expanded_games.id,expanded_games.name,expanded_games.cover.image_id,expanded_games.first_release_date,expanded_games.genres.id,expanded_games.game_type,\
@@ -1149,13 +1148,16 @@ pub async fn igdb_get_game_detail(
         None => serde_json::Value::Null,
     };
 
-    // Related sub-games (remakes, dlcs, ...) are their own titles and can be
-    // visual novels even when the current game isn't (or vice versa) — tag
-    // each one with is_vn from its own genres so the frontend can route it
-    // to /media?id=vnovel:X instead of always assuming id=game:X, which used
-    // to create duplicate catalog stubs of the same title under both prefixes.
+    // Related sub-games (remakes, expansions, ...) are their own titles and
+    // can be visual novels even when the current game isn't (or vice versa)
+    // — tag each one with is_vn from its own genres so the frontend can
+    // route it to /media?id=vnovel:X instead of always assuming id=game:X,
+    // which used to create duplicate catalog stubs of the same title under
+    // both prefixes. dlcs deliberately excluded — see mapIgdbToMedia's own
+    // comment (igdb-mapper.ts) for why DLC no longer surfaces as a relation
+    // at all (cosmetic/minor content, not worth its own card).
     const REL_ARRAYS: &[&str] = &[
-        "remakes", "remasters", "dlcs", "expansions",
+        "remakes", "remasters", "expansions",
         "standalone_expansions", "expanded_games", "ports", "forks",
     ];
     if let Some(obj) = game.as_object_mut() {
@@ -1235,7 +1237,7 @@ pub async fn igdb_get_base_games(
 }
 
 // Walks the forward edition/version relation graph (remakes, remasters,
-// dlcs, expansions, standalone_expansions, expanded_games, ports, forks,
+// expansions, standalone_expansions, expanded_games, ports, forks,
 // parent_game) breadth-first, batching one IGDB query per depth level, so
 // that e.g. "a remaster of an expanded edition" or "a port of a remaster"
 // still surfaces on the original game's page even though it's two or three
@@ -1258,7 +1260,7 @@ pub async fn igdb_get_relation_graph(
     const MAX_DEPTH: usize = 4;
     const MAX_NODES: usize = 40;
     const REL_FIELDS: &[&str] = &[
-        "remakes", "remasters", "dlcs", "expansions",
+        "remakes", "remasters", "expansions",
         "standalone_expansions", "expanded_games", "ports", "forks",
     ];
 
@@ -1276,7 +1278,7 @@ pub async fn igdb_get_relation_graph(
         let query = format!(
             "fields id,name,cover.image_id,first_release_date,genres.id,\
              parent_game.id,\
-             remakes.id,remasters.id,dlcs.id,expansions.id,\
+             remakes.id,remasters.id,expansions.id,\
              standalone_expansions.id,expanded_games.id,ports.id,forks.id; \
              where id = ({}); limit {};",
             ids_csv,
