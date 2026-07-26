@@ -104,6 +104,74 @@ function HeaderField({ label, children }: { label: string; children: React.React
   );
 }
 
+// Playtime (game/vnovel progress) is stored as decimal hours (0.5 = 30min,
+// same as before this existed) — only how it's typed/displayed changes.
+// "H:MM" reads far more naturally for hours+minutes than a raw decimal, and
+// a native <input type="number"> can't be typed with ":" at all (nor with
+// "," as a decimal separator — Chromium's number input only accepts "."
+// regardless of OS locale, so a Spanish-locale "10,3" silently failed to
+// parse as anything).
+function formatHoursColon(decimalHours: number): string {
+  if (!decimalHours) return '0:00';
+  let h = Math.floor(decimalHours);
+  let m = Math.round((decimalHours - h) * 60);
+  if (m === 60) { m = 0; h += 1; }
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+// null = invalid (wrong shape, or minutes >= 60 — "H:90" is never accepted,
+// not even clamped) — the caller reverts to the last valid display instead.
+function parseHoursColonInput(raw: string): number | null {
+  const match = raw.trim().match(/^(\d+)(?::(\d{1,2}))?$/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = match[2] ? parseInt(match[2], 10) : 0;
+  if (m > 59) return null;
+  return h + m / 60;
+}
+
+function HoursField({ label, value, max, onChange }: {
+  label: string; value: number; max?: number; onChange: (v: number) => void;
+}) {
+  const formatted = formatHoursColon(value);
+  // Local draft text, not tied directly to `value` on every keystroke — a
+  // controlled input re-deriving its display from the parsed number as you
+  // type would reformat (and jump the cursor) mid-entry, e.g. typing "10:3"
+  // toward "10:30" briefly parses as "10:03" and rewrites itself. Only
+  // resynced from outside changes (switching log/version) and on blur.
+  const [text, setText] = useState(formatted);
+  useEffect(() => { setText(formatted); }, [formatted]);
+
+  function commit() {
+    const parsed = parseHoursColonInput(text);
+    if (parsed === null) { setText(formatted); return; }
+    onChange(max !== undefined && parsed > max ? max : parsed);
+  }
+
+  return (
+    <HeaderField label={label}>
+      <div className="me-header-field-row">
+        <input type="text" inputMode="numeric" className="me-header-field-input me-header-field-input--number"
+          value={text}
+          onChange={e => {
+            // Digits and at most one ":" — comma (or anything else) is
+            // rejected right at the keystroke rather than silently eaten
+            // later. Minutes >= 60 typed mid-entry (e.g. "1:9" on the way to
+            // "1:59") aren't blocked here — parseHoursColonInput rejects
+            // them for good on blur instead, since a bare "9" can't yet know
+            // whether it'll become a valid "09" or an invalid "90".
+            const next = e.target.value;
+            if (/^\d*(:\d{0,2})?$/.test(next)) setText(next);
+          }}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="0:00" />
+        {max !== undefined && <span className="me-header-field-max">/ {formatHoursColon(max)}</span>}
+      </div>
+    </HeaderField>
+  );
+}
+
 function NumberField({ label, value, max, step, onChange }: {
   label: string; value: number; max?: number; step: number; onChange: (v: number) => void;
 }) {
@@ -583,9 +651,21 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   ))}
                 </div>
 
-                {/* Progress input */}
+                {/* Progress input — game/vnovel is hours logged as "H:MM"
+                    (see HoursField), every other type is a plain count. */}
                 {progLabel && (
                   <div className="me-header-progress-pair">
+                    {data.type === 'game' || data.type === 'vnovel' ? (
+                      <HoursField label={progLabel} value={activeLog.progress}
+                        max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
+                        onChange={v => {
+                          const updates: Partial<LogState> = { progress: v };
+                          if (data.totalCount && data.totalCount > 0 && v >= data.totalCount && activeLog.status !== 'completed') {
+                            updates.status = 'completed';
+                          }
+                          dispatchEntry({ type: 'UPDATE_LOG', updates });
+                        }} />
+                    ) : (
                     <NumberField label={progLabel} value={activeLog.progress} step={progStep}
                       max={data.totalCount && data.totalCount > 0 ? data.totalCount : undefined}
                       onChange={v => {
@@ -599,6 +679,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         }
                         dispatchEntry({ type: 'UPDATE_LOG', updates });
                       }} />
+                    )}
                     {label2 && data.totalCount_2 !== undefined && data.totalCount_2 !== null && data.totalCount_2 > 0 && (
                       <NumberField label={label2} value={activeLog.progressCount2} step={1}
                         max={data.totalCount_2}
