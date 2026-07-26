@@ -18,8 +18,17 @@
       "title": "Inazuma Eleven: Reloaded",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx138889-a3s35p5FOCHU.jpg",
       "format": null
+    },
+    {
+      "media_external_id": "anime:102933",
+      "related_media_external_id": "anime:99059",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Inazuma Eleven: Outer Code",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx99059-kA7alh9r8L9Y.jpg"
     }
   ],
   "characters": [],
-  "media_authors": []
+  "media_authors": [],
+  "saga_name": "Inazuma Eleven (Ares & Orion)"
 }
