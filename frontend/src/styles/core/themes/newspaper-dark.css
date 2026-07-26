@@ -90,6 +90,24 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   fill: none !important;
 }
 
+/* Vintage rating pill badge */
+[data-theme="newspaper-dark"] .rating-pill {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-secondary) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .rating-pill-val {
+  color: var(--text-main) !important;
+  font-family: var(--font-heading, Georgia, serif);
+}
+
+[data-theme="newspaper-dark"] .rating-pill-max {
+  color: var(--text-muted) !important;
+  opacity: 0.8 !important;
+}
+
 /* Hover/Active states simulate vintage ink press highlight */
 [data-theme="newspaper-dark"] .btn:hover,
 [data-theme="newspaper-dark"] .google-btn:hover,

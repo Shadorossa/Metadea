@@ -599,7 +599,7 @@
 }
 
 .library-card-rating {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   line-height: 1;
@@ -608,6 +608,32 @@
 
 .library-card-rating svg[fill="none"] {
   fill: none !important;
+}
+
+.rating-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  background: var(--card-bg-subtle, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--card-border-subtle, rgba(255, 255, 255, 0.1));
+  width: fit-content;
+  line-height: 1;
+}
+
+.rating-pill-val {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent, #eab308);
+  letter-spacing: -0.01em;
+}
+
+.rating-pill-max {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  opacity: 0.7;
 }
 
 

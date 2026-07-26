@@ -110,11 +110,16 @@ export function formatRatingHtml(
 ): string {
   if (!rating) return `<span class="${cssClass}"></span>`;
 
-  if (system === '10-dec') {
-    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Number(rating).toFixed(2)} / ${max}</span>`;
-  }
-  if (system === '10') {
-    return `<span class="${cssClass} text-rating" style="font-size:0.72rem;font-weight:700;color:var(--accent);">${Math.round(rating)} / ${max}</span>`;
+  if (system === '10-dec' || system === '10') {
+    const formattedVal = system === '10-dec'
+      ? parseFloat(Number(rating).toFixed(2)).toString()
+      : Math.round(rating).toString();
+    return (
+      `<span class="${cssClass} rating-pill rating-pill--num">` +
+        `<span class="rating-pill-val">${formattedVal}</span>` +
+        `<span class="rating-pill-max">/${max}</span>` +
+      `</span>`
+    );
   }
   if (system === '3-emoji') {
     const { emoji, color } = ratingToEmoji(rating);
