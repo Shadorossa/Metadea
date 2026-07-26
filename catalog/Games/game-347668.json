@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "94b5d8dec8960d2794b5d8dec8960d27",
+    "external_id": "game:347668",
+    "type": "game",
+    "title_main": "Resident Evil Requiem",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:347668",
+      "related_media_external_id": "game:55163",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Resident Evil Village",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coab9q.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Resident Evil"
+}
