@@ -4,7 +4,11 @@ dist/
 build/
 .DS_Store
 *.db
-EOF
 .env
 frontend/.tauri-keys
 frontend/.tauri-keys.pub
+
+# Claude Code / agent runtime state — not project source. Already-tracked
+# exceptions (.agents/AGENTS.md, .claude/launch.json) stay tracked regardless.
+.agents/
+.claude/
