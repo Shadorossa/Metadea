@@ -1,0 +1,948 @@
+{
+  "media_catalog": {
+    "id": "f1350c38d2c86f2bf1350c38d2c86f2b",
+    "external_id": "manga:86635",
+    "type": "manga",
+    "title_main": "Kaguya-sama wa Kokurasetai: Tensaitachi no Renai Zunousen",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "anime:101921",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: Tensaitachi no Renai Zunousen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101921-ufrjLzhSz7L1.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:112641",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai?: Tensaitachi no Renai Zunousen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx112641-zoGC8d6FaPXU.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:125367",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: Ultra Romantic",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx125367-1yuq9NFcQuLI.png",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:151384",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: First Kiss wa Owaranai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151384-gv0q8wOE6D58.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:125368",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: Tensaitachi no Renai Zunousen OVA",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx125368-QhcBkbNP0ZfU.png",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:165557",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: Ultra Romantic 3rd Season Teaser PV - Ishigami Yuu wa Kataritai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/b165557-q7A6HcZD0CHs.png",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:194884",
+      "relation_type": "ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "Kaguya-sama wa Kokurasetai: Otona e no Kaidan",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx194884-rHgGAzKSCEWz.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:102490",
+      "relation_type": "SPIN_OFF",
+      "type_label": "Spin-off",
+      "title": "Kaguya-sama wa Kokurasetai: Doujin-ban",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx102490-RGwfbrB4ieH2.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:102423",
+      "relation_type": "SPIN_OFF",
+      "type_label": "Spin-off",
+      "title": "Kaguya-sama wo Kataritai",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx102423-KivaDoKq5Ph2.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "anime:205081",
+      "relation_type": "ALTERNATIVE",
+      "type_label": "Alternative",
+      "title": "Kaguya-sama wa Kokurasetai: Kanketsu-hen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx205081-h34dlv9iprh6.png",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:126245",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Kaguya-sama wa Kokurasetai: Tensaitachi no Renai Zunousen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx126245-O7PGV36YlQaa.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:126246",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Kaguya-sama wa Kokurasetai: Tensaitachi no Renai Zunousen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx126246-6cHmo3I5JcOk.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:126244",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Kaguya-sama wa Kokurasetai Darkness",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx126244-VjHVPG4o7T3N.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "lnovel:104775",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Kaguya-sama wa Kokurasetai Shousetsu-ban: Shuuchiin Gakuen Nanafushigi",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/nx104775-wZhknuYDFw09.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:117195",
+      "relation_type": "OTHER",
+      "type_label": "Other",
+      "title": "[Oshi no Ko]",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx117195-r3kf8eF0xkDJ.png",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:153520",
+      "relation_type": "OTHER",
+      "type_label": "Other",
+      "title": "[Oshi no Ko]: Tokubetsu-hen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx153520-iuWbXhxi4Z0J.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "lnovel:170580",
+      "relation_type": "SIDE_STORY",
+      "type_label": "Side story",
+      "title": "Kaguya-sama wa Kokurasetai Shousetsu-ban: Tensaitachi no Renai Jinrou-sen",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx170580-7P2F49fkQ8Pm.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573494",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#1 — Vol. 1",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622267-01.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573495",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#2 — Vol. 2",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622270-02.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573496",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#3 — Vol. 3",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622271-03.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573497",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#4 — Vol. 4",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622272-04.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573498",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#5 — Vol. 5",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622273-05.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573499",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#6 — Vol. 6",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622274-06.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573500",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#7 — Vol. 7",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622275-07.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573501",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#8 — Vol. 8",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622276-08.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573502",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#9 — Vol. 9",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622277-09.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573503",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#10 — Vol. 10",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622278-10.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-573504",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#11 — Vol. 11",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5622279-11.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-600195",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#12 — Vol. 12",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5885343-12.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-600196",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#13 — Vol. 13",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5885344-13.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-621115",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#14 — Vol. 14",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6048688-14.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-653659",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#15 — Vol. 15",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6231095-15.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-667330",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#16 — Vol. 16",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6396059-16.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-687374",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#17 — Vol. 17",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6637723-17.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-698016",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#18 — Vol. 18",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/6766793-18.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-759717",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#19 — Vol. 19",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7368380-19.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-759718",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#20 — Vol. 20",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7368381-20.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-759719",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#21 — Vol. 21",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7368382-21.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-759720",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#22 — Vol. 22",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7368383-22.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-809091",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#23 — Vol. 23",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7612581-23.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-826098",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#24 — Vol. 24",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7777940-24.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-846797",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#25 — Vol. 25",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7946482-25.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-887336",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#26 — Vol. 26",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/8181459-26.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-915927",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#27 — Vol. 27",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11144/111442876/8446516-81kpxqunitl.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-915926",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#28 — Vol. 28",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11144/111442876/8446513-71oil7vdmel.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-955262",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#29 — Vol. 29",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11145/111450787/8721286-7051462667-81KvL.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177476",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#30 — Vol. 30",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118605-wwww.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177477",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#31 — Vol. 31",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118606-www.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177478",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#32 — Vol. 32",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118610-wwww.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177479",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#33 — Vol. 33",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118611-www.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177480",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#34 — Vol. 34",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118612-ww.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177481",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#35 — Vol. 35",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118615-w.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177482",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#36 — Vol. 36",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118616-t_700x780.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177483",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#37 — Vol. 37",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118617-wwww.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177484",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#38 — Vol. 38",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118618-www.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177485",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#39 — Vol. 39",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118621-ww.jpg",
+      "media_external_id": "manga:86635"
+    },
+    {
+      "related_media_external_id": "manga:issue-1177486",
+      "relation_type": "ISSUE",
+      "type_label": "Issue",
+      "title": "#40 — Vol. 40",
+      "cover": "https://comicvine.gamespot.com/a/uploads/scale_medium/11/110017/10118622-w.jpg",
+      "media_external_id": "manga:86635"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:120649",
+      "name": "Kaguya Shinomiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b120649-NPaWaIpWy60E.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:121101",
+      "name": "Miyuki Shirogane",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b121101-Q8HzKP15At2d.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:121102",
+      "name": "Yuu Ishigami",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b121102-tiQFxnSEIAwm.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:121103",
+      "name": "Chika Fujiwara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b121103-UGLxT8utLPnq.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:125886",
+      "name": "Miko Iino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b125886-TQbmqAaSgBLS.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126987",
+      "name": "Karen Kino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126987-sWw4vqsdHNWe.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134892",
+      "name": "Adolphe Pescarolo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134892-HSzCDOQagDJv.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:176220",
+      "name": "Terashima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b176220-ybbcG8hZSgUO.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:212391",
+      "name": "Koromo Shiranui",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b212391-UVrGhgzy1IQG.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275620",
+      "name": "Saburou Toyosaki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275620-OjIpji2v6zhb.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276399",
+      "name": "Seiryuu Shinomiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276399-cy7e8qWh7Ws0.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134326",
+      "name": "Tsubame Koyasu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134326-GOZE06QSlJSb.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134861",
+      "name": "Betsy Beltoise",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134861-QZ5AdHGKe363.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:176218",
+      "name": "Kazeno",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b176218-x0TQnRrxS2Zs.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:220210",
+      "name": "Hikaru Oobayashi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b220210-DezpWs5QEZYq.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276147",
+      "name": "Mirin Hinokuchi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276147-kBHKjDvFpja8.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276400",
+      "name": "Oko Shinomiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276400-lXlYMMGWRIva.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134327",
+      "name": "Tsubasa Tanuma ",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134327-5tqYKvBaqRe2.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:137169",
+      "name": "Saburo Odajima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b137169-fQzfMsNROYyF.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275116",
+      "name": "Nao Hayasaka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275116-SOfw5qLMI0FM.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275598",
+      "name": "Miki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275598-Vc7wZ1e8WrXG.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276146",
+      "name": "Subaru Suruga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276146-75kwCAf4VpMp.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276401",
+      "name": "Ganan Shinomiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276401-oOr26PUulFDi.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134328",
+      "name": "Maki Shijo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134328-s3cEgqb5MEbh.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:157369",
+      "name": "Rei Onodera",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b157369-9o1jZCEZMyYb.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:177065",
+      "name": "Daichi Fujiwara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b177065-CV1Ok4h74srn.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275597",
+      "name": "J Suzuki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275597-64W2GeSpgN5P.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276403",
+      "name": "Unyo Shinomiya",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276403-pJDhXKb9Llh0.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:121104",
+      "name": "Ai Hayasaka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b121104-7TYRl3EEsDYU.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134329",
+      "name": "Moeha Fujiwara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134329-cRdrf5BqmIVk.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:158014",
+      "name": "Toyomi Fujiwara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b158014-iVXQSxl3JN0w.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:177066",
+      "name": "Shouzou Tanuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b177066-ZHk7nsy5wDcn.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276149",
+      "name": "Singh",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276149-8Q8gm9kFagEB.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276520",
+      "name": "Teppei Tanaka",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276520-gvgu9gSgsEUO.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134330",
+      "name": "Nagisa Kashiwagi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134330-2b7ad7GPw1Wl.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:175432",
+      "name": "Kyoko Ootomo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b175432-spTK6JIhl25Z.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:206216",
+      "name": "Mikado Shijo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b206216-d7NTzAF5XMMU.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276379",
+      "name": "Yume Atenbo",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276379-zvGm9NJSaxJY.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276519",
+      "name": "Masaru Kobayashi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276519-dha4odF2TNMN.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126144",
+      "name": "Kei Shirogane",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126144-4fc2sYUVFKOJ.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134331",
+      "name": "Kobachi Osaragi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134331-pGWnRI42SZAl.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:175438",
+      "name": "Kou Ogino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b175438-mVtteZRikHCF.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:212389",
+      "name": "Zen Seito Kaichou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b212389-M0QAzDPJvn7Z.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276380",
+      "name": "Jinbouchou no Glutton Girl",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276380-HYuJ3SXxBHIo.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276521",
+      "name": "Daiki Satou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276521-RdpaCHzGDuY2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126986",
+      "name": "Erika Kose",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126986-Pcspig2orfPq.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134893",
+      "name": "Shirogane no Chichi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134893-1dpk1sQ1pGRR.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:176219",
+      "name": "Kozue Makihara ",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b176219-5XhyzA12lms2.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:212390",
+      "name": "Momo Ryuuju",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b212390-cCppoJIBYxyA.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275098",
+      "name": "Gou Kazamatsuri",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275098-wKIydsZwIhXw.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276381",
+      "name": "Takahiko Tanuma",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276381-SYePQtEUdIG1.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275600",
+      "name": "Maki",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275600-YskCzZupVuDC.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:188783",
+      "name": "Kana Arima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b188783-77orwP7vNuNg.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275601",
+      "name": "Tenchou",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275601-nVOUDWJ2tCU3.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:205434",
+      "name": "MEM-cho",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b205434-AuBcR4M05f6s.png",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:177064",
+      "name": "Maho Fujiwara",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b177064-7kFoyUp8bkWZ.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275656",
+      "name": "Ishigami no Ani",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275656-yQlf7BTMxBAm.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:276148",
+      "name": "Nayotake Shimizu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b276148-62MvBarUtNQl.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275657",
+      "name": "Gomanosuke",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275657-SPEyIbaOxb3S.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275602",
+      "name": "Shitsuji",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275602-TmQDk1w5GGFV.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275659",
+      "name": "Komari Machida",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275659-kVGe52YVQPh3.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275599",
+      "name": "Pes",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275599-dTi1PGzw5X9u.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275658",
+      "name": "Kojima",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275658-dgIh0L4vPxIM.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275596",
+      "name": "Ienaga",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275596-C56DfInFeps8.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:275621",
+      "name": "Fujiwara Sofu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b275621-rEbljmxNuu19.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:183884",
+      "name": "Ruby Hoshino",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b183884-iyo3BmTuhJ0l.jpg",
+      "relation_type": "BACKGROUND",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a97139",
+      "name": "Aka Akasaka",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n97139-4XdvEiHyN8wl.png",
+      "role": "Story & Art",
+      "url": "/author?id=person:a97139",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ]
+}
