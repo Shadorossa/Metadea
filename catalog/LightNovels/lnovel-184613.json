@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "876f04b29bcd730b876f04b29bcd730b",
+    "external_id": "lnovel:184613",
+    "type": "lnovel",
+    "title_main": "JoJo no Kimyou na Bouken - Mugen no Ou",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "lnovel:184613",
+      "related_media_external_id": "manga:31630",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "JoJo no Kimyou na Bouken: Sentou Chouryuu",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx31630-Fg8JERVKuWB5.jpg"
+    },
+    {
+      "media_external_id": "lnovel:184613",
+      "related_media_external_id": "lnovel:187518",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Norainu Iggy",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx187518-XhTbfW4XUXQ2.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "JoJo no Kimyou na Bouken - Mugen no Ou"
+}
