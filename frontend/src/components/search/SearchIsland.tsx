@@ -11,6 +11,7 @@ import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMov
 import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/media';
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
+import { toSmallCover } from '../../lib/shared/small-cover';
 
 type SearchTranslations = Translations['search'];
 
@@ -960,7 +961,7 @@ function MediaCard({ result }: { result: SearchResult }) {
       <div className="card-media-base mb-1.5">
         {result.coverUrl && !loadFailed && !isLandscape ? (
           <img
-            src={result.coverUrl}
+            src={toSmallCover(result.coverUrl)}
             alt={result.titleMain}
             className="card-media-img"
             loading="lazy"

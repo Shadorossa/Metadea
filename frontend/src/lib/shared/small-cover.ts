@@ -1,11 +1,11 @@
 // AniList, IGDB, TMDB and Open Library all serve the exact same cover image
 // at multiple sizes via a size keyword baked into the URL path itself,
-// rather than a separate endpoint per size — swapping that keyword lets a
-// caller (the profile library grid, which renders many small thumbnails at
-// once) request a lighter asset than whatever size got persisted to
-// media_catalog.cover_url, at render time only. The stored cover_url itself
-// is never touched, so every other context (the media page's own big cover,
-// etc.) keeps using the size it already had.
+// rather than a separate endpoint per size — swapping that keyword lets any
+// grid of many small thumbnails (profile library, search results, ...)
+// request a lighter asset than whatever size the URL already points at, at
+// render time only. Nothing persisted (media_catalog.cover_url, a live
+// search result's own coverUrl) is ever touched, so every other context
+// (the media page's own big cover, etc.) keeps using the size it already had.
 //
 // Comic Vine deliberately isn't handled here: unlike the other four, its API
 // hands back separate medium_url/small_url strings rather than one URL with
@@ -18,7 +18,7 @@ const IGDB_BIG_SUFFIX_RE = /_big(?=\/)/;
 const TMDB_SIZE_RE = /\/t\/p\/(?:w\d+|original)\//;
 const OPENLIBRARY_SIZE_RE = /-[SML]\.jpg$/i;
 
-export function toSmallLibraryCover(url: string | null | undefined): string {
+export function toSmallCover(url: string | null | undefined): string {
   if (!url) return '';
   if (ANILIST_COVER_SIZE_RE.test(url)) return url.replace(ANILIST_COVER_SIZE_RE, '/cover/small/');
   if (IGDB_BIG_SUFFIX_RE.test(url)) return url.replace(IGDB_BIG_SUFFIX_RE, '_small');
