@@ -7,6 +7,7 @@ import { getRating2System, getRating2Max, type RatingSlot } from '../../lib/sett
 import { typeIconMap, CALENDAR_ICON } from '../../lib/shared/icon-strings';
 import { formatDateNumeric } from '../../lib/shared/formatDate';
 import { averageRating } from './library-grouping';
+import { toSmallLibraryCover } from '../../lib/shared/small-cover';
 
 export const TYPE_ICON = typeIconMap(16);
 
@@ -48,7 +49,10 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   const meta = catalogMap.get(item.external_id);
   const isAggregate = !!bundleMeta || !!aggregateStats;
   const title = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
-  const cover = bundleMeta?.cover_url ?? meta?.cover_url ?? '';
+  // Rendered only in the profile library grid — request the small CDN
+  // variant here without touching the persisted media_catalog.cover_url,
+  // which every other page still reads at its original size.
+  const cover = toSmallLibraryCover(bundleMeta?.cover_url ?? meta?.cover_url ?? '');
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
@@ -189,7 +193,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
           {orderedGrouped.map(g => {
             const gMeta = catalogMap.get(g.external_id);
             const gTitle = gMeta?.title_main ?? g.external_id;
-            const gCover = gMeta?.cover_url ?? '';
+            const gCover = toSmallLibraryCover(gMeta?.cover_url ?? '');
             return (
               <a
                 key={g.external_id}
