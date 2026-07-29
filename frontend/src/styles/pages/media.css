@@ -3520,6 +3520,314 @@
   margin: -0.5rem 0 0.5rem;
 }
 
+/* ── Arcos Argumentales ───────────────────────────────────────────────────── */
+.pr-editor-arcs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pr-editor-arc-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.pr-editor-arc-card-cover {
+  width: 42px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+  background: var(--bg-primary, #12110f);
+}
+
+.pr-editor-arc-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pr-editor-arc-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pr-editor-arc-card-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-arc-card-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.pr-editor-arc-card-item-chip {
+  font-size: 0.68rem;
+  color: var(--text-muted, #a0a0b8);
+  background: rgba(124, 106, 247, 0.1);
+  border: 1px solid rgba(124, 106, 247, 0.25);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+}
+
+.pr-editor-arc-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-arc-card-delete {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms), background var(--anim-fast, 120ms);
+}
+
+.pr-editor-arc-card-delete:hover {
+  color: rgb(239, 68, 68);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.pr-editor-arc-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-md, 6px);
+}
+
+.pr-editor-arc-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Poster-shaped (2:3), matching every other cover thumbnail's aspect ratio
+   in this editor (.pr-editor-media-card-cover) — reads as "this is a
+   cover slot" at a glance instead of a generic empty square. */
+.pr-editor-arc-image-picker {
+  width: 46px;
+  height: 66px;
+  flex-shrink: 0;
+  padding: 0;
+  font: inherit;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px dashed var(--border-color, #2d2a24);
+  background: var(--bg-primary, #12110f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--anim-fast, 120ms);
+}
+
+.pr-editor-arc-image-picker:hover {
+  border-color: var(--accent, #7c6af7);
+}
+
+.pr-editor-arc-image-picker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pr-editor-arc-image-picker span {
+  font-size: 0.6rem;
+  color: var(--text-dim, #6b6b7d);
+  text-align: center;
+  padding: 0 0.2rem;
+  line-height: 1.2;
+}
+
+.pr-editor-arc-name-input {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-primary, #12110f);
+  color: var(--text-main, #e3e1db);
+  border-radius: var(--radius-sm, 4px);
+  transition: border-color var(--anim-fast, 120ms);
+}
+
+.pr-editor-arc-name-input:focus {
+  outline: none;
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
+}
+
+.pr-editor-arc-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pr-editor-arc-item-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--bg-primary, #12110f);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.pr-editor-arc-item-cover {
+  width: 32px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-elevated, #1b1917);
+}
+
+.pr-editor-arc-item-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pr-editor-arc-item-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--text-main, #e3e1db);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pr-editor-arc-item-range {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-arc-item-range-sep {
+  color: var(--text-dim, #6b6b7d);
+  font-size: 0.72rem;
+}
+
+.pr-editor-arc-item-range-input {
+  width: 68px;
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1b1917);
+  color: var(--text-main, #e3e1db);
+  border-radius: var(--radius-sm, 4px);
+  transition: border-color var(--anim-fast, 120ms);
+}
+
+.pr-editor-arc-item-range-input:focus {
+  outline: none;
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
+}
+
+.pr-editor-arc-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.15rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-arc-add-item-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pr-editor-arc-saga-picker-wrap {
+  position: relative;
+}
+
+.pr-editor-arc-saga-picker {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 0;
+  min-width: 220px;
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 6;
+}
+
+.pr-editor-arc-saga-picker-empty {
+  font-size: 0.72rem;
+  color: var(--text-muted, #a0a0b8);
+  padding: 0.4rem 0.5rem;
+}
+
+.pr-editor-arc-saga-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm, 4px) - 2px);
+  color: var(--text-main, #e3e1db);
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--anim-fast, 120ms);
+}
+
+.pr-editor-arc-saga-picker-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pr-editor-arc-saga-picker-item img,
+.pr-editor-arc-saga-picker-item .pr-editor-media-card-placeholder {
+  width: 24px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.pr-editor-arc-saga-picker-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pr-editor-form-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -28,6 +28,7 @@ import { RichTextEditor } from '../shared/RichTextEditor';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './PrEditorCharactersSection';
 import { PrEditorRelationCardList } from './PrEditorRelationCardList';
+import { PrEditorStoryArcsSection } from './PrEditorStoryArcsSection';
 import { PrEditorSagaOrderSection } from './PrEditorSagaOrderSection';
 import { PrEditorRelationsSection } from './PrEditorRelationsSection';
 import { PrEditorChangelogPanel } from './PrEditorChangelogPanel';
@@ -954,6 +955,14 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   onRemove={removeBundledRelation}
                 />
               </div>
+
+              <PrEditorStoryArcsSection
+                externalId={externalId}
+                currentTitle={entry.title_main || externalId}
+                currentCover={entry.cover_url || null}
+                sagaOrder={sagaOrder}
+                resolveSagaMeta={resolveMeta}
+              />
 
               {/* Only shown once a bundle is actually referenced above — lets
                   you fill in the rest of that bundle's own contents right

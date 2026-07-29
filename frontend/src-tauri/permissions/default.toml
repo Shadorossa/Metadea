@@ -138,6 +138,9 @@ commands.allow = [
   "mark_synced",
   "mark_sync_failed",
   "set_sync_state",
-  "fix_character_ids_command"
+  "fix_character_ids_command",
+  "get_story_arcs_for_media",
+  "save_story_arc",
+  "delete_story_arc"
 ]
 

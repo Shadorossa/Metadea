@@ -796,6 +796,40 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         crate::vestigial_cleanup::fix_character_ids(conn);
         mark_migration(conn, 40)?;
     }
+    if v < 41 {
+        // Story arcs (e.g. Bleach's "Sociedad de Almas"/"Arrancar", or a
+        // multi-part saga entry like "Sennen Kessen-hen" collapsing its 4
+        // parts into one "Thousand Year Blood War" arc) — a curator concept
+        // distinct from both media_relations (which media are related) and
+        // sagas/saga_relations (chronological order of whole entries): an
+        // arc groups specific *episode ranges* within one or more media
+        // entries under one name and optional custom cover. One arc can
+        // point at the same media_external_id more than once (two different
+        // arcs, two different ranges) or at several different entries at
+        // once (one arc, several items) — that's why this is two tables
+        // rather than a column on media_relations.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS story_arcs (
+                id           TEXT PRIMARY KEY,
+                name         TEXT NOT NULL,
+                image_base64 TEXT,
+                created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS story_arc_items (
+                id                TEXT PRIMARY KEY,
+                arc_id            TEXT NOT NULL,
+                media_external_id TEXT NOT NULL,
+                ep_start          INTEGER,
+                ep_end            INTEGER,
+                position          INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (arc_id) REFERENCES story_arcs(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS story_arc_items_arc_idx ON story_arc_items(arc_id);
+            CREATE INDEX IF NOT EXISTS story_arc_items_media_idx ON story_arc_items(media_external_id);",
+        )?;
+        mark_migration(conn, 41)?;
+    }
 
     Ok(())
 }

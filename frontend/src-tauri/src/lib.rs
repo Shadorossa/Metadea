@@ -20,6 +20,7 @@ mod media_relations;
 mod platform_scanning;
 mod proposal_bundle;
 mod sagas;
+mod story_arcs;
 mod social_profile;
 mod steam;
 mod sync_state;
@@ -150,6 +151,9 @@ pub fn run() {
             sagas::get_all_sagas,
             sagas::get_community_sagas,
             sagas::delete_saga,
+            story_arcs::get_story_arcs_for_media,
+            story_arcs::save_story_arc,
+            story_arcs::delete_story_arc,
             media_relations::save_media_relations,
             media_relations::get_media_relations,
             media_relations::get_media_relations_for_editor,
