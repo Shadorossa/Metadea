@@ -145,7 +145,7 @@ function isLowTierAniListCover(url: string | null | undefined): boolean {
   return !!url && /anilist\.co\/.*\/cover\/(medium|small)\//.test(url);
 }
 
-async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean): Promise<void> {
+async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean, refreshAniListTotalCount = false): Promise<void> {
   try {
     const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
 
@@ -167,7 +167,9 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       cover_url: data.cover || existing?.cover_url || null,
       status: existing?.status || data.status || null,
       score_global: existing?.score_global ?? (data.scoreGlobal || null),
-      total_count: existing?.total_count ?? (data.totalCount || null),
+      total_count: (refreshAniListTotalCount && data.source === 'anilist' && data.totalCount != null && data.totalCount !== existing?.total_count)
+        ? data.totalCount
+        : (existing?.total_count ?? (data.totalCount || null)),
       total_count_2: existing?.total_count_2 ?? (data.totalCount_2 || null),
       genres_csv: existing?.genres_csv || (data.genreDots ? data.genreDots.split(' · ').join(',') : null),
       genres_tag_csv: existing?.genres_tag_csv || (data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null),
@@ -270,7 +272,18 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
 }
 
 // Live fetch, blocked-relation filtering, and full DB persistence.
-export async function fetchMediaData(rawId: string): Promise<MediaPageData | null> {
+export async function fetchMediaData(
+  rawId: string,
+  // Manual "Reintentar sincronización" only — total_count is otherwise
+  // sticky (existing-first) like title/synopsis/cover, since PrEditorModal
+  // lets curators hand-edit it and a routine background resync must never
+  // clobber that. But an AniList entry's real episode/chapter count keeps
+  // growing while it airs/publishes, and a curator override is rare enough
+  // that the manual retry button should still surface AniList's current
+  // count instead of being stuck forever at whatever total_count happened
+  // to be on the very first sync.
+  opts?: { refreshAniListTotalCount?: boolean },
+): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
   if (cached) return cached;
 
@@ -289,7 +302,7 @@ export async function fetchMediaData(rawId: string): Promise<MediaPageData | nul
     // Checks deleted_relations so a deliberately-removed relation isn't silently re-added.
     const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format);
 
-    await persistToCatalog(data, existing, relationsChanged);
+    await persistToCatalog(data, existing, relationsChanged, !!opts?.refreshAniListTotalCount);
 
     // Only overwrite API authors if we have none locally, or the ones we have lack an image.
     const authorsMissingImage = dbAuthors.length > 0 && dbAuthors.every(a => !a.image);
