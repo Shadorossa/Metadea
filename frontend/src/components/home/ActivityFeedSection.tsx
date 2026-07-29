@@ -13,6 +13,7 @@ import { typeIconMap } from '../../lib/shared/icon-strings';
 import { getTypeLabel } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { formatDateLong } from '../../lib/shared/formatDate';
+import { toSmallCover } from '../../lib/shared/small-cover';
 
 type FeedTab = 'friends' | 'general';
 
@@ -142,7 +143,7 @@ export function ActivityFeedSection({ title }: { title: string }) {
         {events.map((ev, i) => {
           const meta = catalog[ev.externalId];
           const mediaTitle = meta?.title_main ?? ev.externalId;
-          const cover = meta?.cover_url ?? '';
+          const cover = toSmallCover(meta?.cover_url);
           const text = describe(ev, mediaTitle);
           const titleIdx = text.indexOf(mediaTitle);
           const textNode = titleIdx === -1

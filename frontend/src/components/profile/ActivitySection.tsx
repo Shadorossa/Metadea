@@ -8,6 +8,7 @@ import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import type { getT } from '../../i18n/client';
 import { formatDateLong } from '../../lib/shared/formatDate';
+import { toSmallCover } from '../../lib/shared/small-cover';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -140,7 +141,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
           if (!event || !event.externalId) return null;
           const meta = catalogMap.get(event.externalId);
           const title = meta?.title_main ?? event.externalId;
-          const cover = meta?.cover_url ?? '';
+          const cover = toSmallCover(meta?.cover_url);
           const mType = event.mediaType || 'book';
 
           let text = '';
