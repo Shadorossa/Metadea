@@ -90,6 +90,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // of UI language, so the shared catalog doesn't mix languages per-row.
   const canonicalRelationLabels = CANONICAL_RELATION_LABELS;
 
+  // Splits what used to be one dense always-visible 3-column grid into tabs
+  // — General (titles/release/media/classification), Personajes, and
+  // Relaciones y Saga (saga/relations/bundled/contains) — so only one
+  // concern is on screen at a time instead of all ~9 sections at once.
+  const [activeTab, setActiveTab] = useState<'general' | 'cast' | 'relations'>('general');
   const [loading, setLoading] = useState(true);
   // Every 'proposal'-mode edit ends in a GitHub submission — checked up
   // front instead of only at the very end of handleSubmit, so a signed-out
@@ -669,27 +674,26 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   return createPortal(
     <div className="pr-editor-overlay" onClick={onClose}>
       <div className="pr-editor-modal pr-editor-modal--narrow" onClick={e => e.stopPropagation()}>
-        <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+        <div className="pr-editor-header pr-editor-header--row">
+          <div className="pr-editor-header-titles">
             <span className="pr-editor-title">{pe.edit_title}</span>
             <span className="pr-editor-subtitle">ID: {externalId}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="pr-editor-header-actions">
             {statusMsg && (
-              <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
-                <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <div className="pr-editor-header-status">
+                <div className="spinner spinner--small pr-editor-header-status-spinner" />
                 <span>{statusMsg}</span>
               </div>
             )}
             <button
               type="button"
-              className="pr-editor-block-btn"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              className="pr-editor-block-btn pr-editor-block-btn--icon"
               title={pe.resync_tooltip}
               disabled={isResyncing}
               onClick={handleResync}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: isResyncing ? 'spin 1s linear infinite' : undefined }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isResyncing ? 'pr-editor-spin' : undefined}>
                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
               </svg>
               {isResyncing ? 'Descargando...' : 'Re-sync datos vacíos'}
@@ -705,45 +709,111 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           </div>
         </div>
 
-        <div className="pr-editor-body pr-editor-body--grid">
+        {/* One concern on screen at a time instead of every section always
+            visible in one dense 3-column grid — General groups everything
+            that used to be columns 1-2, Personajes and Relaciones y Saga
+            were already self-contained enough to become their own tabs. */}
+        <div className="pr-editor-tabs">
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')}>
+            General
+          </button>
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'cast' ? ' active' : ''}`} onClick={() => setActiveTab('cast')}>
+            Personajes
+            {charactersChanged() && <span className="pr-editor-tab-changed-dot" />}
+          </button>
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'relations' ? ' active' : ''}`} onClick={() => setActiveTab('relations')}>
+            Relaciones y Saga
+          </button>
+        </div>
+
+        <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
-          {/* Left Column: Titles, Synopsis, Release, Progress */}
-          <div className="pr-editor-col pr-editor-col--left">
-            <div className="pr-editor-section">
-              {sectionTitle('Titles & Synopsis', ['title_main', 'title_romaji', 'title_native', 'synopsis'])}
-              <div className="pr-editor-form-grid">
-                {textField('title_main', 'Main Title')}
-                {textField('title_romaji', 'Romaji Title')}
-                {textField('title_native', 'Native Title')}
-                <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full dim={isLocalOnly('synopsis')}>
-                  <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
-                </Field>
-              </div>
-            </div>
-
-            <div className="pr-editor-section">
-              {sectionTitle('Release & Progress', ['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'])}
-              <div className="pr-editor-field-row">
-                <div className="pr-editor-subgroup">
-                  <div className="pr-editor-subgroup-fields">
-                    {numberField('release_year', 'Year')}
-                    {numberField('release_month', 'Month')}
-                    {numberField('release_day', 'Day')}
+          {activeTab === 'general' && (
+            <div className="pr-editor-body--grid pr-editor-body--grid-2col">
+              <div className="pr-editor-col pr-editor-col--left">
+                <div className="pr-editor-section">
+                  {sectionTitle('Titles & Synopsis', ['title_main', 'title_romaji', 'title_native', 'synopsis'])}
+                  <div className="pr-editor-form-grid">
+                    {textField('title_main', 'Main Title')}
+                    {textField('title_romaji', 'Romaji Title')}
+                    {textField('title_native', 'Native Title')}
+                    <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full dim={isLocalOnly('synopsis')}>
+                      <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
+                    </Field>
                   </div>
                 </div>
 
-                <div className="pr-editor-subgroup-divider" />
+                <div className="pr-editor-section">
+                  {sectionTitle('Release & Progress', ['release_year', 'release_month', 'release_day', 'total_count', 'total_count_2'])}
+                  <div className="pr-editor-field-row">
+                    <div className="pr-editor-subgroup">
+                      <div className="pr-editor-subgroup-fields">
+                        {numberField('release_year', 'Year')}
+                        {numberField('release_month', 'Month')}
+                        {numberField('release_day', 'Day')}
+                      </div>
+                    </div>
 
-                <div className="pr-editor-subgroup">
-                  <div className="pr-editor-subgroup-fields">
-                    {numberField('total_count', 'Eps / Chs')}
-                    {numberField('total_count_2', 'Seas / Vols')}
+                    <div className="pr-editor-subgroup-divider" />
+
+                    <div className="pr-editor-subgroup">
+                      <div className="pr-editor-subgroup-fields">
+                        {numberField('total_count', 'Eps / Chs')}
+                        {numberField('total_count_2', 'Seas / Vols')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pr-editor-col pr-editor-col--right">
+                <div className="pr-editor-section">
+                  {sectionTitle('Media Assets', ['cover_url', 'banners_csv'])}
+                  <div className="pr-editor-assets-box">
+                    <div className={`pr-editor-field pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
+                      <label>
+                        Cover URL
+                        <ChangedDot show={isFieldChanged('cover_url')} />
+                      </label>
+                      <div className="pr-editor-cover-uploader">
+                        <div className="pr-editor-cover-preview-card">
+                          {entry.cover_url ? (
+                            <img src={entry.cover_url} alt="" />
+                          ) : (
+                            <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder={pe.cover_url_placeholder}
+                          value={entry.cover_url || ''}
+                          onChange={e => handleChange('cover_url', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pr-editor-field pr-editor-banner-section">
+                      {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pr-editor-section">
+                  {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv'])}
+                  <div className="pr-editor-classification-grid">
+                    {typeField('type', 'Type')}
+                    {formatField('format', 'Format')}
+                    {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
+                    {slotField('genres_tag_csv', 'Themes / Tags')}
+                    {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
+          {activeTab === 'cast' && (
             <PrEditorCharactersSection
               t={t}
               characters={characters}
@@ -752,109 +822,70 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
               onUpdateRole={updateCharacterRole}
               onOpenSearch={() => setShowCharSearch(true)}
             />
-          </div>
+          )}
 
-          {/* Right Column: Media Assets, Classification, Saga, Collaborators */}
-          <div className="pr-editor-col pr-editor-col--right">
-            <div className="pr-editor-section">
-              {sectionTitle('Media Assets', ['cover_url', 'banners_csv'])}
-              <div className="pr-editor-assets-box">
-                <div className={`pr-editor-field pr-editor-cover-section${isLocalOnly('cover_url') ? ' pr-editor-field--dim' : ''}`}>
-                  <label>
-                    Cover URL
-                    <ChangedDot show={isFieldChanged('cover_url')} />
-                  </label>
-                  <div className="pr-editor-cover-uploader">
-                    <div className="pr-editor-cover-preview-card">
-                      {entry.cover_url ? (
-                        <img src={entry.cover_url} alt="" />
-                      ) : (
-                        <span className="pr-editor-cover-placeholder">{pe.no_cover}</span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={pe.cover_url_placeholder}
-                      value={entry.cover_url || ''}
-                      onChange={e => handleChange('cover_url', e.target.value)}
-                    />
-                  </div>
-                </div>
+          {activeTab === 'relations' && (
+            <div className="pr-editor-relations-grid">
+              <div className="pr-editor-section">
+                {sectionTitle('Saga', [])}
+                <PrEditorSagaOrderSection
+                  externalId={externalId}
+                  sagaName={sagaName}
+                  onSagaNameChange={setSagaName}
+                  sagaOrder={sagaOrder}
+                  sagaGroups={sagaGroups}
+                  draggedIndex={draggedSagaIndex}
+                  onStartDrag={setDraggedSagaIndex}
+                  onRemove={removeFromSaga}
+                  onUpdateGroup={updateSagaGroup}
+                  onOpenSearch={() => setSearchPopupMode('saga')}
+                  resolveMeta={resolveMeta}
+                />
+              </div>
 
-                <div className="pr-editor-field pr-editor-banner-section">
-                  {slotField('banners_csv', 'Banner URLs', { preview: true, fullWidth: true, dotClass: 'pr-editor-changed-dot--banner' })}
-                </div>
+              <div className="pr-editor-section">
+                {sectionTitle('Relations', [])}
+                <PrEditorRelationsSection
+                  editableRelations={editableRelations}
+                  relationOptions={EDITABLE_RELATION_OPTIONS}
+                  relationLabels={relationLabels as unknown as Record<string, string>}
+                  draggedIndex={draggedRelationIndex}
+                  onStartDrag={setDraggedRelationIndex}
+                  onRemove={removeEditableRelation}
+                  onUpdateType={updateEditableRelationType}
+                  onOpenSearch={() => setSearchPopupMode('relations')}
+                />
+              </div>
+
+              <div className="pr-editor-section">
+                {sectionTitle('Bundled In', [])}
+                <PrEditorRelationCardList
+                  label="Bundled In"
+                  addLabel="+ Add"
+                  dataAttr="bundled-index"
+                  relations={bundledRelations}
+                  draggedIndex={draggedBundledIndex}
+                  onStartDrag={setDraggedBundledIndex}
+                  onRemove={removeBundledRelation}
+                  onOpenSearch={() => setSearchPopupMode('bundled')}
+                />
+              </div>
+
+              <div className="pr-editor-section">
+                {sectionTitle('Contains', [])}
+                <PrEditorRelationCardList
+                  label="Contains"
+                  addLabel="+ Add"
+                  dataAttr="contained-index"
+                  relations={containedRelations}
+                  draggedIndex={draggedContainedIndex}
+                  onStartDrag={setDraggedContainedIndex}
+                  onRemove={removeContainedRelation}
+                  onOpenSearch={() => setSearchPopupMode('contains')}
+                />
               </div>
             </div>
-
-            <div className="pr-editor-section">
-              {sectionTitle('Classification & Metadata', ['type', 'format', 'genres_csv', 'genres_tag_csv', 'platforms_csv'])}
-              <div className="pr-editor-classification-grid">
-                {typeField('type', 'Type')}
-                {formatField('format', 'Format')}
-                {slotField('genres_csv', 'Genres', { allowed: ALL_GENRES, restrict: true })}
-                {slotField('genres_tag_csv', 'Themes / Tags')}
-                {slotField('platforms_csv', 'Platforms', { allowed: ALL_PLATFORMS, restrict: true })}
-              </div>
-            </div>
-          </div>
-
-          {/* Column 3: Saga & Bundled */}
-          <div className="pr-editor-col pr-editor-col--saga">
-            <div className="pr-editor-section pr-editor-section--row">
-              <PrEditorSagaOrderSection
-                externalId={externalId}
-                sagaName={sagaName}
-                onSagaNameChange={setSagaName}
-                sagaOrder={sagaOrder}
-                sagaGroups={sagaGroups}
-                draggedIndex={draggedSagaIndex}
-                onStartDrag={setDraggedSagaIndex}
-                onRemove={removeFromSaga}
-                onUpdateGroup={updateSagaGroup}
-                onOpenSearch={() => setSearchPopupMode('saga')}
-                resolveMeta={resolveMeta}
-              />
-
-              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
-
-              <PrEditorRelationsSection
-                editableRelations={editableRelations}
-                relationOptions={EDITABLE_RELATION_OPTIONS}
-                relationLabels={relationLabels as unknown as Record<string, string>}
-                draggedIndex={draggedRelationIndex}
-                onStartDrag={setDraggedRelationIndex}
-                onRemove={removeEditableRelation}
-                onUpdateType={updateEditableRelationType}
-                onOpenSearch={() => setSearchPopupMode('relations')}
-              />
-
-              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
-
-              <PrEditorRelationCardList
-                label="Bundled In"
-                addLabel="+ Add"
-                dataAttr="bundled-index"
-                relations={bundledRelations}
-                draggedIndex={draggedBundledIndex}
-                onStartDrag={setDraggedBundledIndex}
-                onRemove={removeBundledRelation}
-                onOpenSearch={() => setSearchPopupMode('bundled')}
-              />
-
-              <div className="pr-editor-subgroup-divider" style={{ alignSelf: 'stretch', width: '1px', background: 'var(--border-color, #2d2a24)' }} />
-              <PrEditorRelationCardList
-                label="Contains"
-                addLabel="+ Add"
-                dataAttr="contained-index"
-                relations={containedRelations}
-                draggedIndex={draggedContainedIndex}
-                onStartDrag={setDraggedContainedIndex}
-                onRemove={removeContainedRelation}
-                onOpenSearch={() => setSearchPopupMode('contains')}
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="pr-editor-footer">

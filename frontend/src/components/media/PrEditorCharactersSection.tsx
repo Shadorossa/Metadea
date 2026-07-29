@@ -11,7 +11,9 @@ interface Props {
   onOpenSearch: () => void;
 }
 
-const ITEMS_PER_PAGE = 12;
+// 2 full rows at 12 columns per row (see .pr-editor-characters-grid) —
+// pagination only kicks in once there's more than that.
+const ITEMS_PER_PAGE = 24;
 
 // The "Personajes" panel of PrEditorModal — paginated grid + role picker per
 // card. Self-contained aside from its own page index, so it owns that piece
@@ -30,7 +32,7 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
         {changed && <span className="pr-editor-section-changed-dot" />}
       </span>
 
-      <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem', minHeight: '25.5rem' }}>
+      <div className="pr-editor-characters-grid" style={{ marginTop: '0.6rem', marginBottom: '0.75rem' }}>
         {paginatedChars.map(c => (
           <div key={c.external_id} className="pr-editor-media-card">
             <div className="pr-editor-media-card-cover">
@@ -74,30 +76,32 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button
-            type="button"
-            className="pr-editor-btn pr-editor-btn--cancel"
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
-            disabled={safeCharPage === 0}
-            onClick={() => setCharPage(prev => Math.max(0, prev - 1))}
-          >
-            &lt;
-          </button>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Página {safeCharPage + 1} de {totalPages}
-          </span>
-          <button
-            type="button"
-            className="pr-editor-btn pr-editor-btn--cancel"
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
-            disabled={safeCharPage >= totalPages - 1}
-            onClick={() => setCharPage(prev => Math.min(totalPages - 1, prev + 1))}
-          >
-            &gt;
-          </button>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: totalPages > 1 ? 'space-between' : 'flex-end', marginTop: '0.5rem' }}>
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--cancel"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
+              disabled={safeCharPage === 0}
+              onClick={() => setCharPage(prev => Math.max(0, prev - 1))}
+            >
+              &lt;
+            </button>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Página {safeCharPage + 1} de {totalPages}
+            </span>
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--cancel"
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', margin: 0 }}
+              disabled={safeCharPage >= totalPages - 1}
+              onClick={() => setCharPage(prev => Math.min(totalPages - 1, prev + 1))}
+            >
+              &gt;
+            </button>
+          </div>
+        )}
 
         <button
           type="button"

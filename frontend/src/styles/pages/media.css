@@ -2745,6 +2745,51 @@
   gap: 0.15rem;
 }
 
+/* Only PrEditorModal's header needs the title block and action buttons on
+   one row — CharacterPrEditorModal reuses the base .pr-editor-header
+   without this modifier, so it keeps the plain column layout above. */
+.pr-editor-header--row {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pr-editor-header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pr-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pr-editor-header-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--accent, #7c6af7);
+}
+
+.pr-editor-header-status-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.pr-editor-block-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-spin {
+  animation: spin 1s linear infinite;
+}
+
 .pr-editor-title {
   font-family: var(--font-title);
   font-size: 1.15rem;
@@ -2757,6 +2802,47 @@
   color: var(--text-muted, #a0a0b8);
 }
 
+/* ── Tabs — General / Personajes / Relaciones y Saga ─────────────────────── */
+.pr-editor-tabs {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.75rem 1.5rem 0;
+  border-bottom: 1px solid var(--border-color, #2d2a24);
+}
+
+.pr-editor-tab-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--anim-fast, 120ms), border-color var(--anim-fast, 120ms);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pr-editor-tab-btn:hover {
+  color: var(--text-main, #e3e1db);
+}
+
+.pr-editor-tab-btn.active {
+  color: var(--accent, #7c6af7);
+  border-bottom-color: var(--accent, #7c6af7);
+}
+
+.pr-editor-tab-changed-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #7c6af7);
+  flex-shrink: 0;
+}
+
 .pr-editor-body {
   padding: 1.75rem 2rem;
   overflow-y: auto;
@@ -2765,8 +2851,20 @@
 
 .pr-editor-body--grid {
   display: grid;
-  grid-template-columns: 1.2fr 1.1fr 1.3fr;
   gap: 1.5rem;
+  align-items: start;
+}
+
+.pr-editor-body--grid-2col {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Saga / Relations / Bundled In / Contains — one grid instead of a single
+   column stacking all four with 1px divider lines between them. */
+.pr-editor-relations-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2rem;
   align-items: start;
 }
 
@@ -3019,24 +3117,21 @@
   gap: 1rem;
 }
 
-.pr-editor-section + .pr-editor-section {
+/* Scoped to .pr-editor-col (General tab's two vertical stacks) — inside
+   .pr-editor-relations-grid the four sections are grid cells, not a single
+   vertical stack, so this divider-between-siblings look would misalign
+   there instead of just separating one section from the next. */
+.pr-editor-col .pr-editor-section + .pr-editor-section {
   margin-top: 2rem;
   padding-top: 1.75rem;
   border-top: 1px solid var(--border-color, #2d2a24);
 }
 
 .pr-editor-section-title {
-  display: none;
-}
-
-.pr-editor-section--row {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.pr-editor-section--row .pr-editor-subgroup-divider {
-  display: none !important;
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main, #e3e1db);
 }
 
 .pr-editor-media-card {
@@ -3267,9 +3362,19 @@
    Apariciones) — same card, more columns since there's room for them. */
 .pr-editor-characters-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  /* 6 made sense when this was squeezed into the left column of a 3-column
+     grid — now that Personajes is its own full-width tab, 12 fits without
+     feeling sparse. */
+  grid-template-columns: repeat(12, 1fr);
   gap: 0.75rem;
   width: 100%;
+  /* Without this, a container taller than its one row of content (this used
+     to carry a fixed min-height to keep the pagination row from jumping
+     between a 1-row and a 2-row page) stretches that row to fill it, and
+     since .pr-editor-media-card-select has margin-top:auto, every card's
+     role dropdown got pushed to the bottom of that stretched row — a big
+     empty gap under the name instead of sitting right below it. */
+  align-content: start;
 }
 
 .pr-editor-media-group-cards--wide {
