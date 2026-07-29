@@ -20,6 +20,11 @@ export interface PrEditorRelationsAndSagaResult {
   originalContainedIds: Set<string>;
   editableRelations: EditableRelation[];
   originalEditableRelationTypes: Map<string, string>;
+  // ComicVine issues — split out of editableRelations into their own
+  // section since their titles are often just a bare issue number, which
+  // used to clutter the general Relations grid with a wall of numbers.
+  issueRelations: BundledRelation[];
+  originalIssueIds: Set<string>;
   // Re-fetched via the transitive-ids expansion below — callers should prefer
   // this over whatever the sibling try block's getCatalogEntry resolved.
   currentEntry: MediaCatalogEntry | null;
@@ -61,10 +66,20 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
   if (!transitiveIds.includes(externalId)) transitiveIds.push(externalId);
   const sagaMemberIds = new Set(transitiveIds);
 
-  // Everything not Bundled In and not targeting a saga member — anything
-  // targeting a saga member is re-derived by the saga chain builder instead.
+  const issueRelations = rels
+    .filter(r => r.relation_type === 'ISSUE')
+    .map(r => ({
+      external_id: r.related_media_external_id,
+      title: r.title,
+      cover: r.cover,
+    }));
+  const originalIssueIds = new Set(issueRelations.map(r => r.external_id));
+
+  // Everything not Bundled In, not an ISSUE, and not targeting a saga member
+  // — anything targeting a saga member is re-derived by the saga chain
+  // builder instead.
   const editableRelations = rels
-    .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && !sagaMemberIds.has(r.related_media_external_id))
+    .filter(r => !BUNDLE_RELATION_TYPES.includes(r.relation_type) && r.relation_type !== 'ISSUE' && !sagaMemberIds.has(r.related_media_external_id))
     .map(r => {
       // Pre-canonical-keys rows still carry the raw English label (e.g. "Expanded Edition").
       const relationType = normalizeLegacyRelationType(r.relation_type);
@@ -154,6 +169,8 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
     originalContainedIds,
     editableRelations,
     originalEditableRelationTypes,
+    issueRelations,
+    originalIssueIds,
     currentEntry,
     sagaMeta,
     sagaOrder,

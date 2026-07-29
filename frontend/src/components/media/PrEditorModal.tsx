@@ -137,6 +137,12 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // id that's still present (a plain id Set couldn't tell the two apart).
   const [originalEditableRelationTypes, setOriginalEditableRelationTypes] = useState<Map<string, string>>(new Map());
 
+  // ComicVine issues — split out of editableRelations into their own
+  // collapsible section since their titles are often just a bare issue
+  // number, which used to clutter the general Relations grid.
+  const [issueRelations, setIssueRelations] = useState<BundledRelation[]>([]);
+  const [originalIssueIds, setOriginalIssueIds] = useState<Set<string>>(new Set());
+
   // Saga — one single ordered chain (chronological order), including this
   // entry itself. Every adjacent pair in this order gets a SEQUEL edge
   // (earlier → later) and a PREQUEL edge (later → earlier) on submit — for
@@ -168,7 +174,13 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'bundle-children' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'bundle-children' | 'issues' | null>(null);
+
+  // Collapsible sections — Issues (ComicVine's numbered-title relations)
+  // starts collapsed since a comic volume can have dozens of them; Relations
+  // stays open since it's usually just a handful of named entries.
+  const [relationsExpanded, setRelationsExpanded] = useState(true);
+  const [issuesExpanded, setIssuesExpanded] = useState(false);
 
   useEffect(() => {
     if (mode === 'local') return;
@@ -205,6 +217,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         setOriginalContainedIds(result.originalContainedIds);
         setEditableRelations(result.editableRelations);
         setOriginalEditableRelationTypes(result.originalEditableRelationTypes);
+        setIssueRelations(result.issueRelations);
+        setOriginalIssueIds(result.originalIssueIds);
         if (result.currentEntry) {
           setEntry(result.currentEntry);
           setOriginalEntry(result.currentEntry);
@@ -223,6 +237,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         setBundledRelations([]);
         setContainedRelations([]);
         setEditableRelations([]);
+        setIssueRelations([]);
       } finally {
         setLoading(false);
       }
@@ -432,6 +447,29 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const removeEditableRelation = (id: string) =>
     setEditableRelations(prev => prev.filter(r => r.related_media_external_id !== id));
 
+  // ── Issue (ComicVine) relation handlers ───────────────────────────────────
+
+  const addIssueRelation = (result: ApiSearchResult) => {
+    if (!issueRelations.some(r => r.external_id === result.externalId)) {
+      setIssueRelations([...issueRelations, {
+        external_id: result.externalId,
+        title: result.titleMain,
+        cover: result.coverUrl,
+      }]);
+    }
+  };
+  const removeIssueRelation = (id: string) =>
+    setIssueRelations(prev => prev.filter(r => r.external_id !== id));
+  const reorderIssueRelations = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= issueRelations.length || toIndex >= issueRelations.length) return;
+    const next = [...issueRelations];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setIssueRelations(next);
+  };
+  const { draggedIndex: draggedIssueIndex, setDraggedIndex: setDraggedIssueIndex } =
+    useDragReorder('issueIndex', reorderIssueRelations);
+
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
     setEntry({ ...entry, [field]: value === '' ? null : value });
@@ -495,6 +533,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         const originalType = originalEditableRelationTypes.get(r.related_media_external_id);
         return originalType !== undefined && originalType !== r.relation_type;
       }),
+      addedIssues: issueRelations.filter(r => !originalIssueIds.has(r.external_id)),
+      removedIssueIds: [...originalIssueIds].filter(id => !issueRelations.some(r => r.external_id === id)),
       addedSaga: sagaOrder.filter(id => id !== externalId && !originalSagaIds.has(id)),
       removedSaga: originalSagaOrder.filter(id => id !== externalId && !sagaOrder.includes(id)),
       sagaOrderChanged: sagaOrder.join(',') !== originalSagaOrder.join(','),
@@ -525,6 +565,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       || d.addedContained.length > 0 || d.removedContainedIds.length > 0
       || d.addedBundleChildren.length > 0 || d.removedBundleChildIds.length > 0
       || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0 || d.changedEditableRelations.length > 0
+      || d.addedIssues.length > 0 || d.removedIssueIds.length > 0
       || d.addedSaga.length > 0 || d.removedSaga.length > 0
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
   };
@@ -567,6 +608,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         ...sagaChangeDiff.removedBundledIds,
         ...sagaChangeDiff.removedContainedIds,
         ...sagaChangeDiff.removedEditableRelationIds,
+        ...sagaChangeDiff.removedIssueIds,
       ];
 
       await submitPrEditorChanges({
@@ -587,6 +629,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         bundleChildren,
         originalBundleChildIds,
         editableRelations,
+        issueRelations,
         characters,
         charactersChanged: charactersChanged(),
         mediaAuthors,
@@ -928,18 +971,23 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
 
               <div className="pr-editor-section">
                 <div className="pr-editor-section-header-row">
-                  {sectionTitle('Relations', [])}
+                  <button type="button" className="pr-editor-section-toggle" onClick={() => setRelationsExpanded(v => !v)}>
+                    <span className={`pr-editor-section-chevron${relationsExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
+                    {sectionTitle('Relations', [])}
+                  </button>
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
                 </div>
-                <PrEditorRelationsSection
-                  editableRelations={editableRelations}
-                  relationOptions={EDITABLE_RELATION_OPTIONS}
-                  relationLabels={relationLabels as unknown as Record<string, string>}
-                  draggedIndex={draggedRelationIndex}
-                  onStartDrag={setDraggedRelationIndex}
-                  onRemove={removeEditableRelation}
-                  onUpdateType={updateEditableRelationType}
-                />
+                {relationsExpanded && (
+                  <PrEditorRelationsSection
+                    editableRelations={editableRelations}
+                    relationOptions={EDITABLE_RELATION_OPTIONS}
+                    relationLabels={relationLabels as unknown as Record<string, string>}
+                    draggedIndex={draggedRelationIndex}
+                    onStartDrag={setDraggedRelationIndex}
+                    onRemove={removeEditableRelation}
+                    onUpdateType={updateEditableRelationType}
+                  />
+                )}
               </div>
 
               <div className="pr-editor-section">
@@ -963,6 +1011,31 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 sagaOrder={sagaOrder}
                 resolveSagaMeta={resolveMeta}
               />
+
+              {/* ComicVine issues — split out into their own collapsible
+                  section since their titles are often just a bare issue
+                  number, which used to clutter the general Relations grid.
+                  Collapsed by default: a comic volume can have dozens. */}
+              {(issueRelations.length > 0 || entry.type === 'comic' || entry.type === 'manga' || entry.type === 'lnovel') && (
+                <div className="pr-editor-section">
+                  <div className="pr-editor-section-header-row">
+                    <button type="button" className="pr-editor-section-toggle" onClick={() => setIssuesExpanded(v => !v)}>
+                      <span className={`pr-editor-section-chevron${issuesExpanded ? ' pr-editor-section-chevron--open' : ''}`}>▸</span>
+                      {sectionTitle('Issues (ComicVine)', [])}
+                    </button>
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('issues')}>+ Add</button>
+                  </div>
+                  {issuesExpanded && (
+                    <PrEditorRelationCardList
+                      dataAttr="issue-index"
+                      relations={issueRelations}
+                      draggedIndex={draggedIssueIndex}
+                      onStartDrag={setDraggedIssueIndex}
+                      onRemove={removeIssueRelation}
+                    />
+                  )}
+                </div>
+              )}
 
               {/* Only shown once a bundle is actually referenced above — lets
                   you fill in the rest of that bundle's own contents right
@@ -1074,6 +1147,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           includeIgdbBundles
           includeIgdbExpandedEditions
           includeRemasters
+        />
+      )}
+
+      {searchPopupMode === 'issues' && (
+        <MediaSearchPopup
+          onSelect={addIssueRelation}
+          onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...issueRelations.map(r => r.external_id)]}
+          closeOnSelect={false}
         />
       )}
 

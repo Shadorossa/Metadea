@@ -99,6 +99,10 @@ export interface SubmitPrEditorParams {
   bundleChildren: BundledRelation[];
   originalBundleChildIds: Set<string>;
   editableRelations: EditableRelation[];
+  // ComicVine issues — same shape/handling as bundledRelations/containedRelations,
+  // just its own relation_type ('ISSUE') and its own collapsible section in
+  // the editor (see PrEditorModal's own issueRelations state comment).
+  issueRelations: BundledRelation[];
   characters: DbMediaCharacter[];
   charactersChanged: boolean;
   mediaAuthors: DbMediaAuthor[];
@@ -242,10 +246,20 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       cover: r.cover ?? null,
     }));
 
+  const issueDbRelations: DbMediaRelation[] = p.issueRelations
+    .filter(r => r.external_id.trim())
+    .map(r => ({
+      related_media_external_id: r.external_id.trim(),
+      relation_type: 'ISSUE',
+      type_label: 'Issue',
+      title: r.title || r.external_id.trim(),
+      cover: r.cover ?? null,
+    }));
+
   // Editable Relations already carries every pre-existing relation outside the saga chain.
   const currentChainRows = chainRelations.filter(r => r.media_external_id === externalId);
   const currentFinalRelations: DbMediaRelation[] = dedupeRelations(
-    [...editableDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows]
+    [...editableDbRelations, ...issueDbRelations, ...bundledDbRelations, ...containedDbRelations, ...currentChainRows]
   );
   await saveMediaRelations(externalId, currentFinalRelations)
     .catch(err => console.error('Failed to save relations:', err));
