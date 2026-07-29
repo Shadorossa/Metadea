@@ -11,13 +11,14 @@ import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
-// Order of relations: Fuente > Prequel > Sequel > Side story (Historia paralela) > Alternative > Other
+// Order of relations: Fuente > Prequel > Sequel > Adaptation > Side story
+// (Historia paralela) > Alternative > Other. Only SOURCE/PARENT count as
+// "Fuente" (the original work) — ADAPTATION is the derivative work, so it
+// belongs after Prequel/Sequel, not grouped alongside the source.
 const RELATION_SORT_PRIORITY: Record<string, number> = {
   // Fuente
   SOURCE: 1,
   PARENT: 1,
-  ADAPTATION: 1,
-  REL_ADAPTATION: 1,
 
   // Prequel
   PREQUEL: 2,
@@ -25,25 +26,29 @@ const RELATION_SORT_PRIORITY: Record<string, number> = {
   // Sequel
   SEQUEL: 3,
 
+  // Adaptation
+  ADAPTATION: 4,
+  REL_ADAPTATION: 4,
+
   // Side story
-  SIDE_STORY: 4,
-  SPIN_OFF: 4,
+  SIDE_STORY: 5,
+  SPIN_OFF: 5,
 
   // Alternative
-  ALTERNATIVE: 5,
-  REL_ALTERNATIVE: 5,
+  ALTERNATIVE: 6,
+  REL_ALTERNATIVE: 6,
 
   // Other
-  OTHER: 6,
-  SUMMARY: 6,
-  REMAKE: 6,
-  REMASTER: 6,
-  EXPANDED_GAME: 6,
-  REL_UPDATE: 6,
-  DLC: 6,
-  EXPANSION: 6,
-  STANDALONE: 6,
-  FORK: 6,
+  OTHER: 7,
+  SUMMARY: 7,
+  REMAKE: 7,
+  REMASTER: 7,
+  EXPANDED_GAME: 7,
+  REL_UPDATE: 7,
+  DLC: 7,
+  EXPANSION: 7,
+  STANDALONE: 7,
+  FORK: 7,
 };
 
 function normalizeLegacyDbRelation(rel: DbMediaRelation): DbMediaRelation {

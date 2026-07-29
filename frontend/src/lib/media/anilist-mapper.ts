@@ -6,8 +6,13 @@ import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
+// Matches media-relations.ts's RELATION_SORT_PRIORITY — only PARENT/SOURCE
+// (the original work) sort before Prequel/Sequel; ADAPTATION (the
+// derivative) sorts after them. This is only the transient pre-persist
+// fetch order though — sortRelationsForDisplay re-sorts by the final,
+// possibly-normalized relation_type at display/read time regardless.
 const RELATION_PRIORITY: Record<string, number> = {
-  PARENT: 1, ADAPTATION: 2, SOURCE: 2, PREQUEL: 3, SEQUEL: 4,
+  PARENT: 1, SOURCE: 1, PREQUEL: 2, SEQUEL: 3, ADAPTATION: 4,
   SPIN_OFF: 5, ALTERNATIVE: 6, SUMMARY: 7,
 };
 
