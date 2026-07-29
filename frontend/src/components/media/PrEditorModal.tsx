@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { invoke } from '../../lib/tauri';
-import { getCatalogEntry, getMediaAuthors } from '../../lib/tauri/catalog';
+import { getCatalogEntry, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
 import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
@@ -16,6 +16,7 @@ import { CharacterSearchPopup } from './CharacterSearchPopup';
 import { SlotInput } from './SlotInput';
 import {
   EDITABLE_RELATION_OPTIONS,
+  CONTAINS_RELATION_TYPES,
   type SagaRelationType,
 } from '../../lib/media/sagaTypes';
 import { createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
@@ -23,6 +24,7 @@ import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getReleaseDateKey } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
+import { RichTextEditor } from '../shared/RichTextEditor';
 import { useDragReorder } from './hooks/useDragReorder';
 import { PrEditorCharactersSection } from './PrEditorCharactersSection';
 import { PrEditorRelationCardList } from './PrEditorRelationCardList';
@@ -117,6 +119,17 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [containedRelations, setContainedRelations] = useState<BundledRelation[]>([]);
   const [originalContainedIds, setOriginalContainedIds] = useState<Set<string>>(new Set());
 
+  // Bundled In's own referenced bundle (bundledRelations[0], if any) gets its
+  // *own* Contains list editable right here too — so adding "The Orange Box"
+  // as a Bundled In from Half-Life 2's editor lets you also add the rest of
+  // the bundle's contents in the same sitting, instead of having to leave
+  // and separately open the bundle's own editor to fill in Contains one by
+  // one. This entry itself isn't part of this list (it's already implied by
+  // the Bundled In relation above); this only covers "the rest".
+  const [bundleChildren, setBundleChildren] = useState<BundledRelation[]>([]);
+  const [originalBundleChildIds, setOriginalBundleChildIds] = useState<Set<string>>(new Set());
+  const [bundleChildrenLoadedFor, setBundleChildrenLoadedFor] = useState<string | null>(null);
+
   const [editableRelations, setEditableRelations] = useState<EditableRelation[]>([]);
   // Maps id -> its original relation_type, both to know which ids existed
   // before (Set-like via .has) and to detect an in-place type change on an
@@ -154,7 +167,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
 
-  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | null>(null);
+  const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'bundle-children' | null>(null);
 
   useEffect(() => {
     if (mode === 'local') return;
@@ -219,6 +232,33 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     getMediaAuthors(externalId).then(a => { setMediaAuthors(a); setOriginalMediaAuthors(a); }).catch(() => { setMediaAuthors([]); setOriginalMediaAuthors([]); });
     getAllCharacters().then(setAllCharacters).catch(() => setAllCharacters([]));
   }, [externalId]);
+
+  // Loads the referenced bundle's existing Contains list once, the first
+  // time bundledRelations picks one up — re-fires only if the bundle itself
+  // changes (not on every bundleChildren edit, which would refetch and wipe
+  // out unsaved additions/removals). Clears back to empty if the bundle
+  // relation is removed again.
+  useEffect(() => {
+    const bundleId = bundledRelations[0]?.external_id;
+    if (!bundleId) {
+      setBundleChildren([]);
+      setOriginalBundleChildIds(new Set());
+      setBundleChildrenLoadedFor(null);
+      return;
+    }
+    if (bundleId === bundleChildrenLoadedFor) return;
+    let cancelled = false;
+    getMediaRelationsForEditor(bundleId).then(rels => {
+      if (cancelled) return;
+      const children = (rels || [])
+        .filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type) && r.related_media_external_id !== externalId)
+        .map(r => ({ external_id: r.related_media_external_id, title: r.title, cover: r.cover }));
+      setBundleChildren(children);
+      setOriginalBundleChildIds(new Set(children.map(c => c.external_id)));
+      setBundleChildrenLoadedFor(bundleId);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [bundledRelations, externalId, bundleChildrenLoadedFor]);
 
   // ── Character handlers ──────────────────────────────────────────────────────
 
@@ -344,6 +384,30 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const { draggedIndex: draggedContainedIndex, setDraggedIndex: setDraggedContainedIndex } =
     useDragReorder('containedIndex', reorderContained);
 
+  // ── Referenced bundle's own Contains handlers ─────────────────────────────
+
+  const addBundleChild = (result: ApiSearchResult) => {
+    if (result.externalId === externalId) return; // already implied by the Bundled In relation itself
+    if (!bundleChildren.some(r => r.external_id === result.externalId)) {
+      setBundleChildren([...bundleChildren, {
+        external_id: result.externalId,
+        title: result.titleMain,
+        cover: result.coverUrl,
+      }]);
+    }
+  };
+  const removeBundleChild = (id: string) =>
+    setBundleChildren(prev => prev.filter(r => r.external_id !== id));
+  const reorderBundleChildren = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= bundleChildren.length || toIndex >= bundleChildren.length) return;
+    const next = [...bundleChildren];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setBundleChildren(next);
+  };
+  const { draggedIndex: draggedBundleChildIndex, setDraggedIndex: setDraggedBundleChildIndex } =
+    useDragReorder('bundleChildIndex', reorderBundleChildren);
+
   // ── Editable relation handlers ────────────────────────────────────────────
 
   const addEditableRelation = (result: ApiSearchResult) => {
@@ -422,6 +486,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
       removedBundledIds: [...originalBundledIds].filter(id => !bundledRelations.some(r => r.external_id === id)),
       addedContained: containedRelations.filter(r => !originalContainedIds.has(r.external_id)),
       removedContainedIds: [...originalContainedIds].filter(id => !containedRelations.some(r => r.external_id === id)),
+      addedBundleChildren: bundleChildren.filter(r => !originalBundleChildIds.has(r.external_id)),
+      removedBundleChildIds: [...originalBundleChildIds].filter(id => !bundleChildren.some(r => r.external_id === id)),
       addedEditableRelations: editableRelations.filter(r => !originalEditableRelationTypes.has(r.related_media_external_id)),
       removedEditableRelationIds: [...originalEditableRelationTypes.keys()].filter(id => !editableRelations.some(r => r.related_media_external_id === id)),
       changedEditableRelations: editableRelations.filter(r => {
@@ -456,6 +522,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
       || d.addedContained.length > 0 || d.removedContainedIds.length > 0
+      || d.addedBundleChildren.length > 0 || d.removedBundleChildIds.length > 0
       || d.addedEditableRelations.length > 0 || d.removedEditableRelationIds.length > 0 || d.changedEditableRelations.length > 0
       || d.addedSaga.length > 0 || d.removedSaga.length > 0
       || d.sagaOrderChanged || d.relTypesChanged || d.groupsChanged || d.sagaNameChanged;
@@ -515,6 +582,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         originalBundledIds,
         containedRelations,
         originalContainedIds,
+        bundleId: bundledRelations[0]?.external_id,
+        bundleChildren,
+        originalBundleChildIds,
         editableRelations,
         characters,
         charactersChanged: charactersChanged(),
@@ -739,7 +809,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     {textField('title_romaji', 'Romaji Title')}
                     {textField('title_native', 'Native Title')}
                     <Field label="Synopsis / Description" changed={isFieldChanged('synopsis')} full dim={isLocalOnly('synopsis')}>
-                      <textarea rows={6} value={entry.synopsis || ''} onChange={e => handleChange('synopsis', e.target.value)} />
+                      <RichTextEditor
+                        value={entry.synopsis || ''}
+                        onChange={html => handleChange('synopsis', html)}
+                        placeholder="Synopsis / Description"
+                      />
                     </Field>
                   </div>
                 </div>
@@ -827,24 +901,35 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           {activeTab === 'relations' && (
             <div className="pr-editor-relations-grid">
               <div className="pr-editor-section">
-                {sectionTitle('Saga', [])}
+                <div className="pr-editor-section-header-row">
+                  {sectionTitle('Saga', [])}
+                  <input
+                    type="text"
+                    placeholder={pe.saga_name_placeholder}
+                    value={sagaName}
+                    onChange={e => setSagaName(e.target.value)}
+                    className="pr-editor-media-card-group-input"
+                    style={{ flex: 1, maxWidth: '200px', fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
+                  />
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('saga')}>+ Add to Saga</button>
+                </div>
                 <PrEditorSagaOrderSection
                   externalId={externalId}
-                  sagaName={sagaName}
-                  onSagaNameChange={setSagaName}
                   sagaOrder={sagaOrder}
                   sagaGroups={sagaGroups}
                   draggedIndex={draggedSagaIndex}
                   onStartDrag={setDraggedSagaIndex}
                   onRemove={removeFromSaga}
                   onUpdateGroup={updateSagaGroup}
-                  onOpenSearch={() => setSearchPopupMode('saga')}
                   resolveMeta={resolveMeta}
                 />
               </div>
 
               <div className="pr-editor-section">
-                {sectionTitle('Relations', [])}
+                <div className="pr-editor-section-header-row">
+                  {sectionTitle('Relations', [])}
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('relations')}>+ Add Relation</button>
+                </div>
                 <PrEditorRelationsSection
                   editableRelations={editableRelations}
                   relationOptions={EDITABLE_RELATION_OPTIONS}
@@ -853,37 +938,64 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   onStartDrag={setDraggedRelationIndex}
                   onRemove={removeEditableRelation}
                   onUpdateType={updateEditableRelationType}
-                  onOpenSearch={() => setSearchPopupMode('relations')}
                 />
               </div>
 
               <div className="pr-editor-section">
-                {sectionTitle('Bundled In', [])}
+                <div className="pr-editor-section-header-row">
+                  {sectionTitle('Bundled In', [])}
+                  <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
+                </div>
                 <PrEditorRelationCardList
-                  label="Bundled In"
-                  addLabel="+ Add"
                   dataAttr="bundled-index"
                   relations={bundledRelations}
                   draggedIndex={draggedBundledIndex}
                   onStartDrag={setDraggedBundledIndex}
                   onRemove={removeBundledRelation}
-                  onOpenSearch={() => setSearchPopupMode('bundled')}
                 />
               </div>
 
-              <div className="pr-editor-section">
-                {sectionTitle('Contains', [])}
-                <PrEditorRelationCardList
-                  label="Contains"
-                  addLabel="+ Add"
-                  dataAttr="contained-index"
-                  relations={containedRelations}
-                  draggedIndex={draggedContainedIndex}
-                  onStartDrag={setDraggedContainedIndex}
-                  onRemove={removeContainedRelation}
-                  onOpenSearch={() => setSearchPopupMode('contains')}
-                />
-              </div>
+              {/* Only shown once a bundle is actually referenced above — lets
+                  you fill in the rest of that bundle's own contents right
+                  here (this entry is already implied) instead of having to
+                  separately open the bundle's own editor afterward. */}
+              {bundledRelations.length > 0 && (
+                <div className="pr-editor-section">
+                  <div className="pr-editor-section-header-row">
+                    {sectionTitle(`Contenido de "${bundledRelations[0].title || bundledRelations[0].external_id}"`, [])}
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundle-children')}>+ Add</button>
+                  </div>
+                  <p className="pr-editor-bundle-children-hint">
+                    Esta obra ya queda incluida automáticamente — añade aquí el resto de obras del bundle.
+                  </p>
+                  <PrEditorRelationCardList
+                    dataAttr="bundle-child-index"
+                    relations={bundleChildren}
+                    draggedIndex={draggedBundleChildIndex}
+                    onStartDrag={setDraggedBundleChildIndex}
+                    onRemove={removeBundleChild}
+                  />
+                </div>
+              )}
+
+              {/* Contains only makes sense for an entry that's itself a
+                  container (format BUNDLE) — anything else "containing"
+                  other works doesn't apply. */}
+              {entry.format === 'BUNDLE' && (
+                <div className="pr-editor-section">
+                  <div className="pr-editor-section-header-row">
+                    {sectionTitle('Contains', [])}
+                    <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>+ Add</button>
+                  </div>
+                  <PrEditorRelationCardList
+                    dataAttr="contained-index"
+                    relations={containedRelations}
+                    draggedIndex={draggedContainedIndex}
+                    onStartDrag={setDraggedContainedIndex}
+                    onRemove={removeContainedRelation}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -916,6 +1028,15 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
           closeOnSelect={false}
           includeIgdbBundles
+        />
+      )}
+
+      {searchPopupMode === 'bundle-children' && (
+        <MediaSearchPopup
+          onSelect={addBundleChild}
+          onClose={() => setSearchPopupMode(null)}
+          excludeIds={[externalId, ...(bundledRelations[0] ? [bundledRelations[0].external_id] : []), ...bundleChildren.map(r => r.external_id)]}
+          closeOnSelect={false}
         />
       )}
 

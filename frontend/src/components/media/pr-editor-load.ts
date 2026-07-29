@@ -99,9 +99,12 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
 
   // Bootstraps sagaRelationTypes/sagaGroups from existing SOURCE/EPISODE/
   // UPDATE/ALTERNATIVE edges — a one-time reverse-engineering of prior state.
-  // sagaGroups (which ids are "alternate versions" of each other) is derived
-  // purely from ALTERNATIVE edges below, never persisted on its own — the
-  // relation graph is already the durable source of truth for that grouping.
+  // sagaGroups (which ids are "alternate versions" of each other, and under
+  // what curator-chosen name) is derived purely from ALTERNATIVE edges below,
+  // never persisted in its own column — the relation graph (specifically the
+  // part of type_label before its trailing " #N" position marker, written by
+  // pr-editor-submit.ts) is the durable source of truth for both the
+  // clustering itself and the name attached to it.
   const [allRelsList, dbSagaName] = await Promise.all([
     Promise.all(sortedIds.map(id => getMediaRelationsForEditor(id).catch(() => [] as DbMediaRelation[]))),
     invoke<string | null>('get_saga_name', { mediaExternalId: externalId }).catch(() => null),
@@ -120,7 +123,16 @@ export async function loadPrEditorRelationsAndSaga(externalId: string): Promise<
       const otherId = r.related_media_external_id;
       if (r.relation_type === 'ALTERNATIVE') {
         if (!sagaGroups[ownerId] && !sagaGroups[otherId]) {
-          sagaGroups[ownerId] = sagaGroups[otherId] = `Group ${nextGroupNum++}`;
+          // Recover the curator's own group name (everything before the
+          // trailing " #N") instead of always minting a fresh "Group N" —
+          // that used to silently discard whatever name was actually typed
+          // in, every single reload. "Alternative Version" is the sentinel
+          // pr-editor-submit.ts writes when nobody named the group at all,
+          // so that case still falls back to an auto name here too.
+          const match = /^(.*?)\s*#\d+$/.exec(r.type_label || '');
+          const persisted = match ? match[1].trim() : '';
+          const name = persisted && persisted !== 'Alternative Version' ? persisted : `Group ${nextGroupNum++}`;
+          sagaGroups[ownerId] = sagaGroups[otherId] = name;
         } else if (sagaGroups[ownerId] && !sagaGroups[otherId]) {
           sagaGroups[otherId] = sagaGroups[ownerId];
         } else if (!sagaGroups[ownerId] && sagaGroups[otherId]) {

@@ -91,6 +91,13 @@ export interface SubmitPrEditorParams {
   originalBundledIds: Set<string>;
   containedRelations: BundledRelation[];
   originalContainedIds: Set<string>;
+  // The bundle referenced via Bundled In (bundledRelations[0], if any) and
+  // the rest of its own contents, edited inline instead of requiring a
+  // separate visit to that bundle's own editor — see PrEditorModal's own
+  // bundleChildren state comment for the full rationale.
+  bundleId?: string;
+  bundleChildren: BundledRelation[];
+  originalBundleChildIds: Set<string>;
   editableRelations: EditableRelation[];
   characters: DbMediaCharacter[];
   charactersChanged: boolean;
@@ -152,15 +159,23 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
 
   // 2. Alternative relations within each group. The "#N" in type_label is
   // each side's position within group.ids, so reconstructSagaOrder can
-  // recover a manual reorder instead of falling back to release date.
+  // recover a manual reorder instead of falling back to release date. The
+  // part before "#N" carries the curator's own concept-group name (falling
+  // back to the old generic text when they never typed one) — type_label is
+  // never read for real display anywhere (sortRelationsForDisplay always
+  // recomputes the shown label from relation_type instead, see its own
+  // comment), so this is purely internal bookkeeping, free to repurpose.
+  // Without this, the actual typed name was silently discarded on every
+  // save, replaced by an auto "Group N" the next time the editor loaded.
   for (const group of groups) {
     const mainIndex = group.ids.indexOf(group.mainId);
+    const groupName = (p.sagaGroups[group.mainId] || '').trim() || 'Alternative Version';
     for (const altId of group.ids) {
       if (altId === group.mainId) continue;
       const altIndex = group.ids.indexOf(altId);
       addReciprocalPair(group.mainId, altId,
-        { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${mainIndex}` },
-        { relation_type: 'ALTERNATIVE', type_label: `Alternative Version #${altIndex}` });
+        { relation_type: 'ALTERNATIVE', type_label: `${groupName} #${mainIndex}` },
+        { relation_type: 'ALTERNATIVE', type_label: `${groupName} #${altIndex}` });
     }
   }
 
@@ -288,33 +303,103 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
   // drop a reciprocal edge that just got unbundled, so it silently kept it.
   const currentBundledIds = new Set(p.bundledRelations.map(r => r.external_id.trim()).filter(Boolean));
   const bundledTargetsToSync = new Set([...currentBundledIds, ...p.originalBundledIds]);
+  // The referenced bundle's own Contains additions/removals (bundleChildren)
+  // ride the exact same save_media_relations call as this entry's own
+  // reciprocal EPISODE edge below — save_media_relations replaces a media's
+  // whole relation list, so writing the bundle twice in this same submit
+  // (once here, once in a separate bundleChildren-only loop) would have the
+  // second call silently discard the first's edge.
+  const removedBundleChildIds = [...p.originalBundleChildIds].filter(id => !p.bundleChildren.some(r => r.external_id === id));
   for (const targetId of bundledTargetsToSync) {
     try {
       const existing = await getMediaRelationsForEditor(targetId);
-      const kept = (existing || []).filter(r =>
-        !(r.relation_type === 'EPISODE' && r.related_media_external_id === externalId)
-      );
+      const isReferencedBundle = targetId === p.bundleId;
+      // Every child this session touched gets stripped here regardless of
+      // add/remove — added ones are re-added fresh below with current title/
+      // cover, removed ones just stay stripped.
+      const staleChildIds = isReferencedBundle
+        ? new Set([...p.originalBundleChildIds, ...p.bundleChildren.map(r => r.external_id)])
+        : new Set<string>();
+      const kept = (existing || []).filter(r => {
+        if (r.relation_type !== 'EPISODE') return true;
+        if (r.related_media_external_id === externalId) return false;
+        return !staleChildIds.has(r.related_media_external_id);
+      });
       const isStillBundled = currentBundledIds.has(targetId);
-      const rows = isStillBundled
-        ? [...kept, {
-            related_media_external_id: externalId,
-            relation_type: 'EPISODE',
-            type_label: 'Episode',
-            title: entry.title_main || externalId,
-            cover: entry.cover_url ?? null,
-          }]
-        : kept;
+      const rows = [
+        ...kept,
+        ...(isStillBundled ? [{
+          related_media_external_id: externalId,
+          relation_type: 'EPISODE',
+          type_label: 'Episode',
+          title: entry.title_main || externalId,
+          cover: entry.cover_url ?? null,
+        }] : []),
+        ...(isReferencedBundle ? p.bundleChildren.map(c => ({
+          related_media_external_id: c.external_id,
+          relation_type: 'EPISODE',
+          type_label: 'Episode',
+          title: c.title || c.external_id,
+          cover: c.cover ?? null,
+        })) : []),
+      ];
       await saveMediaRelations(targetId, rows);
       invalidateCachedMediaData(targetId);
 
       const targetEntry = await getCatalogEntry(targetId).catch(() => null);
       if (targetEntry && mode !== 'local') {
+        const removedForTarget = [
+          ...(isStillBundled ? [] : [externalId]),
+          ...(isReferencedBundle ? removedBundleChildIds : []),
+        ];
         otherProposalEntries.push(
-          buildRelatedProposalBundle(targetId, targetEntry, rows, p.sagaName, isStillBundled ? [] : [externalId]),
+          buildRelatedProposalBundle(targetId, targetEntry, rows, p.sagaName, removedForTarget),
         );
       }
     } catch (err) {
       console.error(`Failed to propagate bundled-in relation to ${targetId}:`, err);
+    }
+  }
+
+  // Reciprocal side of the block above: each bundleChildren addition needs a
+  // PART_OF relation on that child pointing back at the referenced bundle —
+  // same shape as the Contains loop right below, just targeting p.bundleId
+  // instead of externalId, since this entry didn't add these children to its
+  // own Contains, it added them to a *different* entry's (the bundle's).
+  if (p.bundleId) {
+    const bundleId = p.bundleId;
+    const bundleTitle = p.bundledRelations[0]?.title || bundleId;
+    const bundleCover = p.bundledRelations[0]?.cover ?? null;
+    const currentBundleChildIds = new Set(p.bundleChildren.map(r => r.external_id.trim()).filter(Boolean));
+    const bundleChildTargetsToSync = new Set([...currentBundleChildIds, ...p.originalBundleChildIds]);
+    for (const childId of bundleChildTargetsToSync) {
+      try {
+        const existing = await getMediaRelationsForEditor(childId);
+        const kept = (existing || []).filter(r =>
+          !(r.relation_type === 'PART_OF' && r.related_media_external_id === bundleId)
+        );
+        const isStillChild = currentBundleChildIds.has(childId);
+        const rows = isStillChild
+          ? [...kept, {
+              related_media_external_id: bundleId,
+              relation_type: 'PART_OF',
+              type_label: 'Part of',
+              title: bundleTitle,
+              cover: bundleCover,
+            }]
+          : kept;
+        await saveMediaRelations(childId, rows);
+        invalidateCachedMediaData(childId);
+
+        const childEntry = await getCatalogEntry(childId).catch(() => null);
+        if (childEntry && mode !== 'local') {
+          otherProposalEntries.push(
+            buildRelatedProposalBundle(childId, childEntry, rows, p.sagaName, isStillChild ? [] : [bundleId]),
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to propagate bundle-child relation to ${childId}:`, err);
+      }
     }
   }
 

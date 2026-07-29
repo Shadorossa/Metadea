@@ -2873,7 +2873,8 @@
 .pr-editor-field input[type="number"],
 .pr-editor-field textarea,
 .pr-editor-field select,
-.pr-editor-cover-uploader input {
+.pr-editor-cover-uploader input,
+.pr-editor-richtext {
   border-top: none !important;
   border-left: none !important;
   border-right: none !important;
@@ -2882,6 +2883,100 @@
   border-radius: 0 !important;
   padding-left: 2px !important;
   box-shadow: none !important;
+}
+
+/* ── Rich text (synopsis) — contentEditable instead of a <textarea>, so <p>/
+   <br>/<b>/<i> render for real instead of showing as literal source text. */
+.pr-editor-richtext-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.pr-editor-richtext {
+  width: 100%;
+  min-height: 6.5rem;
+  /* No fixed height/overflow — grows with its content instead of scrolling
+     internally, so the field always shows fully from the top. */
+  color: var(--text-main, #e3e1db);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding-top: 4px;
+  outline: none;
+  cursor: text;
+}
+
+.pr-editor-richtext:focus {
+  border-color: var(--accent, #7c6af7) !important;
+}
+
+.pr-editor-richtext p {
+  margin: 0 0 0.5em;
+}
+
+/* Explicit instead of relying on the browser's own UA defaults for these —
+   makes bold/italic/underline/link formatting applied via the toolbar
+   clearly visible against this dark theme instead of a barely-there
+   default. Link styling matches .media-description-text a, the same tags'
+   real read-only rendering on the actual media page. */
+.pr-editor-richtext b,
+.pr-editor-richtext strong {
+  font-weight: 700;
+}
+
+.pr-editor-richtext i,
+.pr-editor-richtext em {
+  font-style: italic;
+}
+
+.pr-editor-richtext u {
+  text-decoration: underline;
+}
+
+.pr-editor-richtext a {
+  color: var(--accent, #7c6af7);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pr-editor-richtext:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim, #6b6b7d);
+  pointer-events: none;
+}
+
+.pr-editor-richtext-toolbar {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  gap: 0.15rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.25rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+}
+
+.pr-editor-richtext-toolbar button {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius-sm, 4px) - 2px);
+  color: var(--text-main, #e3e1db);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--anim-fast, 120ms);
+}
+
+.pr-editor-richtext-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent, #7c6af7);
 }
 
 .pr-editor-char-row {
@@ -3132,6 +3227,18 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-main, #e3e1db);
+}
+
+/* Section title + its own "+ Add"/name-field controls, one row instead of
+   the add button sitting in its own row further down (which used to land
+   far from the title, roughly centered under whatever content was below it
+   instead of clearly belonging to that title). */
+.pr-editor-section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
 .pr-editor-media-card {
@@ -3388,6 +3495,11 @@
   grid-template-columns: repeat(6, 1fr);
 }
 
+/* Saga order — fixed 7 per row instead of auto-fill. */
+.pr-editor-media-group-cards--seven {
+  grid-template-columns: repeat(7, 1fr);
+}
+
 .pr-editor-subsection {
   display: flex;
   flex-direction: column;
@@ -3400,6 +3512,12 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted, #a0a0b8);
+}
+
+.pr-editor-bundle-children-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted, #a0a0b8);
+  margin: -0.5rem 0 0.5rem;
 }
 
 .pr-editor-form-grid {

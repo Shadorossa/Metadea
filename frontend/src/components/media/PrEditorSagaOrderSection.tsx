@@ -3,44 +3,28 @@ import { getT } from '../../i18n/client';
 
 interface Props {
   externalId: string;
-  sagaName: string;
-  onSagaNameChange: (name: string) => void;
   sagaOrder: string[];
   sagaGroups: Record<string, string>;
   draggedIndex: number | null;
   onStartDrag: (index: number) => void;
   onRemove: (id: string) => void;
   onUpdateGroup: (id: string, group: string) => void;
-  onOpenSearch: () => void;
   resolveMeta: MetaResolver;
 }
 
-// The "Saga order" panel — a name field plus the draggable chain of every
-// media in the saga (this entry included, never removable from its own
-// chain). Drag reordering itself lives in useDragReorder, in the parent.
+// The "Saga order" panel — the draggable chain of every media in the saga
+// (this entry included, never removable from its own chain). The saga name
+// field and "+ Add to Saga" button both live in PrEditorModal's own section
+// header row now, next to the "Saga" title. Drag reordering itself lives in
+// useDragReorder, in the parent.
 export function PrEditorSagaOrderSection({
-  externalId, sagaName, onSagaNameChange, sagaOrder, sagaGroups,
-  draggedIndex, onStartDrag, onRemove, onUpdateGroup, onOpenSearch, resolveMeta,
+  externalId, sagaOrder, sagaGroups,
+  draggedIndex, onStartDrag, onRemove, onUpdateGroup, resolveMeta,
 }: Props) {
   const pe = getT().pr_editor;
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
-        <label className="pr-editor-subsection-label">{pe.saga_name_label}</label>
-        <input
-          type="text"
-          placeholder={pe.saga_name_placeholder}
-          value={sagaName}
-          onChange={e => onSagaNameChange(e.target.value)}
-          className="pr-editor-media-card-group-input"
-          style={{ fontSize: '0.75rem', padding: '0.3rem 0.5rem', border: '1px solid rgba(124, 106, 247, 0.3)' }}
-        />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>{pe.saga_order_label}</label>
-        <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>+ Add to Saga</button>
-      </div>
-      <div className="pr-editor-media-group-cards" style={{ marginBottom: '1.25rem' }}>
+      <div className="pr-editor-media-group-cards pr-editor-media-group-cards--seven" style={{ marginBottom: '1.25rem' }}>
         {sagaOrder.map((id, index) => {
           const meta = resolveMeta(id);
           return (

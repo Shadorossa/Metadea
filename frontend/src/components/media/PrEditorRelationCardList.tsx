@@ -5,8 +5,6 @@ interface RelationCard {
 }
 
 interface Props {
-  label: string;
-  addLabel: string;
   /** Matches the `data-{attr}` the parent's useDragReorder(datasetName, ...)
    *  call was configured with, e.g. "bundled-index" / "contained-index". */
   dataAttr: string;
@@ -14,23 +12,19 @@ interface Props {
   draggedIndex: number | null;
   onStartDrag: (index: number) => void;
   onRemove: (externalId: string) => void;
-  onOpenSearch: () => void;
 }
 
-// Generic "grid of draggable cards with a remove button and an Add trigger"
-// panel — the Bundled In and Contains sections used to be two near-identical
-// copies of this differing only in label text and the data-* attribute name.
-// Drag reordering itself lives in useDragReorder, in the parent — same
-// pattern as the Saga order list.
+// Generic "grid of draggable cards with a remove button" panel — the Bundled
+// In and Contains sections used to be two near-identical copies of this
+// differing only in the data-* attribute name. Drag reordering itself lives
+// in useDragReorder, in the parent — same pattern as the Saga order list.
+// The "+ Add" trigger isn't rendered here — it lives in the caller's own
+// section header row, next to the section title, not in its own row below.
 export function PrEditorRelationCardList({
-  label, addLabel, dataAttr, relations, draggedIndex, onStartDrag, onRemove, onOpenSearch,
+  dataAttr, relations, draggedIndex, onStartDrag, onRemove,
 }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--bundled" style={{ width: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <label className="pr-editor-subsection-label" style={{ marginBottom: 0 }}>{label}</label>
-        <button type="button" className="pr-editor-add-btn" onClick={onOpenSearch}>{addLabel}</button>
-      </div>
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six">
         {relations.map((r, index) => (
           <div
