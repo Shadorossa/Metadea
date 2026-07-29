@@ -231,15 +231,42 @@ export async function mergeAndPersistRelations(
   rawId: string,
   fetchedRelations: MediaPageData['relations'],
   format?: string,
+  // Manual "Reintentar sincronización" only — see fetchMediaData's own
+  // comment on its refreshSourceAdaptation option for why this one pair
+  // needs an escape hatch from the usual "existing DB rows always win" rule.
+  forceRefreshSourceAdaptation = false,
 ): Promise<boolean> {
   const { relations: dbRels } = await loadDbRelationsAndAuthors(rawId);
 
   const normalizedDbRels = dbRels.map(normalizeLegacyDbRelation);
 
   const freshIds = new Set((fetchedRelations ?? []).map(r => r.relatedExternalId).filter(Boolean));
-  const prunedDbRels = format && FULL_EDITION_FORMATS.has(format)
+  let prunedDbRels = format && FULL_EDITION_FORMATS.has(format)
     ? normalizedDbRels.filter(r => !STALE_INHERITED_RELATION_TYPES.has(r.relation_type) || freshIds.has(r.related_media_external_id))
     : normalizedDbRels;
+
+  // Correct just this one mismatch instead of leaving whichever direction
+  // got cached first (possibly wrong — AniList's own raw data isn't always
+  // reciprocally curated, see anilist-mapper.ts) stuck forever. Only ever
+  // flips SOURCE<->ADAPTATION against what the fresh fetch says for the
+  // exact same related id — never touches any other relation type or adds/
+  // removes a row.
+  let sourceAdaptationChanged = false;
+  if (forceRefreshSourceAdaptation && fetchedRelations) {
+    const freshDirectionByRelatedId = new Map(
+      fetchedRelations
+        .filter((r): r is typeof r & { relatedExternalId: string; relationType: string } =>
+          !!r.relatedExternalId && (r.relationType === 'SOURCE' || r.relationType === 'ADAPTATION'))
+        .map(r => [r.relatedExternalId, r]),
+    );
+    prunedDbRels = prunedDbRels.map(r => {
+      if (r.relation_type !== 'SOURCE' && r.relation_type !== 'ADAPTATION') return r;
+      const fresh = freshDirectionByRelatedId.get(r.related_media_external_id);
+      if (!fresh || fresh.relationType === r.relation_type) return r;
+      sourceAdaptationChanged = true;
+      return { ...r, relation_type: fresh.relationType, type_label: fresh.typeLabel };
+    });
+  }
 
   const changedLegacyTypes = normalizedDbRels.some((r, i) => r.relation_type !== dbRels[i].relation_type);
   const prunedStale = prunedDbRels.length !== normalizedDbRels.length;
@@ -267,7 +294,7 @@ export async function mergeAndPersistRelations(
     format: r.format || null,
   }));
 
-  const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale;
+  const changed = newFromApi.length > 0 || changedLegacyTypes || prunedStale || sourceAdaptationChanged;
   if (changed) {
     await saveMediaRelations(rawId, [...prunedDbRels, ...newFromApi]).catch(console.error);
   }

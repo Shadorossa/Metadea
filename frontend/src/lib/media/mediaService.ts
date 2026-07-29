@@ -282,7 +282,17 @@ export async function fetchMediaData(
   // that the manual retry button should still surface AniList's current
   // count instead of being stuck forever at whatever total_count happened
   // to be on the very first sync.
-  opts?: { refreshAniListTotalCount?: boolean },
+  // refreshSourceAdaptation: also manual-retry-only — a SOURCE/ADAPTATION
+  // pair is otherwise sticky like any other existing relation (protects a
+  // curator's hand-fixed direction from a routine background resync), but
+  // AniList's own raw relationType for this one pair can be wrong on either
+  // side (see anilist-mapper.ts's date-based direction fix) — a pair cached
+  // before that fix, or from whichever side happened to sync first, can be
+  // stuck backwards forever otherwise (e.g. Kizumonogatari's movies getting
+  // cached as the light novel's "original work"). The manual button
+  // re-checks this one pair's direction against the fresh fetch and
+  // corrects it if it disagrees.
+  opts?: { refreshAniListTotalCount?: boolean; refreshSourceAdaptation?: boolean },
 ): Promise<MediaPageData | null> {
   const cached = getCachedMediaData(rawId);
   if (cached) return cached;
@@ -300,7 +310,7 @@ export async function fetchMediaData(
     applyStickyLocalFields(data, existing);
 
     // Checks deleted_relations so a deliberately-removed relation isn't silently re-added.
-    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format);
+    const relationsChanged = await mergeAndPersistRelations(rawId, data.relations, data.format, !!opts?.refreshSourceAdaptation);
 
     await persistToCatalog(data, existing, relationsChanged, !!opts?.refreshAniListTotalCount);
 

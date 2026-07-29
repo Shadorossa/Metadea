@@ -646,7 +646,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     if (!currentId || retryingSync) return;
     setRetryingSync(true);
     invalidateCachedMediaData(currentId);
-    fetchMediaData(currentId, { refreshAniListTotalCount: true }).then(fresh => {
+    fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
       if (fresh) setData(fresh);
     }).finally(() => setRetryingSync(false));
   }, [currentId, retryingSync]);
