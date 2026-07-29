@@ -7,6 +7,7 @@ import { isInProgressStatus, getTypeLabel } from '../../lib/constants/media';
 import { wrapAssetUrl } from '../../lib/tauri';
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/shared/icon-strings';
+import { toSmallCover } from '../../lib/shared/small-cover';
 
 const TYPE_ICON = typeIconMap(14);
 const MAX_PER_TYPE = 5;
@@ -65,7 +66,7 @@ export function CurrentlySection() {
                 title={meta?.title_main ?? entry.external_id}
               >
                 {meta?.cover_url
-                  ? <img className="home-currently-cover" src={wrapAssetUrl(meta.cover_url)} alt="" loading="lazy" />
+                  ? <img className="home-currently-cover" src={wrapAssetUrl(toSmallCover(meta.cover_url))} alt="" loading="lazy" />
                   : <div className="home-currently-cover home-currently-cover--empty" />}
               </a>
             ))}
