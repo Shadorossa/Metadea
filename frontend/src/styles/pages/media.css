@@ -3703,6 +3703,36 @@
   border-radius: var(--radius-sm, 4px);
 }
 
+.pr-editor-arc-card-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.pr-editor-arc-card-move {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.2rem;
+  height: 1rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-dim, #666);
+  font-size: 0.55rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pr-editor-arc-card-move:hover:not(:disabled) {
+  color: var(--accent, #7c6af7);
+}
+
+.pr-editor-arc-card-move:disabled {
+  color: var(--border-color, #2d2a24);
+  cursor: default;
+}
+
 .pr-editor-arc-card-cover {
   width: 42px;
   height: 60px;
@@ -3843,6 +3873,26 @@
   outline: none;
   border-color: var(--accent, #7c6af7);
   box-shadow: 0 0 0 2px rgba(124, 106, 247, 0.2);
+}
+
+.pr-editor-arc-range-hint {
+  font-size: 0.68rem;
+  color: var(--text-dim, #666);
+  margin: 0 0 0.4rem;
+}
+
+.pr-editor-arc-shared-range-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #a0a0b8);
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+
+.pr-editor-arc-shared-range-toggle input {
+  cursor: pointer;
 }
 
 .pr-editor-arc-items-list {

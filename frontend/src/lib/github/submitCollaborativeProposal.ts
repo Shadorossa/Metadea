@@ -1,6 +1,7 @@
 import { invoke } from '../tauri';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter } from '../tauri/characters';
+import type { StoryArc } from '../tauri/story-arcs';
 import type { GitHubUserProfile } from '../settings/github';
 import { REPO_OWNER, REPO_NAME, checkRepoWriteAccess } from './ownership';
 import { setField } from '../shared/object-utils';
@@ -12,6 +13,11 @@ export interface ProposalBundle {
   characters: DbMediaCharacter[];
   media_authors: DbMediaAuthor[];
   saga_name?: string;
+  // Only ever populated on the primary entry's own bundle (see
+  // buildRelatedProposalBundle) — arcs aren't owned by one media file, so
+  // every non-primary saga member's file just keeps whatever's already
+  // upstream untouched instead of also carrying a copy.
+  story_arcs?: StoryArc[];
 }
 
 // A character has no owning media_catalog row — its own file just carries its
@@ -67,6 +73,7 @@ export type ProposalFileEntry =
       removedRelationIds?: string[];
       removedCharacterIds?: string[];
       removedAuthorIds?: string[];
+      removedArcIds?: string[];
     }
   | {
       kind: 'character';
@@ -198,6 +205,9 @@ async function buildOutgoingContent(fileEntry: ProposalFileEntry, primaryExterna
         media_authors: isPrimary
           ? mergeListByKey(existingBundle.media_authors ?? [], fileEntry.bundle.media_authors, fileEntry.removedAuthorIds, a => a.external_id)
           : (existingBundle.media_authors ?? []),
+        story_arcs: isPrimary
+          ? mergeListByKey(existingBundle.story_arcs ?? [], fileEntry.bundle.story_arcs ?? [], fileEntry.removedArcIds, a => a.id)
+          : (existingBundle.story_arcs ?? []),
       };
     }
     return JSON.stringify(sharableBundleFor(merged), null, 2);

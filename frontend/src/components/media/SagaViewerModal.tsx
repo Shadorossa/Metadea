@@ -185,6 +185,26 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
     return () => { cancelled = true; };
   }, [externalId]);
 
+  // A quick, independent check for just the entry the viewer was opened
+  // from — runs in parallel with the saga chain load above instead of
+  // waiting for it, so the Arcos Argumentales tab can appear as soon as
+  // this alone resolves instead of after two round trips stacked in series
+  // (chain first, then arcs for every member of it). The full effect below
+  // still runs once the chain is known, to also pick up arcs that only
+  // touch some *other* member of the saga.
+  useEffect(() => {
+    let cancelled = false;
+    getStoryArcsForMedia(externalId).then(arcs => {
+      if (cancelled || arcs.length === 0) return;
+      setSagaArcs(prev => {
+        const byId = new Map(prev.map(a => [a.id, a]));
+        for (const arc of arcs) byId.set(arc.id, arc);
+        return [...byId.values()];
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [externalId]);
+
   // Fetches every entry's own arcs in parallel once the chain itself is
   // known, then dedupes by arc id — an arc with items in several entries
   // (e.g. Sennen Kessen-hen's 4 parts) would otherwise show up once per

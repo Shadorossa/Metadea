@@ -831,6 +831,18 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 41)?;
     }
 
+    if v < 42 {
+        // Lets a curator manually reorder arcs (e.g. Bleach's arcs
+        // chronologically) instead of always seeing them alphabetically.
+        // Backfilled from rowid so existing installs keep whatever order
+        // SQLite already stored them in rather than shuffling on upgrade.
+        conn.execute_batch(
+            "ALTER TABLE story_arcs ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+             UPDATE story_arcs SET sort_order = rowid;",
+        )?;
+        mark_migration(conn, 42)?;
+    }
+
     Ok(())
 }
 

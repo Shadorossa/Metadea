@@ -4,6 +4,7 @@
 // instead of the component's own closures.
 import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../lib/tauri/catalog';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
+import { getStoryArcsForMedia, type StoryArc } from '../../lib/tauri/story-arcs';
 import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
 import type { DbMediaCharacter } from '../../lib/tauri/characters';
 import type { SagaEntry } from '../../lib/anilist/saga';
@@ -115,6 +116,10 @@ export interface SubmitPrEditorParams {
   removedRelationIds: string[];
   removedCharacterIds: string[];
   removedAuthorIds: string[];
+  // Arcs deleted this session (PrEditorStoryArcsSection saves/deletes
+  // directly, so this can't be derived from a before/after diff like the
+  // other removed*Ids above — the section reports it as it happens).
+  removedArcIds: string[];
   changeSummary: string;
   onSaved?: () => void;
   onClose: () => void;
@@ -465,6 +470,20 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     return;
   }
 
+  // Arcs save/delete directly to the local DB as they're edited (no
+  // "Submit" step of their own — see PrEditorStoryArcsSection), so the local
+  // table already holds exactly what this session wants published: just
+  // read it back fresh instead of tracking it through editor state. Same
+  // "every saga member's own arcs" scope as that section's own reload().
+  const arcIdsToCheck = p.sagaOrder.length > 0 ? p.sagaOrder : [externalId];
+  const arcResults = await Promise.all(
+    arcIdsToCheck.map(id => getStoryArcsForMedia(id).catch(() => [] as StoryArc[]))
+  );
+  const arcsById = new Map<string, StoryArc>();
+  for (const arcsForId of arcResults) {
+    for (const arc of arcsForId) arcsById.set(arc.id, arc);
+  }
+
   // Saga-chain edges pointing at other members ride in otherProposalEntries
   // instead; only hand-edited catalog fields go along (minimalProposalCatalogEntry).
   const bundle: ProposalBundle = {
@@ -473,6 +492,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
     characters: p.characters,
     media_authors: p.mediaAuthors,
     saga_name: p.sagaName || undefined,
+    story_arcs: [...arcsById.values()],
   };
 
   // Each buildOutgoingContent commit merges against whatever's on `main`
@@ -506,6 +526,7 @@ export async function submitPrEditorChanges(p: SubmitPrEditorParams): Promise<vo
       removedRelationIds: p.removedRelationIds,
       removedCharacterIds: p.removedCharacterIds,
       removedAuthorIds: p.removedAuthorIds,
+      removedArcIds: p.removedArcIds,
     },
     ...dedupedOtherEntries.values(),
   ];

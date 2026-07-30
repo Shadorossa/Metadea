@@ -1,5 +1,6 @@
 import { saveCatalogEntry, getCatalogEntry, saveMediaRelations, saveMediaAuthors, type DbMediaRelation } from '../tauri/catalog';
 import { saveCharactersSkeleton, type SkeletonCharacter } from '../tauri/characters';
+import { saveStoryArc } from '../tauri/story-arcs';
 import type { ProposalBundle } from './submitCollaborativeProposal';
 import { fetchFileAtRef } from './api';
 import { catalogFilePath } from './catalogPaths';
@@ -40,6 +41,13 @@ export async function hydrateBundleIntoLocalCatalog(bundle: ProposalBundle): Pro
 
   await saveCharactersSkeleton(externalId, bundle.characters as SkeletonCharacter[]);
   await saveMediaAuthors(externalId, bundle.media_authors);
+
+  // Upsert by id — sort_order is deliberately never sent back down (see
+  // StoryArc's own comment), so this never disturbs this install's own
+  // manual arc ordering, only names/images/items.
+  for (const arc of bundle.story_arcs ?? []) {
+    await saveStoryArc(arc).catch(err => console.warn('[Saga] Failed to hydrate story arc:', err));
+  }
 }
 
 // A saga edit lands as one self-contained GitHub file per affected member,

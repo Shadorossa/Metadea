@@ -173,6 +173,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [showCharSearch, setShowCharSearch] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
+  // Arcs delete themselves immediately (see PrEditorStoryArcsSection), so
+  // there's no before/after list here to diff for the GitHub merge like
+  // characters/authors get — the section reports its own removals instead.
+  const [removedArcIds, setRemovedArcIds] = useState<string[]>([]);
 
   const [searchPopupMode, setSearchPopupMode] = useState<'saga' | 'bundled' | 'contains' | 'relations' | 'bundle-children' | 'issues' | null>(null);
 
@@ -638,6 +642,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
         removedRelationIds,
         removedCharacterIds: sagaChangeDiff.removedCharacterIds,
         removedAuthorIds: sagaChangeDiff.removedAuthorIds,
+        removedArcIds,
         changeSummary: buildChangeSummary(resolveMeta),
         onSaved,
         onClose,
@@ -1010,6 +1015,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 currentCover={entry.cover_url || null}
                 sagaOrder={sagaOrder}
                 resolveSagaMeta={resolveMeta}
+                onArcDeleted={arcId => setRemovedArcIds(prev => [...prev, arcId])}
               />
 
               {/* ComicVine issues — split out into their own collapsible

@@ -13,7 +13,7 @@
 // soon as each arc is saved — no GitHub proposal step, same as Favorites'
 // custom images; this isn't part of the shared community catalog.
 import { useEffect, useState } from 'react';
-import { getStoryArcsForMedia, saveStoryArc, deleteStoryArc, type StoryArc, type StoryArcItem } from '../../lib/tauri/story-arcs';
+import { getStoryArcsForMedia, saveStoryArc, reorderStoryArcs, deleteStoryArc, type StoryArc, type StoryArcItem } from '../../lib/tauri/story-arcs';
 import { getCatalogEntry, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { MediaSearchPopup } from './MediaSearchPopup';
@@ -32,6 +32,13 @@ interface EditingArc {
   name: string;
   imageBase64: string | null;
   items: EditingItem[];
+  // For arcs like Bleach's Thousand Year Blood War, which spans several
+  // separately-released parts that don't each have their own meaningful
+  // sub-range — one shared ep_start/ep_end gets written to every item
+  // instead of asking the curator to fill in (and keep in sync) N copies of
+  // the same numbers. Purely a UI convenience: story_arc_items still stores
+  // a range per item either way, nothing new on the DB side.
+  sharedRange: boolean;
 }
 
 interface Props {
@@ -44,6 +51,11 @@ interface Props {
   // having to search the live APIs again for something already on screen.
   sagaOrder: string[];
   resolveSagaMeta: (id: string) => { title: string | null; cover: string | null };
+  // Tells the parent editor this arc was deleted this session — needed for
+  // the GitHub proposal's merge to actually drop it upstream too (see
+  // submitCollaborativeProposal's mergeListByKey), since the local delete
+  // above already happens immediately and can't be inferred from a diff.
+  onArcDeleted?: (arcId: string) => void;
 }
 
 function formatRange(item: Pick<StoryArcItem, 'ep_start' | 'ep_end'>): string {
@@ -52,7 +64,7 @@ function formatRange(item: Pick<StoryArcItem, 'ep_start' | 'ep_end'>): string {
   return '';
 }
 
-export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCover, sagaOrder, resolveSagaMeta }: Props) {
+export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCover, sagaOrder, resolveSagaMeta, onArcDeleted }: Props) {
   const [arcs, setArcs] = useState<StoryArc[]>([]);
   const [metaById, setMetaById] = useState<Record<string, { title: string; cover: string | null }>>({});
   const [editingArc, setEditingArc] = useState<EditingArc | null>(null);
@@ -113,16 +125,17 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
       name: '',
       imageBase64: null,
       items: [{ media_external_id: externalId, title: currentTitle, cover: currentCover, ep_start: null, ep_end: null }],
+      sharedRange: false,
     });
   }
 
   function startEditArc(arc: StoryArc) {
-    setEditingArc({
-      id: arc.id,
-      name: arc.name,
-      imageBase64: arc.image_base64,
-      items: arc.items.map(i => ({ ...resolveMeta(i.media_external_id), media_external_id: i.media_external_id, ep_start: i.ep_start, ep_end: i.ep_end })),
-    });
+    const items = arc.items.map(i => ({ ...resolveMeta(i.media_external_id), media_external_id: i.media_external_id, ep_start: i.ep_start, ep_end: i.ep_end }));
+    // Detects arcs that were already saved with the same range on every
+    // item — re-opening one shows the shared-range control pre-checked
+    // instead of looking like N independently-matching coincidences.
+    const sharedRange = items.length > 1 && items.every(i => i.ep_start === items[0].ep_start && i.ep_end === items[0].ep_end);
+    setEditingArc({ id: arc.id, name: arc.name, imageBase64: arc.image_base64, items, sharedRange });
   }
 
   // Same pick/pan/zoom modal Favorites and the character-photo editor both
@@ -148,9 +161,10 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === result.externalId)) return prev;
+      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
-        items: [...prev.items, { media_external_id: result.externalId, title: result.titleMain, cover: result.coverUrl, ep_start: null, ep_end: null }],
+        items: [...prev.items, { media_external_id: result.externalId, title: result.titleMain, cover: result.coverUrl, ep_start, ep_end }],
       };
     });
   }
@@ -165,9 +179,10 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === id)) return prev;
+      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
-        items: [...prev.items, { media_external_id: id, title: meta.title || id, cover: meta.cover, ep_start: null, ep_end: null }],
+        items: [...prev.items, { media_external_id: id, title: meta.title || id, cover: meta.cover, ep_start, ep_end }],
       };
     });
     setShowSagaPicker(false);
@@ -180,14 +195,15 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => {
       if (!prev) return prev;
       if (prev.items.some(i => i.media_external_id === source.related_media_external_id)) return prev;
+      const [ep_start, ep_end] = sharedRangeValues(prev);
       return {
         ...prev,
         items: [...prev.items, {
           media_external_id: source.related_media_external_id,
           title: source.title || source.related_media_external_id,
           cover: source.cover || null,
-          ep_start: null,
-          ep_end: null,
+          ep_start,
+          ep_end,
         }],
       };
     });
@@ -197,12 +213,37 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => prev && { ...prev, items: prev.items.filter(i => i.media_external_id !== id) });
   }
 
+  // A brand-new item joining a shared-range arc should read the same range
+  // as everything else already in it, instead of showing up blank next to
+  // matching numbers on every other row.
+  function sharedRangeValues(arc: EditingArc): [number | null, number | null] {
+    if (!arc.sharedRange || arc.items.length === 0) return [null, null];
+    return [arc.items[0].ep_start, arc.items[0].ep_end];
+  }
+
+  // In shared-range mode every item is kept in lockstep — editing any one
+  // row's range updates all of them, so they never actually diverge while
+  // the toggle is on.
   function updateItemRange(id: string, field: 'ep_start' | 'ep_end', value: string) {
     const num = value === '' ? null : parseInt(value, 10);
     const safeNum = num !== null && Number.isFinite(num) ? num : null;
     setEditingArc(prev => prev && {
       ...prev,
-      items: prev.items.map(i => i.media_external_id === id ? { ...i, [field]: safeNum } : i),
+      items: prev.items.map(i => (prev.sharedRange || i.media_external_id === id) ? { ...i, [field]: safeNum } : i),
+    });
+  }
+
+  // Turning it on consolidates everything to the first item's current
+  // values (rather than leaving mismatched numbers around and pretending
+  // they're unified); turning it off just stops keeping them in sync,
+  // whatever values are already there stay put.
+  function toggleSharedRange() {
+    setEditingArc(prev => {
+      if (!prev) return prev;
+      const next = !prev.sharedRange;
+      if (!next) return { ...prev, sharedRange: false };
+      const [ep_start, ep_end] = [prev.items[0]?.ep_start ?? null, prev.items[0]?.ep_end ?? null];
+      return { ...prev, sharedRange: true, items: prev.items.map(i => ({ ...i, ep_start, ep_end })) };
     });
   }
 
@@ -217,6 +258,9 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
         items: editingArc.items.map((i, index) => ({
           id: '', media_external_id: i.media_external_id, ep_start: i.ep_start, ep_end: i.ep_end, position: index,
         })),
+        // Ignored by save_story_arc either way (see its own comment) — only
+        // present to satisfy the type.
+        sort_order: 0,
       });
       setEditingArc(null);
       await reload();
@@ -228,7 +272,20 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   async function handleDeleteArc(arcId: string) {
     if (!window.confirm('¿Eliminar este arco argumental?')) return;
     await deleteStoryArc(arcId);
+    onArcDeleted?.(arcId);
     await reload();
+  }
+
+  // Swaps this arc with its neighbor and persists the whole visible list's
+  // new order — reorder_story_arcs only touches the ids it's given, so this
+  // never affects an arc outside what's currently shown here.
+  async function moveArc(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= arcs.length) return;
+    const reordered = [...arcs];
+    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    setArcs(reordered);
+    await reorderStoryArcs(reordered.map(a => a.id));
   }
 
   return (
@@ -243,8 +300,12 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
           <p className="pr-editor-bundle-children-hint">Sin arcos argumentales todavía.</p>
         ) : (
           <div className="pr-editor-arcs-list">
-            {arcs.map(arc => (
+            {arcs.map((arc, index) => (
               <div key={arc.id} className="pr-editor-arc-card">
+                <div className="pr-editor-arc-card-reorder">
+                  <button type="button" className="pr-editor-arc-card-move" disabled={index === 0} onClick={() => moveArc(index, -1)}>▲</button>
+                  <button type="button" className="pr-editor-arc-card-move" disabled={index === arcs.length - 1} onClick={() => moveArc(index, 1)}>▼</button>
+                </div>
                 <div className="pr-editor-arc-card-cover">
                   {arc.image_base64
                     ? <img src={arc.image_base64} alt="" />
@@ -289,6 +350,15 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
               className="pr-editor-arc-name-input"
             />
           </div>
+
+          <p className="pr-editor-arc-range-hint">El rango de episodios/capítulos es opcional.</p>
+
+          {editingArc.items.length > 1 && (
+            <label className="pr-editor-arc-shared-range-toggle">
+              <input type="checkbox" checked={editingArc.sharedRange} onChange={toggleSharedRange} />
+              Mismo rango de episodios para todas las obras (ej. arcos como Thousand Year Blood War, repartidos en varias partes)
+            </label>
+          )}
 
           <div className="pr-editor-arc-items-list">
             {editingArc.items.map(item => (

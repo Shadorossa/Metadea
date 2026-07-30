@@ -22,6 +22,10 @@ pub struct StoryArc {
     pub name: String,
     pub image_base64: Option<String>,
     pub items: Vec<StoryArcItem>,
+    // Local-only display order — never enforced across installs, since
+    // save_story_arc/hydration never write it for anything but a brand-new
+    // arc (see its own comment). Each curator's manual ordering stays theirs.
+    pub sort_order: i64,
 }
 
 // Every arc that has at least one item pointing at this media — returned
@@ -49,7 +53,7 @@ pub async fn get_story_arcs_for_media(
     let placeholders = arc_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let mut arcs_stmt = conn
         .prepare(&format!(
-            "SELECT id, name, image_base64 FROM story_arcs WHERE id IN ({placeholders}) ORDER BY name"
+            "SELECT id, name, image_base64, sort_order FROM story_arcs WHERE id IN ({placeholders}) ORDER BY sort_order, name"
         ))
         .str_err()?;
     let arc_params: Vec<&dyn rusqlite::ToSql> = arc_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
@@ -60,6 +64,7 @@ pub async fn get_story_arcs_for_media(
                 name: row.get(1)?,
                 image_base64: row.get(2)?,
                 items: vec![],
+                sort_order: row.get(3)?,
             })
         })
         .str_err()?
@@ -106,11 +111,18 @@ pub async fn save_story_arc(
 
     let arc_id = if arc.id.is_empty() { generate_id() } else { arc.id.clone() };
 
+    // Only matters for a brand-new arc — the UPDATE branch below never
+    // touches sort_order, so an existing arc keeps whatever position the
+    // curator already gave it via reorder_story_arcs.
+    let next_sort_order: i64 = tx
+        .query_row("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM story_arcs", [], |r| r.get(0))
+        .str_err()?;
+
     tx.execute(
-        "INSERT INTO story_arcs (id, name, image_base64, updated_at)
-         VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP)
+        "INSERT INTO story_arcs (id, name, image_base64, sort_order, updated_at)
+         VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)
          ON CONFLICT(id) DO UPDATE SET name = ?2, image_base64 = ?3, updated_at = CURRENT_TIMESTAMP",
-        rusqlite::params![&arc_id, &arc.name, &arc.image_base64],
+        rusqlite::params![&arc_id, &arc.name, &arc.image_base64, next_sort_order],
     )
     .str_err()?;
 
@@ -133,6 +145,28 @@ pub async fn save_story_arc(
 
     tx.commit().str_err()?;
     Ok(arc_id)
+}
+
+// Curator-driven manual reordering (drag/move in the editor) — sets
+// sort_order to each id's position in the given list. Only meant for arcs
+// already known to belong together (e.g. everything get_story_arcs_for_media
+// just returned for one saga); doesn't touch arcs outside that list.
+#[tauri::command]
+pub async fn reorder_story_arcs(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    arc_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    for (index, arc_id) in arc_ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE story_arcs SET sort_order = ?1 WHERE id = ?2",
+            rusqlite::params![index as i64, arc_id],
+        )
+        .str_err()?;
+    }
+    tx.commit().str_err()?;
+    Ok(())
 }
 
 #[tauri::command]

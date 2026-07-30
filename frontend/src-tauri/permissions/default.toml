@@ -141,6 +141,7 @@ commands.allow = [
   "fix_character_ids_command",
   "get_story_arcs_for_media",
   "save_story_arc",
+  "reorder_story_arcs",
   "delete_story_arc"
 ]
 
