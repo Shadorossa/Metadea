@@ -287,7 +287,7 @@ export const ca = {
     is_version_of: 'Aquest joc és una versió de {title}',
     is_bundle: 'Aquesta versió és un bundle',
     saga_button: 'Ordre de la saga',
-    saga_title: 'Ordre de la saga',
+    saga_title: 'Saga',
     saga_loading: 'Cercant precuseles i seqüeles...',
     saga_error: 'No s\'ha pogut carregar l\'ordre de la saga.',
     saga_current: 'Ets aquí',

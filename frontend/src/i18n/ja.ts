@@ -290,7 +290,7 @@ export const ja = {
     is_version_of: 'このゲームは{title}のバージョンです',
     is_bundle: 'このバージョンはバンドルです',
     saga_button: 'シリーズの順番',
-    saga_title: 'シリーズの順番',
+    saga_title: 'サーガ',
     saga_loading: '前作・続編を検索中...',
     saga_error: 'シリーズの順番を読み込めませんでした。',
     saga_current: '現在地',

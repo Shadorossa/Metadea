@@ -290,7 +290,7 @@ export const es = {
     is_version_of: 'Este juego es una versión de {title}',
     is_bundle: 'Esta versión es un bundle',
     saga_button: 'Orden de la saga',
-    saga_title: 'Orden de la saga',
+    saga_title: 'Saga',
     saga_loading: 'Buscando precuelas y secuelas...',
     saga_error: 'No se pudo cargar el orden de la saga.',
     saga_current: 'Estás aquí',

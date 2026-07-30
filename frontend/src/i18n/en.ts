@@ -290,7 +290,7 @@ export const en = {
     is_version_of: 'This game is a version of {title}',
     is_bundle: 'This version is a bundle',
     saga_button: 'Saga order',
-    saga_title: 'Saga order',
+    saga_title: 'Saga',
     saga_loading: 'Looking up prequels and sequels...',
     saga_error: 'Could not load the saga order.',
     saga_current: 'You are here',

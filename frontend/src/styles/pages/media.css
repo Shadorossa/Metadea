@@ -2363,14 +2363,21 @@
 
 .saga-strip-container {
   width: 100%;
+  /* Sized to content, NOT full-height — the blurred, translucent
+     .saga-overlay backdrop showing around this strip is the intended look.
+     What must be avoided is any *opaque* black padding/border of its own
+     poking past that translucent edge, which reads as a mismatched hard
+     seam rather than part of the blur. */
   background: #0d0d0d;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   position: relative;
   padding: 2.5rem 0;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  /* Rendering artifact, not a rule anyone wrote: browsers draw a faint
+     seam where an opaque box sits directly against a backdrop-filter:
+     blur() region (.saga-overlay) with nothing between them. A same-color
+     spread just paints over the seam instead of leaving a gap for it. */
+  box-shadow: 0 0 0 2px #0d0d0d;
 }
 
 .saga-strip-header {
@@ -2387,6 +2394,57 @@
   font-size: 0.7rem;
   color: var(--text-dim, #666);
   font-weight: 500;
+}
+
+/* Switches which row .saga-strip-body shows (Saga / Arcos Argumentales)
+   instead of always stacking both — same visual slot .saga-strip-subtitle
+   used to occupy alone. */
+.saga-strip-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-dim, #666);
+  cursor: pointer;
+  transition: color var(--anim-fast, 120ms);
+}
+
+.saga-strip-tab:hover {
+  color: var(--text-muted, #a0a0b8);
+}
+
+.saga-strip-tab--active {
+  color: var(--accent, #7c6af7);
+}
+
+/* Dimmer than the main subtitle/title divider — just a subtle separator
+   between two same-level tabs, not meant to draw the eye like that one. */
+.saga-strip-divider--tabs {
+  color: var(--text-dim, #666) !important;
+  font-weight: 400 !important;
+}
+
+/* Newspaper-dark styles most buttons as a double-border "vintage ad" box
+   (see its own .btn/.hof-btn/... rule) — these two are meant to read as
+   plain text tabs instead, same as the .saga-strip-subtitle label they
+   replaced, so they're deliberately excluded from that treatment. */
+[data-theme="newspaper-dark"] .saga-strip-tab {
+  border: none !important;
+  background: none !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+[data-theme="newspaper-dark"] .saga-strip-tab--active {
+  color: var(--accent) !important;
 }
 
 .saga-strip-divider {
@@ -2407,8 +2465,9 @@
   width: 100%;
   overflow: hidden;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  min-height: 380px;
+  min-height: 460px;
 }
 
 .saga-strip-status {
@@ -2426,8 +2485,9 @@
      with no way to scroll back to it in that case. */
   justify-content: safe center;
   overflow-x: auto;
+  overflow-y: hidden;
   width: 100%;
-  height: 100%;
+  flex-shrink: 0;
   padding: 0 4rem;
   scroll-behavior: smooth;
   gap: 1px;
@@ -2453,7 +2513,7 @@
   flex: 1;
   min-width: 180px;
   max-width: 240px;
-  height: 380px;
+  height: 460px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2498,8 +2558,13 @@
 .saga-strip-item-cover {
   position: relative;
   z-index: 2;
-  width: 110px;
-  height: 160px;
+  /* Scales with the card's own (now-stretched, see .saga-strip-item) height
+     instead of a fixed 110x160 that stayed tiny regardless of how much
+     taller the card itself got. */
+  width: 70%;
+  max-width: 200px;
+  height: auto;
+  aspect-ratio: 2 / 3;
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
@@ -2575,6 +2640,19 @@
   color: var(--text-muted, #aaa);
 }
 
+/* Second saga-strip-list — same card style, one card per Arcos Argumentales
+   (see PrEditorStoryArcsSection) touching this saga, shown only when the
+   saga actually has any. Clearly separated from the saga-order row above
+   (margin, not just the border) and 30% shorter — this row's cards carry
+   less information (no format badge) so don't need the full 380px. */
+/* No more margin/border here — the two rows are separate tabs now (see
+   .saga-strip-tab), never stacked in the same view, so there's nothing to
+   visually separate this from anymore. */
+
+.saga-strip-item--arc {
+  cursor: default;
+}
+
 .saga-strip-item--current {
   cursor: default;
 }
@@ -2602,6 +2680,10 @@
 
 .saga-strip-close {
   position: absolute;
+  /* Floats over the translucent, blurred .saga-overlay backdrop just below
+     the strip's own edge — that's the intended look. Pulling it fully
+     inside the strip instead just moved the problem: it forced extra
+     opaque padding, which then read as its own flat black border. */
   bottom: -1.5rem;
   left: 50%;
   transform: translateX(-50%);
@@ -2624,6 +2706,67 @@
   background: var(--accent, #7c6af7);
   border-color: var(--accent, #7c6af7);
   transform: translateX(-50%) scale(1.05);
+}
+
+/* Rendered via a portal straight to <body>, positioned in viewport
+   coordinates (see SagaViewerModal's onMouseEnter) — the arc row is
+   horizontally-scrollable and clips overflow, so anything placed *inside*
+   a card could never actually escape to its right as a plain
+   position:absolute child. */
+.saga-arc-hover-panel {
+  position: fixed;
+  z-index: 2100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color, #2d2a24);
+  border-radius: var(--radius-sm, 4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.saga-arc-hover-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+}
+
+.saga-arc-hover-row-cover {
+  flex-shrink: 0;
+  width: 32px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 3px;
+  background: #1a1a1a;
+}
+
+.saga-arc-hover-row-cover--fallback {
+  background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+}
+
+.saga-arc-hover-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.saga-arc-hover-row-title {
+  color: var(--text-main, #e3e1db);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saga-arc-hover-row-range {
+  color: var(--text-muted, #a0a0b8);
 }
 
 /* Collaborative Catalog Editor (PrEditorModal) */
@@ -3766,6 +3909,13 @@
   color: var(--text-main, #e3e1db);
   border-radius: var(--radius-sm, 4px);
   transition: border-color var(--anim-fast, 120ms);
+  -moz-appearance: textfield;
+}
+
+.pr-editor-arc-item-range-input::-webkit-outer-spin-button,
+.pr-editor-arc-item-range-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .pr-editor-arc-item-range-input:focus {

@@ -287,7 +287,7 @@ export const ru = {
     is_version_of: 'Эта игра является версией {title}',
     is_bundle: 'Это издание является бандлом',
     saga_button: 'Порядок саги',
-    saga_title: 'Порядок саги',
+    saga_title: 'Сага',
     saga_loading: 'Поиск приквелов и сиквелов...',
     saga_error: 'Не удалось загрузить порядок саги.',
     saga_current: 'Ты здесь',

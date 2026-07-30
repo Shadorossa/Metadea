@@ -287,7 +287,7 @@ export const de = {
     is_version_of: 'Dieses Spiel ist eine Version von {title}',
     is_bundle: 'Diese Version ist ein Bundle',
     saga_button: 'Reihenfolge der Saga',
-    saga_title: 'Reihenfolge der Saga',
+    saga_title: 'Saga',
     saga_loading: 'Suche nach Vorgängern und Fortsetzungen...',
     saga_error: 'Die Reihenfolge der Saga konnte nicht geladen werden.',
     saga_current: 'Du bist hier',

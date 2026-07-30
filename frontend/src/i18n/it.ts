@@ -287,7 +287,7 @@ export const it = {
     is_version_of: 'Questo gioco è una versione di {title}',
     is_bundle: 'Questa versione è un bundle',
     saga_button: 'Ordine della saga',
-    saga_title: 'Ordine della saga',
+    saga_title: 'Saga',
     saga_loading: 'Ricerca di prequel e sequel...',
     saga_error: 'Impossibile caricare l\'ordine della saga.',
     saga_current: 'Sei qui',
