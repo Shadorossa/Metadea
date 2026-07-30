@@ -66,7 +66,21 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
   }
 
   async function reload() {
-    const result = await getStoryArcsForMedia(externalId).catch(() => [] as StoryArc[]);
+    // Not just this entry's own arcs — any arc touching *any* member of the
+    // saga chain this entry belongs to, so e.g. opening Sennen Kessen-hen
+    // Part 2's editor still shows the "Thousand Year Blood War" arc even
+    // though Part 2 itself might not be one of its items (only Parts 1 and
+    // 3 could be, say) — the arc still concerns this saga, so it's worth
+    // seeing (and editing) from any of its members' editors.
+    const idsToCheck = sagaOrder.length > 0 ? sagaOrder : [externalId];
+    const perIdResults = await Promise.all(
+      idsToCheck.map(id => getStoryArcsForMedia(id).catch(() => [] as StoryArc[]))
+    );
+    const byId = new Map<string, StoryArc>();
+    for (const arcsForId of perIdResults) {
+      for (const arc of arcsForId) byId.set(arc.id, arc);
+    }
+    const result = [...byId.values()];
     setArcs(result);
 
     const missingIds = new Set<string>();
@@ -88,7 +102,10 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     });
   }
 
-  useEffect(() => { reload(); }, [externalId]);
+  // sagaOrder.join(',') instead of sagaOrder itself — a stable primitive so
+  // this only re-fetches when saga membership actually changes, not on
+  // every parent re-render that happens to pass a fresh array reference.
+  useEffect(() => { reload(); }, [externalId, sagaOrder.join(',')]);
 
   function startNewArc() {
     setEditingArc({
