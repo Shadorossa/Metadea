@@ -32,3 +32,4 @@ export * from './discord';
 export * from './sync-state';
 export * from './social-profile';
 export * from './story-arcs';
+export * from './resume-position';

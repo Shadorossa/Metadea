@@ -561,7 +561,7 @@ pub async fn scan_all_games(
 
     // Populate external_id from local_game_links
     let links = crate::folders::lookup_game_links(&conn);
-    let mut seen: Vec<(String, String)> = Vec::with_capacity(all.len());
+    let mut seen: Vec<(String, String, String)> = Vec::with_capacity(all.len());
     for game in &mut all {
         let key = game.app_id.as_deref()
             .or(game.install_path.as_deref())
@@ -570,10 +570,25 @@ pub async fn scan_all_games(
         if let Some(eid) = links.get(&(game.launcher.clone(), key.clone())) {
             game.external_id = Some(eid.clone());
         }
-        seen.push((game.launcher.clone(), key));
+        seen.push((game.launcher.clone(), key, game.name.clone()));
     }
     crate::folders::touch_games_seen(&conn, &seen);
     crate::folders::prune_stale_game_links(&conn);
+
+    // Anything ever scanned before that no live source (this scan, or
+    // Steam's owned-games API on the frontend) still knows about — see
+    // restore_missing_seen_games's own comment for why this can't just rely
+    // on "was it in `all`" alone.
+    let present: std::collections::HashSet<(String, String)> =
+        seen.iter().map(|(l, k, _)| (l.clone(), k.clone())).collect();
+    let mut restored = crate::folders::restore_missing_seen_games(&conn, &present);
+    for game in &mut restored {
+        let key = game.app_id.as_deref().unwrap_or(&game.name).to_string();
+        if let Some(eid) = links.get(&(game.launcher.clone(), key)) {
+            game.external_id = Some(eid.clone());
+        }
+    }
+    all.extend(restored);
 
     Ok(all)
 }

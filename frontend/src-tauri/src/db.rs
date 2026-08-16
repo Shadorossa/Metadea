@@ -842,6 +842,42 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 42)?;
     }
+    if v < 43 {
+        // Where VLC's own position was last seen for an episode that hasn't
+        // been auto-marked watched yet — lets "Reproducir" resume from there
+        // instead of always restarting at 0, even after fully closing VLC
+        // and coming back later (unlike vlc-session.ts's in-memory identity,
+        // which only survives while the app itself stays open). One row per
+        // (external_id, episode_number); cleared once that episode is
+        // actually marked watched (see episode_history's own writer).
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS episode_resume_position (
+                external_id      TEXT NOT NULL,
+                episode_number   REAL NOT NULL,
+                position_seconds REAL NOT NULL,
+                updated_at       TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (external_id, episode_number)
+             );",
+        )?;
+        mark_migration(conn, 43)?;
+    }
+    if v < 44 {
+        // local_games_seen only ever recorded (launcher, link_key) — enough
+        // to tell prune_stale_game_links when a link is stale, but not
+        // enough to show anything for a game once it drops out of every
+        // *live* source: scan_all_games only ever scans currently-installed
+        // titles, and Steam's owned-games API (steam-merge.ts, frontend)
+        // doesn't include Family Sharing titles at all. A borrowed game that
+        // gets uninstalled used to just vanish from the grid entirely
+        // instead of staying listed as "not installed" like a normal owned-
+        // but-uninstalled Steam game does. No source to backfill name from
+        // for existing rows (local_game_links never stored it either), so
+        // this only takes effect for a game the next time it's actually
+        // scanned while still present — one scan's grace before it would
+        // otherwise disappear on a later uninstall.
+        let _ = conn.execute("ALTER TABLE local_games_seen ADD COLUMN name TEXT NOT NULL DEFAULT ''", []);
+        mark_migration(conn, 44)?;
+    }
 
     Ok(())
 }
@@ -1028,6 +1064,7 @@ CREATE TABLE IF NOT EXISTS local_games_seen (
     launcher     TEXT NOT NULL,
     link_key     TEXT NOT NULL,
     last_seen_at TEXT NOT NULL,
+    name         TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (launcher, link_key)
 );
 

@@ -140,7 +140,12 @@ export default function LocalLibrary() {
 
   // ── Derived state ────────────────────────────────────────────────────────────
 
-  const safeGames     = Array.isArray(games) ? games : [];
+  // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
+  // order (installed-then-uninstalled, no name ordering within either),
+  // which read as arbitrary in the grid. groupedGames below derives from
+  // this via .filter(), which preserves order, so sorting once here is
+  // enough to alphabetize every platform's own section too.
+  const safeGames     = (Array.isArray(games) ? games : []).slice().sort((a, b) => a.name.localeCompare(b.name));
   const filteredGames = filterName.trim()
     ? safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()))
     : safeGames;

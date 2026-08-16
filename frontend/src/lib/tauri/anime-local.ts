@@ -1,7 +1,7 @@
 import { isTauri, invoke, tauriRun } from './core';
 
-export async function playFileWithVlc(filePath: string): Promise<void> {
-  return tauriRun('play_file_with_vlc', { filePath });
+export async function playFileWithVlc(filePath: string, startSeconds?: number): Promise<void> {
+  return tauriRun('play_file_with_vlc', { filePath, startSeconds: startSeconds ?? null });
 }
 
 export interface VlcPlaybackStatus {

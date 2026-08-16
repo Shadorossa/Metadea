@@ -171,16 +171,59 @@ pub fn lookup_game_links(
 }
 
 // Marks every currently-scanned game as seen right now — called at the end
-// of scan_all_games, right before prune_stale_game_links below.
-pub fn touch_games_seen(conn: &rusqlite::Connection, games: &[(String, String)]) {
+// of scan_all_games, right before prune_stale_game_links below. Also keeps
+// `name` fresh so restore_missing_seen_games (below) has something to show
+// once a game later drops out of every live source.
+pub fn touch_games_seen(conn: &rusqlite::Connection, games: &[(String, String, String)]) {
     let now = chrono::Utc::now().to_rfc3339();
-    for (launcher, link_key) in games {
+    for (launcher, link_key, name) in games {
         let _ = conn.execute(
-            "INSERT INTO local_games_seen (launcher, link_key, last_seen_at) VALUES (?1, ?2, ?3)
-             ON CONFLICT(launcher, link_key) DO UPDATE SET last_seen_at = excluded.last_seen_at",
-            rusqlite::params![launcher, link_key, now],
+            "INSERT INTO local_games_seen (launcher, link_key, last_seen_at, name) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(launcher, link_key) DO UPDATE SET last_seen_at = excluded.last_seen_at, name = excluded.name",
+            rusqlite::params![launcher, link_key, now, name],
         );
     }
+}
+
+// A game scan_all_games' live sources (install-folder scans, Steam's owned-
+// games API on the frontend) no longer find at all used to just vanish from
+// the grid — worst with Family Sharing titles, which Steam's owned-games API
+// never lists even while installed, so uninstalling one left literally no
+// live source aware it exists. local_games_seen remembers every game ever
+// scanned (name included, see touch_games_seen), so anything in there that
+// isn't part of *this* scan gets re-added as an explicitly not-installed
+// stub — same as how an owned-but-uninstalled Steam game already behaves,
+// just sourced from our own history instead of Steam's API. No expiry here:
+// unlike local_game_links' 14-day grace period (a different concern — losing
+// the catalog *link*), staying listed doesn't hurt anything, so this keeps
+// showing a game indefinitely until the user removes it.
+pub fn restore_missing_seen_games(
+    conn: &rusqlite::Connection,
+    already_present: &std::collections::HashSet<(String, String)>,
+) -> Vec<crate::platform_scanning::LocalGame> {
+    let mut stmt = match conn.prepare("SELECT launcher, link_key, name FROM local_games_seen WHERE name != ''") {
+        Ok(s) => s,
+        Err(_) => return Vec::new(),
+    };
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+    });
+    let rows = match rows {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+
+    rows.filter_map(|r| r.ok())
+        .filter(|(launcher, link_key, _)| !already_present.contains(&(launcher.clone(), link_key.clone())))
+        .map(|(launcher, link_key, name)| {
+            let app_id = if launcher == "steam" { Some(link_key.clone()) } else { None };
+            crate::platform_scanning::LocalGame {
+                name, launcher, app_id, external_id: None,
+                install_path: None, playtime_minutes: None, last_played: None,
+                installed: Some(false),
+            }
+        })
+        .collect()
 }
 
 // A link a user made once (see save_game_link) used to just sit in
@@ -348,15 +391,21 @@ const VLC_HTTP_PORT: u16 = 39321;
 const VLC_HTTP_PASSWORD: &str = "metadea-local";
 
 #[tauri::command]
-pub async fn play_file_with_vlc(file_path: String) -> Result<(), String> {
+pub async fn play_file_with_vlc(file_path: String, start_seconds: Option<f64>) -> Result<(), String> {
     // `--extraintf http` runs VLC's web status API *alongside* its normal
     // player window (it doesn't replace the UI) so get_vlc_playback_status
     // can poll episode progress. If VLC is already running in single-instance
     // mode, this file just gets forwarded to that instance and these flags
-    // are silently ignored — a known limitation of external control this way.
-    std::process::Command::new(find_vlc_executable())
-        .arg(&file_path)
-        .arg("--extraintf").arg("http")
+    // (including --start-time below) are silently ignored — a known
+    // limitation of external control this way.
+    let mut cmd = std::process::Command::new(find_vlc_executable());
+    cmd.arg(&file_path);
+    if let Some(seconds) = start_seconds {
+        if seconds > 1.0 {
+            cmd.arg(format!("--start-time={seconds}"));
+        }
+    }
+    cmd.arg("--extraintf").arg("http")
         .arg("--http-host").arg("127.0.0.1")
         .arg("--http-port").arg(VLC_HTTP_PORT.to_string())
         .arg("--http-password").arg(VLC_HTTP_PASSWORD)

@@ -19,6 +19,7 @@ mod media_catalog;
 mod media_relations;
 mod platform_scanning;
 mod proposal_bundle;
+mod resume_position;
 mod sagas;
 mod story_arcs;
 mod social_profile;
@@ -116,6 +117,9 @@ pub fn run() {
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
             episode_history::delete_episode_history_entry,
+            resume_position::get_resume_position,
+            resume_position::save_resume_position,
+            resume_position::clear_resume_position,
             user_library::save_library_entry,
             user_library::get_library_entry,
             user_library::delete_library_entry,

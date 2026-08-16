@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry,
   saveEpisodeHistoryEntry, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
+  getResumePosition, saveResumePosition, clearResumePosition,
   type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence,
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
   addSequelToPlanning,
@@ -565,13 +566,19 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }
   };
 
-  const handlePlay = () => {
+  const handlePlay = async () => {
     if (!playPath) return;
     setPlayError(null);
     sessionEpisodeRef.current = nextNumber;
     markedForRef.current = null;
     lastKnownPositionRef.current = 0;
-    playFileWithVlc(playPath)
+    // Resumes from wherever VLC's position was last saved for this exact
+    // episode (see resume_position.rs) instead of always starting at 0 —
+    // survives closing VLC entirely, unlike vlc-session.ts's in-memory
+    // session identity, which only covers switching items within one run
+    // of the app.
+    const resumeSeconds = await getResumePosition(item.externalId, nextNumber).catch(() => null);
+    playFileWithVlc(playPath, resumeSeconds ?? undefined)
       .then(() => {
         setActiveVlcSession(item.externalId, nextNumber);
         setPlayState('playing');
@@ -610,6 +617,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         .then(() => getEpisodeHistory(item.externalId))
         .then(setHistory)
         .catch(err => console.error('Failed to save episode history', err));
+      // Now watched — nothing left to resume for this one, so the next
+      // "Reproducir" on it (a rewatch) starts fresh instead of picking up
+      // wherever this viewing happened to end.
+      clearResumePosition(item.externalId, episodeNumber).catch(() => {});
       // Only from actually finishing it here — see addSequelToPlanning's own
       // comment for why this doesn't live inside saveLibraryEntry itself.
       if (finishing) {
@@ -667,6 +678,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         }
 
         lastKnownPositionRef.current = status.position;
+
+        // Keeps the resume point fresh while it's still worth resuming from
+        // — no point persisting it once we're about to auto-mark this
+        // episode watched anyway (markWatched clears it right after).
+        if (status.position < AUTO_MARK_THRESHOLD) {
+          saveResumePosition(item.externalId, episodeNumber, status.time).catch(() => {});
+        }
 
         // Live Discord Rich Presence updates with time remaining countdown
         if (status.state === 'playing') {
