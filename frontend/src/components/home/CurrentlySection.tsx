@@ -4,10 +4,11 @@
 import { useEffect, useState } from 'react';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { isInProgressStatus, getTypeLabel } from '../../lib/constants/media';
-import { wrapAssetUrl } from '../../lib/tauri';
+import { wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { LibraryEntry, MediaCatalogEntry } from '../../lib/tauri';
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { isAniListType, syncToAniList } from '../../lib/media/anilist-sync';
 
 const TYPE_ICON = typeIconMap(14);
 const MAX_PER_TYPE = 5;
@@ -47,6 +48,45 @@ export function CurrentlySection() {
     return () => { cancelled = true; };
   }, []);
 
+  // Quick +/- shortcut on each cover so bumping progress doesn't require
+  // opening the profile editor — not offered for games (group.type ===
+  // 'game'), which don't track a chapter/episode-style progress number.
+  // Updates local state immediately, then persists + AniList-syncs in the
+  // background (same convention as LocalMediaDetailPanel's markWatched).
+  function adjustProgress(externalId: string, delta: number) {
+    setGroups(prev => {
+      if (!prev) return prev;
+      const current = prev.flatMap(g => g.items).find(i => i.entry.external_id === externalId)?.entry;
+      if (!current) return prev;
+      const progress = Math.max(0, current.progress + delta);
+      if (progress === current.progress) return prev;
+      const updated: LibraryEntry = { ...current, progress };
+
+      const next = prev.map(group => ({
+        ...group,
+        items: group.items.map(item =>
+          item.entry.external_id === externalId ? { ...item, entry: updated } : item
+        ),
+      }));
+
+      saveLibraryEntry(updated).catch(err => console.error('Failed to update progress:', err));
+      if (isAniListType(updated.type)) {
+        syncToAniList({
+          externalId:      updated.external_id,
+          type:            updated.type,
+          status:          updated.status ?? '',
+          rating:          updated.rating ?? 0,
+          progress:        updated.progress,
+          progressVolumes: updated.progress_2 ?? 0,
+          startedAt:       updated.started_at ?? '',
+          finishedAt:      updated.finished_at ?? '',
+          notes:           updated.notes ?? '',
+        }).catch(err => console.error('Failed to sync progress to AniList:', err));
+      }
+      return next;
+    });
+  }
+
   if (!groups || groups.length === 0) return null;
 
   return (
@@ -59,16 +99,37 @@ export function CurrentlySection() {
           </div>
           <div className="home-currently-row">
             {group.items.map(({ entry, meta }) => (
-              <a
-                key={entry.external_id}
-                className="home-currently-item"
-                href={`/media?id=${encodeURIComponent(entry.external_id)}`}
-                title={meta?.title_main ?? entry.external_id}
-              >
-                {meta?.cover_url
-                  ? <img className="home-currently-cover" src={wrapAssetUrl(toSmallCover(meta.cover_url))} alt="" loading="lazy" />
-                  : <div className="home-currently-cover home-currently-cover--empty" />}
-              </a>
+              <div className="home-currently-item" key={entry.external_id}>
+                <a
+                  className="home-currently-item-link"
+                  href={`/media?id=${encodeURIComponent(entry.external_id)}`}
+                >
+                  {meta?.cover_url
+                    ? <img className="home-currently-cover" src={wrapAssetUrl(toSmallCover(meta.cover_url))} alt="" loading="lazy" />
+                    : <div className="home-currently-cover home-currently-cover--empty" />}
+                </a>
+                {group.type !== 'game' && (
+                  <div className="home-currently-progress">
+                    <button
+                      type="button"
+                      className="home-currently-progress-btn"
+                      onClick={() => adjustProgress(entry.external_id, -1)}
+                      aria-label="Restar"
+                    >
+                      −
+                    </button>
+                    <span className="home-currently-progress-value">{entry.progress}</span>
+                    <button
+                      type="button"
+                      className="home-currently-progress-btn"
+                      onClick={() => adjustProgress(entry.external_id, 1)}
+                      aria-label="Sumar"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
             {/* Keeps every row the same width (5 slots) regardless of how
                 many in-progress works that type actually has right now. */}
