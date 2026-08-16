@@ -7,8 +7,14 @@ interface LocalMediaCardProps {
   onClick: (item: LocalMediaItem) => void;
 }
 
+// Reading types get "Cap." (chapters), everything else "Ep." (episodes) —
+// same anime/series-vs-manga/lnovel/book split used for the history label
+// in LocalMediaDetailPanel.tsx.
+const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
+
 export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
-  const badgeLabel = item.status === 'planning' ? 'Pendiente' : `Ep. ${item.progress}`;
+  const unitLabel = READING_TYPES.has(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
+  const badgeLabel = item.status === 'planning' ? 'Pendiente' : `${unitLabel} ${item.progress}`;
 
   return (
     <div
