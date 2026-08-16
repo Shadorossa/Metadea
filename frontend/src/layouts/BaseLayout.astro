@@ -7,6 +7,8 @@ import '../styles/components/footer.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
+import { NowPlayingBar } from '../components/local/NowPlayingBar';
+import '../styles/components/now-playing-bar.css';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
@@ -78,6 +80,11 @@ const t = useTranslations(lang);
       <slot />
     </div>
     <Footer lang={lang} />
+
+    <!-- Global "now playing" bar (see NowPlayingBar.tsx) — outside
+         #page-content and transition:persist so it survives page swaps the
+         same way #global-toast/#app-bg do. -->
+    <NowPlayingBar client:load transition:persist />
 
     <!-- Global bottom toast (app-update check on startup, etc.) — persists
          across Astro page transitions since the check that drives it only

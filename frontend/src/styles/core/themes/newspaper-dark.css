@@ -50,7 +50,9 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .media-banner-date-badge,
 [data-theme="newspaper-dark"] .media-library-widget-box,
 [data-theme="newspaper-dark"] .status-dropdown-trigger,
-[data-theme="newspaper-dark"] .status-dropdown-tray {
+[data-theme="newspaper-dark"] .status-dropdown-tray,
+[data-theme="newspaper-dark"] .reviews-search,
+[data-theme="newspaper-dark"] .review-card {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -179,25 +181,31 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--text-main) !important;
 }
 
-/* Admin panel's source toggle (Mi catálogo local / GitHub / Añadir obra) */
-[data-theme="newspaper-dark"] .catalog-admin-source-btn {
+/* Admin panel's source toggle & profile reviews filters/sort */
+[data-theme="newspaper-dark"] .catalog-admin-source-btn,
+[data-theme="newspaper-dark"] .reviews-type-btn,
+[data-theme="newspaper-dark"] .reviews-sort-btn {
   border-radius: 0px !important;
-  border: 3px double var(--border-color) !important;
+  border: 1px solid var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  text-transform: capitalize !important;
+  font-style: italic;
   box-shadow: none !important;
   background: transparent !important;
   color: var(--text-muted) !important;
   transition: all 0.2s ease !important;
 }
 
-[data-theme="newspaper-dark"] .catalog-admin-source-btn:hover {
+[data-theme="newspaper-dark"] .catalog-admin-source-btn:hover,
+[data-theme="newspaper-dark"] .reviews-type-btn:hover,
+[data-theme="newspaper-dark"] .reviews-sort-btn:hover {
   background: var(--text-main) !important;
   color: var(--bg-primary) !important;
   border-color: var(--text-main) !important;
 }
 
-[data-theme="newspaper-dark"] .catalog-admin-source-btn.active {
+[data-theme="newspaper-dark"] .catalog-admin-source-btn.active,
+[data-theme="newspaper-dark"] .reviews-type-btn.active,
+[data-theme="newspaper-dark"] .reviews-sort-btn.active {
   background: var(--bg-elevated) !important;
   color: var(--accent) !important;
   border-color: var(--accent) !important;
@@ -848,4 +856,23 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 [data-theme="newspaper-dark"] .results-type-title::after {
   background: var(--text-main);
+}
+
+/* Global "now playing" bar (NowPlayingBar.tsx) — square vintage-box icon
+   buttons instead of the default circular Spotify-style ones (this theme's
+   --radius-sm is already 0, so the cover/track/etc. corners square up on
+   their own; only the hardcoded 50% on the controls needs overriding), a
+   fine 1px border on the cover matching every other thumbnail in this
+   theme, and italic serif for the episode/timestamp line to read as a
+   caption rather than plain UI chrome. */
+[data-theme="newspaper-dark"] .now-playing-btn {
+  border-radius: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .now-playing-cover {
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="newspaper-dark"] .now-playing-episode {
+  font-style: italic;
 }

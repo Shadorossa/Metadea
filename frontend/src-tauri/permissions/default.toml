@@ -129,6 +129,7 @@ commands.allow = [
   "launch_game",
   "play_file_with_vlc",
   "get_vlc_playback_status",
+  "send_vlc_command",
   "igdb_get_relation_graph",
   "sync_community_catalog",
   "create_tier_list",

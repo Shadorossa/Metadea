@@ -96,6 +96,7 @@ pub fn run() {
             folders::launch_game,
             folders::play_file_with_vlc,
             folders::get_vlc_playback_status,
+            folders::send_vlc_command,
             igdb_env::read_env_config,
             igdb_env::write_env_config,
             igdb::igdb_search,

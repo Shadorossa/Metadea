@@ -253,16 +253,24 @@ fn find_vlc_executable() -> PathBuf {
 const VLC_HTTP_PORT: u16 = 39321;
 const VLC_HTTP_PASSWORD: &str = "metadea-local";
 
+// file_paths is played in order as one VLC playlist (a plain multi-argument
+// launch queues them sequentially, no shuffle) — lets "Reproducir" queue
+// every remaining episode in one go instead of relaunching per episode.
+// start_seconds only ever applies to the first path (VLC's --start-time
+// only affects whatever plays first when the process starts).
 #[tauri::command]
-pub async fn play_file_with_vlc(file_path: String, start_seconds: Option<f64>) -> Result<(), String> {
+pub async fn play_file_with_vlc(file_paths: Vec<String>, start_seconds: Option<f64>) -> Result<(), String> {
+    if file_paths.is_empty() {
+        return Err("No files to play".into());
+    }
     // `--extraintf http` runs VLC's web status API *alongside* its normal
     // player window (it doesn't replace the UI) so get_vlc_playback_status
     // can poll episode progress. If VLC is already running in single-instance
-    // mode, this file just gets forwarded to that instance and these flags
+    // mode, this queue just gets forwarded to that instance and these flags
     // (including --start-time below) are silently ignored — a known
     // limitation of external control this way.
     let mut cmd = std::process::Command::new(find_vlc_executable());
-    cmd.arg(&file_path);
+    cmd.args(&file_paths);
     if let Some(seconds) = start_seconds {
         if seconds > 1.0 {
             cmd.arg(format!("--start-time={seconds}"));
@@ -277,12 +285,42 @@ pub async fn play_file_with_vlc(file_path: String, start_seconds: Option<f64>) -
     Ok(())
 }
 
+// Fire-and-forget playback control — VLC's status.json endpoint doubles as a
+// command sink via `?command=`. Known commands actually used here: pl_forcepause,
+// pl_forceresume, pl_stop, pl_next. Errors (VLC not reachable) are swallowed the
+// same way get_vlc_playback_status treats them — the next poll tick already
+// surfaces "nothing is playing" on its own once VLC is genuinely gone.
+#[tauri::command]
+pub async fn send_vlc_command(command: String, val: Option<String>) -> Result<(), String> {
+    let mut url = format!("http://127.0.0.1:{}/requests/status.json?command={}", VLC_HTTP_PORT, command);
+    if let Some(v) = val {
+        url.push_str(&format!("&val={v}"));
+    }
+    let client = reqwest::Client::new();
+    let _ = client
+        .get(&url)
+        .basic_auth("", Some(VLC_HTTP_PASSWORD))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await;
+    Ok(())
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VlcPlaybackStatus {
     pub state:    String,
     pub position: f64,
     pub time:     i64,
     pub length:   i64,
+    // The currently loaded file's own name (VLC's status.json exposes it
+    // under information.category.meta.filename) — lets the frontend tell
+    // "VLC moved on to the next queued file" apart from "the user seeked
+    // backward within this one" by comparing against the queue's own file
+    // paths directly, instead of inferring it from time/duration, which
+    // can't tell those two cases apart when consecutive episodes happen to
+    // share the exact same runtime. None if VLC's response doesn't carry
+    // this metadata for whatever reason — callers fall back accordingly.
+    pub filename: Option<String>,
 }
 
 // Polled by the frontend while an episode is playing to auto-mark it as
@@ -312,11 +350,19 @@ pub async fn get_vlc_playback_status() -> Result<Option<VlcPlaybackStatus>, Stri
         Err(_) => return Ok(None),
     };
 
+    let filename = json.get("information")
+        .and_then(|i| i.get("category"))
+        .and_then(|c| c.get("meta"))
+        .and_then(|m| m.get("filename"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
     Ok(Some(VlcPlaybackStatus {
         state:    json.get("state").and_then(|v| v.as_str()).unwrap_or("").to_string(),
         position: json.get("position").and_then(|v| v.as_f64()).unwrap_or(0.0),
         time:     json.get("time").and_then(|v| v.as_i64()).unwrap_or(0),
         length:   json.get("length").and_then(|v| v.as_i64()).unwrap_or(0),
+        filename,
     }))
 }
 

@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry,
-  saveEpisodeHistoryEntry, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
-  getResumePosition, saveResumePosition, clearResumePosition,
-  type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence,
+  scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
+  type LocalFolderEntry,
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
-  addSequelToPlanning,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
@@ -20,8 +17,10 @@ import {
 } from '../utils/folderMatch';
 import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../utils/seasonResolve';
-import { syncToAniList, isAniListType } from '../../../lib/media/anilist-sync';
-import { setActiveVlcSession, clearActiveVlcSession, getActiveVlcSession } from '../../../lib/local/vlc-session';
+import {
+  usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
+  type PlaybackQueueItem,
+} from '../../../lib/local/playback-service';
 import { formatWatchedAt } from '../utils/formatters';
 import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
 
@@ -39,19 +38,6 @@ interface LocalMediaDetailPanelProps {
   onRootRefresh:   () => Promise<void>;
 }
 
-// The "in progress" verb a freshly-started entry should switch to — matches
-// the same three-way split used everywhere else in the app (watching an
-// anime/series/movie vs. reading a manga/light novel/book).
-const START_STATUS_BY_TYPE: Record<string, string> = {
-  anime: 'watching', series: 'watching', movie: 'watching',
-  manga: 'reading', lnovel: 'reading', book: 'reading',
-};
-
-// Position (0-1) VLC has to reach for an episode to count as "watched" —
-// leaves room for trailing credits/next-episode previews the user skips.
-const AUTO_MARK_THRESHOLD = 0.8;
-const POLL_INTERVAL_MS = 3000;
-
 export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onClose, onProgressSaved, onRootRefresh }: LocalMediaDetailPanelProps) {
   const t = getT();
   const [subEntries, setSubEntries] = useState<LocalFolderEntry[] | null>(null);
@@ -61,13 +47,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const [subContainerPath, setSubContainerPath] = useState<string | null>(null);
   const [subLoading, setSubLoading] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
-  // 'playing'/'paused' mirror VLC's own status.state; 'idle' means nothing
-  // is currently playing this item's episode (either never started, or the
-  // poll below observed VLC stop/close). Was a plain isPlaying boolean —
-  // couldn't distinguish paused from playing, so pausing VLC left the button
-  // stuck on "Reproduciendo" instead of switching to something like "En pausa".
-  const [playState, setPlayState] = useState<'idle' | 'playing' | 'paused'>('idle');
-  const isPlaying = playState !== 'idle';
+  // The one global playback-service.ts instance, not per-panel state — reads
+  // as "idle" for this item whenever the shared session belongs to some
+  // other item (or nothing at all), so this naturally reflects the real
+  // state on every render/remount with no restore-on-mount logic needed.
+  const playback = usePlaybackState();
+  const isThisPlaying = playback?.externalId === item.externalId;
+  const playState: 'idle' | 'playing' | 'paused' = isThisPlaying ? playback!.status : 'idle';
   const [history, setHistory] = useState<EpisodeHistoryEntry[]>([]);
   // Right-click on a history row — same delete-entry pattern as Profile's
   // own activity feed (see ActivitySection.tsx).
@@ -78,21 +64,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // either neighbor is one click away regardless of which one is open.
   const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
   const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
-
-  // Which episode number the auto-mark already fired for, so a stray extra
-  // poll tick (or VLC staying open past the threshold) can't save twice.
-  const markedForRef = useRef<number | null>(null);
-  const lastPresenceStartRef = useRef<number | null>(null);
-  const lastKnownPositionRef = useRef(0);
-  // The episode this VLC session is playing, captured once when "Reproducir"
-  // is pressed — NOT recomputed from nextNumber while playing. nextNumber
-  // advances the instant markWatched() saves progress, and the poll effect
-  // used to depend on it directly: marking episode N re-ran the effect with
-  // episode N+1, VLC was still sitting at the same >=80% position in the
-  // same file (nothing about actual playback changed), so it immediately
-  // "auto-marked" N+1 too, then N+2, cascading through the rest of the
-  // season in one burst instead of one mark per episode actually watched.
-  const sessionEpisodeRef = useRef<number | null>(null);
 
   // AniList's banner art (wide, no logo/text baked in) instead of the cover
   // — the cover is a portrait poster, stretched across this wide header it
@@ -182,39 +153,24 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
   useEffect(() => {
     setPlayError(null);
-    markedForRef.current = null;
-    lastPresenceStartRef.current = null;
-    lastKnownPositionRef.current = 0;
     getEpisodeHistory(item.externalId).then(setHistory).catch(() => setHistory([]));
-
-    // Restore "still playing/paused" instead of resetting to idle if VLC is
-    // actually still on this exact item's episode — e.g. the user switched
-    // to another item and back while playback kept going in the background.
-    // Re-checks VLC's live status rather than trusting stale local state
-    // (the poll below stops while this panel isn't mounted for this item),
-    // and falls back to idle if VLC has actually stopped since.
-    const session = getActiveVlcSession();
-    if (session && session.externalId === item.externalId) {
-      sessionEpisodeRef.current = session.episodeNumber;
-      getVlcPlaybackStatus().then(status => {
-        if (status?.state === 'playing') {
-          lastKnownPositionRef.current = status.position;
-          setPlayState('playing');
-        } else if (status?.state === 'paused') {
-          lastKnownPositionRef.current = status.position;
-          setPlayState('paused');
-        } else {
-          clearActiveVlcSession(item.externalId);
-          setPlayState('idle');
-        }
-      }).catch(() => {
-        clearActiveVlcSession(item.externalId);
-        setPlayState('idle');
-      });
-    } else {
-      setPlayState('idle');
-    }
   }, [item.externalId]);
+
+  // playback-service.ts dispatches this after successfully auto-marking an
+  // episode watched (from anywhere — this panel doesn't have to be mounted,
+  // or even open on this item, when it fires) — refetches history and tells
+  // the parent grid to refresh, same as markWatched used to do directly
+  // before that logic moved into the shared service.
+  useEffect(() => {
+    function onEpisodeMarked(e: Event) {
+      const detail = (e as CustomEvent<{ externalId: string; episodeNumber: number }>).detail;
+      if (detail?.externalId !== item.externalId) return;
+      getEpisodeHistory(item.externalId).then(setHistory).catch(() => {});
+      onProgressSaved();
+    }
+    window.addEventListener('metadea:episode-marked', onEpisodeMarked);
+    return () => window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
+  }, [item.externalId, onProgressSaved]);
 
   useEffect(() => {
     if (!historyMenu) return;
@@ -566,176 +522,50 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     }
   };
 
-  const handlePlay = async () => {
-    if (!playPath) return;
+  // Builds the queue starting at nextNumber and hands it to playback-service
+  // — every remaining episode this folder actually has a file for, not just
+  // the one about to play, so VLC queues the whole rest of the season in one
+  // launch. Multi-episode queueing only makes sense for a real per-episode
+  // folder (subEntries); a movie/deep-tagged/root single-file match is just
+  // the one file, nothing to queue after it.
+  const handlePlay = () => {
+    if (!playPath || !nextFile) return;
     setPlayError(null);
-    sessionEpisodeRef.current = nextNumber;
-    markedForRef.current = null;
-    lastKnownPositionRef.current = 0;
-    // Resumes from wherever VLC's position was last saved for this exact
-    // episode (see resume_position.rs) instead of always starting at 0 —
-    // survives closing VLC entirely, unlike vlc-session.ts's in-memory
-    // session identity, which only covers switching items within one run
-    // of the app.
-    const resumeSeconds = await getResumePosition(item.externalId, nextNumber).catch(() => null);
-    playFileWithVlc(playPath, resumeSeconds ?? undefined)
-      .then(() => {
-        setActiveVlcSession(item.externalId, nextNumber);
-        setPlayState('playing');
-      })
-      .catch(err => setPlayError(String(err)));
+
+    const queue: PlaybackQueueItem[] = [{ episodeNumber: nextNumber, filePath: playPath }];
+    if (subEntries && subContainerPath && !deepFileMatch && !rootFileMatch) {
+      let n = nextNumber + 1;
+      while (totalCount == null || totalCount <= 0 || n <= totalCount) {
+        const file = findMatchingEpisodeFile(subEntries, n + seasonOffset, itemSeason);
+        if (!file) break;
+        queue.push({ episodeNumber: n, filePath: `${subContainerPath}/${file.name}` });
+        n++;
+        if (queue.length >= 500) break; // sanity guard against a runaway loop
+      }
+    }
+
+    startQueuePlayback({
+      externalId:   item.externalId,
+      type:         item.libraryEntry.type,
+      title:        item.title,
+      cover:        item.cover,
+      libraryEntry: item.libraryEntry,
+      totalCount,
+      queue,
+    }).catch(err => setPlayError(String(err)));
   };
 
-  const markWatched = async (episodeNumber: number) => {
-    if (markedForRef.current === episodeNumber) return;
-    markedForRef.current = episodeNumber;
-
-    // Reaching the last episode/chapter BY ACTUALLY PLAYING IT through the
-    // app is what completes a work here — not just "progress caught up to
-    // total_count" in the abstract, since that same condition could also be
-    // true from a manual edit elsewhere that isn't "just finished watching."
-    const finishing = totalCount != null && totalCount > 0 && episodeNumber >= totalCount;
-    const nextStatus = finishing
-      ? 'completed'
-      : item.status === 'planning'
-      ? (START_STATUS_BY_TYPE[item.libraryEntry.type] ?? item.status)
-      : item.libraryEntry.status;
-
-    const startedAt = item.libraryEntry.started_at ?? new Date().toISOString();
-    const finishedAt = finishing ? new Date().toISOString() : item.libraryEntry.finished_at;
-
-    try {
-      await saveLibraryEntry({
-        ...item.libraryEntry,
-        progress:    episodeNumber,
-        status:      nextStatus,
-        started_at:  startedAt,
-        finished_at: finishedAt,
-      });
-      onProgressSaved();
-      saveEpisodeHistoryEntry(item.externalId, episodeNumber)
-        .then(() => getEpisodeHistory(item.externalId))
-        .then(setHistory)
-        .catch(err => console.error('Failed to save episode history', err));
-      // Now watched — nothing left to resume for this one, so the next
-      // "Reproducir" on it (a rewatch) starts fresh instead of picking up
-      // wherever this viewing happened to end.
-      clearResumePosition(item.externalId, episodeNumber).catch(() => {});
-      // Only from actually finishing it here — see addSequelToPlanning's own
-      // comment for why this doesn't live inside saveLibraryEntry itself.
-      if (finishing) {
-        addSequelToPlanning(item.externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
-      }
-      // MediaEditorModal's own save does this too — the auto-mark-on-watch
-      // flow here saves straight to saveLibraryEntry (bypassing that modal
-      // entirely), so without this an episode watched through the local
-      // player updated progress in-app but never reached AniList at all.
-      if (isAniListType(item.libraryEntry.type)) {
-        syncToAniList({
-          externalId:      item.externalId,
-          type:            item.libraryEntry.type,
-          status:          nextStatus ?? '',
-          rating:          item.libraryEntry.rating ?? 0,
-          progress:        episodeNumber,
-          progressVolumes: item.libraryEntry.progress_2 ?? 0,
-          startedAt:       startedAt ?? '',
-          finishedAt:      finishedAt ?? '',
-          notes:           item.libraryEntry.notes ?? '',
-        }).catch(err => console.error('Failed to sync watched episode to AniList:', err));
-      }
-    } catch (err) {
-      // Don't block the next poll tick from retrying on a transient save error.
-      markedForRef.current = null;
-      console.error('Failed to auto-mark episode watched', err);
+  // Once playback-service.ts actually has a session for this item, the play
+  // button becomes a real pause/resume toggle (VLC's own HTTP commands,
+  // no relaunching a second process) instead of only ever launching fresh.
+  const handlePlayButtonClick = () => {
+    if (isThisPlaying) {
+      if (playback!.status === 'playing') pausePlayback();
+      else resumePlayback();
+      return;
     }
+    handlePlay();
   };
-
-  // While VLC is playing the file we just launched, poll its HTTP status
-  // interface and mark the episode watched once position crosses 80%.
-  // Deliberately only depends on isPlaying — the episode being watched is
-  // fixed for the whole session via sessionEpisodeRef (see handlePlay's
-  // comment), not re-read from nextNumber, which changes the moment this
-  // effect's own markWatched() call saves progress.
-  useEffect(() => {
-    if (!isPlaying) return;
-    const episodeNumber = sessionEpisodeRef.current;
-    if (episodeNumber == null) return;
-
-    const interval = setInterval(() => {
-      getVlcPlaybackStatus().then(status => {
-        if (!status || (status.state !== 'playing' && status.state !== 'paused')) {
-          // VLC stopped responding (closed) or moved to "stopped"/ended —
-          // this is exactly the tick that would observe "episode finished",
-          // so it can't just bail without checking: use the last position
-          // seen while still playing/paused, since a "stopped" status often
-          // no longer reports a meaningful position of its own.
-          if (lastKnownPositionRef.current >= AUTO_MARK_THRESHOLD) {
-            markWatched(episodeNumber);
-          }
-          clearActiveVlcSession(item.externalId);
-          setPlayState('idle');
-          return;
-        }
-
-        lastKnownPositionRef.current = status.position;
-
-        // Keeps the resume point fresh while it's still worth resuming from
-        // — no point persisting it once we're about to auto-mark this
-        // episode watched anyway (markWatched clears it right after).
-        if (status.position < AUTO_MARK_THRESHOLD) {
-          saveResumePosition(item.externalId, episodeNumber, status.time).catch(() => {});
-        }
-
-        // Live Discord Rich Presence updates with time remaining countdown
-        if (status.state === 'playing') {
-          setPlayState('playing');
-          const nowSec = Math.floor(Date.now() / 1000);
-          const computedStart = nowSec - status.time;
-          const computedEnd = computedStart + status.length;
-
-          if (
-            lastPresenceStartRef.current === null ||
-            Math.abs(lastPresenceStartRef.current - computedStart) > 4
-          ) {
-            lastPresenceStartRef.current = computedStart;
-            const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "", computedStart, computedEnd, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
-          }
-        } else if (status.state === 'paused') {
-          setPlayState('paused');
-          if (lastPresenceStartRef.current !== null) {
-            lastPresenceStartRef.current = null;
-            const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-            updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "Paused", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
-          }
-        }
-
-        if (status.position >= AUTO_MARK_THRESHOLD) {
-          markWatched(episodeNumber);
-        }
-      }).catch(() => {
-        clearActiveVlcSession(item.externalId);
-        setPlayState('idle');
-      });
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, item.externalId, item.title, item.cover]);
-
-  useEffect(() => {
-    if (isPlaying) {
-      const episodeNumber = sessionEpisodeRef.current ?? nextNumber;
-      const coverUrl = item.cover && item.cover.startsWith('http') ? item.cover : undefined;
-      updateDiscordPresence(`Watching ${item.title} - Episode ${episodeNumber}`, "", undefined, undefined, coverUrl, item.title, "metadea", "Metadea").catch(() => {});
-    } else {
-      lastPresenceStartRef.current = null;
-      resetDiscordPresence().catch(() => {});
-    }
-    return () => {
-      lastPresenceStartRef.current = null;
-      resetDiscordPresence().catch(() => {});
-    };
-  }, [isPlaying, item.title, item.cover]);
 
   return (
     <div className="local-game-detail-panel">
@@ -814,9 +644,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               <button
                 type="button"
                 className={`local-game-detail-play${playState === 'paused' ? ' local-game-detail-play--paused' : ''}`}
-                disabled={!playPath}
+                // Once this item's own queue is actually playing, the button
+                // is a pause/resume toggle — always enabled, even once
+                // nextFile/playPath (recomputed from item.progress, which
+                // doesn't advance in this component's own props mid-queue)
+                // goes stale or empty from episodes the queue already
+                // played through.
+                disabled={!isThisPlaying && !playPath}
                 title={playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
-                onClick={handlePlay}
+                onClick={handlePlayButtonClick}
               >
                 {playState === 'playing' ? (
                   <span className="spinner spinner--sm" />
