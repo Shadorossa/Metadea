@@ -14,14 +14,21 @@
 // site 403s plain scraping) — guessing here risks silently broken comic
 // covers instead of just missing out on a smaller one.
 const ANILIST_COVER_SIZE_RE = /\/cover\/(?:large|medium|small)\//;
-const IGDB_BIG_SUFFIX_RE = /_big(?=\/)/;
+// Any IGDB size template segment ("t_cover_big", "t_1080p", "t_screenshot_huge",
+// ...) — not just "_big" specifically. A stored cover_url isn't always
+// "t_cover_big"; igdb-mapper.ts's own detail fetch used to (bug, since
+// fixed) save it as "t_1080p" instead, which this used to just pass through
+// unchanged since it only recognized the "_big" suffix. Matching the whole
+// template segment generically means any size IGDB ever hands back for a
+// cover — past or future — still gets downgraded for display here.
+const IGDB_SIZE_RE = /\/t_[a-z0-9_]+\//;
 const TMDB_SIZE_RE = /\/t\/p\/(?:w\d+|original)\//;
 const OPENLIBRARY_SIZE_RE = /-[SML]\.jpg$/i;
 
 export function toSmallCover(url: string | null | undefined): string {
   if (!url) return '';
   if (ANILIST_COVER_SIZE_RE.test(url)) return url.replace(ANILIST_COVER_SIZE_RE, '/cover/small/');
-  if (IGDB_BIG_SUFFIX_RE.test(url)) return url.replace(IGDB_BIG_SUFFIX_RE, '_small');
+  if (url.includes('images.igdb.com') && IGDB_SIZE_RE.test(url)) return url.replace(IGDB_SIZE_RE, '/t_cover_small/');
   if (TMDB_SIZE_RE.test(url)) return url.replace(TMDB_SIZE_RE, '/t/p/w185/');
   if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-S.jpg');
   return url;

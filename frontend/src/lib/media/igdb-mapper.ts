@@ -119,7 +119,12 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   });
   const publisherNames = companies.filter(c => c.role === 'publisher').map(c => c.name);
 
-  const coverUrl = game.cover?.image_id ? igdbImageUrl(game.cover.image_id, '1080p') : undefined;
+  // Cover uses IGDB's actual cover-art template — '1080p' here (a leftover
+  // copy-paste from bannerUrl below) served the same size as the banner,
+  // bypassing toSmallCover's IGDB regex entirely (it only matches "_big"),
+  // so this game's cover rendered at full banner resolution everywhere a
+  // small thumbnail was expected (profile library grid, etc).
+  const coverUrl = game.cover?.image_id ? igdbImageUrl(game.cover.image_id, 'cover_big') : undefined;
   const bannerUrl = game.banner_image_id ? igdbImageUrl(game.banner_image_id, '1080p') : undefined;
 
   const releaseDateParts = game.first_release_date ? unixToDateParts(game.first_release_date) : undefined;
