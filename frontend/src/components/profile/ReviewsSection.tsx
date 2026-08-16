@@ -155,18 +155,24 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
             const url = `/media?id=${encodeURIComponent(item.external_id)}`;
 
             return (
+              // Masonry via CSS columns (.reviews-list) instead of one full-
+              // width row per review — a short note used to leave most of
+              // the row empty since the row's height was set by a fixed-size
+              // cover, not by the text. Packing by each card's own natural
+              // height (cover now a small thumb above the note, not driving
+              // row height) fills that space instead.
               <article className="review-card" key={item.external_id}>
-                <a className="review-card-cover-link" href={url}>
-                  {cover ? (
-                    <img className="review-card-cover" src={cover} alt={title} loading="lazy" />
-                  ) : (
-                    <div className="review-card-cover review-card-cover--fallback" style={{ background: fallback }}>
-                      <span>{title.slice(0, 2).toUpperCase()}</span>
-                    </div>
-                  )}
-                </a>
-                <div className="review-card-body">
-                  <div className="review-card-header">
+                <div className="review-card-top">
+                  <a className="review-card-cover-link" href={url}>
+                    {cover ? (
+                      <img className="review-card-cover" src={cover} alt={title} loading="lazy" />
+                    ) : (
+                      <div className="review-card-cover review-card-cover--fallback" style={{ background: fallback }}>
+                        <span>{title.slice(0, 2).toUpperCase()}</span>
+                      </div>
+                    )}
+                  </a>
+                  <div className="review-card-headinfo">
                     <a href={url} className="review-card-title">{title}</a>
                     <div className="review-card-meta">
                       <span className="review-card-type">
@@ -176,8 +182,8 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
                       {date && <time className="review-card-date">{date}</time>}
                     </div>
                   </div>
-                  <p className="review-card-note">{item.notes}</p>
                 </div>
+                <p className="review-card-note">{item.notes}</p>
               </article>
             );
           })}
