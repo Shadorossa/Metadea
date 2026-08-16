@@ -551,7 +551,7 @@ pub async fn igdb_get_cover_by_steam_id(
     // re-runs from scratch.
     let manual_link = {
         let conn = state.conn.lock().str_err()?;
-        crate::folders::get_game_link(&conn, "steam", &app_id)
+        crate::game_links::get_game_link(&conn, "steam", &app_id)
     };
     let manual_igdb_id = manual_link
         .as_deref()

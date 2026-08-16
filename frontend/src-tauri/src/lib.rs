@@ -8,6 +8,7 @@ mod db;
 mod episode_history;
 mod favorite_images;
 mod folders;
+mod game_links;
 mod github;
 mod anilist;
 mod igdb;
@@ -91,7 +92,7 @@ pub fn run() {
             folders::read_routes,
             folders::write_routes,
             folders::open_env_folder,
-            folders::save_game_link,
+            game_links::save_game_link,
             folders::launch_game,
             folders::play_file_with_vlc,
             folders::get_vlc_playback_status,

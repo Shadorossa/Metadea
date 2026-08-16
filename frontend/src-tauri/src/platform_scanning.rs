@@ -23,6 +23,25 @@ impl LocalGame {
     }
 }
 
+// The same (launcher, link_key) identity local_game_links/local_games_seen
+// key on — must exactly match how scan_all_games has always derived it, or
+// a saved link silently stops resolving. install_path only ever applies to
+// a live-scanned game; a restored ghost (game_links::restore_missing_seen_games)
+// never has one, so this falls through to app_id/name for those too.
+fn game_link_key(game: &LocalGame) -> String {
+    game.app_id.as_deref()
+        .or(game.install_path.as_deref())
+        .unwrap_or(&game.name)
+        .to_string()
+}
+
+fn apply_game_link(game: &mut LocalGame, links: &std::collections::HashMap<(String, String), String>) {
+    let key = game_link_key(game);
+    if let Some(eid) = links.get(&(game.launcher.clone(), key)) {
+        game.external_id = Some(eid.clone());
+    }
+}
+
 
 #[cfg(windows)]
 fn steam_root_from_registry() -> Option<PathBuf> {
@@ -560,20 +579,14 @@ pub async fn scan_all_games(
     }
 
     // Populate external_id from local_game_links
-    let links = crate::folders::lookup_game_links(&conn);
+    let links = crate::game_links::lookup_game_links(&conn);
     let mut seen: Vec<(String, String, String)> = Vec::with_capacity(all.len());
     for game in &mut all {
-        let key = game.app_id.as_deref()
-            .or(game.install_path.as_deref())
-            .unwrap_or(&game.name)
-            .to_string();
-        if let Some(eid) = links.get(&(game.launcher.clone(), key.clone())) {
-            game.external_id = Some(eid.clone());
-        }
-        seen.push((game.launcher.clone(), key, game.name.clone()));
+        apply_game_link(game, &links);
+        seen.push((game.launcher.clone(), game_link_key(game), game.name.clone()));
     }
-    crate::folders::touch_games_seen(&conn, &seen);
-    crate::folders::prune_stale_game_links(&conn);
+    crate::game_links::touch_games_seen(&conn, &seen);
+    crate::game_links::prune_stale_game_links(&conn);
 
     // Anything ever scanned before that no live source (this scan, or
     // Steam's owned-games API on the frontend) still knows about — see
@@ -581,12 +594,9 @@ pub async fn scan_all_games(
     // on "was it in `all`" alone.
     let present: std::collections::HashSet<(String, String)> =
         seen.iter().map(|(l, k, _)| (l.clone(), k.clone())).collect();
-    let mut restored = crate::folders::restore_missing_seen_games(&conn, &present);
+    let mut restored = crate::game_links::restore_missing_seen_games(&conn, &present);
     for game in &mut restored {
-        let key = game.app_id.as_deref().unwrap_or(&game.name).to_string();
-        if let Some(eid) = links.get(&(game.launcher.clone(), key)) {
-            game.external_id = Some(eid.clone());
-        }
+        apply_game_link(game, &links);
     }
     all.extend(restored);
 
