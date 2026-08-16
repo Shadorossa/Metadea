@@ -620,7 +620,12 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   height: 2px;
   background: var(--text-main);
   margin-left: 0.75rem;
+  margin-right: 0.75rem;
   align-self: center;
+}
+
+[data-theme="newspaper-dark"] .stats-calendar-month {
+  margin-left: 0.75rem !important;
 }
 
 /* Home "Actividad reciente" header — same trick, with the friends/general
@@ -755,8 +760,37 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   border-radius: 0px !important;
 }
 
-[data-theme="newspaper-dark"] .act-empty {
+[data-theme="newspaper-dark"] .act-empty,
+[data-theme="newspaper-dark"] .home-activity-tab,
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn,
+[data-theme="newspaper-dark"] .home-calendar-type-tab,
+[data-theme="newspaper-dark"] .calendar-popover-type-tab,
+[data-theme="newspaper-dark"] .calendar-day-header,
+[data-theme="newspaper-dark"] .calendar-day-num,
+[data-theme="newspaper-dark"] .calendar-popover-title,
+[data-theme="newspaper-dark"] .calendar-popover-meta,
+[data-theme="newspaper-dark"] .calendar-popover-pager-label,
+[data-theme="newspaper-dark"] .stats-calendar-month,
+[data-theme="newspaper-dark"] .stats-calendar-empty {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
   font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn,
+[data-theme="newspaper-dark"] .home-calendar-type-tab,
+[data-theme="newspaper-dark"] .calendar-popover-type-tab,
+[data-theme="newspaper-dark"] .calendar-day {
+  border-radius: 0px !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-toggle-btn {
+  font-size: 0.65rem !important;
+  padding: 0.25rem 0.6rem !important;
+}
+
+[data-theme="newspaper-dark"] .home-calendar-type-tab {
+  font-size: 0.55rem !important;
+  padding: 0.18rem 0.45rem !important;
 }
 
 /* Stats tab block titles ("Por estado", "Géneros favoritos", ...) — same

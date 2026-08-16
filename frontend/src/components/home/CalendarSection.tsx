@@ -12,16 +12,20 @@ import {
 import { fetchGeneralUpcomingReleases } from '../../lib/home/upcoming-general';
 import { formatMonthYear } from '../../lib/shared/formatDate';
 
+import { typeIconMap } from '../../lib/shared/icon-strings';
+
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type CalendarMode = 'mine' | 'general';
 
 const POPOVER_PAGE_SIZE = 8; // 4 columns × 2 rows
+const TYPE_ICON = typeIconMap(14);
 
-function TypeTabs({ releases, activeType, tabClass, onSelect }: {
+function TypeTabs({ releases, activeType, tabClass, onSelect, showIcons }: {
   releases: UpcomingRelease[];
   activeType: string | null;
   tabClass: string;
   onSelect: (type: string | null) => void;
+  showIcons?: boolean;
 }) {
   const present = new Set(releases.map(r => r.type));
   const orderedTypes = ALL_MEDIA_TYPES.filter(ty => present.has(ty));
@@ -31,10 +35,22 @@ function TypeTabs({ releases, activeType, tabClass, onSelect }: {
 
   return (
     <>
-      <button type="button" className={`${tabClass} ${!activeType ? 'active' : ''}`} onClick={() => onSelect(null)}>{p.calendar_all_types}</button>
+      <button type="button" className={`${tabClass} ${!activeType ? 'active' : ''}`} onClick={() => onSelect(null)} title={p.calendar_all_types}>
+        {p.calendar_all_types}
+      </button>
       {orderedTypes.map(ty => (
-        <button key={ty} type="button" className={`${tabClass} ${activeType === ty ? 'active' : ''}`} onClick={() => onSelect(ty)}>
-          {getTypeLabel(ty)}
+        <button
+          key={ty}
+          type="button"
+          className={`${tabClass} ${activeType === ty ? 'active' : ''}`}
+          onClick={() => onSelect(ty)}
+          title={getTypeLabel(ty)}
+        >
+          {showIcons ? (
+            <span className="calendar-type-tab-icon" dangerouslySetInnerHTML={{ __html: TYPE_ICON[ty] ?? '' }} />
+          ) : (
+            getTypeLabel(ty)
+          )}
         </button>
       ))}
     </>
@@ -68,6 +84,7 @@ function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
             activeType={typeFilter}
             tabClass="calendar-popover-type-tab"
             onSelect={t => { setTypeFilter(t); setPage(0); }}
+            showIcons
           />
         </div>
         {filtered.length === 0 ? (

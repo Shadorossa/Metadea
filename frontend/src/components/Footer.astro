@@ -1,7 +1,7 @@
 ---
-import { useTranslations } from '../i18n/index';
-import type { Locale } from '../i18n/index';
-import pkg from '../../package.json';
+import { useTranslations } from "../i18n/index";
+import type { Locale } from "../i18n/index";
+import pkg from "../../package.json";
 
 interface Props {
   lang: Locale;
@@ -12,12 +12,28 @@ const t = useTranslations(lang);
 const version = pkg.version;
 
 const apis = [
-  { name: 'IGDB', logo: '/API/IGDB_logo.png', url: 'https://www.igdb.com' },
-  { name: 'AniList', logo: '/API/Anilist_logo.png', url: 'https://anilist.co' },
-  { name: 'Open Library', logo: '/API/Open_Library_tight_logo.png', url: 'https://openlibrary.org' },
-  { name: 'TheMovieDB', logo: '/API/Tmdb.new.logo.png', url: 'https://www.themoviedb.org' },
-  { name: 'AnimeTheme', logo: '/API/Animetheme_logo.png', url: 'https://animetheme.me' },
-  { name: 'Wikidata', logo: '/API/Wikidata_logo.png', url: 'https://www.wikidata.org' },
+  { name: "IGDB", logo: "/API/IGDB_logo.png", url: "https://www.igdb.com" },
+  { name: "AniList", logo: "/API/Anilist_logo.png", url: "https://anilist.co" },
+  {
+    name: "Open Library",
+    logo: "/API/Open_Library_tight_logo.png",
+    url: "https://openlibrary.org",
+  },
+  {
+    name: "TheMovieDB",
+    logo: "/API/Tmdb.new.logo.png",
+    url: "https://www.themoviedb.org",
+  },
+  {
+    name: "AnimeTheme",
+    logo: "/API/Animetheme_logo.png",
+    url: "https://animethemes.moe",
+  },
+  {
+    name: "Wikidata",
+    logo: "/API/Wikidata_logo.png",
+    url: "https://www.wikidata.org",
+  },
 ];
 ---
 
@@ -25,59 +41,71 @@ const apis = [
   <div class="footer-content">
     <div class="footer-text">{t.footer.powered_by}</div>
     <div class="footer-logos">
-      {apis.map(api => (
-        <a
-          href={api.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="footer-logo-link"
-          title={api.name}
-          aria-label={`${api.name} - External link`}
-        >
-          <img src={api.logo} alt={api.name} class="footer-logo" />
-        </a>
-      ))}
+      {
+        apis.map((api) => (
+          <a
+            href={api.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="footer-logo-link"
+            title={api.name}
+            aria-label={`${api.name} - External link`}
+          >
+            <img src={api.logo} alt={api.name} class="footer-logo" />
+          </a>
+        ))
+      }
     </div>
     <div class="footer-bottom-row">
       <div class="footer-version">v{version}</div>
-      <a href="#" id="footer-tos-link" class="footer-tos-link">{t.footer.terms_link}</a>
+      <a href="#" id="footer-tos-link" class="footer-tos-link"
+        >{t.footer.terms_link}</a
+      >
     </div>
   </div>
 </footer>
 
 <script>
   function initTosLink() {
-    const link = document.getElementById('footer-tos-link');
+    const link = document.getElementById("footer-tos-link");
     if (!link) return;
 
-    link.addEventListener('click', async (e) => {
+    link.addEventListener("click", async (e) => {
       e.preventDefault();
 
-      if (typeof window !== 'undefined' && ('__TAURI_IPC__' in window)) {
+      if (typeof window !== "undefined" && "__TAURI_IPC__" in window) {
         try {
-          const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-          const webview = new WebviewWindow('tos', {
-            url: '/tos',
-            title: 'Términos y Condiciones — Metadea',
+          const { WebviewWindow } =
+            await import("@tauri-apps/api/webviewWindow");
+          const webview = new WebviewWindow("tos", {
+            url: "/tos",
+            title: "Términos y Condiciones — Metadea",
             width: 650,
             height: 750,
             resizable: true,
-            focus: true
+            focus: true,
           });
         } catch (error) {
-          console.error('Failed to open Tauri window, falling back to browser:', error);
-          window.open('/tos', '_blank');
+          console.error(
+            "Failed to open Tauri window, falling back to browser:",
+            error,
+          );
+          window.open("/tos", "_blank");
         }
       } else {
-        window.open('/tos', '_blank');
+        window.open("/tos", "_blank");
       }
     });
 
     // Simple hover effects
-    link.addEventListener('mouseover', () => { link.style.color = 'var(--accent)'; });
-    link.addEventListener('mouseout', () => { link.style.color = 'var(--text-dim)'; });
+    link.addEventListener("mouseover", () => {
+      link.style.color = "var(--accent)";
+    });
+    link.addEventListener("mouseout", () => {
+      link.style.color = "var(--text-dim)";
+    });
   }
 
   initTosLink();
-  document.addEventListener('astro:page-load', initTosLink);
+  document.addEventListener("astro:page-load", initTosLink);
 </script>

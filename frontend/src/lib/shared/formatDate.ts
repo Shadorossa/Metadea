@@ -28,7 +28,10 @@ export function formatDateNumeric(date: Date): string {
 }
 
 export function formatMonthYear(date: Date): string {
-  return date.toLocaleDateString(getLocaleCode(), { month: 'long', year: 'numeric' });
+  const month = date.toLocaleDateString(getLocaleCode(), { month: 'long' });
+  const year = date.getFullYear();
+  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
+  return `${capMonth}, ${year}`;
 }
 
 export function formatUnixTimestampShort(unixSeconds?: number): string | null {
