@@ -70,7 +70,7 @@ export default function LocalLibrary() {
 
   const { games, gamesState, scanError, debugInfo, setDebugInfo, loadGames } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
-  const { routes, folderFiles, folderLoading, setRoute, clearRoute }          = useCategoryRoutes(activeCategory);
+  const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
   const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
 
   // Auto-scan on first visit
@@ -221,6 +221,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             rootLoading={folderLoading}
             onSetRoute={() => setRoute(activeCategory)}
             onClearRoute={() => clearRoute(activeCategory)}
+            onRootRefresh={refetchFolder}
           />
         ) : (
         <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>

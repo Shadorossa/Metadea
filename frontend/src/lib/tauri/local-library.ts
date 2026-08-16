@@ -30,8 +30,19 @@ export async function pickFolder(): Promise<string | null> {
   return tauriCmd<string | null>('pick_folder', null);
 }
 
+export async function pickFile(): Promise<string | null> {
+  return tauriCmd<string | null>('pick_file', null);
+}
+
 export async function scanFolderContents(path: string): Promise<LocalFolderEntry[]> {
   return tauriCmd<LocalFolderEntry[]>('scan_folder_contents', [], { path });
+}
+
+// Used by the "Localizar" flow (LocalMediaDetailPanel) — renames a single
+// file or folder. Refuses to overwrite an existing path at the destination
+// (see rename_path's own Rust-side comment).
+export async function renamePath(oldPath: string, newPath: string): Promise<void> {
+  return tauriRun('rename_path', { oldPath, newPath });
 }
 
 export async function scanAllGames(): Promise<LocalGame[]> {

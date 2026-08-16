@@ -16,6 +16,37 @@ pub async fn pick_folder(app_handle: tauri::AppHandle) -> Result<Option<String>,
     Ok(folder.map(|p| p.to_string()))
 }
 
+// "Localizar → elegir un archivo suelto" (LocalMediaDetailPanel) — for a
+// folder that holds several distinct catalog entries at once (e.g. a movie
+// collection with one file per film), where picking the whole *folder*
+// would wrongly rename every sibling as if they were episodes of the same
+// work.
+#[tauri::command]
+pub async fn pick_file(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let file = app_handle.dialog().file().blocking_pick_file();
+    Ok(file.map(|p| p.to_string()))
+}
+
+// Used by the "Localizar" flow (LocalMediaDetailPanel) to rename a picked
+// folder and its episode files into a format the automatic matcher (see
+// folderMatch.ts) can always recognize afterward. Refuses to clobber an
+// existing file/folder at the destination — the caller is expected to have
+// already generated non-colliding names, but this is the last line of
+// defense against actually losing data if it didn't.
+#[tauri::command]
+pub async fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
+    let old = PathBuf::from(&old_path);
+    let new = PathBuf::from(&new_path);
+    if !old.exists() {
+        return Err(format!("Source path does not exist: {}", old_path));
+    }
+    if new.exists() && new != old {
+        return Err(format!("A file or folder already exists at: {}", new_path));
+    }
+    std::fs::rename(&old, &new).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn scan_folder_contents(path: String) -> Result<Vec<FolderEntry>, String> {
     let dir = PathBuf::from(&path);

@@ -14,13 +14,14 @@ interface LocalMediaSectionProps {
   rootLoading:  boolean;
   onSetRoute:   () => void;
   onClearRoute: () => void;
+  onRootRefresh: () => Promise<void>;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -88,6 +89,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
           rootLoading={rootLoading}
           onClose={() => setSelectedId(null)}
           onProgressSaved={refetch}
+          onRootRefresh={onRootRefresh}
         />
       )}
     </div>

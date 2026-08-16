@@ -11,17 +11,29 @@ export function useCategoryRoutes(activeCategory: CategoryId) {
     readRoutes().then(setRoutes).catch(() => {});
   }, []);
 
+  const rescan = useCallback((path: string, silent = false) => {
+    if (!silent) { setFolderLoading(true); setFolderFiles([]); }
+    return scanFolderContents(path)
+      .then(setFolderFiles)
+      .catch(() => setFolderFiles([]))
+      .finally(() => { if (!silent) setFolderLoading(false); });
+  }, []);
+
   useEffect(() => {
     if (activeCategory === 'videojuegos') return;
     const path = routes[activeCategory];
     if (!path) { setFolderFiles([]); return; }
-    setFolderLoading(true);
-    setFolderFiles([]);
-    scanFolderContents(path)
-      .then(setFolderFiles)
-      .catch(() => setFolderFiles([]))
-      .finally(() => setFolderLoading(false));
-  }, [activeCategory, routes]);
+    rescan(path);
+  }, [activeCategory, routes, rescan]);
+
+  // Re-reads the active category's root folder without flashing the loading
+  // placeholder — used after the "Localizar" rename flow (LocalMediaDetailPanel)
+  // so the freshly-renamed folder/files show up without switching tabs.
+  const refetchFolder = useCallback(() => {
+    const path = routes[activeCategory];
+    if (!path) return Promise.resolve();
+    return rescan(path, true);
+  }, [routes, activeCategory, rescan]);
 
   const setRoute = useCallback(async (category: CategoryId) => {
     const path = await pickFolder().catch(() => null);
@@ -39,5 +51,5 @@ export function useCategoryRoutes(activeCategory: CategoryId) {
     await writeRoutes(updated).catch(() => {});
   }, [routes]);
 
-  return { routes, folderFiles, folderLoading, setRoute, clearRoute };
+  return { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder };
 }
