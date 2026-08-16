@@ -416,7 +416,17 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           id:               entryLog.existing?.id ?? '',
           user_id:          'local',
           external_id:      logId,
-          type:             data.type,
+          // data.type is this MODAL's own media (the one actually open) —
+          // correct for logId === baseId/externalId, but wrong for any other
+          // log in this same save loop, like a cross-type related work
+          // (e.g. a manga's anime adaptation) whose own entry got loaded
+          // into `logs` via loadAllVersions' unfiltered relations scan. Its
+          // own already-saved type is the source of truth for it; only a
+          // genuinely new log (no `existing` row yet — in practice always
+          // logId === baseId, since loadAllVersions only ever loads logs
+          // for relations that already had a saved entry) falls back to
+          // data.type.
+          type:             entryLog.existing?.type ?? data.type,
           status:           entryLog.status || null,
           rating:           entryLog.rating > 0 ? entryLog.rating : null,
           rating_2:         entryLog.rating2 > 0 ? entryLog.rating2 : null,
