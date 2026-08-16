@@ -1,11 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry } from '../../lib/tauri';
-import { useLocalMediaEntries } from './hooks/useLocalMediaEntries';
+import { useLocalMediaEntries, type LocalMediaItem } from './hooks/useLocalMediaEntries';
+import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { IconFolder, IconPlus, IconX } from './ui/icons';
 import type { CategoryId } from './utils/constants';
+
+// null = no release date on file at all (never resolved a catalog entry, or
+// the catalog entry itself has no release_year). Same "planning has nothing
+// of its own to sort by" gap LibrarySection's own releaseTimestamp works
+// around, reused here for the same reason.
+function releaseTimestamp(item: LocalMediaItem): number | null {
+  const meta = item.catalogEntry;
+  if (!meta?.release_year) return null;
+  return new Date(meta.release_year, (meta.release_month ?? 1) - 1, meta.release_day ?? 1).getTime();
+}
+
+// "Sin estrenar" — no release date on record at all, or one that hasn't
+// happened yet — regardless of whether the library entry itself says
+// watching or planning; either way there's nothing to actually watch/read
+// yet, so it doesn't belong grouped in with things that ARE out already.
+function isNotReleasedYet(item: LocalMediaItem): boolean {
+  const ts = releaseTimestamp(item);
+  return ts === null || ts > Date.now();
+}
 
 interface LocalMediaSectionProps {
   category:     CategoryId;
@@ -26,9 +46,27 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   useEffect(() => { setIsMounted(true); }, []);
 
   const t = getT();
+  const p = t.profile;
   const { items, loading, refetch } = useLocalMediaEntries(category);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = selectedId ? items.find(i => i.externalId === selectedId) ?? null : null;
+
+  // Same three-way split the profile's own library sections use (see
+  // LibrarySection.tsx's sectionsData) — grouped and labeled the same way,
+  // for visual consistency between "your library" and "your local files".
+  // "Sin estrenar" is checked first and takes priority over watching/
+  // planning: nothing without a release date, or a future one, actually has
+  // anything to watch/read yet regardless of which status it's tracked
+  // under.
+  const sections = useMemo(() => {
+    const notReleased = items.filter(isNotReleasedYet);
+    const released = items.filter(i => !isNotReleasedYet(i));
+    return [
+      { title: p.section_in_progress, items: released.filter(i => isInProgressStatus(i.status)) },
+      { title: p.section_planning, items: released.filter(i => i.status === 'planning') },
+      { title: 'Sin estrenar', items: notReleased },
+    ].filter(s => s.items.length > 0);
+  }, [items, p]);
 
   return (
     <div className={`local-games-container${selected ? ' with-detail' : ''}`}>
@@ -61,9 +99,16 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
               <p>{isMounted ? t.local.empty_category_media : 'No tienes obras de este tipo en biblioteca (viendo/leyendo/jugando o pendientes)'}</p>
             </div>
           ) : (
-            <div className="local-games-grid">
-              {items.map(item => (
-                <LocalMediaCard key={item.externalId} item={item} onClick={i => setSelectedId(i.externalId)} />
+            <div className="library-sections-list">
+              {sections.map(sec => (
+                <div className="library-section" key={sec.title}>
+                  <h3 className="library-section-title">{sec.title}</h3>
+                  <div className="local-games-grid">
+                    {sec.items.map(item => (
+                      <LocalMediaCard key={item.externalId} item={item} onClick={i => setSelectedId(i.externalId)} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}

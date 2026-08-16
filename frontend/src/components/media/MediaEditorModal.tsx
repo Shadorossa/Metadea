@@ -43,7 +43,7 @@ interface Props {
 // Progress field(s) shown in the header — which label(s) and step apply
 // depend on the media type. progLabel matches the raw type (not its
 // underscore-stripped base) to preserve each edge case's original mapping.
-function getProgressConfig(type: string, tm: Translations['media']): { label: string | null; label2: string | null; step: number } {
+function getProgressConfig(type: string, format: string | undefined, tm: Translations['media']): { label: string | null; label2: string | null; step: number } {
   const base = type.split('_')[0];
 
   let label: string | null;
@@ -56,7 +56,11 @@ function getProgressConfig(type: string, tm: Translations['media']): { label: st
   else if (type === 'book')                            label = tm.progress_pages;
   else                                                 label = tm.editor.progress;
 
+  // A movie is a single sitting, not a run of seasons — even though it's
+  // still type 'anime'/'series' (format is what actually distinguishes it).
+  const isMovie = format === 'MOVIE';
   const label2 =
+    isMovie ? null :
     base === 'anime' || base === 'series'      ? tm.progress_seasons :
     base === 'manga' || base === 'light-novel' ? tm.progress_volumes : null;
 
@@ -525,8 +529,8 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   ], [te, data.progressStatus]);
 
   const { label: progLabel, label2, step: progStep } = useMemo(
-    () => getProgressConfig(data.type, t),
-    [data.type, t],
+    () => getProgressConfig(data.type, data.format, t),
+    [data.type, data.format, t],
   );
 
   // Editions/versions this entry could be linked to (base game + expanded editions

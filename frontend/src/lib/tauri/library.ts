@@ -1,4 +1,5 @@
 import { tauriCmd, tauriRun, invoke, isTauri, readStoredJson, writeStoredJson } from './core';
+import { getMediaRelations, getCatalogEntry } from './catalog';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 export interface LibraryEntry {
@@ -33,6 +34,36 @@ export interface LibraryEntry {
 // with no listeners).
 function notifyLibraryChanged() {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('refresh-profile-library'));
+}
+
+// Deliberately NOT wired into saveLibraryEntry itself — only called
+// explicitly from LocalMediaDetailPanel's own auto-mark-on-watch flow, when
+// finishing a work by actually playing its last episode through the app.
+// Completing something manually elsewhere (the editor modal's status
+// dropdown, AniList import, ...) does NOT add its sequel — those are
+// explicit user actions with no "just kept watching" context behind them.
+export async function addSequelToPlanning(externalId: string): Promise<void> {
+  const relations = await getMediaRelations(externalId).catch(() => []);
+  const sequel = relations.find(r => r.relation_type === 'SEQUEL');
+  if (!sequel) return;
+
+  // Already tracked in some status (including a prior "planning" the user
+  // set themselves, or already watching/dropped/whatever) — never override
+  // an existing choice, only fill in a genuinely untracked sequel.
+  const existing = await getLibraryEntry(sequel.related_media_external_id).catch(() => null);
+  if (existing?.status) return;
+
+  const meta = await getCatalogEntry(sequel.related_media_external_id).catch(() => null);
+  if (!meta?.type) return;
+
+  const draft: LibraryEntry = {
+    id: '', user_id: 'local', external_id: sequel.related_media_external_id, type: meta.type,
+    status: 'planning', rating: null, rating_2: null, progress: 0, progress_2: 0, minutes_spent: 0,
+    is_favorite: 0, is_platinum: 0, tags: null, notes: null,
+    added_at: null, updated_at: null, selected_platform: null, selected_version: null,
+    started_at: null, finished_at: null,
+  };
+  await saveLibraryEntry(draft);
 }
 
 export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibraryEntry> {

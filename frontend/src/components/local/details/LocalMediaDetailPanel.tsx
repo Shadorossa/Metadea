@@ -4,7 +4,8 @@ import {
   scanFolderContents, playFileWithVlc, getVlcPlaybackStatus, saveLibraryEntry,
   saveEpisodeHistoryEntry, getEpisodeHistory, type EpisodeHistoryEntry,
   type LocalFolderEntry, updateDiscordPresence, resetDiscordPresence,
-  pickFolder, pickFile, renamePath, getMediaRelationsForEditor,
+  pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
+  addSequelToPlanning,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
@@ -17,6 +18,7 @@ import {
   type CandidateFileGroup,
 } from '../utils/folderMatch';
 import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/sagaTypes';
+import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../utils/seasonResolve';
 import { formatWatchedAt } from '../utils/formatters';
 import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
 
@@ -58,6 +60,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   const [playError, setPlayError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [history, setHistory] = useState<EpisodeHistoryEntry[]>([]);
+  // A sequel useLocalMediaEntries deliberately hides from the main grid
+  // until its prequel is finished still needs to be reachable from
+  // *somewhere* — surfaced here instead, alongside the prequel itself, so
+  // either neighbor is one click away regardless of which one is open.
+  const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
+  const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
 
   // Which episode number the auto-mark already fired for, so a stray extra
   // poll tick (or VLC staying open past the threshold) can't save twice.
@@ -88,10 +96,24 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // The season this specific library entry belongs to, inferred from its own
   // title (e.g. "... 2nd GIG" -> 2) — needed so a sequel season doesn't get
   // matched against the prequel's folder/files (see folderMatch.ts).
-  const itemSeason = useMemo(
+  const itemSeasonFromTitle = useMemo(
     () => candidateTitles.reduce<number | null>((found, t) => found ?? extractTitleSeason(t), null),
     [candidateTitles],
   );
+  // Some sequels' titles give no season number at all to extract (roman
+  // numerals, a year suffix like "(2003)" instead of a season word) — starts
+  // with the instant title-based guess, then upgrades asynchronously via a
+  // PREQUEL-chain walk (see resolveOwnSeasonNumber) when that guess is null.
+  const [itemSeason, setItemSeason] = useState<number | null>(itemSeasonFromTitle);
+  useEffect(() => {
+    setItemSeason(itemSeasonFromTitle);
+    if (itemSeasonFromTitle != null) return;
+    let cancelled = false;
+    resolveOwnSeasonNumber(item.externalId, item.title).then(resolved => {
+      if (!cancelled && resolved != null) setItemSeason(resolved);
+    });
+    return () => { cancelled = true; };
+  }, [itemSeasonFromTitle, item.externalId, item.title]);
 
   const matchedFolder = useMemo(
     () => findMatchingFolder(rootEntries, candidateTitles, itemSeason, item.externalId),
@@ -103,7 +125,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // root category folder. Only relevant when no folder matched, since a
   // real subfolder (even holding just one file) is handled by the scan
   // effect below instead.
-  const isSingleEpisode = item.catalogEntry?.total_count === 1;
+  // A movie doesn't necessarily live in the dedicated "Movies" category —
+  // e.g. a Ghost in the Shell film is type 'anime' with catalog format
+  // 'MOVIE', tracked right alongside the TV series. Checking format (not
+  // just libraryEntry.type) is what actually catches that case.
+  const isMovieFormat = item.libraryEntry.type === 'movie' || item.catalogEntry?.format === 'MOVIE';
+  const isSingleEpisode = item.catalogEntry?.total_count === 1 || isMovieFormat;
   const rootFileMatch = useMemo(
     () => (isSingleEpisode && !matchedFolder) ? findMatchingFile(rootEntries, candidateTitles, item.externalId) : null,
     [isSingleEpisode, matchedFolder, rootEntries, candidateTitles, item.externalId],
@@ -151,6 +178,27 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   }, [item.externalId]);
 
   useEffect(() => {
+    setPrequelInfo(null);
+    setSequelInfo(null);
+    let cancelled = false;
+    getMediaRelationsForEditor(item.externalId).then(relations => {
+      if (cancelled) return;
+      const prequel = relations.find(r => r.relation_type === 'PREQUEL');
+      const sequel = relations.find(r => r.relation_type === 'SEQUEL');
+      if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
+      if (sequel) setSequelInfo({ externalId: sequel.related_media_external_id, title: sequel.title, cover: sequel.cover ?? null });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [item.externalId]);
+
+  // Opens the Media Editor directly (same event handleEdit itself dispatches
+  // below) instead of navigating to /media — only externalId is required,
+  // the editor fetches its own catalog/library data for it.
+  const openMediaEditor = (externalId: string) => {
+    window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
+  };
+
+  useEffect(() => {
     if (!folderToScan) { setSubEntries(null); setSubContainerPath(null); return; }
     let cancelled = false;
     setSubLoading(true);
@@ -195,13 +243,48 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [folderToScan]);
 
+  // Some multi-season folders (e.g. "The Big O" - 01..26, seasons 1 and 2
+  // sharing one folder with continuous bare numbering, no S01/S02 markers
+  // anywhere) can't be told apart by season at all — this season's own
+  // "episode 1" is really file 14, not file 01. Sums the preceding seasons'
+  // own total_count (via resolveSeasonExternalIds) and offsets the target
+  // episode number by that before searching, but ONLY when the folder truly
+  // has no season markers on any file — one that does (like Ghost in the
+  // Shell's S01/S02 filenames) already disambiguates itself, and adding an
+  // offset on top of that would double-count.
+  const [seasonOffset, setSeasonOffset] = useState(0);
+  useEffect(() => {
+    setSeasonOffset(0);
+    if (!subEntries || itemSeason == null || itemSeason <= 1) return;
+    const anySeasonMarked = subEntries.some(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name) && extractEpisodeInfo(e.name)?.season != null);
+    if (anySeasonMarked) return;
+
+    let cancelled = false;
+    (async () => {
+      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+      let total = 0;
+      for (let s = 1; s < itemSeason; s++) {
+        const info = seasonMap[s];
+        if (!info) { total = 0; break; }
+        const entry = await getCatalogEntry(info.externalId).catch(() => null);
+        if (!entry?.total_count) { total = 0; break; }
+        total += entry.total_count;
+      }
+      if (!cancelled) setSeasonOffset(total);
+    })();
+    return () => { cancelled = true; };
+  }, [subEntries, itemSeason, item.externalId, item.title]);
+
   // The next episode/chapter to watch/read — one past whatever's saved as
   // progress, or the first one when the entry is still just "planning".
+  // nextNumber itself stays season-relative (progress/history/marking are
+  // all tracked per this season's own 1..N numbering) — only the file
+  // lookup below gets the absolute-numbering offset added on top.
   const nextNumber = item.status === 'planning' ? 1 : item.progress + 1;
   const nextFile = deepFileMatch
     ? { name: deepFileMatch.absPath.slice(dirname(deepFileMatch.absPath).length + 1), is_dir: false, size: 0 } as LocalFolderEntry
     : rootFileMatch ?? (subEntries
-    ? findMatchingEpisodeFile(subEntries, nextNumber, itemSeason)
+    ? findMatchingEpisodeFile(subEntries, nextNumber + seasonOffset, itemSeason)
       // A single-episode work's lone file often has no episode number
       // anywhere in its name (a movie filename has nothing to number) — the
       // numeric match above always misses it, but there's nothing else it
@@ -306,7 +389,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         setLocateError('Esa carpeta no tiene archivos de vídeo/lectura directamente dentro.');
         return;
       }
-      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason);
+      const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
+      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap);
       const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
       setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
     } catch (err) {
@@ -441,22 +525,35 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     if (markedForRef.current === episodeNumber) return;
     markedForRef.current = episodeNumber;
 
-    const nextStatus = item.status === 'planning'
+    // Reaching the last episode/chapter BY ACTUALLY PLAYING IT through the
+    // app is what completes a work here — not just "progress caught up to
+    // total_count" in the abstract, since that same condition could also be
+    // true from a manual edit elsewhere that isn't "just finished watching."
+    const finishing = totalCount != null && totalCount > 0 && episodeNumber >= totalCount;
+    const nextStatus = finishing
+      ? 'completed'
+      : item.status === 'planning'
       ? (START_STATUS_BY_TYPE[item.libraryEntry.type] ?? item.status)
       : item.libraryEntry.status;
 
     try {
       await saveLibraryEntry({
         ...item.libraryEntry,
-        progress:   episodeNumber,
-        status:     nextStatus,
-        started_at: item.libraryEntry.started_at ?? new Date().toISOString(),
+        progress:    episodeNumber,
+        status:      nextStatus,
+        started_at:  item.libraryEntry.started_at ?? new Date().toISOString(),
+        finished_at: finishing ? new Date().toISOString() : item.libraryEntry.finished_at,
       });
       onProgressSaved();
       saveEpisodeHistoryEntry(item.externalId, episodeNumber)
         .then(() => getEpisodeHistory(item.externalId))
         .then(setHistory)
         .catch(err => console.error('Failed to save episode history', err));
+      // Only from actually finishing it here — see addSequelToPlanning's own
+      // comment for why this doesn't live inside saveLibraryEntry itself.
+      if (finishing) {
+        addSequelToPlanning(item.externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
+      }
     } catch (err) {
       // Don't block the next poll tick from retrying on a transient save error.
       markedForRef.current = null;
@@ -562,55 +659,38 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
       <div className="local-game-detail-content">
         <div className="local-game-detail-sticky-bar">
-        <div className="local-game-detail-title-block">
-          <p className="local-game-detail-title">{item.title}</p>
-        </div>
-
-        <div className="local-media-detail-actions">
-          <button
-            type="button"
-            className="local-game-detail-play"
-            disabled={!playPath}
-            title={playPath ? undefined : isCaughtUp ? 'Ya estás al día' : 'No se encontró el archivo del próximo episodio/capítulo'}
-            onClick={handlePlay}
-          >
-            {isPlaying ? (
-              <span className="spinner spinner--sm" />
-            ) : (
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            )}
-            {isPlaying ? 'Reproduciendo' : 'Reproducir'}
-          </button>
-          <div className="local-media-detail-locate-wrap">
-            <button
-              type="button"
-              className="local-media-detail-locate-btn"
-              onClick={() => setLocateMenuOpen(v => !v)}
-              disabled={locateBusy || !rootFolder}
-              title="Localizar manualmente"
-            >
-              {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
-            </button>
-            {locateMenuOpen && (
-              <div className="local-media-detail-locate-menu">
-                <button type="button" onClick={handleLocateFolder}>Elegir carpeta</button>
-                <button type="button" onClick={handleLocateSingleFile}>Elegir un archivo suelto</button>
+          <div className="local-media-detail-top-row">
+            <p className="local-game-detail-title">{item.title}</p>
+            <div className="local-media-detail-icon-actions">
+              <div className="local-media-detail-locate-wrap">
+                <button
+                  type="button"
+                  className="local-media-detail-locate-btn"
+                  onClick={() => setLocateMenuOpen(v => !v)}
+                  disabled={locateBusy || !rootFolder}
+                  title="Localizar manualmente"
+                >
+                  {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
+                </button>
+                {locateMenuOpen && (
+                  <div className="local-media-detail-locate-menu">
+                    <button type="button" onClick={handleLocateFolder}>Elegir carpeta</button>
+                    <button type="button" onClick={handleLocateSingleFile}>Elegir un archivo suelto</button>
+                  </div>
+                )}
               </div>
-            )}
+              <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
+                <IconPencil />
+              </button>
+              <a href={`/media?id=${item.externalId}`} className="local-game-detail-catalog-link">
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+                Ver en catálogo
+              </a>
+            </div>
           </div>
-          <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
-            <IconPencil />
-          </button>
-          <a href={`/media?id=${item.externalId}`} className="local-game-detail-catalog-link">
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-            Ver en catálogo
-          </a>
-        </div>
         </div>
 
         {playError && (
@@ -629,26 +709,78 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         ) : rootLoading ? (
           <div className="local-state-placeholder"><div className="spinner" /></div>
         ) : (
-          <div className="local-media-match-row">
-            {(matchedFolder || rootFileMatch || deepTagMatch) && (
-              subLoading ? (
-                <span className="local-media-match-chip">
-                  <div className="spinner spinner--sm" />
-                  Buscando próximo episodio…
-                </span>
-              ) : isCaughtUp ? (
-                <span className="local-media-match-chip ok">
-                  <IconCheck />
-                  Al día — no hay episodios/capítulos nuevos ({totalCount} en total)
-                </span>
-              ) : (
-                <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
-                  {nextFile ? <IconCheck /> : <IconAlertCircle />}
-                  {nextFile
-                    ? <>{t.local.next_episode_label} <strong>{formatEpisodeLabel(itemSeason, nextNumber)} - {nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}</strong></>
-                    : `Próximo episodio (${nextNumber}) no encontrado`}
-                </span>
-              )
+          <div className={`local-media-info-row${(prequelInfo || sequelInfo) ? ' local-media-info-row--has-neighbors' : ''}`}>
+            <div className="local-media-left-col">
+              <button
+                type="button"
+                className="local-game-detail-play"
+                disabled={!playPath}
+                title={playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
+                onClick={handlePlay}
+              >
+                {isPlaying ? (
+                  <span className="spinner spinner--sm" />
+                ) : (
+                  <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
+                {isPlaying ? 'Reproduciendo' : 'Reproducir'}
+              </button>
+              <div className="local-media-divider-line" />
+              <div className="local-media-match-row">
+                {(matchedFolder || rootFileMatch || deepTagMatch) && (
+                  subLoading ? (
+                    <span className="local-media-match-chip">
+                      <div className="spinner spinner--sm" />
+                      Buscando próximo episodio…
+                    </span>
+                  ) : isCaughtUp ? (
+                    <span className="local-media-match-chip ok">
+                      <IconCheck />
+                      Al día — no hay episodios/capítulos nuevos ({totalCount} en total)
+                    </span>
+                  ) : (
+                    <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
+                      {nextFile ? <IconCheck /> : <IconAlertCircle />}
+                      {nextFile ? (
+                        <>
+                          {t.local.next_episode_label} <strong>
+                            {isMovieFormat || totalCount === 1
+                              ? (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name))
+                              : `${formatEpisodeLabel(itemSeason, nextNumber)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
+                          </strong>
+                        </>
+                      ) : (
+                        isMovieFormat ? 'Película no encontrada' : `Próximo episodio (${nextNumber}) no encontrado`
+                      )}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+
+            {(prequelInfo || sequelInfo) && (
+              <div className="local-media-neighbors-row">
+                <div className="local-media-neighbors-grid">
+                  {prequelInfo && (
+                    <button type="button" className="local-media-neighbor-link" title={prequelInfo.title} onClick={() => openMediaEditor(prequelInfo.externalId)}>
+                      {prequelInfo.cover
+                        ? <img className="local-media-neighbor-cover" src={prequelInfo.cover} alt={prequelInfo.title} />
+                        : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
+                      <span className="local-media-neighbor-label">Precuela</span>
+                    </button>
+                  )}
+                  {sequelInfo && (
+                    <button type="button" className="local-media-neighbor-link" title={sequelInfo.title} onClick={() => openMediaEditor(sequelInfo.externalId)}>
+                      {sequelInfo.cover
+                        ? <img className="local-media-neighbor-cover" src={sequelInfo.cover} alt={sequelInfo.title} />
+                        : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
+                      <span className="local-media-neighbor-label">Secuela</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

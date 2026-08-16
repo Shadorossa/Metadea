@@ -42,7 +42,7 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
        sustituye por las pestañas propias de esa página (portal React hacia
        #nav-center-slot, ver LocalLibrary.tsx / SearchIsland.tsx). -->
   <div class="nav-center-wrap">
-    <div id="nav-center-default" class="nav-center-text">
+    <div id="nav-center-default" class={`nav-center-text${activePage === 'local' || activePage === 'search' ? ' nav-hidden' : ''}`}>
       {LIBRARY_TYPES.map(type => (
         <a href={`/profile?libtype=${type}#library`} class="nav-text-link">
           {typeLabels[type as keyof typeof typeLabels] ?? type}

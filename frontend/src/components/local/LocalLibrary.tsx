@@ -27,14 +27,19 @@ export default function LocalLibrary() {
   const t = getT();
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
   // On a full page load the Navbar's #nav-center-slot is already painted
-  // before React hydrates, so a one-time getElementById resolves it fine.
-  // But this island can mount before the Navbar has (re)created that node —
-  // most visibly right after the app's own auto-updater relaunches it, where
-  // startup is slower than usual — so a one-shot check misses it forever and
-  // the tab bar renders inline in the page instead of the navbar. Poll a few
-  // frames until the node shows up (same fix already applied to
-  // SearchIsland.tsx).
-  const [navSlot, setNavSlot] = useState<HTMLElement | null>(null);
+  // before React hydrates, so the lazy initializer below resolves it
+  // synchronously on this component's very first render — critical for
+  // avoiding a flash: finding it only in a useEffect (which runs one paint
+  // *after* render) meant the tab bar's fallback (inline, unportaled)
+  // render was actually visible for a frame, then jumped into the navbar
+  // the instant the effect fired, reading as the navbar itself shifting.
+  // The effect below still polls as a backup for the rarer case where this
+  // island mounts before the Navbar has (re)created that node at all — most
+  // visibly right after the app's own auto-updater relaunches it, where
+  // startup is slower than usual (same fix already applied to SearchIsland.tsx).
+  const [navSlot, setNavSlot] = useState<HTMLElement | null>(
+    () => (typeof document !== 'undefined' ? document.getElementById('nav-center-slot') : null)
+  );
   useEffect(() => {
     let rafId: number;
     let attempts = 0;
@@ -191,7 +196,11 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
 
   return (
     <>
-      {navSlot ? createPortal(tabBar, navSlot) : tabBar}
+      {/* Never rendered inline as a fallback — an unportaled tab bar showing
+          up in the page body for one frame, then jumping into the navbar
+          the instant navSlot resolves, is exactly what read as "the navbar
+          itself shifting." Nothing beats a flash in the wrong place. */}
+      {navSlot && createPortal(tabBar, navSlot)}
 
       {metaSelector && !metaProgress && (
         <MetaTypeSelector onConfirm={handleFetchMetadata} onCancel={() => setMetaSelector(false)} />

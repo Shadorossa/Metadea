@@ -208,17 +208,29 @@ export function formatEpisodeLabel(season: number | null, episode: number): stri
 // release-group/quality-tag noise extractEpisodeInfo already strips
 // internally before matching, so the raw filename (brackets, resolution,
 // hash, extension and all) is never what ends up on screen.
+// Rip/quality/codec tags that show up as bare words (not wrapped in [] or
+// () — those are already stripped above) after the real title, e.g.
+// "Sacco E Vanzetti 1080p BDRip x264" — everything from the first match
+// onward is release noise, not part of the title.
+const QUALITY_NOISE = /\b(2160p|1080p|720p|480p|360p|4k|bdrip|brrip|dvdrip|webrip|web-?dl|hdrip|hdtv|bluray|blu-ray|x264|x265|h\.?264|h\.?265|hevc|avc|xvid|divx|aac\d?|flac\d?|ac3|dts|\d{1,2}bit)\b/i;
+
 export function cleanFilenameForDisplay(filename: string): string {
-  return filename
+  let cleaned = filename
     .replace(/\[[^\]]*\]/g, ' ')
     .replace(/\([^)]*\)/g, ' ')
-    .replace(/\.[a-z0-9]+$/i, '')
+    .replace(/\.[a-z0-9]+$/i, '');
+
+  const noiseMatch = cleaned.match(QUALITY_NOISE);
+  if (noiseMatch?.index != null) cleaned = cleaned.slice(0, noiseMatch.index);
+
+  return cleaned
     .replace(/\s+/g, ' ')
     .trim()
     // Also drop a leading bare episode number ("04 - Show Name" -> "Show
     // Name") — already shown up front via formatEpisodeLabel, so leaving it
     // here would just show the same number twice.
-    .replace(/^\d{1,4}[\s\-:._]+/, '');
+    .replace(/^\d{1,4}[\s\-:._]+/, '')
+    .replace(/[\s\-:._]+$/, '');
 }
 
 // Season+episode markers (checked first, since they disambiguate which
@@ -325,7 +337,16 @@ export function findMatchingEpisodeFile(
 
   const directMatches = allCandidates.filter(c => c.info.episode === targetEpisode);
 
-  if (itemSeason != null) {
+  // A folder that carries NO season marker on ANY of its files (bare
+  // continuous numbering, e.g. "The Big O" - 01..26 for two 13-episode
+  // seasons sharing one folder) can't be disambiguated by season no matter
+  // what itemSeason says. The caller is expected to have already offset
+  // `targetEpisode` for this case (see LocalMediaDetailPanel's
+  // seasonOffset) — falling through to the season-agnostic path below
+  // instead of rejecting outright is what makes that offset useful at all.
+  const anySeasonMarked = allCandidates.some(c => c.info.season !== null);
+
+  if (itemSeason != null && anySeasonMarked) {
     const exact = directMatches.find(c => c.info.season === itemSeason);
     if (exact) return exact.entry;
 
@@ -388,31 +409,48 @@ export interface LocateRenamePlan {
   folderNewName: string;
 }
 
+// Season number -> which catalog entry that season actually is — see
+// seasonResolve.ts's resolveSeasonExternalIds, which builds this from saved
+// relations (or AniList directly, if nothing's saved yet).
+export interface SeasonExternalIdMap {
+  [season: number]: { externalId: string; title: string };
+}
+
 // Builds the "Localizar" flow's rename plan (see LocalMediaDetailPanel):
 // every media file becomes "SxxExx - Work Title - Episode Title
 // [external_id].ext" (falling back to sequential numbering, in filename
 // order, for files with no detectable episode number of their own at all,
 // and dropping the "- Episode Title" part when there isn't one), and the
-// folder itself becomes "Work Title [external_id]" — both self-describing
-// enough that findMatchingFolder/findMatchingFile's [external_id] fast path
-// recognizes them on every future scan, no fuzzy title matching needed.
+// folder itself becomes "Work Title [external_id] [other_external_id] ..."
+// — one bracket tag per distinct catalog entry actually found among its
+// files, so findMatchingFolder's [external_id] fast path recognizes the
+// folder for ALL of them, not just the one being localized right now.
 // `season` should be the CALLER's already-resolved season for this specific
 // library entry (e.g. 2 for a "... 2nd Season" work) — passing the wrong
 // one here is exactly what would mislabel a season-2 folder as S01.
+// `seasonMap` (optional) lets a mixed-season folder tag each file with the
+// season it ACTUALLY belongs to — e.g. Ghost in the Shell: Stand Alone
+// Complex's season-1 files keep this work's own external_id, but its
+// season-2 files (a wholly separate "2nd GIG" catalog entry) get tagged
+// with THAT entry's id instead, once seasonMap says which id season 2 is.
+// Without it (or for a season missing from it), every file just falls back
+// to this work's own `externalId`/`workTitle` regardless of its own season.
 export function buildLocateRenamePlan(
   entries: LocalFolderEntry[],
   workTitle: string,
   externalId: string,
   season: number | null,
+  seasonMap?: SeasonExternalIdMap,
 ): LocateRenamePlan {
   const mediaFiles = entries
     .filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const tag = encodeExternalIdForFilename(externalId);
   const titleSanitized = sanitizeForFilename(workTitle);
   let nextSequential = 1;
   const usedNames = new Set<string>();
+  const usedExternalIds = new Set<string>([externalId]);
+
   const fileRenames = mediaFiles.map(entry => {
     const info = extractEpisodeInfo(entry.name);
     // Decimal specials (see the "#0.8" marker) round to the nearest whole
@@ -428,10 +466,15 @@ export function buildLocateRenamePlan(
     // with the same `season` mislabeled a real mixed-season folder as if it
     // were all one season, with duplicate SxxExx numbers to boot.
     const fileSeason = info?.season ?? season;
+    const seasonInfo = fileSeason != null ? seasonMap?.[fileSeason] : undefined;
+    const fileExternalId = seasonInfo?.externalId ?? externalId;
+    const fileTitleSanitized = seasonInfo ? sanitizeForFilename(seasonInfo.title) : titleSanitized;
+    usedExternalIds.add(fileExternalId);
 
+    const tag = encodeExternalIdForFilename(fileExternalId);
     const ext = entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const episodeTitle = info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '';
-    const parts = [formatEpisodeLabel(fileSeason, episode), titleSanitized, episodeTitle].filter(Boolean);
+    const parts = [formatEpisodeLabel(fileSeason, episode), fileTitleSanitized, episodeTitle].filter(Boolean);
     const base = `${parts.join(' - ')} [${tag}]`;
 
     let newName = `${base}${ext}`;
@@ -444,7 +487,8 @@ export function buildLocateRenamePlan(
     return { entry, newName };
   });
 
-  const folderNewName = `${titleSanitized} [${tag}]`;
+  const folderTags = [...usedExternalIds].map(id => `[${encodeExternalIdForFilename(id)}]`).join(' ');
+  const folderNewName = `${titleSanitized} ${folderTags}`;
   return { fileRenames, folderNewName };
 }
 
