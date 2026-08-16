@@ -180,15 +180,20 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
           </button>
         ))}
       </div>
-      {activeCategory === 'videojuegos' && (
-        <input
-          type="text"
-          className="local-tab-search"
-          placeholder={isMounted ? t.local.search_game_ph : 'Buscar juego…'}
-          value={filterName}
-          onChange={e => setFilterName(e.target.value)}
-        />
-      )}
+      {/* Shared by every category now, not just videojuegos — filters
+          LocalMediaSection's own grid the same way it already filtered the
+          games list. Always mounted (never conditionally rendered): the
+          category buttons sit in a centered flex row, so mounting/
+          unmounting this on a category switch used to change the row's
+          total width and recenter everything, shifting every tab button
+          sideways. */}
+      <input
+        type="text"
+        className="local-tab-search"
+        placeholder="Buscar…"
+        value={filterName}
+        onChange={e => setFilterName(e.target.value)}
+      />
     </div>
   );
 
@@ -231,6 +236,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             onSetRoute={() => setRoute(activeCategory)}
             onClearRoute={() => clearRoute(activeCategory)}
             onRootRefresh={refetchFolder}
+            filterName={filterName}
           />
         ) : (
         <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>

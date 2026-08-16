@@ -35,21 +35,28 @@ interface LocalMediaSectionProps {
   onSetRoute:   () => void;
   onClearRoute: () => void;
   onRootRefresh: () => Promise<void>;
+  // The same tab-bar search box games already used, now shared by every
+  // media category too instead of being videojuegos-only.
+  filterName:   string;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
   const t = getT();
   const p = t.profile;
-  const { items, loading, refetch } = useLocalMediaEntries(category);
+  const { items: allItems, loading, refetch } = useLocalMediaEntries(category);
+  const items = useMemo(() => {
+    const q = filterName.trim().toLowerCase();
+    return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
+  }, [allItems, filterName]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = selectedId ? items.find(i => i.externalId === selectedId) ?? null : null;
+  const selected = selectedId ? allItems.find(i => i.externalId === selectedId) ?? null : null;
 
   // Same three-way split the profile's own library sections use (see
   // LibrarySection.tsx's sectionsData) — grouped and labeled the same way,

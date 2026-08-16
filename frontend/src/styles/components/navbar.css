@@ -184,8 +184,11 @@
 
 .nav-browse-link {
   margin-left: 0.5rem;
-  color: var(--text-dim);
-  font-size: 0.78rem;
+  /* Was text-dim — read as noticeably fainter than everything around it
+     (icon buttons, the center tabs) despite being one of the navbar's
+     primary actions, not a secondary label. */
+  color: var(--text-main);
+  font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;

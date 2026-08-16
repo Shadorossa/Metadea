@@ -353,6 +353,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-size: 0.8rem;
+  font-family: inherit;
   transition: all var(--anim-base) var(--anim-ease);
 }
 
@@ -381,6 +382,11 @@
   cursor: pointer;
   transition: all var(--anim-base) var(--anim-ease);
   white-space: nowrap;
+  /* A <button>, unlike the navbar's own category links (plain <a> tags),
+     doesn't inherit the page's font-family from a browser UA stylesheet by
+     default — left it on the system font even under newspaper-dark's
+     Georgia body rule, unlike everything else on the page. */
+  font-family: inherit;
 }
 
 .local-tab:hover {
@@ -393,6 +399,21 @@
   border-color: var(--accent-border);
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+/* Same convention as the navbar's own plain-text category links in this
+   theme — serif, no boxed/double-border button treatment (that's reserved
+   for real .btn-style actions elsewhere). */
+[data-theme="newspaper-dark"] .local-tab {
+  font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+[data-theme="newspaper-dark"] .local-tab.active {
+  font-style: italic;
+}
+
+[data-theme="newspaper-dark"] .local-tab-search {
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 
