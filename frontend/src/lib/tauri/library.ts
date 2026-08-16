@@ -106,6 +106,10 @@ export async function getEpisodeHistory(externalId: string): Promise<EpisodeHist
   return tauriCmd<EpisodeHistoryEntry[]>('get_episode_history', [], { externalId });
 }
 
+export async function deleteEpisodeHistoryEntry(id: string): Promise<void> {
+  return tauriRun('delete_episode_history_entry', { id });
+}
+
 export async function readMonthlyHistory(): Promise<Record<string, string[]>> {
   return readStoredJson<Record<string, string[]>>('read_monthly_history', STORAGE_KEYS.monthlyHistory, {});
 }

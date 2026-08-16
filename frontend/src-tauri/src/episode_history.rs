@@ -28,6 +28,16 @@ pub async fn save_episode_history_entry(
 }
 
 #[tauri::command]
+pub async fn delete_episode_history_entry(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    id: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute("DELETE FROM episode_history WHERE id = ?1", [&id]).str_err()?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_episode_history(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,

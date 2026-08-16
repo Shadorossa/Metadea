@@ -38,6 +38,7 @@ commands.allow = [
   "comicvine_get_issues_cast",
   "save_episode_history_entry",
   "get_episode_history",
+  "delete_episode_history_entry",
   "debug_scan_info",
   "open_env_folder",
   "steam_achievements_download",

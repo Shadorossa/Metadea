@@ -1014,11 +1014,61 @@
   color: var(--color-completed, var(--accent));
 }
 
+/* Truncates instead of wrapping/pushing the date out of the row now that a
+   line can include the media's own (potentially long) title. */
+.local-media-history-item > span:not(.local-media-history-date) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .local-media-history-date {
   margin-left: auto;
+  flex-shrink: 0;
   font-size: 0.7rem;
   color: var(--text-dim);
   white-space: nowrap;
+}
+
+/* Right-click on a history row — same look/behavior as Profile's own
+   activity-feed context menu (.act-context-menu, profile.css), duplicated
+   here since local.astro doesn't import that stylesheet. */
+.local-history-context-menu {
+  position: absolute;
+  z-index: 9999;
+  background: var(--bg-primary, #0c0820);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.25rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
+  min-width: 150px;
+}
+
+.local-history-context-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.local-history-context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
+.local-history-context-menu-item.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .local-media-play-error {
@@ -1470,6 +1520,13 @@
   cursor: not-allowed;
   opacity: 0.6;
   transform: none;
+}
+
+/* Paused reads visually distinct from actively playing — same accent color
+   family but hollowed out, instead of looking identical to "Reproduciendo". */
+.local-game-detail-play--paused {
+  background: transparent;
+  color: var(--accent);
 }
 
 .local-game-detail-stats {

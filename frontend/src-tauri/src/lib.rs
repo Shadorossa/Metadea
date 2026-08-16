@@ -115,6 +115,7 @@ pub fn run() {
             comicvine::comicvine_get_issues_cast,
             episode_history::save_episode_history_entry,
             episode_history::get_episode_history,
+            episode_history::delete_episode_history_entry,
             user_library::save_library_entry,
             user_library::get_library_entry,
             user_library::delete_library_entry,
