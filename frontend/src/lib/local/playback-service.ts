@@ -57,14 +57,19 @@ const START_STATUS_BY_TYPE: Record<string, string> = {
 // leaves room for trailing credits/next-episode previews the user skips.
 const AUTO_MARK_THRESHOLD = 0.8;
 const POLL_INTERVAL_MS = 3000;
-// Fallback-only track-boundary heuristic for when VLC's status doesn't
-// report a filename at all (see detectTrackBoundary below, which is what
-// actually gets used in practice) — a sharp `time` drop while still
-// `playing`, gated on the file's own duration also having changed so a
-// plain rewind-to-start within the SAME episode doesn't get mistaken for
-// one. Still can't tell two different episodes apart if they happen to
-// share the exact same runtime, which is exactly what the filename check
-// avoids needing to guess about at all.
+// A sharp `time` drop while still `playing` — required, unconditionally, for
+// ANY track-boundary detection below. This is what makes detection
+// self-limiting: once a boundary fires, lastKnownTime resets near 0, so the
+// very next tick's real (small) time can't be "less than lastKnownTime - 10"
+// again until playback has actually advanced close to a real boundary once
+// more. Without this gate, comparing VLC's reported filename alone against
+// what we expect turned out to be exactly this fragile: the moment it
+// mismatched for ANY reason (encoding, casing, a VLC build that formats it
+// differently), it mismatched on every single poll tick forever, racing
+// through the entire queue in seconds and marking every episode watched —
+// a real regression this app shipped, not a hypothetical. A missed
+// detection now just means one episode doesn't auto-mark (recoverable
+// manually); it can never again mass-complete a whole season on its own.
 const TRACK_BOUNDARY_DROP_SECONDS = 10;
 
 function fileBasename(path: string): string {
@@ -72,16 +77,16 @@ function fileBasename(path: string): string {
 }
 
 // True once VLC has moved on from `current` to some other file in the
-// queue. Prefers comparing VLC's own reported filename against the queue's
-// known file paths — exact and unambiguous, unlike inferring it from
-// time/duration — falling back to the duration-aware time-drop heuristic
-// only when VLC's status didn't carry a filename at all.
+// queue. The time-drop gate above is mandatory; filename (when VLC's status
+// reports one) or duration is only the disambiguator for "is this actually
+// a different file, or did the user just rewind to the start of this one" —
+// never the sole signal.
 function detectTrackBoundary(status: VlcPlaybackStatus, current: PlaybackQueueItem, knownLength: number): boolean {
+  if (!(status.time < lastKnownTime - TRACK_BOUNDARY_DROP_SECONDS)) return false;
   if (status.filename) {
     return status.filename !== fileBasename(current.filePath);
   }
-  const lengthChanged = Math.abs(status.length - knownLength) > 2;
-  return status.time < lastKnownTime - TRACK_BOUNDARY_DROP_SECONDS && lengthChanged;
+  return Math.abs(status.length - knownLength) > 2;
 }
 
 let state: PlaybackState | null = null;

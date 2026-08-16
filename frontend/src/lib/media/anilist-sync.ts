@@ -175,7 +175,13 @@ export interface AniListSyncResult {
 }
 
 function fuzzyDateToString(fd: { year: number; month: number; day: number } | null): string {
-  if (!fd) return '';
+  // AniList's FuzzyDate can be a non-null object with every field still
+  // null (an "incomplete"/unset date, e.g. completedAt on an entry that
+  // isn't actually completed) — `!fd` alone doesn't catch that, and
+  // interpolating a null year/month/day literally produces the string
+  // "null-null-null", which then fails an <input type="date">'s value
+  // format check in MediaEditorModal.
+  if (!fd || !fd.year) return '';
   return `${fd.year}-${String(fd.month).padStart(2, '0')}-${String(fd.day).padStart(2, '0')}`;
 }
 
