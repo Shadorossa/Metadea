@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -26,20 +26,25 @@ const ENTER_ANIM_MS = 340;
 export default function LocalLibrary() {
   const t = getT();
   const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
-  // On a full page load the Navbar's #nav-center-slot is already painted
-  // before React hydrates, so the lazy initializer below resolves it
-  // synchronously on this component's very first render — critical for
-  // avoiding a flash: finding it only in a useEffect (which runs one paint
-  // *after* render) meant the tab bar's fallback (inline, unportaled)
-  // render was actually visible for a frame, then jumped into the navbar
-  // the instant the effect fired, reading as the navbar itself shifting.
-  // The effect below still polls as a backup for the rarer case where this
-  // island mounts before the Navbar has (re)created that node at all — most
-  // visibly right after the app's own auto-updater relaunches it, where
-  // startup is slower than usual (same fix already applied to SearchIsland.tsx).
-  const [navSlot, setNavSlot] = useState<HTMLElement | null>(
-    () => (typeof document !== 'undefined' ? document.getElementById('nav-center-slot') : null)
-  );
+  // Starts null unconditionally (not a lazy initializer reading the DOM) so
+  // the client's very first hydration render matches what the server
+  // produced (always null, no document there) — reading document.getElementById
+  // synchronously in the initializer used to return non-null on that first
+  // client render whenever the Navbar's #nav-center-slot was already
+  // painted before hydration (the common case), which is exactly what a
+  // React hydration mismatch is: the same render producing different output
+  // server vs. client. useLayoutEffect below still finds it and commits
+  // before the browser paints, so there's no visible flash either way — it
+  // just runs strictly after the hydration comparison instead of racing it.
+  const [navSlot, setNavSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const el = document.getElementById('nav-center-slot');
+    if (el) setNavSlot(el);
+  }, []);
+  // Backup for the rarer case where this island mounts before the Navbar
+  // has (re)created that node at all — most visibly right after the app's
+  // own auto-updater relaunches it, where startup is slower than usual
+  // (same fix already applied to SearchIsland.tsx).
   useEffect(() => {
     let rafId: number;
     let attempts = 0;
