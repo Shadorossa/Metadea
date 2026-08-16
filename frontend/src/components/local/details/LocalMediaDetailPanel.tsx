@@ -19,6 +19,7 @@ import {
 } from '../utils/folderMatch';
 import { ALL_CHAIN_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { resolveSeasonExternalIds, resolveOwnSeasonNumber } from '../utils/seasonResolve';
+import { syncToAniList, isAniListType } from '../../../lib/media/anilist-sync';
 import { formatWatchedAt } from '../utils/formatters';
 import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
 
@@ -536,13 +537,16 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       ? (START_STATUS_BY_TYPE[item.libraryEntry.type] ?? item.status)
       : item.libraryEntry.status;
 
+    const startedAt = item.libraryEntry.started_at ?? new Date().toISOString();
+    const finishedAt = finishing ? new Date().toISOString() : item.libraryEntry.finished_at;
+
     try {
       await saveLibraryEntry({
         ...item.libraryEntry,
         progress:    episodeNumber,
         status:      nextStatus,
-        started_at:  item.libraryEntry.started_at ?? new Date().toISOString(),
-        finished_at: finishing ? new Date().toISOString() : item.libraryEntry.finished_at,
+        started_at:  startedAt,
+        finished_at: finishedAt,
       });
       onProgressSaved();
       saveEpisodeHistoryEntry(item.externalId, episodeNumber)
@@ -553,6 +557,23 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       // comment for why this doesn't live inside saveLibraryEntry itself.
       if (finishing) {
         addSequelToPlanning(item.externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
+      }
+      // MediaEditorModal's own save does this too — the auto-mark-on-watch
+      // flow here saves straight to saveLibraryEntry (bypassing that modal
+      // entirely), so without this an episode watched through the local
+      // player updated progress in-app but never reached AniList at all.
+      if (isAniListType(item.libraryEntry.type)) {
+        syncToAniList({
+          externalId:      item.externalId,
+          type:            item.libraryEntry.type,
+          status:          nextStatus ?? '',
+          rating:          item.libraryEntry.rating ?? 0,
+          progress:        episodeNumber,
+          progressVolumes: item.libraryEntry.progress_2 ?? 0,
+          startedAt:       startedAt ?? '',
+          finishedAt:      finishedAt ?? '',
+          notes:           item.libraryEntry.notes ?? '',
+        }).catch(err => console.error('Failed to sync watched episode to AniList:', err));
       }
     } catch (err) {
       // Don't block the next poll tick from retrying on a transient save error.
