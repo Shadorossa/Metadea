@@ -142,6 +142,7 @@ commands.allow = [
   "set_sync_state",
   "fix_character_ids_command",
   "get_story_arcs_for_media",
+  "get_story_arcs_for_media_batch",
   "save_story_arc",
   "reorder_story_arcs",
   "delete_story_arc"

@@ -7,6 +7,7 @@ import type { LibraryEntry } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
+import { prefetchSagaData } from '../../lib/media/sagaData';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
 import { dbRatingToStars5, getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
@@ -231,6 +232,14 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     applyDeleted,
     rollback,
   } = useLibraryEntry(currentId, data?.type);
+
+  // Warms SagaViewerModal's saga-chain + story-arcs caches (lib/media/sagaData.ts)
+  // as soon as the page is known to have a saga, instead of only starting
+  // that fetch once the user clicks the Saga button — by then it's typically
+  // already resolved, so opening the modal reads a cached result instantly.
+  useEffect(() => {
+    if (!previewMode && data?.hasSaga && currentId) prefetchSagaData(currentId);
+  }, [previewMode, data?.hasSaga, currentId]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

@@ -154,6 +154,7 @@ pub fn run() {
             sagas::get_community_sagas,
             sagas::delete_saga,
             story_arcs::get_story_arcs_for_media,
+            story_arcs::get_story_arcs_for_media_batch,
             story_arcs::save_story_arc,
             story_arcs::reorder_story_arcs,
             story_arcs::delete_story_arc,

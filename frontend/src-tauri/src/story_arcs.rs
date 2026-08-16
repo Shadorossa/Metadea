@@ -28,22 +28,28 @@ pub struct StoryArc {
     pub sort_order: i64,
 }
 
-// Every arc that has at least one item pointing at this media — returned
-// with ALL of its items (not just the one for this media), so a curator
-// editing e.g. Bleach Sennen Kessen-hen Part 1 can see and adjust the whole
-// "Thousand Year Blood War" arc's other 3 parts too, not just its own slice.
-#[tauri::command]
-pub async fn get_story_arcs_for_media(
-    state: tauri::State<'_, crate::db::MetadeaDb>,
-    media_external_id: String,
+// Shared by both commands below — every arc that has at least one item
+// pointing at any of the given media ids, each returned with ALL of its
+// items (not just the ones matching an input id), so a curator editing e.g.
+// Bleach Sennen Kessen-hen Part 1 can see and adjust the whole "Thousand
+// Year Blood War" arc's other 3 parts too, not just its own slice.
+fn story_arcs_for_media_ids(
+    conn: &rusqlite::Connection,
+    media_external_ids: &[String],
 ) -> Result<Vec<StoryArc>, String> {
-    let conn = state.conn.lock().str_err()?;
+    if media_external_ids.is_empty() {
+        return Ok(vec![]);
+    }
 
+    let id_placeholders = media_external_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let arc_ids: Vec<String> = {
         let mut stmt = conn
-            .prepare("SELECT DISTINCT arc_id FROM story_arc_items WHERE media_external_id = ?1")
+            .prepare(&format!(
+                "SELECT DISTINCT arc_id FROM story_arc_items WHERE media_external_id IN ({id_placeholders})"
+            ))
             .str_err()?;
-        let rows = stmt.query_map([&media_external_id], |r| r.get::<_, String>(0)).str_err()?;
+        let id_params: Vec<&dyn rusqlite::ToSql> = media_external_ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let rows = stmt.query_map(id_params.as_slice(), |r| r.get::<_, String>(0)).str_err()?;
         rows.filter_map(|r| r.ok()).collect()
     };
     if arc_ids.is_empty() {
@@ -95,6 +101,32 @@ pub async fn get_story_arcs_for_media(
     }
 
     Ok(arcs)
+}
+
+#[tauri::command]
+pub async fn get_story_arcs_for_media(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_id: String,
+) -> Result<Vec<StoryArc>, String> {
+    let conn = state.conn.lock().str_err()?;
+    story_arcs_for_media_ids(&conn, &[media_external_id])
+}
+
+// Batched counterpart of get_story_arcs_for_media — one query (one DB-mutex
+// acquisition) covering every id in the saga at once, instead of the
+// frontend firing one IPC call per saga member. SagaViewerModal used to do
+// exactly that via Promise.all: "parallel" from JS's side, but MetadeaDb's
+// single Mutex<Connection> means those N calls actually queued up one after
+// another on the Rust side anyway, so a long saga (Bleach's TV + several
+// movies/OVAs) paid N round trips' worth of IPC + lock-acquisition overhead
+// for no real concurrency gained.
+#[tauri::command]
+pub async fn get_story_arcs_for_media_batch(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    media_external_ids: Vec<String>,
+) -> Result<Vec<StoryArc>, String> {
+    let conn = state.conn.lock().str_err()?;
+    story_arcs_for_media_ids(&conn, &media_external_ids)
 }
 
 // Upsert: empty id creates a new arc, an existing id updates name/image and

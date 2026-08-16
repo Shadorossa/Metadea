@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Translations } from '../../i18n/index';
-import { fetchAniListSaga, type SagaEntry } from '../../lib/anilist/saga';
+import type { SagaEntry } from '../../lib/anilist/saga';
 import { IconX } from '../local/ui/icons';
-import { compareByReleaseDate, lookupLabel } from '../../lib/media/mapper-utils';
-import { reconstructSagaOrder } from '../../lib/media/sagaGrouping';
+import { lookupLabel } from '../../lib/media/mapper-utils';
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
-
-import { getCachedSaga, saveCachedSaga, getSagaName, getMediaRelations } from '../../lib/tauri';
-import { getCatalogEntry, type MediaCatalogEntry, type DbMediaRelation } from '../../lib/tauri/catalog';
-import { getStoryArcsForMedia, type StoryArc } from '../../lib/tauri/story-arcs';
+import { loadSagaChain, loadSagaArcs } from '../../lib/media/sagaData';
+import type { StoryArc } from '../../lib/tauri/story-arcs';
 
 interface Props {
   externalId: string; // the entry the user opened the viewer from, e.g. "anime:123"
@@ -45,206 +42,43 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const [hoverPanelPos, setHoverPanelPos] = useState<{ top: number; left: number } | null>(null);
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
+  // Whether every saga member's own arcs have been checked at least once —
+  // gates the strip's first paint (see `modal` JSX) so whether the Arcos
+  // Argumentales tab exists is fully decided before anything is shown,
+  // instead of it popping into an already-settled header once this
+  // resolves. An arc doesn't have to touch the specific entry the viewer
+  // was opened from — a single-entry "quick check" tried earlier missed
+  // exactly that case (an arc on some *other* saga member), which is
+  // why this waits for the whole chain's own arcs instead.
+  const [arcsFullyChecked, setArcsFullyChecked] = useState(false);
+
+  // loadSagaChain/loadSagaArcs (lib/media/sagaData.ts) memoize their promises
+  // per key — MediaPage already calls prefetchSagaData() as soon as a page
+  // with a saga loads, so by the time this modal mounts (user clicked the
+  // Saga button) both of these are typically already resolved, and this
+  // effect just reads the cached result instead of starting a fresh fetch.
   useEffect(() => {
-    const numericId = parseInt(externalId.slice(externalId.indexOf(':') + 1), 10);
-    if (!numericId) { setLoadState('error'); return; }
-
     let cancelled = false;
-
-    // Reconstructs the manually-curated order from SEQUEL edges (same
-    // function PrEditorModal uses) instead of just release-date order. Null
-    // if this isn't part of a multi-entry saga at all.
-    async function reconstructFromRelations(): Promise<SagaEntry[] | null> {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const { getCatalogEntry } = await import('../../lib/tauri/catalog');
-      const transitiveIds = await invoke<string[]>('get_transitive_relation_ids', { mediaExternalId: externalId }).catch(() => [] as string[]);
-      if (transitiveIds.length <= 1) return null;
-
-      const entriesData = await Promise.all(
-        transitiveIds.map(async id => ({ id, entry: await getCatalogEntry(id).catch(() => null) }))
-      );
-      const validEntries = entriesData.filter(
-        (x): x is { id: string; entry: MediaCatalogEntry } => x.entry !== null,
-      );
-
-      // Date sort is just the tie-break input for reconstructSagaOrder below.
-      validEntries.sort((a, b) => compareByReleaseDate(
-        { ...a.entry, id: a.id },
-        { ...b.entry, id: b.id }
-      ));
-
-      const byId = new Map(validEntries.map(x => [x.id, x.entry]));
-      const dateOrderedIds = validEntries.map(x => x.id);
-      const relsByIndex: DbMediaRelation[][] = await Promise.all(
-        dateOrderedIds.map(id => getMediaRelations(id).catch(() => [] as DbMediaRelation[]))
-      );
-      const orderedIds = reconstructSagaOrder(dateOrderedIds, relsByIndex);
-
-      return orderedIds.map(id => {
-        const entry = byId.get(id)!;
-        return {
-          externalId: id,
-          title: entry.title_main || id,
-          cover: entry.cover_url || null,
-          format: entry.format || null,
-          mediaType: entry.type || 'game',
-          year: entry.release_year ?? null,
-          month: entry.release_month ?? null,
-          day: entry.release_day ?? null,
-        };
-      });
-    }
-
-    const sameOrder = (a: SagaEntry[], b: SagaEntry[]) =>
-      a.length === b.length && a.every((e, i) => e.externalId === b[i].externalId);
-
-    async function loadSaga() {
-      let cached: SagaEntry[] | null = null;
-      try {
-        cached = await getCachedSaga(externalId);
-      } catch (err) {
-        console.warn('[Saga] Failed to read from cache:', err);
-      }
-
+    loadSagaChain(externalId).then(chain => {
       if (cancelled) return;
+      if (!chain.ok) { setLoadState('error'); return; }
+      setEntries(chain.entries);
+      if (chain.sagaTitle) setSagaTitle(chain.sagaTitle);
+      setLoadState('done');
 
-      if (cached && cached.length > 0) {
-        setEntries(cached);
-        setLoadState('done');
-        try {
-          const customName = await getSagaName(externalId);
-          if (customName) setSagaTitle(customName);
-        } catch (err) {
-          console.warn('[Saga] Failed to load custom saga name:', err);
-        }
-
-        // The cache doesn't get invalidated when relations change elsewhere
-        // (e.g. a saga reorder saved before this fix existed) — reconcile
-        // against the real relations in the background and correct it if
-        // it's out of date.
-        reconstructFromRelations().then(fresh => {
-          if (cancelled || !fresh || sameOrder(fresh, cached!)) return;
-          setEntries(fresh);
-          saveCachedSaga(fresh).catch(() => {});
-        }).catch(err => console.warn('[Saga] Background reconcile failed:', err));
-        return;
-      }
-
-      try {
-        const sagaList = await reconstructFromRelations();
-        if (sagaList) {
-          setEntries(sagaList);
-          setLoadState('done');
-          saveCachedSaga(sagaList).catch(err => {
-            console.warn('[Saga] Failed to save to cache:', err);
-          });
-          try {
-            const customName = await getSagaName(externalId);
-            if (customName) setSagaTitle(customName);
-          } catch (err) {
-            console.warn('[Saga] Failed to load custom saga name:', err);
-          }
-          return;
-        }
-      } catch (err) {
-        console.warn('[Saga] Failed to load transitive relations:', err);
-      }
-
-      if (!externalId.startsWith('anime:') && !externalId.startsWith('manga:')) {
-        setLoadState('error');
-        return;
-      }
-
-      try {
-        const result = await fetchAniListSaga(numericId);
+      loadSagaArcs(chain.entries).then(({ arcs, arcItemMeta }) => {
         if (cancelled) return;
-
-        if (result.length > 0) {
-          setEntries(result);
-          setLoadState('done');
-          // Load custom saga name if available
-          try {
-            const customName = await getSagaName(externalId);
-            if (customName) setSagaTitle(customName);
-          } catch (err) {
-            console.warn('[Saga] Failed to load custom saga name:', err);
-          }
-          saveCachedSaga(result).catch(err => {
-            console.warn('[Saga] Failed to save to cache:', err);
-          });
-        } else {
-          setLoadState('error');
-        }
-      } catch (err) {
-        if (!cancelled) setLoadState('error');
-      }
-    }
-
-    loadSaga();
-
-    return () => { cancelled = true; };
-  }, [externalId]);
-
-  // A quick, independent check for just the entry the viewer was opened
-  // from — runs in parallel with the saga chain load above instead of
-  // waiting for it, so the Arcos Argumentales tab can appear as soon as
-  // this alone resolves instead of after two round trips stacked in series
-  // (chain first, then arcs for every member of it). The full effect below
-  // still runs once the chain is known, to also pick up arcs that only
-  // touch some *other* member of the saga.
-  useEffect(() => {
-    let cancelled = false;
-    getStoryArcsForMedia(externalId).then(arcs => {
-      if (cancelled || arcs.length === 0) return;
-      setSagaArcs(prev => {
-        const byId = new Map(prev.map(a => [a.id, a]));
-        for (const arc of arcs) byId.set(arc.id, arc);
-        return [...byId.values()];
-      });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [externalId]);
-
-  // Fetches every entry's own arcs in parallel once the chain itself is
-  // known, then dedupes by arc id — an arc with items in several entries
-  // (e.g. Sennen Kessen-hen's 4 parts) would otherwise show up once per
-  // entry it touches instead of once overall.
-  useEffect(() => {
-    if (entries.length === 0) return;
-    let cancelled = false;
-    Promise.all(entries.map(e => getStoryArcsForMedia(e.externalId).catch(() => [] as StoryArc[])))
-      .then(async perEntryArcs => {
-        if (cancelled) return;
-        const byId = new Map<string, StoryArc>();
-        for (const arcs of perEntryArcs) {
-          for (const arc of arcs) byId.set(arc.id, arc);
-        }
-        const arcs = [...byId.values()];
         setSagaArcs(arcs);
-
-        const knownIds = new Set(entries.map(e => e.externalId));
-        const missingIds = new Set<string>();
-        for (const arc of arcs) {
-          for (const item of arc.items) {
-            if (!knownIds.has(item.media_external_id)) missingIds.add(item.media_external_id);
-          }
-        }
-        if (missingIds.size === 0) return;
-        const metaEntries = await Promise.all(
-          [...missingIds].map(async id => [id, await getCatalogEntry(id).catch(() => null)] as const)
-        );
-        if (cancelled) return;
-        setArcItemMeta(prev => {
-          const next = { ...prev };
-          for (const [id, entry] of metaEntries) {
-            if (entry) next[id] = { title: entry.title_main || id, cover: entry.cover_url || null };
-          }
-          return next;
-        });
-      })
-      .catch(() => {});
+        setArcItemMeta(prev => ({ ...prev, ...arcItemMeta }));
+        setArcsFullyChecked(true);
+      }).catch(() => { if (!cancelled) setArcsFullyChecked(true); });
+    }).catch(() => {
+      if (cancelled) return;
+      setLoadState('error');
+      setArcsFullyChecked(true);
+    });
     return () => { cancelled = true; };
-  }, [entries]);
+  }, [externalId]);
 
   const firstEntry = entries[0];
 
@@ -269,6 +103,16 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
   const modal = (
     <div className={`me-overlay saga-overlay${isClosing ? ' me-overlay--out' : ''}`} onClick={handleClose}>
       <div className="saga-strip-container" onClick={e => e.stopPropagation()}>
+        {!arcsFullyChecked ? (
+          // Whether the Arcos Argumentales tab exists at all isn't decided
+          // yet — holding off the header/body until it is means the tab is
+          // either there from this container's very first real paint, or
+          // never shows up having popped in later. The backdrop/overlay
+          // itself still opens immediately (see `modal`'s own root above);
+          // only this inner content waits.
+          <div className="saga-strip-status"><div className="spinner" /></div>
+        ) : (
+          <>
         <div className="saga-strip-header">
           <button
             type="button"
@@ -383,6 +227,8 @@ export function SagaViewerModal({ externalId, i18n, onClose }: Props) {
             </div>
           )}
         </div>
+          </>
+        )}
 
         <button type="button" className="saga-strip-close" onClick={handleClose}>
           <IconX size={20} />
