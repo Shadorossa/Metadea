@@ -130,6 +130,8 @@ commands.allow = [
   "play_file_with_vlc",
   "get_vlc_playback_status",
   "send_vlc_command",
+  "fetch_image_data_url",
+  "save_image_file",
   "igdb_get_relation_graph",
   "sync_community_catalog",
   "create_tier_list",

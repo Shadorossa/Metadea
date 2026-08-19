@@ -33,3 +33,32 @@ export function toSmallCover(url: string | null | undefined): string {
   if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-S.jpg');
   return url;
 }
+
+// Opposite direction of toSmallCover, for the one context that wants the
+// biggest asset a provider will actually hand back instead of a lighter
+// one — the Instagram-story share image (share-image.ts), which is the
+// only cover this app ever exports at near-full size rather than shrinking
+// down into a small UI thumbnail. Same render-only guarantee: never touches
+// what's persisted, media_catalog.cover_url keeps whatever size it was
+// saved at (this mainly matters for TMDB, which persists posters at a
+// small fixed "w300" size, and IGDB, whose stored "cover_big" template is
+// sized for a grid thumbnail, not this — a stored AniList cover_url can
+// also predate this app preferring extraLarge, so it's worth a try there
+// too).
+//
+// AniList's "extraLarge" is a GraphQL field name, not guaranteed to be a
+// distinct CDN path for every entry — some covers only ever had a "large"
+// asset uploaded, in which case requesting ".../cover/extraLarge/..." 404s.
+// Unlike the other three providers (verified, always-present size
+// variants), this one isn't safe to swap unconditionally — see
+// resolveCoverImage in share-image.ts, which tries this upgraded URL first
+// and falls back to the original on failure instead of ending up with no
+// cover at all.
+export function toLargeCover(url: string | null | undefined): string {
+  if (!url) return '';
+  if (ANILIST_COVER_SIZE_RE.test(url)) return url.replace(ANILIST_COVER_SIZE_RE, '/cover/extraLarge/');
+  if (url.includes('images.igdb.com') && IGDB_SIZE_RE.test(url)) return url.replace(IGDB_SIZE_RE, '/t_original/');
+  if (TMDB_SIZE_RE.test(url)) return url.replace(TMDB_SIZE_RE, '/t/p/original/');
+  if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-L.jpg');
+  return url;
+}

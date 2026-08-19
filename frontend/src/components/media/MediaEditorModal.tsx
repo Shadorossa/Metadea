@@ -1,7 +1,9 @@
 import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
-import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry } from '../../lib/tauri';
+import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, saveImageFile } from '../../lib/tauri';
+import { getActiveRatingSystem } from '../../lib/media/rating-utils';
+import { generateShareImage } from '../../lib/media/share-image';
 import type { MediaPageData } from '../../lib/media/types';
 import { RatingInput } from './RatingInput';
 import { syncToAniList, fetchAniListLogData, isAniListType } from '../../lib/media/anilist-sync';
@@ -515,6 +517,30 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     onClose();
   }, [entry.logs, entry.activeLogId, externalId, data.type, onDeleted, onClose]);
 
+  // No API lets a desktop app post directly to Instagram Stories (that's
+  // mobile-only, Business account, Meta app review) — this generates the
+  // Letterboxd-style share image and puts up a save dialog so the user
+  // shares it themselves. Only enabled once finished/rated (see the button
+  // below) since "just started watching" has nothing worth sharing yet.
+  const [sharing, setSharing] = useState(false);
+  const handleShare = useCallback(async () => {
+    setSharing(true);
+    try {
+      const dataUrl = await generateShareImage({
+        title:        data.titleMain,
+        cover:        data.cover ?? null,
+        rating:       activeLog.rating,
+        ratingSystem: getActiveRatingSystem(),
+      });
+      const fileName = `${data.titleMain.replace(/[\\/:*?"<>|]/g, '')}.png`;
+      await saveImageFile(dataUrl, fileName);
+    } catch (e) {
+      console.error('Failed to generate share image', e);
+    } finally {
+      setSharing(false);
+    }
+  }, [data.titleMain, data.cover, activeLog.rating]);
+
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
@@ -976,8 +1002,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                   onClick={handleSave} disabled={ui.saving}>
                   {ui.saving ? te.saving : te.save}
                 </button>
-                <button type="button" className="me-btn me-btn--close"
-                  onClick={handleClose}>✕</button>
                 {activeLog.existing && (
                   <button type="button" className="me-btn me-btn--delete"
                     onClick={handleDelete} title={te.delete}>
@@ -987,6 +1011,21 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     </svg>
                   </button>
                 )}
+                <button type="button" className="me-btn me-btn--share"
+                  onClick={handleShare} disabled={activeLog.status !== 'completed' || sharing}
+                  title={activeLog.status !== 'completed' ? 'Termínalo para poder compartirlo' : 'Compartir'}>
+                  {sharing ? (
+                    <span className="spinner spinner--sm" />
+                  ) : (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3"></circle>
+                      <circle cx="6" cy="12" r="3"></circle>
+                      <circle cx="18" cy="19" r="3"></circle>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                  )}
+                </button>
                 {isAniListType(data.type) && ui.anilistStatus !== 'idle' && (
                   <div className={`me-anilist-status me-anilist-status--${ui.anilistStatus}`}>
                     {ui.anilistStatus === 'syncing' && (

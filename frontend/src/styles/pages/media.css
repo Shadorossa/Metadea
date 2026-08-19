@@ -1880,6 +1880,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  /* .me-content-wrapper's own align-items:start otherwise sizes every grid
+     column to its own content height — this column's content (a handful of
+     buttons) is much shorter than its siblings (notes textarea, month
+     grid), so without stretching to match the row's real height, the
+     share button's own margin-top:auto (below) had no extra space to
+     push into and just sat flush under delete instead of at the bottom. */
+  align-self: stretch;
 }
 
 /* ── Two-column grid ─────────────────────────────────────────────────────── */
@@ -2059,6 +2066,33 @@
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.55);
   background: rgba(239, 68, 68, 0.08);
+}
+
+.me-btn--share {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
+  /* Fixed, not min-height — swapping the icon for the loading spinner while
+     sharing must never change the button's own box size. */
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Pinned to the bottom of .me-button-stack-side's flex column instead of
+     sitting right under the delete button, which otherwise reads as if
+     sharing were a variant of deleting rather than its own separate action. */
+  margin-top: auto;
+}
+.me-btn--share:hover:not(:disabled) {
+  color: var(--accent, #7c6af7);
+  border-color: color-mix(in srgb, var(--accent, #7c6af7) 55%, transparent);
+  background: color-mix(in srgb, var(--accent, #7c6af7) 8%, transparent);
+}
+
+.me-btn--share .spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
 }
 
 /* ── Month Selector ──────────────────────────────────────────────────────── */

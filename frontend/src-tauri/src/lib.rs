@@ -22,6 +22,7 @@ mod platform_scanning;
 mod proposal_bundle;
 mod resume_position;
 mod sagas;
+mod share_image;
 mod story_arcs;
 mod social_profile;
 mod steam;
@@ -97,6 +98,8 @@ pub fn run() {
             folders::play_file_with_vlc,
             folders::get_vlc_playback_status,
             folders::send_vlc_command,
+            share_image::fetch_image_data_url,
+            share_image::save_image_file,
             igdb_env::read_env_config,
             igdb_env::write_env_config,
             igdb::igdb_search,
