@@ -1513,6 +1513,17 @@
   transform: translateY(-1px);
 }
 
+/* Higher specificity than either .spinner or .spinner--sm alone (both
+   single-class rules, so which one otherwise wins depends on stylesheet
+   load order) — guarantees the "Reproduciendo" spinner renders at the same
+   size as the icon it replaces instead of occasionally falling back to
+   .spinner's own 36px default and visibly growing the button. */
+.local-game-detail-play .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
 .local-game-detail-play:disabled {
   background: var(--bg-elevated);
   border-color: var(--border-color);
