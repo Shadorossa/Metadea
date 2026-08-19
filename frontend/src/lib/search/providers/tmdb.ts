@@ -3,7 +3,6 @@ import type { MediaType, SearchResult, SearchPage, SearchFilters } from '../inde
 import { SEASON_MONTHS } from '../index';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { fetchJson } from '../../api/client';
-import { getLangCode } from '../../../i18n/client';
 import { MissingApiKeyError } from '../errors';
 
 interface TmdbMovie {
@@ -224,8 +223,17 @@ export async function getTmdbAuth(): Promise<{ accessToken: string; apiKey: stri
   return { accessToken, apiKey };
 }
 
+// Always English, regardless of the app's own UI language — every other
+// provider (AniList's romaji/english title fields, IGDB, ComicVine, Open
+// Library) returns/stores data in English no matter what language Metadea's
+// own interface is in, so title/overview/etc. coming back from TMDB
+// specifically switching to Spanish whenever the UI is in Spanish was the
+// one inconsistent source: whatever got saved to the catalog (title_main,
+// synopsis, ...) depended on which language the searcher happened to have
+// the app in at the time, not a fixed, predictable language like every
+// other provider.
 export function tmdbLocale(): string {
-  return getLangCode() === 'en' ? 'en-US' : 'es-ES';
+  return 'en-US';
 }
 
 // TMDB's own page size is fixed at 20 (not adjustable via any request param)
