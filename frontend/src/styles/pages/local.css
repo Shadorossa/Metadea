@@ -1406,26 +1406,33 @@
 }
 
 .igdb-picker-info {
-  padding: 0.4rem 0.5rem 0.5rem;
+  padding: 0.5rem 0.6rem 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.3rem;
 }
 
 .igdb-picker-name {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--text-primary);
-  line-height: 1.3;
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  /* Reserves space for a full 2-line title regardless of how long this
+     particular one actually is — a 1-line title used to leave the meta row
+     right underneath it while a 2-line neighbor pushed its own meta row
+     down, so the grid read as uneven instead of aligned. */
+  min-height: calc(0.74rem * 1.35 * 2);
 }
 
 .igdb-picker-meta {
-  font-size: 0.65rem;
+  font-size: 0.66rem;
   color: var(--text-muted);
+  line-height: 1.3;
 }
 
 .local-game-detail-content {
