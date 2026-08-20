@@ -1379,16 +1379,6 @@
   margin: 0;
   padding: 0 0 3rem;
 }
-.library-layout.entering {
-  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .library-layout.entering {
-    animation: none;
-  }
-}
-
 .library-filters {
   background: transparent;
   border: none;
@@ -1978,18 +1968,6 @@
   width: 100%;
   max-width: 1650px;
   margin: 0 auto;
-  animation: favGridFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes favGridFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .fav-card {
@@ -2289,29 +2267,6 @@
   transition: none !important;
 }
 
-
-/* ── Tab Content Transition ────────────────────────────────────────────────── */
-.profile-tab-content.entering {
-  animation: profile-tab-content-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes profile-tab-content-enter {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.99);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .profile-tab-content.entering {
-    animation: none;
-  }
-}
 
 /* ── Statistics ──────────────────────────────────────────────────────────── */
 .stats-layout {

@@ -352,7 +352,7 @@ export function LibrarySection({
   }
 
   return (
-    <div className="library-layout entering">
+    <div className="library-layout">
       <aside className="library-filters">
         <p className="library-filters-title">{p.library_filters}</p>
 

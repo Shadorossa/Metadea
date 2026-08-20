@@ -363,7 +363,7 @@ export function UserProfileView() {
         <button className={`profile-tab${activeTab === 'lists' ? ' active' : ''}`} data-tooltip={p.lists} onClick={() => setActiveTab('lists')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LISTS }} />
       </nav>
 
-      <div className="profile-tab-content entering" key={activeTab}>
+      <div className="profile-tab-content">
         {data === null ? (
           <div className="profile-empty"><p>{p.stats_loading}</p></div>
         ) : (

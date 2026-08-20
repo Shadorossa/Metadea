@@ -185,13 +185,6 @@ const t    = useTranslations(lang);
     else if (tab === 'stats')     await renderStats(content);
     else if (tab === 'reviews')   await renderReviews(content);
     else if (tab === 'lists')     await renderLists(content);
-
-    // Restart the entrance animation on every switch, even between renders
-    // that reuse the same tab's DOM shape (class stays present otherwise —
-    // browsers don't replay a CSS animation just because content changed).
-    content.classList.remove('entering');
-    void content.offsetWidth;
-    content.classList.add('entering');
   }
 
   async function init() {
