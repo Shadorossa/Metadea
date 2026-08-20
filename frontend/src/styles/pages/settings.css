@@ -1127,19 +1127,27 @@
 
 .settings-version-card {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  gap: 0.65rem;
+  padding: 0.85rem 1.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   /* These sit side by side in a row (Novedades: Versión actual / Catálogo
-     comunitario / Mantenimiento) — a shorter one-word button label
-     ("Reparar") let its own card shrink shorter than a sibling whose label
-     wraps to two lines ("Buscar Actualizaciones"). Fixed floor height (sized
-     to comfortably fit a two-line button) instead of sizing purely to
-     content keeps every card the same height regardless of label length. */
-  min-height: 4.75rem;
+     comunitario / Mantenimiento). The label sits at the top and the button
+     at the bottom of each card; the wrapping flex column around this in
+     NovedadesTab.astro stretches to the tallest sibling and this fills it
+     (flex: 1), so all three end up the same height regardless of how many
+     lines each one's label wraps to. */
+  flex: 1;
+  min-height: 3.25rem;
+  /* Sized to content now (see NovedadesTab.astro's flex: 0 0 auto wrapper),
+     not a shared fixed width — nowrap keeps a card from ever growing taller
+     to wrap its own label/button text instead of just being as wide as it
+     needs. */
+  white-space: nowrap;
   box-sizing: border-box;
 }
 
