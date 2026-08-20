@@ -22,7 +22,7 @@ export function GameCard({ game, coverCache, onClick }: GameCardProps) {
     >
       <div className="local-game-cover">
         {cover
-          ? <img src={cover} alt={game.name} loading="lazy" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ? <img src={cover} alt={game.name} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconMonitor /></div>
         }
       </div>

@@ -25,7 +25,7 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
     >
       <div className="local-game-cover">
         {item.cover
-          ? <img src={item.cover} alt={item.title} loading="lazy" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ? <img src={item.cover} alt={item.title} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconFolder /></div>}
         <span className={`local-media-status-badge${item.status === 'planning' ? ' local-media-status-badge--planning' : ''}`}>
           {badgeLabel}

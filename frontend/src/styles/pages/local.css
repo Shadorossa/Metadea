@@ -621,7 +621,7 @@
   transform: translateY(-3px);
 }
 
-.local-game-cover img { width: 100%; height: 100%; object-fit: cover; }
+.local-game-cover img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-elevated); }
 
 .local-game-cover-placeholder {
   display: flex;
