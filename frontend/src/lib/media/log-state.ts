@@ -87,6 +87,17 @@ export const entryInit: EntryState = {
   logs: {},
 };
 
+// A fixed date string this literally-shaped, rather than any malformed
+// value, is specifically the fallout of a since-fixed bug (see
+// fuzzyDateToString in anilist-sync.ts) that saved this exact literal to
+// started_at/finished_at when AniList synced back a FuzzyDate with every
+// field null — sanitized here since rows already written with it predate
+// that fix and would otherwise still fail <input type="date">'s value
+// format check in MediaEditorModal forever.
+function sanitizeDateString(value: string | null | undefined): string {
+  return value && value !== 'null-null-null' ? value : '';
+}
+
 // Maps a saved LibraryEntry (snake_case DB row) to the editor's LogState
 // (camelCase, non-null defaults) — used whenever a log is loaded from disk.
 export function libraryEntryToLog(e: LibraryEntry): LogState {
@@ -98,8 +109,8 @@ export function libraryEntryToLog(e: LibraryEntry): LogState {
     progress:      e.progress      ?? 0,
     progressCount2: e.progress_2 ?? 0,
     notes:         e.notes         ?? '',
-    startedAt:     e.started_at    ?? '',
-    finishedAt:    e.finished_at   ?? '',
+    startedAt:     sanitizeDateString(e.started_at),
+    finishedAt:    sanitizeDateString(e.finished_at),
     isFavorite:    e.is_favorite   === 1,
     isPlatinum:    e.is_platinum   === 1,
     tags:          e.tags          ?? [],
