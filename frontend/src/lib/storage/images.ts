@@ -75,41 +75,64 @@ async function idbRemove(key: string): Promise<boolean> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+function syncLocalStorageCache(key: string, dataUrl: string | null): void {
+  if (typeof localStorage === 'undefined') return;
+  const cacheKey = key === STORAGE_KEYS.profileBannerCustom ? 'profile_banner_cache' : key === STORAGE_KEYS.profileAvatarCustom ? 'profile_avatar_cache' : null;
+  if (!cacheKey) return;
+  if (dataUrl) {
+    try { localStorage.setItem(cacheKey, dataUrl); } catch {}
+  } else {
+    localStorage.removeItem(cacheKey);
+  }
+}
+
 export async function saveImage(key: string, dataUrl: string): Promise<boolean> {
   const tauriKey = TAURI_KEYS[key];
+  let ok = false;
   if (tauriKey && isTauri()) {
     try {
       await tauriInvoke('save_user_image', { key: tauriKey, dataUrl });
-      return true;
+      ok = true;
     } catch (e) {
       console.error('Tauri save_user_image failed:', e);
-      return false;
+      ok = false;
     }
+  } else {
+    ok = await idbSave(key, dataUrl);
   }
-  return idbSave(key, dataUrl);
+  if (ok) syncLocalStorageCache(key, dataUrl);
+  return ok;
 }
 
 export async function getImage(key: string): Promise<string | null> {
   const tauriKey = TAURI_KEYS[key];
+  let res: string | null = null;
   if (tauriKey && isTauri()) {
     try {
-      return await tauriInvoke<string | null>('get_user_image', { key: tauriKey });
+      res = await tauriInvoke<string | null>('get_user_image', { key: tauriKey });
     } catch {
-      return null;
+      res = null;
     }
+  } else {
+    res = await idbGet(key);
   }
-  return idbGet(key);
+  if (res) syncLocalStorageCache(key, res);
+  return res;
 }
 
 export async function removeImage(key: string): Promise<boolean> {
   const tauriKey = TAURI_KEYS[key];
+  let ok = false;
   if (tauriKey && isTauri()) {
     try {
       await tauriInvoke('remove_user_image', { key: tauriKey });
-      return true;
+      ok = true;
     } catch {
-      return false;
+      ok = false;
     }
+  } else {
+    ok = await idbRemove(key);
   }
-  return idbRemove(key);
+  syncLocalStorageCache(key, null);
+  return ok;
 }

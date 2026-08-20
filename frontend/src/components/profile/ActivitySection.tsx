@@ -56,11 +56,20 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
   const j = p.journey || {};
 
   useEffect(() => {
-    if (overrideJourney) return;
+    if (overrideJourney) {
+      setJourney(overrideJourney);
+      return;
+    }
     let cancelled = false;
     readUserJourney().then(res => { if (!cancelled) setJourney(Array.isArray(res) ? res : []); });
     return () => { cancelled = true; };
   }, [overrideJourney]);
+
+  const [visible, setVisible] = useState<boolean>(Boolean(overrideJourney));
+  useEffect(() => {
+    if (journey === null) return;
+    setVisible(true);
+  }, [journey]);
 
   useEffect(() => {
     if (!menu) return;
@@ -131,11 +140,11 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
   if (journey === null) return null;
 
   if (finalEvents.length === 0) {
-    return <div className="act-empty"><span>{p.no_activity}</span></div>;
+    return <div className={`act-empty${visible ? ' act-visible' : ''}`}><span>{p.no_activity}</span></div>;
   }
 
   return (
-    <div className="activity-feed">
+    <div className={`activity-feed${visible ? ' act-visible' : ''}`}>
       <div className="act-day-events">
         {finalEvents.map(event => {
           if (!event || !event.externalId) return null;
@@ -187,7 +196,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
             >
               <a className="act-card-link" href={`/media?id=${encodeURIComponent(event.externalId)}`} />
               {cover ? (
-                <img className="act-card-cover" src={cover} alt={title} loading="lazy" />
+                <img className="act-card-cover" src={cover} alt={title} loading="lazy" decoding="async" />
               ) : (
                 <div className="act-card-cover-fallback" style={{ background: fallbackBg }}>
                   <span>{title.slice(0, 1).toUpperCase()}</span>

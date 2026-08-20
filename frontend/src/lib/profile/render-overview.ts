@@ -1,7 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { createElement } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readMonthlyHistory, readUserFavorites } from '../tauri';
-import type { MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readMonthlyHistory, readUserFavorites, readUserJourney } from '../tauri';
+import type { MediaCatalogEntry, FavoriteCustomImage, DayJourney } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { HofSection } from '../../components/profile/HofSection';
@@ -39,13 +39,20 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
     // profile.astro's init() fetches the exact same getAllCatalogEntries()
     // for its own click-delegation lookups, so refetching it again on every
     // single switch to this tab was a needless duplicate query.
-    const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages] = await Promise.all([
+    const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages, journey] = await Promise.all([
       catalog ? Promise.resolve(catalog) : getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
       readMonthlyHistory().catch(() => ({})),
       syncActiveRatingSystem(),
       readUserFavorites().catch(() => ({} as Record<string, string[]>)),
       getAllCharacters().catch(() => []),
       getAllFavoriteCustomImages().catch(() => [] as FavoriteCustomImage[]),
+      // Fetched here, in parallel with everything else, instead of left to
+      // ActivitySection's own on-mount fetch — that used to only start once
+      // this whole function (5 other IPC round trips + the stats/HoF
+      // computation below) had already finished building and mounting,
+      // making "Actividad reciente" visibly the last thing to appear by a
+      // wide margin even though its own fetch is cheap on its own.
+      readUserJourney().catch(() => [] as DayJourney[]),
     ]);
     const catalogMap = new Map<string, MediaCatalogEntry>(
       catalogEntries.map(e => [e.external_id, e])
@@ -194,7 +201,7 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
     hofRoot.render(createElement(HofSection, { items: hofItems, catalogMap, p, charFavIds, characterMap, customImageMap }));
     const activityMount = el.querySelector<HTMLElement>('#activity-mount')!;
     activityRoot = createRoot(activityMount);
-    activityRoot.render(createElement(ActivitySection, { catalogMap, p }));
+    activityRoot.render(createElement(ActivitySection, { catalogMap, p, overrideJourney: journey }));
     const monthlyHistoryEl = el.querySelector<HTMLElement>('.monthly-history');
     if (monthlyHistoryEl) initMonthlyHistoryListeners(monthlyHistoryEl);
   } catch (error) {

@@ -57,13 +57,10 @@ const t    = useTranslations(lang);
             }
 
             if (bannerCache) {
-              var banner = document.querySelector('.profile-banner');
-              if (banner) {
-                banner.style.backgroundImage = "url('" + bannerCache + "')";
-                banner.style.backgroundSize = 'cover';
-                banner.style.backgroundPosition = 'center';
-                banner.classList.add('has-custom-bg');
-              }
+              var sBanner = document.createElement('style');
+              sBanner.id = 'early-banner-style';
+              sBanner.textContent = '.profile-banner { background-image: url("' + bannerCache.replace(/"/g, '\\"') + '") !important; background-size: cover !important; background-position: center !important; } .profile-banner::after { display: none !important; }';
+              document.head.appendChild(sBanner);
             }
             if (nameCache) {
               var avatarHtml = avatarCache
@@ -126,7 +123,14 @@ const t    = useTranslations(lang);
       </script>
     </nav>
 
-    <div id="profile-tab-content" class="profile-tab-content"></div>
+    <div id="profile-tab-content" class="profile-tab-content">
+      <div id="tab-pane-overview" class="profile-tab-pane"></div>
+      <div id="tab-pane-library" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-favorites" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-stats" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-reviews" class="profile-tab-pane" hidden></div>
+      <div id="tab-pane-lists" class="profile-tab-pane" hidden></div>
+    </div>
 
     <ProfileLibraryEditor client:load i18n={t.media} />
 
@@ -161,7 +165,23 @@ const t    = useTranslations(lang);
   let cachedCatalog: Awaited<ReturnType<typeof getAllCatalogEntries>> = [];
   let activeTab: Tab = getTabFromHash();
 
-  async function switchTab(tab: Tab) {
+  // Every tab gets its own permanent pane (see the template above) instead
+  // of sharing one container that gets torn down and rebuilt per switch —
+  // all six are rendered once, up front (see init below), and switching
+  // tabs after that is just a visibility toggle: no re-render, no async
+  // gap, no blank flash while the new tab's data/DOM builds.
+  function getPanes(): Record<Tab, HTMLElement | null> {
+    return {
+      overview:  document.getElementById('tab-pane-overview'),
+      library:   document.getElementById('tab-pane-library'),
+      favorites: document.getElementById('tab-pane-favorites'),
+      stats:     document.getElementById('tab-pane-stats'),
+      reviews:   document.getElementById('tab-pane-reviews'),
+      lists:     document.getElementById('tab-pane-lists'),
+    };
+  }
+
+  function switchTab(tab: Tab) {
     activeTab = tab;
     // Preserves whatever state object Astro's ClientRouter already attached
     // to this history entry ({index, scrollX, scrollY} — see
@@ -176,15 +196,10 @@ const t    = useTranslations(lang);
       btn.classList.toggle('active', btn.dataset.tab === tab);
     });
 
-    const content = document.getElementById('profile-tab-content');
-    if (!content) return;
-
-    if      (tab === 'overview')   await renderOverview(content, cachedItems, cachedCatalog);
-    else if (tab === 'library')   await renderLibrary(content);
-    else if (tab === 'favorites') await renderFavorites(content);
-    else if (tab === 'stats')     await renderStats(content);
-    else if (tab === 'reviews')   await renderReviews(content);
-    else if (tab === 'lists')     await renderLists(content);
+    const panes = getPanes();
+    for (const [key, pane] of Object.entries(panes)) {
+      if (pane) pane.hidden = key !== tab;
+    }
   }
 
   async function init() {
@@ -236,24 +251,23 @@ const t    = useTranslations(lang);
     // Custom banner image
     const bannerEl = document.querySelector('.profile-banner') as HTMLElement | null;
     if (bannerEl && customBanner) {
-      bannerEl.style.backgroundImage = `url('${customBanner}')`;
-      bannerEl.style.backgroundSize = 'cover';
-      bannerEl.style.backgroundPosition = 'center';
-      bannerEl.classList.add('has-custom-bg');
-      localStorage.setItem('profile_banner_cache', customBanner);
-    } else {
-      localStorage.removeItem('profile_banner_cache');
+      const currentBg = bannerEl.style.backgroundImage;
+      if (!currentBg || (!currentBg.includes(customBanner))) {
+        bannerEl.style.backgroundImage = `url('${customBanner}')`;
+        bannerEl.style.backgroundSize = 'cover';
+        bannerEl.style.backgroundPosition = 'center';
+        bannerEl.classList.add('has-custom-bg');
+      }
+      try { localStorage.setItem('profile_banner_cache', customBanner); } catch {}
     }
 
     // Custom avatar takes priority over Google avatar
     const avatarSrc = customAvatar || avatar;
     if (avatarSrc) {
-      localStorage.setItem('profile_avatar_cache', avatarSrc);
-    } else {
-      localStorage.removeItem('profile_avatar_cache');
+      try { localStorage.setItem('profile_avatar_cache', avatarSrc); } catch {}
     }
     if (username) {
-      localStorage.setItem('profile_username_cache', username);
+      try { localStorage.setItem('profile_username_cache', username); } catch {}
     }
 
     const bannerContent = document.getElementById('banner-content');
@@ -287,7 +301,40 @@ const t    = useTranslations(lang);
     });
 
     ({ items: cachedItems, catalog: cachedCatalog } = await getCachedLibraryAndCatalog());
-    await switchTab(activeTab);
+
+    // Mount every tab's content up front, in parallel, instead of one at a
+    // time as each is first visited — switchTab below then only ever
+    // toggles which already-rendered pane is visible. Set the initial
+    // visibility right away so a slow tab doesn't hold up a fast one being
+    // shown/hidden correctly.
+    const panes = getPanes();
+    switchTab(activeTab);
+
+    // Each pane fades in on its own the moment ITS render resolves, not
+    // once every tab is ready — a fast tab (Library/Favorites, already-
+    // cached data) shouldn't sit invisible waiting on a slower one
+    // (Overview, several IPC round trips deep) just because they share one
+    // wrapper. Never re-triggered afterwards, so switching tabs (a plain
+    // visibility toggle between already-rendered panes) never replays it.
+    function fadeInWhenReady(pane: HTMLElement | null, render: () => Promise<void>): Promise<void> {
+      if (!pane) return Promise.resolve();
+      return render().then(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            pane.classList.add('pane-ready');
+          });
+        });
+      });
+    }
+
+    await Promise.all([
+      fadeInWhenReady(panes.overview,  () => renderOverview(panes.overview!, cachedItems, cachedCatalog)),
+      fadeInWhenReady(panes.library,   () => renderLibrary(panes.library!)),
+      fadeInWhenReady(panes.favorites, () => renderFavorites(panes.favorites!)),
+      fadeInWhenReady(panes.stats,     () => renderStats(panes.stats!)),
+      fadeInWhenReady(panes.reviews,   () => renderReviews(panes.reviews!)),
+      fadeInWhenReady(panes.lists,     () => renderLists(panes.lists!)),
+    ]);
 
     // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
     document.getElementById('profile-tab-content')?.addEventListener('click', (e) => {
@@ -323,6 +370,13 @@ const t    = useTranslations(lang);
       // runs, so this repopulates it with a fresh fetch rather than issuing
       // a second, redundant one.
       ({ items: cachedItems } = await getCachedLibraryAndCatalog());
+
+      // Overview's Hall of Fame/recent-activity recap doesn't self-refresh
+      // the way LibrarySection does — now that every tab stays mounted
+      // instead of remounting on next visit, it'd otherwise sit stale for
+      // the rest of the session after any library edit made elsewhere.
+      const overviewPane = document.getElementById('tab-pane-overview');
+      if (overviewPane) await renderOverview(overviewPane, cachedItems, cachedCatalog);
     });
   }
 

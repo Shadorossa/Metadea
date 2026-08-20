@@ -383,7 +383,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                       }}
                     />
                   ) : rawCover ? (
-                    <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" />
+                    <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" />
                   ) : (
                     <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
                   )}

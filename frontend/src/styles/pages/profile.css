@@ -1,4 +1,11 @@
-/* ── Profile page ──────────────────────────────────────────────────────────── */
+@keyframes profileFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 .profile-page {
   min-height: 100vh;
@@ -8,6 +15,7 @@
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  animation: profileFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Banner ──────────────────────────────────────────────────────────────────*/
@@ -182,11 +190,58 @@
   flex: 1;
   padding: 1.25rem 7rem;
   width: 100%;
+  box-sizing: border-box;
+}
+
+/* The flex column + gap used to live on .profile-tab-content itself, back
+   when each tab's sections were its own direct children — now they're
+   nested one level deeper inside this permanent per-tab pane (see
+   profile.astro), so the layout that spaces them apart has to live here.
+   [hidden] must win over the plain class rule below — an author-stylesheet
+   `display: flex` on .profile-tab-pane otherwise beats the UA stylesheet's
+   `[hidden] { display: none }` regardless of specificity, since UA rules
+   always lose to author rules. Without this override every tab pane stayed
+   visible and stacked at once, hidden attribute or not. */
+.profile-tab-pane[hidden] {
+  display: none;
+}
+
+@keyframes profilePaneFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.profile-tab-pane {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  box-sizing: border-box;
-  opacity: 1;
+  opacity: 0;
+}
+
+.profile-tab-pane.pane-ready {
+  animation: profilePaneFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.library-section,
+.fav-layout,
+.reviews-layout,
+.lists-layout,
+.stats-layout,
+.overview-layout,
+.profile-stats-bar,
+.profile-bottom-grid,
+.profile-empty {
+  animation: profilePaneFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-tab-pane {
+    transition: none;
+  }
 }
 
 /* ── Stats bar (centrada, dentro del tab de perfil) ───────────────────────── */
@@ -195,26 +250,18 @@
   justify-content: center;
   flex-wrap: nowrap;
   gap: clamp(1.5rem, 4vw, 5rem);
-  padding: 2rem 0;
+  padding: 1.75rem 0 0.25rem;
   position: relative;
 }
 
-.profile-stats-bar::before,
-.profile-stats-bar::after {
+.profile-stats-bar::before {
   content: '';
   position: absolute;
   width: 70%;
   height: 1px;
   background: var(--border-color);
   left: 15%;
-}
-
-.profile-stats-bar::before {
   top: 0;
-}
-
-.profile-stats-bar::after {
-  bottom: 0;
 }
 
 .profile-stat {
@@ -542,6 +589,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  background: var(--bg-elevated);
   /* Covers are saved at their largest available size (e.g. AniList's
      extraLarge, ~460px) and shown here at ~75px — a 6x+ downscale that can
      make Chromium/WebView2 fall back to a cheaper, jaggier scaling path
@@ -1259,6 +1307,28 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.activity-feed,
+.act-empty {
+  /* This mounts its own async fetch inside (readUserJourney) independent
+     of the outer .profile-tab-content fade, which has already finished by
+     the time this resolves — without its own transition it just popped in
+     with nothing to smooth the appearance. */
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.activity-feed.act-visible,
+.act-empty.act-visible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-feed,
+  .act-empty {
+    transition: none;
+  }
 }
 
 .act-card {
@@ -2121,6 +2191,7 @@
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
+  background: var(--bg-elevated);
   /* Same downscale-smoothing fix as .library-card-thumb img. */
   transform: translateZ(0);
   backface-visibility: hidden;
@@ -2764,6 +2835,7 @@
   object-fit: cover;
   border-radius: var(--radius-sm, 4px);
   flex-shrink: 0;
+  background: var(--bg-elevated);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
@@ -3006,6 +3078,7 @@
   object-fit: cover;
   border-radius: calc(var(--radius-sm) - 1px);
   display: block;
+  background: var(--bg-elevated);
 }
 
 .review-card-cover--fallback {
@@ -3149,6 +3222,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  background: var(--bg-elevated);
 }
 
 .list-card-collage-fallback {
@@ -3378,6 +3452,7 @@
   object-fit: cover;
   border-radius: 3px;
   display: block;
+  background: var(--bg-elevated);
 }
 
 .list-item-cover--fallback {
@@ -3520,6 +3595,7 @@
   object-fit: cover;
   border-radius: 3px;
   flex-shrink: 0;
+  background: var(--bg-elevated);
 }
 
 .list-add-cover--fallback {

@@ -173,7 +173,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
         )}
         <a className="library-card-thumb" href={mediaUrl} onClick={e => e.stopPropagation()}>
           {cover
-            ? <img src={cover} alt={title} loading="lazy" />
+            ? <img src={cover} alt={title} loading="lazy" decoding="async" />
             : <div className="library-card-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>}
         </a>
         <div className="library-card-info">
@@ -203,7 +203,7 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
                 onClick={e => e.stopPropagation()}
               >
                 {gCover
-                  ? <img src={gCover} alt={gTitle} loading="lazy" />
+                  ? <img src={gCover} alt={gTitle} loading="lazy" decoding="async" />
                   : <div className="library-card-no-cover"><span>{gTitle.slice(0, 2).toUpperCase()}</span></div>}
               </a>
             );

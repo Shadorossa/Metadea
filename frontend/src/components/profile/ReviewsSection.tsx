@@ -165,7 +165,7 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
                 <div className="review-card-top">
                   <a className="review-card-cover-link" href={url}>
                     {cover ? (
-                      <img className="review-card-cover" src={cover} alt={title} loading="lazy" />
+                      <img className="review-card-cover" src={cover} alt={title} loading="lazy" decoding="async" />
                     ) : (
                       <div className="review-card-cover review-card-cover--fallback" style={{ background: fallback }}>
                         <span>{title.slice(0, 2).toUpperCase()}</span>

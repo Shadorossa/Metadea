@@ -32,7 +32,7 @@ function ListCard({ list, catalogMap, p, onClick }: {
       <div className={`list-card-collage${previewMetas.length === 0 ? ' list-card-collage--empty' : ''}`}>
         {previewMetas.length > 0
           ? previewMetas.map((meta, i) => meta?.cover_url
-              ? <img className="list-card-collage-img" src={meta.cover_url} alt="" loading="lazy" key={i} />
+              ? <img className="list-card-collage-img" src={meta.cover_url} alt="" loading="lazy" decoding="async" key={i} />
               : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(meta?.type) }} key={i} />)
           : <span className="list-card-empty-icon">📋</span>}
       </div>
@@ -349,7 +349,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
               return (
                 <div className="list-add-item" key={item.external_id}>
                   {cover
-                    ? <img className="list-add-cover" src={cover} alt="" loading="lazy" />
+                    ? <img className="list-add-cover" src={cover} alt="" loading="lazy" decoding="async" />
                     : <div className="list-add-cover list-add-cover--fallback" style={{ background: fallbackGradient(item.type) }} />}
                   <span className="list-add-title">{title}</span>
                   <button className="list-add-btn" onClick={() => handleAdd(item)}>
@@ -386,7 +386,7 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
                   {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
                   <a className="list-item-cover-link" href={url}>
                     {cover
-                      ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" />
+                      ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" />
                       : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
                   </a>
                   <div className="list-item-info">
