@@ -15,7 +15,6 @@ const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
 export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
   const unitLabel = READING_TYPES.has(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
   const badgeLabel = item.status === 'planning' ? 'Pendiente' : `${unitLabel} ${item.progress}`;
-
   return (
     <div
       className="local-game-card"

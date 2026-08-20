@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry } from '../../lib/tauri';
-import { useLocalMediaEntries, type LocalMediaItem } from './hooks/useLocalMediaEntries';
+import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
@@ -38,19 +38,28 @@ interface LocalMediaSectionProps {
   // The same tab-bar search box games already used, now shared by every
   // media category too instead of being videojuegos-only.
   filterName:   string;
+  // Fetched once by LocalLibrary (which stays mounted across every category
+  // switch, including trips out to "Videojuegos") instead of by this
+  // component, so re-entering a media category never re-hits the DB or
+  // flashes a loading state after the very first load.
+  mediaRaw:     LocalMediaRaw | null;
+  mediaLoading: boolean;
+  refetchMedia: () => void;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
   const t = getT();
   const p = t.profile;
-  const { items: allItems, loading, refetch } = useLocalMediaEntries(category);
+  const allItems = useLocalMediaItems(category, mediaRaw);
+  const loading = mediaLoading;
+  const refetch = refetchMedia;
   const items = useMemo(() => {
     const q = filterName.trim().toLowerCase();
     return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
@@ -98,7 +107,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
             </div>
           </div>
 
-          {loading ? (
+          {loading && items.length === 0 ? (
             <div className="local-state-placeholder"><div className="spinner" /></div>
           ) : items.length === 0 ? (
             <div className="local-state-placeholder">

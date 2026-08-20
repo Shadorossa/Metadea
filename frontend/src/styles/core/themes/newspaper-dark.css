@@ -52,7 +52,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .status-dropdown-trigger,
 [data-theme="newspaper-dark"] .status-dropdown-tray,
 [data-theme="newspaper-dark"] .reviews-search,
-[data-theme="newspaper-dark"] .review-card {
+[data-theme="newspaper-dark"] .review-card,
+[data-theme="newspaper-dark"] .igdb-picker-card {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
@@ -73,7 +74,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .library-card-thumb,
 [data-theme="newspaper-dark"] .library-card-thumb img,
 [data-theme="newspaper-dark"] .card-media-base,
-[data-theme="newspaper-dark"] .card-media-img {
+[data-theme="newspaper-dark"] .card-media-img,
+[data-theme="newspaper-dark"] .igdb-picker-cover {
   border-radius: 0px !important;
   border: 1px solid var(--border-color) !important;
 }
