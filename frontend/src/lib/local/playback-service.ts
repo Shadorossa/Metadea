@@ -71,6 +71,27 @@ const POLL_INTERVAL_MS = 3000;
 // detection now just means one episode doesn't auto-mark (recoverable
 // manually); it can never again mass-complete a whole season on its own.
 const TRACK_BOUNDARY_DROP_SECONDS = 10;
+// Same self-limiting spirit as TRACK_BOUNDARY_DROP_SECONDS, applied to how
+// far a single tick's boundary detection is allowed to cascade-mark
+// episodes watched. VLC's single-instance mode silently forwards a new
+// "Reproducir" onto whatever VLC window is already open instead of actually
+// launching this app's own controlled instance (see playFileWithVlc's own
+// comment) — if that pre-existing window still had a much later episode of
+// the same show loaded from an earlier session, status.filename can match
+// far ahead in the current queue on the very first tick, and without a cap
+// here every episode in between gets marked watched at once.
+//
+// The cap itself is grounded in real elapsed wall-clock time, not a fixed
+// count: actually watching N episodes takes real minutes per episode no
+// matter what queue/filename VLC reports, so however much time has
+// genuinely passed since the last episode was marked is a hard ceiling on
+// how many *could* have legitimately finished since then. 60s/episode is
+// deliberately far below any real episode's runtime — it only exists to
+// reject "5 episodes finished in the same 3-second poll tick" outright,
+// never to slow down a real catch-up after the app was actually away for a
+// while (laptop sleep, minimized for hours, ...), which this still allows
+// in full once enough time has genuinely elapsed.
+const MIN_MS_PER_EPISODE = 60_000;
 
 function fileBasename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
@@ -97,6 +118,11 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let lastKnownTime = 0;
 let markedEpisode: number | null = null;
 let lastPresenceStart: number | null = null;
+// Wall-clock time (Date.now(), not video position) of the last episode
+// actually marked watched — see MIN_MS_PER_EPISODE's own comment. Seeded on
+// every fresh startQueuePlayback so the very first episode's own real
+// runtime counts against the cap too, not just episodes after the first.
+let lastMarkedAt = 0;
 
 function notify() {
   for (const cb of listeners) cb();
@@ -129,6 +155,7 @@ export function usePlaybackState(): PlaybackState | null {
 async function markEpisodeWatched(episodeNumber: number): Promise<void> {
   if (!state || markedEpisode === episodeNumber) return;
   markedEpisode = episodeNumber;
+  lastMarkedAt = Date.now();
 
   const { externalId, libraryEntry, totalCount } = state;
   // Reaching the last episode/chapter BY ACTUALLY PLAYING IT through the app
@@ -253,7 +280,12 @@ async function pollTick(): Promise<void> {
     const matchIndex = status.filename
       ? queue.findIndex((q, i) => i > fromIndex && fileBasename(q.filePath) === status.filename)
       : -1;
-    const nextIndex = matchIndex !== -1 ? matchIndex : fromIndex + 1;
+    const uncappedNext = matchIndex !== -1 ? matchIndex : fromIndex + 1;
+    // However many episodes real time actually allows for since the last
+    // one was marked, at minimum 1 — a genuinely missed tick or two still
+    // catches up in full once that much time has passed for real.
+    const maxPlausible = Math.max(1, Math.floor((Date.now() - lastMarkedAt) / MIN_MS_PER_EPISODE));
+    const nextIndex = Math.min(uncappedNext, fromIndex + maxPlausible);
     for (let i = fromIndex; i < nextIndex && i < queue.length; i++) {
       await markEpisodeWatched(queue[i].episodeNumber);
     }
@@ -297,6 +329,7 @@ export async function startQueuePlayback(target: StartPlaybackTarget): Promise<v
   lastKnownTime = 0;
   markedEpisode = null;
   lastPresenceStart = null;
+  lastMarkedAt = Date.now();
 
   await playFileWithVlc(target.queue.map(q => q.filePath), resumeSeconds ?? undefined);
 

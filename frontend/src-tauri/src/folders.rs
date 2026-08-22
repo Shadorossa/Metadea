@@ -253,6 +253,38 @@ fn find_vlc_executable() -> PathBuf {
 const VLC_HTTP_PORT: u16 = 39321;
 const VLC_HTTP_PASSWORD: &str = "metadea-local";
 
+// Kills any VLC instance already running before a fresh "Reproducir" —
+// VLC's single-instance mode otherwise silently forwards our new file list
+// onto whatever window is already open instead of actually launching the
+// process below, which means --extraintf/--http-port never take effect on
+// it. get_vlc_playback_status then ends up polling that *other* window's
+// real state (e.g. a much later episode from an earlier session left open),
+// and playback-service.ts's track-boundary detection can match its filename
+// far ahead in the current queue — mass-marking every episode in between as
+// watched the moment that poll tick runs. Best-effort: a failure here (no
+// VLC was running, or the platform command isn't available) is never fatal,
+// the launch below still proceeds either way.
+fn kill_existing_vlc() {
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("taskkill").args(["/F", "/IM", "vlc.exe"]).status();
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("pkill").args(["-x", "VLC"]).status();
+    #[cfg(target_os = "linux")]
+    let result = std::process::Command::new("pkill").args(["-x", "vlc"]).status();
+
+    // Only actually waits when a matching process was found and killed —
+    // status() returning success/failure both return immediately otherwise.
+    // The pause gives the OS a moment to release VLC's single-instance
+    // socket/lock before this function's caller spawns a fresh instance,
+    // which would otherwise itself get silently forwarded to the process
+    // that's still in the middle of shutting down.
+    if let Ok(status) = result {
+        if status.success() {
+            std::thread::sleep(std::time::Duration::from_millis(400));
+        }
+    }
+}
+
 // file_paths is played in order as one VLC playlist (a plain multi-argument
 // launch queues them sequentially, no shuffle) — lets "Reproducir" queue
 // every remaining episode in one go instead of relaunching per episode.
@@ -263,12 +295,13 @@ pub async fn play_file_with_vlc(file_paths: Vec<String>, start_seconds: Option<f
     if file_paths.is_empty() {
         return Err("No files to play".into());
     }
+    kill_existing_vlc();
     // `--extraintf http` runs VLC's web status API *alongside* its normal
     // player window (it doesn't replace the UI) so get_vlc_playback_status
-    // can poll episode progress. If VLC is already running in single-instance
-    // mode, this queue just gets forwarded to that instance and these flags
-    // (including --start-time below) are silently ignored — a known
-    // limitation of external control this way.
+    // can poll episode progress. Now that any pre-existing VLC window is
+    // closed above, this always launches a genuinely fresh instance, so
+    // these flags (including --start-time below) reliably take effect
+    // instead of risking being silently ignored by single-instance mode.
     let mut cmd = std::process::Command::new(find_vlc_executable());
     cmd.args(&file_paths);
     if let Some(seconds) = start_seconds {
