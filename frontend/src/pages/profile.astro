@@ -138,7 +138,7 @@ const t    = useTranslations(lang);
 </BaseLayout>
 
 <script>
-  import { getAuthToken, getAllLibraryEntries, getAllCatalogEntries } from '../lib/tauri';
+  import { getAuthToken, getAllLibraryEntries, getAllCatalogEntries, getLibraryEntry } from '../lib/tauri';
   import { decodeJwtPayload } from '../lib/profile/utils';
   import { renderOverview } from '../lib/profile/render-overview';
   import { renderLibrary } from '../lib/profile/render-library';
@@ -337,17 +337,30 @@ const t    = useTranslations(lang);
     ]);
 
     // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
-    document.getElementById('profile-tab-content')?.addEventListener('click', (e) => {
+    document.getElementById('profile-tab-content')?.addEventListener('click', async (e) => {
       if ((e.target as HTMLElement).closest('.library-card-thumb')) return;
 
       const card = (e.target as HTMLElement).closest<HTMLElement>('.library-card[data-id]');
       if (!card) return;
 
       const extId = card.dataset.id;
-      const libraryEntry = cachedItems.find(item => item.external_id === extId);
+      if (!extId) return;
       const catalogEntry = cachedCatalog.find(item => item.external_id === extId);
+      if (!catalogEntry) return;
 
-      if (extId && libraryEntry && catalogEntry) {
+      // Read straight from disk instead of cachedItems here specifically —
+      // that cache only refreshes on 'refresh-profile-library', which
+      // something changing this entry from elsewhere (the local player's
+      // auto-mark-on-watch, most notably) still fires correctly, but a
+      // fresh direct read removes any dependency on that event's timing
+      // ever being exactly right. Editing genuinely stale data here is
+      // exactly how the editor and the card underneath it can disagree —
+      // the modal opens with whatever a save moments earlier just wrote,
+      // not a snapshot from whenever this tab last happened to refresh.
+      const libraryEntry = await getLibraryEntry(extId).catch(() => null)
+        ?? cachedItems.find(item => item.external_id === extId);
+
+      if (libraryEntry) {
         window.dispatchEvent(new CustomEvent('open-profile-editor', {
           detail: {
             externalId: extId,
