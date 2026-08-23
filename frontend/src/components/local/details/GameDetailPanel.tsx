@@ -3,7 +3,7 @@ import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
-  getMediaRelationsForEditor, igdbGetGameDetail, type MediaCatalogEntry,
+  getMediaRelationsForEditor, igdbGetGameDetail, getMediaCompanies, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
@@ -115,9 +115,26 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     setCatalogDevelopers(null);
     setIsNintendoCompany(false);
     if (!knownExternalId) return;
+    let cancelled = false;
+
+    // Local DB first (get_media_companies) — near-instant if this entry's
+    // ever been synced through the media page (persistToCatalog saves
+    // companies there), instead of always waiting on the live IGDB
+    // round-trip below just to show the developer/publisher name. That
+    // live call still runs regardless (still the only source for
+    // store_links), so this is purely a "show it sooner when we already
+    // have it" fast path, not a replacement.
+    getMediaCompanies(knownExternalId).then(companies => {
+      if (cancelled || companies.length === 0) return;
+      const devs = companies.filter(c => c.role === 'developer').map(c => c.name);
+      if (devs.length > 0) setCatalogDevelopers(devs);
+      if (companies.some(c => (c.role === 'developer' || c.role === 'publisher') && c.name.toLowerCase().includes('nintendo'))) {
+        setIsNintendoCompany(true);
+      }
+    }).catch(() => {});
+
     const igdbId = Number(knownExternalId.split(':')[1]);
     if (!igdbId) return;
-    let cancelled = false;
     igdbGetGameDetail(igdbId).then(detail => {
       if (cancelled || !detail) return;
       const links = detail.store_links as { platform: string; url: string }[] | undefined;
