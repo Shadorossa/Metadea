@@ -289,6 +289,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             refetchMedia={refetchMedia}
             steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
             coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
+            pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
             onMetaRefresh={refreshMeta}
           />
         ) : (

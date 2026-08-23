@@ -6,6 +6,10 @@ export interface MetaEntry {
   // Set from the game's own cached info.json genres — a Steam-scanned game
   // whose IGDB genre includes "Visual Novel" (see read_metadata_index).
   is_vn?:       boolean;
+  // Same IGDB id "Ver en catálogo" links to (as "vnovel:<id>"/"game:<id>")
+  // — lets a Steam game be matched to its real catalog/library entry by
+  // identity instead of a fuzzy title guess.
+  igdb_id?:     number;
 }
 
 export async function readMetadataIndex(): Promise<Record<string, MetaEntry>> {

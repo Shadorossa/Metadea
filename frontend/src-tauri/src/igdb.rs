@@ -656,6 +656,13 @@ pub async fn read_metadata_index(
                     if is_vn {
                         result["is_vn"] = serde_json::Value::Bool(true);
                     }
+                    // Lets the frontend match this game to its own catalog
+                    // entry by real identity ("vnovel:<id>"/"game:<id>",
+                    // same prefix "Ver en catálogo" links to) instead of a
+                    // fuzzy title guess.
+                    if let Some(igdb_id) = info["igdb_id"].as_u64() {
+                        result["igdb_id"] = serde_json::Value::Number(igdb_id.into());
+                    }
                 }
             }
             if result.as_object().map(|o| !o.is_empty()).unwrap_or(false) {

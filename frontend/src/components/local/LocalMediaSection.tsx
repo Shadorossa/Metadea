@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry, LocalGame } from '../../lib/tauri';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
+import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
 import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
-import { normalizeForMatch } from './utils/folderMatch';
+import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX } from './ui/icons';
 import type { CategoryId } from './utils/constants';
 
@@ -55,6 +55,11 @@ interface LocalMediaSectionProps {
   // above for VNs not tied to a Steam install.
   steamGames?:  LocalGame[];
   coverCache?:  CoverCache;
+  // app_id -> cached metadata, specifically each game's own igdb_id — used
+  // to match a Steam game to its real catalog/library entry (the same
+  // "vnovel:<id>"/"game:<id>" identity "Ver en catálogo" links to) instead
+  // of guessing from the title.
+  pathCache?:   Record<string, MetaEntry>;
   onMetaRefresh?: () => void;
 }
 
@@ -62,7 +67,7 @@ interface LocalMediaSectionProps {
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, onMetaRefresh }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -72,32 +77,31 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   const loading = mediaLoading;
   const refetch = refetchMedia;
 
-  // Matches each Steam-scanned game against the FULL library (any status,
-  // not just allItemsRaw's in-progress/planning-only set) so a VN already
-  // logged as completed doesn't get mislabeled into "Backlog de Steam" —
-  // external_id link first (real, from local_game_links), else normalized
-  // title against every title variant the catalog entry has (most Steam VNs
-  // never go through local_game_links at all, so this is the common path).
-  const categoryType = LOCAL_MEDIA_TYPE_BY_CATEGORY[category];
+  // Matches each Steam-scanned game to its real catalog/library entry — by
+  // actual identity, the same "vnovel:<igdb_id>"/"game:<igdb_id>" external_id
+  // "Ver en catálogo" links to (via g.external_id when local_game_links has
+  // it, or the igdb_id read_metadata_index already caches per app_id
+  // otherwise) — not a fuzzy title guess, which broke on any title spelled
+  // even slightly differently between Steam and the catalog. Checked
+  // against the FULL library (any status, not just allItemsRaw's in-
+  // progress/planning-only set) so a VN already logged as completed doesn't
+  // get mislabeled into "Backlog de Steam".
   const steamGameMatch = useMemo(() => {
     const result = new Map<LocalGame, { externalId: string; status: string } | null>();
-    if (!steamGames || steamGames.length === 0 || !mediaRaw || !categoryType) return result;
-    const catalogMap = new Map(mediaRaw.catalog.map(c => [c.external_id, c]));
-    const relevant = mediaRaw.entries.filter(e => e.type === categoryType);
-    const byExternalId = new Map(relevant.map(e => [e.external_id, e]));
-    const byTitle = new Map<string, (typeof relevant)[number]>();
-    for (const e of relevant) {
-      const meta = catalogMap.get(e.external_id);
-      for (const tt of [meta?.title_main, meta?.title_romaji, meta?.title_native]) {
-        if (tt) byTitle.set(normalizeForMatch(tt), e);
-      }
-    }
+    if (!steamGames || steamGames.length === 0 || !mediaRaw) return result;
+    const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
     for (const g of steamGames) {
-      const matched = (g.external_id && byExternalId.get(g.external_id)) || byTitle.get(normalizeForMatch(g.name)) || null;
+      const igdbId = g.app_id ? pathCache?.[g.app_id]?.igdb_id : undefined;
+      const candidateIds = [
+        g.external_id,
+        igdbId != null ? `vnovel:${igdbId}` : undefined,
+        igdbId != null ? `game:${igdbId}` : undefined,
+      ].filter((id): id is string => !!id);
+      const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean) ?? null;
       result.set(g, matched ? { externalId: matched.external_id, status: matched.status ?? 'planning' } : null);
     }
     return result;
-  }, [steamGames, mediaRaw, categoryType]);
+  }, [steamGames, mediaRaw, pathCache]);
 
   // A VN matched to a Steam game shouldn't also show up as a second,
   // separately-tracked "invented" card for the same work below — it's
