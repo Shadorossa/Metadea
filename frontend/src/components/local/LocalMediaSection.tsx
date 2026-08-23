@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry, LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
@@ -11,6 +11,7 @@ import { buildLibraryStatusEntries } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX, IconRefresh, IconMonitor } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
+import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -161,13 +162,26 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   // the folder/episode-matching LocalMediaDetailPanel other categories use.
   const [selectedPendingItem, setSelectedPendingItemRaw] = useState<LocalMediaItem | null>(null);
   const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
-  const setSelectedId = (id: string | null) => { setSelectedIdRaw(id); if (id) { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); } };
-  const setSelectedGame = (g: LocalGame | null) => { setSelectedGameRaw(g); if (g) { setSelectedIdRaw(null); setSelectedPendingItemRaw(null); } };
+  // Keeps ?sel= in sync with whichever panel is actually open (see
+  // urlState.ts) — the restore effect further below reverses this exact
+  // encoding once this category's own data is loaded again after a Back
+  // navigation.
+  const setSelectedId = (id: string | null) => {
+    setSelectedIdRaw(id);
+    if (id) { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); }
+    writeLocalUrlState(category, id ? `c:${id}` : null);
+  };
+  const setSelectedGame = (g: LocalGame | null) => {
+    setSelectedGameRaw(g);
+    if (g) { setSelectedIdRaw(null); setSelectedPendingItemRaw(null); }
+    writeLocalUrlState(category, g ? `g:${g.external_id ?? g.app_id ?? g.name}` : null);
+  };
   const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
     setSelectedPendingItemRaw(item);
     setSelectedPendingLaunchGame(launchGame);
     setSelectedGameRaw(null);
     setSelectedIdRaw(null);
+    writeLocalUrlState(category, `p:${item.externalId}`);
   };
 
   // Steam games split by their matched library status — unmatched (or
@@ -251,6 +265,45 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, catalogMapById]);
 
   const isEmpty = sections.length === 0;
+
+  // Reopens whatever ?sel= encodes (see setSelectedId/setSelectedGame/
+  // openPendingItem above) once this category's own data has actually
+  // loaded — same reasoning as LocalLibrary's own restore effect for
+  // Videojuegos: makes browser Back from e.g. a catalog page land back on
+  // the exact same work instead of an empty tab. Only acts when the URL's
+  // own ?type= actually names THIS category, and only once per mount.
+  const restoredSelRef = useRef(false);
+  useEffect(() => {
+    if (restoredSelRef.current) return;
+    if (loading) return;
+    const { type, sel } = readLocalUrlState();
+    if (type !== category) return;
+    restoredSelRef.current = true;
+    if (!sel) return;
+
+    const kind = sel.slice(0, 2);
+    const id = sel.slice(2);
+    if (kind === 'g:') {
+      const found = (steamGames ?? []).find(g => (g.external_id ?? g.app_id ?? g.name) === id);
+      if (found) setSelectedGameRaw(found);
+      return;
+    }
+    if (kind === 'c:') {
+      if (allItems.some(i => i.externalId === id)) setSelectedIdRaw(id);
+      return;
+    }
+    if (kind === 'p:') {
+      const item = allItems.find(i => i.externalId === id);
+      if (!item) return;
+      const [entry] = buildLibraryStatusEntries([item], steamGames ?? [], catalogMapById);
+      if (entry?.kind === 'game') setSelectedGameRaw(entry.game);
+      else {
+        setSelectedPendingItemRaw(item);
+        setSelectedPendingLaunchGame(entry?.kind === 'catalog' ? entry.launchGame : undefined);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, loading]);
 
   return (
     <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
@@ -391,7 +444,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
           knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
           fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
           launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-          onClose={() => { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); setSelectedPendingLaunchGame(undefined); }}
+          onClose={() => { setSelectedGame(null); setSelectedPendingItemRaw(null); setSelectedPendingLaunchGame(undefined); }}
           onMetaRefresh={onMetaRefresh}
         />
       )}
