@@ -138,17 +138,19 @@ const { t } = Astro.props;
     <!-- Biografía -->
     <div class="settings-section flex-1">
       <h3 class="settings-section-title" data-i18n="settings.bio_title">{t.settings.bio_title}</h3>
-      <textarea
-        id="bio-textarea"
-        class="settings-textarea"
-        data-i18n="settings.bio_placeholder"
-        placeholder={t.settings.bio_placeholder}
-        maxlength="500"
-        rows="5"
-      >
-      </textarea>
-      <div class="settings-bio-count">
-        <span id="bio-char-count">0</span>/500
+      <div class="settings-textarea-wrap">
+        <textarea
+          id="bio-textarea"
+          class="settings-textarea"
+          data-i18n="settings.bio_placeholder"
+          placeholder={t.settings.bio_placeholder}
+          maxlength="500"
+          rows="5"
+        >
+        </textarea>
+        <div class="settings-bio-count">
+          <span id="bio-char-count">0</span>/500
+        </div>
       </div>
     </div>
 

@@ -127,9 +127,25 @@
   gap: 1rem;
 }
 
+/* Wraps the textarea + its char counter so the counter can sit as an
+   overlay INSIDE the box's own bottom-right corner instead of a separate
+   line below it — that extra line was also what threw off height-matching
+   against Color Personalizado/Fondo Dinámico beside it (see .settings-textarea
+   below): with the counter back in normal flow, this column's total height
+   was title+textarea+counter, taller than the other two columns' plain
+   title+box, so stretch had nothing shorter to grow the textarea into. */
+.settings-textarea-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .settings-textarea {
   width: 100%;
   padding: 0.75rem;
+  /* Room at the bottom so typed text never runs under the counter overlay. */
+  padding-bottom: 1.75rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -137,22 +153,23 @@
   font-family: inherit;
   font-size: 0.85rem;
   resize: vertical;
-  /* Grows to match whichever sibling in the Biografía/Color/Fondo row ends
-     up tallest (Fondo dinámico's two rows of theme previews, generally) —
-     .settings-section already stretches to that height by default flex
-     behavior, but a plain rows="5" textarea doesn't fill it on its own,
-     leaving empty space below that reads as "the boxes aren't the same
-     height" even though their outer containers already match. */
+  /* Fills .settings-textarea-wrap, which itself fills whatever height
+     .settings-section's default align-items:stretch gives this column to
+     match its tallest sibling (Color Personalizado/Fondo Dinámico). */
   flex: 1;
   min-height: 120px;
   box-sizing: border-box;
 }
 
 .settings-bio-count {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.5rem;
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin-top: 0.5rem;
-  text-align: right;
+  /* Lets clicks/drags reach the textarea underneath instead of landing on
+     this label — it's purely a readout, nothing here is interactive. */
+  pointer-events: none;
 }
 
 .settings-section-title {
