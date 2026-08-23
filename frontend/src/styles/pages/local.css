@@ -1183,7 +1183,13 @@
   width: 60vw;
   max-width: 860px;
   min-width: 320px;
-  max-height: calc(100vh - 48px);
+  /* A fixed height (not max-height) claims its full vertical space the
+     instant it opens, regardless of how much content the selected item
+     actually has — summary/achievements/neighbors arrive from several
+     independent async fetches, each one previously grew the panel a bit
+     more as it resolved (max-height only caps growth, it doesn't reserve
+     it upfront). Overflow scrolls inside this fixed box instead. */
+  height: calc(100vh - 48px);
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;
@@ -1481,11 +1487,12 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  /* A short entry (no summary, no achievements) vs. a long one (full
-     synopsis + achievement grid) otherwise leave the panel's bottom edge
-     jumping wildly between selections — this floor keeps the jump within
-     something reasonable instead of collapsing down to just the header. */
-  min-height: 420px;
+  /* The outer panel is now a fixed height and owns the actual scrolling
+     (see .local-game-detail-panel) — min-height:0 (not the flex-item
+     default of auto) is what lets this shrink to fit that fixed space
+     instead of growing past it and pushing the panel's own height out,
+     which is what actually resized the panel as long content streamed in. */
+  min-height: 0;
   /* Keyed by the selected game/pending item's own identity (see
      GameDetailPanel's contentKey) — switching selection while the panel
      stays open remounts just this inner block, not the whole sticky panel,
