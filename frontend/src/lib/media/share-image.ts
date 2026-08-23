@@ -137,12 +137,11 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, floorY: number, size: number) {
   const x = cx - size / 2;
   const y = floorY - size;
-  const radius = size * 0.18;
+  const radius = size * 0.08;
 
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.5)';
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 10;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = 24;
   ctx.fillStyle = '#000';
   roundedRectPath(ctx, x, y, size, size, radius);
   ctx.fill();
@@ -180,7 +179,7 @@ function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElemen
 function drawAvatarFallback(ctx: CanvasRenderingContext2D, letter: string, cx: number, floorY: number, size: number, accent: string) {
   const x = cx - size / 2;
   const y = floorY - size;
-  const radius = size * 0.18;
+  const radius = size * 0.08;
 
   ctx.save();
   roundedRectPath(ctx, x, y, size, size, radius);
@@ -311,7 +310,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   // load, so the avatar slot is never just silently blank. Sits fully
   // above the poster (not overlapping it).
   const avatarSrc = localStorage.getItem('share_avatar_cache') || localStorage.getItem('profile_avatar_cache');
-  const avatarSize = 190;
+  const avatarSize = 160;
   const avatarFloorY = posterY - 40;
   const avatar = avatarSrc ? await resolveImage(avatarSrc) : null;
   if (avatar) {
