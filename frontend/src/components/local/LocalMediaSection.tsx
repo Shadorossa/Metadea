@@ -119,9 +119,14 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     const q = filterName.trim().toLowerCase();
     return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
   }, [allItems, filterName]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Mutually exclusive — selecting one always closes the other, so a
+  // catalog item's LocalMediaDetailPanel and a Steam game's GameDetailPanel
+  // never end up open side by side at once.
+  const [selectedId, setSelectedIdRaw] = useState<string | null>(null);
   const selected = selectedId ? allItems.find(i => i.externalId === selectedId) ?? null : null;
-  const [selectedGame, setSelectedGame] = useState<LocalGame | null>(null);
+  const [selectedGame, setSelectedGameRaw] = useState<LocalGame | null>(null);
+  const setSelectedId = (id: string | null) => { setSelectedIdRaw(id); if (id) setSelectedGameRaw(null); };
+  const setSelectedGame = (g: LocalGame | null) => { setSelectedGameRaw(g); if (g) setSelectedIdRaw(null); };
 
   // Steam games split by their matched library status — unmatched (or
   // matched to a status this grid doesn't otherwise track, e.g. paused/
