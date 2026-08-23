@@ -247,15 +247,20 @@ export function LibrarySection({
       return new Date(meta.release_year, (meta.release_month ?? 1) - 1, meta.release_day ?? 1).getTime();
     };
 
-    const sortItems = (itemList: Items) => [...itemList].sort((a, b) => {
+    // useStartDate: the two in-progress sections (Al día/En progreso) sort by
+    // started_at instead of finished_at — finished_at is null for anything
+    // not actually finished yet, which fell back to release date and
+    // effectively ignored when the user actually started it.
+    const sortItems = (itemList: Items, useStartDate = false) => [...itemList].sort((a, b) => {
       if (sortBy === 'rating') {
         return dualRatingEnabled && ratingSlot === 'rating_2'
           ? (b.rating_2 ?? 0) - (a.rating_2 ?? 0)
           : (b.rating ?? 0) - (a.rating ?? 0);
       }
       if (sortBy === 'duration') return getItemMinutes(b, catalogMap) - getItemMinutes(a, catalogMap);
-      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : releaseTimestamp(a);
-      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : releaseTimestamp(b);
+      const dateField = useStartDate ? 'started_at' : 'finished_at';
+      const dateA = a[dateField] ? new Date(a[dateField] as string).getTime() : releaseTimestamp(a);
+      const dateB = b[dateField] ? new Date(b[dateField] as string).getTime() : releaseTimestamp(b);
       if (dateA === 0 && dateB !== 0) return 1;
       if (dateB === 0 && dateA !== 0) return -1;
       if (dateA === dateB && dateA !== 0) {
@@ -268,15 +273,15 @@ export function LibrarySection({
           return compareByReleaseDateDesc(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {});
         }
       }
-      return dateB - dateA; // newest finished/released to oldest
+      return dateB - dateA; // newest finished/started/released to oldest
     });
 
     // "Al día" is a computed regrouping, not a stored status (see isCaughtUpOnReleasing).
     const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
 
     const sectionsData = [
-      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i))), isCompletedSection: false },
-      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i))), isCompletedSection: false },
+      { title: p.section_caught_up, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && caughtUp(i)), true), isCompletedSection: false },
+      { title: p.section_in_progress, items: sortItems(filtered.filter(i => isInProgressStatus(i.status) && !caughtUp(i)), true), isCompletedSection: false },
       { title: p.section_completed, items: sortItems(filtered.filter(i => i.status === 'completed')), isCompletedSection: true },
       { title: p.section_planning, items: sortItems(filtered.filter(i => i.status === 'planning')), isCompletedSection: false },
       { title: p.section_paused, items: sortItems(filtered.filter(i => i.status === 'paused')), isCompletedSection: false },
@@ -308,6 +313,7 @@ export function LibrarySection({
         }
 
         // groupBundles/refineSagaGroups append merged cards regardless of date/rating — re-sort using the group's aggregate.
+        const sectionUsesStartDate = sec.title === p.section_caught_up || sec.title === p.section_in_progress;
         cards = [...cards].sort((a, b) => {
           const isAggA = !!a.bundleMeta || !!a.aggregateStats;
           const isAggB = !!b.bundleMeta || !!b.aggregateStats;
@@ -321,9 +327,10 @@ export function LibrarySection({
             const sum = (arr: Items[number][]) => arr.reduce((acc, it) => acc + getItemMinutes(it, catalogMap), 0);
             return sum(bWorks) - sum(aWorks);
           }
-          const latestFinished = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it.finished_at ? new Date(it.finished_at).getTime() : 0));
-          const dateA = latestFinished(aWorks);
-          const dateB = latestFinished(bWorks);
+          const dateField = sectionUsesStartDate ? 'started_at' : 'finished_at';
+          const latestDate = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it[dateField] ? new Date(it[dateField] as string).getTime() : 0));
+          const dateA = latestDate(aWorks);
+          const dateB = latestDate(bWorks);
           if (dateA === 0 && dateB !== 0) return 1;
           if (dateB === 0 && dateA !== 0) return -1;
           return dateB - dateA;
