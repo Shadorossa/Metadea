@@ -1209,6 +1209,33 @@
   object-fit: cover;
 }
 
+/* Used instead of the plain img above whenever there's no real (wide,
+   header-shaped) banner cached — just a portrait box-art cover, which
+   object-fit:cover stretched pixelated/blown-up across the full header
+   width. A blurred, cropped copy fills the backdrop; the same image sits
+   on top at its own aspect ratio (never upscaled beyond its native size),
+   same "blurred backdrop + contained artwork" treatment Spotify/Steam use
+   for a missing hero banner. */
+.local-game-detail-header-blur {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(20px) brightness(0.6);
+  transform: scale(1.1);
+}
+
+.local-game-detail-header-contain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 60%;
+  max-height: 85%;
+  margin: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6));
+}
+
 .local-game-detail-backdrop {
   position: absolute;
   top: 0;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
@@ -67,8 +67,17 @@ export default function LocalLibrary() {
   // media page") — GameDetailPanel builds a synthetic, unlaunchable
   // LocalGame for it below (see openPendingItem).
   const [selectedPendingItem, setSelectedPendingItem] = useState<LocalMediaItem | null>(null);
+  // Set when the selected item is a season/update tracked separately from
+  // its source game — the panel still shows the season's own title/cover,
+  // but "Jugar" launches this (the source's real, installed LocalGame)
+  // instead, since the season itself was never separately installable.
+  const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
   const setSelectedGame = (g: (typeof selectedGameRaw)) => { setSelectedGameRaw(g); if (g) setSelectedPendingItem(null); };
-  const openPendingItem = (item: LocalMediaItem) => { setSelectedPendingItem(item); setSelectedGameRaw(null); };
+  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
+    setSelectedPendingItem(item);
+    setSelectedPendingLaunchGame(launchGame);
+    setSelectedGameRaw(null);
+  };
   const selectedGame = selectedGameRaw;
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
@@ -260,36 +269,25 @@ export default function LocalLibrary() {
     () => new Map((Array.isArray(games) ? games : []).map(g => [normalizeForMatch(g.name), g])),
     [games],
   );
-  type StatusEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem };
-  // A season/update/issue/episode-tagged catalog entry isn't its own
-  // playable thing — redirects to its source game's own id/title/cover
-  // before matching or opening it, per the user's own framing: "si hay una
-  // season, pues tiene que mirar cual es el juego fuente [...] y abrir el
-  // juego fuente." Gated on format (same SUB_WORK_FORMATS stats-
-  // calculators.ts's isSubWorkItem uses), NOT just parent_id being set —
-  // parent_id also links a fully-playable, separately-owned edition (e.g.
-  // Death Stranding: Director's Cut) to its original, and THOSE must keep
-  // their own identity rather than get redirected to a different edition
-  // the user doesn't actually have.
+  // A season/update/issue/episode-tagged catalog entry (a Steam "season
+  // pass" or similar) still shows as ITSELF — its own card, own title/
+  // cover — but isn't separately launchable: its Play button targets the
+  // source game it's actually part of instead. Gated on format (same
+  // SUB_WORK_FORMATS stats-calculators.ts's isSubWorkItem uses), NOT just
+  // parent_id being set — parent_id also links a fully-playable,
+  // separately-owned edition (e.g. Death Stranding: Director's Cut) to its
+  // original, and THOSE keep their own identity/launch entirely, not
+  // redirected to a different edition the user doesn't actually have.
+  type StatusEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame };
   const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
   const catalogMapById = React.useMemo(
     () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
     [mediaRaw],
   );
-  const resolveSourceItem = React.useCallback((item: LocalMediaItem): LocalMediaItem => {
+  const sourceCatalogOf = React.useCallback((item: LocalMediaItem): MediaCatalogEntry | undefined => {
     const format = item.catalogEntry?.format;
     const parentId = item.catalogEntry?.parent_id;
-    const parentCatalog = (format && SUB_WORK_FORMATS.has(format) && parentId) ? catalogMapById.get(parentId) : undefined;
-    if (!parentCatalog) return item;
-    return {
-      ...item,
-      externalId: parentCatalog.external_id,
-      title: parentCatalog.title_main ?? parentCatalog.external_id,
-      titleRomaji: parentCatalog.title_romaji ?? null,
-      titleNative: parentCatalog.title_native ?? null,
-      cover: parentCatalog.cover_url ?? null,
-      catalogEntry: parentCatalog,
-    };
+    return (format && SUB_WORK_FORMATS.has(format) && parentId) ? catalogMapById.get(parentId) : undefined;
   }, [catalogMapById]);
   // A conservative "different edition of the same game, no catalog relation
   // to prove it" fallback — see its own call site's comment for exactly
@@ -320,42 +318,47 @@ export default function LocalLibrary() {
   // to a real (possibly uninstalled) Steam listing by name (see
   // gamesByNormalizedName's own comment on ownedExternalIds above).
   const buildCatalogStatusEntries = React.useCallback((matchesStatus: (status: string) => boolean): StatusEntry[] => {
-    const list = pendingGameItems
-      .map(resolveSourceItem)
-      .filter(i => {
-        if (!matchesStatus(i.status)) return false;
-        // A VN logged with type:'game' belongs exclusively in the Visual
-        // Novel tab, not duplicated here.
-        if (vnovelExternalIds.has(i.externalId)) return false;
-        return !ownedExternalIds.has(i.externalId);
-      });
+    const list = pendingGameItems.filter(i => {
+      if (!matchesStatus(i.status)) return false;
+      // A VN logged with type:'game' belongs exclusively in the Visual
+      // Novel tab, not duplicated here.
+      if (vnovelExternalIds.has(i.externalId)) return false;
+      return !ownedExternalIds.has(i.externalId);
+    });
     const q = filterName.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-    // A season/update can share its source game with a sibling season
-    // already resolved above — de-duped by external_id so the same source
-    // game doesn't show twice.
+    const matchTitles = (titles: string[]): LocalGame | undefined =>
+      titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
+      ?? titles.map(findEditionPrefixMatch).find(Boolean);
+    // A season/update sharing its source game with a sibling season is
+    // de-duped by that shared source id — same source game shouldn't show
+    // up twice just because it has several tracked seasons.
     const seen = new Set<string>();
-    const deduped = filtered.filter(i => (seen.has(i.externalId) ? false : (seen.add(i.externalId), true)));
-    return deduped.map((item): StatusEntry => {
-      // Exact (normalized) title match first, checked against every title
-      // variant (title/romaji/native) — the safe, unambiguous case.
+    const entries: StatusEntry[] = [];
+    for (const item of filtered) {
+      const source = sourceCatalogOf(item);
+      if (source) {
+        const dedupeKey = source.external_id;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        // Exact match first, checked against every title variant (title/
+        // romaji/native) — the safe, unambiguous case — then the strict
+        // prefix+edition-wording fallback (see findEditionPrefixMatch's own
+        // comment), on the source's own title only.
+        const sourceTitles = [source.title_main, source.title_romaji, source.title_native].filter((s): s is string => !!s);
+        const launchGame = sourceTitles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
+          ?? (source.title_main ? findEditionPrefixMatch(source.title_main) : undefined);
+        entries.push({ kind: 'catalog', item, launchGame });
+        continue;
+      }
+      if (seen.has(item.externalId)) continue;
+      seen.add(item.externalId);
       const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
-      const exactMatch = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
-      if (exactMatch) return { kind: 'game', game: exactMatch };
-      // Falls back to a strict PREFIX match on item.title only (never
-      // romaji/native — that's exactly what let a degenerate native-script
-      // title collapse to a bare "3" and substring-match ANY game with a
-      // "3" in its name, merging Bayonetta 3 into Yakuza 3 Remastered).
-      // Requires the shorter title to actually start the longer one (not
-      // just appear anywhere in it) AND every extra word beyond that
-      // shared prefix to read as edition/release wording — "Grand Theft
-      // Auto IV" -> "... IV: The Complete Edition" passes; "Final Fantasy
-      // VII" -> "... VII Revelations" (a different game, not an edition of
-      // the same one) correctly doesn't.
-      const editionMatch = findEditionPrefixMatch(item.title);
-      return editionMatch ? { kind: 'game', game: editionMatch } : { kind: 'catalog', item };
-    });
-  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findEditionPrefixMatch]);
+      const matched = matchTitles(titles);
+      entries.push(matched ? { kind: 'game', game: matched } : { kind: 'catalog', item });
+    }
+    return entries;
+  }, [pendingGameItems, sourceCatalogOf, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findEditionPrefixMatch]);
   const currentlyEntries: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
@@ -493,7 +496,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       {currentlyEntries.map((entry, i) => entry.kind === 'game' ? (
                         <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={openPendingItem} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={i => openPendingItem(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>
@@ -506,7 +509,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       {planningEntries.map((entry, i) => entry.kind === 'game' ? (
                         <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={openPendingItem} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={i => openPendingItem(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>
@@ -652,10 +655,12 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
           {selectedPendingItem && (
             <GameDetailPanel
               game={{ name: selectedPendingItem.title, launcher: 'local' }}
-              coverCache={{}}
+              coverCache={coverCache}
               knownExternalId={selectedPendingItem.externalId}
               fallbackCover={selectedPendingItem.cover}
-              onClose={() => setSelectedPendingItem(null)}
+              launchOverride={selectedPendingLaunchGame}
+              onClose={() => { setSelectedPendingItem(null); setSelectedPendingLaunchGame(undefined); }}
+              onMetaRefresh={refreshMeta}
             />
           )}
         </div>

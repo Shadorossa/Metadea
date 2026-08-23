@@ -39,10 +39,17 @@ interface GameDetailPanelProps {
   // which a non-Steam pending entry doesn't have; falls back to whatever
   // cover the catalog entry itself already has.
   fallbackCover?: string | null;
+  // Set when `game` is a season/update tracked separately from its source
+  // (see LocalLibrary's sourceCatalogOf) — everything about actually
+  // PLAYING this (launch, achievements, playtime, last-played, cached
+  // cover/banner) comes from this real installed game instead, while the
+  // title/cover/catalog identity shown still stays the season's own.
+  launchOverride?: LocalGame;
 }
 
-export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, knownExternalId, fallbackCover }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, knownExternalId, fallbackCover, launchOverride }: GameDetailPanelProps) {
   const t = getT();
+  const launchTarget = launchOverride ?? game;
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
@@ -57,14 +64,14 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   }, [hasLaunched]);
 
   useEffect(() => {
-    if (!game.app_id) return;
-    readGameInfo(game.app_id).then(setGameInfo);
-  }, [game.app_id]);
+    if (!launchTarget.app_id) return;
+    readGameInfo(launchTarget.app_id).then(setGameInfo);
+  }, [launchTarget.app_id]);
 
   useEffect(() => {
-    if (game.launcher !== 'steam' || !game.app_id) { setAchievements(null); return; }
-    steamGetPlayerAchievements(Number(game.app_id)).then(res => setAchievements(res || null));
-  }, [game.app_id, game.launcher]);
+    if (launchTarget.launcher !== 'steam' || !launchTarget.app_id) { setAchievements(null); return; }
+    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => setAchievements(res || null));
+  }, [launchTarget.app_id, launchTarget.launcher]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
   // buyable/viewable on Steam — IGDB's own external_games links (the same
@@ -203,13 +210,26 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
   };
 
-  const entry      = game.app_id ? coverCache[game.app_id] : undefined;
-  const banner     = entry?.banner ?? entry?.cover ?? fallbackCover ?? null;
+  const entry      = launchTarget.app_id ? coverCache[launchTarget.app_id] : undefined;
+  // A non-Steam entry (no coverCache banner at all) still has real banner
+  // art if the catalog row itself carries one (banners_csv, same field
+  // LocalMediaDetailPanel's own header already reads) — checked before
+  // falling all the way back to the portrait cover_url.
+  const catalogBanner = catalogEntry?.banners_csv?.split(',')[0]?.trim() || null;
+  const banner     = entry?.banner ?? catalogBanner ?? entry?.cover ?? fallbackCover ?? null;
+  // A real downloaded banner (Steam-cached, or the catalog's own
+  // banners_csv art) is already a wide, header-shaped image — safe to
+  // crop-cover the full width. Falling back to a portrait cover (no banner
+  // at all, just a box-art cover_url) stretched the exact same way looked
+  // pixelated/blown-up, since a cover is nowhere near wide enough
+  // natively. Those get a blurred-backdrop + contained-foreground
+  // treatment instead (see the header JSX below).
+  const isRealBanner = !!entry?.banner || !!catalogBanner;
   // A "Pendiente" entry with no real Steam/Epic/... install has nothing to
   // launch — the button still shows (same layout every other game gets)
   // but disabled, instead of silently failing a launchGame call with no
   // app_id/install_path.
-  const canLaunch  = !!game.app_id || !!game.install_path;
+  const canLaunch  = !!launchTarget.app_id || !!launchTarget.install_path;
   const metaDots   = [formatDate(gameInfo?.release_date ?? undefined), gameInfo?.genres?.join(', ')].filter(Boolean).join('  ·  ');
 
   const handleEdit = () => {
@@ -234,14 +254,21 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           </svg>
         </button>
         {banner ? (
-          <img src={banner} alt={game.name} />
+          isRealBanner ? (
+            <img src={banner} alt={game.name} />
+          ) : (
+            <>
+              <img className="local-game-detail-header-blur" src={banner} alt="" aria-hidden="true" />
+              <img className="local-game-detail-header-contain" src={banner} alt={game.name} />
+            </>
+          )
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
             <IconMonitor />
           </div>
         )}
         <div className="local-game-detail-backdrop" />
-        {game.launcher === 'steam' && game.app_id && (
+        {launchTarget.launcher === 'steam' && launchTarget.app_id && (
           <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -254,7 +281,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
 
       {showPicker && (
         <IgdbPickerModal
-          game={game}
+          game={launchTarget}
           onClose={() => setShowPicker(false)}
           onPicked={() => onMetaRefresh?.()}
         />
@@ -299,7 +326,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                   if (steamStoreUrl) openExternalUrl(steamStoreUrl).catch(console.error);
                   return;
                 }
-                launchGame(game.launcher, game.app_id, game.install_path)
+                launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path)
                   .then(() => {
                     setHasLaunched(true);
                     const startTime = Math.floor(Date.now() / 1000);
@@ -327,14 +354,14 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
-                  <span>{formatPlaytime(game.playtime_minutes)}</span>
+                  <span>{formatPlaytime(launchTarget.playtime_minutes)}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
                 </div>
                 <div className="local-game-detail-stat">
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
-                  <span>{formatLastPlayed(game.last_played)}</span>
+                  <span>{formatLastPlayed(launchTarget.last_played)}</span>
                   <span className="local-game-detail-stat-label">{t.local.stat_last_played}</span>
                 </div>
                 <div className="local-game-detail-stat">
@@ -399,7 +426,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
             </p>
             <div className="local-game-detail-achievement-grid">
               {achievements.list.map((ach: SteamAchievement) => (
-                <AchievementCell key={ach.apiname} ach={ach} appId={game.app_id!} />
+                <AchievementCell key={ach.apiname} ach={ach} appId={launchTarget.app_id!} />
               ))}
             </div>
           </div>
