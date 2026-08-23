@@ -441,6 +441,13 @@
   text-transform: capitalize;
   margin-left: 0.75rem;
   white-space: nowrap;
+  /* Fixed width (longest Spanish month name, "Septiembre, 2026") + centered
+     text — without this, switching to a shorter/longer month name resized
+     the label and shifted the left arrow along with it instead of keeping
+     it in a fixed spot. */
+  display: inline-block;
+  min-width: 16ch;
+  text-align: center;
 }
 
 .stats-calendar-month-arrow {
