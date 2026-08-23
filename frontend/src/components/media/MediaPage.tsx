@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
+import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, fetchMediaEpisodes, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount } from '../../lib/tauri';
-import type { LibraryEntry } from '../../lib/tauri';
+import type { LibraryEntry, MediaEpisode } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
@@ -206,7 +206,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions'>('related');
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes'>('related');
+  const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
   const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
@@ -395,6 +396,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setIsFetchingFull(true);
     setRelationPage(1);
     setRelationsTab('related');
+    setEpisodes([]);
     setCharacterPage(1);
     setCharTab('characters');
     setFriendsScores([]);
@@ -539,6 +541,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             mergeAndPersistRelations(currentId, relations).catch(console.error);
           });
         }
+
+        if (full.type === 'anime' || full.type === 'series') {
+          fetchMediaEpisodes(currentId).then(eps => {
+            if (cancelled || eps.length === 0) return;
+            setEpisodes(eps);
+          }).catch(console.error);
+        }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
       ()      => cancelled,
@@ -658,6 +667,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
       if (fresh) setData(fresh);
     }).finally(() => setRetryingSync(false));
+    // Forced (not the cache-checked default) so this also backfills a
+    // series/anime that was saved before the Episodios tab existed — and
+    // refreshes one that's already had episodes fetched but has since aired
+    // new ones, which a plain revisit wouldn't do on its own.
+    fetchMediaEpisodes(currentId, true).then(eps => {
+      if (eps.length > 0) setEpisodes(eps);
+    }).catch(console.error);
   }, [currentId, retryingSync]);
 
   // Closing without saving: roll back any optimistic quick-click draft to
@@ -761,13 +777,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   } = bucketRelations(data.relations, data.format, editionsRelationType);
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations;
+  const hasEpisodes             = episodes.length > 0;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
     ? editionRelations
     : relatedRelations;
   const pageSize = relationsTab === 'recommended' ? 8 : 12;
+  // .media-relations-grid is a fixed 4-column grid — 3 rows worth per page.
+  const EPISODE_PAGE_SIZE = 12;
   const CHARACTER_PAGE_SIZE = 12;
   const hasStaff = !!(data.staff && data.staff.length > 0);
   const activeCharList = charTab === 'staff' ? (data.staff ?? []) : data.characters;
@@ -1041,13 +1060,50 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 { key: 'related', label: tm.section_related, active: relationsTab === 'related', onClick: () => { setRelationsTab('related'); setRelationPage(1); } },
                 ...(hasEditionRelations ? [{ key: 'editions', label: editionsLabel, active: relationsTab === 'editions', onClick: () => { setRelationsTab('editions'); setRelationPage(1); } }] : []),
                 ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
+                ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
               ] : []}
             />
             {data.storeLinks && data.storeLinks.length > 0 && (
               <MediaStoreLinks links={data.storeLinks} />
             )}
           </div>
-          {visibleRelations.length > 0 && (
+          {relationsTab === 'episodes' ? (
+            episodes.length > 0 && (
+              <>
+                <div className="media-relations-grid">
+                  {episodes
+                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
+                    .map(ep => (
+                      <div
+                        key={`${ep.season_number}-${ep.episode_number}`}
+                        className="media-relation-card media-relation-card--static"
+                      >
+                        <div className="media-relation-bg-layer">
+                          {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
+                        </div>
+                        <div className="media-relation-card-overlay" />
+                        <span className="media-relation-type">{`#${ep.episode_number}`}</span>
+                        <div className="media-relation-card-content">
+                          <div className="media-relation-thumb">
+                            {ep.cover_url && <img src={ep.cover_url} alt={ep.name ?? ''} loading="lazy" />}
+                          </div>
+                          <div className="media-relation-info">
+                            <span className="media-relation-title">{ep.name ?? `#${ep.episode_number}`}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                {episodes.length > EPISODE_PAGE_SIZE && (
+                  <Pagination
+                    currentPage={relationPage}
+                    totalPages={Math.ceil(episodes.length / EPISODE_PAGE_SIZE)}
+                    onChange={setRelationPage}
+                  />
+                )}
+              </>
+            )
+          ) : visibleRelations.length > 0 && (
             <>
               <div className="media-relations-grid">
                 {visibleRelations

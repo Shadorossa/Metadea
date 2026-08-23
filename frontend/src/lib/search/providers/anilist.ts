@@ -114,6 +114,11 @@ export interface AniListMediaDetail {
   characters: { pageInfo: { hasNextPage: boolean; total: number | null }; edges: AniListCharacterEdge[] };
   relations: { edges: AniListRelationEdge[] };
   staff: { edges: AniListStaffEdge[] };
+  // AniList's own aggregation of episode listings from a handful of
+  // streaming platforms — the closest thing it has to per-episode data (no
+  // official episode name/still-image API of its own the way TMDB has for
+  // TV). Not guaranteed complete or present at all for less popular titles.
+  streamingEpisodes: { title: string | null; thumbnail: string | null }[];
 }
 
 const DETAIL_QUERY = `
@@ -153,6 +158,7 @@ const DETAIL_QUERY = `
           }
         }
       }
+      streamingEpisodes { title thumbnail }
     }
   }
 `;

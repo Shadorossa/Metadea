@@ -17,6 +17,7 @@ mod igdb_matching;
 mod community_sync;
 mod media_authors;
 mod media_catalog;
+mod media_episodes;
 mod media_relations;
 mod platform_scanning;
 mod proposal_bundle;
@@ -145,6 +146,8 @@ pub fn run() {
             user_lists::add_item_to_list,
             user_lists::remove_item_from_list,
             user_lists::reorder_list_items,
+            media_episodes::get_media_episodes,
+            media_episodes::save_media_episodes,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::get_blocked_external_ids,

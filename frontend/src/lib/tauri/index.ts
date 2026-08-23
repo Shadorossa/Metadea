@@ -17,6 +17,7 @@ export * from './user-journey';
 export * from './lists';
 export * from './tier-lists';
 export * from './catalog';
+export * from './media-episodes';
 export * from './characters';
 export * from './staff';
 export * from './actors';

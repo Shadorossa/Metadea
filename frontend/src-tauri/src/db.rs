@@ -878,6 +878,27 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE local_games_seen ADD COLUMN name TEXT NOT NULL DEFAULT ''", []);
         mark_migration(conn, 44)?;
     }
+    if v < 45 {
+        // Per-episode data (name + still image) for the media page's new
+        // "Episodios" tab — sourced from TMDB (series) or AniList's
+        // streamingEpisodes (anime), fetched once and cached here the same
+        // way media_catalog caches the rest of a work's metadata, rather
+        // than re-hitting either API on every visit. episode_number is REAL
+        // (not INTEGER) for the same reason episode_history/
+        // episode_resume_position already are — specials/OVAs can carry a
+        // fractional number (e.g. "12.5").
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS media_episode (
+                external_id    TEXT NOT NULL,
+                season_number  INTEGER NOT NULL DEFAULT 0,
+                episode_number REAL NOT NULL,
+                name           TEXT,
+                cover_url      TEXT,
+                PRIMARY KEY (external_id, season_number, episode_number)
+             );",
+        )?;
+        mark_migration(conn, 45)?;
+    }
 
     Ok(())
 }

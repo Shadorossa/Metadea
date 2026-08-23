@@ -357,3 +357,57 @@ export async function fetchTmdbDetail(
 
   return fetchJson<TmdbMovieDetail | TmdbTvDetail>(url, { headers });
 }
+
+interface TmdbSeasonEpisode {
+  episode_number: number;
+  name?: string;
+  still_path: string | null;
+}
+
+interface TmdbSeasonResponse {
+  episodes?: TmdbSeasonEpisode[];
+}
+
+export interface TmdbEpisodeSummary {
+  season_number:  number;
+  episode_number: number;
+  name:           string | null;
+  cover_url:      string | null;
+}
+
+// One request per season (TMDB has no single "all episodes" endpoint) — runs
+// in parallel since each season's fetch is independent. Season 0 (specials)
+// is included: TMDB numbers it like any other season, and the media page's
+// episode table doesn't need to treat it differently.
+export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number): Promise<TmdbEpisodeSummary[]> {
+  const auth = await getTmdbAuth();
+  if (!auth || numberOfSeasons <= 0) return [];
+
+  const headers: Record<string, string> = {};
+  if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;
+
+  const buildUrl = (seasonNumber: number) => {
+    let url = `${API_ENDPOINTS.TMDB}/tv/${tmdbId}/season/${seasonNumber}?language=${tmdbLocale()}`;
+    if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+    return url;
+  };
+
+  const seasons = await Promise.all(
+    Array.from({ length: numberOfSeasons }, (_, i) =>
+      fetchJson<TmdbSeasonResponse>(buildUrl(i), { headers }).catch(() => null),
+    ),
+  );
+
+  const episodes: TmdbEpisodeSummary[] = [];
+  seasons.forEach((season, seasonNumber) => {
+    for (const ep of season?.episodes ?? []) {
+      episodes.push({
+        season_number:  seasonNumber,
+        episode_number: ep.episode_number,
+        name:           ep.name?.trim() || null,
+        cover_url:      buildPosterUrl(ep.still_path),
+      });
+    }
+  });
+  return episodes;
+}
