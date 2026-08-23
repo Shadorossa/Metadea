@@ -280,6 +280,12 @@
 
 .search-filter-select {
   flex: 1;
+  /* Explicit height + border-box so this lines up exactly with the year
+     stepper next to it, which is sized off its own fixed-height buttons —
+     without this the two "rectángulos" ended up a few px off from each
+     other purely from their different padding/line-height math. */
+  height: 2.15rem;
+  box-sizing: border-box;
   /* appearance:none replaces the browser's own arrow (barely visible/
      inconsistent across platforms) with the chevron below; color-scheme
      tells the browser to render the native dropdown's OPEN option list in
@@ -288,7 +294,7 @@
      applied to <option>, which Chromium mostly ignores. */
   appearance: none;
   color-scheme: dark;
-  padding: 0.4rem 1.6rem 0.4rem 0.6rem;
+  padding: 0 1.6rem 0 0.6rem;
   background: rgba(255, 255, 255, 0.03)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%239c8f80' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
     no-repeat right 0.4rem center / 0.9rem;
@@ -296,7 +302,13 @@
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: border-color var(--anim-fast) var(--anim-ease), background var(--anim-fast) var(--anim-ease);
+}
+.search-filter-select:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 .search-filter-select:focus {
   outline: none;
@@ -314,6 +326,10 @@
   align-items: center;
   flex: 1.2;
   min-width: 6.5rem;
+  /* Same fixed height as .search-filter-select next to it — see that
+     rule's own comment for why these two "rectángulos" need matching. */
+  height: 2.15rem;
+  box-sizing: border-box;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -324,13 +340,13 @@
   flex: 1;
   min-width: 2.6rem;
   width: 0;
+  height: 100%;
   background: none;
   border: none;
   color: var(--text-main);
   font-size: 0.8rem;
   font-weight: 700;
   text-align: center;
-  padding: 0.35rem 0;
 }
 .search-filter-year-input::placeholder { color: var(--text-muted); font-weight: 500; }
 .search-filter-year-input:focus {
@@ -342,7 +358,7 @@
   align-items: center;
   justify-content: center;
   width: 1.9rem;
-  height: 1.9rem;
+  height: 100%;
   flex-shrink: 0;
   background: none;
   border: none;

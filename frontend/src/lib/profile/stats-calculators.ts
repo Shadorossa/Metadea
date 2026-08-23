@@ -203,10 +203,29 @@ export function computeOverviewAggregate(
     tallyStatus(item);
   }
 
+  // Which of the 5 stat buckets a raw status falls into — used below to
+  // check whether every member of a saga chain agrees on the same bucket
+  // (mirrors tallyStatus's own branching so a chain and a standalone item
+  // are always classified the same way).
+  const statusBucket = (status: string | null | undefined): 'completed' | 'currently' | 'paused' | 'dropped' | 'planning' => {
+    const s = status ?? 'planning';
+    if (s === 'completed') return 'completed';
+    if (isInProgressStatus(s)) return 'currently';
+    if (s === 'paused') return 'paused';
+    if (s === 'dropped') return 'dropped';
+    return 'planning';
+  };
+
   for (const ids of sagaChains.values()) {
     const members = ids.map(id => itemById.get(id)!).filter(Boolean);
-    const allCompleted = members.length > 0 && members.every(m => (m.status ?? 'planning') === 'completed');
-    if (allCompleted) {
+    const firstBucket = members.length > 0 ? statusBucket(members[0].status) : null;
+    // A saga chain collapses to 1 "obra" whenever every member agrees on the
+    // same bucket — whether that's everyone finished, everyone still on the
+    // to-watch pile, everyone mid-watch, everyone paused, or everyone
+    // dropped. Only a chain genuinely split across buckets (some seasons
+    // watched, others not) falls back to counting each member on its own.
+    const allSameBucket = firstBucket !== null && members.every(m => statusBucket(m.status) === firstBucket);
+    if (allSameBucket && firstBucket === 'completed') {
       // The whole franchise reads as finished — 1 anime, N seasons, not N
       // separate completed anime. "Temporada" only makes sense for anime/
       // series (TV entries) — a manga/movie/game saga's own entries are
@@ -217,6 +236,11 @@ export function computeOverviewAggregate(
       completed++;
       completedByType[chainType] = (completedByType[chainType] ?? 0) + 1;
       addToSubBreakdown(chainType, subFormat, members.length);
+    } else if (allSameBucket) {
+      if (firstBucket === 'currently') currently++;
+      else if (firstBucket === 'paused') paused++;
+      else if (firstBucket === 'dropped') dropped++;
+      else planning++;
     } else {
       // Still mid-franchise (some seasons watched, others not) — no single
       // status represents the whole chain yet, so count each member on its

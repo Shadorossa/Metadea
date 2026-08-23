@@ -38,7 +38,6 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .google-btn, 
 [data-theme="newspaper-dark"] .input-dark,
 [data-theme="newspaper-dark"] .theme-card-preview,
-[data-theme="newspaper-dark"] .avatar-preview-wrap,
 [data-theme="newspaper-dark"] .banner-drop-zone,
 [data-theme="newspaper-dark"] .media-card,
 [data-theme="newspaper-dark"] .library-card,
@@ -69,6 +68,14 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .nav-icon-btn {
   border: none !important;
   filter: none !important;
+}
+
+/* The profile photo itself, not a framed section — no double-border box
+   or background behind it like the rest of the theme's controls get. */
+[data-theme="newspaper-dark"] .avatar-preview-wrap {
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
 }
 
 /* Plain icon, no double-border box like every other themed button gets —

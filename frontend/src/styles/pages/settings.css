@@ -332,16 +332,34 @@
   margin-top: auto;
 }
 
+/* Explicit shared height for both action rows — .btn--icon-only above
+   already matches it, this covers .banner-actions' plain text .btn--sm
+   buttons so the two rows land on the exact same height and baseline
+   regardless of each button's own content. */
+.avatar-upload-btns .btn,
+.banner-actions .btn {
+  height: 2.1rem;
+  box-sizing: border-box;
+}
+
 /* Square, icon-only variant for the avatar's action buttons — same
    vertical padding as .btn--sm (which .banner-actions' text buttons use)
    so both rows end up exactly the same height, just with less horizontal
-   padding since there's no text label to fit. */
+   padding since there's no text label to fit. Also a fixed height (not
+   just matching padding) — the upload/remove icons come from
+   icon-strings.ts at two different native sizes (24px vs 14px), so without
+   an explicit height here the taller icon alone made its own button visibly
+   taller than its sibling and than .banner-actions' text buttons. */
 .btn--icon-only {
-  padding: 0.45rem 0.6rem;
+  height: 2.1rem;
+  padding: 0 0.6rem;
   gap: 0;
+  box-sizing: border-box;
 }
 .btn--icon-only svg {
   display: block;
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Banner upload ────────────────────────────────────────────────────────── */
