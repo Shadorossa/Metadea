@@ -147,6 +147,17 @@ pub async fn open_env_folder(app_handle: tauri::AppHandle) -> Result<(), String>
     Ok(())
 }
 
+// Opens any URL (custom scheme like "steam://" included) via the OS's own
+// handler — same opener plugin launch_game already uses below, needed
+// separately since a plain <a target="_blank">/window.open from the
+// frontend doesn't reliably hand a non-http(s) scheme off to the OS from
+// inside the webview.
+#[tauri::command]
+pub async fn open_external_url(app_handle: tauri::AppHandle, url: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app_handle.opener().open_url(url, None::<String>).str_err()
+}
+
 #[tauri::command]
 pub async fn launch_game(
     app_handle: tauri::AppHandle,

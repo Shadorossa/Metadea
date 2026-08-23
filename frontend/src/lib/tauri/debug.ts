@@ -11,3 +11,10 @@ export async function openEnvFolder(): Promise<void> {
 export async function launchGame(launcher: string, appId?: string | null, installPath?: string | null): Promise<void> {
   return tauriRun('launch_game', { launcher, appId: appId ?? null, installPath: installPath ?? null });
 }
+
+// Hands any URL off to the OS's own handler — needed for custom schemes
+// like "steam://" a plain <a target="_blank">/window.open can't reliably
+// escape the webview with.
+export async function openExternalUrl(url: string): Promise<void> {
+  return tauriRun('open_external_url', { url });
+}

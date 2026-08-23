@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  readGameInfo, steamGetPlayerAchievements, launchGame,
+  readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
   getMediaRelationsForEditor, igdbGetGameDetail, type MediaCatalogEntry,
@@ -82,7 +82,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
       if (cancelled || !detail) return;
       const links = detail.store_links as { platform: string; url: string }[] | undefined;
       const steam = links?.find(l => l.platform === 'steam');
-      if (steam) setSteamStoreUrl(steam.url);
+      if (!steam) return;
+      // steam:// opens the store page inside the Steam client itself
+      // instead of the browser — Steam's own app-page URLs are always
+      // ".../app/<id>/...", so the numeric id is all this needs.
+      const appIdMatch = steam.url.match(/\/app\/(\d+)/);
+      setSteamStoreUrl(appIdMatch ? `steam://store/${appIdMatch[1]}` : steam.url);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [knownExternalId]);
@@ -291,7 +296,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                   // Nothing to launch, but it IS buyable/viewable on Steam
                   // (see the steamStoreUrl effect above) — same "Ver en
                   // Steam" pattern this app already uses for external links.
-                  if (steamStoreUrl) window.open(steamStoreUrl, '_blank', 'noopener,noreferrer');
+                  if (steamStoreUrl) openExternalUrl(steamStoreUrl).catch(console.error);
                   return;
                 }
                 launchGame(game.launcher, game.app_id, game.install_path)
