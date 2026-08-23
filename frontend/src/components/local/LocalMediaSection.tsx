@@ -87,6 +87,23 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   const loading = mediaLoading;
   const refetch = refetchMedia;
 
+  // playback-service.ts keeps polling and auto-marking episodes watched via
+  // its own global singleton regardless of what's mounted — including with
+  // no LocalMediaDetailPanel open at all, or one open on a different item.
+  // LocalMediaDetailPanel's own listener for this event only refreshes
+  // mediaRaw when it happens to be open on the exact item that just
+  // finished, so an episode marked watched in the background (panel closed,
+  // or watching continued after navigating elsewhere within Local) left
+  // mediaRaw stale — "próximo episodio" kept showing the old progress until
+  // something else happened to remount this component (e.g. an F5). This
+  // listener has no such gate: any episode marked watched anywhere refreshes
+  // the list this whole category's cards/panels read from.
+  useEffect(() => {
+    function onEpisodeMarked() { refetchMedia(); }
+    window.addEventListener('metadea:episode-marked', onEpisodeMarked);
+    return () => window.removeEventListener('metadea:episode-marked', onEpisodeMarked);
+  }, [refetchMedia]);
+
   // Matches each Steam-scanned game to its real catalog/library entry — by
   // actual identity, the same "vnovel:<igdb_id>"/"game:<igdb_id>" external_id
   // "Ver en catálogo" links to (via g.external_id when local_game_links has

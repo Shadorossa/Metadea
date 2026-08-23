@@ -128,8 +128,25 @@ function notify() {
   for (const cb of listeners) cb();
 }
 
+// Persists just enough to rebuild the bar after an F5 — a full reload wipes
+// this module's in-memory `state` even though VLC itself (a separate
+// process) is still actually playing, which is what made the NowPlayingBar
+// (and the "reproduciendo" indicator) vanish on refresh despite playback
+// continuing underneath it. sessionStorage (not localStorage): scoped to
+// this tab's lifetime, same as never persisting across a real app restart —
+// there's no VLC session left to reattach to by then anyway.
+const STORAGE_KEY = 'metadea_now_playing_v1';
+
+function persistState(next: PlaybackState | null) {
+  try {
+    if (next) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    else sessionStorage.removeItem(STORAGE_KEY);
+  } catch { /* sessionStorage unavailable/full */ }
+}
+
 function setState(next: PlaybackState | null) {
   state = next;
+  persistState(next);
   notify();
 }
 
@@ -372,3 +389,36 @@ export function stopPlayback(): void {
   sendVlcCommand('pl_stop').catch(() => {});
   finishSession();
 }
+
+// Runs once, at module load (client-side only — Astro's server pass never
+// gets here) — rehydrates `state` from whatever was persisted right before
+// the page reloaded, but only if VLC itself confirms it's still actually
+// playing that same file. Restoring blind (or on VLC being closed/moved on
+// to something else in the meantime) would show a "reproduciendo" bar for a
+// session that no longer exists — the whole point is showing reality, not a
+// stale guess dressed up as one.
+async function restorePersistedSession(): Promise<void> {
+  let saved: PlaybackState | null = null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch { /* sessionStorage unavailable */ }
+  if (!saved) return;
+
+  const current = saved.queue[saved.queueIndex];
+  if (!current) { persistState(null); return; }
+
+  const status = await getVlcPlaybackStatus().catch(() => null);
+  const stillSameFile = !!status
+    && (status.state === 'playing' || status.state === 'paused')
+    && (!status.filename || status.filename === fileBasename(current.filePath));
+  if (!status || !stillSameFile) { persistState(null); return; }
+
+  lastKnownTime = status.time;
+  lastMarkedAt = Date.now();
+  state = { ...saved, status: status.state as PlaybackStatus, position: status.position, time: status.time, length: status.length };
+  notify();
+  ensurePolling();
+}
+
+restorePersistedSession();
