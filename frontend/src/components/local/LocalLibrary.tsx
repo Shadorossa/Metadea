@@ -440,7 +440,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
       )}
 
       <div className="local-library">
-        {activeCategory === 'videojuegos' && activePlatform && availablePlatforms && (
+        {activeCategory === 'videojuegos' && (
           <PlatformSidebar
             activePlatform={activePlatform}
             availablePlatforms={availablePlatforms}
