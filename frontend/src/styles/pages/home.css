@@ -438,16 +438,31 @@
 .stats-calendar-month {
   font-size: 0.72rem;
   color: var(--text-muted);
-  text-transform: capitalize;
   margin-left: 0.75rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.stats-calendar-month-name {
+  text-transform: capitalize;
   white-space: nowrap;
-  /* Fixed width (longest Spanish month name, "Septiembre, 2026") + centered
-     text — without this, switching to a shorter/longer month name resized
-     the label and shifted the left arrow along with it instead of keeping
-     it in a fixed spot. */
+  /* A genuinely fixed width (min-width let "Septiembre" grow past it and
+     drag the whole right-anchored nav block — and the arrow before this
+     box — leftward), long enough for the longest Spanish month name, with
+     centered text so only the text itself visibly shifts inside this fixed
+     box; the "|" separator, year, and arrows never move. */
   display: inline-block;
-  min-width: 16ch;
+  width: 5.5rem;
   text-align: center;
+}
+
+.stats-calendar-month-sep {
+  opacity: 0.4;
+}
+
+.stats-calendar-month-year {
+  opacity: 0.75;
 }
 
 .stats-calendar-month-arrow {

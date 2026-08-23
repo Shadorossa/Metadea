@@ -10,7 +10,7 @@ import {
   type CalendarDay,
 } from '../../lib/profile/stats-calculators';
 import { fetchGeneralUpcomingReleases } from '../../lib/home/upcoming-general';
-import { formatMonthYear } from '../../lib/shared/formatDate';
+import { getLocaleCode } from '../../lib/shared/formatDate';
 
 import { typeIconMap } from '../../lib/shared/icon-strings';
 
@@ -134,7 +134,9 @@ export function CalendarSection() {
   );
   const currentYear = viewedDate.getFullYear();
   const currentMonth = viewedDate.getMonth(); // 0-indexed
-  const currentMonthName = formatMonthYear(viewedDate);
+  // Month name and year rendered as two stacked lines (see .stats-calendar-month
+  // below) instead of formatMonthYear's single "Agosto, 2026" string.
+  const monthLabel = viewedDate.toLocaleDateString(getLocaleCode(), { month: 'long' }).replace(/^./, c => c.toUpperCase());
   // Covers the whole viewed month, not just today onward — a release
   // calendar should show what already came out earlier in it too.
   const startOfMonth = useMemo(() => new Date(currentYear, currentMonth, 1), [currentYear, currentMonth]);
@@ -223,7 +225,11 @@ export function CalendarSection() {
           >
             ‹
           </button>
-          <span className="stats-calendar-month">{currentMonthName}</span>
+          <span className="stats-calendar-month">
+            <span className="stats-calendar-month-name">{monthLabel}</span>
+            <span className="stats-calendar-month-sep">|</span>
+            <span className="stats-calendar-month-year">{currentYear}</span>
+          </span>
           <button
             type="button"
             className="stats-calendar-month-arrow"
