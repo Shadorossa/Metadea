@@ -20,6 +20,7 @@ export const STORAGE_KEYS = {
   userJourney: 'user_journey',
   profileAvatarCustom: 'profile_avatar_custom',
   profileBannerCustom: 'profile_banner_custom',
+  shareAvatarCustom: 'share_avatar_custom',
   communityCatalogLastSync: 'community_catalog_last_sync',
   lastVisitedPath: 'metadea_last_visited_path',
   homeCalendarGeneralCache: 'metadea_home_calendar_general_cache',

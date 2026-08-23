@@ -18,6 +18,7 @@ pub async fn save_user_image(
     let col = match key.as_str() {
         "avatar" => "avatar_data",
         "banner" => "banner_data",
+        "share_avatar" => "share_avatar_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
     let now = chrono::Utc::now().to_rfc3339();
@@ -37,6 +38,7 @@ pub async fn get_user_image(
     let col = match key.as_str() {
         "avatar" => "avatar_data",
         "banner" => "banner_data",
+        "share_avatar" => "share_avatar_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
     let conn = state.conn.lock().str_err()?;
@@ -59,6 +61,7 @@ pub async fn remove_user_image(
     let col = match key.as_str() {
         "avatar" => "avatar_data",
         "banner" => "banner_data",
+        "share_avatar" => "share_avatar_data",
         _ => return Err(format!("Invalid key: {}", key)),
     };
     let now = chrono::Utc::now().to_rfc3339();

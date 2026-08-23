@@ -262,13 +262,18 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
     ctx.fillRect(posterX, posterY, posterW, posterH);
   }
 
-  // Profile's own cached avatar — same key Navbar.astro reads to paint the
-  // navbar avatar instantly, custom-uploaded or Google, already resolved.
-  // Falls back to a letter-in-a-circle (same idea as the navbar/settings
-  // preview's own fallback) whenever that cache is empty or the image
-  // fails to load, so the avatar slot is never just silently blank. Sits
-  // fully above the poster (not overlapping it).
-  const avatarSrc = localStorage.getItem('profile_avatar_cache');
+  // share_avatar_cache (Settings → "Foto específica") takes priority when
+  // set — a deliberately square photo just for this share card, since the
+  // main avatar can be any crop/aspect ratio (most Google avatars and
+  // custom uploads aren't square) and looked stretched/off-center once
+  // drawn into this card's own square avatar slot. Falls back to the
+  // regular profile_avatar_cache (same key Navbar.astro reads to paint the
+  // navbar avatar instantly) when no specific photo was set. Falls back
+  // further to a letter-in-a-circle (same idea as the navbar/settings
+  // preview's own fallback) whenever both are empty or the image fails to
+  // load, so the avatar slot is never just silently blank. Sits fully
+  // above the poster (not overlapping it).
+  const avatarSrc = localStorage.getItem('share_avatar_cache') || localStorage.getItem('profile_avatar_cache');
   const avatarR = 95;
   const avatarFloorY = posterY - 40;
   const avatar = avatarSrc ? await resolveImage(avatarSrc) : null;

@@ -207,7 +207,8 @@
   flex-direction: column;
 }
 
-.settings-section--avatar {
+.settings-section--avatar,
+.settings-section--share-avatar {
   flex-shrink: 0;
   width: 160px;
   display: flex;

@@ -82,6 +82,36 @@ const { t } = Astro.props;
       <input type="file" id="avatar-input" accept="image/*" hidden />
     </div>
 
+    <!-- Foto cuadrada — usada en vez del avatar de arriba solo para la
+         imagen de "compartir" (ver share-image.ts), que necesita un
+         encuadre cuadrado en vez del recorte/aspecto que tenga el avatar
+         normal. Vacío por defecto: share-image.ts cae de vuelta al avatar
+         normal cuando esta no está puesta. -->
+    <div class="settings-section settings-section--share-avatar">
+      <h3 class="settings-section-title" data-i18n="settings.share_avatar_title">{t.settings.share_avatar_title}</h3>
+      <div class="avatar-preview-wrap" id="share-avatar-preview">
+        <!-- populated by script -->
+      </div>
+      <div class="avatar-upload-btns">
+        <button
+          class="btn btn--sm btn--secondary btn--icon-only"
+          id="share-avatar-upload-btn"
+          data-i18n-title="settings.share_avatar_upload"
+          title={t.settings.share_avatar_upload}
+          aria-label={t.settings.share_avatar_upload}
+          set:html={ICON_UPLOAD_IMAGE}
+        ></button>
+        <button
+          class="btn btn--sm btn--ghost btn--icon-only"
+          id="share-avatar-remove-btn"
+          data-i18n-title="settings.share_avatar_remove"
+          title={t.settings.share_avatar_remove}
+          aria-label={t.settings.share_avatar_remove}
+          set:html={ICON_TRASH}
+        ></button>
+      </div>
+    </div>
+
     <!-- Banner -->
     <div class="settings-section settings-section--banner">
       <h3 class="settings-section-title" data-i18n="settings.banner_title">{t.settings.banner_title}</h3>

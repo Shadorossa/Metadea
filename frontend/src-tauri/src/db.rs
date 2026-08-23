@@ -899,6 +899,15 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 45)?;
     }
+    if v < 46 {
+        // A separate, deliberately-square photo for the Instagram-style
+        // share image (see share-image.ts) — the main avatar can be any
+        // crop/aspect ratio, but a square one specifically for sharing
+        // avoids it being stretched/cropped oddly on the share card.
+        // Falls back to avatar_data when empty (see get_user_image below).
+        let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN share_avatar_data TEXT NOT NULL DEFAULT ''", []);
+        mark_migration(conn, 46)?;
+    }
 
     Ok(())
 }
@@ -1381,6 +1390,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     id                INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
     avatar_data       TEXT NOT NULL DEFAULT '',
     banner_data       TEXT NOT NULL DEFAULT '',
+    share_avatar_data TEXT NOT NULL DEFAULT '',
     bio               TEXT NOT NULL DEFAULT '',
     custom_color      TEXT NOT NULL DEFAULT '#c084fc',
     display_name      TEXT NOT NULL DEFAULT '',

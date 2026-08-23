@@ -4,6 +4,7 @@ import { isTauri, invoke as tauriInvoke } from '../tauri/core';
 const TAURI_KEYS: Record<string, string> = {
   [STORAGE_KEYS.profileAvatarCustom]: 'avatar',
   [STORAGE_KEYS.profileBannerCustom]: 'banner',
+  [STORAGE_KEYS.shareAvatarCustom]: 'share_avatar',
 };
 
 // ── IndexedDB fallback ────────────────────────────────────────────────────────
@@ -77,7 +78,10 @@ async function idbRemove(key: string): Promise<boolean> {
 
 function syncLocalStorageCache(key: string, dataUrl: string | null): void {
   if (typeof localStorage === 'undefined') return;
-  const cacheKey = key === STORAGE_KEYS.profileBannerCustom ? 'profile_banner_cache' : key === STORAGE_KEYS.profileAvatarCustom ? 'profile_avatar_cache' : null;
+  const cacheKey = key === STORAGE_KEYS.profileBannerCustom ? 'profile_banner_cache'
+    : key === STORAGE_KEYS.profileAvatarCustom ? 'profile_avatar_cache'
+    : key === STORAGE_KEYS.shareAvatarCustom ? 'share_avatar_cache'
+    : null;
   if (!cacheKey) return;
   if (dataUrl) {
     try { localStorage.setItem(cacheKey, dataUrl); } catch {}
