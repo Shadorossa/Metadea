@@ -335,8 +335,16 @@ fn build_store_links(external_games: &serde_json::Value) -> Option<Vec<serde_jso
                 "xbox"
             } else if url.contains("playstation.com") {
                 "playstation"
-            } else if url.contains("nintendo.com") || url.contains("nintendo.co.jp") {
-                "nintendo"
+            // No Nintendo case here: IGDB's ExternalGameCategory enum has no
+            // Nintendo eShop entry at all (steam/gog/microsoft/apple/
+            // android/amazon/epic/oculus/itch/xbox/playstation/gamejolt/...
+            // — verified against the community-maintained type defs,
+            // https://api-docs.igdb.com/#external-game-enums), so
+            // external_games never returns a Nintendo storefront url
+            // regardless of how this match is written. See
+            // MediaPage/GameDetailPanel's own Nintendo fallback (a
+            // constructed eShop search link) for what actually shows the
+            // "Ver en Nintendo" action instead.
             } else {
                 return None;
             };
@@ -513,6 +521,12 @@ pub async fn igdb_get_cover_by_steam_id(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     app_id: String,
     game_name: String,
+    // Passed by the frontend as the game's own launcher (see LocalLibrary's
+    // handleFetchMetadata) — a manual pick saved under e.g. "gog"
+    // (IgdbPickerModal already uses game.launcher, not a hardcoded "steam")
+    // is actually found again below instead of silently never matching,
+    // now that this isn't hardcoded to "steam" either.
+    launcher: String,
 ) -> Result<Option<String>, String> {
     let app_data_dir = app_handle
         .path()
@@ -553,7 +567,7 @@ pub async fn igdb_get_cover_by_steam_id(
     // re-runs from scratch.
     let manual_link = {
         let conn = state.conn.lock().str_err()?;
-        crate::game_links::get_game_link(&conn, "steam", &app_id)
+        crate::game_links::get_game_link(&conn, &launcher, &app_id)
     };
     let manual_igdb_id = manual_link
         .as_deref()
@@ -563,7 +577,7 @@ pub async fn igdb_get_cover_by_steam_id(
     let (cover_image_id, igdb_game_id, igdb_game) = if let Some(igdb_id) = manual_igdb_id {
         fetch_igdb_game_by_id(&client, &client_id, &token, igdb_id).await?
     } else {
-        resolve_igdb_game(&client, &client_id, &token, &app_id, &game_name).await?
+        resolve_igdb_game(&client, &client_id, &token, &app_id, &game_name, &launcher).await?
     };
 
     download_game_metadata(

@@ -77,8 +77,8 @@ export async function igdbGetRelationGraph(rootId: number): Promise<unknown[]> {
   return tauriTry<unknown[]>('igdb_get_relation_graph', [], { rootId });
 }
 
-export async function igdbGetCoverBySteamId(appId: string, gameName: string): Promise<string | null> {
-  return tauriCmd<string | null>('igdb_get_cover_by_steam_id', null, { appId, gameName });
+export async function igdbGetCoverBySteamId(appId: string, gameName: string, launcher: string): Promise<string | null> {
+  return tauriCmd<string | null>('igdb_get_cover_by_steam_id', null, { appId, gameName, launcher });
 }
 
 export interface IgdbCandidate {

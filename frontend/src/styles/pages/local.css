@@ -1188,7 +1188,12 @@
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  flex-shrink: 1;
+  /* Was 1 — let the panel compress whenever the grid beside it needed the
+     room, meaning its own width could visibly shift between two selections
+     even at the same window size (whichever one rendered a wider grid
+     first). Width is already a deterministic vw/px formula that doesn't
+     need to yield space to its sibling at all. */
+  flex-shrink: 0;
   animation: slide-in-right 0.3s var(--anim-ease);
   overflow-y: auto;
   overflow-x: hidden;
@@ -1476,6 +1481,18 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  /* A short entry (no summary, no achievements) vs. a long one (full
+     synopsis + achievement grid) otherwise leave the panel's bottom edge
+     jumping wildly between selections — this floor keeps the jump within
+     something reasonable instead of collapsing down to just the header. */
+  min-height: 420px;
+  /* Keyed by the selected game/pending item's own identity (see
+     GameDetailPanel's contentKey) — switching selection while the panel
+     stays open remounts just this inner block, not the whole sticky panel,
+     so this is the only thing that visibly transitions (a soft cross-fade)
+     instead of every field popping in individually as its own async fetch
+     resolves. */
+  animation: fade-in 0.2s var(--anim-ease);
 }
 
 .local-game-detail-title {

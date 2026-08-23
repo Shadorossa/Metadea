@@ -101,12 +101,19 @@ export default function LocalLibrary() {
     const doBasic        = types.includes('basic');
     const doAchievements = types.includes('achievements');
 
+    // Achievements stay Steam-only (Steam's own Web API — GOG Galaxy has
+    // its own separate achievements system this doesn't talk to at all),
+    // but basic metadata (cover/banner, resolved by name via IGDB) works
+    // the same regardless of launcher — see resolve_igdb_game's own launcher
+    // param, which just skips the Steam-App-ID-specific shortcuts for
+    // anything that isn't actually a Steam app_id.
     const pending = games
-      .filter(g => g.launcher === 'steam' && g.app_id)
+      .filter(g => (g.launcher === 'steam' || g.launcher === 'gog') && g.app_id)
       .filter(g => {
         const cached    = pathCache[g.app_id!];
         const basicDone = !doBasic || !!(cached?.cover_path && cached?.banner_path);
-        return !basicDone || doAchievements;
+        const achievementsRelevant = doAchievements && g.launcher === 'steam';
+        return !basicDone || achievementsRelevant;
       });
 
     if (pending.length === 0) return;
@@ -121,8 +128,8 @@ export default function LocalLibrary() {
     async function processOne(game: typeof pending[0]) {
       setMetaProgress({ total: pending.length, current: done + 1, currentName: game.name, cancelled: false });
       try {
-        if (doBasic)        await igdbGetCoverBySteamId(game.app_id!, game.name);
-        if (doAchievements) await steamAchievementsDownload(game.app_id!).catch(() => {});
+        if (doBasic) await igdbGetCoverBySteamId(game.app_id!, game.name, game.launcher);
+        if (doAchievements && game.launcher === 'steam') await steamAchievementsDownload(game.app_id!).catch(() => {});
       } catch (err) {
         console.error('[META]', game.name, err);
       }

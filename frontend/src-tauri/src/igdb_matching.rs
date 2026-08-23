@@ -220,6 +220,12 @@ pub(crate) async fn resolve_igdb_game(
     token: &str,
     app_id: &str,
     game_name: &str,
+    // Gates both Steam-specific lookups below — app_id is a completely
+    // different numbering system per launcher (a GOG game's own registry
+    // ID vs a Steam App ID), so treating a GOG id as a Steam one could
+    // coincidentally hit an unrelated real Steam app and pull its release
+    // year or even IGDB match instead of actually resolving by name.
+    launcher: &str,
 ) -> Result<IgdbGameMatch, String> {
     // "NieR:Automata™" → "NieR Automata", "STEINS;GATE" → "STEINS GATE"
     let search_query = game_name
@@ -235,15 +241,18 @@ pub(crate) async fn resolve_igdb_game(
         .join(" ");
 
     let name_norm = normalize_name(game_name);
-    let steam_year = steam_release_year(client, app_id).await;
+    let is_steam = launcher == "steam";
+    let steam_year = if is_steam { steam_release_year(client, app_id).await } else { None };
 
     eprintln!(
-        "[IGDB] Resolving: {:?} (app_id={}, year={:?}, norm={:?})",
-        game_name, app_id, steam_year, name_norm
+        "[IGDB] Resolving: {:?} (launcher={}, app_id={}, year={:?}, norm={:?})",
+        game_name, launcher, app_id, steam_year, name_norm
     );
 
-    if let Some(m) = try_steam_id_match(client, client_id, token, app_id).await {
-        return Ok(m);
+    if is_steam {
+        if let Some(m) = try_steam_id_match(client, client_id, token, app_id).await {
+            return Ok(m);
+        }
     }
 
     // Fallback: fuzzy search with cleaned query

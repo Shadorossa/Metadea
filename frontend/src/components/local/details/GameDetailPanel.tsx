@@ -50,6 +50,13 @@ interface GameDetailPanelProps {
 export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, knownExternalId, fallbackCover, launchOverride }: GameDetailPanelProps) {
   const t = getT();
   const launchTarget = launchOverride ?? game;
+  // Identifies which selection this render is actually showing — used only
+  // to `key` the content below (see the JSX further down), so switching to
+  // a different game/pending item while the panel stays open cross-fades
+  // its content smoothly instead of the new data popping in field-by-field
+  // as each async fetch resolves (a flicker, since the panel itself no
+  // longer unmounts/remounts on selection changes).
+  const contentKey = knownExternalId ?? game.app_id ?? game.name;
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
@@ -129,10 +136,6 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     steam: t.local.view_on_steam,
     nintendo: t.local.view_on_nintendo,
   };
-  const storeLinkLabel = storeLink
-    ? (STORE_LABELS[storeLink.platform]
-      ?? t.local.view_on_store.replace('{platform}', storeLink.platform.charAt(0).toUpperCase() + storeLink.platform.slice(1)))
-    : undefined;
 
   const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
 
@@ -265,6 +268,20 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // natively. Those get a blurred-backdrop + contained-foreground
   // treatment instead (see the header JSX below).
   const isRealBanner = !!entry?.banner || !!catalogBanner;
+  // IGDB's external_games has no Nintendo eShop category at all (verified
+  // against its own ExternalGameCategory enum — steam/gog/microsoft/apple/
+  // android/amazon/epic/oculus/itch/xbox/playstation/gamejolt/..., nothing
+  // Nintendo), so storeLink above can never resolve one from real data.
+  // Best-effort substitute: a search link into the eShop by title, when the
+  // catalog's own platforms say this is a Nintendo game at all.
+  const isNintendoPlatform = !!catalogEntry?.platforms_csv?.toLowerCase().includes('nintendo');
+  const effectiveStoreLink = storeLink ?? (isNintendoPlatform
+    ? { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(game.name)}` }
+    : null);
+  const effectiveStoreLinkLabel = effectiveStoreLink
+    ? (STORE_LABELS[effectiveStoreLink.platform]
+      ?? t.local.view_on_store.replace('{platform}', effectiveStoreLink.platform.charAt(0).toUpperCase() + effectiveStoreLink.platform.slice(1)))
+    : undefined;
   // A "Pendiente" entry with no real Steam/Epic/... install has nothing to
   // launch — the button still shows (same layout every other game gets)
   // but disabled, instead of silently failing a launchGame call with no
@@ -339,7 +356,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
         />
       )}
 
-      <div className="local-game-detail-content">
+      <div className="local-game-detail-content" key={contentKey}>
         <div className="local-game-detail-sticky-bar">
         <div className="local-game-detail-title-block">
           <div className="local-media-detail-top-row">
@@ -376,14 +393,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           <div className="local-media-left-col">
             <button
               className="local-game-detail-play"
-              disabled={!canLaunch && !storeLink}
-              title={canLaunch || storeLink ? undefined : t.local.not_installed}
+              disabled={!canLaunch && !effectiveStoreLink}
+              title={canLaunch || effectiveStoreLink ? undefined : t.local.not_installed}
               onClick={() => {
                 if (!canLaunch) {
                   // Nothing to launch, but it IS buyable/viewable somewhere
-                  // (see the storeLink effect above) — opened the same way
-                  // regardless of platform (steam:// or a plain https url).
-                  if (storeLink) openExternalUrl(storeLink.url).catch(console.error);
+                  // (a real store link, or the Nintendo eShop search
+                  // fallback — see effectiveStoreLink above) — opened the
+                  // same way regardless (steam:// or a plain https url).
+                  if (effectiveStoreLink) openExternalUrl(effectiveStoreLink.url).catch(console.error);
                   return;
                 }
                 launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path)
@@ -403,7 +421,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              {canLaunch ? 'Jugar' : storeLinkLabel ?? t.local.not_installed}
+              {canLaunch ? 'Jugar' : effectiveStoreLinkLabel ?? t.local.not_installed}
             </button>
 
             <div className="local-media-divider-line" />
