@@ -104,9 +104,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // else to come from but a live IGDB lookup (same call already made for
   // storeLink, just also reading its involved_companies this time).
   const [catalogDevelopers, setCatalogDevelopers] = useState<string[] | null>(null);
+  // Gates the Nintendo eShop search fallback below — a game merely running
+  // ON a Nintendo platform (any third-party Switch release) isn't what
+  // "Ver en Nintendo" should mean; only when Nintendo itself is the
+  // publisher or developer.
+  const [isNintendoCompany, setIsNintendoCompany] = useState(false);
   useEffect(() => {
     setStoreLink(null);
     setCatalogDevelopers(null);
+    setIsNintendoCompany(false);
     if (!knownExternalId) return;
     const igdbId = Number(knownExternalId.split(':')[1]);
     if (!igdbId) return;
@@ -126,9 +132,10 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           setStoreLink(picked);
         }
       }
-      const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean }[] | undefined;
+      const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean; publisher?: boolean }[] | undefined;
       const developers = companies?.filter(c => c.developer && c.company?.name).map(c => c.company!.name!);
       if (developers && developers.length > 0) setCatalogDevelopers(developers);
+      setIsNintendoCompany(!!companies?.some(c => (c.developer || c.publisher) && c.company?.name?.toLowerCase().includes('nintendo')));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [knownExternalId]);
@@ -272,10 +279,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // against its own ExternalGameCategory enum — steam/gog/microsoft/apple/
   // android/amazon/epic/oculus/itch/xbox/playstation/gamejolt/..., nothing
   // Nintendo), so storeLink above can never resolve one from real data.
-  // Best-effort substitute: a search link into the eShop by title, when the
-  // catalog's own platforms say this is a Nintendo game at all.
-  const isNintendoPlatform = !!catalogEntry?.platforms_csv?.toLowerCase().includes('nintendo');
-  const effectiveStoreLink = storeLink ?? (isNintendoPlatform
+  // Best-effort substitute: a search link into the eShop by title — but only
+  // when Nintendo is actually the developer or publisher, not merely a
+  // platform the game happens to run on (a third-party Switch release
+  // shouldn't get sent to Nintendo's own storefront).
+  const isNintendoCompanyName = (names?: string[]) => !!names?.some(n => n.toLowerCase().includes('nintendo'));
+  const isNintendo = isNintendoCompany
+    || isNintendoCompanyName(gameInfo?.developers)
+    || isNintendoCompanyName(gameInfo?.publishers);
+  const effectiveStoreLink = storeLink ?? (isNintendo
     ? { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(game.name)}` }
     : null);
   const effectiveStoreLinkLabel = effectiveStoreLink
@@ -383,8 +395,11 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
             // both populated at once for a season, where they'd otherwise
             // show the source's studio under the season's own name.
             const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
-            return developers && developers.length > 0 && (
-              <p className="local-game-detail-by">by {developers.join(', ')}</p>
+            const hasDevelopers = !!developers && developers.length > 0;
+            return (
+              <p className={`local-game-detail-by${hasDevelopers ? ' local-game-detail-by--visible' : ''}`}>
+                {hasDevelopers ? `by ${developers!.join(', ')}` : ' '}
+              </p>
             );
           })()}
         </div>
@@ -494,7 +509,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
         </div>
         </div>
 
-        {metaDots && <p className="local-game-detail-metadots">{metaDots}</p>}
+        <p className={`local-game-detail-metadots${metaDots ? ' local-game-detail-metadots--visible' : ''}`}>{metaDots || ' '}</p>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
 
         {achievements?.list && achievements.list.length > 0 && (

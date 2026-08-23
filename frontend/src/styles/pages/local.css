@@ -1514,6 +1514,16 @@
   color: var(--text-muted);
   margin: 0.25rem 0 0.75rem;
   line-height: 1.6;
+  /* Reserves its line's height from the first render (release date/genres
+     resolve async) so the text popping in doesn't push the play button and
+     summary below it down — the height is fixed, only opacity fades. */
+  min-height: 1.6em;
+  opacity: 0;
+  transition: opacity 0.25s var(--anim-ease);
+}
+
+.local-game-detail-metadots--visible {
+  opacity: 1;
 }
 
 .local-game-detail-summary {
@@ -1548,9 +1558,17 @@
   color: var(--text-muted);
   margin-top: 0.15rem;
   /* The developer name resolves async (a live IGDB lookup for entries with
-     no cached info.json) — popping in abruptly right under the title read
-     as a flicker. Eases in instead of appearing instantly. */
-  animation: fade-in 0.25s var(--anim-ease);
+     no cached info.json). Reserving its line height from the first render
+     and only fading opacity in — instead of mounting/unmounting the whole
+     <p> once the name arrives — stops it from pushing everything below
+     (play button, stats, summary) down when it pops in. */
+  min-height: 1.4em;
+  opacity: 0;
+  transition: opacity 0.25s var(--anim-ease);
+}
+
+.local-game-detail-by--visible {
+  opacity: 1;
 }
 
 /* Sits below .local-media-divider-line now (added so GameDetailPanel could

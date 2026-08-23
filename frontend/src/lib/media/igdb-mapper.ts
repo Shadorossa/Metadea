@@ -92,15 +92,16 @@ function dedupeStoreLinks(links: { platform: string; url: string }[] | null | un
 // oculus/itch/xbox/playstation/gamejolt/... — nothing Nintendo), so a real
 // per-game eShop link never comes back regardless of how store_links itself
 // is parsed. Best-effort substitute: a search link into the eShop by title,
-// added only when nothing else was found and the game is actually on a
-// Nintendo platform.
+// added only when nothing else was found and Nintendo itself is the
+// developer or publisher — not merely a platform the game happens to run on
+// (a third-party Switch release shouldn't get sent to Nintendo's own store).
 function withNintendoFallback(
   links: { platform: string; url: string }[] | null | undefined,
-  platforms: string[],
+  companies: MediaCompany[],
   title: string,
 ): { platform: string; url: string }[] | null | undefined {
   if (links?.some(l => l.platform.toLowerCase() === 'nintendo')) return links;
-  if (!platforms.some(p => p.toLowerCase().includes('nintendo'))) return links;
+  if (!companies.some(c => c.name.toLowerCase().includes('nintendo'))) return links;
   const fallback = { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(title)}` };
   return links ? [...links, fallback] : [fallback];
 }
@@ -324,7 +325,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     parentGame,
     progressStatus: 'playing',
     progressLabel: getT().profile.status_playing,
-    storeLinks: withNintendoFallback(dedupeStoreLinks(game.store_links), platforms, game.name),
+    storeLinks: withNintendoFallback(dedupeStoreLinks(game.store_links), companies, game.name),
     // Catalog fields
     format,
     source: 'igdb',
