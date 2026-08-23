@@ -103,7 +103,13 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
       // reverse-direction label REMASTER/REMAKE gets recorded under on the
       // edition's own side). Same "borrow the original's saga identity"
       // fallback library-grouping.ts's refineSagaGroups already relies on
-      // for the profile grid, applied here for this neighbor row too.
+      // for the profile grid, applied here for this neighbor row too — and,
+      // like that same code, the neighbor itself gets swapped for ITS OWN
+      // remaster/remake edition when one exists (a Hou remaster's sequel
+      // should point at the next chapter's own Hou remaster, not the bare
+      // original release), falling back to the original only when it has
+      // no edition of its own.
+      let viaParent = false;
       if (!prequel && !sequel) {
         const parent = relations.find(r => r.relation_type === 'PARENT');
         if (parent) {
@@ -111,10 +117,20 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           if (cancelled) return;
           prequel = parentRelations.find(r => r.relation_type === 'PREQUEL');
           sequel = parentRelations.find(r => r.relation_type === 'SEQUEL');
+          viaParent = true;
         }
       }
-      if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
-      if (sequel) setSequelInfo({ externalId: sequel.related_media_external_id, title: sequel.title, cover: sequel.cover ?? null });
+      const resolveNeighbor = async (rel: NonNullable<typeof prequel>) => {
+        if (!viaParent) return { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
+        const neighborRelations = await getMediaRelationsForEditor(rel.related_media_external_id).catch(() => []);
+        const edition = neighborRelations.find(r => r.relation_type === 'REMASTER' || r.relation_type === 'REMAKE');
+        return edition
+          ? { externalId: edition.related_media_external_id, title: edition.title, cover: edition.cover ?? null }
+          : { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
+      };
+      if (prequel) setPrequelInfo(await resolveNeighbor(prequel));
+      if (cancelled) return;
+      if (sequel) setSequelInfo(await resolveNeighbor(sequel));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [relationsExternalId]);
