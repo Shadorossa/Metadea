@@ -384,7 +384,6 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
             </svg>
           </button>
         )}
-        <button className="local-game-detail-close" onClick={onClose}><IconX /></button>
       </div>
 
       {showPicker && (

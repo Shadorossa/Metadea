@@ -585,7 +585,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           </div>
         )}
         <div className="local-game-detail-backdrop" />
-        <button className="local-game-detail-close" onClick={onClose}><IconX /></button>
       </div>
 
       <div className="local-game-detail-content">
