@@ -682,7 +682,10 @@
 .local-media-detail-top-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* Only ever holds the title now (edit-log/locate/catalog moved down to
+     the próximo-episodio/stats row) — centers it instead of the
+     space-between this needed back when a second item sat opposite it. */
+  justify-content: center;
   gap: 1rem;
   margin-bottom: 0.25rem;
 }
