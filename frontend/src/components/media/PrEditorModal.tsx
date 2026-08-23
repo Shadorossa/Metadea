@@ -93,6 +93,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // of UI language, so the shared catalog doesn't mix languages per-row.
   const canonicalRelationLabels = CANONICAL_RELATION_LABELS;
 
+  // A remaster/remake/expanded-edition/bundle relation picked here should
+  // keep this entry's own type, not always default to 'game' — a VN's
+  // remaster is still a VN (see MediaSearchPopup's own comment).
+  const igdbRelationMediaType = externalId.startsWith('vnovel:') ? 'vnovel' as const : 'game' as const;
+
   // Splits what used to be one dense always-visible 3-column grid into tabs
   // — General (titles/release/media/classification), Personajes, and
   // Relaciones y Saga (saga/relations/bundled/contains) — so only one
@@ -1116,6 +1121,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           excludeIds={[externalId, ...bundledRelations.map(r => r.external_id)]}
           closeOnSelect={false}
           includeIgdbBundles
+          igdbRelationMediaType={igdbRelationMediaType}
         />
       )}
 
@@ -1136,6 +1142,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           closeOnSelect={false}
           includeIgdbExpandedEditions
           includeRemasters
+          igdbRelationMediaType={igdbRelationMediaType}
         />
       )}
 
@@ -1153,6 +1160,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           includeIgdbBundles
           includeIgdbExpandedEditions
           includeRemasters
+          igdbRelationMediaType={igdbRelationMediaType}
         />
       )}
 

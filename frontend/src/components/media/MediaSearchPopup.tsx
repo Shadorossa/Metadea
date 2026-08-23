@@ -71,13 +71,19 @@ export interface MediaSearchPopupProps {
   includeIgdbExpandedEditions?: boolean;
   /** Also surfaces IGDB category-8 (remake) and category-9 (remaster) results. */
   includeRemasters?: boolean;
+  /** The bundle/expanded-edition/remaster results above are tagged with
+   *  this type instead of always defaulting to 'game' — pass 'vnovel' when
+   *  the entry being edited is itself a visual novel, since a remaster of a
+   *  VN is still a VN (being a remaster doesn't change enough about a work
+   *  to justify a different type). */
+  igdbRelationMediaType?: 'game' | 'vnovel';
 }
 
 /** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
  *  to attach a saga member or bundled-in work to the entry being edited.
  *  Closes only on an outside click (stopPropagation keeps that from also
  *  closing the parent PrEditorModal). */
-export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false }: MediaSearchPopupProps) {
+export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game' }: MediaSearchPopupProps) {
   const s = getT().search;
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<MediaType | 'all'>('all');
@@ -90,24 +96,24 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
       const searchPromises = typesToQuery.map(t =>
         search(q, t, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
       );
-      if (includeIgdbBundles && (typeFilter === 'all' || typeFilter === 'game')) {
+      if (includeIgdbBundles && (typeFilter === 'all' || typeFilter === igdbRelationMediaType)) {
         searchPromises.push(
-          searchGameBundles(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+          searchGameBundles(q, signal, 1, igdbRelationMediaType).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
-      if (includeIgdbExpandedEditions && (typeFilter === 'all' || typeFilter === 'game')) {
+      if (includeIgdbExpandedEditions && (typeFilter === 'all' || typeFilter === igdbRelationMediaType)) {
         searchPromises.push(
-          searchGameExpandedEditions(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+          searchGameExpandedEditions(q, signal, 1, igdbRelationMediaType).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
-      if (includeRemasters && (typeFilter === 'all' || typeFilter === 'game')) {
+      if (includeRemasters && (typeFilter === 'all' || typeFilter === igdbRelationMediaType)) {
         searchPromises.push(
-          searchGameRemasters(q, signal).then(page => page.results).catch(() => [] as ApiSearchResult[])
+          searchGameRemasters(q, signal, 1, igdbRelationMediaType).then(page => page.results).catch(() => [] as ApiSearchResult[])
         );
       }
       return Promise.all(searchPromises).then(perType => perType.flat().slice(0, 60));
     },
-    [typeFilter, includeIgdbBundles, includeIgdbExpandedEditions, includeRemasters],
+    [typeFilter, includeIgdbBundles, includeIgdbExpandedEditions, includeRemasters, igdbRelationMediaType],
   );
 
   const handleSelect = async (result: ApiSearchResult) => {
