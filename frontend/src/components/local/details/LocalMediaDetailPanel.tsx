@@ -577,13 +577,19 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
         </button>
-        {bannerUrl ? (
-          <img src={bannerUrl} alt={item.title} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
-            <IconFolder />
-          </div>
-        )}
+        {/* Keyed by this item's identity — same crossfade-on-remount
+            treatment as GameDetailPanel's own banner (see its comment) —
+            a plain src swap on the same <img> node otherwise changes the
+            pixels instantly with no transition. */}
+        <div className="local-game-detail-banner-wrap" key={item.externalId}>
+          {bannerUrl ? (
+            <img src={bannerUrl} alt={item.title} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
+              <IconFolder />
+            </div>
+          )}
+        </div>
         <div className="local-game-detail-backdrop" />
       </div>
 

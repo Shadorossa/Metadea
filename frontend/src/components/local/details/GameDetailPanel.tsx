@@ -361,20 +361,27 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
         </button>
-        {banner ? (
-          isRealBanner ? (
-            <img src={banner} alt={game.name} />
+        {/* Keyed by the selected identity — a plain src swap on the same
+            <img> node changed the pixels instantly with no transition;
+            remounting via key lets the fade-in below actually play on
+            every selection change, same crossfade treatment
+            .local-game-detail-content already gets. */}
+        <div className="local-game-detail-banner-wrap" key={contentKey}>
+          {banner ? (
+            isRealBanner ? (
+              <img src={banner} alt={game.name} />
+            ) : (
+              <>
+                <img className="local-game-detail-header-blur" src={banner} alt="" aria-hidden="true" />
+                <img className="local-game-detail-header-contain" src={banner} alt={game.name} />
+              </>
+            )
           ) : (
-            <>
-              <img className="local-game-detail-header-blur" src={banner} alt="" aria-hidden="true" />
-              <img className="local-game-detail-header-contain" src={banner} alt={game.name} />
-            </>
-          )
-        ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
-            <IconMonitor />
-          </div>
-        )}
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)' }}>
+              <IconMonitor />
+            </div>
+          )}
+        </div>
         <div className="local-game-detail-backdrop" />
         {launchTarget.launcher === 'steam' && launchTarget.app_id && (
           <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>

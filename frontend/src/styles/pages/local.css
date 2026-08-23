@@ -1239,6 +1239,16 @@
   object-fit: cover;
 }
 
+/* Wraps whichever banner markup is showing (plain img, or the blurred-
+   backdrop + contained-artwork pair) — remounted via a per-item React key
+   on selection change so this animation actually replays as a crossfade
+   instead of the same <img> node just swapping its src instantly. */
+.local-game-detail-banner-wrap {
+  position: absolute;
+  inset: 0;
+  animation: fade-in 0.35s var(--anim-ease);
+}
+
 /* Used instead of the plain img above whenever there's no real (wide,
    header-shaped) banner cached — just a portrait box-art cover, which
    object-fit:cover stretched pixelated/blown-up across the full header
@@ -1272,7 +1282,17 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom, transparent 0%, rgba(var(--bg-card-rgb, 25, 25, 39), 0.9) 100%);
+  /* Stays clear over most of the banner, then ramps steeply dark toward
+     the bottom edge — keeps the title (sitting just below) readable even
+     against a very light/washed-out banner, instead of a flat linear ramp
+     that left the last inch barely darker than the middle. */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 45%,
+    rgba(var(--bg-card-rgb, 25, 25, 39), 0.55) 75%,
+    rgba(var(--bg-card-rgb, 25, 25, 39), 0.97) 100%
+  );
 }
 
 /* Header's 3 circular buttons (back/edit/close) — identical box/colors,
