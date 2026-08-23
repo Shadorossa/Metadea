@@ -227,8 +227,51 @@ fn scan_epic_games() -> Vec<LocalGame> {
     games
 }
 
-fn scan_gog_games() -> Vec<LocalGame> {
+// GOG Galaxy writes one subkey per installed game here regardless of where
+// the user actually chose to install it — the folder-scan below only ever
+// caught installs under 3 hardcoded parent directories, missing anything
+// on a custom path (e.g. a Steam-library-style "D:\Games\GOG\..." the user
+// picked themselves, or really any path other than those 3). Same registry-
+// based approach scan_steam_games already relies on instead of guessing
+// folders.
+fn scan_gog_games_registry() -> Vec<LocalGame> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
     let mut games = Vec::new();
+    let Ok(parent) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey("SOFTWARE\\WOW6432Node\\GOG.com\\Games") else {
+        return games;
+    };
+
+    for game_id in parent.enum_keys().flatten() {
+        let Ok(key) = parent.open_subkey(&game_id) else { continue };
+        let name: String = key.get_value("gameName").unwrap_or_default();
+        if name.is_empty() {
+            continue;
+        }
+        let path: Option<String> = key.get_value("path").ok();
+        games.push(LocalGame {
+            name,
+            launcher: "gog".to_string(),
+            app_id: Some(game_id),
+            external_id: None,
+            install_path: path,
+            playtime_minutes: None,
+            last_played: None,
+            installed: Some(true),
+        });
+    }
+
+    games
+}
+
+fn scan_gog_games() -> Vec<LocalGame> {
+    let mut games = scan_gog_games_registry();
+    // Folder-scan fallback below still adds anything the registry missed
+    // (e.g. a game installed by copying files rather than through Galaxy
+    // itself) — deduped by name against what the registry already found.
+    let registry_names: std::collections::HashSet<String> =
+        games.iter().map(|g| g.name.clone()).collect();
 
     let gog_dirs: Vec<PathBuf> = ["C", "D", "E"]
         .iter()
@@ -262,7 +305,7 @@ fn scan_gog_games() -> Vec<LocalGame> {
                             .next()
                             .map(|s| s.trim().to_string())
                             .unwrap_or_default();
-                        if !name.is_empty() {
+                        if !name.is_empty() && !registry_names.contains(&name) {
                             games.push(LocalGame::installed(
                                 name,
                                 "gog",
@@ -282,7 +325,7 @@ fn scan_gog_games() -> Vec<LocalGame> {
                                 {
                                     let name = json["gameTitle"].as_str().unwrap_or("").to_string();
                                     let app_id = json["gameId"].as_str().map(|s| s.to_string());
-                                    if !name.is_empty() {
+                                    if !name.is_empty() && !registry_names.contains(&name) {
                                         games.push(LocalGame {
                                             name,
                                             launcher: "gog".to_string(),
