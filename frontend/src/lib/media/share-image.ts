@@ -114,53 +114,90 @@ function drawStars(ctx: CanvasRenderingContext2D, stars5: number, centerX: numbe
   }
 }
 
-// No circular clip/crop — the image keeps its own natural shape and aspect
-// ratio (contain-fit within maxSize x maxSize), just standing on the
-// pedestal line like a figure on a shelf, instead of being forced into a
-// round frame that cuts pieces of it off.
-function drawAvatarImage(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, floorY: number, maxSize: number) {
-  const ratio = img.width / img.height;
-  let w = maxSize;
-  let h = maxSize / ratio;
-  if (h > maxSize) { h = maxSize; w = maxSize * ratio; }
-  ctx.drawImage(img, cx - w / 2, floorY - h, w, h);
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// A proper framed photo card — rounded square, cropped to fill (like
+// object-fit: cover), with a drop shadow and a thin light border — instead
+// of the old "contain-fit, no crop, standing on a pedestal line" treatment.
+// That suited an arbitrary-shaped cutout image reasonably well, but avatars
+// are now either a genuinely square photo (Settings → "Foto específica") or
+// a plain rectangular one (Google/legacy custom avatar) — either way, a
+// square photo's own real content (e.g. a full illustration with its own
+// background) was reading as a small sticker adrift on a lot of empty
+// canvas rather than an actual photo, since contain-fit never cropped
+// anything and left whatever blank margins the source image itself had.
+function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, floorY: number, size: number) {
+  const x = cx - size / 2;
+  const y = floorY - size;
+  const radius = size * 0.18;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle = '#000';
+  roundedRectPath(ctx, x, y, size, size, radius);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  roundedRectPath(ctx, x, y, size, size, radius);
+  ctx.clip();
+  const srcRatio = img.width / img.height;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (srcRatio > 1) {
+    sw = img.height;
+    sx = (img.width - sw) / 2;
+  } else {
+    sh = img.width;
+    sy = (img.height - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, size, size);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  roundedRectPath(ctx, x + 1, y + 1, size - 2, size - 2, radius);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Same "letter" fallback the navbar/settings avatar preview use when
 // there's no image to show — keeps something in the avatar slot instead of
-// it silently being blank whenever profile_avatar_cache hasn't been
-// populated yet (only happens after visiting /profile at least once) or the
-// cached image fails to load. Bottom-anchored on the pedestal line the same
-// way the real avatar image is, for a consistent silhouette either way.
-function drawAvatarFallback(ctx: CanvasRenderingContext2D, letter: string, cx: number, floorY: number, r: number, accent: string) {
-  const cy = floorY - r;
+// it silently being blank whenever no avatar cache has been populated yet
+// (only happens after visiting /profile at least once) or the cached image
+// fails to load. Same rounded-square card shape as the real photo above,
+// for a consistent frame either way.
+function drawAvatarFallback(ctx: CanvasRenderingContext2D, letter: string, cx: number, floorY: number, size: number, accent: string) {
+  const x = cx - size / 2;
+  const y = floorY - size;
+  const radius = size * 0.18;
+
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  roundedRectPath(ctx, x, y, size, size, radius);
   ctx.fillStyle = accent;
   ctx.globalAlpha = 0.25;
   ctx.fill();
   ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 2;
+  roundedRectPath(ctx, x + 1, y + 1, size - 2, size - 2, radius);
+  ctx.stroke();
   ctx.fillStyle = '#f5f5f5';
-  ctx.font = `700 ${Math.round(r)}px Georgia, serif`;
+  ctx.font = `700 ${Math.round(size * 0.5)}px Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(letter.toUpperCase(), cx, cy + 2);
+  ctx.fillText(letter.toUpperCase(), cx, y + size / 2 + 2);
   ctx.textBaseline = 'alphabetic';
-  ctx.restore();
-}
-
-// The pedestal itself — the avatar's own "floor", flush against its bottom
-// edge rather than floating below it with a gap.
-function drawAvatarPedestal(ctx: CanvasRenderingContext2D, cx: number, floorY: number, halfWidth: number, color: string) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = 0.5;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(cx - halfWidth, floorY);
-  ctx.lineTo(cx + halfWidth, floorY);
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -274,16 +311,15 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   // load, so the avatar slot is never just silently blank. Sits fully
   // above the poster (not overlapping it).
   const avatarSrc = localStorage.getItem('share_avatar_cache') || localStorage.getItem('profile_avatar_cache');
-  const avatarR = 95;
+  const avatarSize = 190;
   const avatarFloorY = posterY - 40;
   const avatar = avatarSrc ? await resolveImage(avatarSrc) : null;
   if (avatar) {
-    drawAvatarImage(ctx, avatar, WIDTH / 2, avatarFloorY, avatarR * 2);
+    drawAvatarPhotoCard(ctx, avatar, WIDTH / 2, avatarFloorY, avatarSize);
   } else {
     const username = localStorage.getItem('auth_username') || 'M';
-    drawAvatarFallback(ctx, username[0] ?? 'M', WIDTH / 2, avatarFloorY, avatarR, theme.accent);
+    drawAvatarFallback(ctx, username[0] ?? 'M', WIDTH / 2, avatarFloorY, avatarSize, theme.accent);
   }
-  drawAvatarPedestal(ctx, WIDTH / 2, avatarFloorY, avatarR * 0.6, theme.accent);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f5f5f5';
