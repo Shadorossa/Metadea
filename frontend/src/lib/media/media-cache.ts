@@ -56,6 +56,22 @@ export function patchCachedRelations(rawId: string, relations: MediaPageData['re
   } catch { /* sessionStorage lleno */ }
 }
 
+// Same pattern as patchCachedRelations above, for the background character
+// top-up (see mediaService.ts's fetchExtraCharacters) — without this, a
+// large-cast page's cached entry would keep charactersHasMore: true and
+// only the first page's worth of characters, re-triggering the same
+// background fetch (and showing an incomplete cast) on every revisit
+// within the cache's TTL instead of just once.
+export function patchCachedCharacters(rawId: string, characters: MediaPageData['characters']): void {
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${rawId}`);
+    if (!raw) return;
+    const entry: CacheEntry = JSON.parse(raw);
+    entry.data = { ...entry.data, characters, charactersHasMore: false };
+    sessionStorage.setItem(`${CACHE_PREFIX}${rawId}`, JSON.stringify(entry));
+  } catch { /* sessionStorage lleno */ }
+}
+
 export function invalidateCachedMediaData(rawId: string): void {
   try {
     sessionStorage.removeItem(`${CACHE_PREFIX}${rawId}`);

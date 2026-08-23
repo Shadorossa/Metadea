@@ -41,7 +41,7 @@ interface AniListCharacter {
   image: { large: string | null; medium: string | null };
 }
 
-interface AniListCharacterEdge {
+export interface AniListCharacterEdge {
   role: string;
   node: AniListCharacter;
 }
@@ -222,18 +222,30 @@ async function fetchRemainingEdges<E>(
   return extra;
 }
 
+// Deliberately does NOT wait on any extra character pages beyond the first
+// (see DETAIL_QUERY's characters(perPage: 50) above) — a media page used to
+// sit blank until a large-cast show's whole reparto finished paginating in,
+// even though nothing about first-rendering the page actually needs more
+// than what's already on the first page. Callers that want the rest fetch
+// them separately in the background (see fetchAniListRemainingCharacters)
+// once the page is already showing.
 export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail | null> {
   const data = await anilistPost<{ Media: AniListMediaDetail }>( DETAIL_QUERY, { id });
-  const media = data?.Media ?? null;
-  if (!media) return null;
+  return data?.Media ?? null;
+}
 
-  const extraEdges = await fetchRemainingEdges(media.characters, CHARACTERS_PER_PAGE, page =>
-    anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(CHARACTERS_QUERY, { id, page })
+// Walks whatever character pages come after the first one already shown —
+// same sequential-with-delay pagination fetchAniListDetail used to do
+// inline, just called separately so it can run after the page has already
+// rendered instead of blocking it.
+export async function fetchAniListRemainingCharacters(id: number, hasNextPage: boolean): Promise<AniListCharacterEdge[]> {
+  if (!hasNextPage) return [];
+  return fetchRemainingEdges<AniListCharacterEdge>(
+    { pageInfo: { hasNextPage: true, total: null }, edges: [] },
+    CHARACTERS_PER_PAGE,
+    page => anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(CHARACTERS_QUERY, { id, page })
       .then(pageData => pageData?.Media?.characters ?? null),
   );
-  media.characters.edges = [...media.characters.edges, ...extraEdges];
-
-  return media;
 }
 
 // Deliberately just this one field — episode-list.ts used to call the full

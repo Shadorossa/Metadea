@@ -1,8 +1,8 @@
-import { fetchAniListDetail } from '../search/providers/anilist';
+import { fetchAniListDetail, fetchAniListRemainingCharacters } from '../search/providers/anilist';
 import { fetchOpenLibWork, fetchOpenLibAuthor } from '../search/providers/openlibrary';
 import { fetchTmdbDetail } from '../search/providers/tmdb';
 import { fetchComicVineVolume, fetchComicVineIssue } from '../search/providers/comicvine';
-import { mapAniListToMedia } from './anilist-mapper';
+import { mapAniListToMedia, mapAniListCharacterEdges } from './anilist-mapper';
 import { mapOpenLibToMedia } from './openlibrary-mapper';
 import { mapComicVineToMedia, mapComicVineIssueToMedia } from './comicvine-mapper';
 import { mapTmdbToMedia } from './tmdb-mapper';
@@ -18,7 +18,7 @@ import { parseExternalId } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 
-import { getCachedMediaData, setCachedMediaData, patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
+import { getCachedMediaData, setCachedMediaData, patchCachedRelations, patchCachedCharacters, invalidateCachedMediaData, CACHE_PREFIX } from './media-cache';
 import { mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus } from './catalog-mapper';
 import {
   sortRelationsForDisplay, bucketRelations, dbAuthorToMediaAuthor, dbCharacterToMediaCharacter,
@@ -32,7 +32,7 @@ import { fetchMediaEpisodes } from './episode-list';
 // Re-exported so callers keep one import path despite the split into
 // media-cache/media-relations/catalog-mapper/book-editions/comic-issues/episode-list.
 export {
-  patchCachedRelations, invalidateCachedMediaData, CACHE_PREFIX,
+  patchCachedRelations, patchCachedCharacters, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
   fetchBookEditions, fetchComicIssues, fetchMediaEpisodes,
@@ -572,6 +572,24 @@ export async function fetchExtraRelations(rawId: string, currentData: MediaPageD
   if (updatedData.relations.length === currentData.relations.length) return null;
 
   return updatedData.relations;
+}
+
+// Background top-up for a large cast — fetchAniListDetail deliberately only
+// waits on the first (up to 50) character page so a media page never sits
+// blank behind a big reparto's whole pagination walk (see
+// fetchAniListRemainingCharacters's own comment); this fetches the rest of
+// it separately, after the page has already rendered with what it had.
+// Same "caller merges/persists/patches the cache itself, in case the user
+// has since navigated away" contract as fetchExtraRelations above.
+export async function fetchExtraCharacters(rawId: string, currentData: MediaPageData): Promise<MediaPageData['characters'] | null> {
+  if (!currentData.charactersHasMore) return null;
+  const { type, id: numericId } = parseExternalId(rawId);
+  if (!ANILIST_TYPES.includes(type) || !numericId) return null;
+
+  const extraEdges = await fetchAniListRemainingCharacters(numericId, true).catch(() => []);
+  if (extraEdges.length === 0) return null;
+
+  return [...currentData.characters, ...mapAniListCharacterEdges(extraEdges)];
 }
 
 // Simulates a merged proposal PR for the preview modal — never fetches or

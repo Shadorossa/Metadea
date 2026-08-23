@@ -1,6 +1,6 @@
-import type { AniListMediaDetail, AniListStaffEdge } from '../search/providers/anilist';
+import type { AniListMediaDetail, AniListStaffEdge, AniListCharacterEdge } from '../search/providers/anilist';
 import { getT } from '../../i18n/client';
-import type { MediaPageData, MediaRelation, MediaAuthor, MediaCompany, MediaStat } from './types';
+import type { MediaPageData, MediaRelation, MediaAuthor, MediaCompany, MediaStat, MediaCharacter } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
@@ -15,6 +15,23 @@ const RELATION_PRIORITY: Record<string, number> = {
   PARENT: 1, SOURCE: 1, PREQUEL: 2, SEQUEL: 3, ADAPTATION: 4,
   SPIN_OFF: 5, ALTERNATIVE: 6, SUMMARY: 7,
 };
+
+// Shared with mediaService.ts's fetchExtraCharacters — the background
+// top-up fetch for a large cast (see fetchAniListRemainingCharacters) maps
+// its extra edges through this exact same function instead of a second,
+// divergent copy of this logic.
+export function mapAniListCharacterEdges(edges: AniListCharacterEdge[]): MediaCharacter[] {
+  return edges.map(e => ({
+    id:    e.node.id ? `character:a:${e.node.id}` : undefined,
+    name:  e.node.name.full,
+    // Prefer large — this seeds that character's own local DB row via
+    // saveCharactersSkeleton, which becomes the sticky-preferred portrait
+    // on that character's own (much bigger) page, not just this small grid
+    // card, so `medium` alone looked pixelated there.
+    image: e.node.image.large ?? e.node.image.medium ?? undefined,
+    role:  e.role,
+  }));
+}
 
 function formatDescription(raw: string | null | undefined): string | undefined {
   if (!raw) return undefined;
@@ -98,16 +115,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   const genreDots    = coreGenres.join(' · ') || undefined;
   const genreTagDots = genreTags.join(' · ')  || undefined;
 
-  const characters = raw.characters.edges.map(e => ({
-    id:    e.node.id ? `character:a:${e.node.id}` : undefined,
-    name:  e.node.name.full,
-    // Prefer large — this seeds that character's own local DB row via
-    // saveCharactersSkeleton, which becomes the sticky-preferred portrait
-    // on that character's own (much bigger) page, not just this small grid
-    // card, so `medium` alone looked pixelated there.
-    image: e.node.image.large ?? e.node.image.medium ?? undefined,
-    role:  e.role,
-  }));
+  const characters = mapAniListCharacterEdges(raw.characters.edges);
 
   const relations: MediaRelation[] = raw.relations.edges
     .filter(e => e.relationType !== 'CHARACTER' && e.node.format !== 'MUSIC' && (e.node.coverImage?.extraLarge || e.node.coverImage?.large || e.node.coverImage?.medium))
@@ -297,6 +305,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
     description:  formatDescription(raw.description),
     stats,
     characters,
+    charactersHasMore: raw.characters.pageInfo.hasNextPage,
     staff,
     relations,
     progressStatus,

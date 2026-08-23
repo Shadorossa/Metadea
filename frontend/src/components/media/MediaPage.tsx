@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchBookEditions, fetchComicIssues, fetchMediaEpisodes, patchCachedRelations, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
+import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchMediaEpisodes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -460,6 +460,19 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         }
         if (full.staff && full.staff.length > 0) {
           saveStaffSkeleton(currentId, mediaStaffToSkeleton(full.staff)).catch(console.error);
+        }
+
+        // A cast over 50 (AniList's per-page cap) no longer blocks the page
+        // itself — see fetchAniListDetail/fetchExtraCharacters — so the rest
+        // of it is topped up here, after the page is already showing.
+        if (full.charactersHasMore) {
+          fetchExtraCharacters(currentId, full).then(characters => {
+            if (cancelled || !characters) return;
+            patchCachedCharacters(currentId, characters);
+            patchIfCurrent({ characters, charactersHasMore: false });
+            const isCastRole = full.type === 'movie' || full.type === 'series';
+            saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(characters, isCastRole)).catch(console.error);
+          });
         }
 
         // Transitive relations (remaster-of-an-expansion, port-of-a-remaster,

@@ -107,6 +107,12 @@ export interface MediaPageData {
   description?: string;
   stats: MediaStat[];
   characters: MediaCharacter[];
+  // AniList only — true when `characters` is just the first (up to 50) page
+  // and more exist. The initial fetch no longer waits on those extra pages
+  // (see fetchAniListDetail/fetchExtraCharacters) so the page can render
+  // right away; this flags MediaPage.tsx to go fetch the rest afterward, in
+  // the background.
+  charactersHasMore?: boolean;
   staff?: MediaStaffMember[];
   relations: MediaRelation[];
   parentGame?: { title: string; externalId: string; cover?: string }; // base game this edition/expansion belongs to
