@@ -21,12 +21,6 @@ export interface ShareImageOptions {
 const WIDTH = 1080;
 const HEIGHT = 1920;
 
-// public/favicon.svg is a leftover default Astro icon, never actually
-// replaced with Metadea's own — the real app icon lives at
-// src-tauri/icons/icon.png (used for the desktop build itself), copied here
-// to public/metadea-logo.png so it's servable as a normal same-origin
-// frontend asset (no CORS/Rust-fetch detour needed for it, unlike covers).
-const LOGO_URL = '/metadea-logo.png';
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -170,9 +164,23 @@ function drawAvatarPedestal(ctx: CanvasRenderingContext2D, cx: number, floorY: n
   ctx.restore();
 }
 
-function drawLogo(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, size: number) {
+// Metadea's own mark for the watermark row — a square outline (sharp
+// corners, not rounded) with a bold serif "M" centered inside, drawn
+// straight on the canvas instead of loaded from a raster asset so it's
+// always crisp at this resolution and follows the active theme's accent
+// color automatically.
+function drawMLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
   ctx.save();
-  ctx.drawImage(img, x, y, size, size);
+  ctx.strokeStyle = color;
+  const lineWidth = Math.max(2, size * 0.08);
+  ctx.lineWidth = lineWidth;
+  ctx.strokeRect(x + lineWidth / 2, y + lineWidth / 2, size - lineWidth, size - lineWidth);
+  ctx.fillStyle = color;
+  ctx.font = `700 ${Math.round(size * 0.56)}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('M', x + size / 2, y + size / 2 + size * 0.04);
+  ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 
@@ -347,8 +355,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   const labelWidth = ctx.measureText(label).width;
   const totalWidth = logoSize + gap + labelWidth;
   const startX = WIDTH / 2 - totalWidth / 2;
-  const logoImg = await loadImage(LOGO_URL).catch(() => null);
-  if (logoImg) drawLogo(ctx, logoImg, startX, logoRowY - logoSize / 2, logoSize);
+  drawMLogo(ctx, startX, logoRowY - logoSize / 2, logoSize, theme.accent);
   ctx.textAlign = 'left';
   ctx.fillStyle = watermarkColor;
   ctx.fillText(label, startX + logoSize + gap, logoRowY + 11);
