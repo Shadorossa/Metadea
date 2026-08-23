@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { steamAchievementIcon, type SteamAchievement } from '../../../lib/tauri';
 import { formatDateShort } from '../../../lib/shared/formatDate';
 
@@ -10,6 +11,17 @@ interface AchievementCellProps {
 export function AchievementCell({ ach, appId }: AchievementCellProps) {
   const localFile = ach.achieved ? ach.icon_unlocked : ach.icon_locked;
   const [src, setSrc] = useState<string | null>(null);
+  const cellRef = useRef<HTMLDivElement>(null);
+  // Was a plain CSS :hover-shown absolutely-positioned child before — the
+  // achievements grid sits inside .local-game-detail-content, which owns
+  // its own overflow-y:auto (see local.css) to keep the banner from
+  // resizing as content streams in. Any tooltip near the top/edge of that
+  // scroll box got silently clipped by it, since overflow:hidden/auto on
+  // an ancestor clips descendants regardless of z-index — z-index only
+  // reorders what's already visible, it can't escape a clipping ancestor.
+  // Rendering into a body-level portal with position:fixed, positioned
+  // from the cell's own measured rect, is what actually escapes that.
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (localFile) {
@@ -23,8 +35,26 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
     ? formatDateShort(new Date(ach.unlocktime * 1000))
     : null;
 
+  function showTooltip() {
+    const rect = cellRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Centered above the cell, clamped so it can't run off either edge of
+    // the viewport for a cell sitting near the panel's own left/right edge.
+    const TOOLTIP_WIDTH = 220;
+    const left = Math.min(
+      Math.max(rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2, 8),
+      window.innerWidth - TOOLTIP_WIDTH - 8,
+    );
+    setTooltipPos({ top: rect.top - 8, left });
+  }
+
   return (
-    <div className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}`}>
+    <div
+      ref={cellRef}
+      className={`local-game-detail-ach-cell${ach.achieved ? ' achieved' : ''}`}
+      onMouseEnter={showTooltip}
+      onMouseLeave={() => setTooltipPos(null)}
+    >
       {src ? (
         <img src={src} alt={ach.name || ach.apiname} className="local-game-detail-ach-img" />
       ) : (
@@ -35,11 +65,17 @@ export function AchievementCell({ ach, appId }: AchievementCellProps) {
           </svg>
         </div>
       )}
-      <div className="local-game-detail-ach-tooltip">
-        <span className="local-game-detail-ach-tooltip-name">{ach.name || ach.apiname}</span>
-        {ach.description && <span className="local-game-detail-ach-tooltip-desc">{ach.description}</span>}
-        {unlockDate && <span className="local-game-detail-ach-tooltip-date">Desbloqueado: {unlockDate}</span>}
-      </div>
+      {tooltipPos && createPortal(
+        <div
+          className="local-game-detail-ach-tooltip local-game-detail-ach-tooltip--portal"
+          style={{ top: tooltipPos.top, left: tooltipPos.left }}
+        >
+          <span className="local-game-detail-ach-tooltip-name">{ach.name || ach.apiname}</span>
+          {ach.description && <span className="local-game-detail-ach-tooltip-desc">{ach.description}</span>}
+          {unlockDate && <span className="local-game-detail-ach-tooltip-date">Desbloqueado: {unlockDate}</span>}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
