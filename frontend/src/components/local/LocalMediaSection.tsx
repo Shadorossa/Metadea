@@ -10,7 +10,7 @@ import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
 import { buildLibraryStatusEntries } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX, IconRefresh, IconMonitor } from './ui/icons';
-import type { CategoryId } from './utils/constants';
+import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -203,17 +203,35 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
       ...games.map(game => ({ kind: 'steam' as const, game })),
     ];
   };
+  // Same "agrupar por plataforma" treatment Videojuegos gives its own
+  // no-status games (see LocalLibrary's groupedGames) — one section per
+  // launcher instead of a single flat "Backlog de Steam" list, since
+  // steamGames/steamBacklog already cover every detected launcher (GOG,
+  // Epic, etc.), not just Steam despite the prop's name.
+  const backlogByPlatform = useMemo(() => {
+    const map = new Map<PlatformId, LocalGame[]>();
+    for (const g of steamBacklog) {
+      const id = g.launcher as PlatformId;
+      const list = map.get(id) ?? [];
+      list.push(g);
+      map.set(id, list);
+    }
+    return map;
+  }, [steamBacklog]);
   const sections = useMemo(() => {
     const notReleased = items.filter(isNotReleasedYet);
     const released = items.filter(i => !isNotReleasedYet(i));
+    const platformSections = LAUNCHER_ORDER
+      .filter(id => backlogByPlatform.has(id))
+      .map(id => ({ title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries: toEntries([], backlogByPlatform.get(id)!) }));
     return [
-      { title: p.section_in_progress, entries: toEntries(released.filter(i => isInProgressStatus(i.status)), steamInProgress) },
-      { title: p.section_planning, entries: toEntries(released.filter(i => i.status === 'planning'), steamPlanning) },
-      { title: 'Sin estrenar', entries: toEntries(notReleased, []) },
-      { title: t.local.steam_backlog, entries: toEntries([], steamBacklog) },
+      { title: p.section_in_progress, icon: undefined, entries: toEntries(released.filter(i => isInProgressStatus(i.status)), steamInProgress) },
+      { title: p.section_planning, icon: undefined, entries: toEntries(released.filter(i => i.status === 'planning'), steamPlanning) },
+      { title: 'Sin estrenar', icon: undefined, entries: toEntries(notReleased, []) },
+      ...platformSections,
     ].filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, steamBacklog, t, steamGames, catalogMapById]);
+  }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, catalogMapById]);
 
   const isEmpty = sections.length === 0;
 
@@ -291,7 +309,14 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
             <div className="library-sections-list">
               {sections.map(sec => (
                 <div className="library-section" key={sec.title}>
-                  <h3 className="library-section-title">{sec.title}</h3>
+                  <h3 className="library-section-title">
+                    {sec.icon && (
+                      <span className="local-launcher-icon">
+                        <img src={sec.icon} alt={sec.title} draggable={false} />
+                      </span>
+                    )}
+                    {sec.title}
+                  </h3>
                   <div className="local-games-grid">
                     {sec.entries.map(entry => entry.kind === 'catalog' ? (
                       <LocalMediaCard

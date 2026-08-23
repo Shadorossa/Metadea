@@ -574,6 +574,13 @@
   font-size: 1rem;
   font-weight: 700;
   opacity: 0.85;
+  /* Platform-grouped sections (see LocalMediaSection's backlogByPlatform)
+     prepend a .local-launcher-icon logo — it's display:flex on its own, so
+     without this the title would otherwise stay a plain block and push
+     that icon onto its own line above the text instead of beside it. */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   /* .library-section's own flex gap already adds space above the grid, but
      the title's shared base rule only has a 0.5rem margin-bottom of its
      own — bumped here so the divider line doesn't sit right on top of the
