@@ -11,6 +11,7 @@ import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatters';
+import { normalizeForMatch } from '../utils/folderMatch';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -141,12 +142,26 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           selfEditionType = parentRelations.find(r => r.related_media_external_id === relationsExternalId)?.relation_type;
         }
       }
+      // Self's own title, tokenized once — used below to pick the right one
+      // out of SEVERAL same-type editions of the same neighbor (e.g. an EN
+      // and a JP remaster both existing for the same base game), since
+      // relation_type alone (REMASTER/REMAKE) can't tell those apart.
+      const selfTokens = new Set(normalizeForMatch(game.name).split(' ').filter(Boolean));
+      const bestByTitleOverlap = (candidates: typeof relations) => candidates.reduce((best, c) => {
+        const score = normalizeForMatch(c.title).split(' ').filter(tok => tok && selfTokens.has(tok)).length;
+        return !best || score > best.score ? { rel: c, score } : best;
+      }, undefined as { rel: (typeof relations)[number]; score: number } | undefined)?.rel;
       const resolveNeighbor = async (rel: NonNullable<typeof prequel>) => {
         if (!viaParent) return { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
         const neighborRelations = await getMediaRelationsForEditor(rel.related_media_external_id).catch(() => []);
         const editionTypes = ['REMASTER', 'REMAKE'];
         const orderedTypes = selfEditionType ? [selfEditionType, ...editionTypes.filter(t => t !== selfEditionType)] : editionTypes;
-        const edition = orderedTypes.map(t => neighborRelations.find(r => r.relation_type === t)).find(Boolean);
+        let edition: (typeof relations)[number] | undefined;
+        for (const t of orderedTypes) {
+          const candidates = neighborRelations.filter(r => r.relation_type === t);
+          if (candidates.length === 1) { edition = candidates[0]; break; }
+          if (candidates.length > 1) { edition = bestByTitleOverlap(candidates); break; }
+        }
         return edition
           ? { externalId: edition.related_media_external_id, title: edition.title, cover: edition.cover ?? null }
           : { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
