@@ -68,6 +68,43 @@ export function groupEditions<T extends { external_id: string; selected_version:
   return out;
 }
 
+// editionId -> the base work it's a remake/remaster/expanded edition of,
+// chain-flattened (Rebirth -> Remake -> Original collapses straight to
+// Original) — and the reverse lookup, original -> every edition of it.
+// Shared by groupBundles (a remaster of a bundle's own child joins that
+// bundle visually, even with no CONTAINS relation of its own) and
+// refineSagaGroups (a remaster with no saga edge of its own borrows its
+// original's saga identity).
+const EDITION_SOURCE_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
+
+function buildEditionMaps(relations: DbMediaRelation[]): { ultimateOriginalOf: Map<string, string>; familyOf: Map<string, string[]> } {
+  const originalOf = new Map<string, string>();
+  for (const rel of relations) {
+    if (!rel.media_external_id) continue;
+    if (!EDITION_SOURCE_RELATION_TYPES.has(rel.relation_type)) continue;
+    originalOf.set(rel.related_media_external_id, rel.media_external_id);
+  }
+  const resolve = (id: string): string => {
+    let cur = id;
+    const seen = new Set<string>();
+    while (originalOf.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = originalOf.get(cur)!;
+    }
+    return cur;
+  };
+  const ultimateOriginalOf = new Map<string, string>();
+  for (const id of originalOf.keys()) ultimateOriginalOf.set(id, resolve(id));
+
+  const familyOf = new Map<string, string[]>();
+  for (const [editionId, origId] of ultimateOriginalOf) {
+    const list = familyOf.get(origId) ?? [];
+    list.push(editionId);
+    familyOf.set(origId, list);
+  }
+  return { ultimateOriginalOf, familyOf };
+}
+
 // Second pass: collapses groups a CONTAINS/EPISODE relation ties to one
 // container into a single card with the container's cover/title. Goes by
 // the relation itself, not the container's `format`, since that can be
@@ -110,10 +147,21 @@ export function groupBundles<T extends { external_id: string; started_at: string
     containerOf.set(id, ultimateContainerOf(id));
   }
 
+  // A remaster/remake of a bundle child is folded into that same bundle
+  // here too, purely for this visual grouping — it never gets a CONTAINS
+  // relation of its own in the catalog JSONs, but it's still "the same
+  // episode" as far as the grid card is concerned. This only widens what
+  // groupBundles itself treats as a match; it doesn't touch containerOf (so
+  // nothing outside this function ever sees these ids as bundle members —
+  // e.g. Local's own pending/in-progress lists stay exactly as they were).
+  const { familyOf } = buildEditionMaps(relations);
   const childIdsByContainer = new Map<string, string[]>();
   for (const [childId, containerId] of containerOf) {
     const list = childIdsByContainer.get(containerId) ?? [];
     list.push(childId);
+    for (const editionId of familyOf.get(childId) ?? []) {
+      list.push(editionId);
+    }
     childIdsByContainer.set(containerId, list);
   }
 
@@ -219,30 +267,9 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // originalOf[editionId] = the base work it's a remake/remaster/expanded
   // edition of (chain-flattened, same rootOf technique groupEditions uses
   // for selected_version chains) — a catalog-wide fact, not scoped to what's
-  // owned.
-  const EDITION_SOURCE_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
-  const originalOf = new Map<string, string>();
-  for (const rel of relations) {
-    if (!rel.media_external_id) continue;
-    if (!EDITION_SOURCE_RELATION_TYPES.has(rel.relation_type)) continue;
-    originalOf.set(rel.related_media_external_id, rel.media_external_id);
-  }
-  const ultimateOriginalOf = (id: string): string => {
-    let cur = id;
-    const seen = new Set<string>();
-    while (originalOf.has(cur) && !seen.has(cur)) {
-      seen.add(cur);
-      cur = originalOf.get(cur)!;
-    }
-    return cur;
-  };
-  const familyOf = new Map<string, string[]>();
-  for (const id of originalOf.keys()) {
-    const orig = ultimateOriginalOf(id);
-    const list = familyOf.get(orig) ?? [];
-    list.push(id);
-    familyOf.set(orig, list);
-  }
+  // owned. Shared with groupBundles above (see buildEditionMaps).
+  const { ultimateOriginalOf: ultimateOriginalOfMap, familyOf } = buildEditionMaps(relations);
+  const ultimateOriginalOf = (id: string): string => ultimateOriginalOfMap.get(id) ?? id;
 
   // A remake/remaster only borrows its original's saga identity when no
   // edition in its own family (the remake/remaster versions themselves, not
@@ -255,7 +282,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // own — it just stays ungrouped, same as before this existed).
   const sagaIdentityOf = (id: string): string | undefined => {
     if (directSagaIds.has(id)) return id;
-    if (!originalOf.has(id)) return undefined;
+    if (!ultimateOriginalOfMap.has(id)) return undefined;
     const original = ultimateOriginalOf(id);
     const familyHasOwnSaga = (familyOf.get(original) ?? []).some(sib => directSagaIds.has(sib));
     return familyHasOwnSaga ? undefined : original;

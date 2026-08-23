@@ -8,6 +8,7 @@ import {
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
+import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatters';
 
@@ -47,14 +48,18 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
 
   const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
 
+  // Tries both id prefixes — an IGDB game logged as a visual novel is
+  // catalogued as "vnovel:<id>", not "game:<id>" (see detect_vn/is_vn), and
+  // only one of the two lookups will ever actually resolve. Guessing "game:"
+  // alone silently missed every VN, which is exactly what made this panel's
+  // own PREQUEL/SEQUEL lookup below come up empty for e.g. Higurashi.
   useEffect(() => {
-    if (gameInfo?.igdb_id) {
-      getCatalogEntry(`game:${gameInfo.igdb_id}`)
-        .then(setCatalogEntry)
-        .catch(() => setCatalogEntry(null));
-    } else {
-      setCatalogEntry(null);
-    }
+    if (!gameInfo?.igdb_id) { setCatalogEntry(null); return; }
+    const igdbId = gameInfo.igdb_id;
+    Promise.all([
+      getCatalogEntry(`game:${igdbId}`).catch(() => null),
+      getCatalogEntry(`vnovel:${igdbId}`).catch(() => null),
+    ]).then(([g, v]) => setCatalogEntry(g ?? v ?? null));
   }, [gameInfo?.igdb_id]);
 
   // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
@@ -63,14 +68,25 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   // when that lookup found nothing, e.g. before it resolves on first mount).
   const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
   const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
+  // A bundle (e.g. The Great Ace Attorney Chronicles) has no PREQUEL/SEQUEL
+  // of its own — its catalog entry instead CONTAINS the individual episodes
+  // (The Great Ace Attorney / 2: Resolve). Same neighbor row, just showing
+  // "what's inside this bundle" instead of "what comes before/after it".
+  const [bundleChildren, setBundleChildren] = useState<{ externalId: string; title: string; cover: string | null }[]>([]);
   const relationsExternalId = catalogEntry?.external_id ?? (gameInfo?.igdb_id ? `game:${gameInfo.igdb_id}` : undefined);
   useEffect(() => {
     setPrequelInfo(null);
     setSequelInfo(null);
+    setBundleChildren([]);
     if (!relationsExternalId) return;
     let cancelled = false;
     getMediaRelationsForEditor(relationsExternalId).then(relations => {
       if (cancelled) return;
+      const children = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
+      if (children.length > 0) {
+        setBundleChildren(children.map(c => ({ externalId: c.related_media_external_id, title: c.title, cover: c.cover ?? null })));
+        return;
+      }
       const prequel = relations.find(r => r.relation_type === 'PREQUEL');
       const sequel = relations.find(r => r.relation_type === 'SEQUEL');
       if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
@@ -88,8 +104,8 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   const metaDots   = [formatDate(gameInfo?.release_date ?? undefined), gameInfo?.genres?.join(', ')].filter(Boolean).join('  ·  ');
 
   const handleEdit = () => {
-    if (!gameInfo?.igdb_id) return;
-    const externalId = `game:${gameInfo.igdb_id}`;
+    if (!relationsExternalId) return;
+    const externalId = relationsExternalId;
     getLibraryEntry(externalId)
       .then(libraryEntry => {
         window.dispatchEvent(new CustomEvent('open-profile-editor', {
@@ -140,12 +156,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
         <div className="local-game-detail-title-block">
           <div className="local-media-detail-top-row">
             <p className="local-game-detail-title">{game.name}</p>
-            {gameInfo?.igdb_id && (
+            {relationsExternalId && (
               <div className="local-media-detail-icon-actions">
                 <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
                   <IconPencil />
                 </button>
-                <a href={`/media?id=game:${gameInfo.igdb_id}`} className="local-game-detail-catalog-link">
+                <a href={`/media?id=${relationsExternalId}`} className="local-game-detail-catalog-link">
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                     <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
@@ -160,7 +176,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           )}
         </div>
 
-        <div className={`local-media-info-row${(prequelInfo || sequelInfo) ? ' local-media-info-row--has-neighbors' : ''}`}>
+        <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
           <div className="local-media-left-col">
             <button className="local-game-detail-play" onClick={() => {
               launchGame(game.launcher, game.app_id, game.install_path)
@@ -214,7 +230,20 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
             </div>
           </div>
 
-          {(prequelInfo || sequelInfo) && (
+          {bundleChildren.length > 0 ? (
+            <div className="local-media-neighbors-row">
+              <div className="local-media-neighbors-grid">
+                {bundleChildren.map(child => (
+                  <button key={child.externalId} type="button" className="local-media-neighbor-link" title={child.title} onClick={() => openMediaEditor(child.externalId)}>
+                    {child.cover
+                      ? <img className="local-media-neighbor-cover" src={child.cover} alt={child.title} />
+                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
+                    <span className="local-media-neighbor-label">{child.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (prequelInfo || sequelInfo) && (
             <div className="local-media-neighbors-row">
               <div className="local-media-neighbors-grid">
                 {prequelInfo && (

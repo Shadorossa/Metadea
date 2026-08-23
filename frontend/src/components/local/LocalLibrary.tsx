@@ -126,12 +126,18 @@ export default function LocalLibrary() {
   // ── Derived state ────────────────────────────────────────────────────────────
 
   // A Steam-scanned "game" that's actually catalogued as a visual novel
-  // (matched to a catalog entry of type 'vnovel', e.g. via the auto Steam-ID
-  // link or a manual save_game_link) belongs in the Visual Novel tab's own
-  // library-backed grid, not duplicated here under Videojuegos.
+  // belongs in the Visual Novel tab's own library-backed grid, not
+  // duplicated here under Videojuegos. Checks BOTH `type` ('vnovel', set
+  // when added through the VN search tab) and `format` ('VISUAL_NOVEL',
+  // set the same way — see igdb.ts's search) since an entry added through
+  // the plain "game" search tab for the same IGDB id ends up with
+  // type:'game' but still gets format:'VISUAL_NOVEL' tagged on it; relying
+  // on `type` alone missed exactly that case (e.g. Higurashi logged as a
+  // game) and let it show up twice — once correctly here, once again as an
+  // "invented" pending game under Videojuegos.
   const vnovelExternalIds = React.useMemo(() => {
     if (!mediaRaw) return new Set<string>();
-    return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel').map(c => c.external_id));
+    return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel' || c.format === 'VISUAL_NOVEL').map(c => c.external_id));
   }, [mediaRaw]);
 
   // Catches VN games nobody's manually catalogued yet — is_vn comes from
@@ -193,12 +199,16 @@ export default function LocalLibrary() {
   const pendingGames = React.useMemo(() => {
     const list = pendingGameItems.filter(i => {
       if (i.status !== 'planning') return false;
+      // A VN logged with type:'game' (see vnovelExternalIds' own comment)
+      // belongs exclusively in the Visual Novel tab, not duplicated here —
+      // this is what let e.g. Higurashi show up as a "pending game" too.
+      if (vnovelExternalIds.has(i.externalId)) return false;
       const titles = [i.title, i.titleRomaji, i.titleNative].filter((s): s is string => !!s);
       return !titles.some(tt => scannedGameNames.has(normalizeForMatch(tt)));
     });
     const q = filterName.trim().toLowerCase();
     return q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-  }, [pendingGameItems, scannedGameNames, filterName]);
+  }, [pendingGameItems, scannedGameNames, vnovelExternalIds, filterName]);
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
