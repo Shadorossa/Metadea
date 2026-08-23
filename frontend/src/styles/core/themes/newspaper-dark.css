@@ -35,7 +35,8 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Double borders to simulate vintage print advertisements/sections */
 [data-theme="newspaper-dark"] .btn,
-[data-theme="newspaper-dark"] .google-btn, 
+[data-theme="newspaper-dark"] .list-btn,
+[data-theme="newspaper-dark"] .google-btn,
 [data-theme="newspaper-dark"] .input-dark,
 [data-theme="newspaper-dark"] .theme-card-preview,
 [data-theme="newspaper-dark"] .banner-drop-zone,
@@ -130,6 +131,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 
 /* Hover/Active states simulate vintage ink press highlight */
 [data-theme="newspaper-dark"] .btn:hover,
+[data-theme="newspaper-dark"] .list-btn:hover,
 [data-theme="newspaper-dark"] .google-btn:hover,
 [data-theme="newspaper-dark"] .hof-btn:hover {
   background: var(--text-main) !important;
