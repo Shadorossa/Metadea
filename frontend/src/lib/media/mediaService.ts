@@ -326,10 +326,16 @@ export async function fetchMediaData(
     markSyncFailed(rawId, 'Live fetch returned no data').catch(() => {});
   }
   if (data) {
-    if (data.relations) data.relations = await filterBlockedRelations(data.relations);
-
-    const { authors: dbAuthors } = await loadDbRelationsAndAuthors(rawId);
-    const existing = await getCatalogEntry(rawId).catch(() => null);
+    // Three independent local DB reads (blocked-ids check, this id's own
+    // saved relations/authors, its catalog row) — none of them depend on
+    // each other's result, only on `data` from the live fetch above, so
+    // running them one after another was pure added latency for no reason.
+    const [filteredRelations, { authors: dbAuthors }, existing] = await Promise.all([
+      data.relations ? filterBlockedRelations(data.relations) : Promise.resolve(data.relations),
+      loadDbRelationsAndAuthors(rawId),
+      getCatalogEntry(rawId).catch(() => null),
+    ]);
+    data.relations = filteredRelations;
     applyStickyLocalFields(data, existing);
 
     // Checks deleted_relations so a deliberately-removed relation isn't silently re-added.
