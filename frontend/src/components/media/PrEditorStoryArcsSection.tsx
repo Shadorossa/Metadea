@@ -213,6 +213,21 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
     setEditingArc(prev => prev && { ...prev, items: prev.items.filter(i => i.media_external_id !== id) });
   }
 
+  // Item order becomes each item's saved `position` (see handleSaveArc) —
+  // matters for arcs like Thousand Year Blood War where the parts should
+  // list in release/watch order, not whatever order they happened to be
+  // added in.
+  function moveItem(index: number, direction: -1 | 1) {
+    setEditingArc(prev => {
+      if (!prev) return prev;
+      const target = index + direction;
+      if (target < 0 || target >= prev.items.length) return prev;
+      const items = [...prev.items];
+      [items[index], items[target]] = [items[target], items[index]];
+      return { ...prev, items };
+    });
+  }
+
   // A brand-new item joining a shared-range arc should read the same range
   // as everything else already in it, instead of showing up blank next to
   // matching numbers on every other row.
@@ -361,8 +376,14 @@ export function PrEditorStoryArcsSection({ externalId, currentTitle, currentCove
           )}
 
           <div className="pr-editor-arc-items-list">
-            {editingArc.items.map(item => (
+            {editingArc.items.map((item, index) => (
               <div key={item.media_external_id} className="pr-editor-arc-item-row">
+                {editingArc.items.length > 1 && (
+                  <div className="pr-editor-arc-card-reorder">
+                    <button type="button" className="pr-editor-arc-card-move" disabled={index === 0} onClick={() => moveItem(index, -1)}>▲</button>
+                    <button type="button" className="pr-editor-arc-card-move" disabled={index === editingArc.items.length - 1} onClick={() => moveItem(index, 1)}>▼</button>
+                  </div>
+                )}
                 <div className="pr-editor-arc-item-cover">
                   {item.cover ? <img src={item.cover} alt="" /> : <div className="pr-editor-media-card-placeholder" />}
                 </div>
