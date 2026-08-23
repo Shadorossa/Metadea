@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getAllLibraryEntries, readUserJourney } from '../../lib/tauri';
-import type { MediaCatalogEntry } from '../../lib/tauri';
+import { getAllLibraryEntries, readUserJourney, getAllMediaRelations } from '../../lib/tauri';
+import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
@@ -23,6 +23,7 @@ interface StatsData {
   catalogMap: Map<string, MediaCatalogEntry>;
   system: RatingSystem;
   journey: Awaited<ReturnType<typeof readUserJourney>>;
+  relations: DbMediaRelation[];
 }
 
 interface Props {
@@ -31,7 +32,10 @@ interface Props {
   // in hand — passing them in skips this component's own local-only fetch.
   // Every stat here is computed purely from those three inputs, so nothing
   // else needs to change for it to work on someone else's data — minutes
-  // spent/hours will just read 0 since that isn't synced.
+  // spent/hours will just read 0 since that isn't synced. Saga relations
+  // aren't part of what's synced either — omitting them just means a saga
+  // (e.g. Gintama's seasons) shows as N separate completed works instead of
+  // 1, same as before this collapsing existed.
   overrideItems?: Items;
   overrideCatalogMap?: Map<string, MediaCatalogEntry>;
   overrideJourney?: StatsData['journey'];
@@ -41,21 +45,22 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
   const t = getT();
   const p = t.profile;
   const [data, setData] = useState<StatsData | null>(
-    overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [] } : null
+    overrideItems ? { items: overrideItems, catalogMap: overrideCatalogMap ?? new Map(), system: getActiveRatingSystem(), journey: overrideJourney ?? [], relations: [] } : null
   );
 
   useEffect(() => {
     if (overrideItems) return;
     let cancelled = false;
     (async () => {
-      const [{ items, catalog: catalogEntries }, system, journey] = await Promise.all([
+      const [{ items, catalog: catalogEntries }, system, journey, relations] = await Promise.all([
         getCachedLibraryAndCatalog(),
         syncActiveRatingSystem(),
         readUserJourney().catch(() => []),
+        getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
       ]);
       if (cancelled) return;
       const catalogMap = new Map<string, MediaCatalogEntry>(catalogEntries.map(e => [e.external_id, e]));
-      setData({ items, catalogMap, system, journey });
+      setData({ items, catalogMap, system, journey, relations });
     })();
     return () => { cancelled = true; };
   }, [overrideItems]);
@@ -64,7 +69,7 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
     return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
   }
 
-  const { items, catalogMap, system, journey } = data;
+  const { items, catalogMap, system, journey, relations } = data;
 
   if (items.length === 0) {
     return (
@@ -78,7 +83,7 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
 
   // Fetched early so hours math below can look up per-episode/movie runtime
   const { totalWorks, totalSeasons, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning } =
-    computeOverviewAggregate(items, catalogMap);
+    computeOverviewAggregate(items, catalogMap, relations);
 
   const byType = computeTypeBreakdown(items, catalogMap);
 

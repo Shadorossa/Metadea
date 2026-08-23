@@ -226,11 +226,13 @@
   padding: 0;
   filter: none;
   overflow: visible;
-  /* Same fixed box as every other nav icon (not width: auto sized to the
-     image's own aspect ratio) — that let a non-square avatar's box come out
-     a different size than its siblings, throwing off the shared horizontal
-     alignment across the row. */
-  width: 1.89rem;
+  /* Bigger than its siblings on purpose (the avatar is the one icon meant
+     to stand out) — fixed on both axes rather than width: auto sized to
+     the image's own aspect ratio, which let a non-square avatar's box come
+     out a different size than intended and throw off the row's shared
+     vertical centering. */
+  width: 2.4rem;
+  height: 2.4rem;
 }
 
 .nav-icon-btn--avatar:hover {

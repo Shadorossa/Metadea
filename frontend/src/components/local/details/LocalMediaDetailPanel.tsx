@@ -598,14 +598,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   className="local-media-detail-locate-btn"
                   onClick={() => setLocateMenuOpen(v => !v)}
                   disabled={locateBusy || !rootFolder}
-                  title="Localizar manualmente"
+                  title={t.local.locate_manually}
                 >
                   {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
                 </button>
                 {locateMenuOpen && (
                   <div className="local-media-detail-locate-menu">
-                    <button type="button" onClick={handleLocateFolder}>Elegir carpeta</button>
-                    <button type="button" onClick={handleLocateSingleFile}>Elegir un archivo suelto</button>
+                    <button type="button" onClick={handleLocateFolder}>{t.local.locate_choose_folder}</button>
+                    <button type="button" onClick={handleLocateSingleFile}>{t.local.locate_choose_file}</button>
                   </div>
                 )}
               </div>
@@ -772,7 +772,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 <line x1="10" y1="11" x2="10" y2="17" />
                 <line x1="14" y1="11" x2="14" y2="17" />
               </svg>
-              <span>Eliminar entrada</span>
+              <span>{t.local.delete_history_entry}</span>
             </button>
           </div>,
           document.body
@@ -782,9 +782,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {locatePreview && createPortal(
         <div className="locate-preview-overlay" onClick={() => !locateBusy && setLocatePreview(null)}>
           <div className="locate-preview-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="locate-preview-title">Renombrar para detección automática</h3>
+            <h3 className="locate-preview-title">{t.local.rename_for_detection_title}</h3>
             <p className="locate-preview-hint">
-              Esto renombra la carpeta y sus archivos en tu disco. Revisa antes de confirmar.
+              {t.local.rename_for_detection_hint}
             </p>
 
             <div className="locate-preview-list">
@@ -805,7 +805,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
             {locatePreview.relatedMatches.length > 0 && (
               <>
                 <p className="locate-preview-hint" style={{ marginTop: '1rem' }}>
-                  Obras relacionadas encontradas en carpetas vecinas (películas, OVAs...):
+                  {t.local.related_works_found_hint}
                 </p>
                 <div className="locate-preview-list">
                   {locatePreview.relatedMatches.map(m => (
@@ -823,10 +823,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
             <div className="locate-preview-actions">
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setLocatePreview(null)} disabled={locateBusy}>
-                Cancelar
+                {t.local.cancel}
               </button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleLocateConfirm} disabled={locateBusy}>
-                {locateBusy ? 'Renombrando...' : 'Confirmar y renombrar'}
+                {locateBusy ? t.local.renaming_ellipsis : t.local.confirm_and_rename}
               </button>
             </div>
           </div>
@@ -837,9 +837,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {locateFilePreview && createPortal(
         <div className="locate-preview-overlay" onClick={() => !locateBusy && setLocateFilePreview(null)}>
           <div className="locate-preview-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="locate-preview-title">Renombrar archivo</h3>
+            <h3 className="locate-preview-title">{t.local.rename_file_title}</h3>
             <p className="locate-preview-hint">
-              Solo se renombra este archivo — sus hermanos en la misma carpeta no se tocan.
+              {t.local.rename_file_hint}
             </p>
 
             <div className="locate-preview-list">
@@ -854,10 +854,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
 
             <div className="locate-preview-actions">
               <button type="button" className="pr-editor-btn pr-editor-btn--cancel" onClick={() => setLocateFilePreview(null)} disabled={locateBusy}>
-                Cancelar
+                {t.local.cancel}
               </button>
               <button type="button" className="pr-editor-btn pr-editor-btn--submit" onClick={handleLocateFileConfirm} disabled={locateBusy}>
-                {locateBusy ? 'Renombrando...' : 'Confirmar y renombrar'}
+                {locateBusy ? t.local.renaming_ellipsis : t.local.confirm_and_rename}
               </button>
             </div>
           </div>

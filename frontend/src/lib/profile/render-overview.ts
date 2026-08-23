@@ -1,16 +1,15 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { createElement } from 'react';
-import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, readMonthlyHistory, readUserFavorites, readUserJourney } from '../tauri';
-import type { MediaCatalogEntry, FavoriteCustomImage, DayJourney } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getAllFavoriteCustomImages, getAllMediaRelations, readMonthlyHistory, readUserFavorites, readUserJourney } from '../tauri';
+import type { MediaCatalogEntry, FavoriteCustomImage, DayJourney, DbMediaRelation } from '../tauri';
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { HofSection } from '../../components/profile/HofSection';
 import { ActivitySection } from '../../components/profile/ActivitySection';
 import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from './monthly';
 import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
-import { isInProgressStatus } from '../constants/media';
 import { ICON_MH_MEDIA, ICON_MH_CHARACTER } from '../shared/icon-strings';
-import { getNonEditionItems, getEditionItems, getItemMinutes } from './stats-calculators';
+import { getItemMinutes, computeOverviewAggregate } from './stats-calculators';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -39,7 +38,7 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
     // profile.astro's init() fetches the exact same getAllCatalogEntries()
     // for its own click-delegation lookups, so refetching it again on every
     // single switch to this tab was a needless duplicate query.
-    const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages, journey] = await Promise.all([
+    const [catalogEntries, monthlyHistory, system, favData, characterEntries, customImages, journey, sagaRelations] = await Promise.all([
       catalog ? Promise.resolve(catalog) : getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
       readMonthlyHistory().catch(() => ({})),
       syncActiveRatingSystem(),
@@ -53,56 +52,32 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
       // making "Actividad reciente" visibly the last thing to appear by a
       // wide margin even though its own fetch is cheap on its own.
       readUserJourney().catch(() => [] as DayJourney[]),
+      // For computeOverviewAggregate below — anime/series seasons have no
+      // format tag marking them as sub-works the way games/comics do, only
+      // SEQUEL/PREQUEL relation edges between otherwise-independent entries.
+      getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
     ]);
     const catalogMap = new Map<string, MediaCatalogEntry>(
       catalogEntries.map(e => [e.external_id, e])
     );
 
-    let completed = 0, inProgress = 0, planning = 0, dropped = 0;
-    let totalRating = 0, ratedCount = 0, totalMinutes = 0;
-    const completedByType: Record<string, number> = {};
+    // Single source of truth for every "how many works" count — shared with
+    // the Stats tab (see computeOverviewAggregate's own comment for why this
+    // used to be two separately-maintained copies that could (and did)
+    // drift apart on exactly this kind of saga-collapse logic).
+    const {
+      totalWorks, completed, currently: inProgress, planning, dropped,
+      avgScore, completedByType, completedSubBreakdownByType,
+    } = computeOverviewAggregate(items, catalogMap, sagaRelations);
 
-    // Sub-work entries (edition/version-log children, seasons, updates,
-    // comic issues) shouldn't be counted as separate works — same exclusion
-    // as the rest of the stats dashboard.
-    const nonEditionItems = getNonEditionItems(items, catalogMap);
-    for (const item of nonEditionItems) {
-      const s = item.status ?? 'planning';
-      if (s === 'completed') {
-        completed++;
-        completedByType[item.type] = (completedByType[item.type] ?? 0) + 1;
-      }
-      else if (isInProgressStatus(s)) inProgress++;
-      else if (s === 'planning') planning++;
-      else if (s === 'dropped') dropped++;
-
-      if (item.rating) { totalRating += item.rating; ratedCount++; }
-    }
-
-    // Completed sub-works don't count as their own "work", but the info
-    // isn't thrown away — tallied by the base type they belong to (a game's
-    // remake/remaster/update, a series' season, a comic's issue, ...) so the
-    // "?" tooltip can show each breakdown nested under its own type instead
-    // of everything getting lumped under "Videojuegos" regardless of which
-    // type it actually came from.
-    const completedSubBreakdownByType: Record<string, Record<string, number>> = {};
-    for (const item of getEditionItems(items, catalogMap)) {
-      if (item.status !== 'completed') continue;
-      const format = catalogMap.get(item.external_id)?.format || 'GAME';
-      const byFormat = completedSubBreakdownByType[item.type] ?? (completedSubBreakdownByType[item.type] = {});
-      byFormat[format] = (byFormat[format] ?? 0) + 1;
-    }
+    const avgRatingStr = avgScore > 0 ? formatAverageScore(avgScore, system) : '0.0';
 
     // Hours played DO include sub-work time — each logged version/season/
     // issue is real time spent, so its minutes still count toward the total.
+    let totalMinutes = 0;
     for (const item of items) {
       totalMinutes += getItemMinutes(item, catalogMap);
     }
-
-    const avgRatingStr = ratedCount > 0
-      ? formatAverageScore(totalRating / ratedCount, system)
-      : '0.0';
-
     const totalHours = Math.round(totalMinutes / 60);
 
     const buildSubBreakdownHtml = (byFormat: Record<string, number> | undefined) => {
@@ -136,7 +111,7 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
     const statsHtml = `
     <div class="profile-stats-bar">
       ${([
-        [p.stat_total, pad(nonEditionItems.length)],
+        [p.stat_total, pad(totalWorks)],
         [p.stat_progress, pad(inProgress)],
         [p.stat_completed, pad(completed)],
         [p.stat_pending, pad(planning)],

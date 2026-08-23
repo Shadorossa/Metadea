@@ -344,9 +344,9 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   <div className="local-state-placeholder">
                     <IconFolder />
                     <p>{t.local.no_folder_assigned}</p>
-                    <span>Elige una carpeta para explorar tu colección de {CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()}</span>
+                    <span>{t.local.choose_folder_category_hint.replace('{category}', String(CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()))}</span>
                     <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>
-                      <IconPlus /> Añadir ruta
+                      <IconPlus /> {t.local.add_route}
                     </button>
                   </div>
                 ) : folderFiles.length === 0 ? (

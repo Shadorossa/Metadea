@@ -1,4 +1,4 @@
-import type { getAllLibraryEntries, MediaCatalogEntry } from '../tauri';
+import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '../tauri';
 import { isInProgressStatus, ALL_MEDIA_TYPES } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 
@@ -19,6 +19,12 @@ export interface OverviewAggregate {
   paused: number;
   dropped: number;
   planning: number;
+  // Completed works broken down by type, and (within that) by sub-work
+  // format (a series' season, a game's remaster, ...) — see
+  // groupSagaChains' own comment for why anime/series seasons need their
+  // own saga-relation-based grouping instead of a simple format tag.
+  completedByType: Record<string, number>;
+  completedSubBreakdownByType: Record<string, Record<string, number>>;
 }
 
 // A "version log" is a library entry created to track one specific edition/
@@ -75,6 +81,68 @@ export function getEditionItems(items: Items, catalogMap?: Map<string, MediaCata
   return items.filter(item => isSubWorkItem(item, childIds, catalogMap));
 }
 
+// Same types library-grouping.ts's refineSagaGroups groups on the library
+// grid (games/movies/series get real or curated SEQUEL/PREQUEL rows too).
+const SAGA_GROUPABLE_TYPES = new Set(['anime', 'manga', 'lnovel', 'game', 'vnovel', 'movie', 'series']);
+const SAGA_RELATION_TYPES = new Set(['SEQUEL', 'SECUELA', 'PREQUEL', 'PRECUELA', 'ALTERNATIVE']);
+
+// Anime/series seasons are SUB_WORK_FORMATS' one real gap: AniList/TMDB have
+// no "this is season N of X" format tag the way IGDB's SEASON/ISSUE-style
+// values give getNonEditionItems for games/comics — every season is just its
+// own independent Media entry, connected to its neighbors only via SEQUEL/
+// PREQUEL relation edges. Without this, e.g. Gintama's 8 owned TV seasons
+// each counted as a fully separate completed anime instead of one franchise.
+//
+// Catalog-wide walk (not just relations between owned entries), so owning
+// season 1 and 3 but not 2 still merges them — same technique
+// refineSagaGroups uses for the library grid, simplified here: no edition-
+// redirect/bundle-suppression, just "which owned items share a saga chain."
+// Returns only real multi-member chains (a lone owned entry with no owned
+// relatives has nothing to merge with and isn't included).
+export function groupSagaChains(
+  items: Items,
+  relations: DbMediaRelation[],
+  catalogMap: Map<string, MediaCatalogEntry>,
+): Map<string, string[]> {
+  const parent = new Map<string, string>();
+  const find = (id: string): string => {
+    let cur = id;
+    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
+    return cur;
+  };
+  const union = (a: string, b: string) => {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  for (const rel of relations) {
+    if (!rel.media_external_id || !SAGA_RELATION_TYPES.has(rel.relation_type)) continue;
+    const a = rel.media_external_id;
+    const b = rel.related_media_external_id;
+    const typeA = catalogMap.get(a)?.type;
+    const typeB = catalogMap.get(b)?.type;
+    if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
+    if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
+    union(a, b);
+  }
+
+  const groups = new Map<string, string[]>();
+  for (const item of items) {
+    const id = item.external_id;
+    if (!parent.has(id)) continue;
+    const root = find(id);
+    const list = groups.get(root) ?? [];
+    list.push(id);
+    groups.set(root, list);
+  }
+  for (const [root, ids] of [...groups]) {
+    if (ids.length < 2) groups.delete(root);
+  }
+  return groups;
+}
+
 // media_catalog.time_length is the runtime in minutes of one unit of the
 // work — one episode for anime/series, the whole thing for a movie. Anime/
 // series log "progress" as episode count (see getProgressConfig in
@@ -92,9 +160,87 @@ export function getItemMinutes(item: Items[number], catalogMap: Map<string, Medi
   return item.minutes_spent || 0;
 }
 
-export function computeOverviewAggregate(items: Items, catalogMap: Map<string, MediaCatalogEntry>): OverviewAggregate {
+// Single source of truth for every "how many works" stat shown across the
+// profile (the Overview tab's stats bar + its "?" tooltip, and the Stats
+// tab) — used to live as two separate, independently-drifting counting
+// loops (render-overview.ts had its own copy), which is how totalWorks
+// ended up saga-aware in one place and not the other.
+export function computeOverviewAggregate(
+  items: Items,
+  catalogMap: Map<string, MediaCatalogEntry>,
+  relations: DbMediaRelation[],
+): OverviewAggregate {
   const nonEditionItems = getNonEditionItems(items, catalogMap);
-  const totalWorks = nonEditionItems.length;
+
+  // Anime/series seasons have no format tag marking them as sub-works the
+  // way games/comics do (see groupSagaChains' own comment) — collapsed here
+  // via their SEQUEL/PREQUEL relations instead, so e.g. Gintama's 8 owned TV
+  // seasons count as 1 completed anime + 8 "Temporada" entries in the
+  // breakdown, not 8 separate completed anime.
+  const sagaChains = groupSagaChains(nonEditionItems, relations, catalogMap);
+  const chainedIds = new Set<string>();
+  for (const ids of sagaChains.values()) for (const id of ids) chainedIds.add(id);
+  const itemById = new Map(nonEditionItems.map(i => [i.external_id, i]));
+
+  let completed = 0, currently = 0, paused = 0, dropped = 0, planning = 0;
+  const completedByType: Record<string, number> = {};
+  const completedSubBreakdownByType: Record<string, Record<string, number>> = {};
+  const addToSubBreakdown = (type: string, format: string, count = 1) => {
+    const byFormat = completedSubBreakdownByType[type] ?? (completedSubBreakdownByType[type] = {});
+    byFormat[format] = (byFormat[format] ?? 0) + count;
+  };
+  const tallyStatus = (item: Items[number]) => {
+    const s = item.status ?? 'planning';
+    if (s === 'completed') { completed++; completedByType[item.type] = (completedByType[item.type] ?? 0) + 1; }
+    else if (isInProgressStatus(s)) currently++;
+    else if (s === 'paused') paused++;
+    else if (s === 'planning') planning++;
+    else if (s === 'dropped') dropped++;
+  };
+
+  for (const item of nonEditionItems) {
+    if (chainedIds.has(item.external_id)) continue; // handled per-chain below
+    tallyStatus(item);
+  }
+
+  for (const ids of sagaChains.values()) {
+    const members = ids.map(id => itemById.get(id)!).filter(Boolean);
+    const allCompleted = members.length > 0 && members.every(m => (m.status ?? 'planning') === 'completed');
+    if (allCompleted) {
+      // The whole franchise reads as finished — 1 anime, N seasons, not N
+      // separate completed anime. "Temporada" only makes sense for anime/
+      // series (TV entries) — a manga/movie/game saga's own entries are
+      // full separate works of their own, not seasons of one broadcast, so
+      // those get the generic sequel/prequel label instead.
+      const chainType = members[0].type;
+      const subFormat = (chainType === 'anime' || chainType === 'series') ? 'SEASON' : 'CONTINUATION';
+      completed++;
+      completedByType[chainType] = (completedByType[chainType] ?? 0) + 1;
+      addToSubBreakdown(chainType, subFormat, members.length);
+    } else {
+      // Still mid-franchise (some seasons watched, others not) — no single
+      // status represents the whole chain yet, so count each member on its
+      // own the same as an unrelated standalone work would be.
+      for (const m of members) tallyStatus(m);
+    }
+  }
+
+  // Completed sub-works don't count as their own "work", but the info isn't
+  // thrown away — tallied by the base type they belong to (a game's remake/
+  // remaster/update, a comic's issue, ...) so the "?" tooltip can show each
+  // breakdown nested under its own type instead of everything getting
+  // lumped under "Videojuegos" regardless of which type it actually came from.
+  for (const item of getEditionItems(items, catalogMap)) {
+    if (item.status !== 'completed') continue;
+    const format = catalogMap.get(item.external_id)?.format || 'GAME';
+    addToSubBreakdown(item.type, format);
+  }
+
+  // Every saga chain (regardless of completion) collapses to 1 "obra" here
+  // too — same reasoning as the completed count above, just not gated on
+  // status: Gintama is 1 work whether you've finished all 8 seasons or are
+  // 3 episodes into season 1.
+  const totalWorks = nonEditionItems.length - chainedIds.size + sagaChains.size;
 
   const totalSeasons = items.filter(item => {
     const entry = catalogMap.get(item.external_id);
@@ -108,16 +254,14 @@ export function computeOverviewAggregate(items: Items, catalogMap: Map<string, M
   const totalRating = ratedItems.reduce((acc, item) => acc + (item.rating || 0), 0);
   const avgScore = ratedItems.length > 0 ? (totalRating / ratedItems.length) : 0;
 
-  const completed = nonEditionItems.filter(item => item.status === 'completed').length;
-  const currently = nonEditionItems.filter(item => isInProgressStatus(item.status)).length;
-  const paused = nonEditionItems.filter(item => item.status === 'paused').length;
-  const dropped = nonEditionItems.filter(item => item.status === 'dropped').length;
-  const planning = nonEditionItems.filter(item => item.status === 'planning').length;
-
   const totalDays = (totalHours / 24).toFixed(1);
   const avgPerWork = totalWorks > 0 ? (totalHours / totalWorks).toFixed(1) : '0.0';
 
-  return { totalWorks, totalSeasons, totalHours, totalDays, avgPerWork, ratedItems, avgScore, completed, currently, paused, dropped, planning };
+  return {
+    totalWorks, totalSeasons, totalHours, totalDays, avgPerWork, ratedItems, avgScore,
+    completed, currently, paused, dropped, planning,
+    completedByType, completedSubBreakdownByType,
+  };
 }
 
 // ── Time spent by media type ────────────────────────────────────────────────

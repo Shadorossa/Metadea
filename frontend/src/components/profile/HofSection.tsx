@@ -158,7 +158,7 @@ export function HofSection({
           <button
             type="button"
             className={`hof-btn ${view === 'works' ? 'hof-btn--active' : ''}`}
-            title={p.stat_total}
+            title={p.hof_works}
             onClick={() => setView('works')}
             dangerouslySetInnerHTML={{ __html: ICON_CROWN }}
           />
@@ -166,7 +166,7 @@ export function HofSection({
           <button
             type="button"
             className={`hof-btn ${view === 'chars' ? 'hof-btn--active' : ''}`}
-            title={p.stat_total}
+            title={p.hof_characters}
             onClick={() => setView('chars')}
             dangerouslySetInnerHTML={{ __html: ICON_PERSON }}
           />
