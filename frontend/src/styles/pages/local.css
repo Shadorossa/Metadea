@@ -1552,10 +1552,20 @@
   line-height: 1.3;
 }
 
+/* Date/genres and "by X" (developer/publisher) on one line — used to be a
+   separate line each (by-line under the title, metadots here), but a
+   centered title left "by X" looking mismatched sitting alone underneath
+   it. Same row now, developer pushed to the right via margin-left: auto. */
+.local-game-detail-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
 .local-game-detail-metadots {
   font-size: 0.75rem;
   color: var(--text-muted);
-  margin: 0.25rem 0 0.75rem;
   line-height: 1.6;
   /* Reserves its line's height from the first render (release date/genres
      resolve async) so the text popping in doesn't push the play button and
@@ -1599,7 +1609,10 @@
 .local-game-detail-by {
   font-size: 0.78rem;
   color: var(--text-muted);
-  margin-top: 0.15rem;
+  /* Pushed to the row's far right, opposite metaDots — see
+     .local-game-detail-meta-row above. */
+  margin-left: auto;
+  text-align: right;
   /* The developer name resolves async (a live IGDB lookup for entries with
      no cached info.json). Reserving its line height from the first render
      and only fading opacity in — instead of mounting/unmounting the whole

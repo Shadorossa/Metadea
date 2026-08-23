@@ -313,6 +313,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     : gameInfo?.genres?.join(', ');
   const metaDots   = [formatDate(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
   const displaySummary = catalogEntry?.synopsis || gameInfo?.summary;
+  // catalogDevelopers (this identity's own IGDB lookup) wins over
+  // gameInfo.developers (launchTarget's cached info) — same "own identity"
+  // reasoning as the banner/metaDots above. Only ever both populated at
+  // once for a season, where they'd otherwise show the source's studio
+  // under the season's own name. Shown alongside metaDots (date/genres) on
+  // the same line now, not under the title — kept them from looking
+  // mismatched once the title itself became centered.
+  const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
+  const hasDevelopers = !!developers && developers.length > 0;
 
   const handleEdit = () => {
     if (!relationsExternalId) return;
@@ -375,20 +384,6 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           <div className="local-media-detail-top-row">
             <p className="local-game-detail-title">{game.name}</p>
           </div>
-          {(() => {
-            // catalogDevelopers (this identity's own IGDB lookup) wins over
-            // gameInfo.developers (launchTarget's cached info) — same "own
-            // identity" reasoning as the banner/metaDots above. Only ever
-            // both populated at once for a season, where they'd otherwise
-            // show the source's studio under the season's own name.
-            const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
-            const hasDevelopers = !!developers && developers.length > 0;
-            return (
-              <p className={`local-game-detail-by${hasDevelopers ? ' local-game-detail-by--visible' : ''}`}>
-                {hasDevelopers ? `by ${developers!.join(', ')}` : ' '}
-              </p>
-            );
-          })()}
         </div>
 
         <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
@@ -525,7 +520,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
         </div>
         </div>
 
-        <p className={`local-game-detail-metadots${metaDots ? ' local-game-detail-metadots--visible' : ''}`}>{metaDots || ' '}</p>
+        <div className="local-game-detail-meta-row">
+          <p className={`local-game-detail-metadots${metaDots ? ' local-game-detail-metadots--visible' : ''}`}>{metaDots || ' '}</p>
+          <p className={`local-game-detail-by${hasDevelopers ? ' local-game-detail-by--visible' : ''}`}>
+            {hasDevelopers ? `by ${developers!.join(', ')}` : ' '}
+          </p>
+        </div>
         {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
 
         {achievements?.list && achievements.list.length > 0 && (
