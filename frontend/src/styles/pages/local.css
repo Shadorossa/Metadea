@@ -1585,7 +1585,7 @@
   top: 0;
   z-index: 2;
   margin: -1.5rem -1.5rem 0;
-  padding: 0.15rem 1.5rem 0.25rem;
+  padding: 0 1.5rem 0.25rem;
   background: var(--bg-primary);
 }
 
@@ -1673,20 +1673,22 @@
 .local-game-detail-stats {
   display: flex;
   gap: 1rem;
-  /* Packed to the left, not stretched — the edit/catalog group now sits to
-     their right (see .local-game-detail-actions-right) with its own
-     margin-left: auto, so nothing here needs to claim the row's leftover
-     width anymore. */
+  /* Grows to fill the row up to the divider (see
+     .local-game-detail-actions-right), spreading Tiempo/Última vez/Logros
+     across that space instead of leaving it empty between them and the
+     edit/catalog group. */
+  flex: 1;
+  justify-content: space-between;
 }
 
-/* Edit-log/"Ver en catálogo" — pinned to the row's far right edge via
-   margin-left: auto, separated from the Tiempo/Última vez/Logros stats by
-   a vertical divider bar instead of just floating loose next to them. */
+/* Edit-log/"Ver en catálogo" — sits at the row's far right edge (stats'
+   own flex:1 already pushes this group there, see .local-game-detail-stats
+   above), separated from Tiempo/Última vez/Logros by a vertical divider
+   bar instead of just floating loose next to them. */
 .local-game-detail-actions-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-left: auto;
 }
 
 .local-game-detail-actions-sep {

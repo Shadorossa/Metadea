@@ -95,11 +95,19 @@ export default function LocalLibrary() {
   // but "Jugar" launches this (the source's real, installed LocalGame)
   // instead, since the season itself was never separately installable.
   const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
-  const setSelectedGame = (g: (typeof selectedGameRaw)) => { setSelectedGameRaw(g); if (g) setSelectedPendingItem(null); };
+  // Keeps ?sel= in sync with whichever panel is actually open (see
+  // urlState.ts) — restoreSelectionFromUrl below reverses this exact
+  // encoding once games/mediaRaw are loaded again after a Back navigation.
+  const setSelectedGame = (g: (typeof selectedGameRaw)) => {
+    setSelectedGameRaw(g);
+    if (g) setSelectedPendingItem(null);
+    writeLocalUrlState('videojuegos', g ? `g:${g.external_id ?? g.app_id ?? g.name}` : null);
+  };
   const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
     setSelectedPendingItem(item);
     setSelectedPendingLaunchGame(launchGame);
     setSelectedGameRaw(null);
+    writeLocalUrlState('videojuegos', `p:${item.externalId}`);
   };
   const selectedGame = selectedGameRaw;
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
@@ -314,6 +322,37 @@ export default function LocalLibrary() {
     () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
     [mediaRaw],
   );
+  // Reopens whatever ?sel= encodes (see setSelectedGame/openPendingItem)
+  // once games/mediaRaw have actually loaded — this is what makes browser
+  // Back from e.g. a catalog page land back on the exact same work instead
+  // of a bare Videojuegos tab. Runs once per mount only (restoredSelRef):
+  // games/mediaRaw refresh periodically on their own (metadata fetch,
+  // playtime tracking, ...) and re-running this on every such refresh would
+  // clobber whatever the user has since selected/deselected by hand.
+  const restoredSelRef = React.useRef(false);
+  useEffect(() => {
+    if (restoredSelRef.current) return;
+    if (activeCategory !== 'videojuegos') return;
+    if (gamesState !== 'done' || !mediaRaw) return;
+    restoredSelRef.current = true;
+
+    const { sel } = readLocalUrlState();
+    if (!sel) return;
+    const [kind, id] = [sel.slice(0, 2), sel.slice(2)];
+    if (kind === 'g:') {
+      const found = games.find(g => (g.external_id ?? g.app_id ?? g.name) === id);
+      if (found) setSelectedGameRaw(found);
+      return;
+    }
+    if (kind === 'p:') {
+      const item = pendingGameItems.find(i => i.externalId === id);
+      if (!item) return;
+      const [entry] = buildLibraryStatusEntries([item], games, catalogMapById);
+      if (entry?.kind === 'game') setSelectedGameRaw(entry.game);
+      else setSelectedPendingItem(item);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, gamesState, mediaRaw]);
   // Shared with the Visual Novel tab's own library-only entries (see
   // catalogGameLinking.ts) so both get exactly the same "might already be a
   // scanned game under a different identity/edition" matching behavior
