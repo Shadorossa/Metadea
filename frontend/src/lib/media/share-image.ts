@@ -214,7 +214,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   const posterW = 640;
   const posterH = Math.round(posterW * 1.42);
   const posterX = (WIDTH - posterW) / 2;
-  const posterY = 300;
+  const posterY = 250;
 
   if (cover) {
     ctx.save();
