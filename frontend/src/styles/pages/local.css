@@ -1523,6 +1523,10 @@
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-top: 0.15rem;
+  /* The developer name resolves async (a live IGDB lookup for entries with
+     no cached info.json) — popping in abruptly right under the title read
+     as a flicker. Eases in instead of appearing instantly. */
+  animation: fade-in 0.25s var(--anim-ease);
 }
 
 /* Sits below .local-media-divider-line now (added so GameDetailPanel could
