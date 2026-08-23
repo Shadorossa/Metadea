@@ -657,6 +657,7 @@ export const ca = {
     updating_metadata: 'Actualitzant metadades',
     select_igdb_game: 'Seleccionar joc a IGDB',
     locate_manually: 'Localitza manualment',
+    steam_backlog: 'Backlog de Steam',
     locate_choose_folder: 'Tria carpeta',
     locate_choose_file: 'Tria un fitxer solt',
     delete_history_entry: "Elimina l'entrada",

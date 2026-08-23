@@ -657,6 +657,7 @@ export const fr = {
     updating_metadata: 'Mise à jour des métadonnées',
     select_igdb_game: 'Sélectionner un jeu sur IGDB',
     locate_manually: 'Localiser manuellement',
+    steam_backlog: 'Backlog Steam',
     locate_choose_folder: 'Choisir un dossier',
     locate_choose_file: 'Choisir un fichier isolé',
     delete_history_entry: "Supprimer l'entrée",

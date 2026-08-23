@@ -641,6 +641,23 @@ pub async fn read_metadata_index(
                     result["banner_path"] = serde_json::Value::String(p.to_string());
                 }
             }
+            // Read straight off each game's own info.json genres — set once
+            // at fetch time by save_game_info, so this also classifies games
+            // fetched before is_vn existed at all, no re-fetch needed. Genre
+            // NAMES (not ids, unlike detect_vn's id-based check used during
+            // IGDB search) since that's all info.json ever stored.
+            let info_path = meta_root.join(app_id).join("info.json");
+            if let Ok(info_data) = std::fs::read_to_string(&info_path) {
+                if let Ok(info) = serde_json::from_str::<serde_json::Value>(&info_data) {
+                    let is_vn = info["genres"]
+                        .as_array()
+                        .map(|genres| genres.iter().any(|g| g.as_str() == Some("Visual Novel")))
+                        .unwrap_or(false);
+                    if is_vn {
+                        result["is_vn"] = serde_json::Value::Bool(true);
+                    }
+                }
+            }
             if result.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
                 out.insert(app_id.clone(), result);
             }

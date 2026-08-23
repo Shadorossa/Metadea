@@ -8,10 +8,12 @@ import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaData } from './hooks/useLocalMediaEntries';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData } from './hooks/useLocalMediaEntries';
+import { normalizeForMatch } from './utils/folderMatch';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
+import { LocalMediaCard }   from './cards/LocalMediaCard';
 import { FolderEntryCard }  from './cards/FolderEntryCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
@@ -132,18 +134,42 @@ export default function LocalLibrary() {
     return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel').map(c => c.external_id));
   }, [mediaRaw]);
 
+  // Catches VN games nobody's manually catalogued yet — is_vn comes from
+  // the game's own cached IGDB metadata genre (see read_metadata_index),
+  // so this works for any Steam game once its metadata has been fetched at
+  // least once, without the user having to log it in their library first.
+  const isSteamVN = React.useCallback(
+    (g: (typeof games)[number]) =>
+      (!!g.external_id && vnovelExternalIds.has(g.external_id)) ||
+      (!!g.app_id && !!pathCache[g.app_id]?.is_vn),
+    [vnovelExternalIds, pathCache],
+  );
+
   // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
   // order (installed-then-uninstalled, no name ordering within either),
   // which read as arbitrary in the grid. groupedGames below derives from
   // this via .filter(), which preserves order, so sorting once here is
   // enough to alphabetize every platform's own section too.
   const safeGames     = (Array.isArray(games) ? games : [])
-    .filter(g => !g.external_id || !vnovelExternalIds.has(g.external_id))
+    .filter(g => !isSteamVN(g))
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
   const filteredGames = filterName.trim()
     ? safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()))
     : safeGames;
+
+  // The flip side of the exclusion above — every Steam-scanned VN, shown in
+  // the Visual Novel tab instead (see LocalMediaSection's steamGames prop)
+  // with the exact same card/detail-panel experience (achievements, launch
+  // via Steam) Videojuegos already gives every other game.
+  const vnSteamGames = React.useMemo(() => {
+    const list = (Array.isArray(games) ? games : [])
+      .filter(isSteamVN)
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const q = filterName.trim().toLowerCase();
+    return q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
+  }, [games, isSteamVN, filterName]);
 
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
     const list = filteredGames.filter(g => g.launcher === id);
@@ -152,6 +178,27 @@ export default function LocalLibrary() {
   }, new Map());
 
   const availablePlatforms = new Set(safeGames.map(g => g.launcher));
+
+  // Videojuegos' own "Pendientes" mix — catalog-tracked 'game' entries not
+  // yet installed anywhere Steam/Epic/... scanning found, with the same
+  // sequel-hiding useLocalMediaItemsByType already gives anime/manga/etc.
+  // (a sequel stays hidden until its prequel, still tracked here, is
+  // completed). De-duped by normalized title against every scanned game so
+  // a game already owned/installed doesn't also show up as "pending".
+  const pendingGameItems = useLocalMediaItemsByType('game', mediaRaw);
+  const scannedGameNames = React.useMemo(
+    () => new Set(safeGames.map(g => normalizeForMatch(g.name))),
+    [safeGames],
+  );
+  const pendingGames = React.useMemo(() => {
+    const list = pendingGameItems.filter(i => {
+      if (i.status !== 'planning') return false;
+      const titles = [i.title, i.titleRomaji, i.titleNative].filter((s): s is string => !!s);
+      return !titles.some(tt => scannedGameNames.has(normalizeForMatch(tt)));
+    });
+    const q = filterName.trim().toLowerCase();
+    return q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
+  }, [pendingGameItems, scannedGameNames, filterName]);
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
@@ -240,6 +287,9 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             mediaRaw={mediaRaw}
             mediaLoading={mediaLoading}
             refetchMedia={refetchMedia}
+            steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
+            coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
+            onMetaRefresh={refreshMeta}
           />
         ) : (
         <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>
@@ -269,6 +319,17 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     </button>
                   </div>
                 </div>
+
+                {pendingGames.length > 0 && (
+                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="library-section-title">{t.profile.section_planning}</h3>
+                    <div className="local-games-grid">
+                      {pendingGames.map(item => (
+                        <LocalMediaCard key={item.externalId} item={item} onClick={i => { window.location.href = `/media?id=${i.externalId}`; }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {gamesState === 'idle' || gamesState === 'loading' ? (
                   <div className="local-state-placeholder">

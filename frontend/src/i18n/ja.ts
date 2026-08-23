@@ -663,6 +663,7 @@ export const ja = {
     updating_metadata: 'メタデータを更新中',
     select_igdb_game: 'IGDBでゲームを選択',
     locate_manually: '手動で特定',
+    steam_backlog: 'Steamの積みゲー',
     locate_choose_folder: 'フォルダを選択',
     locate_choose_file: '単体のファイルを選択',
     delete_history_entry: '履歴を削除',

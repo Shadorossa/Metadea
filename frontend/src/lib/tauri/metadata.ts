@@ -3,6 +3,9 @@ import { isTauri, invoke, tauriCmd } from './core';
 export interface MetaEntry {
   cover_path?:  string;
   banner_path?: string;
+  // Set from the game's own cached info.json genres — a Steam-scanned game
+  // whose IGDB genre includes "Visual Novel" (see read_metadata_index).
+  is_vn?:       boolean;
 }
 
 export async function readMetadataIndex(): Promise<Record<string, MetaEntry>> {

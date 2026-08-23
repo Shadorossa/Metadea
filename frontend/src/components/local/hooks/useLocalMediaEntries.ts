@@ -4,9 +4,11 @@ import { isInProgressStatus } from '../../../lib/constants/media';
 import type { CategoryId } from '../utils/constants';
 
 // Maps a local-tab category to the media_catalog/library `type` column —
-// only categories with a matching library type get the "your works" grid;
-// videojuegos (its own scanner, no catalog type at all) is the only one
-// left to fall back to the raw folder browser.
+// only categories listed here get their WHOLE tab replaced by the "your
+// works" grid. videojuegos keeps its own Steam/Epic/... scanner UI instead
+// (deliberately left out), but still pulls its own 'game'-typed pending
+// items in as a mixed-in section via useLocalMediaItemsByType directly —
+// see LocalLibrary's pendingGameItems.
 export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
   anime:        'anime',
   manga:        'manga',
@@ -78,8 +80,18 @@ export function useLocalMediaData() {
 // different filter of the same in-memory tables, so this never touches the
 // DB and never has a loading state of its own.
 export function useLocalMediaItems(category: CategoryId, raw: LocalMediaRaw | null): LocalMediaItem[] {
+  const type = LOCAL_MEDIA_TYPE_BY_CATEGORY[category];
+  return useLocalMediaItemsByType(type, raw);
+}
+
+// The category-agnostic half of the above — takes a raw media_catalog
+// `type` value directly instead of going through the category map, so a
+// category whose OWN tab doesn't use the library-backed grid (Videojuegos,
+// which has its own Steam/Epic/... scanner UI) can still pull its "obras
+// pendientes" (with the same sequel-hiding) as a mixed-in section, the way
+// LocalLibrary does for 'game'.
+export function useLocalMediaItemsByType(type: string | undefined, raw: LocalMediaRaw | null): LocalMediaItem[] {
   return useMemo((): LocalMediaItem[] => {
-    const type = LOCAL_MEDIA_TYPE_BY_CATEGORY[category];
     if (!type || !raw) return [];
 
     const { entries, catalog, relations } = raw;
@@ -127,5 +139,5 @@ export function useLocalMediaItems(category: CategoryId, raw: LocalMediaRaw | nu
         };
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [category, raw]);
+  }, [type, raw]);
 }
