@@ -102,7 +102,7 @@ function withNintendoFallback(
 ): { platform: string; url: string }[] | null | undefined {
   if (links?.some(l => l.platform.toLowerCase() === 'nintendo')) return links;
   if (!companies.some(c => c.name.toLowerCase().includes('nintendo'))) return links;
-  const fallback = { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(title)}` };
+  const fallback = { platform: 'nintendo', url: `https://www.nintendo.com/us/search/?q=${encodeURIComponent(title)}` };
   return links ? [...links, fallback] : [fallback];
 }
 

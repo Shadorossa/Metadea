@@ -288,7 +288,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     || isNintendoCompanyName(gameInfo?.developers)
     || isNintendoCompanyName(gameInfo?.publishers);
   const effectiveStoreLink = storeLink ?? (isNintendo
-    ? { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(game.name)}` }
+    ? { platform: 'nintendo', url: `https://www.nintendo.com/us/search/?q=${encodeURIComponent(game.name)}` }
     : null);
   const effectiveStoreLinkLabel = effectiveStoreLink
     ? (STORE_LABELS[effectiveStoreLink.platform]
