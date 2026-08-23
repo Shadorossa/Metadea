@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
+import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
 import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
 import { IGDB_GENRES } from '../../lib/search/providers/igdb';
 import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
@@ -267,6 +268,21 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     // firing another one — this is the only thing avoided, no results are
     // ever reused later.
     const key = `${isBrowseMode ? 'browse' : 'search'}:${type}:${searchQuery.toLowerCase()}:${pageNum}:${JSON.stringify(filters ?? {})}`;
+
+    // Browse mode's top-rated list barely changes minute to minute — a
+    // cache hit skips the network (and the in-flight dedup below) entirely
+    // instead of re-fetching the same page from AniList/IGDB/TMDB every
+    // time this tab/page is revisited within the session.
+    const cached = isBrowseMode ? getCachedBrowsePage(key) : null;
+    if (cached) {
+      setResults(prev => pageNum === 1 ? cached.results : [...prev, ...cached.results]);
+      setHasMore(cached.hasMore);
+      setPage(pageNum);
+      setStatus(pageNum === 1 && cached.results.length === 0 ? 'idle' : 'done');
+      setIsLoadingMore(false);
+      return;
+    }
+
     let promise = inFlightSearches.get(key);
     if (!promise) {
       if (pageNum === 1) abortControllerRef.current?.abort();
@@ -280,6 +296,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
     try {
       const { results: pageResults, hasMore: more } = await promise;
+      if (isBrowseMode) setCachedBrowsePage(key, { results: pageResults, hasMore: more });
       setResults(prev => pageNum === 1 ? pageResults : [...prev, ...pageResults]);
       setHasMore(more);
       setPage(pageNum);
