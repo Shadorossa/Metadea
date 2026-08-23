@@ -282,7 +282,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   if (opts.ratingSystem === '5-star') {
     // Smaller and more muted than the title/poster — a rating accent, not
     // the loudest thing on the image.
-    ctx.fillStyle = '#c9ab6a';
+    ctx.fillStyle = '#ffffff';
     ctx.globalAlpha = 0.9;
     drawStars(ctx, dbRatingToStars5(opts.rating), WIDTH / 2, afterTitleY, 44, 12);
     ctx.globalAlpha = 1;
@@ -323,7 +323,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   ctx.fillStyle = watermarkColor;
   ctx.fillText(onLabel, WIDTH / 2, separatorY + 9);
 
-  const logoRowY = separatorY + 65;
+  const logoRowY = separatorY + 45;
   const logoSize = 34;
   const gap = 14;
   const label = 'METADEA';
