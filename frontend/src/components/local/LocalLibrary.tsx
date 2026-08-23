@@ -643,23 +643,24 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             )}
           </div>
 
-          {selectedGame && (
+          {/* One single call site for both cases (an installed game vs a
+              catalog-only "Pendiente") instead of two separate conditional
+              blocks — with two blocks, switching from one kind of selection
+              to the other unmounted one GameDetailPanel and mounted a
+              different one (even with identical JSX, two separate `{cond &&
+              ...}` blocks are two distinct elements as far as React's
+              reconciler is concerned), replaying the panel's own slide-in
+              entrance animation as if it had just been opened instead of
+              just swapping its content. No `key` here either — that would
+              force the exact same remount this is trying to avoid. */}
+          {(selectedGame || selectedPendingItem) && (
             <GameDetailPanel
-              game={selectedGame}
+              game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
               coverCache={coverCache}
-              onClose={() => setSelectedGame(null)}
-              onMetaRefresh={refreshMeta}
-            />
-          )}
-
-          {selectedPendingItem && (
-            <GameDetailPanel
-              game={{ name: selectedPendingItem.title, launcher: 'local' }}
-              coverCache={coverCache}
-              knownExternalId={selectedPendingItem.externalId}
-              fallbackCover={selectedPendingItem.cover}
-              launchOverride={selectedPendingLaunchGame}
-              onClose={() => { setSelectedPendingItem(null); setSelectedPendingLaunchGame(undefined); }}
+              knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
+              fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
+              launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
+              onClose={() => { setSelectedGame(null); setSelectedPendingItem(null); setSelectedPendingLaunchGame(undefined); }}
               onMetaRefresh={refreshMeta}
             />
           )}

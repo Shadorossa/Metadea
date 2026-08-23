@@ -64,13 +64,23 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   }, [hasLaunched]);
 
   useEffect(() => {
+    // Reset unconditionally first — without this, switching from a season
+    // whose source game DOES have cached info (summary/genres/developers)
+    // to one with none left the previous game's info on screen instead of
+    // clearing, since the early return below never touched gameInfo at all.
+    setGameInfo(null);
     if (!launchTarget.app_id) return;
-    readGameInfo(launchTarget.app_id).then(setGameInfo);
+    let cancelled = false;
+    readGameInfo(launchTarget.app_id).then(info => { if (!cancelled) setGameInfo(info); });
+    return () => { cancelled = true; };
   }, [launchTarget.app_id]);
 
   useEffect(() => {
-    if (launchTarget.launcher !== 'steam' || !launchTarget.app_id) { setAchievements(null); return; }
-    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => setAchievements(res || null));
+    setAchievements(null);
+    if (launchTarget.launcher !== 'steam' || !launchTarget.app_id) return;
+    let cancelled = false;
+    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => { if (!cancelled) setAchievements(res || null); });
+    return () => { cancelled = true; };
   }, [launchTarget.app_id, launchTarget.launcher]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
@@ -79,8 +89,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // that even without owning it. Only worth checking for knownExternalId
   // entries: an actually-scanned game already IS its own Steam listing.
   const [steamStoreUrl, setSteamStoreUrl] = useState<string | null>(null);
+  // "by X" for a catalog-only entry with no matched Steam install at all —
+  // gameInfo (below) only ever comes from a real app_id's cached
+  // info.json, which doesn't exist here, so the developer name has nowhere
+  // else to come from but a live IGDB lookup (same call already made for
+  // steamStoreUrl, just also reading its involved_companies this time).
+  const [catalogDevelopers, setCatalogDevelopers] = useState<string[] | null>(null);
   useEffect(() => {
     setSteamStoreUrl(null);
+    setCatalogDevelopers(null);
     if (!knownExternalId) return;
     const igdbId = Number(knownExternalId.split(':')[1]);
     if (!igdbId) return;
@@ -89,12 +106,16 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
       if (cancelled || !detail) return;
       const links = detail.store_links as { platform: string; url: string }[] | undefined;
       const steam = links?.find(l => l.platform === 'steam');
-      if (!steam) return;
-      // steam:// opens the store page inside the Steam client itself
-      // instead of the browser — Steam's own app-page URLs are always
-      // ".../app/<id>/...", so the numeric id is all this needs.
-      const appIdMatch = steam.url.match(/\/app\/(\d+)/);
-      setSteamStoreUrl(appIdMatch ? `steam://store/${appIdMatch[1]}` : steam.url);
+      if (steam) {
+        // steam:// opens the store page inside the Steam client itself
+        // instead of the browser — Steam's own app-page URLs are always
+        // ".../app/<id>/...", so the numeric id is all this needs.
+        const appIdMatch = steam.url.match(/\/app\/(\d+)/);
+        setSteamStoreUrl(appIdMatch ? `steam://store/${appIdMatch[1]}` : steam.url);
+      }
+      const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean }[] | undefined;
+      const developers = companies?.filter(c => c.developer && c.company?.name).map(c => c.company!.name!);
+      if (developers && developers.length > 0) setCatalogDevelopers(developers);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [knownExternalId]);
@@ -307,9 +328,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
               </div>
             )}
           </div>
-          {gameInfo?.developers && gameInfo.developers.length > 0 && (
-            <p className="local-game-detail-by">by {gameInfo.developers.join(', ')}</p>
-          )}
+          {(() => {
+            const developers = (gameInfo?.developers && gameInfo.developers.length > 0) ? gameInfo.developers : catalogDevelopers;
+            return developers && developers.length > 0 && (
+              <p className="local-game-detail-by">by {developers.join(', ')}</p>
+            );
+          })()}
         </div>
 
         <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>

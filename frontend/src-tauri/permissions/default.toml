@@ -127,6 +127,7 @@ commands.allow = [
   "delete_favorite_custom_image",
   "save_game_link",
   "launch_game",
+  "open_external_url",
   "play_file_with_vlc",
   "get_vlc_playback_status",
   "send_vlc_command",
