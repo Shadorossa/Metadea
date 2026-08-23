@@ -4,7 +4,12 @@
 import type { MediaPageData } from './types';
 
 export const CACHE_PREFIX = 'media_cache_v3:';
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
+// Title/cover/genres/relations barely ever change, and this is already
+// scoped to sessionStorage (cleared on tab close) — 5 min meant revisiting
+// the same media page a few minutes later during one session re-fetched
+// everything from AniList/IGDB/etc. for no real reason. 30 min still clears
+// itself out naturally every session while cutting most of those refetches.
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min
 
 interface CacheEntry { data: MediaPageData; ts: number; }
 
