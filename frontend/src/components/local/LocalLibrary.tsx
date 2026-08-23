@@ -3,15 +3,33 @@ import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
-import { CATEGORIES, type CategoryId } from './utils/constants';
+import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaData } from './hooks/useLocalMediaEntries';
+import { useActivePlatform }    from './hooks/useActivePlatform';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData } from './hooks/useLocalMediaEntries';
+import { isInProgressStatus } from '../../lib/constants/media';
 
+import { PlatformSidebar }  from './PlatformSidebar';
+import { GameCard }         from './cards/GameCard';
+import { LocalMediaCard }   from './cards/LocalMediaCard';
+import { FolderEntryCard }  from './cards/FolderEntryCard';
+import { GameDetailPanel }  from './details/GameDetailPanel';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
+import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
+
+// A matched library status this platform-grouped grid still wants to show
+// per-card as a small badge (see GameCard's statusLabel prop) — completed/
+// in-progress/no-match games get none, since "installed and launchable" is
+// already the default expectation for anything showing up here at all.
+const STATUS_BADGE_LABEL: Record<string, string> = {
+  planning: 'Pendiente',
+  paused:   'Pausado',
+  dropped:  'Abandonado',
+};
 
 export default function LocalLibrary() {
   const t = getT();
@@ -52,6 +70,7 @@ export default function LocalLibrary() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
+  const [selectedGame,   setSelectedGame]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
@@ -60,6 +79,7 @@ export default function LocalLibrary() {
   const { games, gamesState, scanError, debugInfo, setDebugInfo, loadGames } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
   const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
+  const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
   const { raw: mediaRaw, loading: mediaLoading, refetch: refetchMedia }       = useLocalMediaData();
 
   // Auto-scan on first visit
@@ -121,9 +141,7 @@ export default function LocalLibrary() {
   // when added through the VN search tab) and `format` ('VISUAL_NOVEL',
   // set the same way — see igdb.ts's search) since an entry added through
   // the plain "game" search tab for the same IGDB id ends up with
-  // type:'game' but still gets format:'VISUAL_NOVEL' tagged on it; relying
-  // on `type` alone missed exactly that case (e.g. Higurashi logged as a
-  // game).
+  // type:'game' but still gets format:'VISUAL_NOVEL' tagged on it.
   const vnovelExternalIds = React.useMemo(() => {
     if (!mediaRaw) return new Set<string>();
     return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel' || c.format === 'VISUAL_NOVEL').map(c => c.external_id));
@@ -140,23 +158,46 @@ export default function LocalLibrary() {
     [vnovelExternalIds, pathCache],
   );
 
-  // Every Steam-scanned game that isn't a VN — passed to LocalMediaSection
-  // as Videojuegos' own steamGames, where it gets matched to its real
-  // library status (En progreso/Pendientes/...) the same way the Visual
-  // Novel tab already matches its own Steam games.
-  const safeGames = React.useMemo(() => {
-    const list = (Array.isArray(games) ? games : [])
-      .filter(g => !isSteamVN(g))
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name));
-    const q = filterName.trim().toLowerCase();
-    return q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
-  }, [games, isSteamVN, filterName]);
+  // Matches every Steam-scanned game to its real library entry — by actual
+  // identity (external_id from local_game_links, or the igdb_id
+  // read_metadata_index caches per app_id), same "vnovel:<id>"/"game:<id>"
+  // resolution "Ver en catálogo" and the Visual Novel tab's own matching
+  // already use. Keyed by the game object itself so callers can look up a
+  // status without re-deriving candidate ids each time.
+  const gameStatusMatch = React.useMemo(() => {
+    const result = new Map<(typeof games)[number], string | undefined>();
+    if (!mediaRaw) return result;
+    const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
+    for (const g of Array.isArray(games) ? games : []) {
+      const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
+      const candidateIds = [
+        g.external_id,
+        igdbId != null ? `vnovel:${igdbId}` : undefined,
+        igdbId != null ? `game:${igdbId}` : undefined,
+      ].filter((id): id is string => !!id);
+      const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
+      result.set(g, matched?.status ?? undefined);
+    }
+    return result;
+  }, [games, mediaRaw, pathCache]);
+
+  // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
+  // order (installed-then-uninstalled, no name ordering within either),
+  // which read as arbitrary in the grid. groupedGames below derives from
+  // this via .filter(), which preserves order, so sorting once here is
+  // enough to alphabetize every platform's own section too.
+  const safeGames     = (Array.isArray(games) ? games : [])
+    .filter(g => !isSteamVN(g))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const filteredGames = filterName.trim()
+    ? safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()))
+    : safeGames;
 
   // The flip side of the exclusion above — every Steam-scanned VN, shown in
-  // the Visual Novel tab instead with the exact same card/detail-panel
-  // experience (achievements, launch via Steam) Videojuegos gives every
-  // other game.
+  // the Visual Novel tab instead (see LocalMediaSection's steamGames prop)
+  // with the exact same card/detail-panel experience (achievements, launch
+  // via Steam) Videojuegos already gives every other game.
   const vnSteamGames = React.useMemo(() => {
     const list = (Array.isArray(games) ? games : [])
       .filter(isSteamVN)
@@ -165,6 +206,43 @@ export default function LocalLibrary() {
     const q = filterName.trim().toLowerCase();
     return q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
   }, [games, isSteamVN, filterName]);
+
+  const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
+    const list = filteredGames.filter(g => g.launcher === id);
+    if (list.length > 0) acc.set(id, list);
+    return acc;
+  }, new Map());
+
+  const availablePlatforms = new Set(safeGames.map(g => g.launcher));
+
+  // Videojuegos' own "Pendientes" mix — catalog-tracked 'game' entries not
+  // yet installed anywhere Steam/Epic/... scanning found, with the same
+  // sequel-hiding useLocalMediaItemsByType already gives anime/manga/etc.
+  // (a sequel stays hidden until its prequel, still tracked here, is
+  // completed). De-duped by real identity (igdb_id) against every scanned
+  // game — same matching gameStatusMatch uses — so a game already owned/
+  // installed doesn't also show up as "pending".
+  const pendingGameItems = useLocalMediaItemsByType('game', mediaRaw);
+  const ownedExternalIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const g of games) {
+      if (g.external_id) ids.add(g.external_id);
+      const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
+      if (igdbId != null) { ids.add(`vnovel:${igdbId}`); ids.add(`game:${igdbId}`); }
+    }
+    return ids;
+  }, [games, pathCache]);
+  const pendingGames = React.useMemo(() => {
+    const list = pendingGameItems.filter(i => {
+      if (i.status !== 'planning') return false;
+      // A VN logged with type:'game' belongs exclusively in the Visual
+      // Novel tab, not duplicated here.
+      if (vnovelExternalIds.has(i.externalId)) return false;
+      return !ownedExternalIds.has(i.externalId);
+    });
+    const q = filterName.trim().toLowerCase();
+    return q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName]);
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
@@ -212,9 +290,6 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  const isVideojuegos = activeCategory === 'videojuegos';
-  const isVisualNovel = activeCategory === 'visual-novel';
-
   return (
     <>
       {/* Never rendered inline as a fallback — an unportaled tab bar showing
@@ -234,7 +309,16 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
       )}
 
       <div className="local-library">
-        {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] && (
+        {activeCategory === 'videojuegos' && activePlatform && availablePlatforms && (
+          <PlatformSidebar
+            activePlatform={activePlatform}
+            availablePlatforms={availablePlatforms}
+            onSelect={scrollTo}
+            onFetchMetadata={() => setMetaSelector(true)}
+          />
+        )}
+
+        {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] ? (
           <LocalMediaSection
             category={activeCategory}
             rootFolder={routes[activeCategory]}
@@ -247,17 +331,177 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             mediaRaw={mediaRaw}
             mediaLoading={mediaLoading}
             refetchMedia={refetchMedia}
-            steamGames={isVisualNovel ? vnSteamGames : isVideojuegos ? safeGames : undefined}
-            coverCache={(isVisualNovel || isVideojuegos) ? coverCache : undefined}
-            pathCache={(isVisualNovel || isVideojuegos) ? pathCache : undefined}
+            steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
+            coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
+            pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
             onMetaRefresh={refreshMeta}
-            scanState={isVideojuegos ? gamesState : undefined}
-            onRescan={isVideojuegos ? loadGames : undefined}
-            onFetchMetadataAll={isVideojuegos ? () => setMetaSelector(true) : undefined}
-            scanError={isVideojuegos ? scanError : undefined}
-            debugInfo={isVideojuegos ? debugInfo : undefined}
-            onDebugScan={isVideojuegos ? () => debugScanInfo().then(setDebugInfo).catch(e => setDebugInfo(String(e))) : undefined}
           />
+        ) : (
+        <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>
+          <div className="local-main-content">
+
+            {/* ── Games view ─────────────────────────────────────────────────── */}
+            {activeCategory === 'videojuegos' ? (
+              <div className="local-content">
+                <div className="local-content-header">
+                  <span className="local-content-count">
+                    {gamesState === 'done' ? (games.length !== 1 ? t.local.games_count.replace('{count}', String(games.length)) : t.local.game_count.replace('{count}', String(games.length))) : ''}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {routes['videojuegos'] && (
+                      <>
+                        <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{routes['videojuegos']}</span>
+                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title={isMounted ? t.local.remove_local_folder : 'Quitar carpeta local'} style={{ color: 'var(--color-error, #ff6b6b)' }}>
+                          <IconX />
+                        </button>
+                      </>
+                    )}
+                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={isMounted ? (routes['videojuegos'] ? t.local.change_folder : t.local.add_folder) : (routes['videojuegos'] ? 'Cambiar carpeta' : 'Añadir carpeta')}>
+                      <IconFolder />
+                    </button>
+                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={isMounted ? (gamesState === 'loading' ? t.local.scanning : t.local.scan_again) : (gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
+                      <IconRefresh />
+                    </button>
+                  </div>
+                </div>
+
+                {pendingGames.length > 0 && (
+                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="library-section-title">{t.profile.section_planning}</h3>
+                    <div className="local-games-grid">
+                      {pendingGames.map(item => (
+                        <LocalMediaCard key={item.externalId} item={item} onClick={i => { window.location.href = `/media?id=${i.externalId}`; }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {gamesState === 'idle' || gamesState === 'loading' ? (
+                  <div className="local-state-placeholder">
+                    {gamesState === 'loading' && <div className="spinner" />}
+                    <p>{gamesState === 'loading' ? t.local.scanning_installed : ''}</p>
+                  </div>
+                ) : gamesState === 'empty' ? (
+                  <div className="local-state-placeholder">
+                    <IconMonitor />
+                    <p>{t.local.no_games_found}</p>
+                    <span>{t.local.compatible_launchers}</span>
+                    {scanError && (
+                      <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
+                        Error: {scanError}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
+                      onClick={() => debugScanInfo().then(setDebugInfo).catch(e => setDebugInfo(String(e)))}
+                    >
+                      {t.local.diagnostics}
+                    </button>
+                    {debugInfo && (
+                      <pre style={{ fontSize: '0.65rem', textAlign: 'left', marginTop: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: '4px', maxWidth: '500px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                        {debugInfo}
+                      </pre>
+                    )}
+                  </div>
+                ) : (
+                  Array.from(groupedGames.entries()).map(([launcher, list], idx) => (
+                    <section
+                      key={launcher}
+                      id={`launcher-${launcher}`}
+                      ref={el => { if (el) sectionRefs.current.set(launcher, el); }}
+                      className="local-launcher-section"
+                    >
+                      <h2 className="local-launcher-title">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                          <span className="local-launcher-icon">
+                            {PLATFORM_LOGO[launcher]
+                              ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
+                              : <IconFolder />}
+                          </span>
+                          {PLATFORM_LABEL[launcher]}
+                          <span className="local-launcher-count">{list.length} juego{list.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        {idx === 0 && (
+                          <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'}>
+                            <IconRefresh />
+                          </button>
+                        )}
+                      </h2>
+                      <div className="local-games-grid">
+                        {list.map((g, i) => {
+                          const status = gameStatusMatch.get(g);
+                          const badge = status && !isInProgressStatus(status) && status !== 'completed' ? STATUS_BADGE_LABEL[status] : undefined;
+                          return (
+                            <GameCard
+                              key={i}
+                              game={g}
+                              coverCache={coverCache}
+                              onClick={setSelectedGame}
+                              statusLabel={badge}
+                              isPlanning={status === 'planning'}
+                            />
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))
+                )}
+              </div>
+
+            ) : (
+              /* ── Folder view (categories without a library-backed grid) ── */
+              <div className="local-content">
+                {routes[activeCategory] && (
+                  <div className="local-content-header">
+                    <span className="local-folder-path">{routes[activeCategory]}</span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {!folderLoading && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                          {folderFiles.length} elemento{folderFiles.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <button type="button" className="local-refresh-btn" onClick={() => setRoute(activeCategory)} title={t.local.change_folder}><IconFolder /></button>
+                      <button type="button" className="local-refresh-btn" onClick={() => clearRoute(activeCategory)} title={t.local.remove_route} style={{ color: 'var(--color-error, #ff6b6b)' }}><IconX /></button>
+                    </div>
+                  </div>
+                )}
+
+                {folderLoading ? (
+                  <div className="local-state-placeholder"><div className="spinner" /></div>
+                ) : !routes[activeCategory] ? (
+                  <div className="local-state-placeholder">
+                    <IconFolder />
+                    <p>{t.local.no_folder_assigned}</p>
+                    <span>{t.local.choose_folder_category_hint.replace('{category}', String(CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()))}</span>
+                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>
+                      <IconPlus /> {t.local.add_route}
+                    </button>
+                  </div>
+                ) : folderFiles.length === 0 ? (
+                  <div className="local-state-placeholder">
+                    <IconFolder />
+                    <p>{t.local.empty_folder}</p>
+                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>{t.local.change_folder}</button>
+                  </div>
+                ) : (
+                  <div className="local-folder-grid">
+                    {folderFiles.map((e, i) => <FolderEntryCard key={i} entry={e} />)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {selectedGame && (
+            <GameDetailPanel
+              game={selectedGame}
+              coverCache={coverCache}
+              onClose={() => setSelectedGame(null)}
+              onMetaRefresh={refreshMeta}
+            />
+          )}
+        </div>
         )}
       </div>
     </>
