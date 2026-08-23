@@ -302,7 +302,9 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
     }
     ctx.drawImage(cover, sx, sy, sw, sh, posterX, posterY, posterW, posterH);
     ctx.restore();
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    // Same accent color as the avatar's own ring — ties the two frames
+    // together instead of the poster having an unrelated plain white one.
+    ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 2.2;
     ctx.strokeRect(posterX, posterY, posterW, posterH);
   } else {
