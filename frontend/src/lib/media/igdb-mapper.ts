@@ -87,6 +87,24 @@ function dedupeStoreLinks(links: { platform: string; url: string }[] | null | un
   });
 }
 
+// IGDB's external_games has no Nintendo eShop category at all (its own
+// ExternalGameCategory enum: steam/gog/microsoft/apple/android/amazon/epic/
+// oculus/itch/xbox/playstation/gamejolt/... — nothing Nintendo), so a real
+// per-game eShop link never comes back regardless of how store_links itself
+// is parsed. Best-effort substitute: a search link into the eShop by title,
+// added only when nothing else was found and the game is actually on a
+// Nintendo platform.
+function withNintendoFallback(
+  links: { platform: string; url: string }[] | null | undefined,
+  platforms: string[],
+  title: string,
+): { platform: string; url: string }[] | null | undefined {
+  if (links?.some(l => l.platform.toLowerCase() === 'nintendo')) return links;
+  if (!platforms.some(p => p.toLowerCase().includes('nintendo'))) return links;
+  const fallback = { platform: 'nintendo', url: `https://www.nintendo.com/store/search/?q=${encodeURIComponent(title)}` };
+  return links ? [...links, fallback] : [fallback];
+}
+
 function findAltName(
   altNames: { name: string; comment?: string }[],
   predicate: (comment: string, name: string) => boolean,
@@ -306,7 +324,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     parentGame,
     progressStatus: 'playing',
     progressLabel: getT().profile.status_playing,
-    storeLinks: dedupeStoreLinks(game.store_links),
+    storeLinks: withNintendoFallback(dedupeStoreLinks(game.store_links), platforms, game.name),
     // Catalog fields
     format,
     source: 'igdb',
