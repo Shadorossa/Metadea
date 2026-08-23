@@ -260,27 +260,65 @@ export default function LocalLibrary() {
     () => new Map((Array.isArray(games) ? games : []).map(g => [normalizeForMatch(g.name), g])),
     [games],
   );
-  type PlanningEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem };
-  const catalogPlanningEntries = React.useMemo(() => {
-    const list = pendingGameItems.filter(i => {
-      if (i.status !== 'planning') return false;
-      // A VN logged with type:'game' belongs exclusively in the Visual
-      // Novel tab, not duplicated here.
-      if (vnovelExternalIds.has(i.externalId)) return false;
-      return !ownedExternalIds.has(i.externalId);
-    });
+  type StatusEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem };
+  // A season/update/DLC-style catalog entry (parent_id set) isn't its own
+  // playable thing — redirects to its source game's own id/title/cover
+  // before matching or opening it, per the user's own framing: "si hay una
+  // season, pues tiene que mirar cual es el juego fuente [...] y abrir el
+  // juego fuente."
+  const catalogMapById = React.useMemo(
+    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
+    [mediaRaw],
+  );
+  const resolveSourceItem = React.useCallback((item: LocalMediaItem): LocalMediaItem => {
+    const parentId = item.catalogEntry?.parent_id;
+    const parentCatalog = parentId ? catalogMapById.get(parentId) : undefined;
+    if (!parentCatalog) return item;
+    return {
+      ...item,
+      externalId: parentCatalog.external_id,
+      title: parentCatalog.title_main ?? parentCatalog.external_id,
+      titleRomaji: parentCatalog.title_romaji ?? null,
+      titleNative: parentCatalog.title_native ?? null,
+      cover: parentCatalog.cover_url ?? null,
+      catalogEntry: parentCatalog,
+    };
+  }, [catalogMapById]);
+  // Shared by both the "En progreso" and "Pendientes" status sections — a
+  // catalog-tracked 'game' entry with the matching status that the scanner
+  // never found installed anywhere still gets one more chance to resolve
+  // to a real (possibly uninstalled) Steam listing by name (see
+  // gamesByNormalizedName's own comment on ownedExternalIds above).
+  const buildCatalogStatusEntries = React.useCallback((matchesStatus: (status: string) => boolean): StatusEntry[] => {
+    const list = pendingGameItems
+      .map(resolveSourceItem)
+      .filter(i => {
+        if (!matchesStatus(i.status)) return false;
+        // A VN logged with type:'game' belongs exclusively in the Visual
+        // Novel tab, not duplicated here.
+        if (vnovelExternalIds.has(i.externalId)) return false;
+        return !ownedExternalIds.has(i.externalId);
+      });
     const q = filterName.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-    const entries: PlanningEntry[] = filtered.map(item => {
+    // A season/update can share its source game with a sibling season
+    // already resolved above — de-duped by external_id so the same source
+    // game doesn't show twice.
+    const seen = new Set<string>();
+    const deduped = filtered.filter(i => (seen.has(i.externalId) ? false : (seen.add(i.externalId), true)));
+    return deduped.map((item): StatusEntry => {
       const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
       const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
       return matchedGame ? { kind: 'game', game: matchedGame } : { kind: 'catalog', item };
     });
-    return entries;
-  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
-  const planningEntries: PlanningEntry[] = [
-    ...filterGames(statusBuckets.planning).map((game): PlanningEntry => ({ kind: 'game', game })),
-    ...catalogPlanningEntries,
+  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
+  const currentlyEntries: StatusEntry[] = [
+    ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
+    ...buildCatalogStatusEntries(isInProgressStatus),
+  ];
+  const planningEntries: StatusEntry[] = [
+    ...filterGames(statusBuckets.planning).map((game): StatusEntry => ({ kind: 'game', game })),
+    ...buildCatalogStatusEntries(s => s === 'planning'),
   ];
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
@@ -404,12 +442,14 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   </div>
                 </div>
 
-                {filterGames(statusBuckets.currently).length > 0 && (
+                {currentlyEntries.length > 0 && (
                   <div className="library-section" style={{ marginBottom: '1.5rem' }}>
                     <h3 className="library-section-title">{t.profile.section_in_progress}</h3>
                     <div className="local-games-grid">
-                      {filterGames(statusBuckets.currently).map((g, i) => (
-                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                      {currentlyEntries.map((entry, i) => entry.kind === 'game' ? (
+                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
+                      ) : (
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={openPendingItem} />
                       ))}
                     </div>
                   </div>
