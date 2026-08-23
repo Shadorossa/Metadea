@@ -1201,34 +1201,14 @@
      need to yield space to its sibling at all. */
   flex-shrink: 0;
   animation: slide-in-right 0.3s var(--anim-ease);
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Content (summary/achievements/etc.) streams in from several async
-     fetches and can push total height past the viewport partway through —
-     without this, the scrollbar then appears and claims ~15px from the
-     panel's inner width, which the aspect-ratio-locked header responds to
-     by visibly shrinking. Reserving the gutter up front, scrollbar or not,
-     keeps the header's width — and so its height — constant throughout. */
-  scrollbar-gutter: stable;
-}
-
-/* scrollbar-gutter:stable reserves this space even while there's nothing to
-   scroll yet — left unstyled, that reserved strip renders as the browser's
-   default (light/white) scrollbar track, which flashes against this dark
-   panel until real content grows tall enough to need it. Keeping the track
-   transparent and only coloring the thumb makes the reserved gutter
-   invisible whether or not it's actually scrollable. */
-.local-game-detail-panel::-webkit-scrollbar {
-  width: 8px;
-}
-
-.local-game-detail-panel::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.local-game-detail-panel::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
+  /* The panel itself no longer scrolls — see .local-game-detail-content,
+     which owns overflow instead. Sharing one scroll container between the
+     full-width header and the content below meant a scrollbar appearing
+     mid-load (once streamed-in content pushed height past the viewport)
+     claimed width from that shared box, visibly shrinking the
+     aspect-ratio-locked header. Scoping overflow to just the content below
+     the header keeps the header's width constant no matter what scrolls. */
+  overflow: hidden;
 }
 
 
@@ -1513,12 +1493,17 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  /* The outer panel is now a fixed height and owns the actual scrolling
-     (see .local-game-detail-panel) — min-height:0 (not the flex-item
-     default of auto) is what lets this shrink to fit that fixed space
-     instead of growing past it and pushing the panel's own height out,
-     which is what actually resized the panel as long content streamed in. */
+  /* The outer panel is a fixed height (see .local-game-detail-panel) —
+     min-height:0 (not the flex-item default of auto) is what lets this
+     shrink to fit that fixed space instead of growing past it and pushing
+     the panel's own height out, which is what actually resized the panel
+     as long content streamed in. */
   min-height: 0;
+  /* Owns the actual scrolling (the header above it does not participate),
+     so a scrollbar appearing mid-load only ever narrows this column, never
+     the full-width, aspect-ratio-locked header next to it. */
+  overflow-y: auto;
+  overflow-x: hidden;
   /* Keyed by the selected game/pending item's own identity (see
      GameDetailPanel's contentKey) — switching selection while the panel
      stays open remounts just this inner block, not the whole sticky panel,
