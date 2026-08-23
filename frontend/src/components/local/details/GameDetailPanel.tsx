@@ -110,6 +110,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
       // original release), falling back to the original only when it has
       // no edition of its own.
       let viaParent = false;
+      // Which edition family this entry itself belongs to (REMASTER vs
+      // REMAKE) — a base work can have both (Higurashi has its Hou remaster
+      // AND its separate Matsuri remake), so the neighbor lookup below needs
+      // to match the SAME family, not just grab whichever edition happens
+      // to come back first.
+      let selfEditionType: string | undefined;
       if (!prequel && !sequel) {
         const parent = relations.find(r => r.relation_type === 'PARENT');
         if (parent) {
@@ -118,12 +124,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           prequel = parentRelations.find(r => r.relation_type === 'PREQUEL');
           sequel = parentRelations.find(r => r.relation_type === 'SEQUEL');
           viaParent = true;
+          selfEditionType = parentRelations.find(r => r.related_media_external_id === relationsExternalId)?.relation_type;
         }
       }
       const resolveNeighbor = async (rel: NonNullable<typeof prequel>) => {
         if (!viaParent) return { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
         const neighborRelations = await getMediaRelationsForEditor(rel.related_media_external_id).catch(() => []);
-        const edition = neighborRelations.find(r => r.relation_type === 'REMASTER' || r.relation_type === 'REMAKE');
+        const editionTypes = ['REMASTER', 'REMAKE'];
+        const orderedTypes = selfEditionType ? [selfEditionType, ...editionTypes.filter(t => t !== selfEditionType)] : editionTypes;
+        const edition = orderedTypes.map(t => neighborRelations.find(r => r.relation_type === t)).find(Boolean);
         return edition
           ? { externalId: edition.related_media_external_id, title: edition.title, cover: edition.cover ?? null }
           : { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
