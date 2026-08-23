@@ -701,19 +701,22 @@
 }
 
 .local-media-detail-edit-icon,
-.local-media-detail-locate-btn {
+.local-media-detail-locate-btn,
+.local-media-detail-catalog-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
+  /* No box/border — plain icon buttons, same as "Ver en catálogo" always
+     was, just an icon that highlights on hover instead of a bordered
+     square. */
   background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
+  border: none;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all var(--anim-base) var(--anim-ease);
+  transition: color var(--anim-base) var(--anim-ease);
 }
 
 .local-media-detail-locate-wrap {
@@ -721,8 +724,8 @@
 }
 
 .local-media-detail-edit-icon:hover,
-.local-media-detail-locate-btn:hover {
-  border-color: var(--accent);
+.local-media-detail-locate-btn:hover,
+.local-media-detail-catalog-icon:hover {
   color: var(--accent);
 }
 
@@ -763,16 +766,6 @@
   color: var(--accent);
 }
 
-[data-theme="newspaper-dark"] .local-media-detail-locate-btn,
-[data-theme="newspaper-dark"] .local-media-detail-edit-icon {
-  border: 3px double var(--border-color) !important;
-  border-radius: 0 !important;
-}
-
-[data-theme="newspaper-dark"] .local-media-detail-locate-btn:hover,
-[data-theme="newspaper-dark"] .local-media-detail-edit-icon:hover {
-  border-color: var(--accent) !important;
-}
 
 [data-theme="newspaper-dark"] .local-media-detail-locate-menu {
   border: 3px double var(--border-color) !important;
@@ -1117,6 +1110,16 @@
   flex-wrap: wrap;
   padding: 0;
   font-size: 0.78rem;
+}
+
+/* Edit-log/"Ver en catálogo" group — pinned to the row's far right edge
+   (not just sitting immediately after the "próximo episodio" chip) via
+   margin-left: auto, while the locate button and chip stay left-aligned. */
+.local-media-match-row-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .local-media-match-chip {

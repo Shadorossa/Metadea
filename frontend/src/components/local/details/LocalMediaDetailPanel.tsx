@@ -22,7 +22,7 @@ import {
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
 import { formatWatchedAt } from '../utils/formatters';
-import { IconX, IconFolder, IconCheck, IconAlertCircle, IconPencil } from '../ui/icons';
+import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
 
 interface LocalMediaDetailPanelProps {
   item:            LocalMediaItem;
@@ -591,35 +591,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         <div className="local-game-detail-sticky-bar">
           <div className="local-media-detail-top-row">
             <p className="local-game-detail-title">{item.title}</p>
-            <div className="local-media-detail-icon-actions">
-              <div className="local-media-detail-locate-wrap">
-                <button
-                  type="button"
-                  className="local-media-detail-locate-btn"
-                  onClick={() => setLocateMenuOpen(v => !v)}
-                  disabled={locateBusy || !rootFolder}
-                  title={t.local.locate_manually}
-                >
-                  {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
-                </button>
-                {locateMenuOpen && (
-                  <div className="local-media-detail-locate-menu">
-                    <button type="button" onClick={handleLocateFolder}>{t.local.locate_choose_folder}</button>
-                    <button type="button" onClick={handleLocateSingleFile}>{t.local.locate_choose_file}</button>
-                  </div>
-                )}
-              </div>
-              <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
-                <IconPencil />
-              </button>
-              <a href={`/media?id=${item.externalId}`} className="local-game-detail-catalog-link">
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-                Ver en catálogo
-              </a>
-            </div>
           </div>
         </div>
 
@@ -669,6 +640,23 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               </button>
               <div className="local-media-divider-line" />
               <div className="local-media-match-row">
+                <div className="local-media-detail-locate-wrap">
+                  <button
+                    type="button"
+                    className="local-media-detail-locate-btn"
+                    onClick={() => setLocateMenuOpen(v => !v)}
+                    disabled={locateBusy || !rootFolder}
+                    title={t.local.locate_manually}
+                  >
+                    {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
+                  </button>
+                  {locateMenuOpen && (
+                    <div className="local-media-detail-locate-menu">
+                      <button type="button" onClick={handleLocateFolder}>{t.local.locate_choose_folder}</button>
+                      <button type="button" onClick={handleLocateSingleFile}>{t.local.locate_choose_file}</button>
+                    </div>
+                  )}
+                </div>
                 {(matchedFolder || rootFileMatch || deepTagMatch) && (
                   subLoading ? (
                     <span className="local-media-match-chip">
@@ -677,12 +665,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     </span>
                   ) : isCaughtUp ? (
                     <span className="local-media-match-chip ok">
-                      <IconCheck />
                       Al día — no hay episodios/capítulos nuevos ({totalCount} en total)
                     </span>
                   ) : (
                     <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
-                      {nextFile ? <IconCheck /> : <IconAlertCircle />}
                       {nextFile ? (
                         <>
                           {t.local.next_episode_label} <strong>
@@ -697,6 +683,17 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     </span>
                   )
                 )}
+                <div className="local-media-match-row-right">
+                  <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
+                    <IconPencil />
+                  </button>
+                  <a href={`/media?id=${item.externalId}`} className="local-media-detail-catalog-icon" title="Ver en catálogo">
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </a>
+                </div>
               </div>
             </div>
 
