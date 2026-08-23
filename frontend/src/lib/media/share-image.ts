@@ -291,8 +291,8 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   if (opts.year) {
     ctx.font = '600 30px Georgia, serif';
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillText(String(opts.year), WIDTH / 2, titleBottomY + 24);
-    afterTitleY = titleBottomY + 24 + 40;
+    ctx.fillText(String(opts.year), WIDTH / 2, titleBottomY + 40);
+    afterTitleY = titleBottomY + 40 + 70;
   }
 
   if (opts.ratingSystem === '5-star') {
