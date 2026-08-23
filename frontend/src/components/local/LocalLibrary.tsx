@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
@@ -8,8 +8,9 @@ import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData } from './hooks/useLocalMediaEntries';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
+import { normalizeForMatch } from './utils/folderMatch';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
@@ -20,16 +21,6 @@ import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
-
-// A matched library status this platform-grouped grid still wants to show
-// per-card as a small badge (see GameCard's statusLabel prop) — completed/
-// in-progress/no-match games get none, since "installed and launchable" is
-// already the default expectation for anything showing up here at all.
-const STATUS_BADGE_LABEL: Record<string, string> = {
-  planning: 'Pendiente',
-  paused:   'Pausado',
-  dropped:  'Abandonado',
-};
 
 export default function LocalLibrary() {
   const t = getT();
@@ -190,9 +181,8 @@ export default function LocalLibrary() {
     .filter(g => !isSteamVN(g))
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));
-  const filteredGames = filterName.trim()
-    ? safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()))
-    : safeGames;
+  const filterGames = <G extends { name: string }>(list: G[]): G[] =>
+    filterName.trim() ? list.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase())) : list;
 
   // The flip side of the exclusion above — every Steam-scanned VN, shown in
   // the Visual Novel tab instead (see LocalMediaSection's steamGames prop)
@@ -207,21 +197,47 @@ export default function LocalLibrary() {
     return q ? list.filter(g => g.name.toLowerCase().includes(q)) : list;
   }, [games, isSteamVN, filterName]);
 
+  // Platform groups keep only the games with no real library status worth
+  // pulling out on their own (no match at all, or completed) — anything
+  // matched to En progreso/Pendiente/Pausado/Abandonado moves up into its
+  // own status section instead (see statusBuckets below), same as every
+  // other Local category groups by status. "Agrupar por plataforma" is
+  // still the layout for whatever's left, per the user's own framing:
+  // "dejando los grupos de plataformas [...] muevas a los estados [...]
+  // las obras que correspondan."
+  const statusBuckets = React.useMemo(() => {
+    const buckets: Record<'currently' | 'planning' | 'paused' | 'dropped', (typeof safeGames)> = {
+      currently: [], planning: [], paused: [], dropped: [],
+    };
+    const rest: typeof safeGames = [];
+    for (const g of safeGames) {
+      const status = gameStatusMatch.get(g);
+      if (!status || status === 'completed') { rest.push(g); continue; }
+      if (isInProgressStatus(status)) buckets.currently.push(g);
+      else if (status === 'planning') buckets.planning.push(g);
+      else if (status === 'paused') buckets.paused.push(g);
+      else if (status === 'dropped') buckets.dropped.push(g);
+      else rest.push(g);
+    }
+    return { ...buckets, rest };
+  }, [safeGames, gameStatusMatch]);
+
   const groupedGames = LAUNCHER_ORDER.reduce<Map<PlatformId, typeof safeGames>>((acc, id) => {
-    const list = filteredGames.filter(g => g.launcher === id);
+    const list = filterGames(statusBuckets.rest.filter(g => g.launcher === id));
     if (list.length > 0) acc.set(id, list);
     return acc;
   }, new Map());
 
   const availablePlatforms = new Set(safeGames.map(g => g.launcher));
 
-  // Videojuegos' own "Pendientes" mix — catalog-tracked 'game' entries not
-  // yet installed anywhere Steam/Epic/... scanning found, with the same
-  // sequel-hiding useLocalMediaItemsByType already gives anime/manga/etc.
-  // (a sequel stays hidden until its prequel, still tracked here, is
-  // completed). De-duped by real identity (igdb_id) against every scanned
-  // game — same matching gameStatusMatch uses — so a game already owned/
-  // installed doesn't also show up as "pending".
+  // Videojuegos' own status sections mix in catalog-tracked 'game' entries
+  // too — an entry the scanner never found installed anywhere (candidate
+  // for "Pendientes") gets one more chance to resolve to a real Steam
+  // listing by name before falling back to a plain catalog card: Steam's
+  // owned-games API includes uninstalled purchases too (see
+  // scanGamesWithSteam), but those never get their igdb_id cached until
+  // metadata is actually fetched for them, so the identity-based match
+  // above can still miss them.
   const pendingGameItems = useLocalMediaItemsByType('game', mediaRaw);
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
@@ -232,7 +248,12 @@ export default function LocalLibrary() {
     }
     return ids;
   }, [games, pathCache]);
-  const pendingGames = React.useMemo(() => {
+  const gamesByNormalizedName = React.useMemo(
+    () => new Map((Array.isArray(games) ? games : []).map(g => [normalizeForMatch(g.name), g])),
+    [games],
+  );
+  type PlanningEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem };
+  const catalogPlanningEntries = React.useMemo(() => {
     const list = pendingGameItems.filter(i => {
       if (i.status !== 'planning') return false;
       // A VN logged with type:'game' belongs exclusively in the Visual
@@ -241,8 +262,18 @@ export default function LocalLibrary() {
       return !ownedExternalIds.has(i.externalId);
     });
     const q = filterName.trim().toLowerCase();
-    return q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName]);
+    const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
+    const entries: PlanningEntry[] = filtered.map(item => {
+      const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
+      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
+      return matchedGame ? { kind: 'game', game: matchedGame } : { kind: 'catalog', item };
+    });
+    return entries;
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
+  const planningEntries: PlanningEntry[] = [
+    ...filterGames(statusBuckets.planning).map((game): PlanningEntry => ({ kind: 'game', game })),
+    ...catalogPlanningEntries,
+  ];
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
@@ -365,12 +396,47 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   </div>
                 </div>
 
-                {pendingGames.length > 0 && (
+                {filterGames(statusBuckets.currently).length > 0 && (
+                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="library-section-title">{t.profile.section_in_progress}</h3>
+                    <div className="local-games-grid">
+                      {filterGames(statusBuckets.currently).map((g, i) => (
+                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {planningEntries.length > 0 && (
                   <div className="library-section" style={{ marginBottom: '1.5rem' }}>
                     <h3 className="library-section-title">{t.profile.section_planning}</h3>
                     <div className="local-games-grid">
-                      {pendingGames.map(item => (
-                        <LocalMediaCard key={item.externalId} item={item} onClick={i => { window.location.href = `/media?id=${i.externalId}`; }} />
+                      {planningEntries.map((entry, i) => entry.kind === 'game' ? (
+                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
+                      ) : (
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={it => { window.location.href = `/media?id=${it.externalId}`; }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {filterGames(statusBuckets.paused).length > 0 && (
+                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="library-section-title">Pausado</h3>
+                    <div className="local-games-grid">
+                      {filterGames(statusBuckets.paused).map((g, i) => (
+                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {filterGames(statusBuckets.dropped).length > 0 && (
+                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
+                    <h3 className="library-section-title">Abandonado</h3>
+                    <div className="local-games-grid">
+                      {filterGames(statusBuckets.dropped).map((g, i) => (
+                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
                       ))}
                     </div>
                   </div>
@@ -429,20 +495,9 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                         )}
                       </h2>
                       <div className="local-games-grid">
-                        {list.map((g, i) => {
-                          const status = gameStatusMatch.get(g);
-                          const badge = status && !isInProgressStatus(status) && status !== 'completed' ? STATUS_BADGE_LABEL[status] : undefined;
-                          return (
-                            <GameCard
-                              key={i}
-                              game={g}
-                              coverCache={coverCache}
-                              onClick={setSelectedGame}
-                              statusLabel={badge}
-                              isPlanning={status === 'planning'}
-                            />
-                          );
-                        })}
+                        {list.map((g, i) => (
+                          <GameCard key={i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                        ))}
                       </div>
                     </section>
                   ))
