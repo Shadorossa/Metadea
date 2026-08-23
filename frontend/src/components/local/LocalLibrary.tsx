@@ -123,12 +123,24 @@ export default function LocalLibrary() {
 
   // ── Derived state ────────────────────────────────────────────────────────────
 
+  // A Steam-scanned "game" that's actually catalogued as a visual novel
+  // (matched to a catalog entry of type 'vnovel', e.g. via the auto Steam-ID
+  // link or a manual save_game_link) belongs in the Visual Novel tab's own
+  // library-backed grid, not duplicated here under Videojuegos.
+  const vnovelExternalIds = React.useMemo(() => {
+    if (!mediaRaw) return new Set<string>();
+    return new Set(mediaRaw.catalog.filter(c => c.type === 'vnovel').map(c => c.external_id));
+  }, [mediaRaw]);
+
   // Alphabetical — scanAllGames/Steam's API return them in filesystem/API
   // order (installed-then-uninstalled, no name ordering within either),
   // which read as arbitrary in the grid. groupedGames below derives from
   // this via .filter(), which preserves order, so sorting once here is
   // enough to alphabetize every platform's own section too.
-  const safeGames     = (Array.isArray(games) ? games : []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const safeGames     = (Array.isArray(games) ? games : [])
+    .filter(g => !g.external_id || !vnovelExternalIds.has(g.external_id))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name));
   const filteredGames = filterName.trim()
     ? safeGames.filter(g => g.name.toLowerCase().includes(filterName.toLowerCase()))
     : safeGames;

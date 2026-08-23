@@ -13,8 +13,15 @@ interface LocalMediaCardProps {
 const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
 
 export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
+  // Visual novels log progress as hours played (same as games — see
+  // getProgressConfig in MediaEditorModal), not a discrete episode/chapter
+  // count, so the badge needs its own unit here instead of falling into
+  // either "Cap." or "Ep.".
+  const isHourBased = item.libraryEntry.type === 'vnovel';
   const unitLabel = READING_TYPES.has(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
-  const badgeLabel = item.status === 'planning' ? 'Pendiente' : `${unitLabel} ${item.progress}`;
+  const badgeLabel = item.status === 'planning'
+    ? 'Pendiente'
+    : isHourBased ? `${item.progress}h` : `${unitLabel} ${item.progress}`;
   return (
     <div
       className="local-game-card"

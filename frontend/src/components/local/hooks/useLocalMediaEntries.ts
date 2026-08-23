@@ -5,8 +5,8 @@ import type { CategoryId } from '../utils/constants';
 
 // Maps a local-tab category to the media_catalog/library `type` column —
 // only categories with a matching library type get the "your works" grid;
-// videojuegos (its own scanner) and visual-novel (no catalog type of its
-// own users track episodes for) fall back to the raw folder browser.
+// videojuegos (its own scanner, no catalog type at all) is the only one
+// left to fall back to the raw folder browser.
 export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
   anime:        'anime',
   manga:        'manga',
@@ -14,6 +14,7 @@ export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> =
   books:        'book',
   series:       'series',
   movies:       'movie',
+  'visual-novel': 'vnovel',
 };
 
 export interface LocalMediaItem {
