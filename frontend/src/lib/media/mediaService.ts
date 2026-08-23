@@ -146,9 +146,31 @@ function isLowTierAniListCover(url: string | null | undefined): boolean {
   return !!url && /anilist\.co\/.*\/cover\/(medium|small)\//.test(url);
 }
 
+// Store links used to be sticky like every other content field (existing
+// value wins outright, live fetch discarded) — meaning "Reintentar
+// sincronización" could never backfill a storefront IGDB gained support
+// for after the entry was first cataloged (e.g. Nintendo, added later —
+// see build_store_links in igdb.rs), since a game that already had a Steam
+// link stored just kept that one link forever. Merges by platform instead:
+// an existing platform's URL wins (don't clobber a possibly hand-curated
+// link), but a platform present in the fresh fetch and missing from
+// `existing` gets added.
+function mergeShopLinksCsv(existingCsv: string | null | undefined, freshLinks: { platform: string; url: string }[]): string | null {
+  const byPlatform = new Map<string, string>();
+  for (const pair of (existingCsv ?? '').split(',')) {
+    const [platform, url] = pair.split('|');
+    if (platform && url) byPlatform.set(platform, url);
+  }
+  for (const { platform, url } of freshLinks) {
+    if (platform && url && !byPlatform.has(platform)) byPlatform.set(platform, url);
+  }
+  if (byPlatform.size === 0) return null;
+  return [...byPlatform].map(([platform, url]) => `${platform}|${url}`).join(',');
+}
+
 async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry | null, relationsChanged: boolean, refreshAniListTotalCount = false): Promise<void> {
   try {
-    const shopLinks = (data.storeLinks ?? []).map(l => `${l.platform}|${l.url}`).join(',');
+    const shopLinks = mergeShopLinksCsv(existing?.shop_links_csv, data.storeLinks ?? []);
 
     // Computed up front so hasNewData can diff against `existing` directly.
     const contentFields: Pick<MediaCatalogEntry, typeof NEW_DATA_COMPARE_FIELDS[number]> = {
@@ -175,7 +197,7 @@ async function persistToCatalog(data: MediaPageData, existing: MediaCatalogEntry
       genres_csv: existing?.genres_csv || (data.genreDots ? data.genreDots.split(' · ').join(',') : null),
       genres_tag_csv: existing?.genres_tag_csv || (data.genreTagDots ? data.genreTagDots.split(' · ').join(',') : null),
       platforms_csv: existing?.platforms_csv || (data.platforms ? data.platforms.join(',') : null),
-      shop_links_csv: existing?.shop_links_csv || shopLinks || null,
+      shop_links_csv: shopLinks,
       source_url: existing?.source_url || data.sourceUrl || null,
       country_code: existing?.country_code || data.countryOfOrigin || null,
     };
