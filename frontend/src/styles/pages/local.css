@@ -1203,6 +1203,13 @@
   animation: slide-in-right 0.3s var(--anim-ease);
   overflow-y: auto;
   overflow-x: hidden;
+  /* Content (summary/achievements/etc.) streams in from several async
+     fetches and can push total height past the viewport partway through —
+     without this, the scrollbar then appears and claims ~15px from the
+     panel's inner width, which the aspect-ratio-locked header responds to
+     by visibly shrinking. Reserving the gutter up front, scrollbar or not,
+     keeps the header's width — and so its height — constant throughout. */
+  scrollbar-gutter: stable;
 }
 
 
