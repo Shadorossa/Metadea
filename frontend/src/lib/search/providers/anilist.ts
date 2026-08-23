@@ -138,7 +138,7 @@ const DETAIL_QUERY = `
       endDate   { year month day }
       source
       studios { edges { isMain node { id name siteUrl } } }
-      characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 25) {
+      characters(sort: [ROLE, RELEVANCE], page: 1, perPage: 50) {
         pageInfo { hasNextPage total }
         edges { role node { id name { full } image { large medium } } }
       }
@@ -148,7 +148,7 @@ const DETAIL_QUERY = `
           node { id type format title { romaji } coverImage { extraLarge large medium } startDate { year month day } }
         }
       }
-      staff(perPage: 25) {
+      staff(perPage: 50) {
         edges {
           role
           node {
@@ -163,10 +163,15 @@ const DETAIL_QUERY = `
   }
 `;
 
+// perPage must match DETAIL_QUERY's own characters(perPage) above — this
+// walks whatever pages that first page's pageInfo says are left, at the
+// same page size it was paginated at.
+const CHARACTERS_PER_PAGE = 50;
+
 const CHARACTERS_QUERY = `
   query MediaCharacters($id: Int!, $page: Int!) {
     Media(id: $id) {
-      characters(sort: [ROLE, RELEVANCE], page: $page, perPage: 25) {
+      characters(sort: [ROLE, RELEVANCE], page: $page, perPage: ${CHARACTERS_PER_PAGE}) {
         pageInfo { hasNextPage }
         edges { role node { id name { full } image { large medium } } }
       }
@@ -222,13 +227,33 @@ export async function fetchAniListDetail(id: number): Promise<AniListMediaDetail
   const media = data?.Media ?? null;
   if (!media) return null;
 
-  const extraEdges = await fetchRemainingEdges(media.characters, 25, page =>
+  const extraEdges = await fetchRemainingEdges(media.characters, CHARACTERS_PER_PAGE, page =>
     anilistPost<{ Media: { characters: AniListMediaDetail['characters'] } }>(CHARACTERS_QUERY, { id, page })
       .then(pageData => pageData?.Media?.characters ?? null),
   );
   media.characters.edges = [...media.characters.edges, ...extraEdges];
 
   return media;
+}
+
+// Deliberately just this one field — episode-list.ts used to call the full
+// fetchAniListDetail() a second time (title/banner/description/studios/
+// characters incl. its own pagination walk/relations/staff, all discarded)
+// purely to read streamingEpisodes, doubling every request the main detail
+// fetch already made. This is the one thing that fetch actually needs.
+const STREAMING_EPISODES_QUERY = `
+  query MediaStreamingEpisodes($id: Int!) {
+    Media(id: $id) {
+      streamingEpisodes { title thumbnail }
+    }
+  }
+`;
+
+export async function fetchAniListStreamingEpisodes(id: number): Promise<{ title: string | null; thumbnail: string | null }[] | null> {
+  const data = await anilistPost<{ Media: { streamingEpisodes: { title: string | null; thumbnail: string | null }[] } }>(
+    STREAMING_EPISODES_QUERY, { id },
+  );
+  return data?.Media?.streamingEpisodes ?? null;
 }
 
 interface AniListMedia {

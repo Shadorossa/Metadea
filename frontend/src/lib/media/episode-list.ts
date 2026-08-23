@@ -3,7 +3,7 @@
 // sourced from TMDB (series) or AniList's streamingEpisodes (anime), the
 // only two providers this app uses that expose anything episode-level at all.
 import { fetchTmdbDetail, fetchTmdbEpisodes, type TmdbTvDetail } from '../search/providers/tmdb';
-import { fetchAniListDetail } from '../search/providers/anilist';
+import { fetchAniListStreamingEpisodes } from '../search/providers/anilist';
 import { parseExternalId } from './mapper-utils';
 import { getMediaEpisodes, saveMediaEpisodes, type MediaEpisode } from '../tauri';
 
@@ -19,9 +19,9 @@ function parseStreamingEpisodeTitle(title: string, fallbackNumber: number): { nu
 }
 
 async function fetchFromAniList(numericId: number, externalId: string): Promise<MediaEpisode[]> {
-  const detail = await fetchAniListDetail(numericId);
-  if (!detail?.streamingEpisodes?.length) return [];
-  return detail.streamingEpisodes.map((ep, i) => {
+  const streamingEpisodes = await fetchAniListStreamingEpisodes(numericId);
+  if (!streamingEpisodes?.length) return [];
+  return streamingEpisodes.map((ep, i) => {
     const { number, name } = ep.title ? parseStreamingEpisodeTitle(ep.title, i + 1) : { number: i + 1, name: null };
     return {
       external_id:    externalId,
