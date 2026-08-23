@@ -891,6 +891,14 @@
   gap: 0.5rem;
 }
 
+/* Same reasoning as the play button below — .local-media-left-col's
+   align-items:flex-start otherwise shrinks this to its content's width
+   instead of the column's full width, which is what actually let the 3
+   stats bunch up on the left with dead space to their right. */
+.local-media-left-col .local-game-detail-bottom {
+  width: 100%;
+}
+
 .local-media-left-col .local-game-detail-play {
   width: 100%;
   justify-content: center;
@@ -1553,6 +1561,11 @@
   display: flex;
   gap: 1rem;
   flex: 1;
+  /* Spreads the 3 stats across the row's now-empty width instead of
+     staying packed to the left — the edit/catalog buttons that used to sit
+     to their right (and implicitly bound the row's width) moved up next to
+     the title. */
+  justify-content: space-between;
 }
 
 .local-game-detail-stat {
