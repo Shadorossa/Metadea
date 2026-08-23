@@ -204,6 +204,72 @@ pub async fn launch_game(
     }
 }
 
+// Steam/GOG/Epic all intercept launch_game's URL scheme and start the actual
+// game executable themselves — there's no child process handle to `.wait()`
+// on. Instead this polls for any running process whose exe path lives under
+// the game's own install folder, and reports the elapsed time once one
+// showed up and then disappeared again. Fire-and-forget from the frontend's
+// point of view: it returns immediately, and the result (if any) arrives
+// later as a "game-session-ended" event.
+#[derive(Clone, serde::Serialize)]
+struct SessionEndedPayload {
+    external_id: String,
+    hours: f64,
+}
+
+#[tauri::command]
+pub async fn start_playtime_session(
+    app_handle: tauri::AppHandle,
+    install_path: String,
+    external_id: String,
+) -> Result<(), String> {
+    tokio::spawn(track_playtime_session(app_handle, install_path, external_id));
+    Ok(())
+}
+
+async fn track_playtime_session(app_handle: tauri::AppHandle, install_path: String, external_id: String) {
+    use std::time::{Duration, Instant};
+    use sysinfo::System;
+    use tauri::Emitter;
+
+    let root = PathBuf::from(&install_path);
+    let poll_every = Duration::from_secs(5);
+    // The launcher itself (Steam/GOG/Epic) can take a while to actually
+    // start the game's own process after handing off the URL — give up
+    // instead of polling forever if nothing under this path ever shows up.
+    let start_timeout = Duration::from_secs(300);
+
+    let mut sys = System::new();
+    let mut waited = Duration::ZERO;
+    let mut started_at: Option<Instant> = None;
+
+    loop {
+        tokio::time::sleep(poll_every).await;
+        sys.refresh_all();
+        let running = sys.processes().values().any(|p| {
+            p.exe().map(|exe| exe.starts_with(&root)).unwrap_or(false)
+        });
+
+        match (started_at, running) {
+            (None, true) => started_at = Some(Instant::now()),
+            (None, false) => {
+                waited += poll_every;
+                if waited >= start_timeout { return; }
+            }
+            (Some(start), false) => {
+                let hours = start.elapsed().as_secs_f64() / 3600.0;
+                // Ignores a process merely glimpsed for a few seconds while
+                // the launcher itself was starting up, or an instant crash.
+                if hours >= (1.0 / 60.0) {
+                    let _ = app_handle.emit("game-session-ended", SessionEndedPayload { external_id, hours });
+                }
+                return;
+            }
+            (Some(_), true) => {}
+        }
+    }
+}
+
 // A plain `Command::new("vlc")` only works when VLC's install dir was added
 // to PATH, which the default Windows installer does *not* do — that silent
 // spawn failure was why the "Reproducir" button did nothing. This looks up

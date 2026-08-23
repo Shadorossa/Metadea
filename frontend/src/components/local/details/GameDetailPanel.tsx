@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl,
+  readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
   getMediaRelationsForEditor, igdbGetGameDetail, type MediaCatalogEntry,
@@ -429,6 +429,26 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                       ? banner
                       : undefined;
                     updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
+                    // Auto-logs hours on exit (see LocalLibrary's
+                    // game-session-ended listener) — keyed by launchTarget's
+                    // OWN identity (the source game for a season, never the
+                    // season's own display id) since that's whose library
+                    // entry actually tracks hours played. Tried against both
+                    // id prefixes since an IGDB game logged as a visual
+                    // novel is catalogued as "vnovel:<id>", not "game:<id>".
+                    if (launchTarget.install_path) {
+                      const resolveSourceExternalId = async (): Promise<string | undefined> => {
+                        if (launchTarget.external_id) return launchTarget.external_id;
+                        if (!gameInfo?.igdb_id) return undefined;
+                        for (const candidate of [`game:${gameInfo.igdb_id}`, `vnovel:${gameInfo.igdb_id}`]) {
+                          if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
+                        }
+                        return undefined;
+                      };
+                      resolveSourceExternalId().then(id => {
+                        if (id) startPlaytimeSession(launchTarget.install_path!, id).catch(() => {});
+                      });
+                    }
                   })
                   .catch(console.error);
               }}

@@ -77,6 +77,18 @@ export async function getLibraryEntry(externalId: string): Promise<LibraryEntry 
   return tauriCmd<LibraryEntry | null>('get_library_entry', null, { externalId });
 }
 
+// Called when a "game-session-ended" event (see listenGameSessionEnded)
+// reports a finished play session — adds the elapsed hours to whatever's
+// already logged instead of overwriting it, so the log stays up to date
+// without the user having to touch it by hand. Deliberately never creates a
+// new entry: a work the user hasn't logged into their library at all yet
+// has no status this could sensibly attach to.
+export async function addPlaytimeHours(externalId: string, hours: number): Promise<void> {
+  const entry = await getLibraryEntry(externalId).catch(() => null);
+  if (!entry) return;
+  await saveLibraryEntry({ ...entry, progress: Math.round((entry.progress + hours) * 100) / 100 });
+}
+
 export async function deleteLibraryEntry(externalId: string): Promise<void> {
   await tauriRun('delete_library_entry', { externalId });
   notifyLibraryChanged();

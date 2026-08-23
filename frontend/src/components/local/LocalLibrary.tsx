@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
@@ -94,6 +94,21 @@ export default function LocalLibrary() {
   useEffect(() => {
     if (activeCategory === 'videojuegos' && gamesState === 'idle') loadGames();
   }, [activeCategory, gamesState, loadGames]);
+
+  // Keeps the hours-played log up to date on its own — a game launched from
+  // GameDetailPanel's "Jugar" button (see startPlaytimeSession there) fires
+  // this, whenever it actually exits, with the real elapsed session time.
+  // Mounted for as long as the Local page itself is (covers both
+  // Videojuegos and Visual Novel, whichever category was active when the
+  // game was launched), not tied to any one open panel — a session can run
+  // for hours after the panel that started it was closed.
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listenGameSessionEnded(({ external_id, hours }) => {
+      addPlaytimeHours(external_id, hours).then(refetchMedia).catch(console.error);
+    }).then(fn => { unlisten = fn; });
+    return () => unlisten?.();
+  }, [refetchMedia]);
 
   // ── Fetch metadata ───────────────────────────────────────────────────────────
 

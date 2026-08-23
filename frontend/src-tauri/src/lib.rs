@@ -96,6 +96,7 @@ pub fn run() {
             folders::open_env_folder,
             game_links::save_game_link,
             folders::launch_game,
+            folders::start_playtime_session,
             folders::open_external_url,
             folders::play_file_with_vlc,
             folders::get_vlc_playback_status,
