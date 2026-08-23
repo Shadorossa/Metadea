@@ -660,6 +660,8 @@ export const it = {
     steam_backlog: 'Backlog di Steam',
     not_installed: 'Non installato',
     view_on_steam: 'Vedi su Steam',
+    view_on_nintendo: 'Vedi su Nintendo',
+    view_on_store: 'Vedi su {platform}',
     locate_choose_folder: 'Scegli cartella',
     locate_choose_file: 'Scegli un file singolo',
     delete_history_entry: 'Elimina voce',

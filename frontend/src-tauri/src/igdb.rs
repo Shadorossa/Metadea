@@ -335,6 +335,8 @@ fn build_store_links(external_games: &serde_json::Value) -> Option<Vec<serde_jso
                 "xbox"
             } else if url.contains("playstation.com") {
                 "playstation"
+            } else if url.contains("nintendo.com") || url.contains("nintendo.co.jp") {
+                "nintendo"
             } else {
                 return None;
             };

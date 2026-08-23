@@ -660,6 +660,8 @@ export const ru = {
     steam_backlog: 'Бэклог Steam',
     not_installed: 'Не установлено',
     view_on_steam: 'Смотреть в Steam',
+    view_on_nintendo: 'Смотреть в Nintendo',
+    view_on_store: 'Смотреть в {platform}',
     locate_choose_folder: 'Выбрать папку',
     locate_choose_file: 'Выбрать отдельный файл',
     delete_history_entry: 'Удалить запись',

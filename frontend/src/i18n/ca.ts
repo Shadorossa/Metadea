@@ -660,6 +660,8 @@ export const ca = {
     steam_backlog: 'Backlog de Steam',
     not_installed: 'No instal·lat',
     view_on_steam: 'Veure a Steam',
+    view_on_nintendo: 'Veure a Nintendo',
+    view_on_store: 'Veure a {platform}',
     locate_choose_folder: 'Tria carpeta',
     locate_choose_file: 'Tria un fitxer solt',
     delete_history_entry: "Elimina l'entrada",

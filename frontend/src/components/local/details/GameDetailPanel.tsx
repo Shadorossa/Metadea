@@ -84,19 +84,21 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   }, [launchTarget.app_id, launchTarget.launcher]);
 
   // A "Pendiente" entry with no scanned install anywhere might still be
-  // buyable/viewable on Steam — IGDB's own external_games links (the same
-  // ones the /media page's own store-link row already surfaces) tell us
-  // that even without owning it. Only worth checking for knownExternalId
-  // entries: an actually-scanned game already IS its own Steam listing.
-  const [steamStoreUrl, setSteamStoreUrl] = useState<string | null>(null);
+  // buyable/viewable on some storefront — IGDB's own external_games links
+  // (the same ones the /media page's own store-link row already surfaces)
+  // tell us that even without owning it. Only worth checking for
+  // knownExternalId entries: an actually-scanned game already IS its own
+  // listing. Prefers Steam when both exist (steam:// opens inside the
+  // client itself, a nicer experience than a plain web storefront link).
+  const [storeLink, setStoreLink] = useState<{ platform: string; url: string } | null>(null);
   // "by X" for a catalog-only entry with no matched Steam install at all —
   // gameInfo (below) only ever comes from a real app_id's cached
   // info.json, which doesn't exist here, so the developer name has nowhere
   // else to come from but a live IGDB lookup (same call already made for
-  // steamStoreUrl, just also reading its involved_companies this time).
+  // storeLink, just also reading its involved_companies this time).
   const [catalogDevelopers, setCatalogDevelopers] = useState<string[] | null>(null);
   useEffect(() => {
-    setSteamStoreUrl(null);
+    setStoreLink(null);
     setCatalogDevelopers(null);
     if (!knownExternalId) return;
     const igdbId = Number(knownExternalId.split(':')[1]);
@@ -105,13 +107,17 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     igdbGetGameDetail(igdbId).then(detail => {
       if (cancelled || !detail) return;
       const links = detail.store_links as { platform: string; url: string }[] | undefined;
-      const steam = links?.find(l => l.platform === 'steam');
-      if (steam) {
-        // steam:// opens the store page inside the Steam client itself
-        // instead of the browser — Steam's own app-page URLs are always
-        // ".../app/<id>/...", so the numeric id is all this needs.
-        const appIdMatch = steam.url.match(/\/app\/(\d+)/);
-        setSteamStoreUrl(appIdMatch ? `steam://store/${appIdMatch[1]}` : steam.url);
+      const picked = links?.find(l => l.platform === 'steam') ?? links?.[0];
+      if (picked) {
+        if (picked.platform === 'steam') {
+          // steam:// opens the store page inside the Steam client itself
+          // instead of the browser — Steam's own app-page URLs are always
+          // ".../app/<id>/...", so the numeric id is all this needs.
+          const appIdMatch = picked.url.match(/\/app\/(\d+)/);
+          setStoreLink({ platform: 'steam', url: appIdMatch ? `steam://store/${appIdMatch[1]}` : picked.url });
+        } else {
+          setStoreLink(picked);
+        }
       }
       const companies = detail.involved_companies as { company?: { name?: string }; developer?: boolean }[] | undefined;
       const developers = companies?.filter(c => c.developer && c.company?.name).map(c => c.company!.name!);
@@ -119,6 +125,14 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [knownExternalId]);
+  const STORE_LABELS: Record<string, string> = {
+    steam: t.local.view_on_steam,
+    nintendo: t.local.view_on_nintendo,
+  };
+  const storeLinkLabel = storeLink
+    ? (STORE_LABELS[storeLink.platform]
+      ?? t.local.view_on_store.replace('{platform}', storeLink.platform.charAt(0).toUpperCase() + storeLink.platform.slice(1)))
+    : undefined;
 
   const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
 
@@ -231,7 +245,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
   };
 
-  const entry      = launchTarget.app_id ? coverCache[launchTarget.app_id] : undefined;
+  // Identity (banner/cover, metadata) always stays `game`'s own — a season
+  // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
+  // its source's. Only the actually-playable bits (launch, achievements,
+  // playtime/last-played — see launchTarget's own uses below) come from the
+  // source instead.
+  const entry      = game.app_id ? coverCache[game.app_id] : undefined;
   // A non-Steam entry (no coverCache banner at all) still has real banner
   // art if the catalog row itself carries one (banners_csv, same field
   // LocalMediaDetailPanel's own header already reads) — checked before
@@ -251,7 +270,19 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // but disabled, instead of silently failing a launchGame call with no
   // app_id/install_path.
   const canLaunch  = !!launchTarget.app_id || !!launchTarget.install_path;
-  const metaDots   = [formatDate(gameInfo?.release_date ?? undefined), gameInfo?.genres?.join(', ')].filter(Boolean).join('  ·  ');
+  // Same "own identity, not the source's" reasoning as the banner above —
+  // the catalog entry's own release date/genres/synopsis (this identity's
+  // real data) win over gameInfo (which is actually launchTarget's cached
+  // info, only relevant here for a plain game with no separate identity to
+  // begin with, where game === launchTarget anyway).
+  const catalogReleaseTimestamp = catalogEntry?.release_year
+    ? Math.floor(new Date(catalogEntry.release_year, (catalogEntry.release_month ?? 1) - 1, catalogEntry.release_day ?? 1).getTime() / 1000)
+    : undefined;
+  const displayGenres = catalogEntry?.genres_csv
+    ? catalogEntry.genres_csv.split(',').map(g => g.trim()).filter(Boolean).join(', ')
+    : gameInfo?.genres?.join(', ');
+  const metaDots   = [formatDate(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
+  const displaySummary = catalogEntry?.synopsis || gameInfo?.summary;
 
   const handleEdit = () => {
     if (!relationsExternalId) return;
@@ -329,7 +360,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
             )}
           </div>
           {(() => {
-            const developers = (gameInfo?.developers && gameInfo.developers.length > 0) ? gameInfo.developers : catalogDevelopers;
+            // catalogDevelopers (this identity's own IGDB lookup) wins over
+            // gameInfo.developers (launchTarget's cached info) — same "own
+            // identity" reasoning as the banner/metaDots above. Only ever
+            // both populated at once for a season, where they'd otherwise
+            // show the source's studio under the season's own name.
+            const developers = (catalogDevelopers && catalogDevelopers.length > 0) ? catalogDevelopers : gameInfo?.developers;
             return developers && developers.length > 0 && (
               <p className="local-game-detail-by">by {developers.join(', ')}</p>
             );
@@ -340,14 +376,14 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           <div className="local-media-left-col">
             <button
               className="local-game-detail-play"
-              disabled={!canLaunch && !steamStoreUrl}
-              title={canLaunch || steamStoreUrl ? undefined : t.local.not_installed}
+              disabled={!canLaunch && !storeLink}
+              title={canLaunch || storeLink ? undefined : t.local.not_installed}
               onClick={() => {
                 if (!canLaunch) {
-                  // Nothing to launch, but it IS buyable/viewable on Steam
-                  // (see the steamStoreUrl effect above) — same "Ver en
-                  // Steam" pattern this app already uses for external links.
-                  if (steamStoreUrl) openExternalUrl(steamStoreUrl).catch(console.error);
+                  // Nothing to launch, but it IS buyable/viewable somewhere
+                  // (see the storeLink effect above) — opened the same way
+                  // regardless of platform (steam:// or a plain https url).
+                  if (storeLink) openExternalUrl(storeLink.url).catch(console.error);
                   return;
                 }
                 launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path)
@@ -367,7 +403,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              {canLaunch ? 'Jugar' : steamStoreUrl ? t.local.view_on_steam : t.local.not_installed}
+              {canLaunch ? 'Jugar' : storeLinkLabel ?? t.local.not_installed}
             </button>
 
             <div className="local-media-divider-line" />
@@ -441,7 +477,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
         </div>
 
         {metaDots && <p className="local-game-detail-metadots">{metaDots}</p>}
-        {gameInfo?.summary && <p className="local-game-detail-summary">{gameInfo.summary}</p>}
+        {displaySummary && <p className="local-game-detail-summary">{displaySummary}</p>}
 
         {achievements?.list && achievements.list.length > 0 && (
           <div className="local-game-detail-achievements">
