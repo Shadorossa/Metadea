@@ -291,6 +291,29 @@ export default function LocalLibrary() {
       catalogEntry: parentCatalog,
     };
   }, [catalogMapById]);
+  // A conservative "different edition of the same game, no catalog relation
+  // to prove it" fallback — see its own call site's comment for exactly
+  // what this does and doesn't accept.
+  const EDITION_KEYWORDS = new Set([
+    'complete', 'definitive', 'deluxe', 'goty', 'edition', 'directors', 'cut',
+    'remastered', 'remaster', 'enhanced', 'special', 'anniversary', 'redux',
+    'hd', 'collection', 'ultimate', 'gold',
+  ]);
+  const findEditionPrefixMatch = React.useCallback((title: string): LocalGame | undefined => {
+    const normTitle = normalizeForMatch(title);
+    const titleTokens = normTitle.split(' ').filter(Boolean);
+    // Below this, a single short/degenerate token (numbers especially) is
+    // too likely to prefix-match something by pure coincidence.
+    if (titleTokens.length < 2) return undefined;
+    const gamesList = Array.isArray(games) ? games : [];
+    for (const g of gamesList) {
+      const normName = normalizeForMatch(g.name);
+      if (!normName.startsWith(normTitle + ' ')) continue;
+      const extra = normName.slice(normTitle.length).trim().split(' ').filter(Boolean);
+      if (extra.every(tok => EDITION_KEYWORDS.has(tok) || tok === 'the' || tok === 'of')) return g;
+    }
+    return undefined;
+  }, [games]);
   // Shared by both the "En progreso" and "Pendientes" status sections — a
   // catalog-tracked 'game' entry with the matching status that the scanner
   // never found installed anywhere still gets one more chance to resolve
@@ -314,18 +337,25 @@ export default function LocalLibrary() {
     const seen = new Set<string>();
     const deduped = filtered.filter(i => (seen.has(i.externalId) ? false : (seen.add(i.externalId), true)));
     return deduped.map((item): StatusEntry => {
-      // Strictly exact (normalized) title match only — no similarity/
-      // substring guessing. That was catching real look-alikes (GTA IV vs
-      // its Complete Edition) but also merging completely unrelated games
-      // that happened to share a word or a stray short token (e.g. a
-      // native-script title collapsing to just "3" after normalization
-      // matched ANY game with a "3" in its name — Bayonetta 3 → Yakuza 3
-      // Remastered). Not worth the false-positive risk.
+      // Exact (normalized) title match first, checked against every title
+      // variant (title/romaji/native) — the safe, unambiguous case.
       const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
-      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
-      return matchedGame ? { kind: 'game', game: matchedGame } : { kind: 'catalog', item };
+      const exactMatch = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
+      if (exactMatch) return { kind: 'game', game: exactMatch };
+      // Falls back to a strict PREFIX match on item.title only (never
+      // romaji/native — that's exactly what let a degenerate native-script
+      // title collapse to a bare "3" and substring-match ANY game with a
+      // "3" in its name, merging Bayonetta 3 into Yakuza 3 Remastered).
+      // Requires the shorter title to actually start the longer one (not
+      // just appear anywhere in it) AND every extra word beyond that
+      // shared prefix to read as edition/release wording — "Grand Theft
+      // Auto IV" -> "... IV: The Complete Edition" passes; "Final Fantasy
+      // VII" -> "... VII Revelations" (a different game, not an edition of
+      // the same one) correctly doesn't.
+      const editionMatch = findEditionPrefixMatch(item.title);
+      return editionMatch ? { kind: 'game', game: editionMatch } : { kind: 'catalog', item };
     });
-  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
+  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findEditionPrefixMatch]);
   const currentlyEntries: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
