@@ -291,6 +291,32 @@ export default function LocalLibrary() {
       catalogEntry: parentCatalog,
     };
   }, [catalogMapById]);
+  // Last-resort fallback when no exact-normalized-title match exists at
+  // all — some editions (e.g. GTA IV vs "GTA IV: The Complete Edition")
+  // have no catalog relation linking them whatsoever, so there's nothing
+  // more precise to go on than "which owned game's name is the closest
+  // match." Only ever tried after the exact match above already failed;
+  // gated on one title containing the other (not just sharing SOME words)
+  // to keep it from linking genuinely unrelated same-franchise entries.
+  const findClosestGame = React.useCallback((titles: string[]): LocalGame | undefined => {
+    const gamesList = Array.isArray(games) ? games : [];
+    let best: { game: LocalGame; score: number } | undefined;
+    for (const tt of titles) {
+      const normTitle = normalizeForMatch(tt);
+      const titleTokens = normTitle.split(' ').filter(Boolean);
+      if (titleTokens.length === 0) continue;
+      const titleTokenSet = new Set(titleTokens);
+      for (const g of gamesList) {
+        const normName = normalizeForMatch(g.name);
+        if (!normName.includes(normTitle) && !normTitle.includes(normName)) continue;
+        const nameTokens = normName.split(' ').filter(Boolean);
+        const overlap = nameTokens.filter(tok => titleTokenSet.has(tok)).length;
+        const score = overlap / Math.max(titleTokens.length, nameTokens.length);
+        if (!best || score > best.score) best = { game: g, score };
+      }
+    }
+    return best?.game;
+  }, [games]);
   // Shared by both the "En progreso" and "Pendientes" status sections — a
   // catalog-tracked 'game' entry with the matching status that the scanner
   // never found installed anywhere still gets one more chance to resolve
@@ -315,10 +341,11 @@ export default function LocalLibrary() {
     const deduped = filtered.filter(i => (seen.has(i.externalId) ? false : (seen.add(i.externalId), true)));
     return deduped.map((item): StatusEntry => {
       const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
-      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
+      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
+        ?? findClosestGame(titles);
       return matchedGame ? { kind: 'game', game: matchedGame } : { kind: 'catalog', item };
     });
-  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
+  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findClosestGame]);
   const currentlyEntries: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
