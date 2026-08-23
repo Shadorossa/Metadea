@@ -3,7 +3,7 @@ import type { Translations } from '../i18n/index';
 import { ALL_MEDIA_TYPES } from '../lib/constants/media';
 
 interface Props {
-  activePage?: 'home' | 'search' | 'local' | 'notifications' | 'profile' | 'tier' | 'admin';
+  activePage?: 'home' | 'search' | 'local' | 'notifications' | 'profile' | 'settings' | 'tier' | 'admin';
   i18n: Translations['nav'];
   typeLabels: Translations['search']['types'];
 }
@@ -18,13 +18,13 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   <!-- Izquierda: home + play (biblioteca local) + tier -->
   <div class="nav-group nav-group--left">
     <a href="/home"   data-nav="home"   class={`nav-icon-btn nav-icon-btn--plain${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
         <polyline points="9 21 9 12 15 12 15 21"/>
       </svg>
     </a>
     <a href="/local" data-nav="local" class={`nav-icon-btn nav-icon-btn--plain${activePage === 'local' ? ' active' : ''}`} title={i18n.local}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2"/>
         <line x1="8" y1="21" x2="16" y2="21"/>
         <line x1="12" y1="17" x2="12" y2="21"/>
@@ -52,70 +52,66 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
     <div id="nav-center-slot" class="nav-center-slot"></div>
   </div>
 
-  <!-- Derecha: browse + perfil (avatar, desplegable al pasar el cursor) -->
+  <!-- Derecha: buscar + notificaciones + avatar + ajustes -->
   <div class="nav-group nav-group--right">
     <button type="button" id="nav-quick-search-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.browse}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="7"/>
         <line x1="16.5" y1="16.5" x2="22" y2="22"/>
       </svg>
     </button>
-    <div class="nav-profile-wrap">
-      <a
-        href="/profile"
-        id="nav-account-btn"
-        data-nav="account"
-        class={`nav-icon-btn nav-icon-btn--avatar${activePage === 'profile' ? ' active' : ''}`}
-        title={i18n.dropdown_profile}
-      >
-        <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" style="display: none;" />
-        <svg id="nav-avatar-fallback" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-        </svg>
-        <script is:inline>
-          // Runs synchronously during HTML parse, before the bundled
-          // astro:page-load script below even loads — on a hard refresh
-          // (F5) that gap was long enough to flash the fallback person icon
-          // before swapping to the real avatar. Both elements start
-          // display:none in the markup above so neither one flashes first;
-          // this picks the right one immediately.
-          (function () {
-            var img = document.getElementById('nav-avatar-img');
-            var fallback = document.getElementById('nav-avatar-fallback');
-            var src = localStorage.getItem('profile_avatar_cache');
-            if (src && img && fallback) {
-              img.src = src;
-              img.style.display = 'block';
-            } else if (fallback) {
-              fallback.style.display = 'block';
-            }
-          })();
-        </script>
-      </a>
-      <div class="nav-dropdown">
-        <div class="nav-dropdown-inner">
-          <a class="nav-dropdown-item" href="/profile">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-            </svg>
-            <span>{i18n.dropdown_profile}</span>
-          </a>
-          <a class="nav-dropdown-item" href="/notifications">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <span>{i18n.dropdown_notifications}</span>
-          </a>
-          <a class="nav-dropdown-item" href="/settings">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-            <span>{i18n.dropdown_settings}</span>
-          </a>
-        </div>
-      </div>
-    </div>
+    <a
+      href="/notifications"
+      data-nav="notifications"
+      class={`nav-icon-btn nav-icon-btn--plain${activePage === 'notifications' ? ' active' : ''}`}
+      title={i18n.notifications}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    </a>
+    <a
+      href="/profile"
+      id="nav-account-btn"
+      data-nav="account"
+      class={`nav-icon-btn nav-icon-btn--avatar${activePage === 'profile' ? ' active' : ''}`}
+      title={i18n.dropdown_profile}
+    >
+      <img id="nav-avatar-img" class="nav-avatar-img" alt="" referrerpolicy="no-referrer" style="display: none;" />
+      <svg id="nav-avatar-fallback" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      <script is:inline>
+        // Runs synchronously during HTML parse, before the bundled
+        // astro:page-load script below even loads — on a hard refresh
+        // (F5) that gap was long enough to flash the fallback person icon
+        // before swapping to the real avatar. Both elements start
+        // display:none in the markup above so neither one flashes first;
+        // this picks the right one immediately.
+        (function () {
+          var img = document.getElementById('nav-avatar-img');
+          var fallback = document.getElementById('nav-avatar-fallback');
+          var src = localStorage.getItem('profile_avatar_cache');
+          if (src && img && fallback) {
+            img.src = src;
+            img.style.display = 'block';
+          } else if (fallback) {
+            fallback.style.display = 'block';
+          }
+        })();
+      </script>
+    </a>
+    <a
+      href="/settings"
+      data-nav="settings"
+      class={`nav-icon-btn nav-icon-btn--plain${activePage === 'settings' ? ' active' : ''}`}
+      title={i18n.dropdown_settings}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </a>
   </div>
 </header>
 
@@ -132,7 +128,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
     if (pathname.startsWith('/tier')) return 'tier';
     if (pathname.startsWith('/admin')) return 'admin';
     if (pathname.startsWith('/local')) return 'local';
-    if (pathname.startsWith('/profile') || pathname.startsWith('/settings')) return 'account';
+    if (pathname.startsWith('/settings')) return 'settings';
+    if (pathname.startsWith('/notifications')) return 'notifications';
+    if (pathname.startsWith('/profile')) return 'account';
     return undefined;
   }
 
@@ -148,6 +146,8 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
       tier: navT.tier,
       local: navT.local,
       account: navT.dropdown_profile,
+      settings: navT.dropdown_settings,
+      notifications: navT.notifications,
     };
     document.querySelectorAll('.navbar [data-nav]').forEach(el => {
       const navKey = el.getAttribute('data-nav');

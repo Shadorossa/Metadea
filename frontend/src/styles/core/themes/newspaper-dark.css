@@ -62,6 +62,15 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   transition: all 0.2s ease !important;
 }
 
+/* Plain icon, no box at all — unlike the double-border treatment above,
+   a navbar icon reads better here as just the glyph itself. Still needs
+   its own drop-shadow (a `filter`, not a box-shadow) killed to lose the
+   modern glassy look every other themed element already lost. */
+[data-theme="newspaper-dark"] .nav-icon-btn {
+  border: none !important;
+  filter: none !important;
+}
+
 /* Plain icon, no double-border box like every other themed button gets —
    these live inside the sort dropdown's own small panel, not a standalone
    toolbar button. */
