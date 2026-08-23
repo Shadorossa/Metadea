@@ -261,18 +261,25 @@ export default function LocalLibrary() {
     [games],
   );
   type StatusEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem };
-  // A season/update/DLC-style catalog entry (parent_id set) isn't its own
+  // A season/update/issue/episode-tagged catalog entry isn't its own
   // playable thing — redirects to its source game's own id/title/cover
   // before matching or opening it, per the user's own framing: "si hay una
   // season, pues tiene que mirar cual es el juego fuente [...] y abrir el
-  // juego fuente."
+  // juego fuente." Gated on format (same SUB_WORK_FORMATS stats-
+  // calculators.ts's isSubWorkItem uses), NOT just parent_id being set —
+  // parent_id also links a fully-playable, separately-owned edition (e.g.
+  // Death Stranding: Director's Cut) to its original, and THOSE must keep
+  // their own identity rather than get redirected to a different edition
+  // the user doesn't actually have.
+  const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
   const catalogMapById = React.useMemo(
     () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
     [mediaRaw],
   );
   const resolveSourceItem = React.useCallback((item: LocalMediaItem): LocalMediaItem => {
+    const format = item.catalogEntry?.format;
     const parentId = item.catalogEntry?.parent_id;
-    const parentCatalog = parentId ? catalogMapById.get(parentId) : undefined;
+    const parentCatalog = (format && SUB_WORK_FORMATS.has(format) && parentId) ? catalogMapById.get(parentId) : undefined;
     if (!parentCatalog) return item;
     return {
       ...item,
