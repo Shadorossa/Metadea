@@ -7,6 +7,7 @@ import {
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
+import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
@@ -373,20 +374,6 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
         <div className="local-game-detail-title-block">
           <div className="local-media-detail-top-row">
             <p className="local-game-detail-title">{game.name}</p>
-            {relationsExternalId && (
-              <div className="local-media-detail-icon-actions">
-                <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
-                  <IconPencil />
-                </button>
-                <a href={`/media?id=${relationsExternalId}`} className="local-game-detail-catalog-link">
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
-                  Ver en catálogo
-                </a>
-              </div>
-            )}
           </div>
           {(() => {
             // catalogDevelopers (this identity's own IGDB lookup) wins over
@@ -488,6 +475,15 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                   <span className="local-game-detail-stat-label">{t.local.stat_achievements}</span>
                 </div>
               </div>
+              {relationsExternalId && (
+                <div className="local-game-detail-actions-right">
+                  <div className="local-game-detail-actions-sep" />
+                  <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
+                    <IconPencil />
+                  </button>
+                  <CatalogLinkIcon externalId={relationsExternalId} />
+                </div>
+              )}
             </div>
           </div>
 

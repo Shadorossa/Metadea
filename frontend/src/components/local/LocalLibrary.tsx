@@ -11,6 +11,7 @@ import { useActivePlatform }    from './hooks/useActivePlatform';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { buildLibraryStatusEntries, type StatusEntry } from './utils/catalogGameLinking';
+import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
@@ -24,7 +25,21 @@ import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icon
 
 export default function LocalLibrary() {
   const t = getT();
-  const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
+  // Starts at the hardcoded default (matching what the server renders — see
+  // the navSlot hydration-mismatch comment just below for why this can't
+  // read the URL synchronously here either) and gets corrected from ?type=
+  // in the restore-from-URL effect further down, right alongside the
+  // selected item it was showing.
+  const [activeCategory, setActiveCategoryRaw] = useState<CategoryId>('videojuegos');
+  // Wraps every actual tab switch so the URL stays in sync (see urlState.ts)
+  // — without this, browser Back from e.g. a catalog page always landed on
+  // /local with nothing encoded, indistinguishable from a fresh visit from
+  // the navbar (always Videojuegos, nothing selected) regardless of which
+  // tab/item the user had actually been on.
+  const setActiveCategory = useCallback((cat: CategoryId) => {
+    setActiveCategoryRaw(cat);
+    writeLocalUrlState(cat, null);
+  }, []);
   // Starts null unconditionally (not a lazy initializer reading the DOM) so
   // the client's very first hydration render matches what the server
   // produced (always null, no document there) — reading document.getElementById
@@ -60,6 +75,14 @@ export default function LocalLibrary() {
   }, []);
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
+
+  // Same hydration-mismatch reasoning as navSlot above — corrects the tab
+  // from ?type= right after hydration instead of in the initial useState,
+  // which would've had the server and client disagree on the very first render.
+  useLayoutEffect(() => {
+    const { type } = readLocalUrlState();
+    if (type && CATEGORIES.some(c => c.id === type)) setActiveCategoryRaw(type);
+  }, []);
 
   const [selectedGameRaw,   setSelectedGameRaw]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
   // A "Pendiente" entry with no scanned Steam/Epic/... install still opens

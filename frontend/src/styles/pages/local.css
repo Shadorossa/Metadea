@@ -1673,12 +1673,26 @@
 .local-game-detail-stats {
   display: flex;
   gap: 1rem;
-  flex: 1;
-  /* Spreads the 3 stats across the row's now-empty width instead of
-     staying packed to the left — the edit/catalog buttons that used to sit
-     to their right (and implicitly bound the row's width) moved up next to
-     the title. */
-  justify-content: space-between;
+  /* Packed to the left, not stretched — the edit/catalog group now sits to
+     their right (see .local-game-detail-actions-right) with its own
+     margin-left: auto, so nothing here needs to claim the row's leftover
+     width anymore. */
+}
+
+/* Edit-log/"Ver en catálogo" — pinned to the row's far right edge via
+   margin-left: auto, separated from the Tiempo/Última vez/Logros stats by
+   a vertical divider bar instead of just floating loose next to them. */
+.local-game-detail-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.local-game-detail-actions-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border-color);
 }
 
 .local-game-detail-stat {
