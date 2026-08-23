@@ -7,6 +7,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
 import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
+import { buildLibraryStatusEntries } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX, IconRefresh, IconMonitor } from './ui/icons';
 import type { CategoryId } from './utils/constants';
@@ -128,14 +129,29 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     const q = filterName.trim().toLowerCase();
     return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
   }, [allItems, filterName]);
-  // Mutually exclusive — selecting one always closes the other, so a
-  // catalog item's LocalMediaDetailPanel and a Steam game's GameDetailPanel
-  // never end up open side by side at once.
+  // Mutually exclusive — selecting one always closes the others, so a
+  // catalog item's LocalMediaDetailPanel, a Steam game's GameDetailPanel,
+  // and a library-only pending item's synthetic GameDetailPanel never end
+  // up open side by side at once.
   const [selectedId, setSelectedIdRaw] = useState<string | null>(null);
   const selected = selectedId ? allItems.find(i => i.externalId === selectedId) ?? null : null;
   const [selectedGame, setSelectedGameRaw] = useState<LocalGame | null>(null);
-  const setSelectedId = (id: string | null) => { setSelectedIdRaw(id); if (id) setSelectedGameRaw(null); };
-  const setSelectedGame = (g: LocalGame | null) => { setSelectedGameRaw(g); if (g) setSelectedIdRaw(null); };
+  // Visual Novel only (see isGameLike below): a library-only entry (no
+  // scanned Steam install, no identity match either) still opens the same
+  // GameDetailPanel every other game-like item gets — same "no que te
+  // envíe a su media page" treatment Videojuegos' own Pendientes/En
+  // progreso already have (see LocalLibrary's openPendingItem) — instead of
+  // the folder/episode-matching LocalMediaDetailPanel other categories use.
+  const [selectedPendingItem, setSelectedPendingItemRaw] = useState<LocalMediaItem | null>(null);
+  const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
+  const setSelectedId = (id: string | null) => { setSelectedIdRaw(id); if (id) { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); } };
+  const setSelectedGame = (g: LocalGame | null) => { setSelectedGameRaw(g); if (g) { setSelectedIdRaw(null); setSelectedPendingItemRaw(null); } };
+  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
+    setSelectedPendingItemRaw(item);
+    setSelectedPendingLaunchGame(launchGame);
+    setSelectedGameRaw(null);
+    setSelectedIdRaw(null);
+  };
 
   // Steam games split by their matched library status — unmatched (or
   // matched to a status this grid doesn't otherwise track, e.g. paused/
@@ -166,11 +182,27 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   // instead of their own separate grid, per the user's own framing: "si
   // coincide, pues ponerme el status... dividido en las secciones que hay
   // según mi biblioteca."
-  type SectionEntry = { kind: 'catalog'; item: LocalMediaItem } | { kind: 'steam'; game: LocalGame };
-  const toEntries = (catalogItems: LocalMediaItem[], games: LocalGame[]): SectionEntry[] => [
-    ...catalogItems.map(item => ({ kind: 'catalog' as const, item })),
-    ...games.map(game => ({ kind: 'steam' as const, game })),
-  ];
+  // Visual Novel only — anime/manga/etc. have no "Steam" pool a library
+  // entry could actually turn out to already be, so this is a no-op there
+  // (steamGames is undefined, buildLibraryStatusEntries never matches).
+  const isGameLike = !!steamGames;
+  const catalogMapById = useMemo(
+    () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
+    [mediaRaw],
+  );
+  type SectionEntry = { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame } | { kind: 'steam'; game: LocalGame };
+  // A library-only VN entry gets one more chance to resolve to a real (but
+  // identity-unmatched) Steam listing by title — the exact same matching
+  // Videojuegos' own Pendientes/En progreso sections use (see
+  // catalogGameLinking.ts) — instead of unconditionally staying a passive
+  // catalog card just because steamGameMatch (identity-only) missed it.
+  const toEntries = (catalogItems: LocalMediaItem[], games: LocalGame[]): SectionEntry[] => {
+    const linked = buildLibraryStatusEntries(catalogItems, steamGames ?? [], catalogMapById);
+    return [
+      ...linked.map((e): SectionEntry => e.kind === 'game' ? { kind: 'steam', game: e.game } : { kind: 'catalog', item: e.item, launchGame: e.launchGame }),
+      ...games.map(game => ({ kind: 'steam' as const, game })),
+    ];
+  };
   const sections = useMemo(() => {
     const notReleased = items.filter(isNotReleasedYet);
     const released = items.filter(i => !isNotReleasedYet(i));
@@ -181,12 +213,12 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
       { title: t.local.steam_backlog, entries: toEntries([], steamBacklog) },
     ].filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, p, steamInProgress, steamPlanning, steamBacklog, t]);
+  }, [items, p, steamInProgress, steamPlanning, steamBacklog, t, steamGames, catalogMapById]);
 
   const isEmpty = sections.length === 0;
 
   return (
-    <div className={`local-games-container${(selected || selectedGame) ? ' with-detail' : ''}`}>
+    <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
       <div className="local-main-content">
         <div className="local-content">
           <div className="local-content-header">
@@ -262,7 +294,11 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
                   <h3 className="library-section-title">{sec.title}</h3>
                   <div className="local-games-grid">
                     {sec.entries.map(entry => entry.kind === 'catalog' ? (
-                      <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={i => setSelectedId(i.externalId)} />
+                      <LocalMediaCard
+                        key={entry.item.externalId}
+                        item={entry.item}
+                        onClick={i => isGameLike ? openPendingItem(i, entry.launchGame) : setSelectedId(i.externalId)}
+                      />
                     ) : (
                       <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={setSelectedGame} />
                     ))}
@@ -300,11 +336,20 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
         />
       )}
 
-      {selectedGame && (
+      {/* One call site for both a real Steam game and a library-only
+          pending item (no differing key) — same reasoning as LocalLibrary's
+          own videojuegos panel: two separate {cond && <GameDetailPanel/>}
+          blocks are distinct elements to React's reconciler, so switching
+          which one is truthy would unmount/remount and replay the entrance
+          transition instead of just updating in place. */}
+      {(selectedGame || selectedPendingItem) && (
         <GameDetailPanel
-          game={selectedGame}
+          game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
           coverCache={coverCache ?? {}}
-          onClose={() => setSelectedGame(null)}
+          knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
+          fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
+          launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
+          onClose={() => { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); setSelectedPendingLaunchGame(undefined); }}
           onMetaRefresh={onMetaRefresh}
         />
       )}

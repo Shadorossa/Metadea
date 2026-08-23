@@ -1737,11 +1737,17 @@
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--bg-elevated);
+  /* --bg-elevated is intentionally translucent in some themes (glassmorphism,
+     scifi) for cards meant to show a blurred backdrop through them — a
+     tooltip popping up over other panel text/cards needs to actually be
+     readable instead, so this uses --bg-primary (opaque in every theme)
+     rather than the elevated surface color other cards in this panel use. */
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 0.6rem 0.75rem;
   min-width: 180px;
+  z-index: 20;
   max-width: 260px;
   flex-direction: column;
   gap: 0.25rem;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame, type MediaCatalogEntry } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
@@ -10,7 +10,7 @@ import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
-import { normalizeForMatch } from './utils/folderMatch';
+import { buildLibraryStatusEntries, type StatusEntry } from './utils/catalogGameLinking';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
@@ -272,58 +272,14 @@ export default function LocalLibrary() {
     }
     return ids;
   }, [games, pathCache]);
-  const gamesByNormalizedName = React.useMemo(
-    () => new Map((Array.isArray(games) ? games : []).map(g => [normalizeForMatch(g.name), g])),
-    [games],
-  );
-  // A season/update/issue/episode-tagged catalog entry (a Steam "season
-  // pass" or similar) still shows as ITSELF — its own card, own title/
-  // cover — but isn't separately launchable: its Play button targets the
-  // source game it's actually part of instead. Gated on format (same
-  // SUB_WORK_FORMATS stats-calculators.ts's isSubWorkItem uses), NOT just
-  // parent_id being set — parent_id also links a fully-playable,
-  // separately-owned edition (e.g. Death Stranding: Director's Cut) to its
-  // original, and THOSE keep their own identity/launch entirely, not
-  // redirected to a different edition the user doesn't actually have.
-  type StatusEntry = { kind: 'game'; game: LocalGame } | { kind: 'catalog'; item: LocalMediaItem; launchGame?: LocalGame };
-  const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
   const catalogMapById = React.useMemo(
     () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
     [mediaRaw],
   );
-  const sourceCatalogOf = React.useCallback((item: LocalMediaItem): MediaCatalogEntry | undefined => {
-    const format = item.catalogEntry?.format;
-    const parentId = item.catalogEntry?.parent_id;
-    return (format && SUB_WORK_FORMATS.has(format) && parentId) ? catalogMapById.get(parentId) : undefined;
-  }, [catalogMapById]);
-  // A conservative "different edition of the same game, no catalog relation
-  // to prove it" fallback — see its own call site's comment for exactly
-  // what this does and doesn't accept.
-  const EDITION_KEYWORDS = new Set([
-    'complete', 'definitive', 'deluxe', 'goty', 'edition', 'directors', 'cut',
-    'remastered', 'remaster', 'enhanced', 'special', 'anniversary', 'redux',
-    'hd', 'collection', 'ultimate', 'gold',
-  ]);
-  const findEditionPrefixMatch = React.useCallback((title: string): LocalGame | undefined => {
-    const normTitle = normalizeForMatch(title);
-    const titleTokens = normTitle.split(' ').filter(Boolean);
-    // Below this, a single short/degenerate token (numbers especially) is
-    // too likely to prefix-match something by pure coincidence.
-    if (titleTokens.length < 2) return undefined;
-    const gamesList = Array.isArray(games) ? games : [];
-    for (const g of gamesList) {
-      const normName = normalizeForMatch(g.name);
-      if (!normName.startsWith(normTitle + ' ')) continue;
-      const extra = normName.slice(normTitle.length).trim().split(' ').filter(Boolean);
-      if (extra.every(tok => EDITION_KEYWORDS.has(tok) || tok === 'the' || tok === 'of')) return g;
-    }
-    return undefined;
-  }, [games]);
-  // Shared by both the "En progreso" and "Pendientes" status sections — a
-  // catalog-tracked 'game' entry with the matching status that the scanner
-  // never found installed anywhere still gets one more chance to resolve
-  // to a real (possibly uninstalled) Steam listing by name (see
-  // gamesByNormalizedName's own comment on ownedExternalIds above).
+  // Shared with the Visual Novel tab's own library-only entries (see
+  // catalogGameLinking.ts) so both get exactly the same "might already be a
+  // scanned game under a different identity/edition" matching behavior
+  // instead of two separately-maintained copies of it.
   const buildCatalogStatusEntries = React.useCallback((matchesStatus: (status: string) => boolean): StatusEntry[] => {
     const list = pendingGameItems.filter(i => {
       if (!matchesStatus(i.status)) return false;
@@ -334,38 +290,8 @@ export default function LocalLibrary() {
     });
     const q = filterName.trim().toLowerCase();
     const filtered = q ? list.filter(i => i.title.toLowerCase().includes(q)) : list;
-    const matchTitles = (titles: string[]): LocalGame | undefined =>
-      titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
-      ?? titles.map(findEditionPrefixMatch).find(Boolean);
-    // A season/update sharing its source game with a sibling season is
-    // de-duped by that shared source id — same source game shouldn't show
-    // up twice just because it has several tracked seasons.
-    const seen = new Set<string>();
-    const entries: StatusEntry[] = [];
-    for (const item of filtered) {
-      const source = sourceCatalogOf(item);
-      if (source) {
-        const dedupeKey = source.external_id;
-        if (seen.has(dedupeKey)) continue;
-        seen.add(dedupeKey);
-        // Exact match first, checked against every title variant (title/
-        // romaji/native) — the safe, unambiguous case — then the strict
-        // prefix+edition-wording fallback (see findEditionPrefixMatch's own
-        // comment), on the source's own title only.
-        const sourceTitles = [source.title_main, source.title_romaji, source.title_native].filter((s): s is string => !!s);
-        const launchGame = sourceTitles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
-          ?? (source.title_main ? findEditionPrefixMatch(source.title_main) : undefined);
-        entries.push({ kind: 'catalog', item, launchGame });
-        continue;
-      }
-      if (seen.has(item.externalId)) continue;
-      seen.add(item.externalId);
-      const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
-      const matched = matchTitles(titles);
-      entries.push(matched ? { kind: 'game', game: matched } : { kind: 'catalog', item });
-    }
-    return entries;
-  }, [pendingGameItems, sourceCatalogOf, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findEditionPrefixMatch]);
+    return buildLibraryStatusEntries(filtered, Array.isArray(games) ? games : [], catalogMapById);
+  }, [pendingGameItems, ownedExternalIds, vnovelExternalIds, filterName, games, catalogMapById]);
   const currentlyEntries: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
