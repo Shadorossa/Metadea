@@ -8,7 +8,7 @@ import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
 import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
 import type { MetaEntry } from '../../lib/tauri';
-import { IconFolder, IconPlus, IconX } from './ui/icons';
+import { IconFolder, IconPlus, IconX, IconRefresh, IconMonitor } from './ui/icons';
 import type { CategoryId } from './utils/constants';
 
 // null = no release date on file at all (never resolved a catalog entry, or
@@ -61,13 +61,22 @@ interface LocalMediaSectionProps {
   // of guessing from the title.
   pathCache?:   Record<string, MetaEntry>;
   onMetaRefresh?: () => void;
+  // Videojuegos only: the Steam/Epic/... scanner's own lifecycle and
+  // actions, folded into this same status-grouped header/placeholder area
+  // instead of the old separate per-launcher view.
+  scanState?:   'idle' | 'loading' | 'empty' | 'done';
+  onRescan?:    () => void;
+  onFetchMetadataAll?: () => void;
+  scanError?:   string | null;
+  debugInfo?:   string | null;
+  onDebugScan?: () => void;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh, scanState, onRescan, onFetchMetadataAll, scanError, debugInfo, onDebugScan }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -196,11 +205,51 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
               <button type="button" className="local-refresh-btn" onClick={onSetRoute} title={isMounted ? (rootFolder ? t.local.change_folder : t.local.add_folder) : (rootFolder ? 'Cambiar carpeta' : 'Añadir carpeta')}>
                 <IconFolder />
               </button>
+              {onRescan && (
+                <button type="button" className="local-refresh-btn" onClick={onRescan} disabled={scanState === 'loading'} title={isMounted ? (scanState === 'loading' ? t.local.scanning : t.local.scan_again) : (scanState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
+                  <IconRefresh />
+                </button>
+              )}
+              {onFetchMetadataAll && (
+                <button type="button" className="local-refresh-btn" onClick={onFetchMetadataAll} title={t.local.fetch_igdb_metadata}>
+                  <IconMonitor />
+                </button>
+              )}
             </div>
           </div>
 
-          {loading && items.length === 0 && sections.length === 0 ? (
+          {scanState === 'loading' && sections.length === 0 ? (
+            <div className="local-state-placeholder">
+              <div className="spinner" />
+              <p>{t.local.scanning_installed}</p>
+            </div>
+          ) : loading && items.length === 0 && sections.length === 0 ? (
             <div className="local-state-placeholder"><div className="spinner" /></div>
+          ) : isEmpty && scanState === 'empty' ? (
+            <div className="local-state-placeholder">
+              <IconMonitor />
+              <p>{t.local.no_games_found}</p>
+              <span>{t.local.compatible_launchers}</span>
+              {scanError && (
+                <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
+                  Error: {scanError}
+                </span>
+              )}
+              {onDebugScan && (
+                <button
+                  type="button"
+                  style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
+                  onClick={onDebugScan}
+                >
+                  {t.local.diagnostics}
+                </button>
+              )}
+              {debugInfo && (
+                <pre style={{ fontSize: '0.65rem', textAlign: 'left', marginTop: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: '4px', maxWidth: '500px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                  {debugInfo}
+                </pre>
+              )}
+            </div>
           ) : isEmpty ? (
             <div className="local-state-placeholder">
               <IconFolder />
@@ -223,7 +272,10 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
             </div>
           )}
 
-          {!rootFolder && (
+          {/* "elige una carpeta para detectar episodios/capítulos" doesn't
+              apply to Videojuegos — games launch via Steam/install paths,
+              not matched to local episode files. */}
+          {!rootFolder && scanState === undefined && (
             <div className="local-state-placeholder" style={{ marginTop: '1rem' }}>
               <IconFolder />
               <p>{isMounted ? t.local.no_folder_assigned : 'Sin carpeta asignada'}</p>

@@ -38,6 +38,11 @@ export async function searchGames(
 // Shared by searchGameBundles/searchGameExpandedEditions/searchGameRemasters —
 // live IGDB search restricted to specific categories plain search
 // deliberately excludes (bundles, expanded editions, remasters, ...).
+// mediaType defaults to 'game' but the caller can pass 'vnovel' when the
+// entry being edited is itself a visual novel — a remaster/remake/expanded
+// edition of a VN is still a VN (being a remaster doesn't change enough
+// about a work to justify a different type), so it needs the "vnovel:"
+// id prefix and type from the start, not "game:" corrected after the fact.
 async function searchGamesByCategories(
   searchQuery: string,
   signal: AbortSignal,
@@ -45,6 +50,7 @@ async function searchGamesByCategories(
   categories: number[],
   format: string,
   bundlesOnlyQueryParam: string,
+  mediaType: MediaType = 'game',
 ): Promise<SearchPage> {
   if (isTauri()) {
     const cfg = await readEnvConfig().catch(() => ({}));
@@ -61,8 +67,8 @@ async function searchGamesByCategories(
       const dateParts = g.first_release_date ? unixToDateParts(g.first_release_date) : null;
       const coverUrl = g.cover?.image_id ? igdbImageUrl(g.cover.image_id, 'cover_big') : null;
       return {
-        externalId:   `game:${g.id}`,
-        type:         'game' as MediaType,
+        externalId:   `${mediaType}:${g.id}`,
+        type:         mediaType,
         format:       format || (g.category === 8 ? 'REMAKE' : g.category === 9 ? 'REMASTER' : 'GAME'),
         source:       'igdb' as const,
         titleMain:    cleanEditionTitle(g.name),
@@ -80,7 +86,7 @@ async function searchGamesByCategories(
     return { results, hasMore: pageResult.hasMore };
   }
 
-  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=game&page=${page}&${bundlesOnlyQueryParam}=true`;
+  const url = `${API_URL}/api/search/games?q=${encodeURIComponent(searchQuery)}&type=${mediaType}&page=${page}&${bundlesOnlyQueryParam}=true`;
   const response = await fetch(url, { signal });
   if (!response.ok) return { results: [], hasMore: false };
   const data = await response.json() as { results?: SearchResult[]; hasMore?: boolean };
@@ -88,18 +94,18 @@ async function searchGamesByCategories(
 }
 
 // IGDB category 3 (bundle) — the "Bundled In" relation picker.
-export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategories(searchQuery, signal, page, [3], 'BUNDLE', 'bundlesOnly');
+export async function searchGameBundles(searchQuery: string, signal: AbortSignal, page = 1, mediaType: MediaType = 'game'): Promise<SearchPage> {
+  return searchGamesByCategories(searchQuery, signal, page, [3], 'BUNDLE', 'bundlesOnly', mediaType);
 }
 
 // IGDB category 10 (expanded_game) — the "Contains" relation picker.
-export async function searchGameExpandedEditions(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategories(searchQuery, signal, page, [10], 'EXPANDED_GAME', 'expandedOnly');
+export async function searchGameExpandedEditions(searchQuery: string, signal: AbortSignal, page = 1, mediaType: MediaType = 'game'): Promise<SearchPage> {
+  return searchGamesByCategories(searchQuery, signal, page, [10], 'EXPANDED_GAME', 'expandedOnly', mediaType);
 }
 
 // IGDB categories 8 (remake) & 9 (remaster) — the "Contains" relation picker for remasters.
-export async function searchGameRemasters(searchQuery: string, signal: AbortSignal, page = 1): Promise<SearchPage> {
-  return searchGamesByCategories(searchQuery, signal, page, [8, 9], 'REMASTER', 'remastersOnly');
+export async function searchGameRemasters(searchQuery: string, signal: AbortSignal, page = 1, mediaType: MediaType = 'game'): Promise<SearchPage> {
+  return searchGamesByCategories(searchQuery, signal, page, [8, 9], 'REMASTER', 'remastersOnly', mediaType);
 }
 
 async function searchGamesLocal(

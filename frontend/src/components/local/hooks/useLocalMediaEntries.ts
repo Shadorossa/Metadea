@@ -4,12 +4,14 @@ import { isInProgressStatus } from '../../../lib/constants/media';
 import type { CategoryId } from '../utils/constants';
 
 // Maps a local-tab category to the media_catalog/library `type` column —
-// only categories listed here get their WHOLE tab replaced by the "your
-// works" grid. videojuegos keeps its own Steam/Epic/... scanner UI instead
-// (deliberately left out), but still pulls its own 'game'-typed pending
-// items in as a mixed-in section via useLocalMediaItemsByType directly —
-// see LocalLibrary's pendingGameItems.
+// every category gets its tab driven by the "your works" grid, status-
+// grouped (En progreso/Pendientes/...) same as the rest. videojuegos is no
+// exception now — LocalMediaSection's steamGames/pathCache props are what
+// keep its Steam-scanner identity (achievements, launch, scan/rescan)
+// inside that same status-grouped layout instead of the old separate
+// per-launcher grid.
 export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> = {
+  videojuegos:  'game',
   anime:        'anime',
   manga:        'manga',
   'light-novel': 'lnovel',

@@ -14,6 +14,15 @@ import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatter
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
+// Bundle children (see bundleChildren below) label as "Part I"/"Part II"
+// instead of their own full title — a bundle's own cover/title already
+// names it, so re-printing e.g. "The Great Ace Attorney 2: Resolve" in full
+// under a 64px thumbnail just wraps into an unreadable mess.
+const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+function toRoman(n: number): string {
+  return ROMAN_NUMERALS[n - 1] ?? String(n);
+}
+
 interface GameDetailPanelProps {
   game:           LocalGame;
   coverCache:     CoverCache;
@@ -233,12 +242,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           {bundleChildren.length > 0 ? (
             <div className="local-media-neighbors-row">
               <div className="local-media-neighbors-grid">
-                {bundleChildren.map(child => (
+                {bundleChildren.map((child, i) => (
                   <button key={child.externalId} type="button" className="local-media-neighbor-link" title={child.title} onClick={() => openMediaEditor(child.externalId)}>
                     {child.cover
                       ? <img className="local-media-neighbor-cover" src={child.cover} alt={child.title} />
                       : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                    <span className="local-media-neighbor-label">{child.title}</span>
+                    <span className="local-media-neighbor-label">Part {toRoman(i + 1)}</span>
                   </button>
                 ))}
               </div>
