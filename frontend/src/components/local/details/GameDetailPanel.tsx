@@ -89,15 +89,30 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
     setBundleChildren([]);
     if (!relationsExternalId) return;
     let cancelled = false;
-    getMediaRelationsForEditor(relationsExternalId).then(relations => {
+    getMediaRelationsForEditor(relationsExternalId).then(async relations => {
       if (cancelled) return;
       const children = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
       if (children.length > 0) {
         setBundleChildren(children.map(c => ({ externalId: c.related_media_external_id, title: c.title, cover: c.cover ?? null })));
         return;
       }
-      const prequel = relations.find(r => r.relation_type === 'PREQUEL');
-      const sequel = relations.find(r => r.relation_type === 'SEQUEL');
+      let prequel = relations.find(r => r.relation_type === 'PREQUEL');
+      let sequel = relations.find(r => r.relation_type === 'SEQUEL');
+      // A remaster/remake never carries its own PREQUEL/SEQUEL/CONTAINS —
+      // those live on the original it's an edition of (see PARENT, the
+      // reverse-direction label REMASTER/REMAKE gets recorded under on the
+      // edition's own side). Same "borrow the original's saga identity"
+      // fallback library-grouping.ts's refineSagaGroups already relies on
+      // for the profile grid, applied here for this neighbor row too.
+      if (!prequel && !sequel) {
+        const parent = relations.find(r => r.relation_type === 'PARENT');
+        if (parent) {
+          const parentRelations = await getMediaRelationsForEditor(parent.related_media_external_id).catch(() => []);
+          if (cancelled) return;
+          prequel = parentRelations.find(r => r.relation_type === 'PREQUEL');
+          sequel = parentRelations.find(r => r.relation_type === 'SEQUEL');
+        }
+      }
       if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
       if (sequel) setSequelInfo({ externalId: sequel.related_media_external_id, title: sequel.title, cover: sequel.cover ?? null });
     }).catch(() => {});
