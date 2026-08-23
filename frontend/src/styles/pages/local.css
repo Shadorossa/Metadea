@@ -690,19 +690,6 @@
   margin-bottom: 0.25rem;
 }
 
-.local-media-detail-icon-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.local-media-detail-play-row {
-  display: flex;
-  align-items: center;
-  margin-top: 0.25rem;
-}
-
 .local-media-detail-edit-icon,
 .local-media-detail-locate-btn,
 .local-media-detail-catalog-icon {
@@ -1101,24 +1088,6 @@
   color: var(--color-error);
 }
 
-.local-media-play-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.6rem;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-}
-
-.local-media-play-status--ok {
-  color: var(--color-completed);
-}
-
-.local-media-play-status .spinner--sm {
-  display: inline-block;
-  flex-shrink: 0;
-}
-
 .local-media-match-row {
   display: flex;
   align-items: center;
@@ -1294,60 +1263,14 @@
   background: linear-gradient(to bottom, transparent 0%, rgba(var(--bg-card-rgb, 25, 25, 39), 0.9) 100%);
 }
 
-.local-game-detail-close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-  color: white;
-  cursor: pointer;
-  transition: all var(--anim-base) var(--anim-ease);
-  z-index: 2;
-}
-
-.local-game-detail-close:hover {
-  background: rgba(0, 0, 0, 0.8);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-.local-game-detail-close svg {
-  width: 16px;
-  height: 16px;
-}
-
-.local-game-detail-edit {
-  position: absolute;
-  top: 0.75rem;
-  left: 3.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-  color: white;
-  cursor: pointer;
-  transition: all var(--anim-base) var(--anim-ease);
-  z-index: 2;
-}
-.local-game-detail-edit:hover {
-  background: rgba(0, 0, 0, 0.8);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
+/* Header's 3 circular buttons (back/edit/close) — identical box/colors,
+   only their position differs. One base rule + a position modifier each,
+   instead of the same declaration block copy-pasted 3 times. */
+.local-game-detail-close,
+.local-game-detail-edit,
 .local-game-detail-back {
   position: absolute;
   top: 0.75rem;
-  left: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1361,15 +1284,23 @@
   transition: all var(--anim-base) var(--anim-ease);
   z-index: 2;
 }
+
+.local-game-detail-close:hover,
+.local-game-detail-edit:hover,
 .local-game-detail-back:hover {
   background: rgba(0, 0, 0, 0.8);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
+.local-game-detail-close svg,
 .local-game-detail-back svg {
   width: 16px;
   height: 16px;
 }
+
+.local-game-detail-close { right: 0.75rem; }
+.local-game-detail-back  { left: 0.75rem; }
+.local-game-detail-edit  { left: 3.25rem; }
 
 /* ── IGDB Picker Modal ───────────────────────────────── */
 .igdb-picker-overlay {
@@ -1838,25 +1769,5 @@
   font-size: 0.68rem;
   color: var(--accent);
   margin-top: 0.15rem;
-}
-
-.local-game-detail-catalog-link {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: all var(--anim-base) var(--anim-ease);
-}
-.local-game-detail-catalog-link:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
