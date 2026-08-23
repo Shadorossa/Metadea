@@ -68,7 +68,7 @@
   gap: 0.5rem;
   padding: 0.65rem 1.25rem;
   background: color-mix(in srgb, var(--accent, #7c6af7) 15%, var(--bg-secondary, #1a1a2e));
-  color: var(--text-primary);
+  color: var(--text-main);
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 40%, transparent);
   border-radius: 0.5rem;
   font-size: 0.85rem;
@@ -1607,7 +1607,7 @@
 .me-header-title {
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--text-primary);
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1674,7 +1674,7 @@
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   border-radius: 0px;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 0.75rem;
   padding: 0.3rem 0.4rem;
   outline: none;
@@ -1797,7 +1797,7 @@
 .me-header-status-icon:hover,
 .me-header-icon-btn:hover {
   border-color: color-mix(in srgb, var(--accent, #7c6af7) 55%, transparent);
-  color: var(--text-primary);
+  color: var(--text-main);
 }
 .me-header-status-icon.active,
 .me-header-icon-btn.active {
@@ -1935,7 +1935,7 @@
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   border-radius: 0px;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 0.875rem;
   padding: 0.45rem 0.7rem;
   width: 100%;
@@ -1949,7 +1949,7 @@
   background: color-mix(in srgb, var(--accent, #7c6af7) 5%, rgba(255,255,255,0.04));
   border: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 18%, transparent);
   border-radius: 0px;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 0.875rem;
   padding: 0.55rem 0.7rem;
   width: 100%;
@@ -1982,7 +1982,7 @@
   align-items: center;
   gap: 0.2rem;
   background: color-mix(in srgb, var(--accent, #7c6af7) 22%, transparent);
-  color: var(--text-primary);
+  color: var(--text-main);
   border-radius: 0px;
   padding: 0.18rem 0.55rem;
   font-size: 0.78rem;
@@ -1997,13 +1997,13 @@
   font-size: 1rem;
   line-height: 1;
 }
-.me-tag-remove:hover { color: var(--text-primary); }
+.me-tag-remove:hover { color: var(--text-main); }
 
 .me-tag-input {
   background: none;
   border: none;
   outline: none;
-  color: var(--text-primary);
+  color: var(--text-main);
   font-size: 0.875rem;
   flex: 1;
   min-width: 100px;
@@ -2021,7 +2021,7 @@
   cursor: pointer;
   transition: all 0.15s;
   background: color-mix(in srgb, var(--accent, #7c6af7) 6%, transparent);
-  color: var(--text-primary);
+  color: var(--text-main);
   width: 100%;
 }
 .me-btn:disabled { opacity: 0.5; cursor: default; }
@@ -2048,7 +2048,7 @@
   font-size: 1.2rem;
 }
 .me-btn--close:hover:not(:disabled) {
-  color: var(--text-primary);
+  color: var(--text-main);
   border-color: color-mix(in srgb, var(--accent, #7c6af7) 55%, transparent);
   background: color-mix(in srgb, var(--accent, #7c6af7) 8%, transparent);
 }
@@ -2256,7 +2256,7 @@
 
 .me-year-arrow:hover {
   border-color: var(--accent);
-  color: var(--text-primary);
+  color: var(--text-main);
   background: rgba(255, 255, 255, 0.06);
 }
 

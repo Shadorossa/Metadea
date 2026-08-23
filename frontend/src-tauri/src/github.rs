@@ -177,7 +177,7 @@ pub async fn get_github_user_profile(token: String) -> Result<Value, String> {
                 }
             }
             Err(e) => {
-                last_err = format!("No se pudo conectar con GitHub. Comprueba tu conexión a internet.");
+                last_err = format!("No se pudo conectar con GitHub. Comprueba tu conexión a internet. ({e})");
             }
         }
     }
