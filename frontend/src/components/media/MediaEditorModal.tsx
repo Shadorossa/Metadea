@@ -531,6 +531,8 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         cover:        data.cover ?? null,
         rating:       activeLog.rating,
         ratingSystem: getActiveRatingSystem(),
+        year:         data.releaseYear,
+        genre:        data.genreDots?.split(' · ')[0],
       });
       const fileName = `${data.titleMain.replace(/[\\/:*?"<>|]/g, '')}.png`;
       await saveImageFile(dataUrl, fileName);
