@@ -1212,6 +1212,25 @@
   scrollbar-gutter: stable;
 }
 
+/* scrollbar-gutter:stable reserves this space even while there's nothing to
+   scroll yet — left unstyled, that reserved strip renders as the browser's
+   default (light/white) scrollbar track, which flashes against this dark
+   panel until real content grows tall enough to need it. Keeping the track
+   transparent and only coloring the thumb makes the reserved gutter
+   invisible whether or not it's actually scrollable. */
+.local-game-detail-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.local-game-detail-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.local-game-detail-panel::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
 
 
 .local-game-detail-header {
