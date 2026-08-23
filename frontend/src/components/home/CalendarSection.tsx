@@ -121,12 +121,22 @@ export function CalendarSection() {
   const t = getT();
   const p = isMounted ? t.profile : (getT().profile || t.profile);
 
+  // The real "today" — kept separate from the viewed month below so
+  // isToday/computeCalendarMonth still know which day is actually today
+  // even after the arrows navigate away from the current month.
   const now = useMemo(() => new Date(), []);
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-indexed
-  const currentMonthName = formatMonthYear(now);
-  // Covers the whole current month, not just today onward — a release
-  // calendar should show what already came out earlier this month too.
+  // Months away from the real current month — 0 is "this month", the
+  // arrows below just move this by ±1.
+  const [monthOffset, setMonthOffset] = useState(0);
+  const viewedDate = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth() + monthOffset, 1),
+    [now, monthOffset],
+  );
+  const currentYear = viewedDate.getFullYear();
+  const currentMonth = viewedDate.getMonth(); // 0-indexed
+  const currentMonthName = formatMonthYear(viewedDate);
+  // Covers the whole viewed month, not just today onward — a release
+  // calendar should show what already came out earlier in it too.
   const startOfMonth = useMemo(() => new Date(currentYear, currentMonth, 1), [currentYear, currentMonth]);
   const endOfMonth = useMemo(() => new Date(currentYear, currentMonth + 1, 0), [currentYear, currentMonth]);
 
@@ -156,6 +166,11 @@ export function CalendarSection() {
     return () => { cancelled = true; };
   }, [startOfMonth]);
 
+  // Cached generalReleases is only valid for the month it was fetched for —
+  // navigating to a different month via the arrows must invalidate it so
+  // the effect below actually re-fetches instead of keeping stale results.
+  useEffect(() => { setGeneralReleases(null); }, [startOfMonth]);
+
   useEffect(() => {
     if (mode !== 'general' || generalReleases !== null) return;
     let cancelled = false;
@@ -165,6 +180,10 @@ export function CalendarSection() {
     });
     return () => { cancelled = true; };
   }, [mode, generalReleases, startOfMonth, endOfMonth]);
+
+  // An open day popover doesn't carry over to whatever day number happens
+  // to line up in a different month.
+  useEffect(() => { setOpenDay(null); }, [startOfMonth]);
 
   // Click outside any day cell closes whichever popover is open — delegated
   // on the document (not each cell) so it also catches clicks on other
@@ -195,7 +214,25 @@ export function CalendarSection() {
     <div className="home-card">
       <div className="stats-calendar-header">
         <h3 className="home-card-title">{p.stats_calendar}</h3>
-        <span className="stats-calendar-month">{currentMonthName}</span>
+        <div className="stats-calendar-month-nav">
+          <button
+            type="button"
+            className="stats-calendar-month-arrow"
+            onClick={() => setMonthOffset(o => o - 1)}
+            aria-label="Mes anterior"
+          >
+            ‹
+          </button>
+          <span className="stats-calendar-month">{currentMonthName}</span>
+          <button
+            type="button"
+            className="stats-calendar-month-arrow"
+            onClick={() => setMonthOffset(o => o + 1)}
+            aria-label="Mes siguiente"
+          >
+            ›
+          </button>
+        </div>
       </div>
       <div className="home-calendar-controls">
         <div className="home-calendar-toggle">

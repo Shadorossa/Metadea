@@ -490,9 +490,14 @@ export function computeCalendarMonth(
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sunday, 1 = Monday
   const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
 
+  // Also checks year/month, not just the day-of-month number — otherwise
+  // navigating the calendar to a different month (see CalendarSection's
+  // month arrows) would wrongly highlight whatever day happens to share
+  // today's day-of-month number as "today".
+  const isCurrentMonth = currentYear === now.getFullYear() && currentMonth === now.getMonth();
   const days: CalendarDay[] = [];
   for (let day = 1; day <= totalDaysInMonth; day++) {
-    days.push({ day, isToday: day === now.getDate(), releases: releasesByDay[day] || [] });
+    days.push({ day, isToday: isCurrentMonth && day === now.getDate(), releases: releasesByDay[day] || [] });
   }
 
   return { days, startOffset };
