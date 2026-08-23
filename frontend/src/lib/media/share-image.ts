@@ -282,7 +282,11 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   // Year — small, muted, sitting close under the title (tight gap) so it
   // reads as part of the title block rather than the rating below it,
   // which keeps the same gap to whatever's above it either way.
-  const titleBottomY = titleY + lines.length * 68;
+  // (lines.length - 1): titleY is already the *first* line's own baseline
+  // (i=0 in the loop above draws there), so the last line drawn sits at
+  // titleY + (lines.length-1)*68 — using lines.length here added one whole
+  // extra line-height of dead space below a single-line title.
+  const titleBottomY = titleY + (lines.length - 1) * 68;
   let afterTitleY = titleBottomY + 40;
   if (opts.year) {
     ctx.font = '600 30px Georgia, serif';
