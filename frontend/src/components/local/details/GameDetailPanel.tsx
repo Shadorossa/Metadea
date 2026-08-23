@@ -3,7 +3,7 @@ import {
   readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
-  getMediaRelationsForEditor, type MediaCatalogEntry,
+  getMediaRelationsForEditor, igdbGetGameDetail, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
@@ -65,6 +65,27 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     if (game.launcher !== 'steam' || !game.app_id) { setAchievements(null); return; }
     steamGetPlayerAchievements(Number(game.app_id)).then(res => setAchievements(res || null));
   }, [game.app_id, game.launcher]);
+
+  // A "Pendiente" entry with no scanned install anywhere might still be
+  // buyable/viewable on Steam — IGDB's own external_games links (the same
+  // ones the /media page's own store-link row already surfaces) tell us
+  // that even without owning it. Only worth checking for knownExternalId
+  // entries: an actually-scanned game already IS its own Steam listing.
+  const [steamStoreUrl, setSteamStoreUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setSteamStoreUrl(null);
+    if (!knownExternalId) return;
+    const igdbId = Number(knownExternalId.split(':')[1]);
+    if (!igdbId) return;
+    let cancelled = false;
+    igdbGetGameDetail(igdbId).then(detail => {
+      if (cancelled || !detail) return;
+      const links = detail.store_links as { platform: string; url: string }[] | undefined;
+      const steam = links?.find(l => l.platform === 'steam');
+      if (steam) setSteamStoreUrl(steam.url);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [knownExternalId]);
 
   const [catalogEntry,  setCatalogEntry]  = useState<MediaCatalogEntry | null>(null);
 
@@ -263,10 +284,16 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
           <div className="local-media-left-col">
             <button
               className="local-game-detail-play"
-              disabled={!canLaunch}
-              title={canLaunch ? undefined : t.local.not_installed}
+              disabled={!canLaunch && !steamStoreUrl}
+              title={canLaunch || steamStoreUrl ? undefined : t.local.not_installed}
               onClick={() => {
-                if (!canLaunch) return;
+                if (!canLaunch) {
+                  // Nothing to launch, but it IS buyable/viewable on Steam
+                  // (see the steamStoreUrl effect above) — same "Ver en
+                  // Steam" pattern this app already uses for external links.
+                  if (steamStoreUrl) window.open(steamStoreUrl, '_blank', 'noopener,noreferrer');
+                  return;
+                }
                 launchGame(game.launcher, game.app_id, game.install_path)
                   .then(() => {
                     setHasLaunched(true);
@@ -284,7 +311,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              {canLaunch ? 'Jugar' : t.local.not_installed}
+              {canLaunch ? 'Jugar' : steamStoreUrl ? t.local.view_on_steam : t.local.not_installed}
             </button>
 
             <div className="local-media-divider-line" />

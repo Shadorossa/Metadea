@@ -659,6 +659,7 @@ export const ca = {
     locate_manually: 'Localitza manualment',
     steam_backlog: 'Backlog de Steam',
     not_installed: 'No instal·lat',
+    view_on_steam: 'Veure a Steam',
     locate_choose_folder: 'Tria carpeta',
     locate_choose_file: 'Tria un fitxer solt',
     delete_history_entry: "Elimina l'entrada",

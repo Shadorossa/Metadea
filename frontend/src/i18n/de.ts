@@ -659,6 +659,7 @@ export const de = {
     locate_manually: 'Manuell lokalisieren',
     steam_backlog: 'Steam-Backlog',
     not_installed: 'Nicht installiert',
+    view_on_steam: 'Auf Steam ansehen',
     locate_choose_folder: 'Ordner wählen',
     locate_choose_file: 'Einzelne Datei wählen',
     delete_history_entry: 'Eintrag löschen',

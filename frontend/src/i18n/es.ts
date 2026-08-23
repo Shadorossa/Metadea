@@ -680,6 +680,7 @@ export const es = {
     locate_manually: 'Localizar manualmente',
     steam_backlog: 'Backlog de Steam',
     not_installed: 'No instalado',
+    view_on_steam: 'Ver en Steam',
     locate_choose_folder: 'Elegir carpeta',
     locate_choose_file: 'Elegir un archivo suelto',
     delete_history_entry: 'Eliminar entrada',
