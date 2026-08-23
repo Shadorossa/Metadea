@@ -303,7 +303,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
     ctx.drawImage(cover, sx, sy, sw, sh, posterX, posterY, posterW, posterH);
     ctx.restore();
     ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.2;
     ctx.strokeRect(posterX, posterY, posterW, posterH);
   } else {
     ctx.fillStyle = theme.bgElevated;
