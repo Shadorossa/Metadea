@@ -658,6 +658,7 @@ export const it = {
     select_igdb_game: 'Seleziona gioco su IGDB',
     locate_manually: 'Individua manualmente',
     steam_backlog: 'Backlog di Steam',
+    not_installed: 'Non installato',
     locate_choose_folder: 'Scegli cartella',
     locate_choose_file: 'Scegli un file singolo',
     delete_history_entry: 'Elimina voce',

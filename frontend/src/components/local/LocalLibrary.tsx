@@ -61,7 +61,15 @@ export default function LocalLibrary() {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
-  const [selectedGame,   setSelectedGame]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
+  const [selectedGameRaw,   setSelectedGameRaw]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
+  // A "Pendiente" entry with no scanned Steam/Epic/... install still opens
+  // this same panel (per the user's own framing: "no que te envíe a su
+  // media page") — GameDetailPanel builds a synthetic, unlaunchable
+  // LocalGame for it below (see openPendingItem).
+  const [selectedPendingItem, setSelectedPendingItem] = useState<LocalMediaItem | null>(null);
+  const setSelectedGame = (g: (typeof selectedGameRaw)) => { setSelectedGameRaw(g); if (g) setSelectedPendingItem(null); };
+  const openPendingItem = (item: LocalMediaItem) => { setSelectedPendingItem(item); setSelectedGameRaw(null); };
+  const selectedGame = selectedGameRaw;
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
@@ -368,7 +376,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             onMetaRefresh={refreshMeta}
           />
         ) : (
-        <div className={`local-games-container${selectedGame ? ' with-detail' : ''}`}>
+        <div className={`local-games-container${(selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
           <div className="local-main-content">
 
             {/* ── Games view ─────────────────────────────────────────────────── */}
@@ -414,7 +422,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       {planningEntries.map((entry, i) => entry.kind === 'game' ? (
                         <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={it => { window.location.href = `/media?id=${it.externalId}`; }} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={openPendingItem} />
                       ))}
                     </div>
                   </div>
@@ -554,6 +562,16 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
               coverCache={coverCache}
               onClose={() => setSelectedGame(null)}
               onMetaRefresh={refreshMeta}
+            />
+          )}
+
+          {selectedPendingItem && (
+            <GameDetailPanel
+              game={{ name: selectedPendingItem.title, launcher: 'local' }}
+              coverCache={{}}
+              knownExternalId={selectedPendingItem.externalId}
+              fallbackCover={selectedPendingItem.cover}
+              onClose={() => setSelectedPendingItem(null)}
             />
           )}
         </div>

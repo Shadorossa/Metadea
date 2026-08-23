@@ -658,6 +658,7 @@ export const ru = {
     select_igdb_game: 'Выбрать игру в IGDB',
     locate_manually: 'Найти вручную',
     steam_backlog: 'Бэклог Steam',
+    not_installed: 'Не установлено',
     locate_choose_folder: 'Выбрать папку',
     locate_choose_file: 'Выбрать отдельный файл',
     delete_history_entry: 'Удалить запись',

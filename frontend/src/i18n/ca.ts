@@ -658,6 +658,7 @@ export const ca = {
     select_igdb_game: 'Seleccionar joc a IGDB',
     locate_manually: 'Localitza manualment',
     steam_backlog: 'Backlog de Steam',
+    not_installed: 'No instal·lat',
     locate_choose_folder: 'Tria carpeta',
     locate_choose_file: 'Tria un fitxer solt',
     delete_history_entry: "Elimina l'entrada",

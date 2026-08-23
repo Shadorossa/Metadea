@@ -28,9 +28,19 @@ interface GameDetailPanelProps {
   coverCache:     CoverCache;
   onClose:        () => void;
   onMetaRefresh?: () => void;
+  // Set when this panel is opened for a catalog-tracked "Pendiente" entry
+  // that isn't actually a scanned Steam/Epic/... install (no app_id to
+  // resolve an igdb_id from) — the real external_id is already known from
+  // the library/catalog row itself, so catalogEntry/relations resolve
+  // directly from it instead of guessing via readGameInfo(app_id).
+  knownExternalId?: string;
+  // Same reasoning for the header art — coverCache is keyed by app_id,
+  // which a non-Steam pending entry doesn't have; falls back to whatever
+  // cover the catalog entry itself already has.
+  fallbackCover?: string | null;
 }
 
-export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: GameDetailPanelProps) {
+export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, knownExternalId, fallbackCover }: GameDetailPanelProps) {
   const t = getT();
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
@@ -63,13 +73,17 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   // alone silently missed every VN, which is exactly what made this panel's
   // own PREQUEL/SEQUEL lookup below come up empty for e.g. Higurashi.
   useEffect(() => {
+    if (knownExternalId) {
+      getCatalogEntry(knownExternalId).then(setCatalogEntry).catch(() => setCatalogEntry(null));
+      return;
+    }
     if (!gameInfo?.igdb_id) { setCatalogEntry(null); return; }
     const igdbId = gameInfo.igdb_id;
     Promise.all([
       getCatalogEntry(`game:${igdbId}`).catch(() => null),
       getCatalogEntry(`vnovel:${igdbId}`).catch(() => null),
     ]).then(([g, v]) => setCatalogEntry(g ?? v ?? null));
-  }, [gameInfo?.igdb_id]);
+  }, [gameInfo?.igdb_id, knownExternalId]);
 
   // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
   // anime/manga/etc. — a Steam game's real catalog identity is whatever
@@ -82,7 +96,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   // (The Great Ace Attorney / 2: Resolve). Same neighbor row, just showing
   // "what's inside this bundle" instead of "what comes before/after it".
   const [bundleChildren, setBundleChildren] = useState<{ externalId: string; title: string; cover: string | null }[]>([]);
-  const relationsExternalId = catalogEntry?.external_id ?? (gameInfo?.igdb_id ? `game:${gameInfo.igdb_id}` : undefined);
+  const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? `game:${gameInfo.igdb_id}` : undefined);
   useEffect(() => {
     setPrequelInfo(null);
     setSequelInfo(null);
@@ -149,7 +163,12 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
   };
 
   const entry      = game.app_id ? coverCache[game.app_id] : undefined;
-  const banner     = entry?.banner ?? entry?.cover ?? null;
+  const banner     = entry?.banner ?? entry?.cover ?? fallbackCover ?? null;
+  // A "Pendiente" entry with no real Steam/Epic/... install has nothing to
+  // launch — the button still shows (same layout every other game gets)
+  // but disabled, instead of silently failing a launchGame call with no
+  // app_id/install_path.
+  const canLaunch  = !!game.app_id || !!game.install_path;
   const metaDots   = [formatDate(gameInfo?.release_date ?? undefined), gameInfo?.genres?.join(', ')].filter(Boolean).join('  ·  ');
 
   const handleEdit = () => {
@@ -227,24 +246,30 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
 
         <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
           <div className="local-media-left-col">
-            <button className="local-game-detail-play" onClick={() => {
-              launchGame(game.launcher, game.app_id, game.install_path)
-                .then(() => {
-                  setHasLaunched(true);
-                  const startTime = Math.floor(Date.now() / 1000);
-                  const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
-                    ? catalogEntry.cover_url
-                    : (banner && banner.startsWith('http'))
-                    ? banner
-                    : undefined;
-                  updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
-                })
-                .catch(console.error);
-            }}>
+            <button
+              className="local-game-detail-play"
+              disabled={!canLaunch}
+              title={canLaunch ? undefined : t.local.not_installed}
+              onClick={() => {
+                if (!canLaunch) return;
+                launchGame(game.launcher, game.app_id, game.install_path)
+                  .then(() => {
+                    setHasLaunched(true);
+                    const startTime = Math.floor(Date.now() / 1000);
+                    const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
+                      ? catalogEntry.cover_url
+                      : (banner && banner.startsWith('http'))
+                      ? banner
+                      : undefined;
+                    updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
+                  })
+                  .catch(console.error);
+              }}
+            >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
-              Jugar
+              {canLaunch ? 'Jugar' : t.local.not_installed}
             </button>
 
             <div className="local-media-divider-line" />
