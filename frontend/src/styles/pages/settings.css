@@ -225,6 +225,13 @@
 .font-picker {
   display: flex;
   flex-direction: column;
+  /* Fills .settings-section--display-name's own stretched height (see
+     .profile-media-row's align-items:stretch) instead of just its natural
+     content height — without this, the name box's border ended well above
+     the photo/banner columns' own bottom edge, reading as visibly shorter
+     even though the column itself was the same height all along. */
+  flex: 1;
+  justify-content: space-between;
   gap: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);

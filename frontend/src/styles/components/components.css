@@ -323,6 +323,58 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+/* ── List action buttons (shared) ────────────────────────────────────────────
+   Used by ListsSection.tsx (profile page) and ImageCropModal.tsx's own
+   Cancelar/Guardar/Quitar actions — moved here from profile.css since the
+   crop modal is a genuinely shared, cross-page component (Settings' avatar
+   editors, the character/story-arc photo pickers, ...), several of which
+   don't load profile.css at all, which used to leave these three buttons
+   completely unstyled (bare browser defaults) wherever that was true. */
+.list-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+
+.list-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.list-btn--primary:hover {
+  opacity: 0.85;
+}
+
+.list-btn--ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border-color);
+}
+
+.list-btn--ghost:hover {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.list-btn--danger {
+  background: transparent;
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.list-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
 /* ── Image crop modal (shared) ──────────────────────────────────────────────
    Generic pan/zoom image picker — used by the profile Favorites custom-image
    editor (persists the crop) and the character photo editor (visual picker

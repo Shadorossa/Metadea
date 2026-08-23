@@ -3299,51 +3299,6 @@
   margin-top: 0.25rem;
 }
 
-.list-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: opacity 0.12s, background 0.12s;
-  white-space: nowrap;
-}
-
-.list-btn--primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.list-btn--primary:hover {
-  opacity: 0.85;
-}
-
-.list-btn--ghost {
-  background: transparent;
-  color: var(--text-muted);
-  border-color: var(--border-color);
-}
-
-.list-btn--ghost:hover {
-  color: var(--text-main);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.list-btn--danger {
-  background: transparent;
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.list-btn--danger:hover {
-  background: rgba(239, 68, 68, 0.08);
-}
-
 .list-detail-layout {
   display: flex;
   flex-direction: column;
