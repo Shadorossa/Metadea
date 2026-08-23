@@ -989,16 +989,29 @@
 .local-media-history {
   margin-top: 1.25rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--border-color);
 }
 
+/* "HISTORIAL" centered directly on the dividing line itself (flanked by two
+   flex-grown rule segments) instead of a separate border-top with the label
+   sitting underneath it. */
 .local-media-history-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-dim);
   margin-bottom: 0.6rem;
+}
+
+.local-media-history-title::before,
+.local-media-history-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
 }
 
 .local-media-history-feed {
@@ -1110,6 +1123,12 @@
   flex-wrap: wrap;
   padding: 0;
   font-size: 0.78rem;
+  /* Same reasoning as .local-game-detail-bottom above — .local-media-left-col's
+     align-items:flex-start otherwise shrinks this to its own content width,
+     which left the margin-left:auto below only pushing the edit/catalog
+     icons to the edge of that shrunk box instead of all the way to the
+     neighbors column (Precuela/Secuela) next to it. */
+  width: 100%;
 }
 
 /* Edit-log/"Ver en catálogo" group — pinned to the row's far right edge
