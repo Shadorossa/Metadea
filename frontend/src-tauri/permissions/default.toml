@@ -154,6 +154,16 @@ commands.allow = [
   "get_story_arcs_for_media_batch",
   "save_story_arc",
   "reorder_story_arcs",
-  "delete_story_arc"
+  "delete_story_arc",
+  "get_media_episodes",
+  "save_media_episodes",
+  "clear_all_ratings",
+  "get_reclassified_external_ids",
+  "hydrate_social_profile",
+  "get_social_library",
+  "get_social_activity",
+  "get_social_monthly_history",
+  "get_social_lists",
+  "get_social_list_items"
 ]
 
