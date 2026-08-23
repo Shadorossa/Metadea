@@ -33,10 +33,22 @@ async function fetchFromAniList(numericId: number, externalId: string): Promise<
   });
 }
 
-async function fetchFromTmdb(numericId: number, externalId: string): Promise<MediaEpisode[]> {
-  const detail = await fetchTmdbDetail(numericId, 'series') as TmdbTvDetail | null;
-  if (!detail?.number_of_seasons) return [];
-  const episodes = await fetchTmdbEpisodes(numericId, detail.number_of_seasons);
+// knownSeasonCount comes from the main media page's own already-fetched
+// TmdbTvDetail (mapped to MediaPageData.totalCount_2 for series — see
+// tmdb-mapper.ts) whenever the caller has it. Falling back to a fresh
+// fetchTmdbDetail() call only when it doesn't (e.g. a cache-hit episodes
+// read that never had that data to begin with) — this used to always
+// re-fetch the FULL detail request (append_to_response=credits,
+// recommendations,content_ratings and all) a second time purely to read
+// one field the page had already fetched moments earlier.
+async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonCount?: number): Promise<MediaEpisode[]> {
+  let seasonCount = knownSeasonCount;
+  if (!seasonCount) {
+    const detail = await fetchTmdbDetail(numericId, 'series') as TmdbTvDetail | null;
+    seasonCount = detail?.number_of_seasons ?? undefined;
+  }
+  if (!seasonCount) return [];
+  const episodes = await fetchTmdbEpisodes(numericId, seasonCount);
   return episodes.map(ep => ({ ...ep, external_id: externalId }));
 }
 
@@ -49,7 +61,7 @@ async function fetchFromTmdb(numericId: number, externalId: string): Promise<Med
 // table existed gets its episodes backfilled: its cache is empty so a plain
 // visit would already fetch fresh, but force lets the button refresh a
 // title that's since gotten new episodes too, not just a never-fetched one.
-export async function fetchMediaEpisodes(rawId: string, force = false): Promise<MediaEpisode[]> {
+export async function fetchMediaEpisodes(rawId: string, force = false, knownSeasonCount?: number): Promise<MediaEpisode[]> {
   if (!force) {
     const cached = await getMediaEpisodes(rawId).catch(() => []);
     if (cached.length > 0) return cached;
@@ -62,7 +74,7 @@ export async function fetchMediaEpisodes(rawId: string, force = false): Promise<
   if (type === 'anime') {
     fresh = await fetchFromAniList(numericId, rawId).catch(() => []);
   } else if (type === 'series') {
-    fresh = await fetchFromTmdb(numericId, rawId).catch(() => []);
+    fresh = await fetchFromTmdb(numericId, rawId, knownSeasonCount).catch(() => []);
   } else {
     return [];
   }

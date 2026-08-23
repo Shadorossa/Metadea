@@ -543,7 +543,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         }
 
         if (full.type === 'anime' || full.type === 'series') {
-          fetchMediaEpisodes(currentId).then(eps => {
+          // totalCount_2 is already this series' season count (see
+          // tmdb-mapper.ts) — passing it through skips fetchMediaEpisodes
+          // re-fetching TMDB's full detail request a second time just to
+          // read that one field back.
+          fetchMediaEpisodes(currentId, false, full.type === 'series' ? full.totalCount_2 : undefined).then(eps => {
             if (cancelled || eps.length === 0) return;
             setEpisodes(eps);
           }).catch(console.error);
@@ -666,14 +670,19 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     invalidateCachedMediaData(currentId);
     fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
       if (fresh) setData(fresh);
+      // Chained off the fresh fetch (not fired alongside it) so a series'
+      // already-known season count (totalCount_2) can be passed through —
+      // same duplicate-TMDB-detail-request avoidance as the main load
+      // effect above, otherwise this ran its own full TMDB detail fetch in
+      // parallel with the one fetchMediaData just made.
+      // Forced (not the cache-checked default) so this also backfills a
+      // series/anime that was saved before the Episodios tab existed — and
+      // refreshes one that's already had episodes fetched but has since
+      // aired new ones, which a plain revisit wouldn't do on its own.
+      fetchMediaEpisodes(currentId, true, fresh?.type === 'series' ? fresh.totalCount_2 : undefined).then(eps => {
+        if (eps.length > 0) setEpisodes(eps);
+      }).catch(console.error);
     }).finally(() => setRetryingSync(false));
-    // Forced (not the cache-checked default) so this also backfills a
-    // series/anime that was saved before the Episodios tab existed — and
-    // refreshes one that's already had episodes fetched but has since aired
-    // new ones, which a plain revisit wouldn't do on its own.
-    fetchMediaEpisodes(currentId, true).then(eps => {
-      if (eps.length > 0) setEpisodes(eps);
-    }).catch(console.error);
   }, [currentId, retryingSync]);
 
   // Closing without saving: roll back any optimistic quick-click draft to
