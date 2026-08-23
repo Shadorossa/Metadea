@@ -134,10 +134,22 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 // background) was reading as a small sticker adrift on a lot of empty
 // canvas rather than an actual photo, since contain-fit never cropped
 // anything and left whatever blank margins the source image itself had.
-function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, floorY: number, size: number) {
+function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElement, cx: number, floorY: number, size: number, ringColor: string) {
   const x = cx - size / 2;
   const y = floorY - size;
   const radius = size * 0.08;
+
+  // Accent ring — a separate frame sitting just outside the card, not the
+  // card's own edge — same idea as Instagram's own colored story ring
+  // around a profile picture, ties the avatar to the app's theme instead
+  // of being a plain unbranded cutout.
+  const ringPad = 5;
+  ctx.save();
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 4;
+  roundedRectPath(ctx, x - ringPad, y - ringPad, size + ringPad * 2, size + ringPad * 2, radius + ringPad);
+  ctx.stroke();
+  ctx.restore();
 
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.45)';
@@ -308,13 +320,16 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   // further to a letter-in-a-circle (same idea as the navbar/settings
   // preview's own fallback) whenever both are empty or the image fails to
   // load, so the avatar slot is never just silently blank. Sits fully
-  // above the poster (not overlapping it).
+  // Straddles the poster's own top edge (its vertical center sits exactly
+  // on posterY) instead of floating well above it with empty canvas on
+  // every side — reads as a badge attached to the cover, not an unrelated
+  // element parked above it.
   const avatarSrc = localStorage.getItem('share_avatar_cache') || localStorage.getItem('profile_avatar_cache');
-  const avatarSize = 160;
-  const avatarFloorY = posterY - 40;
+  const avatarSize = 110;
+  const avatarFloorY = posterY + avatarSize / 2;
   const avatar = avatarSrc ? await resolveImage(avatarSrc) : null;
   if (avatar) {
-    drawAvatarPhotoCard(ctx, avatar, WIDTH / 2, avatarFloorY, avatarSize);
+    drawAvatarPhotoCard(ctx, avatar, WIDTH / 2, avatarFloorY, avatarSize, theme.accent);
   } else {
     const username = localStorage.getItem('auth_username') || 'M';
     drawAvatarFallback(ctx, username[0] ?? 'M', WIDTH / 2, avatarFloorY, avatarSize, theme.accent);
