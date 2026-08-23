@@ -309,6 +309,13 @@
   font-weight: 700;
   flex: 1;
 }
+
+/* "Foto específica" only (see initShareAvatar) — clicking the empty box
+   itself jumps straight to the OS file picker, so it needs to actually
+   read as clickable instead of a dead placeholder. */
+.avatar-preview-wrap--empty {
+  cursor: pointer;
+}
 .avatar-preview-wrap img {
   max-width: 100%;
   max-height: 100%;

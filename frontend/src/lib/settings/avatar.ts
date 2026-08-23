@@ -50,19 +50,20 @@ export function initShareAvatar(showToast: (msg?: string) => void) {
   const removeBtn = document.getElementById('share-avatar-remove-btn');
   if (!preview) return;
 
+  let hasPhoto = false;
+
   function render(src: string | null) {
+    hasPhoto = !!src;
+    preview!.classList.toggle('avatar-preview-wrap--empty', !hasPhoto);
     preview!.innerHTML = src
       ? `<img src="${src}" alt="">`
       : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>';
   }
 
-  getImage(STORAGE_KEYS.shareAvatarCustom).then(render);
-
-  uploadBtn?.addEventListener('click', async () => {
-    const existing = await getImage(STORAGE_KEYS.shareAvatarCustom);
+  async function openEditor(initialUrl: string) {
     const result = await openImageCropModal({
       title: 'Foto específica',
-      initialUrl: existing ?? '',
+      initialUrl,
       aspectRatio: 1,
       saveLabel: 'Usar esta imagen',
     });
@@ -71,6 +72,34 @@ export function initShareAvatar(showToast: (msg?: string) => void) {
     if (!ok) { showToast('Error: no se pudo guardar'); return; }
     render(result.imageUrl);
     showToast();
+  }
+
+  getImage(STORAGE_KEYS.shareAvatarCustom).then(render);
+
+  uploadBtn?.addEventListener('click', async () => {
+    const existing = await getImage(STORAGE_KEYS.shareAvatarCustom);
+    openEditor(existing ?? '');
+  });
+
+  // Clicking the empty preview itself is a shortcut straight to the OS
+  // file picker, then into the same crop editor above — pasting/dragging a
+  // URL onto the modal isn't the obvious first move when there's nothing
+  // to preview yet and the box is just sitting there empty.
+  preview.addEventListener('click', () => {
+    if (hasPhoto) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') openEditor(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+    input.click();
   });
 
   removeBtn?.addEventListener('click', async () => {
