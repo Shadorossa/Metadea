@@ -594,7 +594,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                           <span className="local-launcher-count">{list.length} juego{list.length !== 1 ? 's' : ''}</span>
                         </div>
                         {idx === 0 && (
-                          <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'}>
+                          <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'}>
                             <IconRefresh />
                           </button>
                         )}

@@ -489,6 +489,18 @@
 
 .local-refresh-btn svg { width: 14px; height: 14px; }
 
+/* The per-launcher-section resync button (next to "Steam · N juegos") —
+   plain icon, no bordered box, unlike the toolbar refresh/folder buttons
+   .local-refresh-btn is also used for elsewhere on this page. */
+.local-launcher-refresh-btn {
+  border: none;
+  background: transparent;
+}
+
+.local-launcher-refresh-btn:hover:not(:disabled) {
+  background: transparent;
+}
+
 /* ── State placeholder ───────────────────────────────────────────────────────── */
 
 .local-state-placeholder {
