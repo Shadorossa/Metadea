@@ -16,7 +16,6 @@ export interface ShareImageOptions {
   rating:       number; // 0-10 internal scale
   ratingSystem: RatingSystem;
   year?:        number; // release year — shown under the title
-  genre?:       string; // top genre only — a small, discreet line under the year
 }
 
 const WIDTH = 1080;
@@ -280,23 +279,17 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
   const lines = wrapText(ctx, opts.title, WIDTH - 160).slice(0, 2);
   lines.forEach((line, i) => ctx.fillText(line, WIDTH / 2, titleY + i * 68));
 
-  // Year + top genre — small, muted lines under the title, each optional
-  // on its own (a work can have one, both, or neither) so the rating below
-  // always lands right after whatever's actually shown, no dead gap.
-  let cursorY = titleY + lines.length * 68 + 40;
+  // Year — small, muted, sitting close under the title (tight gap) so it
+  // reads as part of the title block rather than the rating below it,
+  // which keeps the same gap to whatever's above it either way.
+  const titleBottomY = titleY + lines.length * 68;
+  let afterTitleY = titleBottomY + 40;
   if (opts.year) {
     ctx.font = '600 30px Georgia, serif';
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillText(String(opts.year), WIDTH / 2, cursorY);
-    cursorY += 44;
+    ctx.fillText(String(opts.year), WIDTH / 2, titleBottomY + 24);
+    afterTitleY = titleBottomY + 24 + 40;
   }
-  if (opts.genre) {
-    ctx.font = '400 24px Georgia, serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillText(opts.genre.toUpperCase(), WIDTH / 2, cursorY);
-    cursorY += 46;
-  }
-  const afterTitleY = cursorY;
 
   if (opts.ratingSystem === '5-star') {
     // Smaller and more muted than the title/poster — a rating accent, not
