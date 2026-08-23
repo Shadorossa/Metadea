@@ -291,49 +291,6 @@ export default function LocalLibrary() {
       catalogEntry: parentCatalog,
     };
   }, [catalogMapById]);
-  // Last-resort fallback when no exact-normalized-title match exists at
-  // all — some editions (e.g. GTA IV vs "GTA IV: The Complete Edition")
-  // have no catalog relation linking them whatsoever, so there's nothing
-  // more precise to go on than the names themselves. Plain substring
-  // containment alone isn't enough of a gate, though — "Final Fantasy VII"
-  // is also a substring of "Final Fantasy VII Remake"/"Revelations", which
-  // are different games entirely, not editions of the same one. Only
-  // matches when the EXTRA words (whatever the longer title has that the
-  // shorter one doesn't) are actual edition/release-type wording, not just
-  // any trailing words at all.
-  const EDITION_KEYWORDS = new Set([
-    'complete', 'definitive', 'deluxe', 'goty', 'edition', 'directors', 'cut',
-    'remastered', 'remaster', 'enhanced', 'special', 'anniversary', 'redux',
-    'hd', 'collection', 'ultimate', 'gold', 'the',
-  ]);
-  const findClosestGame = React.useCallback((titles: string[]): LocalGame | undefined => {
-    const gamesList = Array.isArray(games) ? games : [];
-    let best: { game: LocalGame; score: number } | undefined;
-    for (const tt of titles) {
-      const normTitle = normalizeForMatch(tt);
-      const titleTokens = normTitle.split(' ').filter(Boolean);
-      if (titleTokens.length === 0) continue;
-      const titleTokenSet = new Set(titleTokens);
-      for (const g of gamesList) {
-        const normName = normalizeForMatch(g.name);
-        const nameTokens = normName.split(' ').filter(Boolean);
-        const nameTokenSet = new Set(nameTokens);
-        const [shorterTokens, longerTokenSet, isContained] = titleTokens.length <= nameTokens.length
-          ? [titleTokens, nameTokenSet, normName.includes(normTitle)]
-          : [nameTokens, titleTokenSet, normTitle.includes(normName)];
-        if (!isContained) continue;
-        const extraTokens = [...longerTokenSet].filter(tok => !new Set(shorterTokens).has(tok));
-        // Same title exactly (no extra words at all) still counts — only
-        // reject when there ARE extra words and none of them read as an
-        // edition/release descriptor.
-        if (extraTokens.length > 0 && !extraTokens.some(tok => EDITION_KEYWORDS.has(tok))) continue;
-        const overlap = nameTokens.filter(tok => titleTokenSet.has(tok)).length;
-        const score = overlap / Math.max(titleTokens.length, nameTokens.length);
-        if (!best || score > best.score) best = { game: g, score };
-      }
-    }
-    return best?.game;
-  }, [games]);
   // Shared by both the "En progreso" and "Pendientes" status sections — a
   // catalog-tracked 'game' entry with the matching status that the scanner
   // never found installed anywhere still gets one more chance to resolve
@@ -357,12 +314,18 @@ export default function LocalLibrary() {
     const seen = new Set<string>();
     const deduped = filtered.filter(i => (seen.has(i.externalId) ? false : (seen.add(i.externalId), true)));
     return deduped.map((item): StatusEntry => {
+      // Strictly exact (normalized) title match only — no similarity/
+      // substring guessing. That was catching real look-alikes (GTA IV vs
+      // its Complete Edition) but also merging completely unrelated games
+      // that happened to share a word or a stray short token (e.g. a
+      // native-script title collapsing to just "3" after normalization
+      // matched ANY game with a "3" in its name — Bayonetta 3 → Yakuza 3
+      // Remastered). Not worth the false-positive risk.
       const titles = [item.title, item.titleRomaji, item.titleNative].filter((s): s is string => !!s);
-      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean)
-        ?? findClosestGame(titles);
+      const matchedGame = titles.map(tt => gamesByNormalizedName.get(normalizeForMatch(tt))).find(Boolean);
       return matchedGame ? { kind: 'game', game: matchedGame } : { kind: 'catalog', item };
     });
-  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName, findClosestGame]);
+  }, [pendingGameItems, resolveSourceItem, ownedExternalIds, vnovelExternalIds, filterName, gamesByNormalizedName]);
   const currentlyEntries: StatusEntry[] = [
     ...filterGames(statusBuckets.currently).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(isInProgressStatus),
