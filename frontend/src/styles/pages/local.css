@@ -1490,12 +1490,14 @@
   margin-top: 0.15rem;
 }
 
+/* Sits below .local-media-divider-line now (added so GameDetailPanel could
+   reuse the same play-button/divider/neighbors layout LocalMediaDetailPanel
+   already had) — its own border-bottom would just double up right under
+   that divider, so this only owns the row's internal spacing now. */
 .local-game-detail-bottom {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
 }
 

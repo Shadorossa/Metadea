@@ -3,12 +3,12 @@ import {
   readGameInfo, steamGetPlayerAchievements, launchGame,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
-  type MediaCatalogEntry,
+  getMediaRelationsForEditor, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
-import { IconX, IconMonitor, IconPencil } from '../ui/icons';
+import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatters';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
@@ -56,6 +56,32 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
       setCatalogEntry(null);
     }
   }, [gameInfo?.igdb_id]);
+
+  // Same prequel/sequel neighbor row LocalMediaDetailPanel shows for
+  // anime/manga/etc. — a Steam game's real catalog identity is whatever
+  // getCatalogEntry above actually resolved (falls back to "game:<id>" only
+  // when that lookup found nothing, e.g. before it resolves on first mount).
+  const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
+  const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
+  const relationsExternalId = catalogEntry?.external_id ?? (gameInfo?.igdb_id ? `game:${gameInfo.igdb_id}` : undefined);
+  useEffect(() => {
+    setPrequelInfo(null);
+    setSequelInfo(null);
+    if (!relationsExternalId) return;
+    let cancelled = false;
+    getMediaRelationsForEditor(relationsExternalId).then(relations => {
+      if (cancelled) return;
+      const prequel = relations.find(r => r.relation_type === 'PREQUEL');
+      const sequel = relations.find(r => r.relation_type === 'SEQUEL');
+      if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
+      if (sequel) setSequelInfo({ externalId: sequel.related_media_external_id, title: sequel.title, cover: sequel.cover ?? null });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [relationsExternalId]);
+
+  const openMediaEditor = (externalId: string) => {
+    window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
+  };
 
   const entry      = game.app_id ? coverCache[game.app_id] : undefined;
   const banner     = entry?.banner ?? entry?.cover ?? null;
@@ -118,67 +144,96 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh }: Ga
           )}
         </div>
 
-        <div className="local-game-detail-bottom">
-          <button className="local-game-detail-play" onClick={() => {
-            launchGame(game.launcher, game.app_id, game.install_path)
-              .then(() => {
-                setHasLaunched(true);
-                const startTime = Math.floor(Date.now() / 1000);
-                const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
-                  ? catalogEntry.cover_url
-                  : (banner && banner.startsWith('http'))
-                  ? banner
-                  : undefined;
-                updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
-              })
-              .catch(console.error);
-          }}>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            Jugar
-          </button>
+        <div className={`local-media-info-row${(prequelInfo || sequelInfo) ? ' local-media-info-row--has-neighbors' : ''}`}>
+          <div className="local-media-left-col">
+            <button className="local-game-detail-play" onClick={() => {
+              launchGame(game.launcher, game.app_id, game.install_path)
+                .then(() => {
+                  setHasLaunched(true);
+                  const startTime = Math.floor(Date.now() / 1000);
+                  const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
+                    ? catalogEntry.cover_url
+                    : (banner && banner.startsWith('http'))
+                    ? banner
+                    : undefined;
+                  updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
+                })
+                .catch(console.error);
+            }}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Jugar
+            </button>
 
-          <div className="local-game-detail-stats">
-            <div className="local-game-detail-stat">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <span>{formatPlaytime(game.playtime_minutes)}</span>
-              <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
-            </div>
-            <div className="local-game-detail-stat">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <span>{formatLastPlayed(game.last_played)}</span>
-              <span className="local-game-detail-stat-label">{t.local.stat_last_played}</span>
-            </div>
-            <div className="local-game-detail-stat">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/>
-                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-              </svg>
-              <span>{achievements ? `${achievements.unlocked}/${achievements.total}` : '—'}</span>
-              <span className="local-game-detail-stat-label">{t.local.stat_achievements}</span>
+            <div className="local-media-divider-line" />
+
+            <div className="local-game-detail-bottom">
+              <div className="local-game-detail-stats">
+                <div className="local-game-detail-stat">
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span>{formatPlaytime(game.playtime_minutes)}</span>
+                  <span className="local-game-detail-stat-label">{t.local.stat_time}</span>
+                </div>
+                <div className="local-game-detail-stat">
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span>{formatLastPlayed(game.last_played)}</span>
+                  <span className="local-game-detail-stat-label">{t.local.stat_last_played}</span>
+                </div>
+                <div className="local-game-detail-stat">
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/>
+                    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                    <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                  </svg>
+                  <span>{achievements ? `${achievements.unlocked}/${achievements.total}` : '—'}</span>
+                  <span className="local-game-detail-stat-label">{t.local.stat_achievements}</span>
+                </div>
+              </div>
+
+              {gameInfo?.igdb_id && (
+                <>
+                  <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
+                    <IconPencil />
+                  </button>
+                  <a href={`/media?id=game:${gameInfo.igdb_id}`} className="local-game-detail-catalog-link">
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    Ver en catálogo
+                  </a>
+                </>
+              )}
             </div>
           </div>
 
-          {gameInfo?.igdb_id && (
-            <>
-              <button type="button" className="local-media-detail-edit-icon" onClick={handleEdit} title={t.local.edit_catalog_log}>
-                <IconPencil />
-              </button>
-              <a href={`/media?id=game:${gameInfo.igdb_id}`} className="local-game-detail-catalog-link">
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-                Ver en catálogo
-              </a>
-            </>
+          {(prequelInfo || sequelInfo) && (
+            <div className="local-media-neighbors-row">
+              <div className="local-media-neighbors-grid">
+                {prequelInfo && (
+                  <button type="button" className="local-media-neighbor-link" title={prequelInfo.title} onClick={() => openMediaEditor(prequelInfo.externalId)}>
+                    {prequelInfo.cover
+                      ? <img className="local-media-neighbor-cover" src={prequelInfo.cover} alt={prequelInfo.title} />
+                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
+                    <span className="local-media-neighbor-label">Precuela</span>
+                  </button>
+                )}
+                {sequelInfo && (
+                  <button type="button" className="local-media-neighbor-link" title={sequelInfo.title} onClick={() => openMediaEditor(sequelInfo.externalId)}>
+                    {sequelInfo.cover
+                      ? <img className="local-media-neighbor-cover" src={sequelInfo.cover} alt={sequelInfo.title} />
+                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
+                    <span className="local-media-neighbor-label">Secuela</span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
         </div>
