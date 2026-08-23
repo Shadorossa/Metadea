@@ -231,7 +231,6 @@
      the photo/banner columns' own bottom edge, reading as visibly shorter
      even though the column itself was the same height all along. */
   flex: 1;
-  justify-content: space-between;
   gap: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -246,6 +245,13 @@
 .font-preview-input {
   width: 100%;
   min-height: 2.5rem;
+  /* Auto top+bottom margins center this vertically in whatever leftover
+     height .font-picker's own flex:1 stretch created, and — since that
+     leftover space collects entirely here rather than in .font-picker's
+     gap — push "Fuente del nombre" + the font selector down as one tight
+     group flush against the box's bottom edge instead of stranding a gap
+     between them too. */
+  margin: auto 0;
   font-size: 1.3rem;
   font-weight: 700;
   font-family: inherit;
@@ -453,11 +459,18 @@
    fixed width) to divide the column's actual available width evenly
    between however many themes there are, instead of overflowing into a
    scrollbar or wrapping into a second line. */
+/* 7 columns × 2 rows (14 themes total) — capped at .color-picker-container's
+   own height (padding + 56px swatch + gap + 32px reset button ≈ 132px) so
+   this section doesn't tower over its neighbor; overflow:hidden is a safety
+   clamp in case a future theme addition would otherwise push a 3rd row
+   past that cap instead of silently growing the section taller again. */
 .theme-grid {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
   gap: 0.5rem;
   margin-top: 0.5rem;
+  max-height: 132px;
+  overflow: hidden;
 }
 
 .theme-card {
@@ -467,16 +480,15 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
   min-width: 0;
-  gap: 0.45rem;
+  gap: 0.4rem;
   border-radius: var(--radius-lg);
   transition: transform var(--anim-fast);
 }
 .theme-card:hover { transform: translateY(-3px); }
 
 .theme-card-preview {
-  height: 46px;
+  height: 40px;
   border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
