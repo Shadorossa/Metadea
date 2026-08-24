@@ -5,6 +5,7 @@ import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
+import { isReadingType } from '../constants/media';
 
 // Matches media-relations.ts's RELATION_SORT_PRIORITY — only PARENT/SOURCE
 // (the original work) sort before Prequel/Sequel; ADAPTATION (the
@@ -281,7 +282,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   // by lib/anilist/saga.ts when the user actually opens the viewer.
   const hasSaga = raw.relations.edges.some(e => e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL');
 
-  const progressStatus = resolvedType === 'anime' ? 'watching' as const : 'reading' as const;
+  const progressStatus = isReadingType(resolvedType) ? 'reading' as const : 'watching' as const;
   const progressLabel  = resolvedType === 'anime'
     ? (getT().profile.status_watching)
     : (getT().profile.status_reading);

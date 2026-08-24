@@ -96,7 +96,7 @@ export function isInProgressStatus(status: string | null | undefined): boolean {
 // NowPlayingBar.tsx, and re-derived as an inverse condition in
 // LocalMediaDetailPanel.tsx and playback-service.ts. One place to add a
 // 7th media type to the reading side later, instead of four.
-export const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
+export const READING_TYPES = new Set(['manga', 'lnovel', 'book', 'comic']);
 
 export function isReadingType(type: string | null | undefined): boolean {
   return type != null && READING_TYPES.has(type);

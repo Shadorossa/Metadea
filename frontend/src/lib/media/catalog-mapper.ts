@@ -4,13 +4,13 @@ import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaStat } from './types';
 import { formatDateParts, lookupLabel, countryName, firstCsvUrl } from './mapper-utils';
 import { getT } from '../../i18n/client';
-import { IN_PROGRESS_STATUSES } from '../constants/media';
+import { IN_PROGRESS_STATUSES, isReadingType } from '../constants/media';
 
 export function inferProgressStatus(type: string): typeof IN_PROGRESS_STATUSES[number] {
   const base = type.split('_')[0];
+  if (isReadingType(base)) return 'reading';
   if (base === 'game' || base === 'vnovel') return 'playing';
-  if (base === 'anime' || base === 'series' || base === 'movie') return 'watching';
-  return 'reading';
+  return 'watching';
 }
 
 export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel: string = getT().media.progress_in_progress): MediaPageData {
