@@ -30,6 +30,35 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
 // place. Positions are still tracked underneath either way, so the first
 // reflow after a suppressed stretch measures from an accurate "before"
 // instead of animating a big stale jump once it resumes.
+// One measure-invert-play pass: nudges every item that moved back to its
+// last known position via `transform`, then releases it into a real
+// transition so it eases into wherever it actually ended up.
+function flip(items: HTMLElement[], prevRects: Map<Element, DOMRect>): void {
+  for (const el of items) {
+    const before = prevRects.get(el);
+    if (!before) continue;
+    const after = el.getBoundingClientRect();
+    const dx = before.left - after.left;
+    const dy = before.top - after.top;
+    if (!dx && !dy) continue;
+
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Forces the browser to apply the transform above before the
+    // transition below is turned back on — without this, both style
+    // writes get coalesced into a single style recalculation and the
+    // "before" position (the whole point of the invert step) never
+    // actually renders at all.
+    void el.offsetWidth;
+    el.style.transition = 'transform 0.3s var(--anim-ease)';
+    el.style.transform = '';
+    // Restores the card's real transition (its own :hover scale) once
+    // this one's done, instead of leaving a 0.3s duration set inline
+    // indefinitely.
+    window.setTimeout(() => { el.style.transition = ''; }, 300);
+  }
+}
+
 export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSelector: string, panelOpen = false): void {
   const prevRects = useRef<Map<Element, DOMRect>>(new Map());
   const prevPanelOpenRef = useRef(panelOpen);
@@ -41,32 +70,30 @@ export function useGridFlip(containerRef: RefObject<HTMLElement | null>, itemSel
     const suppress = panelOpen && prevPanelOpenRef.current;
     prevPanelOpenRef.current = panelOpen;
 
-    if (!suppress) {
-      for (const el of items) {
-        const before = prevRects.current.get(el);
-        if (!before) continue;
-        const after = el.getBoundingClientRect();
-        const dx = before.left - after.left;
-        const dy = before.top - after.top;
-        if (!dx && !dy) continue;
-
-        el.style.transition = 'none';
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
-        // Forces the browser to apply the transform above before the
-        // transition below is turned back on — without this, both style
-        // writes get coalesced into a single style recalculation and the
-        // "before" position (the whole point of the invert step) never
-        // actually renders at all.
-        void el.offsetWidth;
-        el.style.transition = 'transform 0.3s var(--anim-ease)';
-        el.style.transform = '';
-        // Restores the card's real transition (its own :hover scale) once
-        // this one's done, instead of leaving a 0.3s duration set inline
-        // indefinitely.
-        window.setTimeout(() => { el.style.transition = ''; }, 300);
-      }
-    }
-
+    if (!suppress) flip(items, prevRects.current);
     prevRects.current = new Map(items.map(el => [el, el.getBoundingClientRect()]));
+
+    // The panel's own open/close animates via `transform` (no layout impact
+    // on its own), but its sibling (.local-main-content) claims/releases
+    // that width through an actual `transition: width` so the grid visually
+    // keeps pace with the slide instead of snapping the instant the panel
+    // mounts/unmounts (see that rule's own comment). That means the resize
+    // this hook exists to smooth doesn't happen in the one render captured
+    // above — it happens continuously, frame by frame, over the following
+    // ~300ms of that CSS transition, entirely outside of React. Querying
+    // geometry synchronously right after the class/DOM change above only
+    // ever sees the pre-transition value (the transition's own clock hasn't
+    // ticked yet), so without this, every one of those native reflow frames
+    // would go through completely unsmoothed — cards visibly snapping
+    // between grid columns as the available width crosses each threshold.
+    // Re-running the same invert-play correction on every resize tick keeps
+    // covering for it until the ancestor's own transition settles.
+    const ro = new ResizeObserver(() => {
+      const current = Array.from(container.querySelectorAll<HTMLElement>(itemSelector));
+      flip(current, prevRects.current);
+      prevRects.current = new Map(current.map(el => [el, el.getBoundingClientRect()]));
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
   });
 }
