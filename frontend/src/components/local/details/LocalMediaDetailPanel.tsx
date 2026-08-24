@@ -675,6 +675,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     type="button"
                     className="local-media-detail-locate-btn"
                     onClick={() => {
+                      // "Elegir un archivo suelto" only makes sense for a
+                      // single-episode/movie work (totalCount === 1) — for
+                      // anything else there's no ambiguity to offer a choice
+                      // for, so the icon goes straight to "elegir carpeta"
+                      // instead of showing a dropdown with one option that's
+                      // never actually the right one to pick.
+                      if (totalCount !== 1) { handleLocateFolder(); return; }
                       if (!locateMenuOpen) {
                         const rect = locateBtnRef.current?.getBoundingClientRect();
                         if (rect) setLocateMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
@@ -686,7 +693,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   >
                     {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
                   </button>
-                  {locateMenuOpen && locateMenuPos && createPortal(
+                  {totalCount === 1 && locateMenuOpen && locateMenuPos && createPortal(
                     <div
                       className="local-media-detail-locate-menu local-media-detail-locate-menu--portal"
                       style={{ top: locateMenuPos.top, left: locateMenuPos.left }}

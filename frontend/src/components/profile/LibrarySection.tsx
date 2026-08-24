@@ -243,6 +243,17 @@ export function LibrarySection({
     // the work's release date instead of lumping them all together unordered.
     const releaseTimestamp = (i: Items[number]): number => catalogReleaseTimestampMs(catalogMap.get(i.external_id)) ?? 0;
 
+    // 0 is this function's own "unknown" sentinel (see releaseTimestamp/
+    // latestDate above) — reused by both sortItems and the aggregate-card
+    // sort below instead of each reimplementing the same two-line check.
+    // Returns null when both sides are known, meaning the caller still
+    // needs to decide the actual ordering itself.
+    const unknownDateLast = (dateA: number, dateB: number): number | null => {
+      if (dateA === 0 && dateB !== 0) return 1;
+      if (dateB === 0 && dateA !== 0) return -1;
+      return null;
+    };
+
     // useStartDate: the two in-progress sections (Al día/En progreso) sort by
     // started_at instead of finished_at — finished_at is null for anything
     // not actually finished yet, which fell back to release date and
@@ -257,8 +268,8 @@ export function LibrarySection({
       const dateField = useStartDate ? 'started_at' : 'finished_at';
       const dateA = a[dateField] ? new Date(a[dateField] as string).getTime() : releaseTimestamp(a);
       const dateB = b[dateField] ? new Date(b[dateField] as string).getTime() : releaseTimestamp(b);
-      if (dateA === 0 && dateB !== 0) return 1;
-      if (dateB === 0 && dateA !== 0) return -1;
+      const unknownCmp = unknownDateLast(dateA, dateB);
+      if (unknownCmp !== null) return unknownCmp;
       if (dateA === dateB && dateA !== 0) {
         // Same finished date + same saga: break the tie by release order
         // instead of leaving it arbitrary, so e.g. Season 1 sits below
@@ -327,8 +338,8 @@ export function LibrarySection({
           const latestDate = (arr: Items[number][]) => Math.max(0, ...arr.map(it => it[dateField] ? new Date(it[dateField] as string).getTime() : 0));
           const dateA = latestDate(aWorks);
           const dateB = latestDate(bWorks);
-          if (dateA === 0 && dateB !== 0) return 1;
-          if (dateB === 0 && dateA !== 0) return -1;
+          const unknownCmp = unknownDateLast(dateA, dateB);
+          if (unknownCmp !== null) return unknownCmp;
           return dateB - dateA;
         });
 
