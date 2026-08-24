@@ -8,6 +8,7 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
 import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
+import { DetailPanelShell } from './details/DetailPanelShell';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX } from './ui/icons';
@@ -270,7 +271,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
 
   const isEmpty = sections.length === 0;
   const gridContainerRef = useRef<HTMLDivElement>(null);
-  useGridFlip(gridContainerRef, '.local-game-card');
+  useGridFlip(gridContainerRef, '.local-game-card', !!(selected || selectedGame || selectedPendingItem));
 
   return (
     <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
@@ -346,34 +347,37 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
         </div>
       </div>
 
-      {selected && (
-        <LocalMediaDetailPanel
-          item={selected}
-          rootFolder={rootFolder}
-          rootEntries={rootEntries}
-          rootLoading={rootLoading}
-          onClose={onClearSelection}
-          onProgressSaved={refetch}
-          onRootRefresh={onRootRefresh}
-        />
-      )}
-
-      {/* One call site for both a real Steam game and a library-only
-          pending item (no differing key) — same reasoning as LocalLibrary's
-          own videojuegos panel: two separate {cond && <GameDetailPanel/>}
-          blocks are distinct elements to React's reconciler, so switching
-          which one is truthy would unmount/remount and replay the entrance
-          transition instead of just updating in place. */}
-      {(selectedGame || selectedPendingItem) && (
-        <GameDetailPanel
-          game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
-          coverCache={coverCache ?? {}}
-          knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
-          fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
-          launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-          onClose={onClearSelection}
-          onMetaRefresh={onMetaRefresh}
-        />
+      {/* One shared DetailPanelShell for both a catalog item's
+          LocalMediaDetailPanel and a Steam game/library-only pending item's
+          GameDetailPanel (Visual Novel can open either kind) — the shell
+          itself (position/size/slide animation) doesn't remount just
+          because which content kind is inside it changed, only the content
+          does, the same way it already didn't remount from switching
+          between two same-kind selections (e.g. two different anime). */}
+      {(selected || selectedGame || selectedPendingItem) && (
+        <DetailPanelShell onClose={onClearSelection}>
+          {handleClose => selected ? (
+            <LocalMediaDetailPanel
+              item={selected}
+              rootFolder={rootFolder}
+              rootEntries={rootEntries}
+              rootLoading={rootLoading}
+              onCloseClick={handleClose}
+              onProgressSaved={refetch}
+              onRootRefresh={onRootRefresh}
+            />
+          ) : (
+            <GameDetailPanel
+              game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
+              coverCache={coverCache ?? {}}
+              knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
+              fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
+              launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
+              onCloseClick={handleClose}
+              onMetaRefresh={onMetaRefresh}
+            />
+          )}
+        </DetailPanelShell>
       )}
     </div>
   );

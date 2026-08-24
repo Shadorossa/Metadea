@@ -32,7 +32,10 @@ interface LocalMediaDetailPanelProps {
   rootFolder:      string | undefined;
   rootEntries:     LocalFolderEntry[];
   rootLoading:     boolean;
-  onClose:         () => void;
+  // Invoked by this panel's own back/close button — owned by DetailPanelShell
+  // (see LocalMediaSection), which plays the slide-out animation and only
+  // unmounts this component once it's actually finished.
+  onCloseClick:    () => void;
   onProgressSaved: () => void;
   // Re-reads rootFolder's contents after the "Localizar" flow renames a
   // folder/its files — otherwise the freshly-renamed folder stays invisible
@@ -41,18 +44,8 @@ interface LocalMediaDetailPanelProps {
   onRootRefresh:   () => Promise<void>;
 }
 
-export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onClose, onProgressSaved, onRootRefresh }: LocalMediaDetailPanelProps) {
+export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoading, onCloseClick, onProgressSaved, onRootRefresh }: LocalMediaDetailPanelProps) {
   const t = getT();
-  // The panel only ever animates *in* (slide-in-right, see local.css) —
-  // onClose unmounts it immediately, with no matching reverse. Playing the
-  // same animation backwards first, then unmounting once it's actually
-  // finished, is what makes closing look like a real closing instead of the
-  // panel just vanishing.
-  const [closing, setClosing] = useState(false);
-  const handleClose = () => {
-    setClosing(true);
-    setTimeout(onClose, 300);
-  };
   const [subEntries, setSubEntries] = useState<LocalFolderEntry[] | null>(null);
   // Absolute path actually holding the episode files — folderToScan
   // normally, but one level deeper when that folder itself holds no media
@@ -602,9 +595,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   };
 
   return (
-    <div className={`local-game-detail-panel${closing ? ' local-game-detail-panel--closing' : ''}`}>
+    <>
       <div className="local-game-detail-header">
-        <button className="local-game-detail-back" onClick={handleClose} title={t.local.close_panel}>
+        <button className="local-game-detail-back" onClick={onCloseClick} title={t.local.close_panel}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
@@ -914,6 +907,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         </div>,
         document.body,
       )}
-    </div>
+    </>
   );
 }

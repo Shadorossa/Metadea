@@ -22,6 +22,7 @@ import { GameCard }         from './cards/GameCard';
 import { LocalMediaCard }   from './cards/LocalMediaCard';
 import { FolderEntryCard }  from './cards/FolderEntryCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
+import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
@@ -98,9 +99,10 @@ export default function LocalLibrary() {
   const cancelRef = useRef(false);
   // Smooths the Videojuegos grid's own card repositioning when the detail
   // panel resizes it — same fix as LocalMediaSection's own grid (see
-  // useGridFlip's own comment for why CSS Grid needs this at all).
+  // useGridFlip's own comment for why CSS Grid needs this at all). The
+  // actual useGridFlip call is further down, once selectedGame/
+  // selectedPendingItem (needed for its disabled flag) are resolved.
   const videojuegosGridRef = useRef<HTMLDivElement>(null);
-  useGridFlip(videojuegosGridRef, '.local-game-card');
 
   const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
@@ -313,6 +315,7 @@ export default function LocalLibrary() {
   const selectedPendingLaunchGame = resolvePendingLaunchGame(selection, games);
   const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => openPendingSelection(item, launchGame);
   const setSelectedGame = (g: LocalGame | null) => setGameSelection(g);
+  useGridFlip(videojuegosGridRef, '.local-game-card', !!(selectedGame || selectedPendingItem));
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
     for (const g of games) {
@@ -641,15 +644,19 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
               just swapping its content. No `key` here either — that would
               force the exact same remount this is trying to avoid. */}
           {(selectedGame || selectedPendingItem) && (
-            <GameDetailPanel
-              game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
-              coverCache={coverCache}
-              knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
-              fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
-              launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-              onClose={clearSelection}
-              onMetaRefresh={refreshMeta}
-            />
+            <DetailPanelShell onClose={clearSelection}>
+              {handleClose => (
+                <GameDetailPanel
+                  game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
+                  coverCache={coverCache}
+                  knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
+                  fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
+                  launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
+                  onCloseClick={handleClose}
+                  onMetaRefresh={refreshMeta}
+                />
+              )}
+            </DetailPanelShell>
           )}
         </div>
         )}
