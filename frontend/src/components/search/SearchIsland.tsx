@@ -6,6 +6,7 @@ import { ANILIST_GENRES } from '../../lib/search/providers/anilist';
 import { IGDB_GENRES } from '../../lib/search/providers/igdb';
 import { TMDB_MOVIE_GENRE_NAMES, TMDB_TV_GENRE_NAMES } from '../../lib/search/providers/tmdb';
 import { prefetchMediaData } from '../../lib/media/mediaService';
+import { compareByReleaseDate, compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
 import { getT } from '../../i18n/client';
 import type { Translations } from '../../i18n/index';
 import { IconAll, IconAnime, IconManga, IconNovel, IconGame, IconVNovel, IconMovie, IconSeries, IconBook, IconComic, IconCharacter, IconStaff } from '../local/ui/icons';
@@ -543,19 +544,25 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // Función para ordenar los resultados en base a los estados
   const sortedResults = [...results].sort((a, b) => {
     if (sortField === 'releaseDate') {
-      const aYear = a.releaseYear ?? 0;
-      const bYear = b.releaseYear ?? 0;
-      if (aYear !== bYear) {
-        return sortDirection === 'desc' ? bYear - aYear : aYear - bYear;
-      }
-      const aMonth = a.releaseMonth ?? 0;
-      const bMonth = b.releaseMonth ?? 0;
-      if (aMonth !== bMonth) {
-        return sortDirection === 'desc' ? bMonth - aMonth : aMonth - bMonth;
-      }
-      const aDay = a.releaseDay ?? 0;
-      const bDay = b.releaseDay ?? 0;
-      return sortDirection === 'desc' ? bDay - aDay : aDay - bDay;
+      // A missing release date always sorts last, in EITHER direction — a
+      // result with no year on file isn't "older than everything" (asc)
+      // any more than it's "newer than everything" (desc), it's just not
+      // comparable, so it shouldn't outrank a real date either way. The
+      // old `?? 0` fallback treated an unknown year as year 0: harmless in
+      // desc (0 is already the lowest number, so it naturally fell last),
+      // but in asc it put unknown-date results ahead of every real date —
+      // e.g. an uncatalogued entry would sort before a genuine 1980 movie.
+      // compareByReleaseDate/Desc (mapper-utils.ts) already encode "unknown
+      // sorts last regardless of direction" via an Infinity sentinel
+      // instead of 0 — same helper every other release-date sort in the
+      // app already uses, just adapted here for SearchResult's camelCase
+      // field names instead of media_catalog's snake_case ones.
+      const key = (r: SearchResult) => ({
+        release_year: r.releaseYear, release_month: r.releaseMonth, release_day: r.releaseDay, id: r.externalId,
+      });
+      return sortDirection === 'desc'
+        ? compareByReleaseDateDesc(key(a), key(b))
+        : compareByReleaseDate(key(a), key(b));
     } else {
       const aScore = a.scoreGlobal ?? -1;
       const bScore = b.scoreGlobal ?? -1;
