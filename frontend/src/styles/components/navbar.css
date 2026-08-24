@@ -118,6 +118,21 @@
   pointer-events: auto;
 }
 
+.nav-arrows {
+  /* Absolute + pinned to the bar's own left padding, independent of
+     .nav-group--left's own clamp()'d margin — those two arrows sit right
+     at the window's edge (like the mouse side buttons they mirror)
+     regardless of how far in home/local/tier drift on a wide window. */
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: auto;
+}
+
 .nav-group--left {
   /* Scales down as the window narrows instead of always reserving a fixed
      9rem — that fixed margin left no room for .nav-center-text's type

@@ -13,6 +13,8 @@ export const ca = {
     dropdown_profile: 'Perfil',
     dropdown_notifications: 'Notificacions',
     dropdown_settings: 'Ajustos',
+    go_back: 'Enrere',
+    go_forward: 'Endavant',
   },
   auth: {
     login: 'Iniciar sessió',

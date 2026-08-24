@@ -15,6 +15,22 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
 ---
 
 <header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
+  <!-- Pegadas al borde izquierdo real de la barra, fuera de nav-group--left
+       (que ya tiene su propio margin-left escalable) — igual que los
+       botones laterales del ratón para atrás/adelante en el historial. -->
+  <div class="nav-arrows">
+    <button type="button" id="nav-back-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_back}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <button type="button" id="nav-forward-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_forward}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+
   <!-- Izquierda: home + play (biblioteca local) + tier -->
   <div class="nav-group nav-group--left">
     <a href="/home"   data-nav="home"   class={`nav-icon-btn nav-icon-btn--plain${activePage === 'home'   ? ' active' : ''}`} title={i18n.home}>
@@ -198,4 +214,26 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   document.getElementById('nav-quick-search-btn')?.addEventListener('click', () => {
     window.dispatchEvent(new CustomEvent('metadea:open-quick-search'));
   });
+
+  // Back/forward arrows — same history the mouse's own side buttons already
+  // navigate, just clickable. The Navigation API (available in the
+  // Chromium/WebView2 runtime this app ships on) is the only reliable way
+  // to know whether there's actually anywhere to go without maintaining our
+  // own stack — history.length includes entries from other tabs/sessions
+  // in some browsers and isn't a trustworthy "can go back" signal.
+  const backBtn = document.getElementById('nav-back-btn');
+  const forwardBtn = document.getElementById('nav-forward-btn');
+  backBtn?.addEventListener('click', () => window.history.back());
+  forwardBtn?.addEventListener('click', () => window.history.forward());
+
+  function updateHistoryArrows() {
+    const nav = (window as any).navigation;
+    const canGoBack = nav ? nav.canGoBack : true;
+    const canGoForward = nav ? nav.canGoForward : true;
+    backBtn?.classList.toggle('nav-icon-btn--disabled', !canGoBack);
+    forwardBtn?.classList.toggle('nav-icon-btn--disabled', !canGoForward);
+  }
+  updateHistoryArrows();
+  document.addEventListener('astro:page-load', updateHistoryArrows);
+  (window as any).navigation?.addEventListener('currententrychange', updateHistoryArrows);
 </script>

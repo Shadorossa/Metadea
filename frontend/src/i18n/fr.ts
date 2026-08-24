@@ -13,6 +13,8 @@ export const fr = {
     dropdown_profile: 'Profil',
     dropdown_notifications: 'Notifications',
     dropdown_settings: 'Paramètres',
+    go_back: 'Précédent',
+    go_forward: 'Suivant',
   },
   auth: {
     login: 'Se connecter',

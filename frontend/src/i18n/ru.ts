@@ -13,6 +13,8 @@ export const ru = {
     dropdown_profile: 'Профиль',
     dropdown_notifications: 'Уведомления',
     dropdown_settings: 'Настройки',
+    go_back: 'Назад',
+    go_forward: 'Вперёд',
   },
   auth: {
     login: 'Войти',

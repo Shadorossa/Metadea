@@ -13,6 +13,8 @@ export const ja = {
     dropdown_profile: 'プロフィール',
     dropdown_notifications: '通知',
     dropdown_settings: '設定',
+    go_back: '戻る',
+    go_forward: '進む',
   },
   auth: {
     login: 'ログイン',
