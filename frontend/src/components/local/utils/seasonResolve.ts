@@ -42,15 +42,14 @@ interface AniListRelationsResponse {
 
 type RelationEdge = AniListRelationsResponse['Media']['relations']['edges'][number];
 
-// resolveSeasonExternalIds and findPrequelExternalId both end up asking
-// AniList the exact same question for the exact same id whenever the local
-// media_relations table has nothing cached yet — the first without a season
-// number in its title (the common case) always hits this once via
-// findPrequelExternalId, and if that turns up a hit, the season-map build
-// right after re-asks AniList for the very same id a second time. Module-
-// level cache keyed by numericId (not persisted — just for this app
-// session) so every caller after the first one reuses the same in-flight
-// promise instead of firing a duplicate request.
+// resolveSeasonExternalIds and resolveOwnSeasonNumber both walk backward
+// through findChainNeighbor for the same id whenever the local
+// media_relations table has nothing cached yet — a title without a season
+// number in it (the common case) always asks AniList at least once this
+// way, and a multi-season chain re-asks about the same intermediate ids
+// from both walks. Module-level cache keyed by numericId (not persisted —
+// just for this app session) so every caller after the first one reuses the
+// same in-flight promise instead of firing a duplicate request.
 const relationsCache = new Map<number, Promise<RelationEdge[]>>();
 
 // Most titles in a library are standalone or already-season-1 — AniList
@@ -98,6 +97,45 @@ function fetchAniListRelationEdges(externalId: string, numericId: number): Promi
 // same as PrEditorModal's own saga chain) and only calls out to AniList
 // directly if nothing usable turned up locally — e.g. a fresh install that
 // never opened the sequel's own page yet, so nothing's been cached to DB.
+// A PREQUEL/SEQUEL relationship already tells us its season number outright
+// (exactly one before/after the id it was found from) — no need to (fail
+// to) parse it back out of its own title text, which a root title like
+// plain "THE Big O" never carries at all.
+async function findChainNeighbor(externalId: string, relationType: 'PREQUEL' | 'SEQUEL'): Promise<SeasonInfo | null> {
+  try {
+    const relations = await getMediaRelationsForEditor(externalId);
+    const rel = relations.find(r => r.relation_type === relationType);
+    if (rel) return { externalId: rel.related_media_external_id, title: rel.title };
+  } catch {
+    // Fall through to the AniList check below.
+  }
+
+  // Only anime/manga carry an AniList relation graph to check at all.
+  const [type, idStr] = externalId.split(':');
+  if (type !== 'anime' && type !== 'manga') return null;
+  const numericId = parseInt(idStr, 10);
+  if (!Number.isFinite(numericId)) return null;
+
+  const edges = await fetchAniListRelationEdges(externalId, numericId);
+  const edge = edges.find(e => e.relationType === relationType);
+  if (!edge) return null;
+  return {
+    externalId: `${type}:${edge.node.id}`,
+    title: edge.node.title.romaji ?? edge.node.title.english ?? '',
+  };
+}
+
+// Backward: walks the WHOLE prequel chain back to season 1, not just one
+// hop — a season 4 of 4 needs seasons 1, 2 AND 3's own total_count summed
+// (see LocalMediaDetailPanel's seasonOffset), not only its immediate
+// prequel, for any chain longer than two seasons sharing one continuously-
+// numbered folder. Depth-capped purely to bound how many round trips a
+// dead-end/cyclical chain can cost.
+//
+// Forward: only ever the immediate next season is looked up — the one
+// existing consumer of a forward entry (buildLocateRenamePlan tagging a
+// file that carries its own explicit "S02" marker, e.g. Ghost in the
+// Shell's 2nd GIG) never needs more than one hop past the current season.
 export async function resolveSeasonExternalIds(
   externalId: string,
   title: string,
@@ -105,67 +143,23 @@ export async function resolveSeasonExternalIds(
 ): Promise<Record<number, SeasonInfo>> {
   const map: Record<number, SeasonInfo> = { [season ?? 1]: { externalId, title } };
 
-  // A PREQUEL/SEQUEL is exactly one season before/after `season` itself —
-  // that relationship already tells us its season number outright, no need
-  // to (fail to) parse it back out of its title text. A root title like
-  // plain "THE Big O" carries no season word at all, so the old
-  // extractTitleSeason(rel.title) approach could never place it in the map;
-  // the whole reason this function exists (a shared-numbering folder like
-  // Big O's own 01..26) depends on exactly that slot being filled, so this
-  // isn't a cosmetic difference — it silently broke the episode-offset math
-  // for any franchise whose earlier season's title has no number in it.
-  const seasonOf = (relationType: string): number => (season ?? 1) + (relationType === 'PREQUEL' ? -1 : 1);
-
-  try {
-    const relations = await getMediaRelationsForEditor(externalId);
-    const chainRelations = relations.filter(r => r.relation_type === 'SEQUEL' || r.relation_type === 'PREQUEL');
-    for (const rel of chainRelations) {
-      const relSeason = seasonOf(rel.relation_type);
-      if (relSeason > 0 && !(relSeason in map)) {
-        map[relSeason] = { externalId: rel.related_media_external_id, title: rel.title };
-      }
-    }
-    if (chainRelations.length > 0) return map;
-  } catch {
-    // Fall through to the AniList check below.
+  let currentSeason = season ?? 1;
+  let currentId = externalId;
+  for (let i = 0; i < 6 && currentSeason > 1; i++) {
+    const prequel = await findChainNeighbor(currentId, 'PREQUEL');
+    if (!prequel) break;
+    currentSeason -= 1;
+    map[currentSeason] = prequel;
+    currentId = prequel.externalId;
   }
 
-  // Only anime/manga carry an AniList relation graph to check at all.
-  const [type, idStr] = externalId.split(':');
-  if (type !== 'anime' && type !== 'manga') return map;
-  const numericId = parseInt(idStr, 10);
-  if (!Number.isFinite(numericId)) return map;
-
-  const edges = await fetchAniListRelationEdges(externalId, numericId);
-  for (const edge of edges) {
-    if (edge.relationType !== 'SEQUEL' && edge.relationType !== 'PREQUEL') continue;
-    const nodeTitle = edge.node.title.romaji ?? edge.node.title.english ?? '';
-    const relSeason = seasonOf(edge.relationType);
-    if (relSeason > 0 && !(relSeason in map)) {
-      map[relSeason] = { externalId: `${type}:${edge.node.id}`, title: nodeTitle };
-    }
+  const sequel = await findChainNeighbor(externalId, 'SEQUEL');
+  if (sequel) {
+    const sequelSeason = (season ?? 1) + 1;
+    if (!(sequelSeason in map)) map[sequelSeason] = sequel;
   }
 
   return map;
-}
-
-async function findPrequelExternalId(externalId: string): Promise<string | null> {
-  try {
-    const relations = await getMediaRelationsForEditor(externalId);
-    const prequel = relations.find(r => r.relation_type === 'PREQUEL');
-    if (prequel) return prequel.related_media_external_id;
-  } catch {
-    // Fall through to the AniList check below.
-  }
-
-  const [type, idStr] = externalId.split(':');
-  if (type !== 'anime' && type !== 'manga') return null;
-  const numericId = parseInt(idStr, 10);
-  if (!Number.isFinite(numericId)) return null;
-
-  const edges = await fetchAniListRelationEdges(externalId, numericId);
-  const prequel = edges.find(e => e.relationType === 'PREQUEL');
-  return prequel ? `${type}:${prequel.node.id}` : null;
 }
 
 // Some sequels never get a title AniList/extractTitleSeason can read a
@@ -181,10 +175,10 @@ export async function resolveOwnSeasonNumber(externalId: string, title: string):
   let hops = 0;
   let currentId = externalId;
   for (let i = 0; i < 6; i++) {
-    const prequelId = await findPrequelExternalId(currentId);
-    if (!prequelId) break;
+    const prequel = await findChainNeighbor(currentId, 'PREQUEL');
+    if (!prequel) break;
     hops++;
-    currentId = prequelId;
+    currentId = prequel.externalId;
   }
   return hops > 0 ? hops + 1 : null;
 }
