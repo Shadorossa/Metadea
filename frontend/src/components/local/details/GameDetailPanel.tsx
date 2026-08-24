@@ -59,6 +59,14 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // as each async fetch resolves (a flicker, since the panel itself no
   // longer unmounts/remounts on selection changes).
   const contentKey = knownExternalId ?? game.app_id ?? game.name;
+  // Same reverse-of-the-entrance-animation close as LocalMediaDetailPanel —
+  // onClose unmounts immediately, so play slide-out-right first and only
+  // unmount once it's actually finished.
+  const [closing, setClosing] = useState(false);
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(onClose, 300);
+  };
   const [gameInfo,      setGameInfo]      = useState<GameInfo | null>(null);
   const [achievements,  setAchievements]  = useState<{ unlocked: number; total: number; list: SteamAchievement[] } | null>(null);
   const [showPicker,    setShowPicker]    = useState(false);
@@ -353,9 +361,9 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   };
 
   return (
-    <div className="local-game-detail-panel">
+    <div className={`local-game-detail-panel${closing ? ' local-game-detail-panel--closing' : ''}`}>
       <div className="local-game-detail-header">
-        <button className="local-game-detail-back" onClick={onClose} title={t.local.close_panel}>
+        <button className="local-game-detail-back" onClick={handleClose} title={t.local.close_panel}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>

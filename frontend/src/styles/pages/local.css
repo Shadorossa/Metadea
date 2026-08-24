@@ -1239,6 +1239,16 @@
   overflow: hidden;
 }
 
+/* Reverse of the entrance animation — see handleClose in
+   LocalMediaDetailPanel.tsx/GameDetailPanel.tsx, which sets this class and
+   only actually unmounts once the animation has had time to finish, instead
+   of onClose removing the panel from the DOM instantly with no visible
+   close. `forwards` keeps it translated off-screen for that final instant
+   rather than snapping back to translateX(0) the moment the animation ends. */
+.local-game-detail-panel--closing {
+  animation: slide-out-right 0.3s var(--anim-ease) forwards;
+}
+
 
 
 .local-game-detail-header {

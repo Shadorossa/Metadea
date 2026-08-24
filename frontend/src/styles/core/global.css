@@ -205,6 +205,16 @@ body {
   }
 }
 
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* Utility classes — prefer these over writing inline animations in page CSS */
 .animate-fade-in {
   animation: fade-in 0.25s var(--anim-ease, cubic-bezier(0.25, 0, 0.15, 1)) both;
