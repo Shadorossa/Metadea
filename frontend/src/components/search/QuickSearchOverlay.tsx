@@ -11,6 +11,7 @@ import { searchUsers, type UserSearchResult } from '../../lib/social/users';
 import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
+import { toSmallCover } from '../../lib/shared/small-cover';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
@@ -83,7 +84,7 @@ function mediaRowsByType(results: SearchResult[]): Map<string, Row[]> {
       key: r.externalId,
       title: r.titleMain,
       sub: String(r.releaseYear ?? ''),
-      cover: r.coverUrl,
+      cover: toSmallCover(r.coverUrl),
       href: `/media?id=${encodeURIComponent(r.externalId)}`,
     };
     const list = byType.get(r.type) ?? [];
@@ -205,7 +206,7 @@ export function QuickSearchOverlay() {
               key: r.externalId,
               title: r.titleMain,
               sub: '',
-              cover: r.coverUrl,
+              cover: toSmallCover(r.coverUrl),
               href: `/character?id=${encodeURIComponent(r.externalId.replace('character:', ''))}`,
             })),
             viewAllHref: `/search?type=character&q=${encodeURIComponent(query.trim())}`,
@@ -219,7 +220,7 @@ export function QuickSearchOverlay() {
               key: `staff:${r.id}`,
               title: r.name,
               sub: r.nameNative ?? '',
-              cover: r.image,
+              cover: toSmallCover(r.image),
               href: `/author?id=person:a${r.id}`,
             })),
             viewAllHref: `/search?type=staff&q=${encodeURIComponent(query.trim())}`,

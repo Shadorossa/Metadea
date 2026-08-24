@@ -10,7 +10,7 @@ import { getCachedActivityFeed, getCachedGeneralActivityFeed, type ActivityFeedE
 import { getCatalogEntry, type MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { typeIconMap } from '../../lib/shared/icon-strings';
-import { getTypeLabel } from '../../lib/constants/media';
+import { getTypeLabel, isReadingType } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { formatDateLong } from '../../lib/shared/formatDate';
 import { toSmallCover } from '../../lib/shared/small-cover';
@@ -128,7 +128,7 @@ export function ActivityFeedSection({ title }: { title: string }) {
       if (ev.mediaType === 'anime' || ev.mediaType === 'series') {
         return interpolate(isSingle ? j.watched_episode : j.watched_episodes, { media: title, start, end });
       }
-      if (ev.mediaType === 'manga' || ev.mediaType === 'lnovel' || ev.mediaType === 'book' || ev.mediaType === 'comic') {
+      if (isReadingType(ev.mediaType)) {
         return interpolate(isSingle ? j.read_chapter : j.read_chapters, { media: title, start, end });
       }
       return interpolate(j.updated, { media: title });
