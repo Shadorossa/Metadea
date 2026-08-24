@@ -105,21 +105,26 @@ export async function resolveSeasonExternalIds(
 ): Promise<Record<number, SeasonInfo>> {
   const map: Record<number, SeasonInfo> = { [season ?? 1]: { externalId, title } };
 
+  // A PREQUEL/SEQUEL is exactly one season before/after `season` itself —
+  // that relationship already tells us its season number outright, no need
+  // to (fail to) parse it back out of its title text. A root title like
+  // plain "THE Big O" carries no season word at all, so the old
+  // extractTitleSeason(rel.title) approach could never place it in the map;
+  // the whole reason this function exists (a shared-numbering folder like
+  // Big O's own 01..26) depends on exactly that slot being filled, so this
+  // isn't a cosmetic difference — it silently broke the episode-offset math
+  // for any franchise whose earlier season's title has no number in it.
+  const seasonOf = (relationType: string): number => (season ?? 1) + (relationType === 'PREQUEL' ? -1 : 1);
+
   try {
     const relations = await getMediaRelationsForEditor(externalId);
     const chainRelations = relations.filter(r => r.relation_type === 'SEQUEL' || r.relation_type === 'PREQUEL');
     for (const rel of chainRelations) {
-      const relSeason = extractTitleSeason(rel.title);
-      if (relSeason != null && !(relSeason in map)) {
+      const relSeason = seasonOf(rel.relation_type);
+      if (relSeason > 0 && !(relSeason in map)) {
         map[relSeason] = { externalId: rel.related_media_external_id, title: rel.title };
       }
     }
-    // The DB already had a real answer here — even a related title whose
-    // own season number couldn't be parsed from its title (e.g. a root
-    // title with no season word at all, like plain "THE Big O") means
-    // there's genuinely nothing further AniList could add for this specific
-    // relation; re-asking would just return the exact same unparseable
-    // title again.
     if (chainRelations.length > 0) return map;
   } catch {
     // Fall through to the AniList check below.
@@ -135,8 +140,8 @@ export async function resolveSeasonExternalIds(
   for (const edge of edges) {
     if (edge.relationType !== 'SEQUEL' && edge.relationType !== 'PREQUEL') continue;
     const nodeTitle = edge.node.title.romaji ?? edge.node.title.english ?? '';
-    const relSeason = extractTitleSeason(nodeTitle);
-    if (relSeason != null && !(relSeason in map)) {
+    const relSeason = seasonOf(edge.relationType);
+    if (relSeason > 0 && !(relSeason in map)) {
       map[relSeason] = { externalId: `${type}:${edge.node.id}`, title: nodeTitle };
     }
   }
