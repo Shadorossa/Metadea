@@ -183,6 +183,20 @@
   color: var(--text-main) !important;
 }
 
+/* A linked name (AniList character/media reference) nested inside a spoiler
+   span has its own explicit link color (.media-stat-value a etc.), which
+   wins over the spoiler's inherited `color: transparent` the same way any
+   child's own color always beats an ancestor's — without this override the
+   name read as already revealed, floating clear of the redacted text
+   around it instead of staying hidden until the spoiler itself is hovered. */
+.spoiler a, .markdown-spoiler a, .markdown_spoiler a {
+  color: transparent !important;
+}
+
+.spoiler:hover a, .markdown-spoiler:hover a, .markdown_spoiler:hover a {
+  color: var(--accent) !important;
+}
+
 #char-appearances-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

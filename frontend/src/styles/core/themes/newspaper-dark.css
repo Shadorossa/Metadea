@@ -502,6 +502,20 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-decoration-color: var(--text-main) !important;
 }
 
+[data-theme="newspaper-dark"] .media-stat-value a,
+[data-theme="newspaper-dark"] .media-stat-value a:visited,
+[data-theme="newspaper-dark"] .media-stat-value a:link {
+  color: var(--accent) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--border-color) !important;
+  text-underline-offset: 2px !important;
+}
+
+[data-theme="newspaper-dark"] .media-stat-value a:hover {
+  color: var(--text-main) !important;
+  text-decoration-color: var(--text-main) !important;
+}
+
 /* Ensure card titles and UI links never have unwanted text underlines */
 [data-theme="newspaper-dark"] a,
 [data-theme="newspaper-dark"] a:visited,

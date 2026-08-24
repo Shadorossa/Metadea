@@ -125,6 +125,22 @@
   pointer-events: auto;
 }
 
+.nav-group--left {
+  /* Extra fixed gap on top of the grid's own column-gap, specifically
+     between the back/forward arrows and home — the two are functionally
+     unrelated (history nav vs. destinations) and read as one cramped
+     cluster without it. */
+  margin-left: 0.5rem;
+}
+
+.nav-group--right {
+  /* Mirrors nav-group--left's gap, but against the bar's own right edge —
+     settings otherwise sits flush against it with nothing after it to
+     create breathing room the way the center column does for everyone
+     else. */
+  margin-right: 0.5rem;
+}
+
 .nav-icon-btn {
   display: flex;
   align-items: center;

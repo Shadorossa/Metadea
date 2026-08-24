@@ -15,6 +15,20 @@ export function sanitizeHtml(html: string | null | undefined): string {
   return DOMPurify.sanitize(html);
 }
 
+// For short inline fragments (a character's "Datos" stat values, extracted
+// from bolded lines in their biography) — same trusted-markup allowance as
+// sanitizeHtml, minus <img> and the style attribute. AniList bios sometimes
+// embed a floated character portrait inline via `<img style="float:right">`
+// in the middle of a bolded stat line; in a synopsis-length paragraph that
+// reads fine, but a single stat value is one or two short lines, so a
+// floated image (often broken/unreachable outside AniList's own page origin
+// anyway) instead pushed the actual text into a narrow wrapped column and
+// inflated the row's height for nothing worth showing.
+export function sanitizeStatValue(html: string | null | undefined): string {
+  if (!html) return '';
+  return DOMPurify.sanitize(html, { FORBID_TAGS: ['img'], FORBID_ATTR: ['style'] });
+}
+
 // For plain-text values (names, titles, labels) that get interpolated into
 // an HTML string template rather than set via .textContent — turns a value
 // like `<img src=x onerror=alert(1)>` into inert entities instead of markup.

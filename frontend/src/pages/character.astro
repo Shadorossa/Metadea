@@ -134,7 +134,7 @@ const translations = useTranslations(lang);
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import { compareByReleaseDateDesc, mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
-  import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
+  import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import { getT } from '../i18n/client';
   import {
     readUserFavorites,
@@ -545,10 +545,21 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'affiliations') displayLabel = 'Afiliación';
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
 
-        const values = stat.value.split(',').map(v => v.trim()).filter(v => v);
-        const valueHtml = values.map(v => `<div>${sanitizeHtml(v)}</div>`).join('');
+        // Most stats here are short (a height, a hair color) and read fine
+        // label-left/value-right on one line — but AniList's own bolded bio
+        // lines are also where per-work spoiler trivia lives ("In Fate/Zero:
+        // <a spoiler paragraph>"), which can run to several sentences. Squeezed
+        // into that same right-aligned column, a paragraph that long just
+        // reads as a wall of text jammed against the row's right edge, so
+        // long values get their own full-width line below the label instead.
+        const plainTextLength = stat.value.replace(/<[^>]+>/g, '').length;
+        const isLongValue = plainTextLength > 50;
 
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
+        const values = isLongValue ? [stat.value] : stat.value.split(',').map(v => v.trim()).filter(v => v);
+        const valueHtml = values.map(v => `<div>${sanitizeStatValue(v)}</div>`).join('');
+
+        const itemClass = isLongValue ? 'media-stat-item media-stat-item--stacked' : 'media-stat-item';
+        statsHtml += `<div class="${itemClass}"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
       }
 

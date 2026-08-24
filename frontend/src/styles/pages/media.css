@@ -513,6 +513,37 @@
   text-align: right;
 }
 
+.media-stat-value a,
+.media-stat-value a:visited,
+.media-stat-value a:link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.media-stat-value a:hover {
+  color: var(--text-main);
+  text-decoration-color: var(--accent);
+}
+
+/* Long-form values (a character's per-work spoiler trivia, say) — label on
+   its own line, value below spanning the full row width instead of jammed
+   into the same line's right-aligned half. */
+.media-stat-item--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.media-stat-item--stacked .media-stat-value {
+  text-align: left;
+  font-weight: 400;
+  line-height: 1.6;
+  width: 100%;
+}
+
 /* Two real columns (e.g. "Episodios 65 | Temporadas 5") instead of one
    label + a crammed value string — each half is its own label/value pair,
    styled identically, split by a subtle centered divider. */
