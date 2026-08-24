@@ -118,6 +118,15 @@ export function catalogReleaseTimestampMs(
   return new Date(entry.release_year, (entry.release_month ?? 1) - 1, entry.release_day ?? 1).getTime();
 }
 
+// First URL out of a comma-separated column (banners_csv) — trims each
+// entry, unlike a plain .split(',')[0], so a CSV saved with a space after
+// the comma doesn't silently fail to load. Was independently reimplemented
+// (one trimming, one not) across Local's detail panels and lib/media's own
+// catalog/mediaService mappers before being pulled out here.
+export function firstCsvUrl(csv?: string | null): string | null {
+  return csv?.split(',')[0]?.trim() || null;
+}
+
 // Create a sort key [year, month, day] for comparisons (unknowns sorted last)
 export function getReleaseDateKey(item: { release_year?: number | null; release_month?: number | null; release_day?: number | null }): [number, number, number] {
   return [

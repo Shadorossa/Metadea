@@ -51,7 +51,7 @@ function getProgressConfig(type: string, format: string | undefined, tm: Transla
   let label: string | null;
   if (type === 'game' || type === 'vnovel')            label = tm.progress_hours;
   else if (type === 'anime' || type === 'series')      label = tm.progress_episodes;
-  else if (type === 'manga' || type === 'light-novel') label = tm.progress_chapters;
+  else if (type === 'manga' || type === 'lnovel')      label = tm.progress_chapters;
   // 'book' (singular) — 'books' here never matched anything real, so a
   // book's progress fell through to the generic label below and its
   // total (page count) was never wired up at all.
@@ -64,7 +64,7 @@ function getProgressConfig(type: string, format: string | undefined, tm: Transla
   const label2 =
     isMovie ? null :
     base === 'anime' || base === 'series'      ? tm.progress_seasons :
-    base === 'manga' || base === 'light-novel' ? tm.progress_volumes : null;
+    base === 'manga' || base === 'lnovel'      ? tm.progress_volumes : null;
 
   const step = base === 'game' || base === 'vnovel' ? 0.5 : 1;
   return { label, label2, step };

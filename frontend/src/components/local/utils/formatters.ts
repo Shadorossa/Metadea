@@ -1,5 +1,5 @@
 import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
-export { catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
+export { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mapper-utils';
 
 export function formatPlaytime(minutes?: number): string {
   if (!minutes || minutes === 0) return '—';
@@ -20,15 +20,6 @@ export function formatDate(timestamp?: number): string | null {
   try {
     return formatDateLong(new Date(timestamp * 1000));
   } catch { return null; }
-}
-
-// First URL out of a comma-separated column (banners_csv, genres_csv-shaped
-// data) — GameDetailPanel and LocalMediaDetailPanel each read banners_csv's
-// first entry independently, one trimming and one not; a CSV saved with a
-// space after the comma would silently fail to load only in the one that
-// doesn't trim.
-export function firstCsvUrl(csv?: string | null): string | null {
-  return csv?.split(',')[0]?.trim() || null;
 }
 
 // SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) —

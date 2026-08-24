@@ -2,7 +2,7 @@
 // render shown before/without a live API fetch.
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaStat } from './types';
-import { formatDateParts, lookupLabel, countryName } from './mapper-utils';
+import { formatDateParts, lookupLabel, countryName, firstCsvUrl } from './mapper-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES } from '../constants/media';
 
@@ -91,7 +91,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     titleRomaji:   c.title_romaji ?? undefined,
     titleEnglish:  c.title_english ?? undefined,
     cover:         c.cover_url    ?? undefined,
-    bannerImage:   c.banners_csv?.split(',')[0] ?? undefined,
+    bannerImage:   firstCsvUrl(c.banners_csv) ?? undefined,
     bannerColor:   'linear-gradient(135deg, #c084fc 0%, #7c3aed 100%)',
     description:   c.synopsis     ?? undefined,
     genreDots:     c.genres_csv     ? c.genres_csv.split(',').join(' · ')     : undefined,

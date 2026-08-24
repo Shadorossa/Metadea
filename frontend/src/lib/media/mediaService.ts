@@ -14,7 +14,7 @@ import { saveMediaAuthors } from '../tauri/catalog';
 import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/staff';
 import { getMediaCompanies, saveMediaCompanies } from '../tauri/companies';
-import { parseExternalId } from './mapper-utils';
+import { parseExternalId, firstCsvUrl } from './mapper-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 
@@ -273,7 +273,7 @@ function applyStickyLocalFields(data: MediaPageData, existing: MediaCatalogEntry
   // had already been clobbered into matching existing.cover_url exactly —
   // there was nothing better left to upgrade to anymore.
   if (existing.cover_url && !isLowTierAniListCover(existing.cover_url)) data.cover = existing.cover_url;
-  if (existing.banners_csv) data.bannerImage = existing.banners_csv.split(',')[0];
+  if (existing.banners_csv) data.bannerImage = firstCsvUrl(existing.banners_csv) ?? undefined;
   if (existing.genres_csv) data.genreDots = existing.genres_csv.split(',').join(' · ');
   if (existing.genres_tag_csv) data.genreTagDots = existing.genres_tag_csv.split(',').join(' · ');
   if (existing.platforms_csv) data.platforms = existing.platforms_csv.split(',').filter(Boolean);
