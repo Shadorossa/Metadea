@@ -108,15 +108,19 @@ export async function resolveSeasonExternalIds(
   try {
     const relations = await getMediaRelationsForEditor(externalId);
     const chainRelations = relations.filter(r => r.relation_type === 'SEQUEL' || r.relation_type === 'PREQUEL');
-    let addedFromDb = false;
     for (const rel of chainRelations) {
       const relSeason = extractTitleSeason(rel.title);
       if (relSeason != null && !(relSeason in map)) {
         map[relSeason] = { externalId: rel.related_media_external_id, title: rel.title };
-        addedFromDb = true;
       }
     }
-    if (addedFromDb) return map;
+    // The DB already had a real answer here — even a related title whose
+    // own season number couldn't be parsed from its title (e.g. a root
+    // title with no season word at all, like plain "THE Big O") means
+    // there's genuinely nothing further AniList could add for this specific
+    // relation; re-asking would just return the exact same unparseable
+    // title again.
+    if (chainRelations.length > 0) return map;
   } catch {
     // Fall through to the AniList check below.
   }
