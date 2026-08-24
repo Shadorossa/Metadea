@@ -16,7 +16,7 @@ import { getItemMinutes } from '../../lib/profile/stats-calculators';
 import { needsResync, isCaughtUpOnReleasing } from '../../lib/media/media-status';
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { groupEditions, groupBundles, refineSagaGroups, averageRating } from './library-grouping';
-import { compareByReleaseDateDesc } from '../../lib/media/mapper-utils';
+import { compareByReleaseDateDesc, catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { LibraryCard, TYPE_ICON } from './LibraryCard';
 
@@ -241,11 +241,7 @@ export function LibrarySection({
     // Items with no finished_at (mainly "planning"/pending entries the user
     // hasn't touched yet) have nothing of their own to sort by — fall back to
     // the work's release date instead of lumping them all together unordered.
-    const releaseTimestamp = (i: Items[number]): number => {
-      const meta = catalogMap.get(i.external_id);
-      if (!meta?.release_year) return 0;
-      return new Date(meta.release_year, (meta.release_month ?? 1) - 1, meta.release_day ?? 1).getTime();
-    };
+    const releaseTimestamp = (i: Items[number]): number => catalogReleaseTimestampMs(catalogMap.get(i.external_id)) ?? 0;
 
     // useStartDate: the two in-progress sections (Al día/En progreso) sort by
     // started_at instead of finished_at — finished_at is null for anything

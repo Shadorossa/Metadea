@@ -101,3 +101,11 @@ export const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
 export function isReadingType(type: string | null | undefined): boolean {
   return type != null && READING_TYPES.has(type);
 }
+
+// A season/update/issue/episode-tagged catalog entry (a Steam "season pass"
+// or similar bundle child) isn't a separately-countable/launchable work of
+// its own — it shows as itself but rolls up into whatever it's part of.
+// Independently declared with the identical value in Local's
+// catalogGameLinking.ts and Profile's stats-calculators.ts before being
+// pulled out here.
+export const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);

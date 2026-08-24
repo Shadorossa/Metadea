@@ -1,5 +1,5 @@
 import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '../tauri';
-import { isInProgressStatus, ALL_MEDIA_TYPES } from '../constants/media';
+import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -56,8 +56,6 @@ function getEditionChildIds(items: Items): Set<string> {
 // by-year, etc.) — only excluded from the ones that count/bucket *works*
 // (totalWorks, completed/currently/paused/dropped/planning), so a bundle's
 // episodes don't inflate "obras completadas" beyond the bundle itself.
-const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
-
 function isSubWorkItem(item: Items[number], childIds: Set<string>, catalogMap?: Map<string, MediaCatalogEntry>): boolean {
   if (childIds.has(item.external_id)) return true;
   if (catalogMap) {

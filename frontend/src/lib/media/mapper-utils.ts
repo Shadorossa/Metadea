@@ -107,6 +107,17 @@ export function parseExternalId(externalId: string): { type: string; id: number 
 }
 
 
+// Release date -> milliseconds since epoch, or null when there's no
+// release_year on file at all. Was independently reimplemented in Local
+// (three places) and Profile's LibrarySection before being pulled out here
+// as the one shared version.
+export function catalogReleaseTimestampMs(
+  entry?: { release_year?: number | null; release_month?: number | null; release_day?: number | null } | null,
+): number | null {
+  if (!entry?.release_year) return null;
+  return new Date(entry.release_year, (entry.release_month ?? 1) - 1, entry.release_day ?? 1).getTime();
+}
+
 // Create a sort key [year, month, day] for comparisons (unknowns sorted last)
 export function getReleaseDateKey(item: { release_year?: number | null; release_month?: number | null; release_day?: number | null }): [number, number, number] {
   return [

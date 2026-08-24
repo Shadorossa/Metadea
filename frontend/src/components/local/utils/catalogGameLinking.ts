@@ -1,6 +1,7 @@
 import type { LocalGame, MediaCatalogEntry, MetaEntry } from '../../../lib/tauri';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { normalizeForMatch } from './folderMatch';
+import { SUB_WORK_FORMATS } from '../../../lib/constants/media';
 
 // A scanned Steam game's own external_id (if any) is one candidate, but a
 // library entry logged as a visual novel is catalogued as "vnovel:<id>"
@@ -27,8 +28,6 @@ export function candidateExternalIdsForGame(g: LocalGame, pathCache: Record<stri
 // Death Stranding: Director's Cut) to its original, and THOSE keep their own
 // identity/launch entirely, not redirected to a different edition the user
 // doesn't actually have.
-const SUB_WORK_FORMATS = new Set(['SEASON', 'UPDATE', 'ISSUE', 'EPISODE']);
-
 export function sourceCatalogOf(
   item: LocalMediaItem,
   catalogMapById: Map<string, MediaCatalogEntry>,

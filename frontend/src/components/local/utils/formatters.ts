@@ -1,4 +1,5 @@
 import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
+export { catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
 
 export function formatPlaytime(minutes?: number): string {
   if (!minutes || minutes === 0) return '—';
@@ -21,14 +22,6 @@ export function formatDate(timestamp?: number): string | null {
   } catch { return null; }
 }
 
-// Shared release-date math for a MediaCatalogEntry (or any object with the
-// same three fields) — was independently reimplemented in three places
-// (LocalMediaSection, LocalMediaDetailPanel, GameDetailPanel), one of which
-// additionally divides by 1000 for formatDate's unix-seconds input. This
-// stays milliseconds (matching Date.now() comparisons, the more common use)
-// — a caller feeding formatDate() divides by 1000 itself at the call site,
-// same as GameDetailPanel already did, just no longer duplicating the
-// underlying new Date(...).getTime() alongside it.
 // First URL out of a comma-separated column (banners_csv, genres_csv-shaped
 // data) — GameDetailPanel and LocalMediaDetailPanel each read banners_csv's
 // first entry independently, one trimming and one not; a CSV saved with a
@@ -36,13 +29,6 @@ export function formatDate(timestamp?: number): string | null {
 // doesn't trim.
 export function firstCsvUrl(csv?: string | null): string | null {
   return csv?.split(',')[0]?.trim() || null;
-}
-
-export function catalogReleaseTimestampMs(
-  entry?: { release_year?: number | null; release_month?: number | null; release_day?: number | null } | null,
-): number | null {
-  if (!entry?.release_year) return null;
-  return new Date(entry.release_year, (entry.release_month ?? 1) - 1, entry.release_day ?? 1).getTime();
 }
 
 // SQLite's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" (UTC, no offset) —

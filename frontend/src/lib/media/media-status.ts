@@ -1,3 +1,5 @@
+import { isInProgressStatus } from '../constants/media';
+
 // Canonical release-status vocabulary every provider mapper (AniList, TMDB,
 // IGDB) normalizes into before it reaches MediaPageData.status / gets
 // persisted to media_catalog.status. AniList's own enum is used as the base
@@ -124,7 +126,6 @@ export function isCaughtUpOnReleasing(
 ): boolean {
   if (!catalogEntry || catalogEntry.status !== 'RELEASING') return false;
   if (!catalogEntry.total_count || catalogEntry.total_count <= 0) return false;
-  const inProgress = libraryStatus === 'watching' || libraryStatus === 'reading' || libraryStatus === 'playing';
-  if (!inProgress) return false;
+  if (!isInProgressStatus(libraryStatus)) return false;
   return (progress ?? 0) >= catalogEntry.total_count;
 }
