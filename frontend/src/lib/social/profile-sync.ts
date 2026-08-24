@@ -13,6 +13,31 @@ import { decodeJwtPayload } from '../profile/utils';
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const MAX_ACTIVITY_ENTRIES = 30;
 
+export interface SyncAttemptRecord {
+  at:     number;
+  result: 'success' | 'skipped_offline' | 'skipped_no_session' | 'skipped_gate' | 'failed_response' | 'failed_error';
+  detail?: string;
+}
+
+// Every automatic attempt used to be a total black box — a failure only ever
+// hit console.warn, invisible unless DevTools happened to be open at that
+// exact moment, so there was no way to tell "it never even tried today" from
+// "it tried and the server rejected it" from "it's just waiting out the 24h
+// gate". Settings > Perfil reads this back to show that history instead of
+// only ever reflecting whatever the last [TEST] click happened to do.
+function recordAttempt(record: SyncAttemptRecord): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.profileSyncLastAttempt, JSON.stringify(record));
+  } catch { /* localStorage unavailable/full — the sync itself already ran either way */ }
+}
+
+export function getLastSyncAttempt(): SyncAttemptRecord | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.profileSyncLastAttempt);
+    return raw ? JSON.parse(raw) as SyncAttemptRecord : null;
+  } catch { return null; }
+}
+
 // Flattens the day-grouped journey into a single recency-sorted list — the
 // feed just needs "what happened, when", not the day-bucket structure the
 // local Profile page's calendar view uses it for.
@@ -66,10 +91,16 @@ async function compileLists(): Promise<unknown[]> {
 // ProfileTab.astro) to trigger a real sync on demand instead of waiting up
 // to 24h for the normal gate to expire.
 export async function syncProfileToServer(force = false): Promise<boolean> {
-  if (!navigator.onLine) return false;
+  if (!navigator.onLine) {
+    recordAttempt({ at: Date.now(), result: 'skipped_offline' });
+    return false;
+  }
 
   const session = await getAuthToken().catch(() => null);
-  if (!session || session.token === 'offline_token') return false;
+  if (!session || session.token === 'offline_token') {
+    recordAttempt({ at: Date.now(), result: 'skipped_no_session' });
+    return false;
+  }
 
   // Turso is the only place that ever *assigns* this account's server id
   // (routes/auth.ts, keyed on the Google account, looked up on every login)
@@ -86,7 +117,10 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
   }
 
   const lastSync = localStorage.getItem(STORAGE_KEYS.profileSyncLastSync);
-  if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) return false;
+  if (!force && lastSync && Date.now() - parseInt(lastSync, 10) < SYNC_INTERVAL_MS) {
+    recordAttempt({ at: Date.now(), result: 'skipped_gate', detail: `last success ${new Date(parseInt(lastSync, 10)).toISOString()}` });
+    return false;
+  }
 
   try {
     const [info, activity, library, favorites, monthlyHistory, lists, customAvatar, customBanner] = await Promise.all([
@@ -134,10 +168,15 @@ export async function syncProfileToServer(force = false): Promise<boolean> {
 
     if (res.ok) {
       localStorage.setItem(STORAGE_KEYS.profileSyncLastSync, String(Date.now()));
+      recordAttempt({ at: Date.now(), result: 'success' });
+    } else {
+      const body = await res.text().catch(() => '');
+      recordAttempt({ at: Date.now(), result: 'failed_response', detail: `HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ''}` });
     }
     return res.ok;
   } catch (error) {
     console.warn('[ProfileSync] Failed:', error);
+    recordAttempt({ at: Date.now(), result: 'failed_error', detail: String(error).slice(0, 200) });
     return false;
   }
 }

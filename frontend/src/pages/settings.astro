@@ -91,7 +91,7 @@ const version = pkg.version;
 
 <script>
   import { getAuthToken, clearAuthToken } from "../lib/tauri";
-  import { syncProfileToServer } from "../lib/social/profile-sync";
+  import { syncProfileToServer, getLastSyncAttempt } from "../lib/social/profile-sync";
   import { decodeJwtPayload } from "../lib/profile/utils";
   import { initAvatar, initShareAvatar } from "../lib/settings/avatar";
   import { initBanner } from "../lib/settings/banner";
@@ -260,6 +260,28 @@ const version = pkg.version;
     });
 
     // TEST — temporary debug button, see ProfileTab.astro's comment.
+    const RESULT_LABEL: Record<string, string> = {
+      success: "Éxito",
+      skipped_offline: "Omitido (sin conexión)",
+      skipped_no_session: "Omitido (sin sesión de Google)",
+      skipped_gate: "Omitido (aún dentro de las 24h desde el último éxito)",
+      failed_response: "Falló (respuesta del servidor)",
+      failed_error: "Falló (error de red/cliente)",
+    };
+    function renderLastSyncAttempt() {
+      const el = document.getElementById("settings-sync-last-attempt");
+      if (!el) return;
+      const attempt = getLastSyncAttempt();
+      if (!attempt) {
+        el.textContent = "Sin intentos de sincronización registrados todavía.";
+        return;
+      }
+      const when = new Date(attempt.at).toLocaleString();
+      const label = RESULT_LABEL[attempt.result] ?? attempt.result;
+      el.textContent = `Último intento: ${when} — ${label}${attempt.detail ? ` (${attempt.detail})` : ""}`;
+    }
+    renderLastSyncAttempt();
+
     document.getElementById("settings-force-sync-btn")?.addEventListener("click", async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       btn.disabled = true;
@@ -267,6 +289,7 @@ const version = pkg.version;
       btn.textContent = "[TEST] Sincronizando...";
       const ok = await syncProfileToServer(true).catch(() => false);
       btn.textContent = ok ? "[TEST] Sincronizado ✓" : "[TEST] Falló ✗";
+      renderLastSyncAttempt();
       setTimeout(() => {
         btn.textContent = original;
         btn.disabled = false;

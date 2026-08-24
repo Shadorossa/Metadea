@@ -29,6 +29,7 @@ export const STORAGE_KEYS = {
   updaterCheckedThisSession: 'metadea_updater_checked_this_session',
   locale: 'metadea_locale',
   profileSyncLastSync: 'metadea_profile_sync_last_sync',
+  profileSyncLastAttempt: 'metadea_profile_sync_last_attempt',
   activityFeedLastFetch: 'metadea_activity_feed_last_fetch',
   activityFeedCache: 'metadea_activity_feed_cache',
   generalActivityFeedLastFetch: 'metadea_general_activity_feed_last_fetch',
