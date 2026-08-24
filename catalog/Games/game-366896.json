@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "e4047e829a103aa7e4047e829a103aa7",
+    "external_id": "game:366896",
+    "type": "game",
+    "title_main": "Fire Emblem: Fortune's Weave",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:366896",
+      "related_media_external_id": "game:26845",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fire Emblem: Three Houses",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1n8t.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Fire Emblem: Three Houses"
+}
