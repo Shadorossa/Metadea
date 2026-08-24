@@ -2793,6 +2793,14 @@
   .stats-heatmap-grid {
     grid-template-columns: repeat(28, 1fr);
     /* Last ~6 months */
+    /* Each 1fr column otherwise stretches to fill however wide the stats
+       panel happens to be, and aspect-ratio:1 (see .heatmap-cell) ties
+       cell height to that same width — on a wide panel this blew up into
+       a much taller grid than a 28x7 calendar actually needs. Capping the
+       grid's own width keeps cells GitHub-contribution-graph-sized
+       regardless of the panel's width, instead of the grid stretching to
+       fill it. */
+    max-width: 480px;
   }
 }
 
