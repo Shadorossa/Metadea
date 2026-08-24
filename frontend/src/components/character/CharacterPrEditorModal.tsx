@@ -89,6 +89,7 @@ export function CharacterPrEditorModal() {
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
 
   const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -590,9 +591,26 @@ export function CharacterPrEditorModal() {
           )}
         </div>
 
+        <div className="pr-editor-tabs">
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'general' ? ' active' : ''}`} onClick={() => setActiveTab('general')}>
+            General
+            {characteristicsChanged() && <span className="pr-editor-tab-changed-dot" />}
+          </button>
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'appearances' ? ' active' : ''}`} onClick={() => setActiveTab('appearances')}>
+            {t.appearances}
+            {appearancesChanged() && <span className="pr-editor-tab-changed-dot" />}
+          </button>
+          <button type="button" className={`pr-editor-tab-btn${activeTab === 'voices' ? ' active' : ''}`} onClick={() => setActiveTab('voices')}>
+            {t.voice_actors}
+            {voiceActorsChanged() && <span className="pr-editor-tab-changed-dot" />}
+          </button>
+        </div>
+
         <div className="pr-editor-body">
           {errorMsg && <div className="pr-editor-alert pr-editor-alert--error pr-editor-field--full">{errorMsg}</div>}
 
+          {activeTab === 'general' && (
+          <>
           {/* ── Fila de Cabecera: Foto + Datos Básicos ── */}
           <div className="pr-editor-section" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1.5rem', alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
@@ -686,7 +704,11 @@ export function CharacterPrEditorModal() {
               </Field>
             </div>
           </div>
+          </>
+          )}
 
+          {activeTab === 'appearances' && (
+          <>
           {/* ── Apariciones ── */}
           <div className="pr-editor-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -729,7 +751,11 @@ export function CharacterPrEditorModal() {
               ))}
             </div>
           </div>
+          </>
+          )}
 
+          {activeTab === 'voices' && (
+          <>
           {/* ── Actores de Voz (Seiyūs) ── */}
           <div className="pr-editor-section" style={{ marginTop: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -820,6 +846,8 @@ export function CharacterPrEditorModal() {
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
 
         <div className="pr-editor-footer">
