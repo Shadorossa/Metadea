@@ -546,7 +546,7 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
 
         const values = stat.value.split(',').map(v => v.trim()).filter(v => v);
-        const valueHtml = values.map(v => `<div>${escapeHtml(v)}</div>`).join('');
+        const valueHtml = values.map(v => `<div>${sanitizeHtml(v)}</div>`).join('');
 
         statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
