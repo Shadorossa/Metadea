@@ -25,7 +25,16 @@ const translations = useTranslations(lang);
 
     <!-- Contenido del Personaje -->
     <div id="character-content" style="display: none;" data-char-key="">
-      
+
+      <!-- Grid unificado (hero + cuerpo): Datos ocupa su propia columna a la
+           derecha desde la altura del hero (bajo Editar) hasta la del
+           cuerpo, con el mismo ancho que antes tenía a la derecha de
+           Apariciones — así, si tiene mucho contenido, sigue bajando por
+           ese mismo espacio en vez de quedar encajonado bajo el avatar.
+           character-hero-body/media-body se vuelven display:contents (ver
+           character.css) para que sus hijos actúen como items directos de
+           esta grid sin tener que aplanar el HTML entero. -->
+      <div class="character-grid">
       <!-- Hero principal -->
       <div class="character-hero-body">
         <div class="character-hero-left-col">
@@ -76,7 +85,7 @@ const translations = useTranslations(lang);
         </div>
       </div>
 
-      <!-- Body: 3 Columnas (Biografía, Apariciones en Obras, Datos) -->
+      <!-- Body: Biografía, Apariciones en Obras -->
       <div class="media-body" style="padding-top: 2rem;">
         <!-- Columna 1: Biografía -->
         <div class="media-col-synopsis" id="char-bio-section" style="display: none;">
@@ -94,7 +103,7 @@ const translations = useTranslations(lang);
             <div class="media-section-header-line"></div>
           </div>
           <div class="media-relations-grid" id="char-appearances-grid"></div>
-          
+
           <!-- Paginación -->
           <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
             <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">{translations.character.pagination_prev}</button>
@@ -102,24 +111,28 @@ const translations = useTranslations(lang);
             <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">{translations.character.pagination_next}</button>
           </div>
         </div>
+      </div>
 
-        <!-- Columna 3: Datos -->
-        <div class="media-col-stats" id="char-stats-card" style="display: none;">
-          <div class="media-section-header-row">
-            <p class="section-label">{translations.character.details}</p>
-            <div class="media-section-header-line"></div>
-            <div id="char-api-link-wrap"></div>
-          </div>
-          <div class="media-stats-list" id="char-stats-list"></div>
-
-          <!-- Actores de Voz por Idioma (debajo de datos) -->
-          <div class="char-seiyu-section" id="char-seiyu-section" style="display: none; margin-top: 1rem;">
-            <div class="media-authors-box" style="margin-bottom: 0.75rem;">
-              <div class="media-authors-list" id="char-seiyu-list"></div>
-            </div>
-            <div class="char-seiyu-lang-tabs" id="char-seiyu-lang-tabs"></div>
-          </div>
+      <!-- Columna 3: Datos — abarca desde la fila del hero hasta la del
+           cuerpo (grid-row: 1 / 3 en character.css), mismo ancho/columna
+           que antes tenía a la derecha de Apariciones. -->
+      <div class="media-col-stats character-hero-stats" id="char-stats-card" style="display: none;">
+        <div class="media-section-header-row">
+          <p class="section-label">{translations.character.details}</p>
+          <div class="media-section-header-line"></div>
+          <div id="char-api-link-wrap"></div>
         </div>
+        <div class="media-stats-list" id="char-stats-list"></div>
+
+        <!-- Actores de Voz por Idioma (debajo de datos) -->
+        <div class="char-seiyu-section" id="char-seiyu-section" style="display: none; margin-top: 1rem;">
+          <div class="media-authors-box" style="margin-bottom: 0.75rem;">
+            <div class="media-authors-list" id="char-seiyu-list"></div>
+          </div>
+          <div class="char-seiyu-lang-tabs" id="char-seiyu-lang-tabs"></div>
+        </div>
+      </div>
+
       </div>
 
     </div>

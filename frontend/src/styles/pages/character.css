@@ -1,37 +1,69 @@
 /* Character Detail Page Styles (integrated with Media Page theme layout) */
 
-.character-hero-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 3rem;
+/* Unified 3-column/2-row grid spanning both the hero (avatar/name) and the
+   body (Biografía/Apariciones) — Datos is its own column (3) spanning both
+   rows via grid-row: 1 / 3 below, so it starts right under Editar/the name
+   like the hero content beside it, but keeps the exact same column (same
+   width, same position to the right of Apariciones) it always had — if it
+   has a lot of content it just keeps flowing down through where it used to
+   start, instead of being boxed into the shorter hero row's height.
+   .character-hero-body/.media-body become display:contents so their
+   existing children act as direct items of this outer grid without having
+   to flatten the actual HTML structure. */
+.character-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 3fr 0.9fr;
+  align-items: start;
+  column-gap: 2.5rem;
+  row-gap: 2rem;
   padding: 5.5rem 15% 2rem;
-  padding-left: calc(15% + 1.5rem);
+}
+
+.character-hero-body,
+#character-content .media-body {
+  display: contents;
+}
+
+.character-hero-left-col {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.character-hero-right-col {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#character-content .media-col-synopsis {
+  grid-row: 2;
+}
+
+#character-content .media-col-related {
+  grid-row: 2;
+}
+
+.character-hero-stats {
+  grid-column: 3;
+  grid-row: 1 / 3;
 }
 
 @media (max-width: 900px) {
-  .character-hero-body {
-    flex-direction: column;
-    align-items: center;
+  .character-grid {
+    grid-template-columns: 1fr;
     padding: 3rem 1rem 2rem;
   }
 
-  /* .media-body's 3-column grid (1.1fr / 3fr / 0.9fr, shared with
-     MediaPage.tsx) has no narrow-width fallback of its own — below 900px
-     it kept all 3 tracks side by side, squeezing each into a sliver too
-     narrow for its own content and forcing every column (Datos most of
-     all, its stat values often running whole sentences) into a tall,
-     awkwardly word-wrapped strip instead of stacking. Scoped to the
-     character page specifically (not the shared media.css) since Datos
-     jumping above Biography/Apariciones is a call that only makes sense
-     here — Datos is the character's vitals, worth seeing before scrolling
-     past a biography that (unlike a media synopsis) is sometimes empty. */
-  #character-content .media-body {
-    display: flex;
-    flex-direction: column;
+  .character-hero-left-col,
+  .character-hero-right-col,
+  #character-content .media-col-synopsis,
+  #character-content .media-col-related,
+  .character-hero-stats {
+    grid-column: 1;
+    grid-row: auto;
   }
 
-  #character-content .media-col-stats {
-    order: -1;
+  .character-hero-left-col {
+    align-self: center;
   }
 }
 
