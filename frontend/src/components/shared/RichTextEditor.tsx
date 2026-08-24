@@ -21,6 +21,11 @@ interface ToolbarPos {
   left: number;
 }
 
+interface ContextMenuPos {
+  top: number;
+  left: number;
+}
+
 export function RichTextEditor({ value, onChange, placeholder, className }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   // Tracks the last value *this* component emitted, so the sync-from-prop
@@ -34,6 +39,12 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
   // was true=false right from mount.
   const lastEmittedRef = useRef<string | null>(null);
   const [toolbarPos, setToolbarPos] = useState<ToolbarPos | null>(null);
+  // Discord-style right-click format menu — a second, explicit way to reach
+  // the same commands as the hover toolbar. Kept as separate state (rather
+  // than reusing toolbarPos) since it's positioned at the click point, not
+  // above the selection, and dismisses on its own set of triggers (outside
+  // click, Escape, picking an option) instead of on blur/selection-clear.
+  const [contextMenuPos, setContextMenuPos] = useState<ContextMenuPos | null>(null);
 
   useEffect(() => {
     if (editorRef.current && value !== lastEmittedRef.current) {
@@ -91,13 +102,52 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
     document.execCommand(cmd, false, arg);
     emitChange();
     updateToolbarPosition();
+    setContextMenuPos(null);
   }
 
   function handleLink() {
     const url = window.prompt('URL del enlace:');
+    setContextMenuPos(null);
     if (!url) return;
     applyCommand('createLink', url);
   }
+
+  // Right-click format menu (Discord-style) — a second, more discoverable
+  // way to reach the same commands the hover toolbar already exposes,
+  // instead of relying on someone noticing text needs to stay selected for
+  // a moment. Only takes over the browser's own context menu when there's
+  // actually a selection to act on; a plain right-click with nothing
+  // selected still gets the normal menu (cut/paste/etc).
+  function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+    const sel = window.getSelection();
+    const editor = editorRef.current;
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !editor) return;
+    const range = sel.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    const wrapRect = e.currentTarget.parentElement!.getBoundingClientRect();
+    setContextMenuPos({ top: e.clientY - wrapRect.top, left: e.clientX - wrapRect.left });
+  }
+
+  useEffect(() => {
+    if (!contextMenuPos) return;
+    const close = () => setContextMenuPos(null);
+    const closeOnEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    // 'click' rather than 'mousedown' — the menu's own wrapper already
+    // preventDefaults mousedown (to keep the text selection alive for
+    // applyCommand to act on), so a 'mousedown' listener here would never
+    // actually see that event reach window at all.
+    window.addEventListener('click', close);
+    window.addEventListener('contextmenu', close);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('contextmenu', close);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [contextMenuPos]);
 
   return (
     <div className="pr-editor-richtext-wrap">
@@ -112,6 +162,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
         onMouseUp={updateToolbarPosition}
         onKeyUp={updateToolbarPosition}
         onBlur={() => setToolbarPos(null)}
+        onContextMenu={handleContextMenu}
       />
       {toolbarPos && (
         <div
@@ -126,6 +177,34 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
           <button type="button" onClick={() => applyCommand('italic')} title="Cursiva"><i>I</i></button>
           <button type="button" onClick={() => applyCommand('underline')} title="Subrayado"><u>U</u></button>
           <button type="button" onClick={handleLink} title="Enlace">🔗</button>
+        </div>
+      )}
+      {contextMenuPos && (
+        <div
+          className="pr-editor-richtext-ctxmenu"
+          style={{ top: contextMenuPos.top, left: contextMenuPos.left }}
+          // Same reason as the toolbar above — without this, the browser
+          // clears the contentEditable's selection the instant focus moves
+          // to one of these buttons, so applyCommand would have nothing
+          // left to format by the time its onClick actually runs.
+          onMouseDown={e => e.preventDefault()}
+        >
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={() => applyCommand('bold')}>
+            <b className="pr-editor-richtext-ctxmenu-icon">B</b> Negrita
+          </button>
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={() => applyCommand('italic')}>
+            <i className="pr-editor-richtext-ctxmenu-icon">I</i> Cursiva
+          </button>
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={() => applyCommand('underline')}>
+            <u className="pr-editor-richtext-ctxmenu-icon">U</u> Subrayado
+          </button>
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={handleLink}>
+            <span className="pr-editor-richtext-ctxmenu-icon">🔗</span> Enlace
+          </button>
+          <div className="pr-editor-richtext-ctxmenu-sep" />
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={() => applyCommand('removeFormat')}>
+            <span className="pr-editor-richtext-ctxmenu-icon">⌫</span> Quitar formato
+          </button>
         </div>
       )}
     </div>

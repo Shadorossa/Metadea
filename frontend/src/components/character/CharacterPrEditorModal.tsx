@@ -17,6 +17,7 @@ import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { TagsInput } from '../shared/TagsInput';
+import { RichTextEditor } from '../shared/RichTextEditor';
 import {
   isFieldChanged,
   characteristicsChanged as characteristicsChangedPure,
@@ -91,24 +92,9 @@ export function CharacterPrEditorModal() {
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
 
-  const bioTextareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const adjustBioHeight = () => {
-    if (bioTextareaRef.current) {
-      bioTextareaRef.current.style.height = 'auto';
-      bioTextareaRef.current.style.height = `${Math.max(120, bioTextareaRef.current.scrollHeight)}px`;
-    }
-  };
-
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(adjustBioHeight, 50);
-    }
-  }, [cleanBiography, isOpen]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -685,21 +671,10 @@ export function CharacterPrEditorModal() {
           <div className="pr-editor-section">
             <div className="pr-editor-form-grid">
               <Field label={t.biography} changed={isFieldChanged(cleanBiography, originalCleanBiography)} full>
-                <textarea
-                  ref={bioTextareaRef}
+                <RichTextEditor
                   value={cleanBiography}
-                  onChange={e => {
-                    setCleanBiography(e.target.value);
-                    adjustBioHeight();
-                  }}
+                  onChange={setCleanBiography}
                   placeholder={t.biography_ph}
-                  style={{
-                    minHeight: '120px',
-                    height: 'auto',
-                    fieldSizing: 'content',
-                    resize: 'vertical',
-                    overflowY: 'hidden',
-                  }}
                 />
               </Field>
             </div>
