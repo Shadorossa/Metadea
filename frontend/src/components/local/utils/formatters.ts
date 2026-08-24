@@ -31,6 +31,20 @@ export function formatWatchedAt(sqliteTimestamp: string): string {
   return d.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+// A playback position in seconds -> "M:SS", or "H:MM:SS" past the first
+// hour — movies (LocalMediaDetailPanel's own resume-position label) can
+// run well past 60 minutes, unlike NowPlayingBar's own progress bar, which
+// used to format the same kind of value without ever accounting for that.
+export function formatPlaybackTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const total = Math.floor(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

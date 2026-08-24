@@ -7,14 +7,8 @@ import { usePlaybackState, pausePlayback, resumePlayback, skipToNext, stopPlayba
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { isReadingType } from '../../lib/constants/media';
+import { formatPlaybackTime } from './utils/formatters';
 import { IconX } from './ui/icons';
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 export function NowPlayingBar() {
   const playback = usePlaybackState();
@@ -42,7 +36,7 @@ export function NowPlayingBar() {
           <a className="now-playing-title" href={mediaUrl}>{playback.title}</a>
           <span className="now-playing-episode">
             {episodeLabel} {current?.episodeNumber}
-            {playback.length > 0 && ` · ${formatTime(playback.time)} / ${formatTime(playback.length)}`}
+            {playback.length > 0 && ` · ${formatPlaybackTime(playback.time)} / ${formatPlaybackTime(playback.length)}`}
           </span>
         </div>
         <div className="now-playing-controls">

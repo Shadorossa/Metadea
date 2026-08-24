@@ -4,6 +4,7 @@ import {
   scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
   type LocalFolderEntry,
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
+  getResumePosition,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
@@ -21,7 +22,7 @@ import {
   usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
-import { formatWatchedAt, catalogReleaseTimestampMs, firstCsvUrl } from '../utils/formatters';
+import { formatWatchedAt, catalogReleaseTimestampMs, firstCsvUrl, formatPlaybackTime } from '../utils/formatters';
 import { isReadingType } from '../../../lib/constants/media';
 import { formatDateLong } from '../../../lib/shared/formatDate';
 import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
@@ -330,6 +331,22 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // that's not a missing-file problem, so it shouldn't render like one.
   const totalCount = item.catalogEntry?.total_count ?? null;
   const isCaughtUp = totalCount != null && totalCount > 0 && nextNumber > totalCount;
+
+  // VLC's own last-seen position for this exact episode, if it was ever
+  // paused/closed partway through without finishing it (see playback-
+  // service.ts's saveResumePosition/clearResumePosition) — shown on the
+  // play button itself so re-opening an episode you parked mid-watch says
+  // so instead of just "Reproducir" as if starting from zero. Re-fetched
+  // whenever playback for this item stops (isThisPlaying flipping back to
+  // false), since that's exactly when the saved position last changed.
+  const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getResumePosition(item.externalId, nextNumber).then(secs => {
+      if (!cancelled) setResumeSeconds(secs);
+    }).catch(() => { if (!cancelled) setResumeSeconds(null); });
+    return () => { cancelled = true; };
+  }, [item.externalId, nextNumber, isThisPlaying]);
 
   const playContainer = deepFileMatch
     ? dirname(deepFileMatch.absPath)
@@ -668,7 +685,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
                 )}
-                {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : 'Reproducir'}
+                {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
               </button>
               <div className="local-media-divider-line" />
               <div className="local-media-match-row">
