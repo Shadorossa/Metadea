@@ -640,7 +640,14 @@
   transform: translateY(-3px);
 }
 
-.local-game-cover img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-elevated); }
+/* transform: translateZ(0) forces this <img> onto its own compositor layer —
+   without it, the WebView (WebView2/Chromium) sometimes never repaints a
+   cover once its async-assigned src finishes loading (see LocalMediaCard.tsx,
+   which sets src well after mount instead of it being present from the very
+   first paint), leaving a blank box until something else forces a reflow
+   (moving the mouse). An element with its own layer gets composited as soon
+   as its content is ready, without needing a page-wide repaint. */
+.local-game-cover img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-elevated); transform: translateZ(0); }
 
 .local-game-cover-placeholder {
   display: flex;
