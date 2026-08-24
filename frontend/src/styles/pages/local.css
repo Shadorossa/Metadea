@@ -321,6 +321,15 @@
   flex: 1;
   min-width: 0;
   padding: 1.5rem 1.25rem;
+  /* The detail panel's own entrance/exit only animates its transform (see
+     slide-in-right/slide-out-right) — its actual layout width is claimed
+     instantly the moment it mounts, since transform doesn't affect layout.
+     Without this, the grid snapped to its narrower width the instant the
+     panel appeared, while the panel itself was still visibly sliding into
+     that already-reserved space for another 0.3s. Matching duration/easing
+     to the panel's own animation keeps both in sync instead of one lagging
+     behind the other. */
+  transition: width 0.3s var(--anim-ease);
 }
 
 /* ── Tab bar (rendered in navbar via portal) ─────────────────────────────────── */
