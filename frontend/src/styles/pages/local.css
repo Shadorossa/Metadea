@@ -744,10 +744,6 @@
 }
 
 .local-media-detail-locate-menu {
-  position: absolute;
-  top: calc(100% + 0.4rem);
-  right: 0;
-  z-index: 20;
   display: flex;
   flex-direction: column;
   min-width: 190px;
@@ -756,6 +752,18 @@
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   overflow: hidden;
+}
+
+/* Rendered into a body-level portal (see LocalMediaDetailPanel.tsx) instead
+   of positioned relative to .local-media-detail-locate-wrap — that wrapper
+   sits inside .local-game-detail-content's own overflow-y:auto, which
+   clipped this dropdown regardless of z-index. top/left come from the
+   button's own measured rect; translateX(-50%) centers it under the
+   button instead of the old right-aligned placement. */
+.local-media-detail-locate-menu--portal {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 1000;
 }
 
 .local-media-detail-locate-menu button {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
@@ -353,6 +353,16 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // renaming always happens in place (same parent), never moving anything.
   // Files aren't touched until the user reviews and confirms the exact plan.
   const [locateMenuOpen, setLocateMenuOpen] = useState(false);
+  const locateBtnRef = useRef<HTMLButtonElement>(null);
+  // The dropdown used to be a plain CSS-positioned absolute child of the
+  // button's own wrapper — but that wrapper sits inside
+  // .local-game-detail-content, which owns its own overflow-y:auto (see
+  // local.css) to keep the banner from resizing as content streams in, and
+  // an overflow ancestor clips an absolutely-positioned descendant
+  // regardless of z-index. Same fix as AchievementCell's tooltip: render
+  // into a body-level portal with position:fixed, positioned from the
+  // button's own measured rect instead.
+  const [locateMenuPos, setLocateMenuPos] = useState<{ top: number; left: number } | null>(null);
   useEffect(() => {
     if (!locateMenuOpen) return;
     const closeMenu = () => setLocateMenuOpen(false);
@@ -661,19 +671,31 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               <div className="local-media-match-row">
                 <div className="local-media-detail-locate-wrap">
                   <button
+                    ref={locateBtnRef}
                     type="button"
                     className="local-media-detail-locate-btn"
-                    onClick={() => setLocateMenuOpen(v => !v)}
+                    onClick={() => {
+                      if (!locateMenuOpen) {
+                        const rect = locateBtnRef.current?.getBoundingClientRect();
+                        if (rect) setLocateMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+                      }
+                      setLocateMenuOpen(v => !v);
+                    }}
                     disabled={locateBusy || !rootFolder}
                     title={t.local.locate_manually}
                   >
                     {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
                   </button>
-                  {locateMenuOpen && (
-                    <div className="local-media-detail-locate-menu">
+                  {locateMenuOpen && locateMenuPos && createPortal(
+                    <div
+                      className="local-media-detail-locate-menu local-media-detail-locate-menu--portal"
+                      style={{ top: locateMenuPos.top, left: locateMenuPos.left }}
+                      onClick={e => e.stopPropagation()}
+                    >
                       <button type="button" onClick={handleLocateFolder}>{t.local.locate_choose_folder}</button>
                       <button type="button" onClick={handleLocateSingleFile}>{t.local.locate_choose_file}</button>
-                    </div>
+                    </div>,
+                    document.body,
                   )}
                 </div>
                 {(matchedFolder || rootFileMatch || deepTagMatch) && !isUnreleased && (
