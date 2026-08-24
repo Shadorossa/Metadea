@@ -47,6 +47,20 @@ function episodeCount(item: LocalMediaItem): number {
   return total && total > 0 ? total : Infinity;
 }
 
+// Per-category "what was open" memory (see selectionMemory below) — plain
+// identifiers rather than the actual LocalMediaItem/LocalGame objects, since
+// those come from a specific category's own allItems/steamGames and go
+// stale the moment you tab away; re-resolved against whichever list is live
+// when a category becomes active again.
+type LocalPanelSelection =
+  | { kind: 'catalog'; id: string }
+  | { kind: 'game'; key: string }
+  | { kind: 'pending'; id: string; launchGameKey?: string };
+
+function gameSelectionKey(g: LocalGame): string {
+  return g.external_id ?? g.app_id ?? g.name;
+}
+
 interface LocalMediaSectionProps {
   category:     CategoryId;
   rootFolder:   string | undefined;
@@ -184,6 +198,45 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     setSelectedIdRaw(null);
     writeLocalUrlState(category, `p:${item.externalId}`);
   };
+
+  // Switching category tabs shouldn't close whatever panel was open — each
+  // category remembers its own last-open selection here, restored the
+  // instant you tab back, and only forgotten when this whole component
+  // unmounts (leaving /local for Home/Profile entirely), not from switching
+  // between categories. Deliberately adjusted during render rather than in
+  // an effect: an effect would commit one frame with the OLD selection
+  // resolved against the NEW category's items first — nothing, since ids
+  // never cross categories — which is exactly the "panel closes, then
+  // reopens" flash (and the entrance animation replaying with it) this
+  // exists to avoid. React re-renders synchronously before painting when
+  // state is set this way, so that in-between frame is never actually shown.
+  const selectionMemory = useRef<Partial<Record<CategoryId, LocalPanelSelection>>>({});
+  const prevCategoryRef = useRef(category);
+  if (category !== prevCategoryRef.current) {
+    const outgoing = prevCategoryRef.current;
+    const currentSel: LocalPanelSelection | null =
+      selectedId ? { kind: 'catalog', id: selectedId } :
+      selectedGame ? { kind: 'game', key: gameSelectionKey(selectedGame) } :
+      selectedPendingItem ? { kind: 'pending', id: selectedPendingItem.externalId, launchGameKey: selectedPendingLaunchGame ? gameSelectionKey(selectedPendingLaunchGame) : undefined } :
+      null;
+    if (currentSel) selectionMemory.current[outgoing] = currentSel;
+    else delete selectionMemory.current[outgoing];
+
+    const incoming = selectionMemory.current[category] ?? null;
+    const nextId = incoming?.kind === 'catalog' ? incoming.id : null;
+    const nextGame = incoming?.kind === 'game' ? (steamGames ?? []).find(g => gameSelectionKey(g) === incoming.key) ?? null : null;
+    const nextPending = incoming?.kind === 'pending' ? allItems.find(i => i.externalId === incoming.id) ?? null : null;
+    const nextPendingLaunch = (nextPending && incoming?.kind === 'pending' && incoming.launchGameKey)
+      ? (steamGames ?? []).find(g => gameSelectionKey(g) === incoming.launchGameKey)
+      : undefined;
+
+    setSelectedIdRaw(nextId);
+    setSelectedGameRaw(nextGame);
+    setSelectedPendingItemRaw(nextPending);
+    setSelectedPendingLaunchGame(nextPendingLaunch);
+    prevCategoryRef.current = category;
+    writeLocalUrlState(category, nextId ? `c:${nextId}` : nextGame ? `g:${gameSelectionKey(nextGame)}` : nextPending ? `p:${nextPending.externalId}` : null);
+  }
 
   // Steam games split by their matched library status — unmatched (or
   // matched to a status this grid doesn't otherwise track, e.g. paused/
