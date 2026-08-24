@@ -54,13 +54,24 @@ type RelationEdge = AniListRelationsResponse['Media']['relations']['edges'][numb
 const relationsCache = new Map<number, Promise<RelationEdge[]>>();
 
 // Most titles in a library are standalone or already-season-1 — AniList
-// genuinely has no PREQUEL/SEQUEL to report for them, but that "no" was
-// never remembered anywhere, so every single Local panel open re-asked
-// AniList the same question forever. anilist_pre_sequel (see db.rs
-// migration 47) records a confirmed-empty result so it's only ever asked
-// once per title, persisted across app restarts — not just this session.
-// Only a genuinely confirmed empty response gets cached; a network failure
-// falls through without marking anything, so it's retried later normally.
+// genuinely has no PREQUEL to report for them, but that "no" was never
+// remembered anywhere, so every single Local panel open re-asked AniList the
+// same question forever. anilist_pre_sequel (see db.rs migration 47) records
+// a confirmed "no prequel" so it's only ever asked once per title, persisted
+// across app restarts — not just this session.
+//
+// Only the PREQUEL side is what gates the cache write — a root/season-1
+// title very often DOES have a real SEQUEL (that's what makes it season 1
+// of something), which resolveOwnSeasonNumber's hop-walk always ends up
+// re-checking on its way up a chain (see The Big O: season 2 has its own
+// PREQUEL cached locally already, but the walk still asks whether ITS
+// prequel, season 1, has a prequel of its own too). Gating on "no chain
+// relation at all" meant a title with a real sequel but no prequel — the
+// single most common shape for any franchise's root — could never get
+// cached, since it always failed that check. The sequel side is already
+// covered by media_relations by the time anything reads it forward, so
+// missing it here from this specific cache costs nothing.
+// A network failure never marks anything, so it's retried normally later.
 function fetchAniListRelationEdges(externalId: string, numericId: number): Promise<RelationEdge[]> {
   let cached = relationsCache.get(numericId);
   if (cached) return cached;
@@ -72,8 +83,8 @@ function fetchAniListRelationEdges(externalId: string, numericId: number): Promi
     try {
       const { result } = await graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId });
       const edges = result?.data?.Media?.relations?.edges ?? [];
-      const hasChainRelation = edges.some(e => e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL');
-      if (!hasChainRelation) markAnilistPreSequelChecked(externalId).catch(() => {});
+      const hasPrequel = edges.some(e => e.relationType === 'PREQUEL');
+      if (!hasPrequel) markAnilistPreSequelChecked(externalId).catch(() => {});
       return edges;
     } catch {
       return [];
