@@ -321,15 +321,17 @@
   flex: 1;
   min-width: 0;
   padding: 1.5rem 1.25rem;
-  /* The detail panel's own entrance/exit only animates its transform (see
-     slide-in-right/slide-out-right) — its actual layout width is claimed
-     instantly the moment it mounts, since transform doesn't affect layout.
-     Without this, the grid snapped to its narrower width the instant the
-     panel appeared, while the panel itself was still visibly sliding into
-     that already-reserved space for another 0.3s. Matching duration/easing
-     to the panel's own animation keeps both in sync instead of one lagging
-     behind the other. */
-  transition: width 0.3s var(--anim-ease);
+  /* No `transition: width` here on purpose — a CSS transition on a
+     layout-affecting property like this one forces the browser to
+     interpolate the actual box size (and therefore reflow every grid card
+     inside it) frame by frame, completely outside of React. useGridFlip
+     measures card positions synchronously the instant this element's width
+     actually changes, so keeping that change instantaneous (not animated
+     at the CSS level) is what lets it capture the true before/after delta
+     in one shot and play it back itself as a `transform`, matching the
+     detail panel's own 0.3s slide duration/easing exactly instead of
+     racing an independent, un-smoothable native reflow against it.
+     See useGridFlip.ts. */
 }
 
 /* ── Tab bar (rendered in navbar via portal) ─────────────────────────────────── */
