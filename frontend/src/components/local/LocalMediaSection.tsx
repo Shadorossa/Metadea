@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry, LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
@@ -11,8 +11,11 @@ import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
-import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
 import { catalogReleaseTimestampMs } from './utils/formatters';
+import {
+  type LocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
+  resolvePendingSelection, resolvePendingLaunchGame,
+} from './hooks/useLocalPanelSelection';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -47,19 +50,6 @@ function episodeCount(item: LocalMediaItem): number {
   return total && total > 0 ? total : Infinity;
 }
 
-// Per-category "what was open" memory (see selectionMemory below) — plain
-// identifiers rather than the actual LocalMediaItem/LocalGame objects, since
-// those come from a specific category's own allItems/steamGames and go
-// stale the moment you tab away; re-resolved against whichever list is live
-// when a category becomes active again.
-type LocalPanelSelection =
-  | { kind: 'catalog'; id: string }
-  | { kind: 'game'; key: string }
-  | { kind: 'pending'; id: string; launchGameKey?: string };
-
-function gameSelectionKey(g: LocalGame): string {
-  return g.external_id ?? g.app_id ?? g.name;
-}
 
 interface LocalMediaSectionProps {
   category:     CategoryId;
@@ -92,13 +82,24 @@ interface LocalMediaSectionProps {
   // of guessing from the title.
   pathCache?:   Record<string, MetaEntry>;
   onMetaRefresh?: () => void;
+  // Single source of truth for "what's open" — owned by LocalLibrary (see
+  // useLocalPanelSelection) so it survives switching away to Videojuegos,
+  // which unmounts this whole component entirely. This component only ever
+  // resolves `selection` against its own category's item lists and reports
+  // clicks back up through the setters — it doesn't own any selection state
+  // itself anymore.
+  selection: LocalPanelSelection;
+  onSetCatalogSelection: (id: string | null) => void;
+  onSetGameSelection: (g: LocalGame | null) => void;
+  onOpenPendingSelection: (item: LocalMediaItem, launchGame?: LocalGame) => void;
+  onClearSelection: () => void;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, onClearSelection }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -165,78 +166,20 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   // Mutually exclusive — selecting one always closes the others, so a
   // catalog item's LocalMediaDetailPanel, a Steam game's GameDetailPanel,
   // and a library-only pending item's synthetic GameDetailPanel never end
-  // up open side by side at once.
-  const [selectedId, setSelectedIdRaw] = useState<string | null>(null);
-  const selected = selectedId ? allItems.find(i => i.externalId === selectedId) ?? null : null;
-  const [selectedGame, setSelectedGameRaw] = useState<LocalGame | null>(null);
+  // up open side by side at once. `selection` itself lives in LocalLibrary
+  // (see useLocalPanelSelection) — resolved here against this category's
+  // own item lists, purely derived so it updates in the same render as
+  // `category`/`allItems` do, with no risk of a stale intermediate frame.
+  const selected = resolveCatalogSelection(selection, allItems);
   // Visual Novel only (see isGameLike below): a library-only entry (no
   // scanned Steam install, no identity match either) still opens the same
   // GameDetailPanel every other game-like item gets — same "no que te
   // envíe a su media page" treatment Videojuegos' own Pendientes/En
   // progreso already have (see LocalLibrary's openPendingItem) — instead of
   // the folder/episode-matching LocalMediaDetailPanel other categories use.
-  const [selectedPendingItem, setSelectedPendingItemRaw] = useState<LocalMediaItem | null>(null);
-  const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
-  // Keeps ?sel= in sync with whichever panel is actually open (see
-  // urlState.ts) — the restore effect further below reverses this exact
-  // encoding once this category's own data is loaded again after a Back
-  // navigation.
-  const setSelectedId = (id: string | null) => {
-    setSelectedIdRaw(id);
-    if (id) { setSelectedGameRaw(null); setSelectedPendingItemRaw(null); }
-    writeLocalUrlState(category, id ? `c:${id}` : null);
-  };
-  const setSelectedGame = (g: LocalGame | null) => {
-    setSelectedGameRaw(g);
-    if (g) { setSelectedIdRaw(null); setSelectedPendingItemRaw(null); }
-    writeLocalUrlState(category, g ? `g:${g.external_id ?? g.app_id ?? g.name}` : null);
-  };
-  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
-    setSelectedPendingItemRaw(item);
-    setSelectedPendingLaunchGame(launchGame);
-    setSelectedGameRaw(null);
-    setSelectedIdRaw(null);
-    writeLocalUrlState(category, `p:${item.externalId}`);
-  };
-
-  // Switching category tabs shouldn't close whatever panel was open — each
-  // category remembers its own last-open selection here, restored the
-  // instant you tab back, and only forgotten when this whole component
-  // unmounts (leaving /local for Home/Profile entirely), not from switching
-  // between categories. Deliberately adjusted during render rather than in
-  // an effect: an effect would commit one frame with the OLD selection
-  // resolved against the NEW category's items first — nothing, since ids
-  // never cross categories — which is exactly the "panel closes, then
-  // reopens" flash (and the entrance animation replaying with it) this
-  // exists to avoid. React re-renders synchronously before painting when
-  // state is set this way, so that in-between frame is never actually shown.
-  const selectionMemory = useRef<Partial<Record<CategoryId, LocalPanelSelection>>>({});
-  const prevCategoryRef = useRef(category);
-  if (category !== prevCategoryRef.current) {
-    const outgoing = prevCategoryRef.current;
-    const currentSel: LocalPanelSelection | null =
-      selectedId ? { kind: 'catalog', id: selectedId } :
-      selectedGame ? { kind: 'game', key: gameSelectionKey(selectedGame) } :
-      selectedPendingItem ? { kind: 'pending', id: selectedPendingItem.externalId, launchGameKey: selectedPendingLaunchGame ? gameSelectionKey(selectedPendingLaunchGame) : undefined } :
-      null;
-    if (currentSel) selectionMemory.current[outgoing] = currentSel;
-    else delete selectionMemory.current[outgoing];
-
-    const incoming = selectionMemory.current[category] ?? null;
-    const nextId = incoming?.kind === 'catalog' ? incoming.id : null;
-    const nextGame = incoming?.kind === 'game' ? (steamGames ?? []).find(g => gameSelectionKey(g) === incoming.key) ?? null : null;
-    const nextPending = incoming?.kind === 'pending' ? allItems.find(i => i.externalId === incoming.id) ?? null : null;
-    const nextPendingLaunch = (nextPending && incoming?.kind === 'pending' && incoming.launchGameKey)
-      ? (steamGames ?? []).find(g => gameSelectionKey(g) === incoming.launchGameKey)
-      : undefined;
-
-    setSelectedIdRaw(nextId);
-    setSelectedGameRaw(nextGame);
-    setSelectedPendingItemRaw(nextPending);
-    setSelectedPendingLaunchGame(nextPendingLaunch);
-    prevCategoryRef.current = category;
-    writeLocalUrlState(category, nextId ? `c:${nextId}` : nextGame ? `g:${gameSelectionKey(nextGame)}` : nextPending ? `p:${nextPending.externalId}` : null);
-  }
+  const selectedGame = resolveGameSelection(selection, steamGames ?? []);
+  const selectedPendingItem = resolvePendingSelection(selection, allItems);
+  const selectedPendingLaunchGame = resolvePendingLaunchGame(selection, steamGames ?? []);
 
   // Steam games split by their matched library status — unmatched (or
   // matched to a status this grid doesn't otherwise track, e.g. paused/
@@ -326,45 +269,6 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
 
   const isEmpty = sections.length === 0;
 
-  // Reopens whatever ?sel= encodes (see setSelectedId/setSelectedGame/
-  // openPendingItem above) once this category's own data has actually
-  // loaded — same reasoning as LocalLibrary's own restore effect for
-  // Videojuegos: makes browser Back from e.g. a catalog page land back on
-  // the exact same work instead of an empty tab. Only acts when the URL's
-  // own ?type= actually names THIS category, and only once per mount.
-  const restoredSelRef = useRef(false);
-  useEffect(() => {
-    if (restoredSelRef.current) return;
-    if (loading) return;
-    const { type, sel } = readLocalUrlState();
-    if (type !== category) return;
-    restoredSelRef.current = true;
-    if (!sel) return;
-
-    const kind = sel.slice(0, 2);
-    const id = sel.slice(2);
-    if (kind === 'g:') {
-      const found = (steamGames ?? []).find(g => (g.external_id ?? g.app_id ?? g.name) === id);
-      if (found) setSelectedGameRaw(found);
-      return;
-    }
-    if (kind === 'c:') {
-      if (allItems.some(i => i.externalId === id)) setSelectedIdRaw(id);
-      return;
-    }
-    if (kind === 'p:') {
-      const item = allItems.find(i => i.externalId === id);
-      if (!item) return;
-      const [entry] = buildLibraryStatusEntries([item], steamGames ?? [], catalogMapById);
-      if (entry?.kind === 'game') setSelectedGameRaw(entry.game);
-      else {
-        setSelectedPendingItemRaw(item);
-        setSelectedPendingLaunchGame(entry?.kind === 'catalog' ? entry.launchGame : undefined);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, loading]);
-
   return (
     <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
       <div className="local-main-content">
@@ -412,10 +316,10 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
                       <LocalMediaCard
                         key={entry.item.externalId}
                         item={entry.item}
-                        onClick={i => isGameLike ? openPendingItem(i, entry.launchGame) : setSelectedId(i.externalId)}
+                        onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
                       />
                     ) : (
-                      <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={setSelectedGame} />
+                      <GameCard key={entry.game.app_id ?? entry.game.name} game={entry.game} coverCache={coverCache ?? {}} onClick={onSetGameSelection} />
                     ))}
                   </div>
                 </div>
@@ -445,7 +349,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
           rootFolder={rootFolder}
           rootEntries={rootEntries}
           rootLoading={rootLoading}
-          onClose={() => setSelectedId(null)}
+          onClose={onClearSelection}
           onProgressSaved={refetch}
           onRootRefresh={onRootRefresh}
         />
@@ -464,7 +368,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
           knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
           fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
           launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-          onClose={() => { setSelectedGame(null); setSelectedPendingItemRaw(null); setSelectedPendingLaunchGame(undefined); }}
+          onClose={onClearSelection}
           onMetaRefresh={onMetaRefresh}
         />
       )}

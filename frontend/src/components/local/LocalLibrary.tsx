@@ -12,6 +12,10 @@ import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaDa
 import { isInProgressStatus } from '../../lib/constants/media';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
 import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
+import {
+  useLocalPanelSelection, resolveGameSelection,
+  resolvePendingSelection, resolvePendingLaunchGame,
+} from './hooks/useLocalPanelSelection';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
@@ -31,15 +35,12 @@ export default function LocalLibrary() {
   // in the restore-from-URL effect further down, right alongside the
   // selected item it was showing.
   const [activeCategory, setActiveCategoryRaw] = useState<CategoryId>('videojuegos');
-  // Wraps every actual tab switch so the URL stays in sync (see urlState.ts)
-  // — without this, browser Back from e.g. a catalog page always landed on
-  // /local with nothing encoded, indistinguishable from a fresh visit from
-  // the navbar (always Videojuegos, nothing selected) regardless of which
-  // tab/item the user had actually been on.
-  const setActiveCategory = useCallback((cat: CategoryId) => {
-    setActiveCategoryRaw(cat);
-    writeLocalUrlState(cat, null);
-  }, []);
+  // Just a plain rename at this point — useLocalPanelSelection's own render-
+  // phase category-swap logic (below) is what actually keeps the URL in
+  // sync on every tab switch now (?type= AND ?sel=, together, always
+  // matching whatever that category's own remembered selection resolves
+  // to), so this doesn't need to write anything itself.
+  const setActiveCategory = setActiveCategoryRaw;
   // Starts null unconditionally (not a lazy initializer reading the DOM) so
   // the client's very first hydration render matches what the server
   // produced (always null, no document there) — reading document.getElementById
@@ -84,32 +85,12 @@ export default function LocalLibrary() {
     if (type && CATEGORIES.some(c => c.id === type)) setActiveCategoryRaw(type);
   }, []);
 
-  const [selectedGameRaw,   setSelectedGameRaw]   = useState<ReturnType<typeof useLocalGames>['games'][0] | null>(null);
-  // A "Pendiente" entry with no scanned Steam/Epic/... install still opens
-  // this same panel (per the user's own framing: "no que te envíe a su
-  // media page") — GameDetailPanel builds a synthetic, unlaunchable
-  // LocalGame for it below (see openPendingItem).
-  const [selectedPendingItem, setSelectedPendingItem] = useState<LocalMediaItem | null>(null);
-  // Set when the selected item is a season/update tracked separately from
-  // its source game — the panel still shows the season's own title/cover,
-  // but "Jugar" launches this (the source's real, installed LocalGame)
-  // instead, since the season itself was never separately installable.
-  const [selectedPendingLaunchGame, setSelectedPendingLaunchGame] = useState<LocalGame | undefined>(undefined);
-  // Keeps ?sel= in sync with whichever panel is actually open (see
-  // urlState.ts) — restoreSelectionFromUrl below reverses this exact
-  // encoding once games/mediaRaw are loaded again after a Back navigation.
-  const setSelectedGame = (g: (typeof selectedGameRaw)) => {
-    setSelectedGameRaw(g);
-    if (g) setSelectedPendingItem(null);
-    writeLocalUrlState('videojuegos', g ? `g:${g.external_id ?? g.app_id ?? g.name}` : null);
-  };
-  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => {
-    setSelectedPendingItem(item);
-    setSelectedPendingLaunchGame(launchGame);
-    setSelectedGameRaw(null);
-    writeLocalUrlState('videojuegos', `p:${item.externalId}`);
-  };
-  const selectedGame = selectedGameRaw;
+  // Single source of truth for "what's open," shared with LocalMediaSection
+  // (every other category) — see useLocalPanelSelection. selectedGame/
+  // selectedPendingItem/selectedPendingLaunchGame are derived further down,
+  // once games/pendingGameItems (this category's own item lists) are in
+  // scope, the same way LocalMediaSection resolves its own selection prop.
+  const { selection, setCatalogSelection, setGameSelection, openPendingSelection, clearSelection } = useLocalPanelSelection(activeCategory);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
@@ -320,6 +301,12 @@ export default function LocalLibrary() {
   // metadata is actually fetched for them, so the identity-based match
   // above can still miss them.
   const pendingGameItems = useLocalMediaItemsByType('game', mediaRaw);
+  // Resolved fresh every render from `selection` — see useLocalPanelSelection.
+  const selectedGame = resolveGameSelection(selection, games);
+  const selectedPendingItem = resolvePendingSelection(selection, pendingGameItems);
+  const selectedPendingLaunchGame = resolvePendingLaunchGame(selection, games);
+  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => openPendingSelection(item, launchGame);
+  const setSelectedGame = (g: LocalGame | null) => setGameSelection(g);
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
     for (const g of games) {
@@ -331,37 +318,6 @@ export default function LocalLibrary() {
     () => new Map((mediaRaw?.catalog ?? []).map(c => [c.external_id, c])),
     [mediaRaw],
   );
-  // Reopens whatever ?sel= encodes (see setSelectedGame/openPendingItem)
-  // once games/mediaRaw have actually loaded — this is what makes browser
-  // Back from e.g. a catalog page land back on the exact same work instead
-  // of a bare Videojuegos tab. Runs once per mount only (restoredSelRef):
-  // games/mediaRaw refresh periodically on their own (metadata fetch,
-  // playtime tracking, ...) and re-running this on every such refresh would
-  // clobber whatever the user has since selected/deselected by hand.
-  const restoredSelRef = React.useRef(false);
-  useEffect(() => {
-    if (restoredSelRef.current) return;
-    if (activeCategory !== 'videojuegos') return;
-    if (gamesState !== 'done' || !mediaRaw) return;
-    restoredSelRef.current = true;
-
-    const { sel } = readLocalUrlState();
-    if (!sel) return;
-    const [kind, id] = [sel.slice(0, 2), sel.slice(2)];
-    if (kind === 'g:') {
-      const found = games.find(g => (g.external_id ?? g.app_id ?? g.name) === id);
-      if (found) setSelectedGameRaw(found);
-      return;
-    }
-    if (kind === 'p:') {
-      const item = pendingGameItems.find(i => i.externalId === id);
-      if (!item) return;
-      const [entry] = buildLibraryStatusEntries([item], games, catalogMapById);
-      if (entry?.kind === 'game') setSelectedGameRaw(entry.game);
-      else setSelectedPendingItem(item);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, gamesState, mediaRaw]);
   // Shared with the Visual Novel tab's own library-only entries (see
   // catalogGameLinking.ts) so both get exactly the same "might already be a
   // scanned game under a different identity/edition" matching behavior
@@ -479,6 +435,11 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
             pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
             onMetaRefresh={refreshMeta}
+            selection={selection}
+            onSetCatalogSelection={setCatalogSelection}
+            onSetGameSelection={setGameSelection}
+            onOpenPendingSelection={openPendingSelection}
+            onClearSelection={clearSelection}
           />
         ) : (
         <div className={`local-games-container${(selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
@@ -680,7 +641,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
               knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
               fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
               launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-              onClose={() => { setSelectedGame(null); setSelectedPendingItem(null); setSelectedPendingLaunchGame(undefined); }}
+              onClose={clearSelection}
               onMetaRefresh={refreshMeta}
             />
           )}
