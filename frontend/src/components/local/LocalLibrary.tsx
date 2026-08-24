@@ -25,6 +25,7 @@ import { GameDetailPanel }  from './details/GameDetailPanel';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
+import { useGridFlip } from './hooks/useGridFlip';
 import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
 
 export default function LocalLibrary() {
@@ -95,6 +96,11 @@ export default function LocalLibrary() {
   const [metaSelector,   setMetaSelector]   = useState(false);
   const [filterName,     setFilterName]     = useState('');
   const cancelRef = useRef(false);
+  // Smooths the Videojuegos grid's own card repositioning when the detail
+  // panel resizes it — same fix as LocalMediaSection's own grid (see
+  // useGridFlip's own comment for why CSS Grid needs this at all).
+  const videojuegosGridRef = useRef<HTMLDivElement>(null);
+  useGridFlip(videojuegosGridRef, '.local-game-card');
 
   const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
@@ -447,7 +453,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
 
             {/* ── Games view ─────────────────────────────────────────────────── */}
             {activeCategory === 'videojuegos' ? (
-              <div className="local-content">
+              <div className="local-content" ref={videojuegosGridRef}>
                 <div className="local-content-header">
                   <span className="local-content-count">
                     {gamesState === 'done' ? (games.length !== 1 ? t.local.games_count.replace('{count}', String(games.length)) : t.local.game_count.replace('{count}', String(games.length))) : ''}

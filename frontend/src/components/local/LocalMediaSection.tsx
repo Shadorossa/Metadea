@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useGridFlip } from './hooks/useGridFlip';
 import { getT } from '../../i18n/client';
 import type { LocalFolderEntry, LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
@@ -268,11 +269,13 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, catalogMapById]);
 
   const isEmpty = sections.length === 0;
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  useGridFlip(gridContainerRef, '.local-game-card');
 
   return (
     <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
       <div className="local-main-content">
-        <div className="local-content">
+        <div className="local-content" ref={gridContainerRef}>
           <div className="local-content-header">
             <span className="local-content-count">
               {!loading ? (items.length !== 1 ? (isMounted ? t.local.media_count_plural : '{count} obras en tu biblioteca').replace('{count}', String(items.length)) : (isMounted ? t.local.media_count_singular : '{count} obra en tu biblioteca').replace('{count}', String(items.length))) : ''}
