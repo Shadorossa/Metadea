@@ -7,14 +7,9 @@ interface GameCardProps {
   game:       LocalGame;
   coverCache: CoverCache;
   onClick:    (game: LocalGame) => void;
-  // Optional label ("En progreso"/"Pendiente"/...) reflecting this game's
-  // matched library status — the platform-grouped view still wants status
-  // visible per-card even though it groups by launcher, not by status.
-  statusLabel?: string;
-  isPlanning?: boolean;
 }
 
-export function GameCard({ game, coverCache, onClick, statusLabel, isPlanning }: GameCardProps) {
+export function GameCard({ game, coverCache, onClick }: GameCardProps) {
   const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? null;
 
   return (
@@ -30,11 +25,6 @@ export function GameCard({ game, coverCache, onClick, statusLabel, isPlanning }:
           ? <img src={cover} alt={game.name} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconMonitor /></div>
         }
-        {statusLabel && (
-          <span className={`local-media-status-badge${isPlanning ? ' local-media-status-badge--planning' : ''}`}>
-            {statusLabel}
-          </span>
-        )}
       </div>
       <p className="local-game-name">{game.name}</p>
     </div>

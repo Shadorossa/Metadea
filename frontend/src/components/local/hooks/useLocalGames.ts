@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { type LocalGame } from '../../../lib/tauri';
+import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
 
 export type GamesState = 'idle' | 'loading' | 'done' | 'empty';
@@ -26,5 +26,12 @@ export function useLocalGames() {
       });
   }, []);
 
-  return { games, gamesState, scanError, debugInfo, setDebugInfo, loadGames };
+  // The scan-failed placeholder's diagnostics button — owned here instead of
+  // the component calling debugScanInfo() and formatting its own error,
+  // since this hook already owns every other piece of scan state/behavior.
+  const runDiagnostics = useCallback(() => {
+    debugScanInfo().then(setDebugInfo).catch((e: unknown) => setDebugInfo(String(e)));
+  }, []);
+
+  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames };
 }

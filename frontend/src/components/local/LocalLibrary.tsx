@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { igdbGetCoverBySteamId, steamAchievementsDownload, debugScanInfo, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
+import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
@@ -115,7 +115,7 @@ export default function LocalLibrary() {
   const [filterName,     setFilterName]     = useState('');
   const cancelRef = useRef(false);
 
-  const { games, gamesState, scanError, debugInfo, setDebugInfo, loadGames } = useLocalGames();
+  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
   const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
   const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
@@ -574,7 +574,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     <button
                       type="button"
                       style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
-                      onClick={() => debugScanInfo().then(setDebugInfo).catch(e => setDebugInfo(String(e)))}
+                      onClick={runDiagnostics}
                     >
                       {t.local.diagnostics}
                     </button>
