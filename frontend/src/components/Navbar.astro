@@ -15,9 +15,9 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
 ---
 
 <header class="navbar" transition:persist="navbar" transition:name="navbar" transition:animate="none">
-  <!-- Pegadas al borde izquierdo real de la barra, fuera de nav-group--left
-       (que ya tiene su propio margin-left escalable) — igual que los
-       botones laterales del ratón para atrás/adelante en el historial. -->
+  <!-- Pegadas al borde izquierdo real de la barra (primera columna del
+       grid, ver navbar.css) — igual que los botones laterales del ratón
+       para atrás/adelante en el historial. -->
   <div class="nav-arrows">
     <button type="button" id="nav-back-btn" class="nav-icon-btn nav-icon-btn--plain" title={i18n.go_back}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

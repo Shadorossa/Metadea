@@ -4,9 +4,19 @@
   left: 0;
   right: 0;
   z-index: 50;
-  display: flex;
+  /* Grid instead of flex + absolute-centering — a fixed-width column per
+     group (arrows / left icons / center / right icons) is a hard boundary
+     nothing can grow past, so no combination of window width and content
+     length can ever make two groups actually overlap or touch with zero
+     gap between them. The trade-off: the center column is centered within
+     whatever space is left between the two auto columns rather than the
+     literal middle of the bar (see .nav-center-wrap) — on a narrow window
+     that's the one that matters, since there's no room left to be picky
+     about pixel-perfect centering anyway. */
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  column-gap: 0.75rem;
   align-items: center;
-  justify-content: space-between;
   padding: 0.35rem 1rem;
   height: 48px;
   pointer-events: none;
@@ -26,27 +36,14 @@
 
 
 .nav-center-wrap {
-  /* Taken out of the flex row entirely and centered on the bar itself
-     instead of participating in justify-content:space-between — as a
-     flex item, "centered" only ever meant centered within whatever space
-     was left over between .nav-group--left/--right, which drifted off
-     true center whenever those two groups weren't the same width (they
-     aren't: 3 icons vs. search+avatar). Absolute + left:50% centers it
-     on the bar regardless of how wide either side group is. */
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  /* Its own grid column (see .navbar) — a real track boundary, not an
+     absolutely-positioned overlay, so .nav-group--left/--right growing
+     (more languages' nav-text-link labels, say) shrinks this column
+     instead of letting either side run underneath it. */
+  min-width: 0;
   display: flex;
   align-items: center;
-  /* Leaves room on either side for the fixed-width icon groups — anything
-     still too wide to fit falls to .nav-center-text's own overflow-x:auto
-     scroll below (or .search-tabs-inner's, on /search) rather than
-     overlapping them. Widened from 65vw/70rem — with 11-12 search tabs
-     that cap kicked in on ordinary window widths, forcing a scroll for
-     content that should just fit. */
-  max-width: min(88vw, 92rem);
-  min-width: 0;
+  justify-content: center;
   overflow: hidden;
 }
 
@@ -119,30 +116,13 @@
 }
 
 .nav-arrows {
-  /* Absolute + pinned to the bar's own left padding, independent of
-     .nav-group--left's own clamp()'d margin — those two arrows sit right
-     at the window's edge (like the mouse side buttons they mirror)
-     regardless of how far in home/local/tier drift on a wide window. */
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  /* First grid column — flush against the bar's own left padding (like the
+     mouse side buttons they mirror) by virtue of being the first thing in
+     the row, no absolute positioning needed now that the layout is grid. */
   display: flex;
   align-items: center;
   gap: 0.25rem;
   pointer-events: auto;
-}
-
-.nav-group--left {
-  /* Scales down as the window narrows instead of always reserving a fixed
-     9rem — that fixed margin left no room for .nav-center-text's type
-     shortcuts on a narrow window, pushing them into (visually overlapping)
-     the avatar/search group on the right. */
-  margin-left: clamp(1rem, 6vw, 9rem);
-}
-
-.nav-group--right {
-  margin-right: clamp(1rem, 6vw, 9rem);
 }
 
 .nav-icon-btn {
