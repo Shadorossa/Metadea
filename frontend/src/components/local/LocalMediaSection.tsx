@@ -5,11 +5,12 @@ import type { LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
+import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard } from './cards/GameCard';
 import { type CoverCache } from './details/GameDetailPanel';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
-import { IconFolder, IconPlus, IconX } from './ui/icons';
+import { IconFolder, IconPlus } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from './utils/formatters';
 import { type LocalPanelSelection } from './hooks/useLocalPanelSelection';
@@ -259,17 +260,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
               {!loading ? (items.length !== 1 ? (isMounted ? t.local.media_count_plural : '{count} obras en tu biblioteca').replace('{count}', String(items.length)) : (isMounted ? t.local.media_count_singular : '{count} obra en tu biblioteca').replace('{count}', String(items.length))) : ''}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {rootFolder && (
-                <>
-                  <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{rootFolder}</span>
-                  <button type="button" className="local-refresh-btn" onClick={onClearRoute} title={isMounted ? t.local.remove_local_folder : 'Quitar carpeta local'} style={{ color: 'var(--color-error, #ff6b6b)' }}>
-                    <IconX />
-                  </button>
-                </>
-              )}
-              <button type="button" className="local-refresh-btn" onClick={onSetRoute} title={isMounted ? (rootFolder ? t.local.change_folder : t.local.add_folder) : (rootFolder ? 'Cambiar carpeta' : 'Añadir carpeta')}>
-                <IconFolder />
-              </button>
+              <FolderRouteControls rootFolder={rootFolder} onSetRoute={onSetRoute} onClearRoute={onClearRoute} />
             </div>
           </div>
 

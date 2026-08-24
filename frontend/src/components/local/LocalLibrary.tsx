@@ -18,6 +18,7 @@ import {
 } from './hooks/useLocalPanelSelection';
 
 import { PlatformSidebar }  from './PlatformSidebar';
+import { FolderRouteControls } from './FolderRouteControls';
 import { GameCard }         from './cards/GameCard';
 import { LocalMediaCard }   from './cards/LocalMediaCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
@@ -27,7 +28,7 @@ import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
 import { useGridFlip } from './hooks/useGridFlip';
-import { IconMonitor, IconFolder, IconRefresh, IconPlus, IconX } from './ui/icons';
+import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 
 export default function LocalLibrary() {
   const t = getT();
@@ -478,17 +479,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     {gamesState === 'done' ? (games.length !== 1 ? t.local.games_count.replace('{count}', String(games.length)) : t.local.game_count.replace('{count}', String(games.length))) : ''}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {routes['videojuegos'] && (
-                      <>
-                        <span className="local-folder-path" style={{ fontSize: '0.7rem' }}>{routes['videojuegos']}</span>
-                        <button type="button" className="local-refresh-btn" onClick={() => clearRoute('videojuegos')} title={isMounted ? t.local.remove_local_folder : 'Quitar carpeta local'} style={{ color: 'var(--color-error, #ff6b6b)' }}>
-                          <IconX />
-                        </button>
-                      </>
-                    )}
-                    <button type="button" className="local-refresh-btn" onClick={() => setRoute('videojuegos')} title={isMounted ? (routes['videojuegos'] ? t.local.change_folder : t.local.add_folder) : (routes['videojuegos'] ? 'Cambiar carpeta' : 'Añadir carpeta')}>
-                      <IconFolder />
-                    </button>
+                    <FolderRouteControls rootFolder={routes['videojuegos']} onSetRoute={() => setRoute('videojuegos')} onClearRoute={() => clearRoute('videojuegos')} />
                     <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={isMounted ? (gamesState === 'loading' ? t.local.scanning : t.local.scan_again) : (gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
                       <IconRefresh />
                     </button>
