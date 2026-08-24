@@ -32,6 +32,22 @@ function isNotReleasedYet(item: LocalMediaItem): boolean {
   return ts === null || ts > Date.now();
 }
 
+// Completion fraction for "En progreso" ordering — closest to finishing
+// first. Unknown episode counts can't produce a real fraction, so they sink
+// to the bottom instead of being mistaken for 0% or 100%.
+function completionFraction(item: LocalMediaItem): number {
+  const total = item.catalogEntry?.total_count;
+  if (!total || total <= 0) return -1;
+  return (item.progress ?? 0) / total;
+}
+
+// Episode count for "Pendientes" ordering — fewest episodes first (quick
+// wins on top). Unknown counts sink to the bottom, same reasoning as above.
+function episodeCount(item: LocalMediaItem): number {
+  const total = item.catalogEntry?.total_count;
+  return total && total > 0 ? total : Infinity;
+}
+
 interface LocalMediaSectionProps {
   category:     CategoryId;
   rootFolder:   string | undefined;
@@ -255,10 +271,16 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     const platformSections = LAUNCHER_ORDER
       .filter(id => backlogByPlatform.has(id))
       .map(id => ({ title: PLATFORM_LABEL[id], icon: PLATFORM_LOGO[id] || undefined, entries: toEntries([], backlogByPlatform.get(id)!) }));
+    const inProgress = released.filter(i => isInProgressStatus(i.status))
+      .sort((a, b) => completionFraction(b) - completionFraction(a));
+    const planning = released.filter(i => i.status === 'planning')
+      .sort((a, b) => episodeCount(a) - episodeCount(b));
+    const unreleased = [...notReleased]
+      .sort((a, b) => (releaseTimestamp(a) ?? Infinity) - (releaseTimestamp(b) ?? Infinity));
     return [
-      { title: p.section_in_progress, icon: undefined, entries: toEntries(released.filter(i => isInProgressStatus(i.status)), steamInProgress) },
-      { title: p.section_planning, icon: undefined, entries: toEntries(released.filter(i => i.status === 'planning'), steamPlanning) },
-      { title: 'Sin estrenar', icon: undefined, entries: toEntries(notReleased, []) },
+      { title: p.section_in_progress, icon: undefined, entries: toEntries(inProgress, steamInProgress) },
+      { title: p.section_planning, icon: undefined, entries: toEntries(planning, steamPlanning) },
+      { title: 'Sin estrenar', icon: undefined, entries: toEntries(unreleased, []) },
       ...platformSections,
     ].filter(s => s.entries.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
