@@ -22,6 +22,7 @@ import {
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
 import { formatWatchedAt } from '../utils/formatters';
+import { formatDateLong } from '../../../lib/shared/formatDate';
 import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 
@@ -115,6 +116,20 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // just libraryEntry.type) is what actually catches that case.
   const isMovieFormat = item.libraryEntry.type === 'movie' || item.catalogEntry?.format === 'MOVIE';
   const isSingleEpisode = item.catalogEntry?.total_count === 1 || isMovieFormat;
+
+  // Same "not released yet" rule LocalMediaSection uses to group things into
+  // "Sin estrenar" — null release_year counts as unreleased too, since
+  // there's nothing on file to say otherwise. Opening one of those items
+  // here shouldn't show a "file/episode not found" error (there's nothing to
+  // find, it hasn't come out) — show when it's actually coming out instead.
+  const releaseMeta = item.catalogEntry;
+  const releaseTimestamp = releaseMeta?.release_year
+    ? new Date(releaseMeta.release_year, (releaseMeta.release_month ?? 1) - 1, releaseMeta.release_day ?? 1).getTime()
+    : null;
+  const isUnreleased = releaseTimestamp === null || releaseTimestamp > Date.now();
+  const releaseLabel = releaseTimestamp !== null
+    ? `Se estrenará en ${formatDateLong(new Date(releaseTimestamp))}`
+    : 'Se estrenará próximamente';
   const rootFileMatch = useMemo(
     () => (isSingleEpisode && !matchedFolder) ? findMatchingFile(rootEntries, candidateTitles, item.externalId) : null,
     [isSingleEpisode, matchedFolder, rootEntries, candidateTitles, item.externalId],
@@ -627,8 +642,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                 // doesn't advance in this component's own props mid-queue)
                 // goes stale or empty from episodes the queue already
                 // played through.
-                disabled={!isThisPlaying && !playPath}
-                title={playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
+                disabled={!isThisPlaying && (isUnreleased || !playPath)}
+                title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
                 onClick={handlePlayButtonClick}
               >
                 {playState === 'playing' ? (
@@ -642,7 +657,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     <polygon points="5 3 19 12 5 21 5 3" />
                   </svg>
                 )}
-                {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : 'Reproducir'}
+                {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : 'Reproducir'}
               </button>
               <div className="local-media-divider-line" />
               <div className="local-media-match-row">
@@ -663,7 +678,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     </div>
                   )}
                 </div>
-                {(matchedFolder || rootFileMatch || deepTagMatch) && (
+                {(matchedFolder || rootFileMatch || deepTagMatch) && !isUnreleased && (
                   subLoading ? (
                     <span className="local-media-match-chip">
                       <div className="spinner spinner--sm" />
