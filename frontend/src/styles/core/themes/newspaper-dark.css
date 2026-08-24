@@ -516,6 +516,32 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-decoration-color: var(--text-main) !important;
 }
 
+/* A linked name nested inside a spoiler must stay hidden with the rest of
+   the redacted text. The plain (non-themed) .markdown_spoiler a rule in
+   character.css already hides it, but .media-description-text a /
+   .media-stat-value a above are scoped to this theme AND !important, which
+   otherwise wins over that unscoped rule by specificity even though both
+   are !important — these need the same theme scoping (plus the extra
+   .spoiler/.markdown_spoiler class, so they're also more specific than the
+   rules above) to actually take priority back. */
+[data-theme="newspaper-dark"] .media-description-text .spoiler a,
+[data-theme="newspaper-dark"] .media-description-text .markdown-spoiler a,
+[data-theme="newspaper-dark"] .media-description-text .markdown_spoiler a,
+[data-theme="newspaper-dark"] .media-stat-value .spoiler a,
+[data-theme="newspaper-dark"] .media-stat-value .markdown-spoiler a,
+[data-theme="newspaper-dark"] .media-stat-value .markdown_spoiler a {
+  color: transparent !important;
+}
+
+[data-theme="newspaper-dark"] .media-description-text .spoiler:hover a,
+[data-theme="newspaper-dark"] .media-description-text .markdown-spoiler:hover a,
+[data-theme="newspaper-dark"] .media-description-text .markdown_spoiler:hover a,
+[data-theme="newspaper-dark"] .media-stat-value .spoiler:hover a,
+[data-theme="newspaper-dark"] .media-stat-value .markdown-spoiler:hover a,
+[data-theme="newspaper-dark"] .media-stat-value .markdown_spoiler:hover a {
+  color: var(--accent) !important;
+}
+
 /* Ensure card titles and UI links never have unwanted text underlines */
 [data-theme="newspaper-dark"] a,
 [data-theme="newspaper-dark"] a:visited,
