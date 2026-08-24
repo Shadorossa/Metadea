@@ -15,6 +15,7 @@ export const LOCAL_MEDIA_TYPE_BY_CATEGORY: Partial<Record<CategoryId, string>> =
   manga:        'manga',
   'light-novel': 'lnovel',
   books:        'book',
+  comics:       'comic',
   series:       'series',
   movies:       'movie',
   'visual-novel': 'vnovel',

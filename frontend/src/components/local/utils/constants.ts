@@ -1,7 +1,7 @@
 import { API_ENDPOINTS } from '../../../lib/api/endpoints';
 
 export type PlatformId = 'steam' | 'epic' | 'gog' | 'xbox' | 'ea' | 'nintendo' | 'playstation' | 'local';
-export type CategoryId = 'videojuegos' | 'visual-novel' | 'anime' | 'manga' | 'light-novel' | 'books' | 'series' | 'movies';
+export type CategoryId = 'videojuegos' | 'visual-novel' | 'anime' | 'manga' | 'light-novel' | 'books' | 'comics' | 'series' | 'movies';
 
 export const PLATFORM_LABEL: Record<PlatformId, string> = {
   steam:       'Steam',
@@ -21,6 +21,7 @@ export const CATEGORIES: Array<{ id: CategoryId; label: string }> = [
   { id: 'manga',        label: 'Manga' },
   { id: 'light-novel',  label: 'Novela Ligera' },
   { id: 'books',        label: 'Libros' },
+  { id: 'comics',       label: 'Comics' },
   { id: 'series',       label: 'Series' },
   { id: 'movies',       label: 'Películas' },
 ];

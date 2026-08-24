@@ -396,6 +396,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
   'manga':        'manga',
   'light-novel':  'lnovel',
   'books':        'book',
+  'comics':       'comic',
   'series':       'series',
   'movies':       'movie',
 };
