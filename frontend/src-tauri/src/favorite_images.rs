@@ -70,7 +70,7 @@ fn list_name_for(external_id: &str) -> String {
     external_id.split(':').next().unwrap_or("misc").to_string()
 }
 
-fn sanitize_for_filename(external_id: &str) -> String {
+pub(crate) fn sanitize_for_filename(external_id: &str) -> String {
     external_id.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect()
 }
 

@@ -34,6 +34,20 @@ export function toSmallCover(url: string | null | undefined): string {
   return url;
 }
 
+// Between toSmallCover and toLargeCover — for grids whose cards render
+// bigger than a tiny list thumbnail but still don't need the full-size
+// asset (Local's cover cache, see LocalMediaCard.tsx). IGDB has no distinct
+// "medium" template between cover_small and cover_big (games route through
+// their own dedicated disk cache in Videojuegos anyway, not this one), so
+// it's left as-is here rather than guessing at a size that doesn't exist.
+export function toMediumCover(url: string | null | undefined): string {
+  if (!url) return '';
+  if (ANILIST_COVER_SIZE_RE.test(url)) return url.replace(ANILIST_COVER_SIZE_RE, '/cover/medium/');
+  if (TMDB_SIZE_RE.test(url)) return url.replace(TMDB_SIZE_RE, '/t/p/w342/');
+  if (OPENLIBRARY_SIZE_RE.test(url)) return url.replace(OPENLIBRARY_SIZE_RE, '-M.jpg');
+  return url;
+}
+
 // Opposite direction of toSmallCover, for the one context that wants the
 // biggest asset a provider will actually hand back instead of a lighter
 // one — the Instagram-story share image (share-image.ts), which is the

@@ -213,7 +213,7 @@ pub(crate) fn extract_cover_and_game(
 // Matching heuristics moved to igdb_matching.rs.
 use crate::igdb_matching::resolve_igdb_game;
 
-async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {
+pub(crate) async fn download_as_webp(client: &reqwest::Client, url: &str, dest: &std::path::Path) {
     let Ok(resp) = client.get(url).send().await else {
         return;
     };

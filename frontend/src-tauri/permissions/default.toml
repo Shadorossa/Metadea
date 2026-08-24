@@ -67,6 +67,7 @@ commands.allow = [
   "get_all_catalog_entries",
   "find_catalog_health_issues",
   "search_catalog",
+  "get_cached_cover",
   "get_cached_saga",
   "save_cached_saga",
   "get_transitive_relation_ids",

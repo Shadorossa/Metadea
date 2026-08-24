@@ -517,3 +517,37 @@ pub async fn search_catalog(
         .collect();
     Ok(entries)
 }
+
+// Local disk cache for catalog cover_url images (anime/manga/lnovel/movie/
+// series/book/vnovel) — these were the one category of cover this app never
+// cached: Videojuegos already downloads+converts IGDB covers to disk (see
+// igdb.rs's download_as_webp/game_dir), served via asset:// instead of
+// re-fetching the remote CDN on every load. Reuses that same webp-download
+// helper and favorite_images.rs's filename sanitizer rather than
+// reimplementing either. First call per external_id pays the real network
+// cost once; every later call (including future app sessions) is a plain
+// file-exists check.
+#[tauri::command]
+pub async fn get_cached_cover(
+    app_handle: tauri::AppHandle,
+    external_id: String,
+    url: String,
+) -> Result<String, String> {
+    use tauri::Manager;
+    let dir = app_handle
+        .path()
+        .app_data_dir()
+        .str_err()?
+        .join("metadata")
+        .join("covers");
+    std::fs::create_dir_all(&dir).str_err()?;
+    let path = dir.join(format!("{}.webp", crate::favorite_images::sanitize_for_filename(&external_id)));
+    if !path.exists() {
+        let client = reqwest::Client::new();
+        crate::igdb::download_as_webp(&client, &url, &path).await;
+        if !path.exists() {
+            return Err("Failed to download/convert cover".into());
+        }
+    }
+    Ok(path.to_string_lossy().to_string())
+}

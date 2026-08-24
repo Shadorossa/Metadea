@@ -119,6 +119,16 @@ export async function searchCatalog(query: string): Promise<MediaCatalogEntry[]>
   return tauriCmd<MediaCatalogEntry[]>('search_catalog', [], { query });
 }
 
+// Local disk cache (webp) for a catalog entry's cover_url — see
+// get_cached_cover (Rust). Downloads+converts once per external_id, then
+// every later call is just a file-exists check; the returned path still
+// needs wrapAssetUrl() to become a loadable asset:// src. Throws if the
+// download/conversion genuinely failed, so callers can fall back to the
+// original remote URL instead.
+export async function getCachedCover(externalId: string, url: string): Promise<string> {
+  return invoke<string>('get_cached_cover', { externalId, url });
+}
+
 import type { SagaEntry } from '../anilist/saga';
 
 export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | null> {

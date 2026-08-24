@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { IconFolder } from '../ui/icons';
+import { getCachedCover, wrapAssetUrl } from '../../../lib/tauri';
+import { toMediumCover } from '../../../lib/shared/small-cover';
 
 interface LocalMediaCardProps {
   item:    LocalMediaItem;
@@ -24,6 +26,24 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
   const badgeLabel = item.status === 'planning'
     ? 'Pendiente'
     : isHourBased ? `${item.progress}h` : `${unitLabel} ${item.progress}`;
+
+  // Catalog covers (AniList/TMDB/IGDB/Open Library) used to be re-fetched
+  // straight from their remote CDN on every single load — this caches each
+  // one to disk as webp the first time (see get_cached_cover, mirrors what
+  // Videojuegos already does for matched Steam games), so later loads read
+  // a local asset:// file instead of depending on that CDN's latency again.
+  // Starts null (shows the placeholder) rather than the raw remote URL, to
+  // avoid paying for the same download twice (once here, once in Rust).
+  const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!item.cover) { setCoverSrc(null); return; }
+    let cancelled = false;
+    getCachedCover(item.externalId, toMediumCover(item.cover))
+      .then(path => { if (!cancelled) setCoverSrc(wrapAssetUrl(path)); })
+      .catch(() => { if (!cancelled) setCoverSrc(item.cover); });
+    return () => { cancelled = true; };
+  }, [item.cover, item.externalId]);
+
   return (
     <div
       className="local-game-card"
@@ -33,8 +53,8 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
       onKeyDown={e => e.key === 'Enter' && onClick(item)}
     >
       <div className="local-game-cover">
-        {item.cover
-          ? <img src={item.cover} alt={item.title} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        {coverSrc
+          ? <img src={coverSrc} alt={item.title} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconFolder /></div>}
         <span className={`local-media-status-badge${item.status === 'planning' ? ' local-media-status-badge--planning' : ''}`}>
           {badgeLabel}
