@@ -128,8 +128,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     : null;
   const isUnreleased = releaseTimestamp === null || releaseTimestamp > Date.now();
   const releaseLabel = releaseTimestamp !== null
-    ? `Se estrenará en ${formatDateLong(new Date(releaseTimestamp))}`
-    : 'Se estrenará próximamente';
+    ? t.local.will_release_on.replace('{date}', formatDateLong(new Date(releaseTimestamp)))
+    : t.local.will_release_soon;
   const rootFileMatch = useMemo(
     () => (isSingleEpisode && !matchedFolder) ? findMatchingFile(rootEntries, candidateTitles, item.externalId) : null,
     [isSingleEpisode, matchedFolder, rootEntries, candidateTitles, item.externalId],

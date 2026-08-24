@@ -673,6 +673,8 @@ export const en = {
     stat_achievements: 'Achievements',
     no_folder_for_category: 'No folder assigned for this category.',
     next_episode_label: 'Next episode:',
+    will_release_on: 'Releasing on {date}',
+    will_release_soon: 'Releasing soon',
     episode_chapter_label: 'Episode/chapter',
     history_label: 'History',
     meta_selector_title: 'What metadata do you want to download?',

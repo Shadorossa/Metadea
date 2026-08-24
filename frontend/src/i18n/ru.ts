@@ -652,6 +652,8 @@ export const ru = {
     stat_achievements: 'Достижения',
     no_folder_for_category: 'Для этой категории не назначена папка.',
     next_episode_label: 'Следующий эпизод:',
+    will_release_on: 'Выйдет {date}',
+    will_release_soon: 'Скоро выйдет',
     episode_chapter_label: 'Эпизод/глава',
     history_label: 'История',
     meta_selector_title: 'Какие метаданные загрузить?',

@@ -658,6 +658,8 @@ export const ja = {
     media_count_singular: 'ライブラリ内の{count}作品',
     empty_category_media: 'このタイプの作品はライブラリ(視聴中/読書中/プレイ中または保留中)にありません',
     next_episode_label: '次のエピソード:',
+    will_release_on: '{date}に公開予定',
+    will_release_soon: '近日公開予定',
     episode_chapter_label: 'エピソード/話数',
     history_label: '履歴',
     meta_selector_title: 'どのメタデータをダウンロードしますか?',

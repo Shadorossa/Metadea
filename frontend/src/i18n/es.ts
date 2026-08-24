@@ -673,6 +673,8 @@ export const es = {
     stat_achievements: 'Logros',
     no_folder_for_category: 'No hay carpeta asignada para esta categoría.',
     next_episode_label: 'Próximo episodio:',
+    will_release_on: 'Se estrenará el {date}',
+    will_release_soon: 'Se estrenará próximamente',
     episode_chapter_label: 'Episodio/capítulo',
     history_label: 'Historial',
     meta_selector_title: '¿Qué metadatos descargar?',

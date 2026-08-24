@@ -40,6 +40,30 @@ interface AniListRelationsResponse {
   };
 }
 
+type RelationEdge = AniListRelationsResponse['Media']['relations']['edges'][number];
+
+// resolveSeasonExternalIds and findPrequelExternalId both end up asking
+// AniList the exact same question for the exact same id whenever the local
+// media_relations table has nothing cached yet — the first without a season
+// number in its title (the common case) always hits this once via
+// findPrequelExternalId, and if that turns up a hit, the season-map build
+// right after re-asks AniList for the very same id a second time. Module-
+// level cache keyed by numericId (not persisted — just for this app
+// session) so every caller after the first one reuses the same in-flight
+// promise instead of firing a duplicate request.
+const relationsCache = new Map<number, Promise<RelationEdge[]>>();
+
+function fetchAniListRelationEdges(numericId: number): Promise<RelationEdge[]> {
+  let cached = relationsCache.get(numericId);
+  if (!cached) {
+    cached = graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId })
+      .then(({ result }) => result?.data?.Media?.relations?.edges ?? [])
+      .catch(() => []);
+    relationsCache.set(numericId, cached);
+  }
+  return cached;
+}
+
 // Checks this install's own saved relations first (SEQUEL/PREQUEL rows,
 // same as PrEditorModal's own saga chain) and only calls out to AniList
 // directly if nothing usable turned up locally — e.g. a fresh install that
@@ -73,19 +97,14 @@ export async function resolveSeasonExternalIds(
   const numericId = parseInt(idStr, 10);
   if (!Number.isFinite(numericId)) return map;
 
-  try {
-    const { result } = await graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId });
-    const edges = result?.data?.Media?.relations?.edges ?? [];
-    for (const edge of edges) {
-      if (edge.relationType !== 'SEQUEL' && edge.relationType !== 'PREQUEL') continue;
-      const nodeTitle = edge.node.title.romaji ?? edge.node.title.english ?? '';
-      const relSeason = extractTitleSeason(nodeTitle);
-      if (relSeason != null && !(relSeason in map)) {
-        map[relSeason] = { externalId: `${type}:${edge.node.id}`, title: nodeTitle };
-      }
+  const edges = await fetchAniListRelationEdges(numericId);
+  for (const edge of edges) {
+    if (edge.relationType !== 'SEQUEL' && edge.relationType !== 'PREQUEL') continue;
+    const nodeTitle = edge.node.title.romaji ?? edge.node.title.english ?? '';
+    const relSeason = extractTitleSeason(nodeTitle);
+    if (relSeason != null && !(relSeason in map)) {
+      map[relSeason] = { externalId: `${type}:${edge.node.id}`, title: nodeTitle };
     }
-  } catch {
-    // Best-effort — leave the map with just this work's own season.
   }
 
   return map;
@@ -105,15 +124,9 @@ async function findPrequelExternalId(externalId: string): Promise<string | null>
   const numericId = parseInt(idStr, 10);
   if (!Number.isFinite(numericId)) return null;
 
-  try {
-    const { result } = await graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId });
-    const edges = result?.data?.Media?.relations?.edges ?? [];
-    const prequel = edges.find(e => e.relationType === 'PREQUEL');
-    if (prequel) return `${type}:${prequel.node.id}`;
-  } catch {
-    // Best-effort.
-  }
-  return null;
+  const edges = await fetchAniListRelationEdges(numericId);
+  const prequel = edges.find(e => e.relationType === 'PREQUEL');
+  return prequel ? `${type}:${prequel.node.id}` : null;
 }
 
 // Some sequels never get a title AniList/extractTitleSeason can read a
