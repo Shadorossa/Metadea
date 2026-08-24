@@ -54,7 +54,15 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
     >
       <div className="local-game-cover">
         {coverSrc
-          ? <img src={coverSrc} alt={item.title} loading="lazy" decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          // No loading="lazy" here: the <img> itself doesn't exist in the DOM
+          // at all until coverSrc resolves (see the effect above) — src is
+          // always already known the moment this element is created, unlike
+          // before this card started caching covers (a plain item.cover URL
+          // present from the very first render). Native lazy-loading on top
+          // of an already-deferred src assignment made the WebView (Chromium/
+          // WebView2) sometimes never repaint the image at all after an F5
+          // reload, until something else forced a reflow (moving the mouse).
+          ? <img src={coverSrc} alt={item.title} decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="local-game-cover-placeholder"><IconFolder /></div>}
         <span className={`local-media-status-badge${item.status === 'planning' ? ' local-media-status-badge--planning' : ''}`}>
           {badgeLabel}
