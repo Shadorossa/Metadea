@@ -11,7 +11,7 @@ import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
-import { formatPlaytime, formatLastPlayed, formatDate } from '../utils/formatters';
+import { formatPlaytime, formatLastPlayed, formatDate, firstCsvUrl, catalogReleaseTimestampMs } from '../utils/formatters';
 import { normalizeForMatch } from '../utils/folderMatch';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
@@ -79,7 +79,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     setGameInfo(null);
     if (!launchTarget.app_id) return;
     let cancelled = false;
-    readGameInfo(launchTarget.app_id).then(info => { if (!cancelled) setGameInfo(info); });
+    readGameInfo(launchTarget.app_id).then(info => { if (!cancelled) setGameInfo(info); }).catch(() => { if (!cancelled) setGameInfo(null); });
     return () => { cancelled = true; };
   }, [launchTarget.app_id]);
 
@@ -87,7 +87,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
     setAchievements(null);
     if (launchTarget.launcher !== 'steam' || !launchTarget.app_id) return;
     let cancelled = false;
-    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => { if (!cancelled) setAchievements(res || null); });
+    steamGetPlayerAchievements(Number(launchTarget.app_id)).then(res => { if (!cancelled) setAchievements(res || null); }).catch(() => { if (!cancelled) setAchievements(null); });
     return () => { cancelled = true; };
   }, [launchTarget.app_id, launchTarget.launcher]);
 
@@ -283,7 +283,7 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // art if the catalog row itself carries one (banners_csv, same field
   // LocalMediaDetailPanel's own header already reads) — checked before
   // falling all the way back to the portrait cover_url.
-  const catalogBanner = catalogEntry?.banners_csv?.split(',')[0]?.trim() || null;
+  const catalogBanner = firstCsvUrl(catalogEntry?.banners_csv);
   const banner     = entry?.banner ?? catalogBanner ?? entry?.cover ?? fallbackCover ?? null;
   // A real downloaded banner (Steam-cached, or the catalog's own
   // banners_csv art) is already a wide, header-shaped image — safe to
@@ -322,9 +322,8 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
   // real data) win over gameInfo (which is actually launchTarget's cached
   // info, only relevant here for a plain game with no separate identity to
   // begin with, where game === launchTarget anyway).
-  const catalogReleaseTimestamp = catalogEntry?.release_year
-    ? Math.floor(new Date(catalogEntry.release_year, (catalogEntry.release_month ?? 1) - 1, catalogEntry.release_day ?? 1).getTime() / 1000)
-    : undefined;
+  const catalogReleaseMs = catalogReleaseTimestampMs(catalogEntry);
+  const catalogReleaseTimestamp = catalogReleaseMs !== null ? Math.floor(catalogReleaseMs / 1000) : undefined;
   const displayGenres = catalogEntry?.genres_csv
     ? catalogEntry.genres_csv.split(',').map(g => g.trim()).filter(Boolean).join(', ')
     : gameInfo?.genres?.join(', ');

@@ -6,9 +6,8 @@
 import { usePlaybackState, pausePlayback, resumePlayback, skipToNext, stopPlayback } from '../../lib/local/playback-service';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { isReadingType } from '../../lib/constants/media';
 import { IconX } from './ui/icons';
-
-const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -25,7 +24,7 @@ export function NowPlayingBar() {
   const hasNext = playback.queueIndex < playback.queue.length - 1;
   const progressPct = playback.length > 0 ? Math.min(100, (playback.time / playback.length) * 100) : 0;
   const cover = playback.cover ? wrapAssetUrl(toSmallCover(playback.cover)) : null;
-  const episodeLabel = READING_TYPES.has(playback.type) ? 'Cap.' : 'Ep.';
+  const episodeLabel = isReadingType(playback.type) ? 'Cap.' : 'Ep.';
   const mediaUrl = `/media?id=${encodeURIComponent(playback.externalId)}`;
 
   return (

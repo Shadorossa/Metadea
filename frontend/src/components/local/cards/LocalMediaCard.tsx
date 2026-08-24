@@ -3,16 +3,12 @@ import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { IconFolder } from '../ui/icons';
 import { getCachedCover, wrapAssetUrl } from '../../../lib/tauri';
 import { toMediumCover } from '../../../lib/shared/small-cover';
+import { isReadingType } from '../../../lib/constants/media';
 
 interface LocalMediaCardProps {
   item:    LocalMediaItem;
   onClick: (item: LocalMediaItem) => void;
 }
-
-// Reading types get "Cap." (chapters), everything else "Ep." (episodes) —
-// same anime/series-vs-manga/lnovel/book split used for the history label
-// in LocalMediaDetailPanel.tsx.
-const READING_TYPES = new Set(['manga', 'lnovel', 'book']);
 
 export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
   // Visual novels AND games both log progress as hours played (see
@@ -22,7 +18,7 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
   // library-only "Pendiente"/"En progreso" entries (see LocalLibrary), not
   // just the Visual Novel tab.
   const isHourBased = item.libraryEntry.type === 'vnovel' || item.libraryEntry.type === 'game';
-  const unitLabel = READING_TYPES.has(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
+  const unitLabel = isReadingType(item.libraryEntry.type) ? 'Cap.' : 'Ep.';
   const badgeLabel = item.status === 'planning'
     ? 'Pendiente'
     : isHourBased ? `${item.progress}h` : `${unitLabel} ${item.progress}`;

@@ -17,13 +17,23 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
   const [applying,   setApplying]   = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
   const searchTimerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Closing the modal mid-search (or mid-debounce) shouldn't setState on an
+  // unmounted component — every other async flow in this codebase guards
+  // with a cancellation flag/cleanup, this one didn't.
+  const cancelledRef                = useRef(false);
+  useEffect(() => {
+    return () => {
+      cancelledRef.current = true;
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
 
   const runSearch = useCallback((query: string) => {
     setLoading(true);
     setError(null);
     igdbSearchCandidates(query)
-      .then(r  => { setCandidates(r); setLoading(false); })
-      .catch(e => { setError(String(e)); setLoading(false); });
+      .then(r  => { if (!cancelledRef.current) { setCandidates(r); setLoading(false); } })
+      .catch(e => { if (!cancelledRef.current) { setError(String(e)); setLoading(false); } });
   }, []);
 
   useEffect(() => { runSearch(game.name); }, [game.name, runSearch]);

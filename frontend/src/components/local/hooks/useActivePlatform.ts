@@ -20,7 +20,13 @@ export function useActivePlatform(games: LocalGame[], activeCategory: CategoryId
     );
     sectionRefs.current.forEach(el => observer.observe(el));
     return () => observer.disconnect();
-  }, [activeCategory, gamesState, games]);
+    // games.length, not the games array itself — a refetch/playtime-update
+    // gives games a new reference on basically every poll even when nothing
+    // about which platform sections exist has changed, which tore down and
+    // rebuilt this observer far more often than the scroll-tracking it's for
+    // actually needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, gamesState, games.length]);
 
   const scrollTo = useCallback((id: PlatformId) => {
     sectionRefs.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -1,6 +1,22 @@
-import type { LocalGame, MediaCatalogEntry } from '../../../lib/tauri';
+import type { LocalGame, MediaCatalogEntry, MetaEntry } from '../../../lib/tauri';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { normalizeForMatch } from './folderMatch';
+
+// A scanned Steam game's own external_id (if any) is one candidate, but a
+// library entry logged as a visual novel is catalogued as "vnovel:<id>"
+// even though IGDB (and read_metadata_index's cache) always key it as a
+// plain game id — only one of the two prefixes will ever actually resolve
+// against the library. Independently re-derived in three places (Local's
+// videojuegos status match, its "already owned" set, and the Visual Novel
+// tab's own Steam-backlog match) before being pulled out here.
+export function candidateExternalIdsForGame(g: LocalGame, pathCache: Record<string, MetaEntry>): string[] {
+  const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
+  return [
+    g.external_id,
+    igdbId != null ? `vnovel:${igdbId}` : undefined,
+    igdbId != null ? `game:${igdbId}` : undefined,
+  ].filter((id): id is string => !!id);
+}
 
 // A season/update/issue/episode-tagged catalog entry (a Steam "season pass"
 // or similar) still shows as ITSELF — its own card, own title/cover — but

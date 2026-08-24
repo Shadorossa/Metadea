@@ -7,20 +7,19 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
 import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
-import { buildLibraryStatusEntries } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX, IconRefresh, IconMonitor } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
+import { catalogReleaseTimestampMs } from './utils/formatters';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
 // of its own to sort by" gap LibrarySection's own releaseTimestamp works
 // around, reused here for the same reason.
 function releaseTimestamp(item: LocalMediaItem): number | null {
-  const meta = item.catalogEntry;
-  if (!meta?.release_year) return null;
-  return new Date(meta.release_year, (meta.release_month ?? 1) - 1, meta.release_day ?? 1).getTime();
+  return catalogReleaseTimestampMs(item.catalogEntry);
 }
 
 // "Sin estrenar" — no release date on record at all, or one that hasn't
@@ -135,12 +134,7 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     if (!steamGames || steamGames.length === 0 || !mediaRaw) return result;
     const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
     for (const g of steamGames) {
-      const igdbId = g.app_id ? pathCache?.[g.app_id]?.igdb_id : undefined;
-      const candidateIds = [
-        g.external_id,
-        igdbId != null ? `vnovel:${igdbId}` : undefined,
-        igdbId != null ? `game:${igdbId}` : undefined,
-      ].filter((id): id is string => !!id);
+      const candidateIds = candidateExternalIdsForGame(g, pathCache ?? {});
       const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean) ?? null;
       result.set(g, matched ? { externalId: matched.external_id, status: matched.status ?? 'planning' } : null);
     }

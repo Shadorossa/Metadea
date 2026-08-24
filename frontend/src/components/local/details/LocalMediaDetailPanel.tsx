@@ -21,7 +21,8 @@ import {
   usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
-import { formatWatchedAt } from '../utils/formatters';
+import { formatWatchedAt, catalogReleaseTimestampMs, firstCsvUrl } from '../utils/formatters';
+import { isReadingType } from '../../../lib/constants/media';
 import { formatDateLong } from '../../../lib/shared/formatDate';
 import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
@@ -71,7 +72,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // — the cover is a portrait poster, stretched across this wide header it
   // just looks like a cropped-in blur of the same image already shown on
   // the card. Falls back to the cover only when this entry has no banner.
-  const bannerUrl = item.catalogEntry?.banners_csv?.split(',')[0] || item.cover;
+  const bannerUrl = firstCsvUrl(item.catalogEntry?.banners_csv) || item.cover;
 
   const candidateTitles = useMemo(
     () => [item.title, item.titleRomaji, item.titleNative].filter((t): t is string => !!t),
@@ -122,10 +123,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // there's nothing on file to say otherwise. Opening one of those items
   // here shouldn't show a "file/episode not found" error (there's nothing to
   // find, it hasn't come out) — show when it's actually coming out instead.
-  const releaseMeta = item.catalogEntry;
-  const releaseTimestamp = releaseMeta?.release_year
-    ? new Date(releaseMeta.release_year, (releaseMeta.release_month ?? 1) - 1, releaseMeta.release_day ?? 1).getTime()
-    : null;
+  const releaseTimestamp = catalogReleaseTimestampMs(item.catalogEntry);
   const isUnreleased = releaseTimestamp === null || releaseTimestamp > Date.now();
   const releaseLabel = releaseTimestamp !== null
     ? t.local.will_release_on.replace('{date}', formatDateLong(new Date(releaseTimestamp)))
@@ -757,7 +755,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     <span>Has visto <strong>{item.title}</strong></span>
                   ) : (
                     <span>
-                      {item.libraryEntry.type === 'anime' || item.libraryEntry.type === 'series' ? 'Episodio' : 'Capítulo'}{' '}
+                      {isReadingType(item.libraryEntry.type) ? 'Capítulo' : 'Episodio'}{' '}
                       <strong>{h.episode_number}</strong> - {item.title}
                     </span>
                   )}

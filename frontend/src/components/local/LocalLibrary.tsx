@@ -10,7 +10,7 @@ import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
-import { buildLibraryStatusEntries, type StatusEntry } from './utils/catalogGameLinking';
+import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
 import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
 
 import { PlatformSidebar }  from './PlatformSidebar';
@@ -246,12 +246,7 @@ export default function LocalLibrary() {
     if (!mediaRaw) return result;
     const byExternalId = new Map(mediaRaw.entries.map(e => [e.external_id, e]));
     for (const g of Array.isArray(games) ? games : []) {
-      const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
-      const candidateIds = [
-        g.external_id,
-        igdbId != null ? `vnovel:${igdbId}` : undefined,
-        igdbId != null ? `game:${igdbId}` : undefined,
-      ].filter((id): id is string => !!id);
+      const candidateIds = candidateExternalIdsForGame(g, pathCache);
       const matched = candidateIds.map(id => byExternalId.get(id)).find(Boolean);
       result.set(g, matched?.status ?? undefined);
     }
@@ -328,9 +323,7 @@ export default function LocalLibrary() {
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
     for (const g of games) {
-      if (g.external_id) ids.add(g.external_id);
-      const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
-      if (igdbId != null) { ids.add(`vnovel:${igdbId}`); ids.add(`game:${igdbId}`); }
+      for (const id of candidateExternalIdsForGame(g, pathCache)) ids.add(id);
     }
     return ids;
   }, [games, pathCache]);
