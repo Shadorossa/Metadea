@@ -16,17 +16,23 @@ export function sanitizeHtml(html: string | null | undefined): string {
 }
 
 // For short inline fragments (a character's "Datos" stat values, extracted
-// from bolded lines in their biography) — same trusted-markup allowance as
-// sanitizeHtml, minus <img> and the style attribute. AniList bios sometimes
-// embed a floated character portrait inline via `<img style="float:right">`
-// in the middle of a bolded stat line; in a synopsis-length paragraph that
-// reads fine, but a single stat value is one or two short lines, so a
-// floated image (often broken/unreachable outside AniList's own page origin
-// anyway) instead pushed the actual text into a narrow wrapped column and
-// inflated the row's height for nothing worth showing.
+// from bolded lines in their biography) — only inline formatting tags
+// survive, everything else (img, div, p, ...) gets unwrapped down to its
+// text/inline content instead of kept as its own element. AniList bios
+// often build these stat lines out of several separate `<div align="center">`
+// blocks (one per sentence) rather than one flowing paragraph, and/or embed
+// a floated portrait image mid-line — both read fine in a synopsis-length
+// paragraph, but for a single stat value they broke the line into a stack
+// of disconnected, independently-centered boxes instead of one continuous,
+// left-aligned, naturally wrapping line — a linked name in one of those
+// divs visibly floated above/apart from the spoiler-hidden text around it
+// rather than reading as part of the same redacted sentence.
 export function sanitizeStatValue(html: string | null | undefined): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, { FORBID_TAGS: ['img'], FORBID_ATTR: ['style'] });
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'span', 'a', 'br'],
+    ALLOWED_ATTR: ['class', 'href', 'target', 'rel'],
+  });
 }
 
 // For plain-text values (names, titles, labels) that get interpolated into
