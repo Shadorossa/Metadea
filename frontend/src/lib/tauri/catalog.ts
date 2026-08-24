@@ -220,6 +220,19 @@ export async function getAllMediaRelations(): Promise<DbMediaRelation[]> {
   return tauriCmd<DbMediaRelation[]>('get_all_media_relations', []);
 }
 
+// Purely local negative cache (anilist_pre_sequel table) — see
+// seasonResolve.ts's fetchAniListRelationEdges. Records that this install
+// already asked AniList for mediaExternalId's prequel/sequel and found
+// nothing new, so a standalone/season-1 title's Local panel doesn't re-ask
+// AniList the same question every time it's opened.
+export async function getAnilistPreSequelChecked(mediaExternalId: string): Promise<boolean> {
+  return tauriCmd<boolean>('get_anilist_pre_sequel_checked', false, { externalId: mediaExternalId });
+}
+
+export async function markAnilistPreSequelChecked(mediaExternalId: string): Promise<void> {
+  return tauriRun('mark_anilist_pre_sequel_checked', { externalId: mediaExternalId });
+}
+
 export interface DbMediaAuthor {
   external_id: string;
   name: string;

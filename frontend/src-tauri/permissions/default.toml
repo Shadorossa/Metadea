@@ -80,6 +80,8 @@ commands.allow = [
   "get_media_relations_for_editor",
   "get_deleted_relations",
   "get_all_media_relations",
+  "get_anilist_pre_sequel_checked",
+  "mark_anilist_pre_sequel_checked",
   "save_media_authors",
   "get_media_authors",
   "save_author_profile_and_relations",

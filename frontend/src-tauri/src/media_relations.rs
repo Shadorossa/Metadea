@@ -271,3 +271,37 @@ pub async fn get_all_media_relations(
 
     Ok(rows)
 }
+
+// Purely local negative cache (see migration 47 in db.rs) — lets
+// seasonResolve.ts skip re-asking AniList for a title's prequel/sequel once
+// it's already confirmed there isn't one, instead of repeating that request
+// every time the title's Local panel is opened.
+#[tauri::command]
+pub async fn get_anilist_pre_sequel_checked(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<bool, String> {
+    let conn = state.conn.lock().str_err()?;
+    let exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM anilist_pre_sequel WHERE external_id = ?1)",
+            [&external_id],
+            |row| row.get(0),
+        )
+        .str_err()?;
+    Ok(exists)
+}
+
+#[tauri::command]
+pub async fn mark_anilist_pre_sequel_checked(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "INSERT OR IGNORE INTO anilist_pre_sequel (external_id) VALUES (?1)",
+        [&external_id],
+    )
+    .str_err()?;
+    Ok(())
+}

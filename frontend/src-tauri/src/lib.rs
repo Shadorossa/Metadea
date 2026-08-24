@@ -178,6 +178,8 @@ pub fn run() {
             media_relations::get_media_relations_for_editor,
             media_relations::get_deleted_relations,
             media_relations::get_all_media_relations,
+            media_relations::get_anilist_pre_sequel_checked,
+            media_relations::mark_anilist_pre_sequel_checked,
             media_authors::save_media_authors,
             media_authors::get_media_authors,
             media_authors::save_author_profile_and_relations,

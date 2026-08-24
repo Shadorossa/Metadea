@@ -908,6 +908,24 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE user_profile ADD COLUMN share_avatar_data TEXT NOT NULL DEFAULT ''", []);
         mark_migration(conn, 46)?;
     }
+    if v < 47 {
+        // Purely local negative cache — records that this install already
+        // asked AniList whether `external_id` has a prequel/sequel and got
+        // nothing new back, so seasonResolve.ts's fallback (only reached
+        // when media_relations has no PREQUEL/SEQUEL row for it yet — most
+        // standalone/season-1 titles) doesn't re-ask AniList the same
+        // question every single time that title's Local panel is opened.
+        // Deliberately its own table, not a media_catalog column: this is
+        // per-install state, not catalog data that gets shared/synced.
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS anilist_pre_sequel (
+                external_id TEXT PRIMARY KEY,
+                checked_at  TEXT DEFAULT CURRENT_TIMESTAMP
+             );",
+            [],
+        )?;
+        mark_migration(conn, 47)?;
+    }
 
     Ok(())
 }
@@ -1220,6 +1238,12 @@ CREATE TABLE IF NOT EXISTS media_relations (
 -- the PK's leading column (media_external_id) doesn't cover that side of
 -- the join, so it fell back to a full scan without this.
 CREATE INDEX IF NOT EXISTS idx_media_relations_related ON media_relations(related_media_external_id);
+
+-- Purely local negative cache — see migration 47's comment.
+CREATE TABLE IF NOT EXISTS anilist_pre_sequel (
+    external_id TEXT PRIMARY KEY,
+    checked_at  TEXT DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Per-pair tombstone: a live API resync or community-catalog merge must
 -- never silently re-add a relation the user deliberately deleted here — but

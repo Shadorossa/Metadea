@@ -4,7 +4,7 @@
 // catalog entry, like Ghost in the Shell: Stand Alone Complex season 1 and
 // its "2nd GIG" season 2) tags each file with the season it ACTUALLY
 // belongs to, not always the one being localized right now.
-import { getMediaRelationsForEditor } from '../../../lib/tauri';
+import { getMediaRelationsForEditor, getAnilistPreSequelChecked, markAnilistPreSequelChecked } from '../../../lib/tauri';
 import { graphqlPost } from '../../../lib/api/client';
 import { API_ENDPOINTS } from '../../../lib/api/endpoints';
 import { extractTitleSeason } from './folderMatch';
@@ -53,14 +53,33 @@ type RelationEdge = AniListRelationsResponse['Media']['relations']['edges'][numb
 // promise instead of firing a duplicate request.
 const relationsCache = new Map<number, Promise<RelationEdge[]>>();
 
-function fetchAniListRelationEdges(numericId: number): Promise<RelationEdge[]> {
+// Most titles in a library are standalone or already-season-1 — AniList
+// genuinely has no PREQUEL/SEQUEL to report for them, but that "no" was
+// never remembered anywhere, so every single Local panel open re-asked
+// AniList the same question forever. anilist_pre_sequel (see db.rs
+// migration 47) records a confirmed-empty result so it's only ever asked
+// once per title, persisted across app restarts — not just this session.
+// Only a genuinely confirmed empty response gets cached; a network failure
+// falls through without marking anything, so it's retried later normally.
+function fetchAniListRelationEdges(externalId: string, numericId: number): Promise<RelationEdge[]> {
   let cached = relationsCache.get(numericId);
-  if (!cached) {
-    cached = graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId })
-      .then(({ result }) => result?.data?.Media?.relations?.edges ?? [])
-      .catch(() => []);
-    relationsCache.set(numericId, cached);
-  }
+  if (cached) return cached;
+
+  cached = (async () => {
+    const alreadyChecked = await getAnilistPreSequelChecked(externalId).catch(() => false);
+    if (alreadyChecked) return [];
+
+    try {
+      const { result } = await graphqlPost<AniListRelationsResponse>(API_ENDPOINTS.ANILIST, SEASON_RELATIONS_QUERY, { id: numericId });
+      const edges = result?.data?.Media?.relations?.edges ?? [];
+      const hasChainRelation = edges.some(e => e.relationType === 'PREQUEL' || e.relationType === 'SEQUEL');
+      if (!hasChainRelation) markAnilistPreSequelChecked(externalId).catch(() => {});
+      return edges;
+    } catch {
+      return [];
+    }
+  })();
+  relationsCache.set(numericId, cached);
   return cached;
 }
 
@@ -97,7 +116,7 @@ export async function resolveSeasonExternalIds(
   const numericId = parseInt(idStr, 10);
   if (!Number.isFinite(numericId)) return map;
 
-  const edges = await fetchAniListRelationEdges(numericId);
+  const edges = await fetchAniListRelationEdges(externalId, numericId);
   for (const edge of edges) {
     if (edge.relationType !== 'SEQUEL' && edge.relationType !== 'PREQUEL') continue;
     const nodeTitle = edge.node.title.romaji ?? edge.node.title.english ?? '';
@@ -124,7 +143,7 @@ async function findPrequelExternalId(externalId: string): Promise<string | null>
   const numericId = parseInt(idStr, 10);
   if (!Number.isFinite(numericId)) return null;
 
-  const edges = await fetchAniListRelationEdges(numericId);
+  const edges = await fetchAniListRelationEdges(externalId, numericId);
   const prequel = edges.find(e => e.relationType === 'PREQUEL');
   return prequel ? `${type}:${prequel.node.id}` : null;
 }
