@@ -516,18 +516,26 @@ const translations = useTranslations(lang);
       let statsHtml = '';
       const addedLabels = new Set<string>();
 
+      // A comma-separated value (age's own "35 (chronologically), 15
+      // (physically)" being the recurring case) reads as one cramped run-on
+      // line next to the label — each comma-part gets its own <div> line
+      // instead, same as parsedStats' own values already do below.
+      function statValueHtml(value: string): string {
+        return value.split(',').map(v => `<div>${escapeHtml(v.trim())}</div>`).join('');
+      }
+
       if (character.gender) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><span class="media-stat-value">${escapeHtml(character.gender)}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><div class="media-stat-value">${statValueHtml(character.gender)}</div></div>`;
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><span class="media-stat-value">${escapeHtml(String(character.age))}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><div class="media-stat-value">${statValueHtml(String(character.age))}</div></div>`;
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><span class="media-stat-value">${escapeHtml(character.bloodType)}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><div class="media-stat-value">${statValueHtml(character.bloodType)}</div></div>`;
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
