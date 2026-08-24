@@ -13,6 +13,7 @@ import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
 import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate, firstCsvUrl, catalogReleaseTimestampMs } from '../utils/formatters';
 import { normalizeForMatch } from '../utils/folderMatch';
+import { toSmallCover } from '../../../lib/shared/small-cover';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -428,9 +429,9 @@ export function GameDetailPanel({ game, coverCache, onClose, onMetaRefresh, know
                     setHasLaunched(true);
                     const startTime = Math.floor(Date.now() / 1000);
                     const coverUrl = (catalogEntry?.cover_url && catalogEntry.cover_url.startsWith('http'))
-                      ? catalogEntry.cover_url
+                      ? toSmallCover(catalogEntry.cover_url)
                       : (banner && banner.startsWith('http'))
-                      ? banner
+                      ? toSmallCover(banner)
                       : undefined;
                     updateDiscordPresence(`Playing ${game.name}`, "", startTime, undefined, coverUrl, game.name, "metadea", "Metadea").catch(() => {});
                     // Auto-logs hours on exit (see LocalLibrary's

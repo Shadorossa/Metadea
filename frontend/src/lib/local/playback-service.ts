@@ -13,6 +13,7 @@ import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, updateD
 import { getResumePosition, saveResumePosition, clearResumePosition } from '../tauri/resume-position';
 import { playFileWithVlc, getVlcPlaybackStatus, sendVlcCommand, type VlcPlaybackStatus } from '../tauri/anime-local';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';
+import { toSmallCover } from '../shared/small-cover';
 
 export interface PlaybackQueueItem {
   episodeNumber: number;
@@ -243,7 +244,7 @@ function stopPolling() {
 
 function updateDiscordForTick(episodeNumber: number, statusState: PlaybackStatus, time: number, length: number) {
   if (!state) return;
-  const coverUrl = state.cover && state.cover.startsWith('http') ? state.cover : undefined;
+  const coverUrl = state.cover && state.cover.startsWith('http') ? toSmallCover(state.cover) : undefined;
   if (statusState === 'playing') {
     const nowSec = Math.floor(Date.now() / 1000);
     const computedStart = nowSec - time;

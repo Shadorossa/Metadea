@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { updateDiscordPresence, resetDiscordPresence } from '../../../lib/tauri';
 import type { MediaPageData } from '../../../lib/media/types';
 import type { Translations } from '../../../i18n/index';
+import { toSmallCover } from '../../../lib/shared/small-cover';
 
 // Sets Discord Rich Presence to reflect the media page currently open, and
 // resets it back to the default state on unmount (leaving the page).
@@ -13,7 +14,7 @@ export function useDiscordPresence(data: MediaPageData | null, discordT: Transla
 
     const detailsText = `Viewing ${data.titleMain}`;
 
-    const coverUrl = data.cover && data.cover.startsWith('http') ? data.cover : undefined;
+    const coverUrl = data.cover && data.cover.startsWith('http') ? toSmallCover(data.cover) : undefined;
     updateDiscordPresence(detailsText, '', undefined, undefined, coverUrl, data.titleMain, 'metadea', 'Metadea').catch(() => {});
 
     // Al desmontar (salir de la ficha), restablecemos el estado por defecto
