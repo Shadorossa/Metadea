@@ -141,6 +141,22 @@ export default function LocalLibrary() {
     return () => unlisten?.();
   }, [refetchMedia]);
 
+  // saveLibraryEntry (lib/tauri/library.ts) fires this exact event after
+  // EVERY library write, from wherever it happens — the collaborative
+  // catalog editor's status dropdown included. Local never listened for it
+  // at all before (only Profile did), so editing a work's status from here
+  // (e.g. Pendiente -> En progreso) saved correctly but this page's own
+  // mediaRaw stayed stale until something else remounted it (an F5) — the
+  // edited item kept showing under its old status section regardless of
+  // what was actually saved. refetchMedia here covers every category, not
+  // just whichever one was active when the edit happened: mediaRaw is
+  // owned by this component and passed down as a prop, so refetching it
+  // here re-renders LocalMediaSection too.
+  useEffect(() => {
+    window.addEventListener('refresh-profile-library', refetchMedia);
+    return () => window.removeEventListener('refresh-profile-library', refetchMedia);
+  }, [refetchMedia]);
+
   // ── Fetch metadata ───────────────────────────────────────────────────────────
 
   const handleFetchMetadata = useCallback(async (types: MetaType[]) => {
