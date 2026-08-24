@@ -62,7 +62,8 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
   useEffect(() => {
     if (overrideItems) return;
     let cancelled = false;
-    (async () => {
+
+    const load = async () => {
       const [{ items: libItems, catalog: catalogEntries }, characterEntries, customImages, rawFavData] = await Promise.all([
         getCachedLibraryAndCatalog(),
         getAllCharacters().catch(err => {
@@ -101,8 +102,19 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
       setCharacterMap(new Map(characterEntries.map(c => [c.external_id, c])));
       setCustomImageMap(new Map(customImages.map(c => [c.external_id, c])));
       setFavData(rawFavData);
-    })();
-    return () => { cancelled = true; };
+    };
+
+    load();
+
+    // Fired by saveLibraryEntry (see LibrarySection.tsx's own listener) after
+    // a save/delete — MediaEditorModal's favorite toggle goes through the
+    // same save path, but this component had no listener of its own, so a
+    // newly-favorited item never showed up here until the page was reloaded.
+    window.addEventListener('refresh-profile-library', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('refresh-profile-library', load);
+    };
   }, [overrideItems]);
 
   const getOrderedItems = (catKey: string): FavItem[] => {
