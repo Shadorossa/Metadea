@@ -24,16 +24,24 @@ type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type SortBy = 'rating' | 'date' | 'duration';
 
 // A fixed subset of media_catalog.format values — anything else (or unset) passes through untouched.
+// .library-edition-filters is a single-column list (one button per row) —
+// OVA/ONA are the one deliberate exception, rendered as their own shared
+// row split into 2 sub-columns (see the "ONA" special-case in the render
+// below) since they're different enough from each other to want separate
+// toggles, but similar enough to not each deserve a full row of their own.
+// Order otherwise just reads top-to-bottom as loose groups: "release
+// format" (Main/Ova+Ona/Special), then "alternate version"/"sub-work"
+// (Remaster/Remake/Expanded Game/Season/Update/Issue).
 const EDITION_FILTER_OPTIONS = [
   { key: 'MAIN', label: 'Main' },
-  { key: 'OVA', label: 'OVA' },
   { key: 'ONA', label: 'ONA' },
+  { key: 'OVA', label: 'OVA' },
   { key: 'SPECIAL', label: 'Special' },
+  { key: 'REMASTER', label: 'Remaster' },
   { key: 'REMAKE', label: 'Remake' },
   { key: 'EXPANDED_GAME', label: 'Expanded Game' },
-  { key: 'REMASTER', label: 'Remaster' },
-  { key: 'UPDATE', label: 'Update' },
   { key: 'SEASON', label: 'Season' },
+  { key: 'UPDATE', label: 'Update' },
   { key: 'ISSUE', label: 'Issue' },
 ] as const;
 const EDITION_FILTER_KEYS: Set<string> = new Set(EDITION_FILTER_OPTIONS.map(o => o.key));
@@ -88,6 +96,12 @@ export function LibrarySection({
   const [activeTypeTab, setActiveTypeTab] = useState('');
   const [selectedEditionFormats, setSelectedEditionFormats] = useState<string[]>(DEFAULT_EDITION_FILTERS);
   const [statusIndex, setStatusIndex] = useState(0);
+  // "YYYY-MM-DD" strings straight from <input type="date">, or '' when unset
+  // — parsed to a timestamp only at filter time (see the `filtered` useMemo
+  // below), same as every other filter here staying in its raw input shape
+  // until it's actually applied.
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [groupByEdition, setGroupByEdition] = useState(false);
   const [groupByBundle, setGroupByBundle] = useState(overrideItems ? false : isLibraryGroupByBundleEnabled);
@@ -221,6 +235,11 @@ export function LibrarySection({
 
     const nameVal = nameFilter.toLowerCase().trim();
     const statusKey = STATUS_LIST[statusIndex].key;
+    const startTs = startDateFilter ? new Date(startDateFilter).getTime() : null;
+    // One day past the picked end date, so that date is inclusive of its
+    // whole 24h regardless of whether started_at/finished_at carries a
+    // time-of-day component or is just a bare date defaulting to midnight.
+    const endTsExclusive = endDateFilter ? new Date(endDateFilter).getTime() + 24 * 60 * 60 * 1000 : null;
 
     const filtered = items.filter(item => {
       const meta = catalogMap.get(item.external_id);
@@ -232,6 +251,21 @@ export function LibrarySection({
       if (statusKey) {
         if (statusKey === 'in_progress') { if (!isInProgressStatus(item.status)) return false; }
         else if (item.status !== statusKey) return false;
+      }
+      // "Desde" only rules out entries that either never started or started
+      // earlier — nothing to say about when/whether they finished. "Hasta"
+      // is the mirror: only rules out entries that never finished or
+      // finished later. Setting both narrows to entries that started on/
+      // after "Desde" AND finished on/before "Hasta" — i.e. actually
+      // watched/read within that window, not just touched at some point
+      // during it.
+      if (startTs !== null) {
+        const startedAt = item.started_at ? new Date(item.started_at).getTime() : null;
+        if (startedAt === null || startedAt < startTs) return false;
+      }
+      if (endTsExclusive !== null) {
+        const finishedAt = item.finished_at ? new Date(item.finished_at).getTime() : null;
+        if (finishedAt === null || finishedAt >= endTsExclusive) return false;
       }
       return true;
     });
@@ -345,7 +379,7 @@ export function LibrarySection({
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
     if (!items) return [];
@@ -385,18 +419,34 @@ export function LibrarySection({
         <div className="library-filter-group">
           <label className="library-filter-label">{p.library_filter_edition_type}</label>
           <div className="library-edition-filters">
-            {EDITION_FILTER_OPTIONS.map(opt => (
-              <button
-                key={opt.key}
-                type="button"
-                className={`library-edition-btn ${selectedEditionFormats.includes(opt.key) ? 'active' : ''}`}
-                onClick={() => setSelectedEditionFormats(prev =>
-                  prev.includes(opt.key) ? prev.filter(k => k !== opt.key) : [...prev, opt.key]
-                )}
-              >
-                {(getT().media?.formats as Record<string, string>)?.[opt.key] || opt.label}
-              </button>
-            ))}
+            {EDITION_FILTER_OPTIONS.map(opt => {
+              // OVA is rendered paired with ONA below instead of getting
+              // its own slot in the outer 2-column grid — the one option
+              // that shares a slot instead of getting one to itself.
+              if (opt.key === 'OVA') return null;
+              const button = (o: typeof EDITION_FILTER_OPTIONS[number]) => (
+                <button
+                  key={o.key}
+                  type="button"
+                  className={`library-edition-btn ${selectedEditionFormats.includes(o.key) ? 'active' : ''}`}
+                  onClick={() => setSelectedEditionFormats(prev =>
+                    prev.includes(o.key) ? prev.filter(k => k !== o.key) : [...prev, o.key]
+                  )}
+                >
+                  {(getT().media?.formats as Record<string, string>)?.[o.key] || o.label}
+                </button>
+              );
+              if (opt.key === 'ONA') {
+                const ova = EDITION_FILTER_OPTIONS.find(o => o.key === 'OVA')!;
+                return (
+                  <div className="library-edition-pair" key="ona-ova-pair">
+                    {button(opt)}
+                    {button(ova)}
+                  </div>
+                );
+              }
+              return button(opt);
+            })}
           </div>
         </div>
 
@@ -418,6 +468,32 @@ export function LibrarySection({
             >
               &gt;
             </button>
+          </div>
+        </div>
+
+        <div className="library-filter-group">
+          <label className="library-filter-label">{p.library_filter_date_range}</label>
+          <div className="library-date-range">
+            <label className="library-date-field">
+              <span className="library-date-field-label">{p.library_filter_date_from}</span>
+              <input
+                type="date"
+                className="library-filter-date-input"
+                value={startDateFilter}
+                max={endDateFilter || undefined}
+                onChange={e => setStartDateFilter(e.target.value)}
+              />
+            </label>
+            <label className="library-date-field">
+              <span className="library-date-field-label">{p.library_filter_date_to}</span>
+              <input
+                type="date"
+                className="library-filter-date-input"
+                value={endDateFilter}
+                min={startDateFilter || undefined}
+                onChange={e => setEndDateFilter(e.target.value)}
+              />
+            </label>
           </div>
         </div>
       </aside>

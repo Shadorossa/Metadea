@@ -1507,6 +1507,43 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
+.library-date-range {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.library-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.library-date-field-label {
+  font-size: clamp(0.58rem, 1.1vw, 0.65rem);
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.library-filter-date-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: clamp(0.32rem, 0.9vw, 0.45rem) clamp(0.2rem, 1vw, 0.4rem);
+  font-size: clamp(0.6rem, 1.25vw, 0.7rem);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: all var(--anim-fast);
+  width: 100%;
+  min-width: 0;
+}
+
+.library-filter-date-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* Subpages-by-type tab bar (Settings > Preferencias toggle) — underline-style
    tabs instead of boxed filter buttons, since these switch the whole view
    rather than toggle a filter on top of it. Shares the sort row's bottom
@@ -1658,6 +1695,16 @@
   .library-edition-filters {
     grid-template-columns: 1fr;
   }
+}
+
+/* ONA + OVA's own shared cell — one slot in the outer 2-column grid above,
+   itself split into 2 sub-columns. Different enough from each other to
+   want separate toggles, but similar enough that giving each their own
+   full slot (like every other format) felt like wasted space. */
+.library-edition-pair {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
 }
 
 .library-edition-btn {
