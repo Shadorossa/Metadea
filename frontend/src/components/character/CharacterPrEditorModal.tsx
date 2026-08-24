@@ -643,13 +643,11 @@ export function CharacterPrEditorModal() {
                     style={{ flex: '0 0 35%', minWidth: 0, fontWeight: 600 }}
                   />
                   <div className="pr-editor-char-divider" />
-                  <input
-                    type="text"
-                    className="pr-editor-char-input"
+                  <RichTextEditor
+                    className="pr-editor-char-richtext"
                     value={c.value}
-                    onChange={e => updateCharacteristic(idx, 'value', e.target.value)}
+                    onChange={v => updateCharacteristic(idx, 'value', v)}
                     placeholder={t.char_value_ph}
-                    style={{ flex: '1 1 0%', minWidth: 0 }}
                   />
                   <button
                     type="button"

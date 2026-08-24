@@ -112,6 +112,37 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
     applyCommand('createLink', url);
   }
 
+  // No native execCommand for this one — AniList's own spoiler markup
+  // (see character.css's .markdown_spoiler, and biography-parser.ts, which
+  // already round-trips this exact class) is just a <span> with a class,
+  // so the selection gets wrapped directly via Range instead. surroundContents
+  // throws if the range's boundaries fall in the middle of a differently-
+  // nested element (crossing two sibling tags partway through each) — falls
+  // back to extract+reinsert for that case, which loses the original nodes'
+  // own boundaries but keeps their content and formatting intact.
+  function applySpoiler() {
+    const sel = window.getSelection();
+    const editor = editorRef.current;
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !editor) return;
+    const range = sel.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+
+    editor.focus();
+    const span = document.createElement('span');
+    span.className = 'markdown_spoiler';
+    try {
+      range.surroundContents(span);
+    } catch {
+      const frag = range.extractContents();
+      span.appendChild(frag);
+      range.insertNode(span);
+    }
+    sel.removeAllRanges();
+    emitChange();
+    setToolbarPos(null);
+    setContextMenuPos(null);
+  }
+
   // Right-click format menu (Discord-style) — a second, more discoverable
   // way to reach the same commands the hover toolbar already exposes,
   // instead of relying on someone noticing text needs to stay selected for
@@ -177,6 +208,7 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
           <button type="button" onClick={() => applyCommand('italic')} title="Cursiva"><i>I</i></button>
           <button type="button" onClick={() => applyCommand('underline')} title="Subrayado"><u>U</u></button>
           <button type="button" onClick={handleLink} title="Enlace">🔗</button>
+          <button type="button" onClick={applySpoiler} title="Spoiler">🙈</button>
         </div>
       )}
       {contextMenuPos && (
@@ -200,6 +232,9 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
           </button>
           <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={handleLink}>
             <span className="pr-editor-richtext-ctxmenu-icon">🔗</span> Enlace
+          </button>
+          <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={applySpoiler}>
+            <span className="pr-editor-richtext-ctxmenu-icon">🙈</span> Spoiler
           </button>
           <div className="pr-editor-richtext-ctxmenu-sep" />
           <button type="button" className="pr-editor-richtext-ctxmenu-item" onClick={() => applyCommand('removeFormat')}>

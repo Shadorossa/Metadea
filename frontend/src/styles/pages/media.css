@@ -3140,6 +3140,19 @@
   text-decoration: underline;
 }
 
+/* Spoiler-marked text stays visible while editing — the transparent-until-
+   hover treatment (character.css's own .markdown_spoiler, used on the
+   published character page) would make it impossible to read or fix your
+   own spoiler text here. A subtle background + dashed underline flags it
+   as spoiler-wrapped without hiding it. */
+.pr-editor-richtext .markdown_spoiler {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 1px dashed var(--text-dim, #6b6b7d);
+  border-radius: 3px;
+  padding: 0 2px;
+  color: inherit;
+}
+
 .pr-editor-richtext a {
   color: var(--accent, #7c6af7);
   text-decoration: underline;
@@ -3286,6 +3299,24 @@
   background: var(--border-color);
   opacity: 0.5;
   flex-shrink: 0;
+}
+
+/* A characteristic's value can be a whole spoiler-wrapped sentence (see
+   the character page's own "In Fate/X" trivia rows) as easily as a plain
+   "154 cm" — RichTextEditor replaces the value's plain <input> so that
+   markup renders and stays editable instead of showing raw tags, sized
+   down to fit this compact row instead of its default standalone-field
+   proportions. */
+.pr-editor-char-row > .pr-editor-richtext-wrap {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
+.pr-editor-char-richtext {
+  min-height: 0 !important;
+  padding: 0.2rem 0.3rem !important;
+  font-size: 0.8rem !important;
+  border-bottom: none !important;
 }
 
 .pr-editor-char-remove {
