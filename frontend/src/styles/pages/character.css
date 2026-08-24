@@ -14,6 +14,25 @@
     align-items: center;
     padding: 3rem 1rem 2rem;
   }
+
+  /* .media-body's 3-column grid (1.1fr / 3fr / 0.9fr, shared with
+     MediaPage.tsx) has no narrow-width fallback of its own — below 900px
+     it kept all 3 tracks side by side, squeezing each into a sliver too
+     narrow for its own content and forcing every column (Datos most of
+     all, its stat values often running whole sentences) into a tall,
+     awkwardly word-wrapped strip instead of stacking. Scoped to the
+     character page specifically (not the shared media.css) since Datos
+     jumping above Biography/Apariciones is a call that only makes sense
+     here — Datos is the character's vitals, worth seeing before scrolling
+     past a biography that (unlike a media synopsis) is sometimes empty. */
+  #character-content .media-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #character-content .media-col-stats {
+    order: -1;
+  }
 }
 
 .character-name-row {
@@ -157,6 +176,18 @@
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  /* A character with many AniList-listed alt names/titles could wrap into
+     enough rows to push everything below it (the whole 3-column body,
+     Datos included) well down the page before it even starts — capped to
+     roughly 3 rows and internally scrollable instead of growing unbounded. */
+  max-height: 4.75rem;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.character-alt-names::-webkit-scrollbar {
+  display: none;
 }
 
 .character-alt-name-tag {
