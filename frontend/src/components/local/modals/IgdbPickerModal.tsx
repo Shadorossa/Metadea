@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { igdbSearchCandidates, igdbForceByIgdbId, saveGameLink, type LocalGame, type IgdbCandidate } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
+import { useDebouncedCallback } from '../../../lib/shared/useDebouncedCallback';
 
 interface IgdbPickerModalProps {
   game:     LocalGame;
@@ -16,16 +17,12 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
   const [error,      setError]      = useState<string | null>(null);
   const [applying,   setApplying]   = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
-  const searchTimerRef              = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Closing the modal mid-search (or mid-debounce) shouldn't setState on an
   // unmounted component — every other async flow in this codebase guards
   // with a cancellation flag/cleanup, this one didn't.
   const cancelledRef                = useRef(false);
   useEffect(() => {
-    return () => {
-      cancelledRef.current = true;
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
+    return () => { cancelledRef.current = true; };
   }, []);
 
   const runSearch = useCallback((query: string) => {
@@ -38,11 +35,11 @@ export function IgdbPickerModal({ game, onClose, onPicked }: IgdbPickerModalProp
 
   useEffect(() => { runSearch(game.name); }, [game.name, runSearch]);
 
+  const [debouncedSearch] = useDebouncedCallback((val: string) => runSearch(val.trim() || game.name), 500);
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchText(val);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => runSearch(val.trim() || game.name), 500);
+    debouncedSearch(val);
   };
 
   const handlePick = async (candidate: IgdbCandidate) => {

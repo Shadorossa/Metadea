@@ -14,6 +14,7 @@ import { SEARCH_TAB_TYPES, DETAIL_SUPPORTED_TYPES } from '../../lib/constants/me
 import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { useDebouncedCallback } from '../../lib/shared/useDebouncedCallback';
 
 type SearchTranslations = Translations['search'];
 
@@ -211,7 +212,6 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const debounceTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef        = useRef<AbortController | null>(null);
   const searchInputRef            = useRef<HTMLInputElement>(null);
 
@@ -334,6 +334,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
   }, []);
 
+  // Any handler that changes what should be searched next (tab switch,
+  // filter change, submitting mid-debounce, ...) cancels a pending debounced
+  // search instead of letting a now-stale query fire after the fact.
+  const [debouncedSearch, cancelDebouncedSearch] = useDebouncedCallback(
+    (value: string) => executeSearch(value, mediaType), 400,
+  );
+
   const handleLoadMore = () => {
     if (isLoadingMore || !hasMore) return;
     executeSearch(query, mediaType, page + 1, appliedFilters);
@@ -389,7 +396,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     }
     return () => {
       abortControllerRef.current?.abort();
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      cancelDebouncedSearch();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -409,15 +416,11 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => executeSearch(value, mediaType), 400);
+    debouncedSearch(value);
   };
 
   const handleMediaTypeChange = (selectedType: MediaType) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    cancelDebouncedSearch();
     setMediaType(selectedType);
     setQuery('');
     setResults([]);
@@ -451,10 +454,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // there's no redundant re-fetch. No sessionStorage handoff needed like
   // the quick-search version — this stays on the very same component/page.
   const handleViewAllType = (type: MediaType, typeResults: SearchResult[]) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    cancelDebouncedSearch();
     abortControllerRef.current?.abort();
     setMediaType(type);
     setResults(typeResults);
@@ -468,10 +468,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   };
 
   const handleSearchSubmit = () => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    cancelDebouncedSearch();
     if (query.length >= 2) executeSearch(query, mediaType);
   };
 
@@ -503,10 +500,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       genres: genres.length > 0 ? genres : undefined,
     };
     setAppliedFilters(filters);
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    cancelDebouncedSearch();
     setQuery('');
     executeSearch('', mediaType, 1, filters);
   };
