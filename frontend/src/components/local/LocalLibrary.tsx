@@ -8,20 +8,20 @@ import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
-import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
+import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
 import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
 import {
-  useLocalPanelSelection, resolveGameSelection,
+  useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
   resolvePendingSelection, resolvePendingLaunchGame,
 } from './hooks/useLocalPanelSelection';
 
 import { PlatformSidebar }  from './PlatformSidebar';
 import { GameCard }         from './cards/GameCard';
 import { LocalMediaCard }   from './cards/LocalMediaCard';
-import { FolderEntryCard }  from './cards/FolderEntryCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
+import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
@@ -87,11 +87,13 @@ export default function LocalLibrary() {
     if (type && CATEGORIES.some(c => c.id === type)) setActiveCategoryRaw(type);
   }, []);
 
-  // Single source of truth for "what's open," shared with LocalMediaSection
-  // (every other category) — see useLocalPanelSelection. selectedGame/
-  // selectedPendingItem/selectedPendingLaunchGame are derived further down,
-  // once games/pendingGameItems (this category's own item lists) are in
-  // scope, the same way LocalMediaSection resolves its own selection prop.
+  // Single source of truth for "what's open" (see useLocalPanelSelection) —
+  // this component now also owns resolving it into an actual item/game and
+  // rendering the one shared DetailPanelShell for EVERY category
+  // (Videojuegos included), not just handing selection/setters down to
+  // LocalMediaSection to render its own. panelSelectedGame/
+  // panelSelectedPendingItem/etc. are derived further down, once
+  // games/pendingGameItems and friends are in scope.
   const { selection, setCatalogSelection, setGameSelection, openPendingSelection, clearSelection } = useLocalPanelSelection(activeCategory);
   const [metaProgress,   setMetaProgress]   = useState<MetaProgress | null>(null);
   const [metaSelector,   setMetaSelector]   = useState(false);
@@ -316,6 +318,26 @@ export default function LocalLibrary() {
   const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => openPendingSelection(item, launchGame);
   const setSelectedGame = (g: LocalGame | null) => setGameSelection(g);
   useGridFlip(videojuegosGridRef, '.local-game-card', !!(selectedGame || selectedPendingItem));
+
+  // Resolved against whichever category is ACTUALLY active — unlike
+  // selectedGame/selectedPendingItem above (always resolved against
+  // Videojuegos' own games/pendingGameItems, correct only because that
+  // JSX below only ever renders while Videojuegos is active), this feeds
+  // the ONE shared DetailPanelShell every category renders through now, so
+  // it needs the right pool regardless of which one is on screen.
+  // activeCategoryItems mirrors what LocalMediaSection computes internally
+  // for its own grid (useLocalMediaItems(category, mediaRaw)) — safe to
+  // recompute here too since a 'pending'-kind selection was, by definition,
+  // never one of the items LocalMediaSection's own Steam-match filter would
+  // have removed.
+  const activeCategoryItems = useLocalMediaItems(activeCategory, mediaRaw);
+  const activeSteamGamesPool = activeCategory === 'videojuegos' ? games : activeCategory === 'visual-novel' ? vnSteamGames : [];
+  const activePendingPool = activeCategory === 'videojuegos' ? pendingGameItems : activeCategoryItems;
+  const panelSelectedItem = resolveCatalogSelection(selection, activeCategoryItems);
+  const panelSelectedGame = resolveGameSelection(selection, activeSteamGamesPool);
+  const panelSelectedPendingItem = resolvePendingSelection(selection, activePendingPool);
+  const panelSelectedPendingLaunchGame = resolvePendingLaunchGame(selection, activeSteamGamesPool);
+  const panelOpen = !!(panelSelectedItem || panelSelectedGame || panelSelectedPendingItem);
   const ownedExternalIds = React.useMemo(() => {
     const ids = new Set<string>();
     for (const g of games) {
@@ -427,35 +449,29 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
           />
         )}
 
-        {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] ? (
-          <LocalMediaSection
-            category={activeCategory}
-            rootFolder={routes[activeCategory]}
-            rootEntries={folderFiles}
-            rootLoading={folderLoading}
-            onSetRoute={() => setRoute(activeCategory)}
-            onClearRoute={() => clearRoute(activeCategory)}
-            onRootRefresh={refetchFolder}
-            filterName={filterName}
-            mediaRaw={mediaRaw}
-            mediaLoading={mediaLoading}
-            refetchMedia={refetchMedia}
-            steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
-            coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
-            pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
-            onMetaRefresh={refreshMeta}
-            selection={selection}
-            onSetCatalogSelection={setCatalogSelection}
-            onSetGameSelection={setGameSelection}
-            onOpenPendingSelection={openPendingSelection}
-            onClearSelection={clearSelection}
-          />
-        ) : (
-        <div className={`local-games-container${(selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
+        <div className={`local-games-container${panelOpen ? ' with-detail' : ''}`}>
           <div className="local-main-content">
-
-            {/* ── Games view ─────────────────────────────────────────────────── */}
-            {activeCategory === 'videojuegos' ? (
+            {LOCAL_MEDIA_TYPE_BY_CATEGORY[activeCategory] ? (
+              <LocalMediaSection
+                category={activeCategory}
+                rootFolder={routes[activeCategory]}
+                onSetRoute={() => setRoute(activeCategory)}
+                onClearRoute={() => clearRoute(activeCategory)}
+                filterName={filterName}
+                mediaRaw={mediaRaw}
+                mediaLoading={mediaLoading}
+                refetchMedia={refetchMedia}
+                steamGames={activeCategory === 'visual-novel' ? vnSteamGames : undefined}
+                coverCache={activeCategory === 'visual-novel' ? coverCache : undefined}
+                pathCache={activeCategory === 'visual-novel' ? pathCache : undefined}
+                selection={selection}
+                onSetCatalogSelection={setCatalogSelection}
+                onSetGameSelection={setGameSelection}
+                onOpenPendingSelection={openPendingSelection}
+              />
+            ) : (
+              /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY
+                  covers every other category) ──────────────────────────── */
               <div className="local-content" ref={videojuegosGridRef}>
                 <div className="local-content-header">
                   <span className="local-content-count">
@@ -588,70 +604,38 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   ))
                 )}
               </div>
-
-            ) : (
-              /* ── Folder view (categories without a library-backed grid) ── */
-              <div className="local-content">
-                {routes[activeCategory] && (
-                  <div className="local-content-header">
-                    <span className="local-folder-path">{routes[activeCategory]}</span>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      {!folderLoading && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>
-                          {folderFiles.length} elemento{folderFiles.length !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                      <button type="button" className="local-refresh-btn" onClick={() => setRoute(activeCategory)} title={t.local.change_folder}><IconFolder /></button>
-                      <button type="button" className="local-refresh-btn" onClick={() => clearRoute(activeCategory)} title={t.local.remove_route} style={{ color: 'var(--color-error, #ff6b6b)' }}><IconX /></button>
-                    </div>
-                  </div>
-                )}
-
-                {folderLoading ? (
-                  <div className="local-state-placeholder"><div className="spinner" /></div>
-                ) : !routes[activeCategory] ? (
-                  <div className="local-state-placeholder">
-                    <IconFolder />
-                    <p>{t.local.no_folder_assigned}</p>
-                    <span>{t.local.choose_folder_category_hint.replace('{category}', String(CATEGORIES.find(c => c.id === activeCategory)?.label.toLowerCase()))}</span>
-                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>
-                      <IconPlus /> {t.local.add_route}
-                    </button>
-                  </div>
-                ) : folderFiles.length === 0 ? (
-                  <div className="local-state-placeholder">
-                    <IconFolder />
-                    <p>{t.local.empty_folder}</p>
-                    <button type="button" className="local-add-route-btn" onClick={() => setRoute(activeCategory)}>{t.local.change_folder}</button>
-                  </div>
-                ) : (
-                  <div className="local-folder-grid">
-                    {folderFiles.map((e, i) => <FolderEntryCard key={i} entry={e} />)}
-                  </div>
-                )}
-              </div>
             )}
           </div>
 
-          {/* One single call site for both cases (an installed game vs a
-              catalog-only "Pendiente") instead of two separate conditional
-              blocks — with two blocks, switching from one kind of selection
-              to the other unmounted one GameDetailPanel and mounted a
-              different one (even with identical JSX, two separate `{cond &&
-              ...}` blocks are two distinct elements as far as React's
-              reconciler is concerned), replaying the panel's own slide-in
-              entrance animation as if it had just been opened instead of
-              just swapping its content. No `key` here either — that would
-              force the exact same remount this is trying to avoid. */}
-          {(selectedGame || selectedPendingItem) && (
+          {/* One shared DetailPanelShell for every category — a catalog
+              item's LocalMediaDetailPanel, or a Steam game/library-only
+              pending item's GameDetailPanel (Visual Novel and Videojuegos
+              can both open the latter). The shell itself (position/size/
+              slide animation) doesn't remount just because which category
+              or content kind is inside it changed, only the content does —
+              this is what actually lets switching to/from Videojuegos stop
+              replaying the entrance animation, since previously Videojuegos
+              rendered its own entirely separate GameDetailPanel+shell from
+              a structurally different branch of this same ternary. */}
+          {panelOpen && (
             <DetailPanelShell onClose={clearSelection}>
-              {handleClose => (
+              {handleClose => panelSelectedItem ? (
+                <LocalMediaDetailPanel
+                  item={panelSelectedItem}
+                  rootFolder={routes[activeCategory]}
+                  rootEntries={folderFiles}
+                  rootLoading={folderLoading}
+                  onCloseClick={handleClose}
+                  onProgressSaved={refetchMedia}
+                  onRootRefresh={refetchFolder}
+                />
+              ) : (
                 <GameDetailPanel
-                  game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
+                  game={panelSelectedGame ?? { name: panelSelectedPendingItem!.title, launcher: 'local' }}
                   coverCache={coverCache}
-                  knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
-                  fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
-                  launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
+                  knownExternalId={panelSelectedGame ? undefined : panelSelectedPendingItem!.externalId}
+                  fallbackCover={panelSelectedGame ? undefined : panelSelectedPendingItem!.cover}
+                  launchOverride={panelSelectedGame ? undefined : panelSelectedPendingLaunchGame}
                   onCloseClick={handleClose}
                   onMetaRefresh={refreshMeta}
                 />
@@ -659,7 +643,6 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             </DetailPanelShell>
           )}
         </div>
-        )}
       </div>
     </>
   );

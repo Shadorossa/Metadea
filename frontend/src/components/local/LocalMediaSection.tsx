@@ -1,23 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGridFlip } from './hooks/useGridFlip';
 import { getT } from '../../i18n/client';
-import type { LocalFolderEntry, LocalGame } from '../../lib/tauri';
+import type { LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
-import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { GameCard } from './cards/GameCard';
-import { GameDetailPanel, type CoverCache } from './details/GameDetailPanel';
-import { DetailPanelShell } from './details/DetailPanelShell';
+import { type CoverCache } from './details/GameDetailPanel';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/catalogGameLinking';
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus, IconX } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { catalogReleaseTimestampMs } from './utils/formatters';
-import {
-  type LocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
-  resolvePendingSelection, resolvePendingLaunchGame,
-} from './hooks/useLocalPanelSelection';
+import { type LocalPanelSelection } from './hooks/useLocalPanelSelection';
 
 // null = no release date on file at all (never resolved a catalog entry, or
 // the catalog entry itself has no release_year). Same "planning has nothing
@@ -56,11 +51,8 @@ function episodeCount(item: LocalMediaItem): number {
 interface LocalMediaSectionProps {
   category:     CategoryId;
   rootFolder:   string | undefined;
-  rootEntries:  LocalFolderEntry[];
-  rootLoading:  boolean;
   onSetRoute:   () => void;
   onClearRoute: () => void;
-  onRootRefresh: () => Promise<void>;
   // The same tab-bar search box games already used, now shared by every
   // media category too instead of being videojuegos-only.
   filterName:   string;
@@ -83,25 +75,26 @@ interface LocalMediaSectionProps {
   // "vnovel:<id>"/"game:<id>" identity "Ver en catálogo" links to) instead
   // of guessing from the title.
   pathCache?:   Record<string, MetaEntry>;
-  onMetaRefresh?: () => void;
   // Single source of truth for "what's open" — owned by LocalLibrary (see
-  // useLocalPanelSelection) so it survives switching away to Videojuegos,
-  // which unmounts this whole component entirely. This component only ever
-  // resolves `selection` against its own category's item lists and reports
-  // clicks back up through the setters — it doesn't own any selection state
-  // itself anymore.
+  // useLocalPanelSelection), which also owns rendering the actual detail
+  // panel (DetailPanelShell) now, outside this component entirely, so it
+  // survives switching away to Videojuegos instead of unmounting/remounting
+  // along with this component's own grid. This component only needs to
+  // know WHETHER something is selected (for the grid's own with-detail
+  // layout and FLIP suppression) and to report clicks upward through the
+  // setters — it doesn't resolve `selection` into an actual item/game or
+  // render anything panel-shaped itself anymore.
   selection: LocalPanelSelection;
   onSetCatalogSelection: (id: string | null) => void;
   onSetGameSelection: (g: LocalGame | null) => void;
   onOpenPendingSelection: (item: LocalMediaItem, launchGame?: LocalGame) => void;
-  onClearSelection: () => void;
 }
 
 // Shows the library entries (watching/reading/playing + planning) for a
 // media category as a card grid, and — on click — opens a side panel that
 // tries to match the work to a subfolder of the category's assigned local
 // folder and to the file for the episode/chapter the user is currently on.
-export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoading, onSetRoute, onClearRoute, onRootRefresh, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, onMetaRefresh, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection, onClearSelection }: LocalMediaSectionProps) {
+export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRoute, filterName, mediaRaw, mediaLoading, refetchMedia, steamGames, coverCache, pathCache, selection, onSetCatalogSelection, onSetGameSelection, onOpenPendingSelection }: LocalMediaSectionProps) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -109,7 +102,6 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
   const p = t.profile;
   const allItemsRaw = useLocalMediaItems(category, mediaRaw);
   const loading = mediaLoading;
-  const refetch = refetchMedia;
 
   // playback-service.ts keeps polling and auto-marking episodes watched via
   // its own global singleton regardless of what's mounted — including with
@@ -165,24 +157,6 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
     const q = filterName.trim().toLowerCase();
     return q ? allItems.filter(i => i.title.toLowerCase().includes(q)) : allItems;
   }, [allItems, filterName]);
-  // Mutually exclusive — selecting one always closes the others, so a
-  // catalog item's LocalMediaDetailPanel, a Steam game's GameDetailPanel,
-  // and a library-only pending item's synthetic GameDetailPanel never end
-  // up open side by side at once. `selection` itself lives in LocalLibrary
-  // (see useLocalPanelSelection) — resolved here against this category's
-  // own item lists, purely derived so it updates in the same render as
-  // `category`/`allItems` do, with no risk of a stale intermediate frame.
-  const selected = resolveCatalogSelection(selection, allItems);
-  // Visual Novel only (see isGameLike below): a library-only entry (no
-  // scanned Steam install, no identity match either) still opens the same
-  // GameDetailPanel every other game-like item gets — same "no que te
-  // envíe a su media page" treatment Videojuegos' own Pendientes/En
-  // progreso already have (see LocalLibrary's openPendingItem) — instead of
-  // the folder/episode-matching LocalMediaDetailPanel other categories use.
-  const selectedGame = resolveGameSelection(selection, steamGames ?? []);
-  const selectedPendingItem = resolvePendingSelection(selection, allItems);
-  const selectedPendingLaunchGame = resolvePendingLaunchGame(selection, steamGames ?? []);
-
   // Steam games split by their matched library status — unmatched (or
   // matched to a status this grid doesn't otherwise track, e.g. paused/
   // dropped) fall into "Backlog de Steam" instead. A completed match is
@@ -271,11 +245,14 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
 
   const isEmpty = sections.length === 0;
   const gridContainerRef = useRef<HTMLDivElement>(null);
-  useGridFlip(gridContainerRef, '.local-game-card', !!(selected || selectedGame || selectedPendingItem));
+  useGridFlip(gridContainerRef, '.local-game-card', !!selection);
 
+  // Just the grid itself now — LocalLibrary owns the surrounding
+  // .local-games-container/.local-main-content layout and the single
+  // shared DetailPanelShell (see useLocalPanelSelection), so switching to
+  // Videojuegos (which renders a structurally separate grid, not this
+  // component) doesn't unmount/remount the panel along with this grid.
   return (
-    <div className={`local-games-container${(selected || selectedGame || selectedPendingItem) ? ' with-detail' : ''}`}>
-      <div className="local-main-content">
         <div className="local-content" ref={gridContainerRef}>
           <div className="local-content-header">
             <span className="local-content-count">
@@ -345,40 +322,5 @@ export function LocalMediaSection({ category, rootFolder, rootEntries, rootLoadi
             </div>
           )}
         </div>
-      </div>
-
-      {/* One shared DetailPanelShell for both a catalog item's
-          LocalMediaDetailPanel and a Steam game/library-only pending item's
-          GameDetailPanel (Visual Novel can open either kind) — the shell
-          itself (position/size/slide animation) doesn't remount just
-          because which content kind is inside it changed, only the content
-          does, the same way it already didn't remount from switching
-          between two same-kind selections (e.g. two different anime). */}
-      {(selected || selectedGame || selectedPendingItem) && (
-        <DetailPanelShell onClose={onClearSelection}>
-          {handleClose => selected ? (
-            <LocalMediaDetailPanel
-              item={selected}
-              rootFolder={rootFolder}
-              rootEntries={rootEntries}
-              rootLoading={rootLoading}
-              onCloseClick={handleClose}
-              onProgressSaved={refetch}
-              onRootRefresh={onRootRefresh}
-            />
-          ) : (
-            <GameDetailPanel
-              game={selectedGame ?? { name: selectedPendingItem!.title, launcher: 'local' }}
-              coverCache={coverCache ?? {}}
-              knownExternalId={selectedGame ? undefined : selectedPendingItem!.externalId}
-              fallbackCover={selectedGame ? undefined : selectedPendingItem!.cover}
-              launchOverride={selectedGame ? undefined : selectedPendingLaunchGame}
-              onCloseClick={handleClose}
-              onMetaRefresh={onMetaRefresh}
-            />
-          )}
-        </DetailPanelShell>
-      )}
-    </div>
   );
 }
