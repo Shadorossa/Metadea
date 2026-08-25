@@ -3214,17 +3214,18 @@
 
 /* ── Lists Tab ────────────────────────────────────────────────────────────────── */
 
-/* Opening a list slides in a side panel (same idea as Local's detail panel)
-   instead of replacing the grid outright — .lists-layout (the grid + its
-   header) stays mounted and visible the whole time, just sharing width with
-   whatever panel is open next to it, so switching lists (or just glancing
-   back at the grid) never means leaving and re-entering the view. */
+/* The list detail panel is a permanent part of this layout, not something
+   that pops in on selecting a list — .lists-layout (the grid + its header)
+   always shares width with it, and the panel itself always renders (either
+   the open list, or an empty-state prompt), so there's no entrance of its
+   own to animate; picking a list just fills in content that was already
+   sitting there. */
 .lists-page-layout {
   display: flex;
   align-items: flex-start;
 }
 
-.lists-page-layout--with-detail .lists-layout {
+.lists-page-layout .lists-layout {
   flex: 1 1 0%;
   min-width: 0;
 }
@@ -3242,8 +3243,19 @@
   /* Just a divider line from the grid, not a boxed card — sits flush on
      its other three sides, same as Local's own detail panel. */
   border-left: 1px solid var(--border-color);
-  padding: 0 0 1.25rem 1.5rem;
-  animation: slide-in-right 0.3s var(--anim-ease);
+  padding: 0.5rem 0 1.25rem 1.5rem;
+}
+
+.list-detail-panel-empty {
+  height: 100%;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-dim);
+  text-align: center;
 }
 
 .list-card--active {
@@ -3425,11 +3437,54 @@
   gap: 0.3rem;
 }
 
+.list-detail-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .list-detail-title {
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--text-main);
   margin: 0;
+}
+
+/* Click-to-edit — no separate Editar button, the title itself is the
+   affordance. A transparent border (not none) reserves the same box the
+   focused input will occupy, so hovering/clicking doesn't shift anything
+   by the width of a border appearing. */
+.list-detail-title--editable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.4rem;
+  margin: -0.15rem -0.4rem;
+  border: 1px solid transparent;
+}
+
+.list-detail-title--editable:hover {
+  border-color: var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.list-detail-title-input {
+  font-size: 1.2rem;
+  font-weight: 800;
+  padding: 0.15rem 0.4rem;
+  margin: -0.15rem -0.4rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.list-meta-private-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .list-detail-desc {
@@ -3438,25 +3493,38 @@
   margin: 0;
 }
 
-.list-detail-meta-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.list-detail-desc--editable,
+.list-detail-desc-add {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 0.1rem 0.4rem;
+  margin: -0.1rem -0.4rem;
+  border: 1px solid transparent;
+  width: fit-content;
 }
 
-.list-detail-meta-edit-row {
-  display: flex;
-  gap: 0.5rem;
+.list-detail-desc--editable:hover,
+.list-detail-desc-add:hover {
+  border-color: var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.list-meta-name-input {
-  flex: 0 0 40%;
+/* The "click here to add a description" placeholder — same slot the real
+   description takes once one exists, just visibly a prompt rather than
+   real content until then. */
+.list-detail-desc-add {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 0;
+}
+
+.list-detail-desc-input {
+  font-size: 0.82rem;
+  padding: 0.1rem 0.4rem;
+  margin: -0.1rem -0.4rem;
   min-width: 0;
-}
-
-.list-meta-desc-input {
-  flex: 1 1 0%;
-  min-width: 0;
+  width: 100%;
 }
 
 .list-detail-content {

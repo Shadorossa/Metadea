@@ -107,7 +107,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   p: P;
   onBack: () => void;
   onDeleted: () => void;
-  onMetaSaved: (name: string, description: string) => void;
+  onMetaSaved: (name: string, description: string, isPrivate: boolean) => void;
   onCountChanged: (delta: number) => void;
   // Someone else's profile (UserProfileView) has no local list to read via
   // getListItemsFull — this fetches from the social cache instead.
@@ -116,9 +116,13 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 }) {
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
   const [showAddPanel, setShowAddPanel] = useState(false);
-  const [isEditingMeta, setIsEditingMeta] = useState(false);
-  const [metaName, setMetaName] = useState(list.name);
-  const [metaDesc, setMetaDesc] = useState(list.description ?? '');
+  // Click-to-edit, not a separate "Editar" form — name/description commit
+  // individually (blur or Enter) instead of behind one shared Guardar/
+  // Cancelar step. Private is a plain toggle, saved the instant it flips.
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(list.name);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(list.description ?? '');
 
   const gridRef = useRef<HTMLDivElement>(null);
   const listItemsRef = useRef(listItems);
@@ -274,12 +278,26 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
     onCountChanged(-1);
   };
 
-  const saveMeta = async () => {
-    const trimmed = metaName.trim();
-    if (!trimmed) return;
-    await updateUserList(list.key, trimmed, metaDesc.trim()).catch(err => console.error('Failed to save list metadata:', err));
-    onMetaSaved(trimmed, metaDesc.trim());
-    setIsEditingMeta(false);
+  const commitName = async () => {
+    setEditingName(false);
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === list.name) { setNameDraft(list.name); return; }
+    await updateUserList(list.key, trimmed, list.description ?? '', list.is_private).catch(err => console.error('Failed to save list name:', err));
+    onMetaSaved(trimmed, list.description ?? '', list.is_private);
+  };
+
+  const commitDesc = async () => {
+    setEditingDesc(false);
+    const trimmed = descDraft.trim();
+    if (trimmed === (list.description ?? '')) return;
+    await updateUserList(list.key, list.name, trimmed, list.is_private).catch(err => console.error('Failed to save list description:', err));
+    onMetaSaved(list.name, trimmed, list.is_private);
+  };
+
+  const togglePrivate = async () => {
+    const next = !list.is_private;
+    await updateUserList(list.key, list.name, list.description ?? '', next).catch(err => console.error('Failed to save list privacy:', err));
+    onMetaSaved(list.name, list.description ?? '', next);
   };
 
   const handleDelete = async () => {
@@ -297,29 +315,60 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
         </button>
         {!readOnly && (
           <div className="list-detail-actions">
-            <button className="list-btn list-btn--ghost" onClick={() => setIsEditingMeta(true)}>{p.lists_edit}</button>
             <button className="list-btn list-btn--danger" onClick={handleDelete}>{p.lists_delete}</button>
           </div>
         )}
       </div>
 
-      {!readOnly && isEditingMeta ? (
-        <div className="list-detail-meta-edit">
-          <div className="list-detail-meta-edit-row">
-            <input type="text" className="list-input list-meta-name-input" value={metaName} maxLength={60} placeholder={p.lists_name_ph} onChange={e => setMetaName(e.target.value)} />
-            <input type="text" className="list-input list-meta-desc-input" value={metaDesc} maxLength={200} placeholder={p.lists_desc_ph} onChange={e => setMetaDesc(e.target.value)} />
-          </div>
-          <div className="list-create-actions">
-            <button className="list-btn list-btn--primary" onClick={saveMeta}>{p.lists_save}</button>
-            <button className="list-btn list-btn--ghost" onClick={() => { setIsEditingMeta(false); setMetaName(list.name); setMetaDesc(list.description ?? ''); }}>{p.lists_cancel}</button>
-          </div>
+      <div className="list-detail-meta">
+        <div className="list-detail-meta-row">
+          {!readOnly && editingName ? (
+            <input
+              type="text"
+              className="list-input list-detail-title-input"
+              value={nameDraft}
+              maxLength={60}
+              autoFocus
+              onChange={e => setNameDraft(e.target.value)}
+              onBlur={commitName}
+              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setNameDraft(list.name); setEditingName(false); } }}
+            />
+          ) : (
+            <h2
+              className={`list-detail-title${readOnly ? '' : ' list-detail-title--editable'}`}
+              onClick={readOnly ? undefined : () => { setNameDraft(list.name); setEditingName(true); }}
+              title={readOnly ? undefined : p.lists_edit}
+            >
+              {list.name}
+            </h2>
+          )}
+          {!readOnly && (
+            <label className="list-meta-private-toggle">
+              <input type="checkbox" checked={list.is_private} onChange={togglePrivate} />
+              {p.lists_private}
+            </label>
+          )}
         </div>
-      ) : (
-        <div className="list-detail-meta">
-          <h2 className="list-detail-title">{list.name}</h2>
-          {list.description && <p className="list-detail-desc">{list.description}</p>}
-        </div>
-      )}
+        {!readOnly && editingDesc ? (
+          <input
+            type="text"
+            className="list-input list-detail-desc-input"
+            value={descDraft}
+            maxLength={200}
+            autoFocus
+            placeholder={p.lists_desc_ph}
+            onChange={e => setDescDraft(e.target.value)}
+            onBlur={commitDesc}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setDescDraft(list.description ?? ''); setEditingDesc(false); } }}
+          />
+        ) : list.description ? (
+          <p className={`list-detail-desc${readOnly ? '' : ' list-detail-desc--editable'}`} onClick={readOnly ? undefined : () => { setDescDraft(list.description ?? ''); setEditingDesc(true); }}>
+            {list.description}
+          </p>
+        ) : !readOnly ? (
+          <p className="list-detail-desc-add" onClick={() => { setDescDraft(''); setEditingDesc(true); }}>{p.lists_desc_ph}</p>
+        ) : null}
+      </div>
 
       {!readOnly && showAddPanel && (
         <MediaSearchPopup
@@ -429,12 +478,17 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
 
   const activeList = activeListKey ? customLists.find(l => l.key === activeListKey) : null;
 
-  // A list opens into a sliding side panel (same idea as Local's detail
-  // panel) instead of replacing the grid outright — the grid stays visible
-  // and browsable behind it, so switching between lists (or just glancing
-  // back at the grid) doesn't mean leaving and re-entering the whole view.
+  // The panel frame (.list-detail-panel) is always mounted — not something
+  // that pops in on selecting a list — so the layout is already "ready" the
+  // moment you're in the Lists tab; picking a list just fills it in instead
+  // of triggering an entrance of its own. Same idea as Local's detail panel
+  // staying next to the grid rather than replacing it, just without that
+  // panel's own open/close animation, since there's nothing to open here.
+  // ListDetail itself is remounted per list (key={list.key}) so its local
+  // edit-form state (name/description/private draft) can't leak from
+  // whichever list was open before.
   return (
-    <div className={`lists-page-layout${activeList ? ' lists-page-layout--with-detail' : ''}`}>
+    <div className="lists-page-layout">
       <ListsGrid
         customLists={customLists}
         catalogMap={catalogMap}
@@ -445,24 +499,30 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
         onCreate={async (name, description) => {
           const key = await createUserList(username, name, description).catch(() => null);
           if (!key) return;
-          setCustomLists(prev => [...prev, { key, name, description, is_fav: false, item_count: 0, preview_ids: [] }]);
+          setCustomLists(prev => [...prev, { key, name, description, is_fav: false, is_private: false, item_count: 0, preview_ids: [] }]);
         }}
       />
-      {activeList && (
-        <div className="list-detail-panel">
+      <div className="list-detail-panel">
+        {activeList ? (
           <ListDetail
+            key={activeList.key}
             list={activeList}
             catalogMap={catalogMap}
             p={p}
             onBack={() => setActiveListKey(null)}
             onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
-            onMetaSaved={(name, description) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description } : l))}
+            onMetaSaved={(name, description, isPrivate) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate } : l))}
             onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
             readOnly={readOnly}
             fetchItems={overrideFetchItems}
           />
-        </div>
-      )}
+        ) : (
+          <div className="list-detail-panel-empty">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /></svg>
+            <p>{p.lists_select_prompt}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

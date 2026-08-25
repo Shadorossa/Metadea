@@ -76,7 +76,10 @@ async function compileLibrary(): Promise<unknown[]> {
 // any use rendering.
 async function compileLists(): Promise<unknown[]> {
   const lists = await getAllUserLists().catch(() => []);
-  const custom = lists.filter(l => !l.is_fav);
+  // A list marked private (Editar > Privada) never leaves this device —
+  // excluded here rather than relying on the server to filter it, so it
+  // can't end up in the request body at all.
+  const custom = lists.filter(l => !l.is_fav && !l.is_private);
   return Promise.all(custom.map(async l => ({
     key: l.key,
     name: l.name,

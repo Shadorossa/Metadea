@@ -926,6 +926,15 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 47)?;
     }
+    if v < 48 {
+        // A private list never leaves this device — compileLists()
+        // (profile-sync.ts) filters it out of the daily/forced profile
+        // snapshot before it's ever POSTed to metadea-web, so it can't show
+        // up on this user's public profile or in the social cache of
+        // anyone viewing it.
+        let _ = conn.execute("ALTER TABLE user_lists ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0", []);
+        mark_migration(conn, 48)?;
+    }
 
     Ok(())
 }
@@ -1347,6 +1356,7 @@ CREATE TABLE IF NOT EXISTS user_lists (
     key         TEXT PRIMARY KEY,
     description TEXT NOT NULL DEFAULT '',
     is_fav      INTEGER NOT NULL DEFAULT 0,
+    is_private  INTEGER NOT NULL DEFAULT 0,
     name        TEXT NOT NULL DEFAULT '',
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
