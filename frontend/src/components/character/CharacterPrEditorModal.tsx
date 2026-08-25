@@ -209,25 +209,33 @@ export function CharacterPrEditorModal() {
 
         const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
         const addedLabels = new Set(parsedStats.map(c => c.label.toLowerCase()));
-        const allCharacteristics = [...parsedStats];
 
+        // Prepended (not appended) — the character page itself renders
+        // Género/Edad/Grupo Sanguíneo/Cumpleaños before any parsed bio
+        // characteristic (character.astro's own stats block does gender,
+        // then age, then bloodType, then birthday, THEN loops parsedStats),
+        // so the editor should list them in that same order instead of
+        // tacking them onto the end after Height/In Fate/etc.
+        const nativeCharacteristics: ParsedCharacteristic[] = [];
         if (nativeGender && !addedLabels.has('gender') && !addedLabels.has('género')) {
-          allCharacteristics.push({ label: 'Gender', value: nativeGender });
+          nativeCharacteristics.push({ label: 'Gender', value: nativeGender });
         }
         if (nativeAge && !addedLabels.has('age') && !addedLabels.has('edad')) {
-          allCharacteristics.push({ label: 'Age', value: String(nativeAge) });
+          nativeCharacteristics.push({ label: 'Age', value: String(nativeAge) });
         }
         if (nativeBloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('grupo sanguíneo')) {
-          allCharacteristics.push({ label: 'Blood Type', value: nativeBloodType });
+          nativeCharacteristics.push({ label: 'Blood Type', value: nativeBloodType });
         }
         if (nativeDob && (nativeDob.day || nativeDob.month)) {
           if (!addedLabels.has('birthday') && !addedLabels.has('cumpleaños')) {
             const day = nativeDob.day ?? '?';
             const month = nativeDob.month ?? '?';
             const year = nativeDob.year ? `/${nativeDob.year}` : '';
-            allCharacteristics.push({ label: 'Birthday', value: `${day}/${month}${year}` });
+            nativeCharacteristics.push({ label: 'Birthday', value: `${day}/${month}${year}` });
           }
         }
+
+        const allCharacteristics = [...nativeCharacteristics, ...parsedStats];
 
         setCharacteristics(allCharacteristics);
         setCleanBiography(parsedBio);
