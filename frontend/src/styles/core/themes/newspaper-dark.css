@@ -542,6 +542,19 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--accent) !important;
 }
 
+/* Character page's Editar button — .btn--secondary's own boxed border
+   (components.css) reads as a heavy, out-of-place square in this theme's
+   otherwise borderless icon buttons; just the pencil glyph on hover-tint
+   fits its plain letterhead look better. */
+[data-theme="newspaper-dark"] .char-edit-btn-header {
+  border: none !important;
+  background: transparent !important;
+}
+
+[data-theme="newspaper-dark"] .char-edit-btn-header:hover {
+  color: var(--accent) !important;
+}
+
 /* Ensure card titles and UI links never have unwanted text underlines */
 [data-theme="newspaper-dark"] a,
 [data-theme="newspaper-dark"] a:visited,
