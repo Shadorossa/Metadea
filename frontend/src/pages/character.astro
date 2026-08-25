@@ -645,7 +645,13 @@ const translations = useTranslations(lang);
       }
 
       if (statsHtml || availableLangs.length > 0) {
-        statsCard.style.display = 'block';
+        // 'flex', not 'block' — .media-col-stats/.character-hero-stats is a
+        // flex column (see character.css), and an inline style always wins
+        // over a class regardless of specificity, so 'block' here silently
+        // broke every flex-only rule scoped to this element (the Editar
+        // button's align-self among them — it never actually centered/
+        // right-aligned no matter what that CSS said).
+        statsCard.style.display = 'flex';
       } else {
         statsCard.style.display = 'none';
       }
