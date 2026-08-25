@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
 import { search, searchGameBundles, searchGameExpandedEditions, searchGameRemasters, type MediaType, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
@@ -82,7 +83,14 @@ export interface MediaSearchPopupProps {
 /** Live multi-provider search (AniList/IGDB/TMDB/OpenLibrary/Comic Vine) used
  *  to attach a saga member or bundled-in work to the entry being edited.
  *  Closes only on an outside click (stopPropagation keeps that from also
- *  closing the parent PrEditorModal). */
+ *  closing the parent PrEditorModal). Portals to document.body — its own
+ *  `.pr-editor-search-popup` backdrop is `position: fixed; inset: 0`, which
+ *  only actually covers the real viewport when rendered at the body level;
+ *  nested wherever it's called from (e.g. inside a profile page section
+ *  with its own transformed/filtered hero banner), an ancestor with
+ *  transform/filter/etc. becomes the fixed element's containing block
+ *  instead of the viewport, per the CSS spec, leaving whatever's above that
+ *  ancestor visible over the popup. */
 export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = true, includeIgdbBundles = false, includeIgdbExpandedEditions = false, includeRemasters = false, igdbRelationMediaType = 'game' }: MediaSearchPopupProps) {
   const s = getT().search;
   const [query, setQuery] = useState('');
@@ -133,7 +141,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
     r => r.externalId,
   );
 
-  return (
+  return createPortal(
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
       <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-search-controls">
@@ -198,6 +206,7 @@ export function MediaSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSe
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

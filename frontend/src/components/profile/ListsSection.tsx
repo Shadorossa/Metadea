@@ -4,12 +4,14 @@ import {
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
 } from '../../lib/tauri';
-import type { MediaCatalogEntry, ListInfo, ListItemFull, LibraryEntry } from '../../lib/tauri';
+import type { MediaCatalogEntry, ListInfo, ListItemFull } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { dbRatingToStars5 } from '../../lib/media/rating-utils';
 import { getTypeLabel } from '../../lib/constants/media';
+import { MediaSearchPopup } from '../media/MediaSearchPopup';
+import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P = ReturnType<typeof getT>['profile'];
@@ -44,6 +46,18 @@ function ListCard({ list, catalogMap, p, onClick }: {
   );
 }
 
+// The first name in "Sin nombre", "Sin nombre 1", "Sin nombre 2", ... not
+// already taken by one of this user's existing lists — same idea as
+// picking a free numeric suffix, just against display names instead of
+// the key's own numeric-suffix scheme (create_user_list, Rust side).
+function nextUntitledListName(existingNames: string[], base: string): string {
+  const taken = new Set(existingNames);
+  if (!taken.has(base)) return base;
+  let n = 1;
+  while (taken.has(`${base} ${n}`)) n++;
+  return `${base} ${n}`;
+}
+
 function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
   customLists: ListInfo[];
   catalogMap: Map<string, MediaCatalogEntry>;
@@ -52,43 +66,20 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
   onOpen: (key: string) => void;
   readOnly?: boolean;
 }) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-
   return (
     <div className="lists-layout">
       <div className="lists-header">
         <h2 className="lists-title">{p.lists}</h2>
         {!readOnly && (
-          <button className="list-btn list-btn--primary" onClick={() => setIsCreating(true)}>
+          <button
+            className="list-btn list-btn--primary"
+            onClick={() => onCreate(nextUntitledListName(customLists.map(l => l.name), p.lists_untitled), '')}
+          >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             {p.lists_new}
           </button>
         )}
       </div>
-      {!readOnly && isCreating && (
-        <div className="list-create-form">
-          <input type="text" className="list-input list-create-name" placeholder={p.lists_name_ph} maxLength={60} autoFocus value={name} onChange={e => setName(e.target.value)} />
-          <input type="text" className="list-input list-create-desc" placeholder={p.lists_desc_ph} maxLength={200} value={description} onChange={e => setDescription(e.target.value)} />
-          <div className="list-create-actions">
-            <button
-              className="list-btn list-btn--primary"
-              onClick={() => {
-                const trimmed = name.trim();
-                if (!trimmed) return;
-                onCreate(trimmed, description.trim());
-                setIsCreating(false);
-                setName('');
-                setDescription('');
-              }}
-            >
-              {p.lists_create}
-            </button>
-            <button className="list-btn list-btn--ghost" onClick={() => setIsCreating(false)}>{p.lists_cancel}</button>
-          </div>
-        </div>
-      )}
       {customLists.length > 0 ? (
         <div className="lists-grid">
           {customLists.map(l => <ListCard list={l} catalogMap={catalogMap} p={p} onClick={() => onOpen(l.key)} key={l.key} />)}
@@ -105,9 +96,8 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
 
 /* ── Detail view ────────────────────────────────────────────────────────── */
 
-function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
+function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
   list: ListInfo;
-  items: Items;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: P;
   onBack: () => void;
@@ -120,7 +110,6 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
   fetchItems?: (listKey: string) => Promise<ListItemFull[]>;
 }) {
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [isEditingMeta, setIsEditingMeta] = useState(false);
   const [metaName, setMetaName] = useState(list.name);
@@ -249,37 +238,27 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
     };
   }, [list.key]);
 
-  const available = useMemo(() => {
-    if (!showAddPanel) return [];
-    const q = searchQuery.toLowerCase();
-    return items
-      .filter(i => !currentIds.has(i.external_id))
-      .filter(i => {
-        if (!q) return true;
-        const meta = catalogMap.get(i.external_id);
-        return (meta?.title_main ?? i.external_id).toLowerCase().includes(q);
-      })
-      .slice(0, 30);
-  }, [showAddPanel, searchQuery, items, currentIds, catalogMap]);
-
-  const handleAdd = async (item: LibraryEntry) => {
-    if (currentIds.has(item.external_id)) return;
-    await addItemToList(list.key, item.external_id).catch(err => console.error('Failed to add item to list:', err));
-    const meta = catalogMap.get(item.external_id);
+  // MediaSearchPopup's own live multi-provider search — same one PrEditor's
+  // "Add to Saga" uses — replaces the old library-only text-filter panel, so
+  // a list can include any cataloged work, not just something already in
+  // the user's own library.
+  const handleAddFromSearch = async (result: ApiSearchResult) => {
+    if (currentIds.has(result.externalId)) return;
+    await addItemToList(list.key, result.externalId).catch(err => console.error('Failed to add item to list:', err));
     setListItems(prev => [...prev, {
-      external_id: item.external_id,
+      external_id: result.externalId,
       position: prev.length,
-      library_id: item.id ?? null,
-      status: item.status ?? null,
-      rating: item.rating ?? null,
-      progress: item.progress ?? 0,
-      progress_2: item.progress_2 ?? 0,
-      is_favorite: (item.is_favorite ?? 0) !== 0,
-      is_platinum: (item.is_platinum ?? 0) !== 0,
-      title_main: meta?.title_main ?? null,
-      cover_url: meta?.cover_url ?? null,
-      media_type: meta?.type ?? null,
-      format: meta?.format ?? null,
+      library_id: null,
+      status: null,
+      rating: null,
+      progress: 0,
+      progress_2: 0,
+      is_favorite: false,
+      is_platinum: false,
+      title_main: result.titleMain,
+      cover_url: result.coverUrl,
+      media_type: result.type,
+      format: result.format,
     }]);
     onCountChanged(1);
   };
@@ -336,30 +315,12 @@ function ListDetail({ list, items, catalogMap, p, onBack, onDeleted, onMetaSaved
       )}
 
       {!readOnly && showAddPanel && (
-        <div className="list-add-panel">
-          <div className="list-add-search-row">
-            <input type="text" className="list-add-search" placeholder={p.lists_search_library} value={searchQuery} autoFocus onChange={e => setSearchQuery(e.target.value)} />
-            <button className="list-btn list-btn--ghost" onClick={() => { setShowAddPanel(false); setSearchQuery(''); }}>✕</button>
-          </div>
-          <div className="list-add-results">
-            {available.length > 0 ? available.map(item => {
-              const meta = catalogMap.get(item.external_id);
-              const title = meta?.title_main ?? item.external_id;
-              const cover = meta?.cover_url ?? '';
-              return (
-                <div className="list-add-item" key={item.external_id}>
-                  {cover
-                    ? <img className="list-add-cover" src={cover} alt="" loading="lazy" decoding="async" />
-                    : <div className="list-add-cover list-add-cover--fallback" style={{ background: fallbackGradient(item.type) }} />}
-                  <span className="list-add-title">{title}</span>
-                  <button className="list-add-btn" onClick={() => handleAdd(item)}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  </button>
-                </div>
-              );
-            }) : <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: '1rem 0' }}>{p.lists_no_results}</p>}
-          </div>
-        </div>
+        <MediaSearchPopup
+          onSelect={handleAddFromSearch}
+          onClose={() => setShowAddPanel(false)}
+          excludeIds={Array.from(currentIds)}
+          closeOnSelect={false}
+        />
       )}
 
       <div className="list-detail-content">
@@ -465,7 +426,6 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
     return (
       <ListDetail
         list={activeList}
-        items={items}
         catalogMap={catalogMap}
         p={p}
         onBack={() => setActiveListKey(null)}

@@ -113,6 +113,7 @@ export const ca = {
     lists: 'Llistes',
     lists_empty: 'Encara no has creat cap llista personalitzada.',
     lists_new: 'Nova llista',
+    lists_untitled: 'Sense nom',
     lists_name_ph: 'Nom de la llista...',
     lists_desc_ph: 'Descripció (opcional)...',
     lists_create: 'Crear',

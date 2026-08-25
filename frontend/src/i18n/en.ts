@@ -113,6 +113,7 @@ export const en = {
     lists: 'Lists',
     lists_empty: "You haven't created any custom lists yet.",
     lists_new: 'New list',
+    lists_untitled: 'Untitled',
     lists_name_ph: 'List name...',
     lists_desc_ph: 'Description (optional)...',
     lists_create: 'Create',

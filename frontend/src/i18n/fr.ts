@@ -113,6 +113,7 @@ export const fr = {
     lists: 'Listes',
     lists_empty: "Vous n'avez pas encore créé de liste personnalisée.",
     lists_new: 'Nouvelle liste',
+    lists_untitled: 'Sans titre',
     lists_name_ph: 'Nom de la liste...',
     lists_desc_ph: 'Description (facultatif)...',
     lists_create: 'Créer',

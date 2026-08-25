@@ -113,6 +113,7 @@ export const de = {
     lists: 'Listen',
     lists_empty: 'Du hast noch keine eigene Liste erstellt.',
     lists_new: 'Neue Liste',
+    lists_untitled: 'Unbenannt',
     lists_name_ph: 'Name der Liste...',
     lists_desc_ph: 'Beschreibung (optional)...',
     lists_create: 'Erstellen',

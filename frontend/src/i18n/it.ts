@@ -113,6 +113,7 @@ export const it = {
     lists: 'Liste',
     lists_empty: 'Non hai ancora creato nessuna lista personalizzata.',
     lists_new: 'Nuova lista',
+    lists_untitled: 'Senza nome',
     lists_name_ph: 'Nome della lista...',
     lists_desc_ph: 'Descrizione (facoltativa)...',
     lists_create: 'Crea',

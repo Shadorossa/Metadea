@@ -113,6 +113,7 @@ export const ru = {
     lists: 'Списки',
     lists_empty: 'Ты ещё не создал ни одного собственного списка.',
     lists_new: 'Новый список',
+    lists_untitled: 'Без названия',
     lists_name_ph: 'Название списка...',
     lists_desc_ph: 'Описание (необязательно)...',
     lists_create: 'Создать',

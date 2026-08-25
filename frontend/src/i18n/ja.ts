@@ -113,6 +113,7 @@ export const ja = {
     lists: 'リスト',
     lists_empty: 'まだカスタムリストを作成していません。',
     lists_new: '新しいリスト',
+    lists_untitled: '名称未設定',
     lists_name_ph: 'リストの名前...',
     lists_desc_ph: '説明(任意)...',
     lists_create: '作成',
