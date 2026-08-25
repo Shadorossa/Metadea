@@ -28,14 +28,17 @@ function ListCard({ list, catalogMap, p, onClick }: {
   p: P;
   onClick: () => void;
 }) {
-  const previewMetas = list.preview_ids.map(id => catalogMap.get(id));
+  // Just the first work in the list, not a multi-cover collage — a 2x2
+  // grid with only one (or two) covers left the rest of the tile as bare
+  // background instead of a real cover filling the card's full width.
+  const firstMeta = list.preview_ids.length > 0 ? catalogMap.get(list.preview_ids[0]) : undefined;
   return (
     <div className="list-card" onClick={onClick}>
-      <div className={`list-card-collage${previewMetas.length === 0 ? ' list-card-collage--empty' : ''}`}>
-        {previewMetas.length > 0
-          ? previewMetas.map((meta, i) => meta?.cover_url
-              ? <img className="list-card-collage-img" src={meta.cover_url} alt="" loading="lazy" decoding="async" key={i} />
-              : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(meta?.type) }} key={i} />)
+      <div className={`list-card-collage${list.preview_ids.length === 0 ? ' list-card-collage--empty' : ''}`}>
+        {list.preview_ids.length > 0
+          ? (firstMeta?.cover_url
+              ? <img className="list-card-collage-img" src={firstMeta.cover_url} alt="" loading="lazy" decoding="async" />
+              : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(firstMeta?.type) }} />)
           : <span className="list-card-empty-icon">📋</span>}
       </div>
       <div className="list-card-info">
