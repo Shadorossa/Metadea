@@ -3421,11 +3421,18 @@
   align-items: center;
   gap: 0.4rem;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-muted);
   font-size: 0.82rem;
+  line-height: 1;
   cursor: pointer;
-  padding: 0.25rem 0;
+  /* Matches .list-btn's own vertical padding + border (components.css) —
+     was 0.25rem/no border, a visibly shorter box that align-items:center
+     on .list-detail-nav centered correctly in principle, but the mismatched
+     icon sizes (16px here vs .list-btn's 12px) between the two still read
+     as slightly off against a much taller sibling box. Matching box height
+     removes the discrepancy instead of relying on centering to hide it. */
+  padding: 0.4rem 0;
   transition: color 0.12s;
 }
 
