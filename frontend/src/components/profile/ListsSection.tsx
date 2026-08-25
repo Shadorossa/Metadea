@@ -121,6 +121,13 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   const [nameDraft, setNameDraft] = useState(list.name);
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(list.description ?? '');
+  // Click once to arm, click again (within a few seconds) to actually
+  // delete — guards against an accidental click doing something
+  // irreversible, without interrupting the flow with a native confirm()
+  // dialog that looks out of place in this app's UI.
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const confirmDeleteTimeoutRef = useRef<number | null>(null);
+  useEffect(() => () => { if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current); }, []);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const listItemsRef = useRef(listItems);
@@ -298,10 +305,14 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
     onMetaSaved(list.name, list.description ?? '', next);
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar la lista "${list.name}"?`)) return;
-    await deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err));
-    onDeleted();
+  const handleDeleteClick = () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      confirmDeleteTimeoutRef.current = window.setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current);
+    deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err)).then(onDeleted);
   };
 
   return (
@@ -312,9 +323,15 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
           {p.lists_back}
         </button>
         {!readOnly && (
-          <div className="list-detail-actions">
-            <button className="list-btn list-btn--danger" onClick={handleDelete}>{p.lists_delete}</button>
-          </div>
+          <button className={`list-back-btn list-back-btn--danger${confirmDelete ? ' list-back-btn--confirm' : ''}`} onClick={handleDeleteClick}>
+            {confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+          </button>
+        )}
+        {!readOnly && (
+          <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            {p.lists_add_items}
+          </button>
         )}
       </div>
 
@@ -381,14 +398,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
       )}
 
       <div className="list-detail-content">
-        <div className="list-detail-header-row">
-          {!readOnly && (
-            <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              {p.lists_add_items}
-            </button>
-          )}
-        </div>
         {listItems.length > 0 ? (
           <div className="list-items-grid" ref={gridRef}>
             {listItems.map(item => {

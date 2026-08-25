@@ -119,6 +119,7 @@ export const en = {
     lists_create: 'Create',
     lists_cancel: 'Cancel',
     lists_delete: 'Delete list',
+    lists_delete_confirm: 'Are you sure?',
     lists_edit: 'Edit',
     lists_items: 'items',
     lists_add_items: 'Add items',

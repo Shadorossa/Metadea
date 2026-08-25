@@ -119,6 +119,7 @@ export const ja = {
     lists_create: '作成',
     lists_cancel: 'キャンセル',
     lists_delete: 'リストを削除',
+    lists_delete_confirm: '本当に削除しますか？',
     lists_edit: '編集',
     lists_items: '件の作品',
     lists_add_items: '作品を追加',

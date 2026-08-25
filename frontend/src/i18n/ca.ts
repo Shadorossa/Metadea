@@ -119,6 +119,7 @@ export const ca = {
     lists_create: 'Crear',
     lists_cancel: 'Cancel·lar',
     lists_delete: 'Eliminar llista',
+    lists_delete_confirm: 'Segur?',
     lists_edit: 'Editar',
     lists_items: 'obres',
     lists_add_items: 'Afegir obres',

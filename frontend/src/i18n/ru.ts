@@ -119,6 +119,7 @@ export const ru = {
     lists_create: 'Создать',
     lists_cancel: 'Отмена',
     lists_delete: 'Удалить список',
+    lists_delete_confirm: 'Точно?',
     lists_edit: 'Редактировать',
     lists_items: 'тайтлов',
     lists_add_items: 'Добавить тайтлы',

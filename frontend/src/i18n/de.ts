@@ -119,6 +119,7 @@ export const de = {
     lists_create: 'Erstellen',
     lists_cancel: 'Abbrechen',
     lists_delete: 'Liste löschen',
+    lists_delete_confirm: 'Sicher?',
     lists_edit: 'Bearbeiten',
     lists_items: 'Werke',
     lists_add_items: 'Werke hinzufügen',

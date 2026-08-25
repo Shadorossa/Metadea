@@ -119,6 +119,7 @@ export const es = {
     lists_create: 'Crear',
     lists_cancel: 'Cancelar',
     lists_delete: 'Eliminar lista',
+    lists_delete_confirm: '¿Seguro?',
     lists_edit: 'Editar',
     lists_items: 'obras',
     lists_add_items: 'Añadir obras',

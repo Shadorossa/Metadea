@@ -119,6 +119,7 @@ export const fr = {
     lists_create: 'Créer',
     lists_cancel: 'Annuler',
     lists_delete: 'Supprimer la liste',
+    lists_delete_confirm: 'Sûr ?',
     lists_edit: 'Modifier',
     lists_items: 'œuvres',
     lists_add_items: 'Ajouter des œuvres',
