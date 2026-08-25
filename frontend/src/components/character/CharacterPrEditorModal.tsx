@@ -191,24 +191,40 @@ export function CharacterPrEditorModal() {
         setAliases(combinedAliases);
         setImageUrl(data.image_url || '');
 
+        // Same sticky-local-wins merge as `data` above, extended to the 4
+        // native fields (gender/age/bloodType/birthday) — character.astro's
+        // own localCharacterToDetail() does the equivalent for the read-only
+        // page. Without this, these 4 characteristics silently vanished
+        // from the editor whenever the live AniList re-fetch above failed
+        // (offline, rate-limited, a non-numeric id), even though the local
+        // DB already had them cached from a previous successful load.
+        const nativeGender = anilistDetail?.gender ?? localData.gender ?? null;
+        const nativeAge = anilistDetail?.age ?? localData.age ?? null;
+        const nativeBloodType = anilistDetail?.bloodType ?? localData.blood_type ?? null;
+        const nativeDob = (anilistDetail?.dateOfBirth?.day || anilistDetail?.dateOfBirth?.month)
+          ? anilistDetail!.dateOfBirth
+          : (localData.dob_day || localData.dob_month)
+            ? { day: localData.dob_day ?? null, month: localData.dob_month ?? null, year: localData.dob_year ?? null }
+            : null;
+
         const { characteristics: parsedStats, cleanBiography: parsedBio } = parseCharacterBiography(data.biography);
         const addedLabels = new Set(parsedStats.map(c => c.label.toLowerCase()));
         const allCharacteristics = [...parsedStats];
 
-        if (anilistDetail?.gender && !addedLabels.has('gender') && !addedLabels.has('género')) {
-          allCharacteristics.push({ label: 'Gender', value: anilistDetail.gender });
+        if (nativeGender && !addedLabels.has('gender') && !addedLabels.has('género')) {
+          allCharacteristics.push({ label: 'Gender', value: nativeGender });
         }
-        if (anilistDetail?.age && !addedLabels.has('age') && !addedLabels.has('edad')) {
-          allCharacteristics.push({ label: 'Age', value: String(anilistDetail.age) });
+        if (nativeAge && !addedLabels.has('age') && !addedLabels.has('edad')) {
+          allCharacteristics.push({ label: 'Age', value: String(nativeAge) });
         }
-        if (anilistDetail?.bloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('grupo sanguíneo')) {
-          allCharacteristics.push({ label: 'Blood Type', value: anilistDetail.bloodType });
+        if (nativeBloodType && !addedLabels.has('blood type') && !addedLabels.has('bloodtype') && !addedLabels.has('grupo sanguíneo')) {
+          allCharacteristics.push({ label: 'Blood Type', value: nativeBloodType });
         }
-        if (anilistDetail?.dateOfBirth && (anilistDetail.dateOfBirth.day || anilistDetail.dateOfBirth.month)) {
+        if (nativeDob && (nativeDob.day || nativeDob.month)) {
           if (!addedLabels.has('birthday') && !addedLabels.has('cumpleaños')) {
-            const day = anilistDetail.dateOfBirth.day ?? '?';
-            const month = anilistDetail.dateOfBirth.month ?? '?';
-            const year = anilistDetail.dateOfBirth.year ? `/${anilistDetail.dateOfBirth.year}` : '';
+            const day = nativeDob.day ?? '?';
+            const month = nativeDob.month ?? '?';
+            const year = nativeDob.year ? `/${nativeDob.year}` : '';
             allCharacteristics.push({ label: 'Birthday', value: `${day}/${month}${year}` });
           }
         }
@@ -399,6 +415,36 @@ export function CharacterPrEditorModal() {
     setAppearances(next);
   };
 
+  // Reverses the Gender/Age/Blood Type/Birthday synthesis in the load
+  // effect above, so a save actually writes these back to their own DB
+  // columns instead of leaving save_character's gender/age/blood_type/
+  // dob_* params undefined — which, since that command does a plain
+  // INSERT OR REPLACE with no COALESCE against the existing row, silently
+  // nulled all 4 columns on every single editor save regardless of
+  // whether the user touched them.
+  function extractNativeFields(list: ParsedCharacteristic[]) {
+    let gender: string | null = null;
+    let age: string | null = null;
+    let bloodType: string | null = null;
+    let dobDay: number | null = null;
+    let dobMonth: number | null = null;
+    let dobYear: number | null = null;
+
+    for (const c of list) {
+      const label = c.label.toLowerCase();
+      if (label === 'gender' || label === 'género') gender = c.value || null;
+      else if (label === 'age' || label === 'edad') age = c.value || null;
+      else if (label === 'blood type' || label === 'bloodtype' || label === 'grupo sanguíneo') bloodType = c.value || null;
+      else if (label === 'birthday' || label === 'cumpleaños') {
+        const [d, m, y] = c.value.split('/');
+        dobDay = d && d !== '?' ? parseInt(d, 10) || null : null;
+        dobMonth = m && m !== '?' ? parseInt(m, 10) || null : null;
+        dobYear = y ? parseInt(y, 10) || null : null;
+      }
+    }
+    return { gender, age, bloodType, dobDay, dobMonth, dobYear };
+  }
+
   const handleChangePhoto = async () => {
     const result = await openImageCropModal({
       title: 'Foto del personaje',
@@ -431,9 +477,12 @@ export function CharacterPrEditorModal() {
         image_url: normField(imageUrl) as string | null | undefined,
       };
 
+      const nativeFields = extractNativeFields(characteristics);
       await saveCharacter(
         currentId, updatedCharacter.name, updatedCharacter.image_url,
         updatedCharacter.name_native, updatedCharacter.aliases_csv, updatedCharacter.biography,
+        nativeFields.gender, nativeFields.age, nativeFields.bloodType,
+        nativeFields.dobYear, nativeFields.dobMonth, nativeFields.dobDay,
       );
       if (appearancesChanged()) {
         await saveCharacterAppearances(currentId, appearances.map(a => ({
