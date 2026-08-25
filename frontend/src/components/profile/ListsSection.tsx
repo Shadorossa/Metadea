@@ -22,10 +22,11 @@ function fallbackGradient(type: string | null | undefined): string {
 
 /* ── Grid view ──────────────────────────────────────────────────────────── */
 
-function ListCard({ list, catalogMap, p, onClick }: {
+function ListCard({ list, catalogMap, p, active, onClick }: {
   list: ListInfo;
   catalogMap: Map<string, MediaCatalogEntry>;
   p: P;
+  active?: boolean;
   onClick: () => void;
 }) {
   // Just the first work in the list, not a multi-cover collage — a 2x2
@@ -33,7 +34,7 @@ function ListCard({ list, catalogMap, p, onClick }: {
   // background instead of a real cover filling the card's full width.
   const firstMeta = list.preview_ids.length > 0 ? catalogMap.get(list.preview_ids[0]) : undefined;
   return (
-    <div className="list-card" onClick={onClick}>
+    <div className={`list-card${active ? ' list-card--active' : ''}`} onClick={onClick}>
       <div className={`list-card-collage${list.preview_ids.length === 0 ? ' list-card-collage--empty' : ''}`}>
         {list.preview_ids.length > 0
           ? (firstMeta?.cover_url
@@ -61,12 +62,13 @@ function nextUntitledListName(existingNames: string[], base: string): string {
   return `${base} ${n}`;
 }
 
-function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
+function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, activeKey, readOnly }: {
   customLists: ListInfo[];
   catalogMap: Map<string, MediaCatalogEntry>;
   p: P;
   onCreate: (name: string, description: string) => void;
   onOpen: (key: string) => void;
+  activeKey?: string | null;
   readOnly?: boolean;
 }) {
   return (
@@ -85,7 +87,7 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, readOnly }: {
       </div>
       {customLists.length > 0 ? (
         <div className="lists-grid">
-          {customLists.map(l => <ListCard list={l} catalogMap={catalogMap} p={p} onClick={() => onOpen(l.key)} key={l.key} />)}
+          {customLists.map(l => <ListCard list={l} catalogMap={catalogMap} p={p} active={l.key === activeKey} onClick={() => onOpen(l.key)} key={l.key} />)}
         </div>
       ) : (
         <div className="lists-empty-state">
@@ -303,8 +305,10 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
       {!readOnly && isEditingMeta ? (
         <div className="list-detail-meta-edit">
-          <input type="text" className="list-input list-meta-name-input" value={metaName} maxLength={60} placeholder={p.lists_name_ph} onChange={e => setMetaName(e.target.value)} />
-          <input type="text" className="list-input list-meta-desc-input" value={metaDesc} maxLength={200} placeholder={p.lists_desc_ph} onChange={e => setMetaDesc(e.target.value)} />
+          <div className="list-detail-meta-edit-row">
+            <input type="text" className="list-input list-meta-name-input" value={metaName} maxLength={60} placeholder={p.lists_name_ph} onChange={e => setMetaName(e.target.value)} />
+            <input type="text" className="list-input list-meta-desc-input" value={metaDesc} maxLength={200} placeholder={p.lists_desc_ph} onChange={e => setMetaDesc(e.target.value)} />
+          </div>
           <div className="list-create-actions">
             <button className="list-btn list-btn--primary" onClick={saveMeta}>{p.lists_save}</button>
             <button className="list-btn list-btn--ghost" onClick={() => { setIsEditingMeta(false); setMetaName(list.name); setMetaDesc(list.description ?? ''); }}>{p.lists_cancel}</button>
@@ -425,34 +429,40 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
 
   const activeList = activeListKey ? customLists.find(l => l.key === activeListKey) : null;
 
-  if (activeList) {
-    return (
-      <ListDetail
-        list={activeList}
+  // A list opens into a sliding side panel (same idea as Local's detail
+  // panel) instead of replacing the grid outright — the grid stays visible
+  // and browsable behind it, so switching between lists (or just glancing
+  // back at the grid) doesn't mean leaving and re-entering the whole view.
+  return (
+    <div className={`lists-page-layout${activeList ? ' lists-page-layout--with-detail' : ''}`}>
+      <ListsGrid
+        customLists={customLists}
         catalogMap={catalogMap}
         p={p}
-        onBack={() => setActiveListKey(null)}
-        onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
-        onMetaSaved={(name, description) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description } : l))}
-        onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
+        onOpen={setActiveListKey}
+        activeKey={activeListKey}
         readOnly={readOnly}
-        fetchItems={overrideFetchItems}
+        onCreate={async (name, description) => {
+          const key = await createUserList(username, name, description).catch(() => null);
+          if (!key) return;
+          setCustomLists(prev => [...prev, { key, name, description, is_fav: false, item_count: 0, preview_ids: [] }]);
+        }}
       />
-    );
-  }
-
-  return (
-    <ListsGrid
-      customLists={customLists}
-      catalogMap={catalogMap}
-      p={p}
-      onOpen={setActiveListKey}
-      readOnly={readOnly}
-      onCreate={async (name, description) => {
-        const key = await createUserList(username, name, description).catch(() => null);
-        if (!key) return;
-        setCustomLists(prev => [...prev, { key, name, description, is_fav: false, item_count: 0, preview_ids: [] }]);
-      }}
-    />
+      {activeList && (
+        <div className="list-detail-panel">
+          <ListDetail
+            list={activeList}
+            catalogMap={catalogMap}
+            p={p}
+            onBack={() => setActiveListKey(null)}
+            onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
+            onMetaSaved={(name, description) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description } : l))}
+            onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
+            readOnly={readOnly}
+            fetchItems={overrideFetchItems}
+          />
+        </div>
+      )}
+    </div>
   );
 }
