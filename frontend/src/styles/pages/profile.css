@@ -3412,6 +3412,10 @@
   gap: 1.25rem;
 }
 
+.list-detail-nav-add {
+  margin-left: auto;
+}
+
 .list-back-btn {
   display: inline-flex;
   align-items: center;
