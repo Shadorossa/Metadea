@@ -8,8 +8,6 @@ import type { MediaCatalogEntry, ListInfo, ListItemFull } from '../../lib/tauri'
 import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
-import { dbRatingToStars5 } from '../../lib/media/rating-utils';
-import { getTypeLabel } from '../../lib/constants/media';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
@@ -322,26 +320,29 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
       <div className="list-detail-meta">
         <div className="list-detail-meta-row">
-          {!readOnly && editingName ? (
-            <input
-              type="text"
-              className="list-input list-detail-title-input"
-              value={nameDraft}
-              maxLength={60}
-              autoFocus
-              onChange={e => setNameDraft(e.target.value)}
-              onBlur={commitName}
-              onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setNameDraft(list.name); setEditingName(false); } }}
-            />
-          ) : (
-            <h2
-              className={`list-detail-title${readOnly ? '' : ' list-detail-title--editable'}`}
-              onClick={readOnly ? undefined : () => { setNameDraft(list.name); setEditingName(true); }}
-              title={readOnly ? undefined : p.lists_edit}
-            >
-              {list.name}
-            </h2>
-          )}
+          <div className="list-detail-meta-row-left">
+            {!readOnly && editingName ? (
+              <input
+                type="text"
+                className="list-input list-detail-title-input"
+                value={nameDraft}
+                maxLength={60}
+                autoFocus
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={commitName}
+                onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setNameDraft(list.name); setEditingName(false); } }}
+              />
+            ) : (
+              <h2
+                className={`list-detail-title${readOnly ? '' : ' list-detail-title--editable'}`}
+                onClick={readOnly ? undefined : () => { setNameDraft(list.name); setEditingName(true); }}
+                title={readOnly ? undefined : p.lists_edit}
+              >
+                {list.name}
+              </h2>
+            )}
+            <span className="list-detail-count">{listItems.length} {p.lists_items}</span>
+          </div>
           {!readOnly && (
             <label className="list-meta-private-toggle">
               <input type="checkbox" checked={list.is_private} onChange={togglePrivate} />
@@ -381,7 +382,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
       <div className="list-detail-content">
         <div className="list-detail-header-row">
-          <span className="list-detail-count">{listItems.length} {p.lists_items}</span>
           {!readOnly && (
             <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
@@ -395,8 +395,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
               const title = item.title_main ?? item.external_id;
               const cover = item.cover_url ?? '';
               const url = `/media?id=${encodeURIComponent(item.external_id)}`;
-              const typeLabel = getTypeLabel(item.media_type ?? '');
-              const ratingDisplay = item.rating ? `★ ${dbRatingToStars5(item.rating).toFixed(1)}` : null;
 
               return (
                 <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
@@ -405,12 +403,10 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
                     {cover
                       ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" />
                       : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
+                    <div className="list-item-info">
+                      <span className="list-item-title">{title}</span>
+                    </div>
                   </a>
-                  <div className="list-item-info">
-                    <a className="list-item-title" href={url}>{title}</a>
-                    {typeLabel && <span className="list-item-type">{typeLabel}</span>}
-                    {ratingDisplay && <span className="list-item-rating">{ratingDisplay}</span>}
-                  </div>
                   {!readOnly && (
                     <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
