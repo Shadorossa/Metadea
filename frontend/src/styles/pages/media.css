@@ -3263,6 +3263,19 @@
   background: var(--border-color, #2d2a24);
 }
 
+.pr-editor-char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+/* A spoiler-paragraph value (see pr-editor-char-row--wide below) spans
+   every column in whatever row it lands on. */
+.pr-editor-char-row--wide {
+  grid-column: 1 / -1;
+}
+
 .pr-editor-char-row {
   display: flex;
   gap: 0.4rem;
@@ -3318,15 +3331,24 @@
 
 .pr-editor-char-richtext {
   min-height: 0 !important;
-  /* A spoiler-paragraph value (the "In Fate/X" trivia rows) can run to
-     several wrapped lines — capped and internally scrollable instead of
-     stretching the whole card (and every other card sharing its grid row)
-     to match its height. */
-  max-height: 7.5rem;
+  /* A spoiler-paragraph value (the "In Fate/X" trivia rows) can still run
+     to more lines than this fits even at the full row width
+     (pr-editor-char-row--wide) — capped and internally scrollable instead
+     of stretching the whole card (and every other card sharing its grid
+     row) to match its height. Same hidden-scrollbar treatment as the
+     app's other internally-scrolling text blocks (.media-description-text)
+     instead of a raw OS scrollbar. */
+  max-height: 6rem;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 0.2rem 0.3rem !important;
   font-size: 0.8rem !important;
   border-bottom: none !important;
+}
+
+.pr-editor-char-richtext::-webkit-scrollbar {
+  display: none;
 }
 
 .pr-editor-char-remove {

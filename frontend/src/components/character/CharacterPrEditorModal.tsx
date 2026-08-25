@@ -688,9 +688,17 @@ export function CharacterPrEditorModal() {
               {t.characteristics}
               {characteristicsChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
-              {characteristics.map((c, idx) => (
-                <div key={idx} className="pr-editor-char-row">
+            <div className="pr-editor-char-grid">
+              {characteristics.map((c, idx) => {
+                // A spoiler-paragraph value (the "In Fate/X" trivia rows)
+                // squeezed into the same 280px column short stats like
+                // Height/Gender use just forced more wrapped lines (and more
+                // scrolling) than the row actually needed — spans the full
+                // grid width instead, same threshold character.astro's own
+                // stacked-layout cutoff uses for the read-only page.
+                const isLong = c.value.replace(/<[^>]+>/g, '').length > 50;
+                return (
+                <div key={idx} className={`pr-editor-char-row${isLong ? ' pr-editor-char-row--wide' : ''}`}>
                   <input
                     type="text"
                     className="pr-editor-char-input"
@@ -715,7 +723,8 @@ export function CharacterPrEditorModal() {
                     ×
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic} style={{ marginTop: '0.75rem' }}>
               {t.add_characteristic}
