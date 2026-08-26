@@ -108,6 +108,13 @@ function detectTrackBoundary(status: VlcPlaybackStatus, current: PlaybackQueueIt
   if (status.filename) {
     return status.filename !== fileBasename(current.filePath);
   }
+  // VLC's status can transiently report length as 0 (or otherwise bogus)
+  // right after a seek or a pause/resume — exactly what scrubbing around to
+  // grab a screenshot looks like — which used to read as "different file,
+  // different duration" and misfire a track-boundary advance for a seek
+  // that never actually left the current episode. A real length comparison
+  // only means anything once both readings are plausible durations.
+  if (status.length <= 0 || knownLength <= 0) return false;
   return Math.abs(status.length - knownLength) > 2;
 }
 
