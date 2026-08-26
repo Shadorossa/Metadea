@@ -186,8 +186,15 @@ async function markEpisodeWatched(episodeNumber: number): Promise<void> {
     : libraryEntry.status === 'planning'
     ? (START_STATUS_BY_TYPE[libraryEntry.type] ?? libraryEntry.status)
     : libraryEntry.status;
-  const startedAt = libraryEntry.started_at ?? new Date().toISOString();
-  const finishedAt = finishing ? new Date().toISOString() : libraryEntry.finished_at;
+  // Plain YYYY-MM-DD, not a full ISO datetime — started_at/finished_at feed
+  // a native <input type="date"> elsewhere (MediaEditorModal), which only
+  // accepts that exact format and silently renders empty (the locale's
+  // "dd/mm/aaaa" placeholder) for anything else, including a real
+  // timestamp string that LOOKS like a valid non-empty value everywhere
+  // else in the code.
+  const today = new Date().toISOString().slice(0, 10);
+  const startedAt = libraryEntry.started_at ?? today;
+  const finishedAt = finishing ? today : libraryEntry.finished_at;
 
   try {
     const saved = await saveLibraryEntry({
