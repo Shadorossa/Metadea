@@ -2,7 +2,20 @@ use chrono::Utc;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::OnceLock;
 use crate::db::ToStringErr;
+
+// Caps how many cover downloads run at once — get_cached_cover's own
+// file-exists check is instant, but a grid full of uncached covers (first
+// visit to a category, or after clearing the cache) used to fire one
+// unbounded reqwest download per card the moment they all mounted. A modest
+// limit keeps that burst from thrashing the connection pool / CPU (webp
+// re-encode) without meaningfully slowing down the common case (a handful
+// of misses at a time).
+fn cover_download_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
+    SEM.get_or_init(|| tokio::sync::Semaphore::new(6))
+}
 
 // Rebuilt-in-place GitHub Release asset (scripts/build-database.js), not a
 // branch-tracked file — a branch commit would bloat git history with a
@@ -550,11 +563,39 @@ pub async fn get_cached_cover(
     std::fs::create_dir_all(&dir).str_err()?;
     let path = dir.join(format!("{}.webp", crate::favorite_images::sanitize_for_filename(&external_id)));
     if !path.exists() {
-        let client = reqwest::Client::new();
-        crate::igdb::download_as_webp(&client, &url, &path).await;
+        let _permit = cover_download_semaphore().acquire().await.str_err()?;
+        crate::igdb::download_as_webp(crate::igdb::get_http_client(), &url, &path).await;
         if !path.exists() {
             return Err("Failed to download/convert cover".into());
         }
     }
     Ok(path.to_string_lossy().to_string())
+}
+
+// Bulk cache-hit check for a whole grid's worth of covers in one IPC call,
+// instead of one get_cached_cover call per card racing at mount — mirrors
+// Steam/GOG's own read_metadata_index bulk read (igdb.rs). Existence-only:
+// a miss here still falls through to the individual get_cached_cover call
+// (which actually downloads), this just lets the frontend skip that round
+// trip entirely for whatever's already on disk.
+#[tauri::command]
+pub async fn get_cached_covers_batch(
+    app_handle: tauri::AppHandle,
+    external_ids: Vec<String>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    use tauri::Manager;
+    let dir = app_handle
+        .path()
+        .app_data_dir()
+        .str_err()?
+        .join("metadata")
+        .join("covers");
+    let mut hits = std::collections::HashMap::new();
+    for external_id in external_ids {
+        let path = dir.join(format!("{}.webp", crate::favorite_images::sanitize_for_filename(&external_id)));
+        if path.exists() {
+            hits.insert(external_id, path.to_string_lossy().to_string());
+        }
+    }
+    Ok(hits)
 }

@@ -6,6 +6,7 @@ import { getT } from '../../i18n/client';
 import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
 import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
+import { useCoverCacheBatch }   from './hooks/useCoverCacheBatch';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
@@ -190,14 +191,22 @@ export default function LocalLibrary() {
       done++;
     }
 
-    // Single worker — each game makes 3-5 IGDB requests handled with backoff in Rust
+    // A small pool instead of one strictly-sequential worker — igdb_query's
+    // own 429 backoff (igdb.rs) already tolerates bursts past IGDB's ~4
+    // req/s comfortably (same reasoning igdb_upcoming_releases' 8-way
+    // concurrency relies on), so the old single-worker design was just a
+    // conservative leftover, not something correctness actually required.
+    // Each game still makes 3-5 IGDB requests with backoff handled in Rust;
+    // running a few games at once cuts real wall-clock time without
+    // meaningfully raising 429 risk.
+    const WORKER_COUNT = 3;
     async function worker() {
       while (queue.length > 0 && !cancelRef.current) {
         await processOne(queue.shift()!);
       }
     }
 
-    await worker();
+    await Promise.all(Array.from({ length: Math.min(WORKER_COUNT, pending.length) }, () => worker()));
     await refreshMeta();
     setMetaProgress(null);
   }, [games, pathCache, refreshMeta]);
@@ -382,6 +391,14 @@ export default function LocalLibrary() {
   // mid-view. Holding both halves back until BOTH sources are ready makes
   // every card in these mixed sections appear in one pass instead of two.
   const sectionsReady = gamesState !== 'idle' && gamesState !== 'loading' && !mediaLoading;
+  // One bulk exists-check for every pending-item cover these two sections
+  // are about to render, instead of each LocalMediaCard racing its own
+  // get_cached_cover call at mount (see useCoverCacheBatch).
+  const pendingCoverIds = React.useMemo(
+    () => [...currentlyEntries, ...planningEntries].filter((e): e is Extract<StatusEntry, { kind: 'catalog' }> => e.kind === 'catalog').map(e => e.item.externalId),
+    [currentlyEntries, planningEntries],
+  );
+  const coverCacheHits = useCoverCacheBatch(pendingCoverIds);
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
@@ -501,7 +518,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       {currentlyEntries.map((entry, i) => entry.kind === 'game' ? (
                         <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={i => openPendingItem(i, entry.launchGame)} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingItem(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>
@@ -514,7 +531,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       {planningEntries.map((entry, i) => entry.kind === 'game' ? (
                         <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} onClick={i => openPendingItem(i, entry.launchGame)} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingItem(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>

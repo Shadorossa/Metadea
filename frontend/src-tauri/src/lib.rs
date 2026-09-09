@@ -161,6 +161,7 @@ pub fn run() {
             media_catalog::find_catalog_health_issues,
             media_catalog::search_catalog,
             media_catalog::get_cached_cover,
+            media_catalog::get_cached_covers_batch,
             sagas::get_cached_saga,
             sagas::save_cached_saga,
             sagas::get_transitive_relation_ids,

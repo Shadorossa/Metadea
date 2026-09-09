@@ -76,7 +76,7 @@ use crate::igdb_env::load_env_config;
 
 // -- HTTP client cache --------------------------------------------------------
 
-fn get_http_client() -> &'static reqwest::Client {
+pub(crate) fn get_http_client() -> &'static reqwest::Client {
     static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     HTTP_CLIENT.get_or_init(|| {
         reqwest::Client::builder()
@@ -220,10 +220,20 @@ pub(crate) async fn download_as_webp(client: &reqwest::Client, url: &str, dest: 
     let Ok(bytes) = resp.bytes().await else {
         return;
     };
-    let Ok(img) = image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg) else {
-        return;
-    };
-    let _ = img.save_with_format(dest, image::ImageFormat::WebP);
+    // Decode + webp re-encode + disk write are all CPU/blocking-IO work —
+    // running them inline on this async fn used to tie up one of the async
+    // runtime's own worker threads for the duration, same as any blocking
+    // call would. Offloaded to spawn_blocking's dedicated pool so a burst of
+    // concurrent cover downloads (an uncached grid's worth of cards) can't
+    // starve the runtime's ability to service other in-flight requests.
+    let dest = dest.to_path_buf();
+    let _ = tokio::task::spawn_blocking(move || {
+        let Ok(img) = image::load_from_memory_with_format(&bytes, image::ImageFormat::Jpeg) else {
+            return;
+        };
+        let _ = img.save_with_format(&dest, image::ImageFormat::WebP);
+    })
+    .await;
 }
 
 async fn download_game_metadata(

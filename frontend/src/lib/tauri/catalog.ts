@@ -129,6 +129,16 @@ export async function getCachedCover(externalId: string, url: string): Promise<s
   return invoke<string>('get_cached_cover', { externalId, url });
 }
 
+// One IPC call, existence-only, for a whole grid's worth of covers — call
+// before mounting a batch of cards so already-cached ones can paint
+// immediately instead of each card racing its own get_cached_cover call at
+// mount. Misses (not in the returned map) still need an individual
+// getCachedCover call to actually download.
+export async function getCachedCoversBatch(externalIds: string[]): Promise<Record<string, string>> {
+  if (externalIds.length === 0) return {};
+  return invoke<Record<string, string>>('get_cached_covers_batch', { externalIds });
+}
+
 import type { SagaEntry } from '../anilist/saga';
 
 export async function getCachedSaga(externalId: string): Promise<SagaEntry[] | null> {

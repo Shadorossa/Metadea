@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { IconFolder } from '../ui/icons';
 import { getCachedCover, wrapAssetUrl } from '../../../lib/tauri';
@@ -8,9 +8,14 @@ import { isReadingType } from '../../../lib/constants/media';
 interface LocalMediaCardProps {
   item:    LocalMediaItem;
   onClick: (item: LocalMediaItem) => void;
+  // Pre-resolved by the parent's own useCoverCacheBatch call (one bulk
+  // exists-check for the whole grid) — when present, this card already
+  // knows its cover is cached and skips both the IntersectionObserver wait
+  // and its own getCachedCover round trip entirely.
+  cachedPath?: string;
 }
 
-export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
+export function LocalMediaCard({ item, onClick, cachedPath }: LocalMediaCardProps) {
   // Visual novels AND games both log progress as hours played (see
   // getProgressConfig in MediaEditorModal), not a discrete episode/chapter
   // count, so the badge needs its own unit here instead of falling into
@@ -31,17 +36,38 @@ export function LocalMediaCard({ item, onClick }: LocalMediaCardProps) {
   // Starts null (shows the placeholder) rather than the raw remote URL, to
   // avoid paying for the same download twice (once here, once in Rust).
   const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // Only cards actually near the viewport fire their own getCachedCover
+  // call — a category grid with 100+ uncached items used to fire that many
+  // concurrent IPC calls the instant it mounted. A card whose cover is
+  // already known via the parent's batch prefetch (cachedPath) skips this
+  // wait entirely, same as it skips the round trip itself below.
+  const [inView, setInView] = useState(!!cachedPath);
   useEffect(() => {
-    if (!item.cover) { setCoverSrc(null); return; }
+    if (cachedPath || inView) return;
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setInView(true); observer.disconnect(); } },
+      { rootMargin: '300px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [cachedPath, inView]);
+
+  useEffect(() => {
+    if (cachedPath) { setCoverSrc(wrapAssetUrl(cachedPath)); return; }
+    if (!item.cover || !inView) return;
     let cancelled = false;
     getCachedCover(item.externalId, toMediumCover(item.cover))
       .then(path => { if (!cancelled) setCoverSrc(wrapAssetUrl(path)); })
       .catch(() => { if (!cancelled) setCoverSrc(item.cover); });
     return () => { cancelled = true; };
-  }, [item.cover, item.externalId]);
+  }, [item.cover, item.externalId, cachedPath, inView]);
 
   return (
     <div
+      ref={cardRef}
       className="local-game-card"
       onClick={() => onClick(item)}
       role="button"

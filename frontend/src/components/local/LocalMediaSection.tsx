@@ -3,6 +3,7 @@ import { useGridFlip } from './hooks/useGridFlip';
 import { getT } from '../../i18n/client';
 import type { LocalGame } from '../../lib/tauri';
 import { useLocalMediaItems, type LocalMediaItem, type LocalMediaRaw } from './hooks/useLocalMediaEntries';
+import { useCoverCacheBatch } from './hooks/useCoverCacheBatch';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
@@ -244,6 +245,11 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, p, steamInProgress, steamPlanning, backlogByPlatform, steamGames, catalogMapById]);
 
+  // One bulk exists-check for every catalog card this grid is about to
+  // render, instead of each LocalMediaCard racing its own get_cached_cover
+  // call at mount (see useCoverCacheBatch).
+  const coverCacheHits = useCoverCacheBatch(useMemo(() => items.map(i => i.externalId), [items]));
+
   const isEmpty = sections.length === 0;
   const gridContainerRef = useRef<HTMLDivElement>(null);
   useGridFlip(gridContainerRef, '.local-game-card', !!selection);
@@ -288,6 +294,7 @@ export function LocalMediaSection({ category, rootFolder, onSetRoute, onClearRou
                       <LocalMediaCard
                         key={entry.item.externalId}
                         item={entry.item}
+                        cachedPath={coverCacheHits[entry.item.externalId]}
                         onClick={i => isGameLike ? onOpenPendingSelection(i, entry.launchGame) : onSetCatalogSelection(i.externalId)}
                       />
                     ) : (
