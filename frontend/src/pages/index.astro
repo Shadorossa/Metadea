@@ -5,11 +5,23 @@
   <head>
     <meta charset="utf-8" />
     <style>body { margin: 0; background: #0a0a0a; }</style>
-    <script is:inline>
-      var token = localStorage.getItem('auth_token');
-      var last = localStorage.getItem('metadea_last_visited_path');
-      var destination = token ? (last && last !== '/' ? last : '/home') : '/login';
-      window.location.replace(destination);
+    <script>
+      import { initTauriDatabase } from '../lib/tauri/database';
+      import { getAuthToken } from '../lib/tauri/auth';
+
+      // localStorage alone isn't enough here: it lives in the WebView2
+      // profile folder, separate from the SQLite DB file — restoring only
+      // the DB (e.g. after a fresh install / reformatted disk) leaves
+      // localStorage empty even though user_sessions.app_auth still has a
+      // valid session. Fall back to the DB (via getAuthToken(), which
+      // re-populates localStorage on a hit) before deciding to bounce to
+      // /login.
+      initTauriDatabase().catch(e => console.error('Failed to init Tauri database:', e)).finally(async () => {
+        const session = await getAuthToken();
+        const last = localStorage.getItem('metadea_last_visited_path');
+        const destination = session ? (last && last !== '/' ? last : '/home') : '/login';
+        window.location.replace(destination);
+      });
     </script>
   </head>
   <body>
