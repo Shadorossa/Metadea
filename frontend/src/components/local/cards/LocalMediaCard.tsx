@@ -4,6 +4,7 @@ import { IconFolder } from '../ui/icons';
 import { getCachedCover, wrapAssetUrl } from '../../../lib/tauri';
 import { toMediumCover } from '../../../lib/shared/small-cover';
 import { isReadingType } from '../../../lib/constants/media';
+import { MediaCardShell } from './MediaCardShell';
 
 interface LocalMediaCardProps {
   item:    LocalMediaItem;
@@ -66,31 +67,17 @@ export function LocalMediaCard({ item, onClick, cachedPath }: LocalMediaCardProp
   }, [item.cover, item.externalId, cachedPath, inView]);
 
   return (
-    <div
+    <MediaCardShell
       ref={cardRef}
-      className="local-game-card"
-      onClick={() => onClick(item)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onClick(item)}
-    >
-      <div className="local-game-cover">
-        {coverSrc
-          // No loading="lazy" here: the <img> itself doesn't exist in the DOM
-          // at all until coverSrc resolves (see the effect above) — src is
-          // always already known the moment this element is created, unlike
-          // before this card started caching covers (a plain item.cover URL
-          // present from the very first render). Native lazy-loading on top
-          // of an already-deferred src assignment made the WebView (Chromium/
-          // WebView2) sometimes never repaint the image at all after an F5
-          // reload, until something else forced a reflow (moving the mouse).
-          ? <img src={coverSrc} alt={item.title} decoding="async" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          : <div className="local-game-cover-placeholder"><IconFolder /></div>}
+      title={item.title}
+      cover={coverSrc}
+      placeholderIcon={<IconFolder />}
+      badge={
         <span className={`local-media-status-badge${item.status === 'planning' ? ' local-media-status-badge--planning' : ''}`}>
           {badgeLabel}
         </span>
-      </div>
-      <p className="local-game-name">{item.title}</p>
-    </div>
+      }
+      onClick={() => onClick(item)}
+    />
   );
 }
