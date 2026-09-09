@@ -169,7 +169,30 @@ pub async fn save_favorite_custom_image(
     })
 }
 
-
+#[tauri::command]
+pub async fn get_favorite_custom_image(
+    app_handle: tauri::AppHandle,
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+) -> Result<Option<FavoriteCustomImage>, String> {
+    let row = {
+        let conn = state.conn.lock().str_err()?;
+        conn.query_row(
+            &format!("{} WHERE external_id = ?1", SELECT_IMAGE),
+            [&external_id],
+            row_to_image,
+        )
+        .optional()
+        .str_err()?
+    };
+    match row {
+        Some(row) => {
+            let root = custom_image_root(&app_handle)?;
+            Ok(row_into_image(&root, row))
+        }
+        None => Ok(None),
+    }
+}
 
 // Bulk fetch for the Favorites tab — one round trip instead of one per card.
 #[tauri::command]

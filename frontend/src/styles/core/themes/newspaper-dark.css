@@ -1081,4 +1081,21 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   font-style: italic !important;
 }
 
+[data-theme="newspaper-dark"] .char-avatar-edit-btn,
+[data-theme="newspaper-dark"] .fav-edit-image-btn {
+  border-radius: 0px !important;
+  background: #1c1a17 !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-theme="newspaper-dark"] .char-avatar-edit-btn:hover,
+[data-theme="newspaper-dark"] .fav-edit-image-btn:hover {
+  background: #282521 !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
 

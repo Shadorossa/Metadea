@@ -40,6 +40,12 @@ const translations = useTranslations(lang);
         <div class="character-hero-left-col">
           <div class="character-avatar-frame">
             <div class="character-avatar-wrap" id="char-avatar-container"></div>
+            <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
           </div>
           <div class="character-action-row" id="char-action-row">
             <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title={translations.character.action_favorite}>
@@ -149,6 +155,7 @@ const translations = useTranslations(lang);
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import { getT } from '../i18n/client';
+  import { openFavoriteImageEditor } from '../lib/profile/favorite-image-editor';
   import {
     readUserFavorites,
     syncFavorites,
@@ -163,6 +170,8 @@ const translations = useTranslations(lang);
     getSyncState,
     markSynced,
     markSyncFailed,
+    getFavoriteCustomImage,
+    wrapAssetUrl,
     type CharacterEntry,
   } from '../lib/tauri';
 
@@ -266,7 +275,8 @@ const translations = useTranslations(lang);
           sync_failed_count: syncState.sync_failed_count,
         } : null);
 
-        if (dueForResync || !localChar) {
+        const isSkeleton = !localChar || !localChar.biography;
+        if (dueForResync || isSkeleton) {
           const live = await fetchAniListCharacterDetail(characterId);
           if (live) {
             character = live;
@@ -311,12 +321,33 @@ const translations = useTranslations(lang);
         nativeEl.style.display = 'none';
       }
 
-      // Imagen / Avatar
+      // Imagen / Avatar (prioriza imagen personalizada local si existe)
+      const customImg = await getFavoriteCustomImage(characterExternalId).catch(() => null);
+      const activeAvatar = customImg ? wrapAssetUrl(customImg.image_url) : stickyImage;
+
       const avatarContainer = document.getElementById('char-avatar-container')!;
-      if (stickyImage) {
-        avatarContainer.innerHTML = `<img src="${safeUrl(stickyImage)}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
+      if (activeAvatar) {
+        avatarContainer.innerHTML = `<img src="${safeUrl(activeAvatar)}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
       } else {
         avatarContainer.innerHTML = `<div class="character-avatar-placeholder">${escapeHtml(t.no_image)}</div>`;
+      }
+
+      const editAvatarBtn = document.getElementById('char-avatar-edit-btn');
+      if (editAvatarBtn) {
+        editAvatarBtn.onclick = async () => {
+          const currentCustom = await getFavoriteCustomImage(characterExternalId).catch(() => null);
+          const fallbackUrl = stickyImage || '';
+          const res = await openFavoriteImageEditor(characterExternalId, fallbackUrl, currentCustom ?? undefined);
+          if (res.action === 'saved') {
+            avatarContainer.innerHTML = `<img src="${safeUrl(wrapAssetUrl(res.image.image_url))}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
+          } else if (res.action === 'removed') {
+            if (stickyImage) {
+              avatarContainer.innerHTML = `<img src="${safeUrl(stickyImage)}" alt="${escapeHtml(stickyName)}" class="character-avatar-img" />`;
+            } else {
+              avatarContainer.innerHTML = `<div class="character-avatar-placeholder">${escapeHtml(t.no_image)}</div>`;
+            }
+          }
+        };
       }
 
       // Parseo de biografía para extraer características

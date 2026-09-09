@@ -6,6 +6,7 @@ import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
+import { getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../tauri';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -206,6 +207,16 @@ async function searchCharacters(searchQuery: string, signal: AbortSignal, page: 
     } else if (!seen.has(r.externalId)) {
       seen.add(r.externalId);
       merged.push(r);
+    }
+  }
+
+  const customMap = await getCustomImagesMap().catch(() => null);
+  if (customMap && customMap.size > 0) {
+    for (const item of merged) {
+      const custom = customMap.get(item.externalId);
+      if (custom) {
+        item.coverUrl = wrapAssetUrl(custom.image_url);
+      }
     }
   }
 

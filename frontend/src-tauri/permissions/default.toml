@@ -128,6 +128,7 @@ commands.allow = [
   "save_media_companies",
   "save_favorite_custom_image",
   "get_all_favorite_custom_images",
+  "get_favorite_custom_image",
   "delete_favorite_custom_image",
   "save_game_link",
   "launch_game",

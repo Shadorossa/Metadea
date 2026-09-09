@@ -16,6 +16,14 @@ export interface FavoriteCustomImage {
   updated_at:  string;
 }
 
+let cachedImagesMap: Map<string, FavoriteCustomImage> | null = null;
+let cachePromise: Promise<Map<string, FavoriteCustomImage>> | null = null;
+
+export function invalidateCustomImagesCache() {
+  cachedImagesMap = null;
+  cachePromise = null;
+}
+
 export async function saveFavoriteCustomImage(
   externalId: string,
   imageUrl: string,
@@ -24,14 +32,40 @@ export async function saveFavoriteCustomImage(
   posY: number,
 ): Promise<FavoriteCustomImage> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<FavoriteCustomImage>('save_favorite_custom_image', { externalId, imageUrl, bgSize, posX, posY });
+  const res = await invoke<FavoriteCustomImage>('save_favorite_custom_image', { externalId, imageUrl, bgSize, posX, posY });
+  invalidateCustomImagesCache();
+  return res;
 }
 
-// Bulk fetch for the Favorites tab — one round trip instead of one per card.
+export async function getFavoriteCustomImage(externalId: string): Promise<FavoriteCustomImage | null> {
+  return tauriCmd<FavoriteCustomImage | null>('get_favorite_custom_image', null, { externalId });
+}
+
 export async function getAllFavoriteCustomImages(): Promise<FavoriteCustomImage[]> {
   return tauriCmd<FavoriteCustomImage[]>('get_all_favorite_custom_images', []);
 }
 
+export async function getCustomImagesMap(forceRefresh = false): Promise<Map<string, FavoriteCustomImage>> {
+  if (cachedImagesMap && !forceRefresh) return cachedImagesMap;
+  if (cachePromise && !forceRefresh) return cachePromise;
+
+  cachePromise = getAllFavoriteCustomImages().then(list => {
+    const map = new Map<string, FavoriteCustomImage>();
+    for (const img of list) {
+      map.set(img.external_id, img);
+    }
+    cachedImagesMap = map;
+    cachePromise = null;
+    return map;
+  }).catch(() => {
+    cachePromise = null;
+    return cachedImagesMap ?? new Map();
+  });
+
+  return cachePromise;
+}
+
 export async function deleteFavoriteCustomImage(externalId: string): Promise<void> {
-  return tauriRun('delete_favorite_custom_image', { externalId });
+  await tauriRun('delete_favorite_custom_image', { externalId });
+  invalidateCustomImagesCache();
 }

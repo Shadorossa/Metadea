@@ -3,6 +3,7 @@ import {
   getAllLibraryEntries, getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
+  getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage,
 } from '../../lib/tauri';
 import type { MediaCatalogEntry, ListInfo, ListItemFull } from '../../lib/tauri';
 import { saveCharacter, getAllCharacters, type CharacterEntry } from '../../lib/tauri/characters';
@@ -23,19 +24,22 @@ function fallbackGradient(type: string | null | undefined): string {
 
 /* ── Grid view ──────────────────────────────────────────────────────────── */
 
-function ListCard({ list, catalogMap, charactersMap, p, active, onClick }: {
+function ListCard({ list, catalogMap, charactersMap, customImagesMap, p, active, onClick }: {
   list: ListInfo;
   catalogMap: Map<string, MediaCatalogEntry>;
   charactersMap?: Map<string, CharacterEntry>;
+  customImagesMap?: Map<string, FavoriteCustomImage>;
   p: P;
   active?: boolean;
   onClick: () => void;
 }) {
   const isCharacters = list.list_type === 'characters';
   const firstId = list.preview_ids.length > 0 ? list.preview_ids[0] : undefined;
+  const firstCustom = firstId && customImagesMap ? customImagesMap.get(firstId) : undefined;
   const firstMeta = firstId ? catalogMap.get(firstId) : undefined;
   const firstChar = firstId && charactersMap ? charactersMap.get(firstId) : undefined;
-  const coverUrl = isCharacters ? (firstChar?.image_url ?? firstMeta?.cover_url) : firstMeta?.cover_url;
+  const rawCoverUrl = isCharacters ? (firstChar?.image_url ?? firstMeta?.cover_url) : firstMeta?.cover_url;
+  const coverUrl = firstCustom ? wrapAssetUrl(firstCustom.image_url) : rawCoverUrl;
 
   return (
     <div className={`list-card${active ? ' list-card--active' : ''}`} onClick={onClick}>
@@ -64,10 +68,11 @@ function nextUntitledListName(existingNames: string[], base: string): string {
   return `${base} ${n}`;
 }
 
-function ListsGrid({ customLists, catalogMap, charactersMap, p, onCreate, onOpen, activeKey, readOnly }: {
+function ListsGrid({ customLists, catalogMap, charactersMap, customImagesMap, p, onCreate, onOpen, activeKey, readOnly }: {
   customLists: ListInfo[];
   catalogMap: Map<string, MediaCatalogEntry>;
   charactersMap?: Map<string, CharacterEntry>;
+  customImagesMap?: Map<string, FavoriteCustomImage>;
   p: P;
   onCreate: (name: string, description: string) => void;
   onOpen: (key: string) => void;
@@ -142,6 +147,7 @@ function ListsGrid({ customLists, catalogMap, charactersMap, p, onCreate, onOpen
               list={l}
               catalogMap={catalogMap}
               charactersMap={charactersMap}
+              customImagesMap={customImagesMap}
               p={p}
               active={l.key === activeKey}
               onClick={() => onOpen(l.key)}
@@ -161,9 +167,10 @@ function ListsGrid({ customLists, catalogMap, charactersMap, p, onCreate, onOpen
 
 /* ── Detail view ────────────────────────────────────────────────────────── */
 
-function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
+function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, onMetaSaved, onCountChanged, readOnly, fetchItems }: {
   list: ListInfo;
   catalogMap: Map<string, MediaCatalogEntry>;
+  customImagesMap?: Map<string, FavoriteCustomImage>;
   p: P;
   onBack: () => void;
   onDeleted: () => void;
@@ -646,7 +653,8 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
           <div className="list-items-grid" ref={setGridEl}>
             {listItems.map((item, index) => {
               const title = item.title_main ?? item.external_id;
-              const cover = item.cover_url ?? '';
+              const custom = customImagesMap?.get(item.external_id);
+              const cover = custom ? wrapAssetUrl(custom.image_url) : (item.cover_url ?? '');
               const isCharItem = item.external_id.startsWith('character:') || isCharacters;
               const url = isCharItem
                 ? `/character?id=${encodeURIComponent(item.external_id)}`
@@ -733,6 +741,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
   const [items, setItems] = useState<Items | null>(overrideLists ? [] : null);
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [charactersMap, setCharactersMap] = useState<Map<string, CharacterEntry>>(new Map());
+  const [customImagesMap, setCustomImagesMap] = useState<Map<string, FavoriteCustomImage>>(new Map());
   const [username, setUsername] = useState('user');
   const [customLists, setCustomLists] = useState<ListInfo[]>(overrideLists ?? []);
   const [activeListKey, setActiveListKey] = useState<string | null>(null);
@@ -741,16 +750,18 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
     if (overrideLists) return;
     let cancelled = false;
     (async () => {
-      const [{ items: libItems, catalog: catalogEntries }, allLists, profile, allChars] = await Promise.all([
+      const [{ items: libItems, catalog: catalogEntries }, allLists, profile, allChars, customImgs] = await Promise.all([
         getCachedLibraryAndCatalog(),
         getAllUserLists().catch(() => [] as ListInfo[]),
         getUserInfo().catch(() => ({} as Record<string, unknown>)),
         getAllCharacters().catch(() => [] as CharacterEntry[]),
+        getCustomImagesMap().catch(() => new Map<string, FavoriteCustomImage>()),
       ]);
       if (cancelled) return;
       setItems(libItems);
       setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
       setCharactersMap(new Map(allChars.map(c => [c.external_id, c])));
+      setCustomImagesMap(customImgs);
       setUsername((profile.display_name as string | undefined)?.toLowerCase().replace(/\s+/g, '_') || 'user');
       setCustomLists(allLists.filter(l => !l.is_fav));
     })();
@@ -767,6 +778,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
         customLists={customLists}
         catalogMap={catalogMap}
         charactersMap={charactersMap}
+        customImagesMap={customImagesMap}
         p={p}
         onOpen={setActiveListKey}
         activeKey={activeListKey}
@@ -783,6 +795,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
             key={activeList.key}
             list={activeList}
             catalogMap={catalogMap}
+            customImagesMap={customImagesMap}
             p={p}
             onBack={() => setActiveListKey(null)}
             onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}

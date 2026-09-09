@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
 import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchMediaEpisodes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
-import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount } from '../../lib/tauri';
+import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
@@ -210,6 +210,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
+  const [customImagesMap,    setCustomImagesMap]    = useState<Map<string, FavoriteCustomImage>>(new Map());
   const [friendsScores,      setFriendsScores]      = useState<FriendScore[]>([]);
   const [friendsLoading,     setFriendsLoading]     = useState(false);
   const [retryingSync,       setRetryingSync]       = useState(false);
@@ -399,7 +400,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setEpisodes([]);
     setCharacterPage(1);
     setCharTab('characters');
-    setFriendsScores([]);
+    getCustomImagesMap().then(setCustomImagesMap).catch(() => {});
+    setRelationsTab('related');
 
     let cancelled = false;
 
@@ -1302,15 +1304,17 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     const href = c.id
                       ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(c.id)}` : `/character?id=${encodeURIComponent(c.id)}`)
                       : undefined;
+                    const customImg = c.id ? customImagesMap.get(c.id) : undefined;
+                    const displayImg = customImg ? wrapAssetUrl(customImg.image_url) : c.image;
                     return (
                   <a key={i} href={href} className="media-char-card">
                     <div className="media-char-bg-layer">
-                      {c.image && <img src={c.image} alt="" loading="lazy" />}
+                      {displayImg && <img src={displayImg} alt="" loading="lazy" />}
                     </div>
                     <div className="media-char-card-overlay" />
                     <div className="media-char-card-content">
                       <div className="media-char-thumb">
-                        {c.image && <img src={c.image} alt={c.name} loading="lazy" />}
+                        {displayImg && <img src={displayImg} alt={c.name} loading="lazy" />}
                       </div>
                       <div className="media-char-info">
                         {c.role && <span className="media-char-role">{c.role}</span>}

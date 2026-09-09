@@ -208,6 +208,7 @@ pub fn run() {
             companies::save_media_companies,
             favorite_images::save_favorite_custom_image,
             favorite_images::get_all_favorite_custom_images,
+            favorite_images::get_favorite_custom_image,
             favorite_images::delete_favorite_custom_image,
             user_metadata::save_user_image,
             user_metadata::get_user_image,
