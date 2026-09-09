@@ -848,11 +848,12 @@ export function CharacterPrEditorModal() {
 
           {activeTab === 'voices' && (
           <>
-          {/* ── Actores de Voz (Seiyūs) ── */}
-          <div className="pr-editor-section" style={{ marginTop: '1.5rem' }}>
+          {/* Actores de Voz */}
+          <div className="pr-editor-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <span className="pr-editor-section-title" style={{ margin: 0 }}>
                 {t.voice_actors} ({voiceActors.length})
+                {voiceActorsChanged() && <span className="pr-editor-section-changed-dot" />}
               </span>
               <button type="button" className="pr-editor-add-btn" onClick={() => setVoiceActorSearchOpen(true)}>
                 {t.add_voice_actor}
