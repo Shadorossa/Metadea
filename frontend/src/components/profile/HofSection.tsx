@@ -4,21 +4,10 @@ import { wrapAssetUrl } from '../../lib/tauri';
 import type { getAllLibraryEntries, MediaCatalogEntry, CharacterEntry, FavoriteCustomImage } from '../../lib/tauri';
 import { ICON_CROWN, ICON_PERSON } from '../../lib/shared/icon-strings';
 import type { getT } from '../../i18n/client';
+import { HOF_GRADIENTS } from '../../lib/profile/hof';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P     = ReturnType<typeof getT>['profile'];
-
-// Gradients used for fallback backgrounds by media type
-const HOF_GRADIENTS: Record<string, string> = {
-  anime:  'linear-gradient(160deg, #4f46e5 0%, #7c3aed 100%)',
-  manga:  'linear-gradient(160deg, #be185d 0%, #7c3aed 100%)',
-  game:   'linear-gradient(160deg, #047857 0%, #1d4ed8 100%)',
-  movie:  'linear-gradient(160deg, #b45309 0%, #dc2626 100%)',
-  series: 'linear-gradient(160deg, #1d4ed8 0%, #0891b2 100%)',
-  book:   'linear-gradient(160deg, #4d7c0f 0%, #0f766e 100%)',
-  novel:  'linear-gradient(160deg, #c2410c 0%, #ca8a04 100%)',
-  vnovel: 'linear-gradient(160deg, #a21caf 0%, #e11d48 100%)',
-};
 
 const DEFAULT_GRADIENT = 'linear-gradient(160deg, #374151, #1f2937)';
 
