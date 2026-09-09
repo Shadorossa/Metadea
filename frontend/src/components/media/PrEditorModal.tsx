@@ -14,7 +14,7 @@ import { buildPrEditorChangeSummary } from './pr-editor-change-summary';
 import { mergeResyncFields, buildResyncCharacters, appendResyncRelations } from './pr-editor-resync';
 import { MediaSearchPopup } from './MediaSearchPopup';
 import { CharacterSearchPopup } from './CharacterSearchPopup';
-import { CreateCharacterPopup } from './CreateCharacterPopup';
+import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { SlotInput } from './SlotInput';
 import {
   EDITABLE_RELATION_OPTIONS,
@@ -177,7 +177,6 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const [originalCharacters, setOriginalCharacters] = useState<DbMediaCharacter[]>([]);
   const [allCharacters, setAllCharacters] = useState<CharacterEntry[]>([]);
   const [showCharSearch, setShowCharSearch] = useState(false);
-  const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const [mediaAuthors, setMediaAuthors] = useState<DbMediaAuthor[]>([]);
   const [originalMediaAuthors, setOriginalMediaAuthors] = useState<DbMediaAuthor[]>([]);
   // Arcs delete themselves immediately (see PrEditorStoryArcsSection), so
@@ -951,7 +950,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
               onRemove={removeCharacter}
               onUpdateRole={updateCharacterRole}
               onOpenSearch={() => setShowCharSearch(true)}
-              onOpenCreate={() => setShowCreateCharacter(true)}
+              onOpenCreate={() => (window as any).openCharacterEditor?.(generateCustomCharacterId())}
             />
           )}
 
@@ -1181,20 +1180,6 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
           onSelect={addCharacter}
           onClose={() => setShowCharSearch(false)}
           excludeIds={characters.map(c => c.external_id)}
-        />
-      )}
-
-      {showCreateCharacter && (
-        <CreateCharacterPopup
-          onCreate={result => {
-            setShowCreateCharacter(false);
-            const now = new Date().toISOString();
-            addCharacter({
-              id: '', external_id: result.externalId, name: result.name, image_url: result.imageUrl,
-              created_at: now, updated_at: now,
-            });
-          }}
-          onClose={() => setShowCreateCharacter(false)}
         />
       )}
     </div>,
