@@ -23,7 +23,6 @@ import {
 import { createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
 import { ALL_PLATFORMS, ALL_GENRES } from '../../lib/constants/igdbData';
 import { DIFF_FIELDS } from '../../lib/media/constants';
-import { getReleaseDateKey } from '../../lib/media/mapper-utils';
 import { normField, ChangedDot, Field } from '../shared/PrEditorField';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import { useDragReorder } from './hooks/useDragReorder';

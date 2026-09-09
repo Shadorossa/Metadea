@@ -6,7 +6,7 @@ import {
 } from '../../lib/tauri/characters';
 import { getCharacterActors, saveCharacterActors, type DbCharacterActor } from '../../lib/tauri/actors';
 import { getCatalogEntry, saveCatalogEntry } from '../../lib/tauri/catalog';
-import { fetchAniListCharacterDetail, fetchAniListDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
+import { fetchAniListCharacterDetail, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
@@ -15,7 +15,7 @@ import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
-import { normField, ChangedDot, Field } from '../shared/PrEditorField';
+import { normField, Field } from '../shared/PrEditorField';
 import { TagsInput } from '../shared/TagsInput';
 import { RichTextEditor } from '../shared/RichTextEditor';
 import {

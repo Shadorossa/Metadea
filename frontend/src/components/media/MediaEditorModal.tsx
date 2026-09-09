@@ -14,7 +14,7 @@ import {
   IconHeart, IconPlatinum, IconCheck, IconAlertCircle, IconDownload,
 } from '../local/ui/icons';
 import {
-  type LogState, type EntryState, type EntryAction, type UiState, type UiAction,
+  type LogState,
   createDefaultLog, entryInit, libraryEntryToLog, entryReducer, uiReducer, createEmptyVersionEntry,
 } from '../../lib/media/log-state';
 import { IGDB_TYPES } from '../../lib/constants/media';
