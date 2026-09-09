@@ -3,29 +3,21 @@ import {
   readGameInfo, steamGetPlayerAchievements, launchGame, openExternalUrl, startPlaytimeSession,
   type LocalGame, type GameInfo, type SteamAchievement,
   updateDiscordPresence, resetDiscordPresence, getCatalogEntry, getLibraryEntry,
-  getMediaRelationsForEditor, igdbGetGameDetail, getMediaCompanies, type MediaCatalogEntry,
+  igdbGetGameDetail, getMediaCompanies, type MediaCatalogEntry,
 } from '../../../lib/tauri';
 import { getT } from '../../../i18n/client';
 import { AchievementCell } from './AchievementCell';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
-import { CONTAINS_RELATION_TYPES } from '../../../lib/media/sagaTypes';
-import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
+import { IconMonitor, IconPencil } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate, firstCsvUrl, catalogReleaseTimestampMs } from '../utils/formatters';
-import { normalizeForMatch } from '../utils/folderMatch';
 import { toSmallCover } from '../../../lib/shared/small-cover';
 import { gameExternalId } from '../../../lib/media/mapper-utils';
+import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
+import { NeighborsRow } from './NeighborsRow';
+import { openMediaEditor } from '../../../lib/media/openMediaEditor';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
-
-// Bundle children (see bundleChildren below) label as "Part I"/"Part II"
-// instead of their own full title — a bundle's own cover/title already
-// names it, so re-printing e.g. "The Great Ace Attorney 2: Resolve" in full
-// under a 64px thumbnail just wraps into an unreadable mess.
-const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-function toRoman(n: number): string {
-  return ROMAN_NUMERALS[n - 1] ?? String(n);
-}
 
 interface GameDetailPanelProps {
   game:           LocalGame;
@@ -191,92 +183,8 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // anime/manga/etc. — a Steam game's real catalog identity is whatever
   // getCatalogEntry above actually resolved (falls back to "game:<id>" only
   // when that lookup found nothing, e.g. before it resolves on first mount).
-  const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
-  const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
-  // A bundle (e.g. The Great Ace Attorney Chronicles) has no PREQUEL/SEQUEL
-  // of its own — its catalog entry instead CONTAINS the individual episodes
-  // (The Great Ace Attorney / 2: Resolve). Same neighbor row, just showing
-  // "what's inside this bundle" instead of "what comes before/after it".
-  const [bundleChildren, setBundleChildren] = useState<{ externalId: string; title: string; cover: string | null }[]>([]);
   const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? gameExternalId(gameInfo.igdb_id, false) : undefined);
-  useEffect(() => {
-    setPrequelInfo(null);
-    setSequelInfo(null);
-    setBundleChildren([]);
-    if (!relationsExternalId) return;
-    let cancelled = false;
-    getMediaRelationsForEditor(relationsExternalId).then(async relations => {
-      if (cancelled) return;
-      const children = relations.filter(r => CONTAINS_RELATION_TYPES.includes(r.relation_type));
-      if (children.length > 0) {
-        setBundleChildren(children.map(c => ({ externalId: c.related_media_external_id, title: c.title, cover: c.cover ?? null })));
-        return;
-      }
-      let prequel = relations.find(r => r.relation_type === 'PREQUEL');
-      let sequel = relations.find(r => r.relation_type === 'SEQUEL');
-      // A remaster/remake never carries its own PREQUEL/SEQUEL/CONTAINS —
-      // those live on the original it's an edition of (see PARENT, the
-      // reverse-direction label REMASTER/REMAKE gets recorded under on the
-      // edition's own side). Same "borrow the original's saga identity"
-      // fallback library-grouping.ts's refineSagaGroups already relies on
-      // for the profile grid, applied here for this neighbor row too — and,
-      // like that same code, the neighbor itself gets swapped for ITS OWN
-      // remaster/remake edition when one exists (a Hou remaster's sequel
-      // should point at the next chapter's own Hou remaster, not the bare
-      // original release), falling back to the original only when it has
-      // no edition of its own.
-      let viaParent = false;
-      // Which edition family this entry itself belongs to (REMASTER vs
-      // REMAKE) — a base work can have both (Higurashi has its Hou remaster
-      // AND its separate Matsuri remake), so the neighbor lookup below needs
-      // to match the SAME family, not just grab whichever edition happens
-      // to come back first.
-      let selfEditionType: string | undefined;
-      if (!prequel && !sequel) {
-        const parent = relations.find(r => r.relation_type === 'PARENT');
-        if (parent) {
-          const parentRelations = await getMediaRelationsForEditor(parent.related_media_external_id).catch(() => []);
-          if (cancelled) return;
-          prequel = parentRelations.find(r => r.relation_type === 'PREQUEL');
-          sequel = parentRelations.find(r => r.relation_type === 'SEQUEL');
-          viaParent = true;
-          selfEditionType = parentRelations.find(r => r.related_media_external_id === relationsExternalId)?.relation_type;
-        }
-      }
-      // Self's own title, tokenized once — used below to pick the right one
-      // out of SEVERAL same-type editions of the same neighbor (e.g. an EN
-      // and a JP remaster both existing for the same base game), since
-      // relation_type alone (REMASTER/REMAKE) can't tell those apart.
-      const selfTokens = new Set(normalizeForMatch(game.name).split(' ').filter(Boolean));
-      const bestByTitleOverlap = (candidates: typeof relations) => candidates.reduce((best, c) => {
-        const score = normalizeForMatch(c.title).split(' ').filter(tok => tok && selfTokens.has(tok)).length;
-        return !best || score > best.score ? { rel: c, score } : best;
-      }, undefined as { rel: (typeof relations)[number]; score: number } | undefined)?.rel;
-      const resolveNeighbor = async (rel: NonNullable<typeof prequel>) => {
-        if (!viaParent) return { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
-        const neighborRelations = await getMediaRelationsForEditor(rel.related_media_external_id).catch(() => []);
-        const editionTypes = ['REMASTER', 'REMAKE'];
-        const orderedTypes = selfEditionType ? [selfEditionType, ...editionTypes.filter(t => t !== selfEditionType)] : editionTypes;
-        let edition: (typeof relations)[number] | undefined;
-        for (const t of orderedTypes) {
-          const candidates = neighborRelations.filter(r => r.relation_type === t);
-          if (candidates.length === 1) { edition = candidates[0]; break; }
-          if (candidates.length > 1) { edition = bestByTitleOverlap(candidates); break; }
-        }
-        return edition
-          ? { externalId: edition.related_media_external_id, title: edition.title, cover: edition.cover ?? null }
-          : { externalId: rel.related_media_external_id, title: rel.title, cover: rel.cover ?? null };
-      };
-      if (prequel) setPrequelInfo(await resolveNeighbor(prequel));
-      if (cancelled) return;
-      if (sequel) setSequelInfo(await resolveNeighbor(sequel));
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [relationsExternalId]);
-
-  const openMediaEditor = (externalId: string) => {
-    window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
-  };
+  const { prequel: prequelInfo, sequel: sequelInfo, bundleChildren } = useMediaNeighbors(relationsExternalId, game.name);
 
   // Identity (banner/cover, metadata) always stays `game`'s own — a season
   // shows ITS OWN art/summary/genres ("estás jugando la season de X"), not
@@ -509,41 +417,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
             </div>
           </div>
 
-          {bundleChildren.length > 0 ? (
-            <div className="local-media-neighbors-row">
-              <div className="local-media-neighbors-grid">
-                {bundleChildren.map((child, i) => (
-                  <button key={child.externalId} type="button" className="local-media-neighbor-link" title={child.title} onClick={() => openMediaEditor(child.externalId)}>
-                    {child.cover
-                      ? <img className="local-media-neighbor-cover" src={child.cover} alt={child.title} />
-                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                    <span className="local-media-neighbor-label">Part {toRoman(i + 1)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (prequelInfo || sequelInfo) && (
-            <div className="local-media-neighbors-row">
-              <div className="local-media-neighbors-grid">
-                {prequelInfo && (
-                  <button type="button" className="local-media-neighbor-link" title={prequelInfo.title} onClick={() => openMediaEditor(prequelInfo.externalId)}>
-                    {prequelInfo.cover
-                      ? <img className="local-media-neighbor-cover" src={prequelInfo.cover} alt={prequelInfo.title} />
-                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                    <span className="local-media-neighbor-label">Precuela</span>
-                  </button>
-                )}
-                {sequelInfo && (
-                  <button type="button" className="local-media-neighbor-link" title={sequelInfo.title} onClick={() => openMediaEditor(sequelInfo.externalId)}>
-                    {sequelInfo.cover
-                      ? <img className="local-media-neighbor-cover" src={sequelInfo.cover} alt={sequelInfo.title} />
-                      : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                    <span className="local-media-neighbor-label">Secuela</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          <NeighborsRow prequel={prequelInfo} sequel={sequelInfo} bundleChildren={bundleChildren} onOpen={openMediaEditor} />
         </div>
         </div>
 

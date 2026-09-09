@@ -27,6 +27,9 @@ import { isReadingType } from '../../../lib/constants/media';
 import { formatDateLong } from '../../../lib/shared/formatDate';
 import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
+import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
+import { NeighborsRow } from './NeighborsRow';
+import { openMediaEditor } from '../../../lib/media/openMediaEditor';
 
 interface LocalMediaDetailPanelProps {
   item:            LocalMediaItem;
@@ -69,8 +72,10 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // until its prequel is finished still needs to be reachable from
   // *somewhere* — surfaced here instead, alongside the prequel itself, so
   // either neighbor is one click away regardless of which one is open.
-  const [prequelInfo, setPrequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
-  const [sequelInfo, setSequelInfo] = useState<{ externalId: string; title: string; cover: string | null } | null>(null);
+  // Same resolution GameDetailPanel uses (PARENT/edition-matching/bundle
+  // children included, not just a plain PREQUEL/SEQUEL lookup) — see
+  // useMediaNeighbors.
+  const { prequel: prequelInfo, sequel: sequelInfo, bundleChildren } = useMediaNeighbors(item.externalId, item.title);
 
   // AniList's banner art (wide, no logo/text baked in) instead of the cover
   // — the cover is a portrait poster, stretched across this wide header it
@@ -205,27 +210,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     } catch (err) {
       console.error('Failed to delete episode history entry', err);
     }
-  };
-
-  useEffect(() => {
-    setPrequelInfo(null);
-    setSequelInfo(null);
-    let cancelled = false;
-    getMediaRelationsForEditor(item.externalId).then(relations => {
-      if (cancelled) return;
-      const prequel = relations.find(r => r.relation_type === 'PREQUEL');
-      const sequel = relations.find(r => r.relation_type === 'SEQUEL');
-      if (prequel) setPrequelInfo({ externalId: prequel.related_media_external_id, title: prequel.title, cover: prequel.cover ?? null });
-      if (sequel) setSequelInfo({ externalId: sequel.related_media_external_id, title: sequel.title, cover: sequel.cover ?? null });
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [item.externalId]);
-
-  // Opens the Media Editor directly (same event handleEdit itself dispatches
-  // below) instead of navigating to /media — only externalId is required,
-  // the editor fetches its own catalog/library data for it.
-  const openMediaEditor = (externalId: string) => {
-    window.dispatchEvent(new CustomEvent('open-profile-editor', { detail: { externalId } }));
   };
 
   useEffect(() => {
@@ -659,7 +643,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         ) : rootLoading ? (
           <div className="local-state-placeholder"><div className="spinner" /></div>
         ) : (
-          <div className={`local-media-info-row${(prequelInfo || sequelInfo) ? ' local-media-info-row--has-neighbors' : ''}`}>
+          <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
             <div className="local-media-left-col">
               <button
                 type="button"
@@ -760,28 +744,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
               </div>
             </div>
 
-            {(prequelInfo || sequelInfo) && (
-              <div className="local-media-neighbors-row">
-                <div className="local-media-neighbors-grid">
-                  {prequelInfo && (
-                    <button type="button" className="local-media-neighbor-link" title={prequelInfo.title} onClick={() => openMediaEditor(prequelInfo.externalId)}>
-                      {prequelInfo.cover
-                        ? <img className="local-media-neighbor-cover" src={prequelInfo.cover} alt={prequelInfo.title} />
-                        : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                      <span className="local-media-neighbor-label">Precuela</span>
-                    </button>
-                  )}
-                  {sequelInfo && (
-                    <button type="button" className="local-media-neighbor-link" title={sequelInfo.title} onClick={() => openMediaEditor(sequelInfo.externalId)}>
-                      {sequelInfo.cover
-                        ? <img className="local-media-neighbor-cover" src={sequelInfo.cover} alt={sequelInfo.title} />
-                        : <div className="local-media-neighbor-cover local-media-neighbor-cover--fallback"><IconFolder size={20} strokeWidth={2} /></div>}
-                      <span className="local-media-neighbor-label">Secuela</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <NeighborsRow prequel={prequelInfo} sequel={sequelInfo} bundleChildren={bundleChildren} onOpen={openMediaEditor} />
           </div>
         )}
 
