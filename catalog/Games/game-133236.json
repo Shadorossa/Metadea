@@ -1,0 +1,42 @@
+{
+  "media_catalog": {
+    "id": "d2761393c2c2fd63d2761393c2c2fd63",
+    "external_id": "game:133236",
+    "type": "game",
+    "title_main": "Final Fantasy VII Rebirth",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:427",
+      "relation_type": "PARENT",
+      "type_label": "Source",
+      "title": "Final Fantasy VII",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2kx2.jpg",
+      "media_external_id": "game:133236"
+    },
+    {
+      "media_external_id": "game:133236",
+      "related_media_external_id": "game:2407",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Crisis Core: Final Fantasy VII",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co1trb.jpg"
+    },
+    {
+      "media_external_id": "game:133236",
+      "related_media_external_id": "game:404721",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "Final Fantasy VII Revelation",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/cocbgb.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Final Fantasy VII (Compilation)",
+  "story_arcs": []
+}
