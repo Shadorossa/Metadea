@@ -927,13 +927,20 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 47)?;
     }
     if v < 48 {
-        // A private list never leaves this device — compileLists()
-        // (profile-sync.ts) filters it out of the daily/forced profile
-        // snapshot before it's ever POSTed to metadea-web, so it can't show
-        // up on this user's public profile or in the social cache of
-        // anyone viewing it.
         let _ = conn.execute("ALTER TABLE user_lists ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0", []);
         mark_migration(conn, 48)?;
+    }
+    if v < 49 {
+        let _ = conn.execute("ALTER TABLE user_lists ADD COLUMN list_type TEXT NOT NULL DEFAULT 'media'", []);
+        let _ = conn.execute(
+            "UPDATE user_lists SET list_type = 'characters'
+             WHERE EXISTS (
+                 SELECT 1 FROM user_list_items i
+                 WHERE i.list_key = user_lists.key AND i.external_id LIKE 'character:%'
+             )",
+            [],
+        );
+        mark_migration(conn, 49)?;
     }
 
     Ok(())
@@ -1357,6 +1364,7 @@ CREATE TABLE IF NOT EXISTS user_lists (
     description TEXT NOT NULL DEFAULT '',
     is_fav      INTEGER NOT NULL DEFAULT 0,
     is_private  INTEGER NOT NULL DEFAULT 0,
+    list_type   TEXT NOT NULL DEFAULT 'media',
     name        TEXT NOT NULL DEFAULT '',
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP

@@ -949,3 +949,58 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .now-playing-episode {
   font-style: italic;
 }
+
+/* List settings and type selector */
+[data-theme="newspaper-dark"] .list-settings-dropdown {
+  border-radius: 0 !important;
+  border: 2px solid var(--border-color) !important;
+  background: var(--bg-elevated) !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-segmented {
+  border-radius: 0 !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-segment {
+  border-radius: 0 !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-size: 0.72rem !important;
+  color: var(--text-muted) !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-segment:hover:not(.list-settings-segment--disabled) {
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-segment--active {
+  background: var(--accent) !important;
+  color: var(--bg-primary) !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-segment--disabled {
+  opacity: 0.35 !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-item-title,
+[data-theme="newspaper-dark"] .list-settings-section-title,
+[data-theme="newspaper-dark"] .list-settings-hint {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+}
+
+[data-theme="newspaper-dark"] .lists-filter-selector {
+  border-radius: 0 !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="newspaper-dark"] .lists-filter-btn {
+  border-radius: 0 !important;
+}
+
+[data-theme="newspaper-dark"] .lists-filter-btn--active {
+  background: var(--accent) !important;
+  color: var(--bg-primary) !important;
+}
+

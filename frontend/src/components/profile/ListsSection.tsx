@@ -5,10 +5,12 @@ import {
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
 } from '../../lib/tauri';
 import type { MediaCatalogEntry, ListInfo, ListItemFull } from '../../lib/tauri';
+import { saveCharacter, getAllCharacters, type CharacterEntry } from '../../lib/tauri/characters';
 import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
+import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -20,38 +22,39 @@ function fallbackGradient(type: string | null | undefined): string {
 
 /* ── Grid view ──────────────────────────────────────────────────────────── */
 
-function ListCard({ list, catalogMap, p, active, onClick }: {
+function ListCard({ list, catalogMap, charactersMap, p, active, onClick }: {
   list: ListInfo;
   catalogMap: Map<string, MediaCatalogEntry>;
+  charactersMap?: Map<string, CharacterEntry>;
   p: P;
   active?: boolean;
   onClick: () => void;
 }) {
-  // Just the first work in the list, not a multi-cover collage — a 2x2
-  // grid with only one (or two) covers left the rest of the tile as bare
-  // background instead of a real cover filling the card's full width.
-  const firstMeta = list.preview_ids.length > 0 ? catalogMap.get(list.preview_ids[0]) : undefined;
+  const isCharacters = list.list_type === 'characters';
+  const firstId = list.preview_ids.length > 0 ? list.preview_ids[0] : undefined;
+  const firstMeta = firstId ? catalogMap.get(firstId) : undefined;
+  const firstChar = firstId && charactersMap ? charactersMap.get(firstId) : undefined;
+  const coverUrl = isCharacters ? (firstChar?.image_url ?? firstMeta?.cover_url) : firstMeta?.cover_url;
+
   return (
     <div className={`list-card${active ? ' list-card--active' : ''}`} onClick={onClick}>
       <div className={`list-card-collage${list.preview_ids.length === 0 ? ' list-card-collage--empty' : ''}`}>
         {list.preview_ids.length > 0
-          ? (firstMeta?.cover_url
-              ? <img className="list-card-collage-img" src={firstMeta.cover_url} alt="" loading="lazy" decoding="async" />
+          ? (coverUrl
+              ? <img className="list-card-collage-img" src={coverUrl} alt="" loading="lazy" decoding="async" />
               : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(firstMeta?.type) }} />)
-          : <span className="list-card-empty-icon">📋</span>}
+          : <span className="list-card-empty-icon">{isCharacters ? '👤' : '📋'}</span>}
       </div>
       <div className="list-card-info">
         <span className="list-card-title">{list.name}</span>
-        <span className="list-card-count">{list.item_count} {p.lists_items}</span>
+        <span className="list-card-count">
+          {list.item_count} {isCharacters ? p.lists_characters_count : p.lists_items}
+        </span>
       </div>
     </div>
   );
 }
 
-// The first name in "Sin nombre", "Sin nombre 1", "Sin nombre 2", ... not
-// already taken by one of this user's existing lists — same idea as
-// picking a free numeric suffix, just against display names instead of
-// the key's own numeric-suffix scheme (create_user_list, Rust side).
 function nextUntitledListName(existingNames: string[], base: string): string {
   const taken = new Set(existingNames);
   if (!taken.has(base)) return base;
@@ -60,19 +63,67 @@ function nextUntitledListName(existingNames: string[], base: string): string {
   return `${base} ${n}`;
 }
 
-function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, activeKey, readOnly }: {
+function ListsGrid({ customLists, catalogMap, charactersMap, p, onCreate, onOpen, activeKey, readOnly }: {
   customLists: ListInfo[];
   catalogMap: Map<string, MediaCatalogEntry>;
+  charactersMap?: Map<string, CharacterEntry>;
   p: P;
   onCreate: (name: string, description: string) => void;
   onOpen: (key: string) => void;
   activeKey?: string | null;
   readOnly?: boolean;
 }) {
+  const [filterMode, setFilterMode] = useState<'all' | 'media' | 'characters'>('all');
+  const showMedia = filterMode === 'all' || filterMode === 'media';
+  const showCharacters = filterMode === 'all' || filterMode === 'characters';
+
+  const toggleFilter = (type: 'media' | 'characters') => {
+    if (filterMode === 'all') {
+      setFilterMode(type === 'media' ? 'characters' : 'media');
+    } else if (filterMode === type) {
+      setFilterMode(type === 'media' ? 'characters' : 'media');
+    } else {
+      setFilterMode('all');
+    }
+  };
+
+  const filteredLists = useMemo(() => {
+    if (filterMode === 'all') return customLists;
+    if (filterMode === 'media') return customLists.filter(l => l.list_type !== 'characters');
+    return customLists.filter(l => l.list_type === 'characters');
+  }, [customLists, filterMode]);
+
   return (
     <div className="lists-layout">
       <div className="lists-header">
-        <h2 className="lists-title">{p.lists}</h2>
+        <div className="lists-header-left">
+          <h2 className="lists-title">{p.lists}</h2>
+          <div className="lists-filter-selector" role="group">
+            <button
+              type="button"
+              className={`lists-filter-btn${showMedia ? ' lists-filter-btn--active' : ''}`}
+              onClick={() => toggleFilter('media')}
+              title={p.lists_type_media}
+              aria-label={p.lists_type_media}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`lists-filter-btn${showCharacters ? ' lists-filter-btn--active' : ''}`}
+              onClick={() => toggleFilter('characters')}
+              title={p.lists_type_characters}
+              aria-label={p.lists_type_characters}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
+          </div>
+        </div>
         {!readOnly && (
           <button
             className="list-btn list-btn--primary"
@@ -83,14 +134,24 @@ function ListsGrid({ customLists, catalogMap, p, onCreate, onOpen, activeKey, re
           </button>
         )}
       </div>
-      {customLists.length > 0 ? (
+      {filteredLists.length > 0 ? (
         <div className="lists-grid">
-          {customLists.map(l => <ListCard list={l} catalogMap={catalogMap} p={p} active={l.key === activeKey} onClick={() => onOpen(l.key)} key={l.key} />)}
+          {filteredLists.map(l => (
+            <ListCard
+              list={l}
+              catalogMap={catalogMap}
+              charactersMap={charactersMap}
+              p={p}
+              active={l.key === activeKey}
+              onClick={() => onOpen(l.key)}
+              key={l.key}
+            />
+          ))}
         </div>
       ) : (
         <div className="lists-empty-state">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /></svg>
-          <p>{p.lists_empty}</p>
+          <p>{customLists.length > 0 ? p.lists_no_results : p.lists_empty}</p>
         </div>
       )}
     </div>
@@ -105,26 +166,22 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   p: P;
   onBack: () => void;
   onDeleted: () => void;
-  onMetaSaved: (name: string, description: string, isPrivate: boolean) => void;
+  onMetaSaved: (name: string, description: string, isPrivate: boolean, listType?: string) => void;
   onCountChanged: (delta: number) => void;
-  // Someone else's profile (UserProfileView) has no local list to read via
-  // getListItemsFull — this fetches from the social cache instead.
   readOnly?: boolean;
   fetchItems?: (listKey: string) => Promise<ListItemFull[]>;
 }) {
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
   const [showAddPanel, setShowAddPanel] = useState(false);
-  // Click-to-edit, not a separate "Editar" form — name/description commit
-  // individually (blur or Enter) instead of behind one shared Guardar/
-  // Cancelar step. Private is a plain toggle, saved the instant it flips.
+  const [listType, setListType] = useState(list.list_type || 'media');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(list.name);
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(list.description ?? '');
-  // Click once to arm, click again (within a few seconds) to actually
-  // delete — guards against an accidental click doing something
-  // irreversible, without interrupting the flow with a native confirm()
-  // dialog that looks out of place in this app's UI.
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const confirmDeleteTimeoutRef = useRef<number | null>(null);
   useEffect(() => () => { if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current); }, []);
@@ -140,103 +197,98 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   }, [list.key, fetchItems]);
 
   const currentIds = useMemo(() => new Set(listItems.map(i => i.external_id)), [listItems]);
+  const isCharacters = listType === 'characters';
+  const canChangeType = listItems.length === 0;
 
-  // Pointer-based reordering (no floating ghost — card reorders in place),
-  // delegated on the grid so it keeps working across re-renders without
-  // needing to re-bind a handler per card. Direct DOM manipulation during
-  // the drag (not React state) matches the original's rAF-throttled
-  // approach — only committing to React state (and persisting) on mouseup.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSettingsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [settingsOpen]);
+
   useEffect(() => {
     const grid = gridRef.current;
     if (!grid) return;
 
-    let dragCard: HTMLElement | null = null;
-    let dragActive = false;
-
-    type CardRect = { el: HTMLElement; cy: number; top: number; height: number };
-    let rectCache: CardRect[] = [];
+    let draggingCard: HTMLElement | null = null;
+    let cardRects: { el: HTMLElement; id: string; left: number; top: number; right: number; bottom: number }[] = [];
+    let initialX = 0, initialY = 0;
+    let hasMoved = false;
 
     const refreshRectCache = () => {
-      rectCache = Array.from(grid.querySelectorAll('.list-item-card:not(.drag-source)')).map(cardEl => {
-        const r = (cardEl as HTMLElement).getBoundingClientRect();
-        return { el: cardEl as HTMLElement, cy: r.top + r.height / 2, top: r.top, height: r.height };
+      const cards = Array.from(grid.querySelectorAll('.list-item-card')) as HTMLElement[];
+      cardRects = cards.map(el => {
+        const r = el.getBoundingClientRect();
+        return { el, id: el.dataset.id!, left: r.left, top: r.top, right: r.right, bottom: r.bottom };
       });
     };
 
-    const getClosestCard = (clientY: number): CardRect | null => {
-      let closest: CardRect | null = null;
-      let closestDist = Infinity;
-      for (const entry of rectCache) {
-        const dist = Math.abs(clientY - entry.cy);
-        if (dist < closestDist) { closestDist = dist; closest = entry; }
-      }
-      return closest;
-    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!draggingCard) return;
+      const dx = e.clientX - initialX;
+      const dy = e.clientY - initialY;
+      if (!hasMoved && Math.hypot(dx, dy) < 4) return;
+      hasMoved = true;
+      draggingCard.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
 
-    let rafId = 0;
-    let lastMoveY = 0;
-    let prevMoveY = 0;
-
-    // Which side of the target the dragged card lands on is decided by the
-    // direction of travel, not a static 50/50 split — self-stabilizing,
-    // avoids the oscillation flicker a fixed midpoint check causes.
-    const reorderTick = () => {
-      rafId = 0;
-      if (!dragCard) return;
-      const target = getClosestCard(lastMoveY);
-      if (target && target.el !== dragCard) {
-        const movingDown = lastMoveY >= prevMoveY;
-        const midpoint = target.top + target.height / 2;
-        const passedMidpoint = movingDown ? lastMoveY > midpoint : lastMoveY < midpoint;
-        if (passedMidpoint) {
-          if (movingDown) grid.insertBefore(dragCard, target.el.nextSibling);
-          else grid.insertBefore(dragCard, target.el);
+      const hit = cardRects.find(c => c.el !== draggingCard && e.clientX >= c.left && e.clientX <= c.right && e.clientY >= c.top && e.clientY <= c.bottom);
+      if (hit) {
+        const draggingIdx = cardRects.findIndex(c => c.el === draggingCard);
+        const targetIdx = cardRects.findIndex(c => c.el === hit.el);
+        if (draggingIdx !== -1 && targetIdx !== -1 && draggingIdx !== targetIdx) {
+          if (draggingIdx < targetIdx) grid.insertBefore(draggingCard, hit.el.nextSibling);
+          else grid.insertBefore(draggingCard, hit.el);
           refreshRectCache();
         }
       }
-      prevMoveY = lastMoveY;
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragActive || !dragCard) return;
-      e.preventDefault();
-      lastMoveY = e.clientY;
-      if (!rafId) rafId = requestAnimationFrame(reorderTick);
     };
 
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      if (!draggingCard) return;
 
-      dragActive = false;
-      if (dragCard) {
-        dragCard.classList.remove('drag-source');
+      const card = draggingCard;
+      draggingCard = null;
+      card.classList.remove('drag-source');
+      card.style.transform = '';
 
-        const newIds = Array.from(grid.querySelectorAll('.list-item-card'))
-          .map(c => (c as HTMLElement).dataset.id)
-          .filter(Boolean) as string[];
+      if (!hasMoved) return;
 
-        const byId = new Map(listItemsRef.current.map(i => [i.external_id, i]));
-        const reordered = newIds.map(id => byId.get(id)).filter((i): i is ListItemFull => Boolean(i));
+      const newOrder = (Array.from(grid.querySelectorAll('.list-item-card')) as HTMLElement[])
+        .map(el => el.dataset.id!)
+        .filter(Boolean);
 
-        reorderListItems(list.key, newIds).catch(err => console.error('Failed to persist list reorder:', err));
-        dragCard = null;
-        setListItems(reordered);
-      }
+      const oldMap = new Map(listItemsRef.current.map(i => [i.external_id, i]));
+      const nextItems = newOrder.map((id, idx) => ({ ...oldMap.get(id)!, position: idx })).filter(Boolean);
+      setListItems(nextItems);
+      reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
     };
 
     const onMouseDown = (e: MouseEvent) => {
-      const handle = (e.target as HTMLElement).closest<HTMLElement>('.list-item-drag-handle');
+      if (readOnly) return;
+      const handle = (e.target as HTMLElement).closest('.list-item-drag-handle');
       if (!handle) return;
-      const card = handle.closest<HTMLElement>('.list-item-card');
+      const card = handle.closest('.list-item-card') as HTMLElement | null;
       if (!card) return;
-      e.preventDefault();
-      window.getSelection()?.removeAllRanges();
 
-      dragCard = card;
-      dragActive = true;
-      prevMoveY = e.clientY;
+      e.preventDefault();
+      draggingCard = card;
+      initialX = e.clientX;
+      initialY = e.clientY;
+      hasMoved = false;
       card.classList.add('drag-source');
       refreshRectCache();
 
@@ -247,16 +299,12 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
     grid.addEventListener('mousedown', onMouseDown);
     return () => {
       grid.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      grid.removeEventListener('mousemove', onMouseMove);
+      grid.removeEventListener('mouseup', onMouseUp);
     };
-  }, [list.key]);
+  }, [list.key, readOnly]);
 
-  // MediaSearchPopup's own live multi-provider search — same one PrEditor's
-  // "Add to Saga" uses — replaces the old library-only text-filter panel, so
-  // a list can include any cataloged work, not just something already in
-  // the user's own library.
-  const handleAddFromSearch = async (result: ApiSearchResult) => {
+  const handleAddMediaFromSearch = async (result: ApiSearchResult) => {
     if (currentIds.has(result.externalId)) return;
     await addItemToList(list.key, result.externalId).catch(err => console.error('Failed to add item to list:', err));
     setListItems(prev => [...prev, {
@@ -277,32 +325,61 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
     onCountChanged(1);
   };
 
+  const handleAddCharacterFromSearch = async (result: ApiSearchResult) => {
+    if (currentIds.has(result.externalId)) return;
+    await saveCharacter(result.externalId, result.titleMain, result.coverUrl).catch(console.error);
+    await addItemToList(list.key, result.externalId).catch(console.error);
+    setListItems(prev => [...prev, {
+      external_id: result.externalId,
+      position: prev.length,
+      library_id: null,
+      status: null,
+      rating: null,
+      progress: 0,
+      progress_2: 0,
+      is_favorite: false,
+      is_platinum: false,
+      title_main: result.titleMain,
+      cover_url: result.coverUrl,
+      media_type: null,
+      format: null,
+    }]);
+    onCountChanged(1);
+  };
+
   const handleRemove = async (id: string) => {
     await removeItemFromList(list.key, id).catch(err => console.error('Failed to remove item from list:', err));
     setListItems(prev => prev.filter(x => x.external_id !== id));
     onCountChanged(-1);
   };
 
+  const handleSetListType = async (newType: string) => {
+    if (!canChangeType || newType === listType) return;
+    setListType(newType);
+    await updateUserList(list.key, list.name, list.description ?? '', list.is_private, newType).catch(console.error);
+    onMetaSaved(list.name, list.description ?? '', list.is_private, newType);
+  };
+
   const commitName = async () => {
     setEditingName(false);
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === list.name) { setNameDraft(list.name); return; }
-    await updateUserList(list.key, trimmed, list.description ?? '', list.is_private).catch(err => console.error('Failed to save list name:', err));
-    onMetaSaved(trimmed, list.description ?? '', list.is_private);
+    await updateUserList(list.key, trimmed, list.description ?? '', list.is_private, listType).catch(err => console.error('Failed to save list name:', err));
+    onMetaSaved(trimmed, list.description ?? '', list.is_private, listType);
   };
 
   const commitDesc = async () => {
     setEditingDesc(false);
     const trimmed = descDraft.trim();
     if (trimmed === (list.description ?? '')) return;
-    await updateUserList(list.key, list.name, trimmed, list.is_private).catch(err => console.error('Failed to save list description:', err));
-    onMetaSaved(list.name, trimmed, list.is_private);
+    await updateUserList(list.key, list.name, trimmed, list.is_private, listType).catch(err => console.error('Failed to save list description:', err));
+    onMetaSaved(list.name, trimmed, list.is_private, listType);
   };
 
   const togglePrivate = async () => {
     const next = !list.is_private;
-    await updateUserList(list.key, list.name, list.description ?? '', next).catch(err => console.error('Failed to save list privacy:', err));
-    onMetaSaved(list.name, list.description ?? '', next);
+    await updateUserList(list.key, list.name, list.description ?? '', next, listType).catch(err => console.error('Failed to save list privacy:', err));
+    onMetaSaved(list.name, list.description ?? '', next, listType);
   };
 
   const handleDeleteClick = () => {
@@ -317,24 +394,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
   return (
     <div className="list-detail-layout">
-      <div className="list-detail-nav">
-        <button className="list-back-btn" onClick={onBack}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>
-          {p.lists_back}
-        </button>
-        {!readOnly && (
-          <button className={`list-back-btn list-back-btn--danger${confirmDelete ? ' list-back-btn--confirm' : ''}`} onClick={handleDeleteClick}>
-            {confirmDelete ? p.lists_delete_confirm : p.lists_delete}
-          </button>
-        )}
-        {!readOnly && (
-          <button className="list-btn list-btn--primary list-detail-nav-add" onClick={() => setShowAddPanel(s => !s)}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            {p.lists_add_items}
-          </button>
-        )}
-      </div>
-
       <div className="list-detail-meta">
         <div className="list-detail-meta-row">
           <div className="list-detail-meta-row-left">
@@ -358,15 +417,74 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
                 {list.name}
               </h2>
             )}
-            <span className="list-detail-count">{listItems.length} {p.lists_items}</span>
+            <span className="list-detail-count">
+              {listItems.length} {isCharacters ? p.lists_characters_count : p.lists_items}
+            </span>
           </div>
+
           {!readOnly && (
-            <label className="list-meta-private-toggle">
-              <input type="checkbox" checked={list.is_private} onChange={togglePrivate} />
-              {p.lists_private}
-            </label>
+            <div className="list-settings-menu-wrapper" ref={settingsMenuRef}>
+              <button
+                type="button"
+                className={`list-settings-btn${settingsOpen ? ' list-settings-btn--active' : ''}`}
+                onClick={() => setSettingsOpen(s => !s)}
+                title={p.lists_settings}
+                aria-label={p.lists_settings}
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </button>
+
+              {settingsOpen && (
+                <div className="list-settings-dropdown">
+                  <div className="list-settings-section">
+                    <div className="list-settings-row">
+                      <span className="list-settings-item-title">{p.lists_type}</span>
+                      <div className="list-settings-segmented">
+                        <button
+                          type="button"
+                          className={`list-settings-segment${listType === 'media' ? ' list-settings-segment--active' : ''}${!canChangeType && listType !== 'media' ? ' list-settings-segment--disabled' : ''}`}
+                          onClick={() => handleSetListType('media')}
+                          disabled={!canChangeType && listType !== 'media'}
+                        >
+                          {p.lists_type_media}
+                        </button>
+                        <button
+                          type="button"
+                          className={`list-settings-segment${listType === 'characters' ? ' list-settings-segment--active' : ''}${!canChangeType && listType !== 'characters' ? ' list-settings-segment--disabled' : ''}`}
+                          onClick={() => handleSetListType('characters')}
+                          disabled={!canChangeType && listType !== 'characters'}
+                        >
+                          {p.lists_type_characters}
+                        </button>
+                      </div>
+                    </div>
+                    {!canChangeType && (
+                      <span className="list-settings-hint">{p.lists_type_locked_hint}</span>
+                    )}
+                  </div>
+
+                  <div className="list-settings-divider" />
+
+                  <div className="list-settings-section">
+                    <label className="list-settings-toggle-row">
+                      <span className="list-settings-item-title">{p.lists_private}</span>
+                      <input
+                        type="checkbox"
+                        checked={list.is_private}
+                        onChange={togglePrivate}
+                        className="list-settings-checkbox"
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
+
         {!readOnly && editingDesc ? (
           <input
             type="text"
@@ -389,12 +507,20 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
       </div>
 
       {!readOnly && showAddPanel && (
-        <MediaSearchPopup
-          onSelect={handleAddFromSearch}
-          onClose={() => setShowAddPanel(false)}
-          excludeIds={Array.from(currentIds)}
-          closeOnSelect={false}
-        />
+        isCharacters ? (
+          <CharacterSearchPopup
+            onSelect={handleAddCharacterFromSearch}
+            onClose={() => setShowAddPanel(false)}
+            excludeIds={Array.from(currentIds)}
+          />
+        ) : (
+          <MediaSearchPopup
+            onSelect={handleAddMediaFromSearch}
+            onClose={() => setShowAddPanel(false)}
+            excludeIds={Array.from(currentIds)}
+            closeOnSelect={false}
+          />
+        )
       )}
 
       <div className="list-detail-content">
@@ -403,7 +529,10 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
             {listItems.map(item => {
               const title = item.title_main ?? item.external_id;
               const cover = item.cover_url ?? '';
-              const url = `/media?id=${encodeURIComponent(item.external_id)}`;
+              const isCharItem = item.external_id.startsWith('character:') || isCharacters;
+              const url = isCharItem
+                ? `/character?id=${encodeURIComponent(item.external_id)}`
+                : `/media?id=${encodeURIComponent(item.external_id)}`;
 
               return (
                 <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
@@ -426,8 +555,32 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
             })}
           </div>
         ) : (
-          <div className="lists-empty-state" style={{ padding: '2rem 0' }}><p>{p.lists_empty_items}</p></div>
+          <div className="lists-empty-state" style={{ padding: '2rem 0' }}>
+            <p>{isCharacters ? p.lists_empty_characters : p.lists_empty_items}</p>
+          </div>
         )}
+      </div>
+
+      <div className="list-detail-footer">
+        <div className="list-detail-footer-left">
+          <button className="list-back-btn" onClick={onBack}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>
+            {p.lists_back}
+          </button>
+          {!readOnly && (
+            <button className={`list-back-btn list-back-btn--danger${confirmDelete ? ' list-back-btn--confirm' : ''}`} onClick={handleDeleteClick}>
+              {confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+            </button>
+          )}
+        </div>
+        <div className="list-detail-footer-right">
+          {!readOnly && (
+            <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              {isCharacters ? p.lists_add_characters : p.lists_add_items}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -436,11 +589,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 /* ── Top-level ──────────────────────────────────────────────────────────── */
 
 interface ListsSectionProps {
-  // Someone else's profile (UserProfileView) already has their lists and
-  // the viewer's own catalogMap in hand — passing them in skips this
-  // component's own local-only fetch. readOnly hides every create/edit/
-  // reorder/remove affordance and reads list items via overrideFetchItems
-  // (the social cache) instead of getListItemsFull (the viewer's own).
   overrideLists?: ListInfo[];
   overrideCatalogMap?: Map<string, MediaCatalogEntry>;
   overrideFetchItems?: (listKey: string) => Promise<ListItemFull[]>;
@@ -452,6 +600,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
 
   const [items, setItems] = useState<Items | null>(overrideLists ? [] : null);
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
+  const [charactersMap, setCharactersMap] = useState<Map<string, CharacterEntry>>(new Map());
   const [username, setUsername] = useState('user');
   const [customLists, setCustomLists] = useState<ListInfo[]>(overrideLists ?? []);
   const [activeListKey, setActiveListKey] = useState<string | null>(null);
@@ -460,20 +609,17 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
     if (overrideLists) return;
     let cancelled = false;
     (async () => {
-      const [{ items: libItems, catalog: catalogEntries }, allLists, profile] = await Promise.all([
+      const [{ items: libItems, catalog: catalogEntries }, allLists, profile, allChars] = await Promise.all([
         getCachedLibraryAndCatalog(),
         getAllUserLists().catch(() => [] as ListInfo[]),
         getUserInfo().catch(() => ({} as Record<string, unknown>)),
+        getAllCharacters().catch(() => [] as CharacterEntry[]),
       ]);
       if (cancelled) return;
       setItems(libItems);
       setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
+      setCharactersMap(new Map(allChars.map(c => [c.external_id, c])));
       setUsername((profile.display_name as string | undefined)?.toLowerCase().replace(/\s+/g, '_') || 'user');
-      // Favorites already have their own "Favoritos" profile tab
-      // (LibrarySection is driven separately by LibraryEntry.is_favorite) —
-      // the favorite-backed ListInfo rows returned by getAllUserLists()
-      // would just duplicate that here, so they're filtered out entirely
-      // rather than shown a second time under "Listas".
       setCustomLists(allLists.filter(l => !l.is_fav));
     })();
     return () => { cancelled = true; };
@@ -483,20 +629,12 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
 
   const activeList = activeListKey ? customLists.find(l => l.key === activeListKey) : null;
 
-  // The panel frame (.list-detail-panel) is always mounted — not something
-  // that pops in on selecting a list — so the layout is already "ready" the
-  // moment you're in the Lists tab; picking a list just fills it in instead
-  // of triggering an entrance of its own. Same idea as Local's detail panel
-  // staying next to the grid rather than replacing it, just without that
-  // panel's own open/close animation, since there's nothing to open here.
-  // ListDetail itself is remounted per list (key={list.key}) so its local
-  // edit-form state (name/description/private draft) can't leak from
-  // whichever list was open before.
   return (
     <div className="lists-page-layout">
       <ListsGrid
         customLists={customLists}
         catalogMap={catalogMap}
+        charactersMap={charactersMap}
         p={p}
         onOpen={setActiveListKey}
         activeKey={activeListKey}
@@ -504,7 +642,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
         onCreate={async (name, description) => {
           const key = await createUserList(username, name, description).catch(() => null);
           if (!key) return;
-          setCustomLists(prev => [...prev, { key, name, description, is_fav: false, is_private: false, item_count: 0, preview_ids: [] }]);
+          setCustomLists(prev => [...prev, { key, name, description, is_fav: false, is_private: false, list_type: 'media', item_count: 0, preview_ids: [] }]);
         }}
       />
       <div className="list-detail-panel">
@@ -516,7 +654,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
             p={p}
             onBack={() => setActiveListKey(null)}
             onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
-            onMetaSaved={(name, description, isPrivate) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate } : l))}
+            onMetaSaved={(name, description, isPrivate, listType) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate, ...(listType ? { list_type: listType } : {}) } : l))}
             onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
             readOnly={readOnly}
             fetchItems={overrideFetchItems}

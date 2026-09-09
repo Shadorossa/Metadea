@@ -5,9 +5,8 @@ export interface ListInfo {
   name:        string;
   description: string;
   is_fav:      boolean;
-  // Never included in the daily/forced profile snapshot (see
-  // compileLists in lib/social/profile-sync.ts) — stays purely local.
   is_private:  boolean;
+  list_type?:  string;
   item_count:  number;
   preview_ids: string[];
 }
@@ -40,12 +39,12 @@ export async function getListItemsFull(listKey: string): Promise<ListItemFull[]>
   return tauriTry<ListItemFull[]>('get_list_items_full', [], { listKey });
 }
 
-export async function createUserList(username: string, name: string, description: string): Promise<string> {
-  return invoke<string>('create_user_list', { username, name, description });
+export async function createUserList(username: string, name: string, description: string, listType?: string): Promise<string> {
+  return invoke<string>('create_user_list', { username, name, description, listType });
 }
 
-export async function updateUserList(key: string, name: string, description: string, isPrivate: boolean): Promise<void> {
-  return tauriRun('update_user_list', { key, name, description, isPrivate });
+export async function updateUserList(key: string, name: string, description: string, isPrivate: boolean, listType?: string): Promise<void> {
+  return tauriRun('update_user_list', { key, name, description, isPrivate, listType });
 }
 
 export async function deleteUserList(key: string): Promise<void> {

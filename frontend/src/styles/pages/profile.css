@@ -3228,6 +3228,7 @@
 .lists-page-layout .lists-layout {
   flex: 1 1 0%;
   min-width: 0;
+  padding-right: 1.5rem;
 }
 
 .list-detail-panel {
@@ -3240,8 +3241,6 @@
   overflow-y: auto;
   flex-shrink: 0;
   background: var(--bg-primary);
-  /* Just a divider line from the grid, not a boxed card — sits flush on
-     its other three sides, same as Local's own detail panel. */
   border-left: 1px solid var(--border-color);
   padding: 0.5rem 0 1.25rem 1.5rem;
 }
@@ -3273,10 +3272,56 @@
 .lists-header {
   display: flex;
   align-items: center;
-  /* Was space-between — with .lists-layout now sharing width with the
-     always-present detail panel, that pushed "+ Nueva Lista" all the way
-     to the panel's edge instead of staying near the title. */
+  justify-content: space-between;
   gap: 1rem;
+}
+
+.lists-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lists-filter-selector {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.lists-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 23px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  opacity: 0.45;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.lists-filter-btn:hover {
+  color: var(--text-main);
+  opacity: 0.8;
+}
+
+.lists-filter-btn--active {
+  background: var(--accent);
+  color: #fff;
+  opacity: 1;
+}
+
+.lists-filter-btn--active:hover {
+  background: var(--accent);
+  color: #fff;
+  opacity: 0.9;
 }
 
 .lists-title {
@@ -3406,14 +3451,25 @@
   padding: 0.5rem 0 2rem;
 }
 
-.list-detail-nav {
+.list-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.list-detail-footer-left {
   display: flex;
   align-items: center;
   gap: 1.25rem;
 }
 
-.list-detail-nav-add {
-  margin-left: auto;
+.list-detail-footer-right {
+  display: flex;
+  align-items: center;
 }
 
 .list-back-btn {
@@ -3426,12 +3482,6 @@
   font-size: 0.82rem;
   line-height: 1;
   cursor: pointer;
-  /* Matches .list-btn's own vertical padding + border (components.css) —
-     was 0.25rem/no border, a visibly shorter box that align-items:center
-     on .list-detail-nav centered correctly in principle, but the mismatched
-     icon sizes (16px here vs .list-btn's 12px) between the two still read
-     as slightly off against a much taller sibling box. Matching box height
-     removes the discrepancy instead of relying on centering to hide it. */
   padding: 0.4rem 0;
   transition: color 0.12s;
 }
@@ -3448,12 +3498,148 @@
   color: #f87171;
 }
 
-/* Armed state after the first click — bolder + underlined so the "click
-   again to actually delete" moment reads as a distinct, deliberate step
-   rather than blending into the same button that was just clicked. */
 .list-back-btn--confirm {
   font-weight: 700;
   text-decoration: underline;
+}
+
+.list-settings-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.list-settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.list-settings-btn:hover,
+.list-settings-btn--active {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.list-settings-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.3);
+  padding: 0.45rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.list-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.list-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.list-settings-section-title {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.list-settings-segmented {
+  display: flex;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.list-settings-segment {
+  flex: 1;
+  padding: 0.22rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 4px);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  text-align: center;
+}
+
+.list-settings-segment:hover:not(.list-settings-segment--disabled) {
+  color: var(--text-main);
+}
+
+.list-settings-segment--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.list-settings-segment--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.list-settings-hint {
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  line-height: 1.25;
+}
+
+.list-settings-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0.05rem -0.2rem;
+}
+
+.list-settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.1rem 0.1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.list-settings-item-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.list-settings-checkbox {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
 }
 
 .list-detail-meta {
