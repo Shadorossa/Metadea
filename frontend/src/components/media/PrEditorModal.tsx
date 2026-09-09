@@ -4,6 +4,7 @@ import { invoke } from '../../lib/tauri';
 import { getCatalogEntry, getMediaAuthors, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
 import { invalidateCachedMediaData, fetchMediaDataInternal } from '../../lib/media/mediaService';
 import { mapMediaDataToCatalogEntry } from '../../lib/media/catalog-mapper';
+import { isVnovelExternalId } from '../../lib/media/mapper-utils';
 import type { MediaCatalogEntry, DbMediaAuthor } from '../../lib/tauri/catalog';
 import { getMediaCharacters, getAllCharacters, type DbMediaCharacter, type CharacterEntry } from '../../lib/tauri/characters';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
@@ -96,7 +97,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   // A remaster/remake/expanded-edition/bundle relation picked here should
   // keep this entry's own type, not always default to 'game' — a VN's
   // remaster is still a VN (see MediaSearchPopup's own comment).
-  const igdbRelationMediaType = externalId.startsWith('vnovel:') ? 'vnovel' as const : 'game' as const;
+  const igdbRelationMediaType = isVnovelExternalId(externalId) ? 'vnovel' as const : 'game' as const;
 
   // Splits what used to be one dense always-visible 3-column grid into tabs
   // — General (titles/release/media/classification), Personajes, and

@@ -2,6 +2,7 @@ import type { LocalGame, MediaCatalogEntry, MetaEntry } from '../../../lib/tauri
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import { normalizeForMatch } from './folderMatch';
 import { SUB_WORK_FORMATS } from '../../../lib/constants/media';
+import { gameExternalId } from '../../../lib/media/mapper-utils';
 
 // A scanned Steam game's own external_id (if any) is one candidate, but a
 // library entry logged as a visual novel is catalogued as "vnovel:<id>"
@@ -14,8 +15,8 @@ export function candidateExternalIdsForGame(g: LocalGame, pathCache: Record<stri
   const igdbId = g.app_id ? pathCache[g.app_id]?.igdb_id : undefined;
   return [
     g.external_id,
-    igdbId != null ? `vnovel:${igdbId}` : undefined,
-    igdbId != null ? `game:${igdbId}` : undefined,
+    igdbId != null ? gameExternalId(igdbId, true) : undefined,
+    igdbId != null ? gameExternalId(igdbId, false) : undefined,
   ].filter((id): id is string => !!id);
 }
 

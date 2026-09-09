@@ -14,6 +14,7 @@ import { IconX, IconMonitor, IconPencil, IconFolder } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatDate, firstCsvUrl, catalogReleaseTimestampMs } from '../utils/formatters';
 import { normalizeForMatch } from '../utils/folderMatch';
 import { toSmallCover } from '../../../lib/shared/small-cover';
+import { gameExternalId } from '../../../lib/media/mapper-utils';
 
 export type CoverCache = Record<string, { cover?: string; banner?: string }>;
 
@@ -181,8 +182,8 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
     if (!gameInfo?.igdb_id) { setCatalogEntry(null); return; }
     const igdbId = gameInfo.igdb_id;
     Promise.all([
-      getCatalogEntry(`game:${igdbId}`).catch(() => null),
-      getCatalogEntry(`vnovel:${igdbId}`).catch(() => null),
+      getCatalogEntry(gameExternalId(igdbId, false)).catch(() => null),
+      getCatalogEntry(gameExternalId(igdbId, true)).catch(() => null),
     ]).then(([g, v]) => setCatalogEntry(g ?? v ?? null));
   }, [gameInfo?.igdb_id, knownExternalId]);
 
@@ -197,7 +198,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   // (The Great Ace Attorney / 2: Resolve). Same neighbor row, just showing
   // "what's inside this bundle" instead of "what comes before/after it".
   const [bundleChildren, setBundleChildren] = useState<{ externalId: string; title: string; cover: string | null }[]>([]);
-  const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? `game:${gameInfo.igdb_id}` : undefined);
+  const relationsExternalId = catalogEntry?.external_id ?? knownExternalId ?? (gameInfo?.igdb_id ? gameExternalId(gameInfo.igdb_id, false) : undefined);
   useEffect(() => {
     setPrequelInfo(null);
     setSequelInfo(null);
@@ -448,7 +449,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                       const resolveSourceExternalId = async (): Promise<string | undefined> => {
                         if (launchTarget.external_id) return launchTarget.external_id;
                         if (!gameInfo?.igdb_id) return undefined;
-                        for (const candidate of [`game:${gameInfo.igdb_id}`, `vnovel:${gameInfo.igdb_id}`]) {
+                        for (const candidate of [gameExternalId(gameInfo.igdb_id, false), gameExternalId(gameInfo.igdb_id, true)]) {
                           if (await getLibraryEntry(candidate).catch(() => null)) return candidate;
                         }
                         return undefined;

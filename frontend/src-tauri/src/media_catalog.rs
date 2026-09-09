@@ -9,6 +9,15 @@ use crate::db::ToStringErr;
 // near-full binary copy on every merge.
 pub(crate) const COMMUNITY_DB_URL: &str = "https://github.com/Shadorossa/Metadea/releases/download/catalog-latest/database.db";
 
+// Game and visual novel share one numeric IGDB id space, filed under
+// whichever prefix is_vn resolves to (see detect_vn in igdb.rs) — every
+// lookup below that only has the numeric id has to check both prefixes
+// since only one will ever actually resolve. Was independently spelled out
+// at each call site before being pulled out here as the one shared version.
+pub(crate) fn game_vnovel_siblings(num_id: &str) -> (String, String) {
+    (format!("vnovel:{num_id}"), format!("game:{num_id}"))
+}
+
 // One IN-query instead of N+1 SELECT EXISTS per row.
 pub(crate) fn existing_catalog_ids(
     tx: &rusqlite::Transaction,
@@ -194,8 +203,7 @@ pub async fn save_catalog_entry(
     let numeric_suffix = entry.external_id.split_once(':').map(|(_, id)| id);
 
     let existing: Option<(String, String, String)> = if let Some(num_id) = numeric_suffix {
-        let vnovel_id = format!("vnovel:{num_id}");
-        let game_id = format!("game:{num_id}");
+        let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
         conn.query_row(
             "SELECT id, external_id, created_at FROM media_catalog WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3",
             [&entry.external_id, &vnovel_id, &game_id],
@@ -380,8 +388,7 @@ pub async fn get_catalog_entry(
 ) -> Result<Option<MediaCatalogEntry>, String> {
     let conn = state.conn.lock().str_err()?;
     if let Some((_, num_id)) = external_id.split_once(':') {
-        let vnovel_id = format!("vnovel:{num_id}");
-        let game_id = format!("game:{num_id}");
+        let (vnovel_id, game_id) = game_vnovel_siblings(num_id);
         conn.query_row(
             &format!("{} WHERE external_id = ?1 OR external_id = ?2 OR external_id = ?3", SELECT_ALL),
             [&external_id, &vnovel_id, &game_id],

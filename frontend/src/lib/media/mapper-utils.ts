@@ -106,6 +106,20 @@ export function parseExternalId(externalId: string): { type: string; id: number 
   return { type, id };
 }
 
+// Game and visual novel share one numeric IGDB id space, filed under
+// whichever prefix `isVn` resolves to (see detect_vn/is_vn in igdb.rs, and
+// media_catalog.rs's OR'd vnovel:/game: lookups on the Rust side) — every
+// frontend site that built or read this specific prefix pair used to spell
+// 'vnovel:'/'game:' out by hand independently; these two are the one shared
+// version now.
+export function gameExternalId(igdbId: number | string, isVn: boolean): string {
+  return `${isVn ? 'vnovel' : 'game'}:${igdbId}`;
+}
+
+export function isVnovelExternalId(externalId: string): boolean {
+  return externalId.startsWith('vnovel:');
+}
+
 
 // Release date -> milliseconds since epoch, or null when there's no
 // release_year on file at all. Was independently reimplemented in Local

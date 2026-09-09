@@ -3,7 +3,7 @@ import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation, MediaStat, MediaCompany } from './types';
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
-import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel } from './mapper-utils';
+import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel, parseExternalId } from './mapper-utils';
 import { canonicalizeIgdbStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
@@ -167,7 +167,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   );
 
   // Type from rawId prefix (e.g. "vnovel:12345" → "vnovel")
-  const mediaType = rawId.split(':')[0].split('_')[0] as 'game' | 'vnovel';
+  const mediaType = parseExternalId(rawId).type as 'game' | 'vnovel';
 
   // Only a plain (game_type 0) VN is VISUAL_NOVEL — a VN's remake is still a
   // REMAKE, so other game_types keep the same GAME_TYPE_FORMAT label.
