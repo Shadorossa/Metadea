@@ -2851,6 +2851,18 @@
   padding: 1.5rem;
 }
 
+/* CharacterPrEditorModal's own two overlay roots (loading + real content)
+   use this modifier alongside .pr-editor-overlay above — it can be opened
+   nested inside an already-open PrEditorModal ("+ Crear personaje"), and
+   both share the exact same base class/z-index, so which one painted on top
+   used to depend on DOM insertion order (which React root's portal
+   committed to <body> last) instead of anything deterministic. Matches
+   .pr-editor-search-popup's own z-index below, the same "must always sit
+   above the PrEditorModal that can spawn it" requirement. */
+.pr-editor-overlay--nested {
+  z-index: 10000;
+}
+
 .pr-editor-modal {
   width: 97vw;
   max-width: 1850px;

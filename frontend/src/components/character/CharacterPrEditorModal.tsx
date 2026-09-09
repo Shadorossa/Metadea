@@ -627,7 +627,7 @@ export function CharacterPrEditorModal() {
 
   if (loading) {
     return createPortal(
-      <div className="pr-editor-overlay" onClick={handleClose}>
+      <div className="pr-editor-overlay pr-editor-overlay--nested" onClick={handleClose}>
         <div className="pr-editor-modal pr-editor-modal--loading" onClick={e => e.stopPropagation()}>
           <div className="spinner" />
         </div>
@@ -639,7 +639,7 @@ export function CharacterPrEditorModal() {
   if (!character) return null;
 
   return createPortal(
-    <div className="pr-editor-overlay" onClick={handleClose}>
+    <div className="pr-editor-overlay pr-editor-overlay--nested" onClick={handleClose}>
       <div className="pr-editor-modal" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-header" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
