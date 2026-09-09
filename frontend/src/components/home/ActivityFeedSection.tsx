@@ -12,8 +12,9 @@ import { getT } from '../../i18n/client';
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { getTypeLabel, isReadingType } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
-import { formatDateLong } from '../../lib/shared/formatDate';
+import { formatLocalDateLong } from '../../lib/shared/formatDate';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { interpolate } from '../../lib/shared/interpolate';
 
 type FeedTab = 'friends' | 'general';
 
@@ -31,20 +32,6 @@ interface FlatEvent {
   timestamp: string;
   progressStart?: number;
   progressEnd?:   number;
-}
-
-function interpolate(template: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce((acc, [key, val]) => acc.replace(`{${key}}`, String(val)), template);
-}
-
-// `date` (YYYY-MM-DD) is the day the activity actually happened — parsed as
-// local components, not passed straight to `new Date()`, so it doesn't
-// shift a day depending on the viewer's timezone offset from UTC.
-function formatEventDay(dateStr: string): string {
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const [year, month, day] = parts;
-  return formatDateLong(new Date(Number(year), Number(month) - 1, Number(day)));
 }
 
 export function ActivityFeedSection({ title }: { title: string }) {
@@ -169,7 +156,7 @@ export function ActivityFeedSection({ title }: { title: string }) {
                 <div className="act-card-meta">
                   <span className="act-card-type-icon" dangerouslySetInnerHTML={{ __html: TYPE_ICON[ev.mediaType] ?? '' }} />
                   <span className="act-card-type-label">{getTypeLabel(ev.mediaType)}</span>
-                  <span className="act-card-date">{formatEventDay(ev.date)}</span>
+                  <span className="act-card-date">{formatLocalDateLong(ev.date)}</span>
                 </div>
               </div>
             </div>

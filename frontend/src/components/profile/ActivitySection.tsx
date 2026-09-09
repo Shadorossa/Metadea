@@ -7,8 +7,9 @@ import { getTypeLabel } from '../../lib/constants/media';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import type { getT } from '../../i18n/client';
-import { formatDateLong } from '../../lib/shared/formatDate';
+import { formatLocalDateLong } from '../../lib/shared/formatDate';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { interpolate } from '../../lib/shared/interpolate';
 
 type P = ReturnType<typeof getT>['profile'];
 
@@ -18,19 +19,6 @@ interface ActivityEvent extends UserJourneyEvent {
 }
 
 const TYPE_ICON = typeIconMap(12);
-
-function formatDay(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const [year, month, day] = parts;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return formatDateLong(date);
-}
-
-function interpolate(template: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce((acc, [key, val]) => acc.replace(`{${key}}`, String(val)), template);
-}
 
 interface Props {
   catalogMap: Map<string, MediaCatalogEntry>;
@@ -84,7 +72,7 @@ export function ActivitySection({ catalogMap, p, overrideJourney, readOnly }: Pr
 
     // Flatten and filter events: no 'start' events, no hours (game/vnovel progress)
     const allEvents: ActivityEvent[] = daysWithEvents.flatMap(day => {
-      const formattedDate = formatDay(day.date);
+      const formattedDate = formatLocalDateLong(day.date);
       return (day.events || [])
         .filter(Boolean)
         .filter(event => event.type !== 'start')

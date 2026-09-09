@@ -15,6 +15,7 @@ import { formatAverageScore, getActiveRatingSystem } from '../../lib/media/ratin
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { useDebouncedCallback } from '../../lib/shared/useDebouncedCallback';
+import { interpolate } from '../../lib/shared/interpolate';
 
 type SearchTranslations = Translations['search'];
 
@@ -86,13 +87,6 @@ interface Props {
   initialQuery?: string;
   initialType?: MediaType;
   i18n: SearchTranslations;
-}
-
-function interpolateTemplate(template: string, variables: Record<string, string>): string {
-  return Object.entries(variables).reduce(
-    (result, [key, value]) => result.replace(`{${key}}`, value),
-    template,
-  );
 }
 
 // Restores the last search when landing on /search with no ?q (the navbar's
@@ -605,7 +599,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
               value={query}
               onChange={event => handleQueryChange(event.target.value)}
               onKeyDown={event => event.key === 'Enter' && handleSearchSubmit()}
-              placeholder={interpolateTemplate(i18n.placeholder, { type: activeMediaTypeLabel })}
+              placeholder={interpolate(i18n.placeholder, { type: activeMediaTypeLabel })}
               autoFocus
               className="search-input"
             />
@@ -809,7 +803,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         {status === 'idle' && (
           <div className="search-idle">
             <p className="search-idle-label">
-              {interpolateTemplate(i18n.idle_label, { type: activeMediaTypeLabel })}
+              {interpolate(i18n.idle_label, { type: activeMediaTypeLabel })}
             </p>
             <p className="search-idle-hint">{i18n.idle_hint}</p>
           </div>
@@ -835,7 +829,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
 
         {status === 'done' && results.length === 0 && (
           <div className="results-empty">
-            {interpolateTemplate(i18n.no_results, { q: query })}
+            {interpolate(i18n.no_results, { q: query })}
           </div>
         )}
 
