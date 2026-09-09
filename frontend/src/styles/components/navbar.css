@@ -130,7 +130,7 @@
      between the back/forward arrows and home — the two are functionally
      unrelated (history nav vs. destinations) and read as one cramped
      cluster without it. */
-  margin-left: 0.5rem;
+  margin-left: 8rem;
 }
 
 .nav-group--right {
@@ -138,7 +138,7 @@
      settings otherwise sits flush against it with nothing after it to
      create breathing room the way the center column does for everyone
      else. */
-  margin-right: 0.5rem;
+  margin-right: 8rem;
 }
 
 .nav-icon-btn {
