@@ -9,6 +9,7 @@ interface Props {
   onRemove: (externalId: string) => void;
   onUpdateRole: (externalId: string, role: string) => void;
   onOpenSearch: () => void;
+  onOpenCreate: () => void;
 }
 
 // 2 full rows at 12 columns per row (see .pr-editor-characters-grid) —
@@ -18,7 +19,7 @@ const ITEMS_PER_PAGE = 24;
 // The "Personajes" panel of PrEditorModal — paginated grid + role picker per
 // card. Self-contained aside from its own page index, so it owns that piece
 // of state locally instead of pushing it up into the parent.
-export function PrEditorCharactersSection({ t, characters, changed, onRemove, onUpdateRole, onOpenSearch }: Props) {
+export function PrEditorCharactersSection({ t, characters, changed, onRemove, onUpdateRole, onOpenSearch, onOpenCreate }: Props) {
   const [charPage, setCharPage] = useState(0);
 
   const totalPages = Math.ceil(characters.length / ITEMS_PER_PAGE) || 1;
@@ -103,14 +104,25 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
           </div>
         )}
 
-        <button
-          type="button"
-          className="pr-editor-btn pr-editor-btn--submit"
-          style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
-          onClick={onOpenSearch}
-        >
-          + Añadir personaje
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            type="button"
+            className="pr-editor-btn pr-editor-btn--cancel"
+            style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
+            onClick={onOpenCreate}
+            title="Para un personaje que no existe en AniList"
+          >
+            + Crear personaje
+          </button>
+          <button
+            type="button"
+            className="pr-editor-btn pr-editor-btn--submit"
+            style={{ padding: '0.35rem 0.85rem', fontSize: '0.75rem', margin: 0 }}
+            onClick={onOpenSearch}
+          >
+            + Añadir personaje
+          </button>
+        </div>
       </div>
     </div>
   );

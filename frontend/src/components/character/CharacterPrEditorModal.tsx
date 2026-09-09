@@ -142,8 +142,18 @@ export function CharacterPrEditorModal() {
         }
 
         const now = new Date().toISOString();
-        const cleanCharIdStr = currentId.includes(':') ? currentId.split(':')[1] : currentId;
-        const anilistCharId = parseInt(cleanCharIdStr.replace(/\D/g, ''), 10);
+        // Same "character:<providerCode>:<rawId>" parsing character.astro's
+        // own loadCharacterData already does (a/co/ms/custom) — this used to
+        // just grab split(':')[1] and strip non-digits from it, which for
+        // the current 3-segment id shape only ever grabbed the provider
+        // code letter itself (e.g. "a"), not the real numeric id, silently
+        // skipping every live AniList refetch. providerCode !== 'a' (custom
+        // characters included) always skips the fetch, same as that page.
+        const bareId = currentId.startsWith('character:') ? currentId.slice('character:'.length) : currentId;
+        const sepIndex = bareId.indexOf(':');
+        const providerCode = sepIndex === -1 ? (/^\d+$/.test(bareId) ? 'a' : '') : bareId.slice(0, sepIndex);
+        const rawId = sepIndex === -1 ? bareId : bareId.slice(sepIndex + 1);
+        const anilistCharId = providerCode === 'a' ? parseInt(rawId, 10) : NaN;
 
         let anilistDetail = null;
         if (!isNaN(anilistCharId) && anilistCharId > 0) {

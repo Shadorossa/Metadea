@@ -15,6 +15,7 @@ import type { ProposalBundle } from '../../lib/github/submitCollaborativeProposa
 import { fetchMediaData } from '../../lib/media/mediaService';
 import { PrEditorModal } from '../media/PrEditorModal';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
+import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
 import { IconTrash } from '../local/ui/icons';
@@ -569,9 +570,19 @@ export function CatalogAdminPanel({ i18n }: Props) {
       )}
 
       {entity === 'character' && source === 'add' && isOwner && (
-        <button type="button" className="catalog-admin-source-btn" onClick={() => setCharacterSearchOpen(true)}>
-          {t.add_character_button}
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button type="button" className="catalog-admin-source-btn" onClick={() => setCharacterSearchOpen(true)}>
+            {t.add_character_button}
+          </button>
+          <button
+            type="button"
+            className="catalog-admin-source-btn"
+            title="Para un personaje que no existe en AniList"
+            onClick={() => (window as any).openCharacterEditor?.(generateCustomCharacterId())}
+          >
+            + Crear personaje custom
+          </button>
+        </div>
       )}
 
       {entity === 'media' && source === 'local' && (
