@@ -374,6 +374,14 @@ export default function LocalLibrary() {
     ...filterGames(statusBuckets.planning).map((game): StatusEntry => ({ kind: 'game', game })),
     ...buildCatalogStatusEntries(s => s === 'planning'),
   ];
+  // mediaRaw (SQLite read) resolves well before games (a real Steam/GOG/etc.
+  // disk-and-registry scan) does — without this gate, currentlyEntries/
+  // planningEntries above would render their catalog-sourced ("pendiente")
+  // half the instant mediaRaw lands, then have their Steam-scanned half pop
+  // in seconds later once loadGames() finishes, reflowing the same grid
+  // mid-view. Holding both halves back until BOTH sources are ready makes
+  // every card in these mixed sections appear in one pass instead of two.
+  const sectionsReady = gamesState !== 'idle' && gamesState !== 'loading' && !mediaLoading;
 
   // ── Tab bar (portaled into nav) ──────────────────────────────────────────────
 
@@ -486,7 +494,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   </div>
                 </div>
 
-                {currentlyEntries.length > 0 && (
+                {sectionsReady && currentlyEntries.length > 0 && (
                   <div className="library-section" style={{ marginBottom: '1.5rem' }}>
                     <h3 className="library-section-title">{t.profile.section_in_progress}</h3>
                     <div className="local-games-grid">
@@ -499,7 +507,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                   </div>
                 )}
 
-                {planningEntries.length > 0 && (
+                {sectionsReady && planningEntries.length > 0 && (
                   <div className="library-section" style={{ marginBottom: '1.5rem' }}>
                     <h3 className="library-section-title">{t.profile.section_planning}</h3>
                     <div className="local-games-grid">
