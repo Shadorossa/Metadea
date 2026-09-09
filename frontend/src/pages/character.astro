@@ -216,9 +216,18 @@ const translations = useTranslations(lang);
     // instead of assuming one. What's left is "<providerCode>:<rawId>",
     // e.g. "a:12345" (AniList), "co:678" (Comic Vine), "ms:5256c8a2..." (TMDB).
     const bareId = idParam.startsWith('character:') ? idParam.slice('character:'.length) : idParam;
+    let providerCode = '';
+    let rawId = '';
     const sepIndex = bareId.indexOf(':');
-    const providerCode = sepIndex === -1 ? '' : bareId.slice(0, sepIndex);
-    const rawId = sepIndex === -1 ? '' : bareId.slice(sepIndex + 1);
+    if (sepIndex === -1) {
+      if (/^\d+$/.test(bareId)) {
+        providerCode = 'a';
+        rawId = bareId;
+      }
+    } else {
+      providerCode = bareId.slice(0, sepIndex);
+      rawId = bareId.slice(sepIndex + 1);
+    }
 
     if (!providerCode || !rawId) {
       loadingEl.style.display = 'none';
@@ -227,7 +236,7 @@ const translations = useTranslations(lang);
       return;
     }
 
-    const characterExternalId = idParam.startsWith('character:') ? idParam : `character:${idParam}`;
+    const characterExternalId = `character:${providerCode}:${rawId}`;
 
     try {
       const localChar = await getCharacter(characterExternalId).catch(() => null);

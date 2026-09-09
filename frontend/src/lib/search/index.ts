@@ -146,12 +146,26 @@ function inferCharacterSource(externalId: string): SearchResult['source'] {
   return 'anilist';
 }
 
+function canonicalizeCharacterId(externalId: string): string {
+  if (/^character:\d+$/.test(externalId)) {
+    return `character:a:${externalId.slice('character:'.length)}`;
+  }
+  if (externalId.startsWith('character:comicvine:')) {
+    return `character:co:${externalId.slice('character:comicvine:'.length)}`;
+  }
+  if (externalId.startsWith('character:tmdb:')) {
+    return `character:ms:${externalId.slice('character:tmdb:'.length)}`;
+  }
+  return externalId;
+}
+
 function characterEntryToSearchResult(entry: CharacterEntry): SearchResult {
+  const externalId = canonicalizeCharacterId(entry.external_id);
   return {
-    externalId: entry.external_id,
+    externalId,
     type: 'character',
     format: '',
-    source: inferCharacterSource(entry.external_id),
+    source: inferCharacterSource(externalId),
     titleMain: entry.name,
     titleRomaji: null,
     titleNative: entry.name_native ?? null,
@@ -183,6 +197,7 @@ async function searchCharacters(searchQuery: string, signal: AbortSignal, page: 
   }
 
   for (const r of [...anilistPage.results, ...comicvinePage.results]) {
+    r.externalId = canonicalizeCharacterId(r.externalId);
     const existing = merged.find(m => m.externalId === r.externalId);
     if (existing) {
       if (!existing.coverUrl && r.coverUrl) {

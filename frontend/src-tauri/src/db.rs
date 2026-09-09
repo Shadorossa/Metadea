@@ -946,6 +946,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE user_lists ADD COLUMN is_ranked INTEGER NOT NULL DEFAULT 0", []);
         mark_migration(conn, 50)?;
     }
+    if v < 51 {
+        crate::vestigial_cleanup::fix_character_ids(conn);
+        mark_migration(conn, 51)?;
+    }
 
     Ok(())
 }
