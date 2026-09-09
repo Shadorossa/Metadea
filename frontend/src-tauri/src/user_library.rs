@@ -284,9 +284,15 @@ pub async fn read_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>) ->
 #[tauri::command]
 pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, content: String) -> Result<(), String> {
     let days: Vec<serde_json::Value> = serde_json::from_str(&content).str_err()?;
-    let conn = state.conn.lock().str_err()?;
-    // Full replace — journey.ts always writes the complete array
-    conn.execute("DELETE FROM user_activity", []).str_err()?;
+    let mut conn = state.conn.lock().str_err()?;
+    let tx = conn.transaction().str_err()?;
+    // Full replace — journey.ts always writes the complete array. Wrapped in
+    // a transaction (same pattern as write_monthly_history above) so the
+    // DELETE and every re-INSERT commit together — without this, an
+    // interruption (crash, power loss) between the DELETE and the loop
+    // finishing used to leave user_activity empty except for whatever had
+    // already been reinserted, permanently losing the rest of the journey.
+    tx.execute("DELETE FROM user_activity", []).str_err()?;
     for day in &days {
         let date = day.get("date").and_then(|x| x.as_str()).unwrap_or("");
         if let Some(events) = day.get("events").and_then(|x| x.as_array()) {
@@ -299,12 +305,12 @@ pub async fn write_user_journey(state: tauri::State<'_, crate::db::MetadeaDb>, c
                 let ts     = event.get("timestamp").and_then(|x| x.as_str()).unwrap_or(date);
                 let id     = crate::db::generate_id();
                 if ext_id.is_empty() || etype.is_empty() { continue; }
-                conn.execute(
+                tx.execute(
                     "INSERT INTO user_activity (id, date, external_id, event_type, media_type, progress_start, progress_end, timestamp) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
                     rusqlite::params![id, date, ext_id, etype, mtype, pstart, pend, ts],
                 ).str_err()?;
             }
         }
     }
-    Ok(())
+    tx.commit().str_err()
 }
