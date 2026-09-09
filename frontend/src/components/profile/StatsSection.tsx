@@ -16,6 +16,10 @@ import {
 } from '../../lib/profile/stats-calculators';
 import { formatDateShort } from '../../lib/shared/formatDate';
 
+// Not in icon-strings.ts (a "seasons"/folder-stack glyph specific to this
+// one KPI card, not reused anywhere else) — kept local instead.
+const SEASONS_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
 interface StatsData {
@@ -116,51 +120,37 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
 
   const maxHours = byType.length > 0 ? Math.max(...byType.map(t => t.hours)) : 1;
 
+  // The five KPI cards above the fold differ only in icon/label/value(/sub)
+  // — one {icon,label,value,sub}[] + a single .map() instead of five
+  // hand-rolled, near-identical <div className="stats-card"> blocks.
+  const kpiCards: { icon: string; label: string; value: string; sub?: string }[] = [
+    { icon: ICON_STACK, label: p.stat_total, value: totalWorks.toLocaleString() },
+    { icon: SEASONS_ICON, label: p.stat_seasons, value: totalSeasons.toLocaleString() },
+    {
+      icon: ICON_CLOCK, label: p.stat_hours, value: totalHours.toFixed(0),
+      sub: totalHours > 0
+        ? (p.stats_hours_sub || '{days} d · {avg} h/obra').replace('{days}', String(totalDays)).replace('{avg}', String(avgPerWork))
+        : undefined,
+    },
+    { icon: ICON_STAR, label: p.stat_avg, value: avgScoreStr },
+    { icon: ICON_CHART, label: p.stats_rated, value: ratedItems.length.toLocaleString() },
+  ];
+
   return (
     <div className="stats-layout">
 
       {/* 1. KPI Cards */}
       <div className="stats-grid-5">
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STACK }} />
-            <span className="stats-card-label">{p.stat_total}</span>
+        {kpiCards.map((card, i) => (
+          <div className="stats-card" key={i}>
+            <div className="stats-card-header">
+              <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: card.icon }} />
+              <span className="stats-card-label">{card.label}</span>
+            </div>
+            <span className="stats-card-value">{card.value}</span>
+            {card.sub && <span className="stats-card-sub">{card.sub}</span>}
           </div>
-          <span className="stats-card-value">{totalWorks.toLocaleString()}</span>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>` }} />
-            <span className="stats-card-label">{p.stat_seasons}</span>
-          </div>
-          <span className="stats-card-value">{totalSeasons.toLocaleString()}</span>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CLOCK }} />
-            <span className="stats-card-label">{p.stat_hours}</span>
-          </div>
-          <span className="stats-card-value">{totalHours.toFixed(0)}</span>
-          {totalHours > 0 && (
-            <span className="stats-card-sub">
-              {(p.stats_hours_sub || '{days} d · {avg} h/obra').replace('{days}', String(totalDays)).replace('{avg}', String(avgPerWork))}
-            </span>
-          )}
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_STAR }} />
-            <span className="stats-card-label">{p.stat_avg}</span>
-          </div>
-          <span className="stats-card-value">{avgScoreStr}</span>
-        </div>
-        <div className="stats-card">
-          <div className="stats-card-header">
-            <div className="stats-card-icon" dangerouslySetInnerHTML={{ __html: ICON_CHART }} />
-            <span className="stats-card-label">{p.stats_rated}</span>
-          </div>
-          <span className="stats-card-value">{ratedItems.length.toLocaleString()}</span>
-        </div>
+        ))}
       </div>
 
       {/* 2. Status + Time by category (side by side) */}
