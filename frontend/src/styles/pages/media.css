@@ -3274,22 +3274,26 @@
    every column in whatever row it lands on. */
 .pr-editor-char-row--wide {
   grid-column: 1 / -1;
+  align-items: flex-start;
+}
+
+.pr-editor-char-row--wide .pr-editor-char-divider,
+.pr-editor-char-row--wide .pr-editor-char-remove {
+  align-self: flex-start;
+  margin-top: 0.2rem;
 }
 
 .pr-editor-char-row {
   display: flex;
   gap: 0.4rem;
-  /* Was center — fine for a single-line value like Height, but a spoiler-
-     paragraph value (see pr-editor-char-richtext's own scroll cap below)
-     can run many lines while the label stays one, and centering pinned
-     the label to the middle of that whole tall box instead of its top. */
-  align-items: flex-start;
+  align-items: center;
   background: var(--bg-elevated);
-  padding: 0.35rem 0.6rem;
+  padding: 0.4rem 0.6rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   min-width: 0;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .pr-editor-char-input {
@@ -3299,11 +3303,13 @@
   border-radius: 0 !important;
   padding: 0.2rem 0.3rem !important;
   font-size: 0.8rem !important;
+  line-height: 1.4 !important;
   font-family: inherit !important;
   box-shadow: none !important;
   outline: none !important;
   min-width: 0 !important;
   width: 100% !important;
+  align-self: center;
 }
 
 .pr-editor-char-input:focus {
@@ -3312,39 +3318,35 @@
 
 .pr-editor-char-divider {
   width: 1px;
-  height: 14px;
+  height: 16px;
   background: var(--border-color);
   opacity: 0.5;
   flex-shrink: 0;
+  align-self: center;
 }
 
-/* A characteristic's value can be a whole spoiler-wrapped sentence (see
-   the character page's own "In Fate/X" trivia rows) as easily as a plain
-   "154 cm" — RichTextEditor replaces the value's plain <input> so that
-   markup renders and stays editable instead of showing raw tags, sized
-   down to fit this compact row instead of its default standalone-field
-   proportions. */
 .pr-editor-char-row > .pr-editor-richtext-wrap {
   flex: 1 1 0%;
   min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .pr-editor-char-richtext {
   min-height: 0 !important;
-  /* A spoiler-paragraph value (the "In Fate/X" trivia rows) can still run
-     to more lines than this fits even at the full row width
-     (pr-editor-char-row--wide) — capped and internally scrollable instead
-     of stretching the whole card (and every other card sharing its grid
-     row) to match its height. Same hidden-scrollbar treatment as the
-     app's other internally-scrolling text blocks (.media-description-text)
-     instead of a raw OS scrollbar. */
   max-height: 6rem;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
   padding: 0.2rem 0.3rem !important;
   font-size: 0.8rem !important;
+  line-height: 1.4 !important;
   border-bottom: none !important;
+  width: 100%;
+}
+
+.pr-editor-char-richtext p {
+  margin: 0 !important;
 }
 
 .pr-editor-char-richtext::-webkit-scrollbar {
@@ -3361,6 +3363,10 @@
   cursor: pointer;
   flex-shrink: 0;
   transition: color 0.15s;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pr-editor-char-remove:hover {
@@ -3493,6 +3499,73 @@
 .pr-editor-cover-placeholder {
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.pr-editor-char-photo-wrap {
+  position: relative;
+  width: 110px;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-color, #2d2a24);
+  background: var(--bg-elevated, #1a1816);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pr-editor-char-photo-wrap:hover,
+.pr-editor-char-photo-wrap:focus-visible {
+  border-color: var(--accent, #7c6af7);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.pr-editor-char-photo-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.pr-editor-char-photo-wrap:hover img,
+.pr-editor-char-photo-wrap:focus-visible img {
+  transform: scale(1.04);
+  filter: brightness(0.8);
+}
+
+.pr-editor-photo-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  padding: 0.5rem;
+  text-align: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.pr-editor-photo-hover-overlay span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.pr-editor-char-photo-wrap:hover .pr-editor-photo-hover-overlay,
+.pr-editor-char-photo-wrap:focus-visible .pr-editor-photo-hover-overlay {
+  opacity: 1;
 }
 
 .pr-editor-cover-uploader input {

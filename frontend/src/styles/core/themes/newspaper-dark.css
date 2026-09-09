@@ -1098,4 +1098,25 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--accent) !important;
 }
 
+[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap:hover,
+[data-theme="newspaper-dark"] .pr-editor-char-photo-wrap:focus-visible {
+  border-color: var(--accent) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay {
+  background: rgba(22, 20, 18, 0.85) !important;
+  backdrop-filter: none !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay svg {
+  color: var(--accent) !important;
+}
+
+
 

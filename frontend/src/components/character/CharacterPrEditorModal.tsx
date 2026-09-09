@@ -654,17 +654,28 @@ export function CharacterPrEditorModal() {
 
           {activeTab === 'general' && (
           <>
-          {/* ── Fila de Cabecera: Foto + Datos Básicos ── */}
-          <div className="pr-editor-section" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1.5rem', alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <div className="pr-editor-cover-preview-card" style={{ width: '110px', aspectRatio: '3 / 4', flexShrink: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+          {/* Cabecera: Foto + Datos Básicos */}
+          <div className="pr-editor-section" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1.5rem', alignItems: 'start', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div
+                className="pr-editor-char-photo-wrap"
+                onClick={handleChangePhoto}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChangePhoto(); } }}
+                title={t.change_image}
+              >
                 {imageUrl
-                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ? <img src={imageUrl} alt={name} onError={() => setErrorMsg('URL de imagen inválida')} />
                   : <span className="pr-editor-cover-placeholder">{t.no_image}</span>}
+                <div className="pr-editor-photo-hover-overlay">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  <span>{t.change_image}</span>
+                </div>
               </div>
-              <button type="button" className="pr-editor-add-btn" onClick={handleChangePhoto} style={{ fontSize: '0.75rem', width: '100%' }}>
-                {t.change_image}
-              </button>
             </div>
 
             <div className="pr-editor-form-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -682,20 +693,14 @@ export function CharacterPrEditorModal() {
             </div>
           </div>
 
-          {/* ── Características (Edad, Género, Estatura...) ── */}
-          <div className="pr-editor-section">
+          {/* Características */}
+          <div className="pr-editor-section" style={{ marginBottom: '2rem' }}>
             <span className="pr-editor-section-title">
               {t.characteristics}
               {characteristicsChanged() && <span className="pr-editor-section-changed-dot" />}
             </span>
             <div className="pr-editor-char-grid">
               {characteristics.map((c, idx) => {
-                // A spoiler-paragraph value (the "In Fate/X" trivia rows)
-                // squeezed into the same 280px column short stats like
-                // Height/Gender use just forced more wrapped lines (and more
-                // scrolling) than the row actually needed — spans the full
-                // grid width instead, same threshold character.astro's own
-                // stacked-layout cutoff uses for the read-only page.
                 const isLong = c.value.replace(/<[^>]+>/g, '').length > 50;
                 return (
                 <div key={idx} className={`pr-editor-char-row${isLong ? ' pr-editor-char-row--wide' : ''}`}>
@@ -726,7 +731,12 @@ export function CharacterPrEditorModal() {
                 );
               })}
             </div>
-            <button type="button" className="pr-editor-add-btn" onClick={addCharacteristic} style={{ marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="pr-editor-add-btn"
+              onClick={addCharacteristic}
+              style={{ marginTop: '0.75rem' }}
+            >
               {t.add_characteristic}
             </button>
           </div>
