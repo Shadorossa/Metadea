@@ -9,6 +9,7 @@ import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
 import { NowPlayingBar } from '../components/local/NowPlayingBar';
 import '../styles/components/now-playing-bar.css';
+import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import type { Locale, Translations } from '../i18n/index';
 import { useTranslations } from '../i18n/index';
 import { STORAGE_KEYS } from '../lib/shared/storage-keys';
@@ -85,6 +86,15 @@ const t = useTranslations(lang);
          #page-content and transition:persist so it survives page swaps the
          same way #global-toast/#app-bg do. -->
     <NowPlayingBar client:load transition:persist />
+
+    <!-- Global character editor (see window.openCharacterEditor) — used to
+         only be mounted per-page (character.astro, admin/catalog.astro),
+         which meant window.openCharacterEditor was undefined anywhere else
+         PrEditorModal's own "+ Crear personaje"/character list can open it
+         from (e.g. the actual media page) — the button silently did nothing
+         since that call is optional-chained. Mounted here once instead, so
+         it's always available regardless of which page opened it from. -->
+    <CharacterPrEditorModal client:load transition:persist />
 
     <!-- Global bottom toast (app-update check on startup, etc.) — persists
          across Astro page transitions since the check that drives it only

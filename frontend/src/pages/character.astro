@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import '../styles/pages/character.css';
 import '../styles/pages/media.css';
 import { getLang, useTranslations } from '../i18n/index';
@@ -145,8 +144,6 @@ const translations = useTranslations(lang);
 
   </div>
 </BaseLayout>
-
-<CharacterPrEditorModal client:load />
 
 <script>
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
