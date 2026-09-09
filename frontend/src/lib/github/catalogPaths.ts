@@ -17,7 +17,7 @@ const MEDIA_TYPE_FOLDERS: Record<string, string> = {
   comic: 'Comics',
 };
 
-export const CHARACTER_CATALOG_FOLDER = 'Characters';
+const CHARACTER_CATALOG_FOLDER = 'Characters';
 
 // externalId is always "<type>:<id>" (media) or "character:<id>" — the type
 // prefix before the first ':' is what picks the folder.
@@ -34,8 +34,6 @@ export function catalogFilePath(externalId: string): string {
 }
 
 export const MEDIA_CATALOG_FOLDERS: readonly string[] = [...new Set(Object.values(MEDIA_TYPE_FOLDERS))];
-
-export const ALL_CATALOG_FOLDERS: readonly string[] = [...MEDIA_CATALOG_FOLDERS, CHARACTER_CATALOG_FOLDER];
 
 export function catalogRootPath(folder: string): string {
   return `${CATALOG_ROOT}/${folder}`;

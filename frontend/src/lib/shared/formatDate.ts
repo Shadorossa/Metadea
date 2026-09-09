@@ -27,13 +27,6 @@ export function formatDateNumeric(date: Date): string {
   return date.toLocaleDateString(getLocaleCode(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function formatMonthYear(date: Date): string {
-  const month = date.toLocaleDateString(getLocaleCode(), { month: 'long' });
-  const year = date.getFullYear();
-  const capMonth = month.charAt(0).toUpperCase() + month.slice(1);
-  return `${capMonth}, ${year}`;
-}
-
 export function formatUnixTimestampShort(unixSeconds?: number): string | null {
   if (!unixSeconds) return null;
   return formatDateShort(new Date(unixSeconds * 1000));
