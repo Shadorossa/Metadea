@@ -8,7 +8,6 @@
 // headers — a browser fetch() to it is blocked outright regardless of the
 // request itself being otherwise valid.
 use serde::{Deserialize, Serialize};
-use crate::db::ToStringErr;
 
 const COMICVINE_BASE: &str = "https://comicvine.gamespot.com/api";
 const FIELD_LIST: &str = "id,name,image,start_year,publisher,count_of_issues,description,deck,site_detail_url";
@@ -35,15 +34,25 @@ const ISSUE_ENRICHMENT_FIELD_LIST: &str = "cover_date,character_credits,concept_
 // for "volume" specifically, not a general-purpose id.
 const VOLUME_RESOURCE_PREFIX: &str = "4050";
 
-fn get_http_client() -> reqwest::Result<reqwest::Client> {
-    // Comic Vine rejects requests with no User-Agent — set once as a default
-    // header here instead of every call site repeating its own .header(...).
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("Metadea (github.com/Shadorossa/Metadea)"));
-    reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .default_headers(headers)
-        .build()
+// Built once and reused (same reasoning as igdb.rs's own get_http_client) —
+// every call site here used to build a brand-new Client, paying for a fresh
+// connection pool/TLS setup each time instead of reusing one. Headers are
+// static (a fixed User-Agent string, not anything read from settings at
+// runtime), so caching them forever alongside the client is safe.
+fn get_http_client() -> &'static reqwest::Client {
+    static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    HTTP_CLIENT.get_or_init(|| {
+        // Comic Vine rejects requests with no User-Agent — set once as a
+        // default header here instead of every call site repeating its own
+        // .header(...).
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_static("Metadea (github.com/Shadorossa/Metadea)"));
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .default_headers(headers)
+            .build()
+            .unwrap_or_default()
+    })
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -153,7 +162,7 @@ pub async fn comicvine_search(
     }
 
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     const PAGE_SIZE: i64 = 100;
     let page = page.unwrap_or(1).max(1) as i64;
@@ -206,7 +215,7 @@ pub async fn comicvine_search_characters(
     }
 
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     const PAGE_SIZE: i64 = 100;
     let page = page.unwrap_or(1).max(1) as i64;
@@ -255,7 +264,7 @@ pub async fn comicvine_get_volume(
     volume_id: u64,
 ) -> Result<Option<ComicVineVolume>, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     let resp = client
         .get(format!("{COMICVINE_BASE}/volume/{VOLUME_RESOURCE_PREFIX}-{volume_id}/"))
@@ -452,7 +461,7 @@ pub async fn comicvine_get_issues_cast(
     issue_ids: Vec<u64>,
 ) -> Result<ComicVineVolumeCast, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     let fetches = issue_ids.iter().map(|&id| fetch_issue_enrichment(&client, &api_key, id));
     let results = futures::future::join_all(fetches).await;
@@ -555,7 +564,7 @@ pub async fn comicvine_get_issues(
     volume_id: u64,
 ) -> Result<Vec<ComicVineIssue>, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     const LIMIT: u32 = 100;
     let filter = format!("volume:{volume_id}");
@@ -658,7 +667,7 @@ pub async fn comicvine_get_issue(
     issue_id: u64,
 ) -> Result<Option<ComicVineIssueDetail>, String> {
     let api_key = comicvine_api_key(&app_handle).await?;
-    let client = get_http_client().str_err()?;
+    let client = get_http_client();
 
     let resp = client
         .get(format!("{COMICVINE_BASE}/issue/{ISSUE_RESOURCE_PREFIX}-{issue_id}/"))

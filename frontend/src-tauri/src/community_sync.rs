@@ -31,10 +31,7 @@ pub async fn sync_community_catalog(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<i64, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .str_err()?;
+    let client = crate::igdb::get_http_client();
     let resp = client
         .get(COMMUNITY_DB_URL)
         .send()
@@ -375,10 +372,7 @@ pub async fn get_community_characters(
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, crate::db::MetadeaDb>,
 ) -> Result<Vec<crate::characters::CharacterEntry>, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .str_err()?;
+    let client = crate::igdb::get_http_client();
     let resp = client.get(COMMUNITY_DB_URL).send().await.str_err()?;
     if !resp.status().is_success() {
         return Err(format!("Failed to download community catalog: HTTP {}", resp.status()));
