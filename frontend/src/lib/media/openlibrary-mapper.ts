@@ -11,6 +11,35 @@ function extractDescription(raw: OpenLibWork['description']): string | undefined
   return raw.value ?? undefined;
 }
 
+interface DateParts { year?: number; month?: number; day?: number }
+
+// Open Library's own first_publish_date is free text, not a consistent
+// format the way ComicVine's cover_date ("YYYY-MM-DD") is — it's most often
+// a bare year ("1954"), sometimes ISO-ish ("1954-07-29"/"1954-07"), and
+// occasionally a long-form date ("July 29, 1954"). Tried in that order;
+// falls back to the JS Date parser (which already understands the long-form
+// case) before giving up entirely.
+function parseOpenLibDate(raw: string | undefined): DateParts | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (/^\d{4}$/.test(trimmed)) {
+    return { year: parseInt(trimmed, 10) };
+  }
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+  if (isoMatch) {
+    return {
+      year:  parseInt(isoMatch[1], 10),
+      month: parseInt(isoMatch[2], 10),
+      day:   isoMatch[3] ? parseInt(isoMatch[3], 10) : undefined,
+    };
+  }
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return { year: parsed.getFullYear(), month: parsed.getMonth() + 1, day: parsed.getDate() };
+  }
+  return null;
+}
+
 export function mapOpenLibToMedia(
   work: OpenLibWork,
   authors: MediaAuthor[],
@@ -38,6 +67,7 @@ export function mapOpenLibToMedia(
   }
 
   const metaLines = authors.length ? [authors.map(a => a.name).join(', ')] : [];
+  const dateParts = parseOpenLibDate(work.first_publish_date);
 
   return {
     externalId,
@@ -53,6 +83,9 @@ export function mapOpenLibToMedia(
     statusClass:  '',
     genreDots,
     metaLines,
+    releaseYear:  dateParts?.year,
+    releaseMonth: dateParts?.month,
+    releaseDay:   dateParts?.day,
     dateBadge:    work.first_publish_date,
     description:  extractDescription(work.description),
     stats,
