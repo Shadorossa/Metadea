@@ -400,9 +400,10 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
             {!readOnly && editingName ? (
               <input
                 type="text"
-                className="list-input list-detail-title-input"
+                className="list-detail-title-input"
                 value={nameDraft}
                 maxLength={60}
+                size={Math.max(nameDraft.length || 1, 8)}
                 autoFocus
                 onChange={e => setNameDraft(e.target.value)}
                 onBlur={commitName}
@@ -488,7 +489,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
         {!readOnly && editingDesc ? (
           <input
             type="text"
-            className="list-input list-detail-desc-input"
+            className="list-detail-desc-input"
             value={descDraft}
             maxLength={200}
             autoFocus
@@ -502,7 +503,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
             {list.description}
           </p>
         ) : !readOnly ? (
-          <p className="list-detail-desc-add" onClick={() => { setDescDraft(''); setEditingDesc(true); }}>{p.lists_desc_ph}</p>
+          <p className="list-detail-desc list-detail-desc-add" onClick={() => { setDescDraft(''); setEditingDesc(true); }}>{p.lists_desc_ph}</p>
         ) : null}
       </div>
 

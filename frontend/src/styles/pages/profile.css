@@ -3658,9 +3658,10 @@
 
 .list-detail-meta-row-left {
   display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.65rem;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .list-detail-title {
@@ -3668,32 +3669,51 @@
   font-weight: 800;
   color: var(--text-main);
   margin: 0;
+  line-height: 1.25;
+  box-sizing: border-box;
 }
 
-/* Click-to-edit — no separate Editar button, the title itself is the
-   affordance. A transparent border (not none) reserves the same box the
-   focused input will occupy, so hovering/clicking doesn't shift anything
-   by the width of a border appearing. */
 .list-detail-title--editable {
   cursor: pointer;
   border-radius: var(--radius-sm);
   padding: 0.15rem 0.4rem;
   margin: -0.15rem -0.4rem;
   border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .list-detail-title--editable:hover {
-  border-color: var(--border-color);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .list-detail-title-input {
   font-size: 1.2rem;
   font-weight: 800;
+  font-family: inherit;
+  font-style: inherit;
+  letter-spacing: inherit;
+  line-height: 1.25;
+  color: var(--text-main);
   padding: 0.15rem 0.4rem;
   margin: -0.15rem -0.4rem;
-  min-width: 0;
-  flex: 1 1 auto;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+  width: auto;
+  field-sizing: content;
+  min-width: 120px;
+  max-width: min(500px, 100%);
+  flex: 0 1 auto;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.list-detail-title-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px var(--accent-soft);
 }
 
 .list-meta-private-toggle {
@@ -3708,42 +3728,62 @@
 
 .list-detail-desc {
   font-size: 0.82rem;
+  line-height: 1.4;
   color: var(--text-muted);
   margin: 0;
+  box-sizing: border-box;
 }
 
 .list-detail-desc--editable,
 .list-detail-desc-add {
   cursor: pointer;
   border-radius: var(--radius-sm);
-  padding: 0.1rem 0.4rem;
-  margin: -0.1rem -0.4rem;
+  padding: 0.2rem 0.45rem;
+  margin: 0;
   border: 1px solid transparent;
   width: fit-content;
+  max-width: 100%;
+  line-height: 1.4;
+  box-sizing: border-box;
+  display: block;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .list-detail-desc--editable:hover,
 .list-detail-desc-add:hover {
-  border-color: var(--border-color);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
 }
 
-/* The "click here to add a description" placeholder — same slot the real
-   description takes once one exists, just visibly a prompt rather than
-   real content until then. */
 .list-detail-desc-add {
-  font-size: 0.82rem;
   color: var(--text-dim);
   font-style: italic;
-  margin: 0;
 }
 
 .list-detail-desc-input {
   font-size: 0.82rem;
-  padding: 0.1rem 0.4rem;
-  margin: -0.1rem -0.4rem;
+  line-height: 1.4;
+  font-family: inherit;
+  font-style: inherit;
+  color: var(--text-main);
+  padding: 0.2rem 0.45rem;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+  display: block;
   min-width: 0;
   width: 100%;
+  max-width: 600px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.list-detail-desc-input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 1px var(--accent-soft);
 }
 
 .list-detail-content {
@@ -3755,6 +3795,8 @@
 .list-detail-count {
   font-size: 0.78rem;
   color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .list-items-grid {

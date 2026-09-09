@@ -1004,3 +1004,62 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   color: var(--bg-primary) !important;
 }
 
+/* List title and description inline editing */
+[data-theme="newspaper-dark"] .list-detail-title-input,
+[data-theme="newspaper-dark"] .list-detail-desc-input {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  border-radius: 0px !important;
+  background: rgba(166, 154, 125, 0.05) !important;
+  border: 1px solid rgba(166, 154, 125, 0.22) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-title-input {
+  font-style: italic !important;
+  font-weight: 800 !important;
+  border-bottom: 2px solid var(--text-main) !important;
+  padding-bottom: 4px !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-title-input:focus {
+  background: rgba(166, 154, 125, 0.08) !important;
+  border-color: rgba(166, 154, 125, 0.35) !important;
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-title--editable:hover {
+  background: rgba(166, 154, 125, 0.04) !important;
+  border-color: rgba(166, 154, 125, 0.22) !important;
+  border-bottom: 2px solid var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-desc--editable,
+[data-theme="newspaper-dark"] .list-detail-desc-add {
+  margin: 0 !important;
+  padding: 0.2rem 0.45rem !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-desc--editable:hover,
+[data-theme="newspaper-dark"] .list-detail-desc-add:hover {
+  background: rgba(166, 154, 125, 0.04) !important;
+  border-color: rgba(166, 154, 125, 0.22) !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-desc-input {
+  margin: 0 !important;
+  padding: 0.2rem 0.45rem !important;
+  display: block !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-desc-input:focus {
+  background: rgba(166, 154, 125, 0.08) !important;
+  border-color: var(--accent) !important;
+}
+
+[data-theme="newspaper-dark"] .list-detail-desc-input::placeholder {
+  color: var(--text-dim) !important;
+  font-style: italic !important;
+}
+
+
