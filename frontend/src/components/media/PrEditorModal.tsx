@@ -974,7 +974,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
               onRemove={removeCharacter}
               onUpdateRole={updateCharacterRole}
               onOpenSearch={() => setShowCharSearch(true)}
-              onOpenCreate={() => (window as any).openCharacterEditor?.(generateCustomCharacterId())}
+              onOpenCreate={() => (window as any).openCharacterEditor?.(generateCustomCharacterId(), {
+                media_external_id: externalId,
+                title: entry?.title_main || externalId,
+                cover: entry?.cover_url ?? null,
+              })}
             />
           )}
 

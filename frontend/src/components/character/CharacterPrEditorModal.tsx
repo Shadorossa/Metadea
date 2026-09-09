@@ -67,6 +67,12 @@ export function CharacterPrEditorModal() {
   const [originalCharacter, setOriginalCharacter] = useState<CharacterEntry | null>(null);
 
   const characterCacheRef = useRef<Record<string, CachedCharacterData>>({});
+  // Set by openCharacterEditor's second (optional) arg, consumed once by the
+  // very next loadCharacter run — the media entry a character was created
+  // FROM (via PrEditorModal's "+ Crear personaje") should already be in its
+  // "Apariciones en obras" list, not left for the user to search/re-add by
+  // hand right after typing its name.
+  const pendingAppearanceRef = useRef<{ media_external_id: string; title: string; cover: string | null } | null>(null);
 
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
@@ -106,7 +112,11 @@ export function CharacterPrEditorModal() {
   };
 
   useEffect(() => {
-    (window as any).openCharacterEditor = (externalId: string) => {
+    (window as any).openCharacterEditor = (
+      externalId: string,
+      initialAppearance?: { media_external_id: string; title: string; cover: string | null },
+    ) => {
+      pendingAppearanceRef.current = initialAppearance ?? null;
       setCurrentId(externalId);
       setIsOpen(true);
       setLoading(true);
@@ -318,7 +328,20 @@ export function CharacterPrEditorModal() {
         }
 
         resolved.sort(compareByReleaseDateDesc);
-        setAppearances(resolved);
+
+        // Consumed once — the media entry this character was created FROM
+        // (if any) goes in as an already-present appearance, but only in
+        // `appearances` (not `originalAppearances`): it's a genuinely new
+        // addition relative to what's actually saved (nothing, for a brand
+        // new character), so appearancesChanged() still detects it and
+        // saveCharacterAppearances still runs on submit.
+        const pendingAppearance = pendingAppearanceRef.current;
+        pendingAppearanceRef.current = null;
+        const resolvedWithPending = (pendingAppearance && !resolved.some(a => a.media_external_id === pendingAppearance.media_external_id))
+          ? [{ media_external_id: pendingAppearance.media_external_id, relation_type: appearanceRelationType, title: pendingAppearance.title, cover: pendingAppearance.cover }, ...resolved]
+          : resolved;
+
+        setAppearances(resolvedWithPending);
         setOriginalAppearances(resolved);
 
         setOriginalName(data.name || '');
@@ -380,7 +403,7 @@ export function CharacterPrEditorModal() {
           cleanBiography: parsedBio,
           originalCharacteristics: allCharacteristics,
           originalCleanBiography: parsedBio,
-          appearances: resolved,
+          appearances: resolvedWithPending,
           originalAppearances: resolved,
         };
       } catch (err) {
@@ -786,7 +809,7 @@ export function CharacterPrEditorModal() {
                 {appearancesChanged() && <span className="pr-editor-section-changed-dot" />}
               </span>
               <button type="button" className="pr-editor-add-btn" onClick={() => setAppearanceSearchOpen(true)}>
-                + {t.add_appearance}
+                {t.add_appearance}
               </button>
             </div>
 
