@@ -193,6 +193,7 @@ pub fn run() {
             characters::save_character,
             characters::get_character,
             characters::get_all_characters,
+            characters::search_characters_db,
             characters::delete_character,
             characters::set_character_reaction,
             characters::save_character_appearances,

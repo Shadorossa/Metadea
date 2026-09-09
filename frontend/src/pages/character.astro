@@ -227,68 +227,53 @@ const translations = useTranslations(lang);
       return;
     }
 
-    // Only AniList ('a') has a live detail fetch implemented — Comic Vine
-    // ('co') and TMDB ('ms') characters can be found via search/cast grids
-    // but don't have their own detail page yet.
-    if (providerCode !== 'a') {
-      loadingEl.style.display = 'none';
-      errorTextEl.textContent = t.error_unsupported_source;
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    const characterId = parseInt(rawId, 10);
-
-    if (isNaN(characterId)) {
-      loadingEl.style.display = 'none';
-      errorTextEl.textContent = t.error_invalid_id;
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    const characterExternalId = `character:a:${characterId}`;
+    const characterExternalId = idParam.startsWith('character:') ? idParam : `character:${idParam}`;
 
     try {
-      // Fetched once, reused below for every field the PR editor lets you
-      // correct (name/native/image/biography/aliases) — a local edit always
-      // wins over AniList's live copy, same "sticky local field" rule
-      // mediaService.ts's applyStickyLocalFields uses for media pages.
-      // Without this the character page always showed AniList's raw data
-      // and any manual correction made in the editor never appeared here.
       const localChar = await getCharacter(characterExternalId).catch(() => null);
 
-      // sync_state gates the live AniList call the same way needsResync()
-      // already gates media_catalog resyncs — this page used to hit AniList
-      // unconditionally on every single visit regardless of how fresh the
-      // local copy already was.
-      const syncState = await getSyncState(characterExternalId).catch(() => null);
-      const dueForResync = needsResync(syncState ? {
-        last_synced_at: syncState.last_synced_at,
-        sync_failed_count: syncState.sync_failed_count,
-      } : null);
+      if (providerCode !== 'a' && !localChar) {
+        loadingEl.style.display = 'none';
+        errorTextEl.textContent = t.error_unsupported_source;
+        errorEl.style.display = 'block';
+        return;
+      }
 
       let character: AniListCharacterDetail;
-      if (dueForResync || !localChar) {
-        const live = await fetchAniListCharacterDetail(characterId);
-        if (live) {
-          character = live;
-          markSynced(characterExternalId).catch(() => {});
-        } else if (localChar) {
-          // Live fetch failed (rate limit, network hiccup, ...) but a local
-          // copy already exists — degrade to that instead of a hard error,
-          // same backoff-on-failure behavior mediaService.ts uses for media.
-          markSyncFailed(characterExternalId, 'Live fetch returned no data').catch(() => {});
-          character = localCharacterToDetail(characterId, localChar);
-        } else {
+      if (providerCode !== 'a') {
+        character = localCharacterToDetail(0, localChar!);
+      } else {
+        const characterId = parseInt(rawId, 10);
+        if (isNaN(characterId)) {
           loadingEl.style.display = 'none';
-          errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
+          errorTextEl.textContent = t.error_invalid_id;
           errorEl.style.display = 'block';
           return;
         }
-      } else {
-        // Not due for a resync and a local copy already exists — skip the
-        // AniList call entirely instead of re-fetching on every page visit.
-        character = localCharacterToDetail(characterId, localChar);
+
+        const syncState = await getSyncState(characterExternalId).catch(() => null);
+        const dueForResync = needsResync(syncState ? {
+          last_synced_at: syncState.last_synced_at,
+          sync_failed_count: syncState.sync_failed_count,
+        } : null);
+
+        if (dueForResync || !localChar) {
+          const live = await fetchAniListCharacterDetail(characterId);
+          if (live) {
+            character = live;
+            markSynced(characterExternalId).catch(() => {});
+          } else if (localChar) {
+            markSyncFailed(characterExternalId, 'Live fetch returned no data').catch(() => {});
+            character = localCharacterToDetail(characterId, localChar);
+          } else {
+            loadingEl.style.display = 'none';
+            errorTextEl.textContent = 'No se encontró el personaje especificado en AniList.';
+            errorEl.style.display = 'block';
+            return;
+          }
+        } else {
+          character = localCharacterToDetail(characterId, localChar);
+        }
       }
 
       const stickyName = localChar?.name || character.name.full;
@@ -401,13 +386,19 @@ const translations = useTranslations(lang);
 
       // ── ENLACE A LA API DE ORIGEN (ANILIST) ──
       const apiLinkWrap = document.getElementById('char-api-link-wrap');
-      const siteUrl = character.siteUrl || `https://anilist.co/character/${characterId}`;
+      const siteUrl = character.siteUrl || (providerCode === 'a' && rawId ? `https://anilist.co/character/${rawId}` : '');
       if (apiLinkWrap) {
-        apiLinkWrap.innerHTML = `
-          <a href="${safeUrl(siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-store-link" title="AniList">
-            <img src="/API/Anilist_logo.png" alt="AniList" class="media-store-icon" />
-          </a>
-        `;
+        if (siteUrl) {
+          apiLinkWrap.innerHTML = `
+            <a href="${safeUrl(siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-store-link" title="AniList">
+              <img src="/API/Anilist_logo.png" alt="AniList" class="media-store-icon" />
+            </a>
+          `;
+          apiLinkWrap.style.display = 'block';
+        } else {
+          apiLinkWrap.innerHTML = '';
+          apiLinkWrap.style.display = 'none';
+        }
       }
 
       // ── EXTRAER Y AGRUPAR ACTORES DE VOZ POR IDIOMA ──

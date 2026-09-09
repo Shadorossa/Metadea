@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { searchAniListStaff, type AniListStaffSearchResult } from '../../lib/search/providers/anilist';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { getT } from '../../i18n/client';
@@ -7,12 +8,10 @@ export interface VoiceActorSearchPopupProps {
   onSelect: (result: AniListStaffSearchResult) => void;
   onClose: () => void;
   excludeIds?: string[];
+  closeOnSelect?: boolean;
 }
 
-// Modeled on CharacterSearchPopup — AniList only for now (voice actors are
-// modeled there as Staff, see anilist.ts's searchAniListStaff); a TMDB person
-// search for live-action actors can plug in the same way later.
-export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: VoiceActorSearchPopupProps) {
+export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = false }: VoiceActorSearchPopupProps) {
   const ce = getT().character_editor;
   const [query, setQuery] = useState('');
   const { results, isLoading } = useDebouncedSearch<AniListStaffSearchResult>(
@@ -25,7 +24,12 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
     r => String(r.id),
   );
 
-  return (
+  const handleSelect = (r: AniListStaffSearchResult) => {
+    if (closeOnSelect) onClose();
+    onSelect(r);
+  };
+
+  const modal = (
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
       <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-search-controls">
@@ -50,7 +54,7 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
                 key={r.id}
                 type="button"
                 className="pr-editor-search-result-card"
-                onClick={() => onSelect(r)}
+                onClick={() => handleSelect(r)}
               >
                 {r.image ? (
                   <img src={r.image} alt="" className="pr-editor-search-result-cover" />
@@ -68,4 +72,6 @@ export function VoiceActorSearchPopup({ onSelect, onClose, excludeIds = [] }: Vo
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 }

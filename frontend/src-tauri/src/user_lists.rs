@@ -33,6 +33,7 @@ pub struct ListInfo {
     pub description: String,
     pub is_fav:      bool,
     pub is_private:  bool,
+    pub is_ranked:   bool,
     pub list_type:   String,
     pub item_count:  i64,
     pub preview_ids: Vec<String>,
@@ -138,7 +139,7 @@ pub async fn get_all_user_lists(
     // idx_user_list_items_list_key_position (db.rs) makes both an index
     // range scan instead of a full-table scan per row.
     let mut stmt = conn.prepare(
-        "SELECT l.key, l.name, l.description, l.is_fav, l.is_private, COALESCE(l.list_type, 'media'),
+        "SELECT l.key, l.name, l.description, l.is_fav, l.is_private, COALESCE(l.list_type, 'media'), COALESCE(l.is_ranked, 0),
                 (SELECT COUNT(*) FROM user_list_items i WHERE i.list_key = l.key) AS item_count,
                 (SELECT GROUP_CONCAT(external_id, ',') FROM (
                     SELECT external_id FROM user_list_items
@@ -148,7 +149,7 @@ pub async fn get_all_user_lists(
          ORDER BY l.is_fav DESC, l.created_at ASC",
     ).str_err()?;
 
-    let rows: Vec<(String, String, String, bool, bool, String, i64, Option<String>)> = stmt
+    let rows: Vec<(String, String, String, bool, bool, String, bool, i64, Option<String>)> = stmt
         .query_map([], |r| {
             Ok((
                 r.get::<_, String>(0)?,
@@ -157,8 +158,9 @@ pub async fn get_all_user_lists(
                 r.get::<_, i64>(3)? != 0,
                 r.get::<_, i64>(4)?  != 0,
                 r.get::<_, String>(5)?,
-                r.get::<_, i64>(6)?,
-                r.get::<_, Option<String>>(7)?,
+                r.get::<_, i64>(6)?  != 0,
+                r.get::<_, i64>(7)?,
+                r.get::<_, Option<String>>(8)?,
             ))
         })
         .str_err()?
@@ -167,11 +169,11 @@ pub async fn get_all_user_lists(
 
     let result = rows
         .into_iter()
-        .map(|(key, name, description, is_fav, is_private, list_type, item_count, preview_csv)| {
+        .map(|(key, name, description, is_fav, is_private, list_type, is_ranked, item_count, preview_csv)| {
             let preview_ids = preview_csv
                 .map(|csv| csv.split(',').map(String::from).collect())
                 .unwrap_or_default();
-            ListInfo { key, name, description, is_fav, is_private, list_type, item_count, preview_ids }
+            ListInfo { key, name, description, is_fav, is_private, is_ranked, list_type, item_count, preview_ids }
         })
         .collect();
 
@@ -285,20 +287,15 @@ pub async fn update_user_list(
     description: String,
     is_private: bool,
     list_type: Option<String>,
+    is_ranked: Option<bool>,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().to_rfc3339();
     let conn = state.conn.lock().str_err()?;
-    if let Some(lt) = list_type {
-        conn.execute(
-            "UPDATE user_lists SET name = ?1, description = ?2, is_private = ?3, list_type = ?4, updated_at = ?5 WHERE key = ?6",
-            rusqlite::params![name, description, is_private, lt, now, key],
-        ).map(|_| ()).str_err()
-    } else {
-        conn.execute(
-            "UPDATE user_lists SET name = ?1, description = ?2, is_private = ?3, updated_at = ?4 WHERE key = ?5",
-            rusqlite::params![name, description, is_private, now, key],
-        ).map(|_| ()).str_err()
-    }
+    let ranked_val = is_ranked.map(|b| if b { 1 } else { 0 });
+    conn.execute(
+        "UPDATE user_lists SET name = ?1, description = ?2, is_private = ?3, list_type = COALESCE(?4, list_type), is_ranked = COALESCE(?5, is_ranked), updated_at = ?6 WHERE key = ?7",
+        rusqlite::params![name, description, is_private, list_type, ranked_val, now, key],
+    ).map(|_| ()).str_err()
 }
 
 #[tauri::command]

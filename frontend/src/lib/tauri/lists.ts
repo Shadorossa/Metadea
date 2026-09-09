@@ -6,6 +6,7 @@ export interface ListInfo {
   description: string;
   is_fav:      boolean;
   is_private:  boolean;
+  is_ranked?:  boolean;
   list_type?:  string;
   item_count:  number;
   preview_ids: string[];
@@ -43,8 +44,8 @@ export async function createUserList(username: string, name: string, description
   return invoke<string>('create_user_list', { username, name, description, listType });
 }
 
-export async function updateUserList(key: string, name: string, description: string, isPrivate: boolean, listType?: string): Promise<void> {
-  return tauriRun('update_user_list', { key, name, description, isPrivate, listType });
+export async function updateUserList(key: string, name: string, description: string, isPrivate: boolean, listType?: string, isRanked?: boolean): Promise<void> {
+  return tauriRun('update_user_list', { key, name, description, isPrivate, listType, isRanked });
 }
 
 export async function deleteUserList(key: string): Promise<void> {

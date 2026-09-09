@@ -53,6 +53,7 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .status-dropdown-tray,
 [data-theme="newspaper-dark"] .reviews-search,
 [data-theme="newspaper-dark"] .review-card,
+[data-theme="newspaper-dark"] .list-item-cover-link,
 [data-theme="newspaper-dark"] .igdb-picker-card {
   border-radius: 0px !important;
   border: 3px double var(--border-color) !important;
@@ -60,6 +61,24 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   text-transform: capitalize !important;
   box-shadow: none !important;
   transition: all 0.2s ease !important;
+}
+
+[data-theme="newspaper-dark"] .list-item-card {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .list-item-rank-bar {
+  border: none !important;
+  background: transparent !important;
+}
+
+[data-theme="newspaper-dark"] .list-item-rank-num {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+  text-shadow: none !important;
 }
 
 /* Plain icon, no box at all — unlike the double-border treatment above,

@@ -153,6 +153,53 @@ pub async fn get_all_characters(
 }
 
 #[tauri::command]
+pub async fn search_characters_db(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    query: String,
+) -> Result<Vec<CharacterEntry>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let tokens: Vec<String> = trimmed
+        .split_whitespace()
+        .map(|s| format!("%{}%", s.to_lowercase()))
+        .collect();
+    if tokens.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut sql = String::from(
+        "SELECT DISTINCT c.id, c.external_id, c.name, c.name_native, c.aliases_csv, c.biography, c.image_url,
+                c.reaction, c.gender, c.age, c.blood_type, c.dob_year, c.dob_month, c.dob_day, c.created_at, c.updated_at
+         FROM characters c
+         LEFT JOIN character_appearances ca ON ca.character_external_id = c.external_id
+         WHERE "
+    );
+
+    for (i, _) in tokens.iter().enumerate() {
+        if i > 0 {
+            sql.push_str(" AND ");
+        }
+        sql.push_str(&format!(
+            "(lower(c.name) LIKE ?{0} OR lower(COALESCE(c.name_native, '')) LIKE ?{0} OR lower(COALESCE(c.aliases_csv, '')) LIKE ?{0} OR lower(COALESCE(ca.character_name, '')) LIKE ?{0})",
+            i + 1
+        ));
+    }
+    sql.push_str(" ORDER BY c.name ASC LIMIT 60");
+
+    let mut stmt = conn.prepare(&sql).str_err()?;
+    let params = rusqlite::params_from_iter(tokens.iter());
+    let rows = stmt
+        .query_map(params, row_to_character)
+        .str_err()?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(rows)
+}
+
+#[tauri::command]
 pub async fn delete_character(
     state: tauri::State<'_, crate::db::MetadeaDb>,
     external_id: String,

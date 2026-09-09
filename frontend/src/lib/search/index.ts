@@ -5,6 +5,7 @@ import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
+import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
 
 export { MissingApiKeyError };
 export { searchGameBundles, searchGameExpandedEditions, searchGameRemasters };
@@ -139,18 +140,62 @@ async function searchStaff(searchQuery: string, signal: AbortSignal, page: numbe
   };
 }
 
-// Fans out to every provider with real, independently-searchable character
-// entities — AniList and Comic Vine both have these; TMDB doesn't (a TMDB
-// "character" is just a text field on a cast credit, not its own searchable
-// resource), so it has no equivalent branch here. A provider erroring
-// (missing API key, network) doesn't take the other one down with it.
+function inferCharacterSource(externalId: string): SearchResult['source'] {
+  if (externalId.startsWith('character:co:') || externalId.startsWith('character:comicvine:')) return 'comicvine';
+  if (externalId.startsWith('character:ms:') || externalId.startsWith('character:tmdb:')) return 'tmdb';
+  return 'anilist';
+}
+
+function characterEntryToSearchResult(entry: CharacterEntry): SearchResult {
+  return {
+    externalId: entry.external_id,
+    type: 'character',
+    format: '',
+    source: inferCharacterSource(entry.external_id),
+    titleMain: entry.name,
+    titleRomaji: null,
+    titleNative: entry.name_native ?? null,
+    coverUrl: entry.image_url ?? null,
+    releaseYear: entry.dob_year ?? null,
+    releaseMonth: entry.dob_month ?? null,
+    releaseDay: entry.dob_day ?? null,
+    scoreGlobal: null,
+    genres: [],
+  };
+}
+
 async function searchCharacters(searchQuery: string, signal: AbortSignal, page: number): Promise<SearchPage> {
-  const [anilistPage, comicvinePage] = await Promise.all([
+  const [anilistPage, comicvinePage, localEntries] = await Promise.all([
     searchAniListCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
     searchComicVineCharacters(searchQuery, signal, page).catch(() => ({ results: [], hasMore: false } as SearchPage)),
+    page === 1 ? searchCharactersDb(searchQuery).catch(() => [] as CharacterEntry[]) : Promise.resolve([] as CharacterEntry[]),
   ]);
+
+  const localResults: SearchResult[] = localEntries.map(characterEntryToSearchResult);
+  const seen = new Set<string>();
+  const merged: SearchResult[] = [];
+
+  for (const r of localResults) {
+    if (!seen.has(r.externalId)) {
+      seen.add(r.externalId);
+      merged.push(r);
+    }
+  }
+
+  for (const r of [...anilistPage.results, ...comicvinePage.results]) {
+    const existing = merged.find(m => m.externalId === r.externalId);
+    if (existing) {
+      if (!existing.coverUrl && r.coverUrl) {
+        existing.coverUrl = r.coverUrl;
+      }
+    } else if (!seen.has(r.externalId)) {
+      seen.add(r.externalId);
+      merged.push(r);
+    }
+  }
+
   return {
-    results: [...anilistPage.results, ...comicvinePage.results],
+    results: merged,
     hasMore: anilistPage.hasMore || comicvinePage.hasMore,
   };
 }

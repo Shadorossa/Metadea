@@ -4,18 +4,7 @@
   left: 0;
   right: 0;
   z-index: 50;
-  /* Grid instead of flex + absolute-centering — a fixed-width column per
-     group (arrows / left icons / center / right icons) is a hard boundary
-     nothing can grow past, so no combination of window width and content
-     length can ever make two groups actually overlap or touch with zero
-     gap between them. The trade-off: the center column is centered within
-     whatever space is left between the two auto columns rather than the
-     literal middle of the bar (see .nav-center-wrap) — on a narrow window
-     that's the one that matters, since there's no room left to be picky
-     about pixel-perfect centering anyway. */
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
-  column-gap: 0.75rem;
+  display: flex;
   align-items: center;
   padding: 0.35rem 1rem;
   height: 48px;
@@ -24,27 +13,33 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
-  /* No overflow clipping here — .nav-center-wrap/.nav-center-text already
-     self-clip horizontally (that's the actual spillover risk on a narrow
-     window). overflow:hidden here used to also clip the profile dropdown
-     (Perfil/Notificaciones/Ajustes), which has to render below the bar's
-     own 48px height to be visible at all — even overflow-x: hidden alone
-     doesn't fix it, since a non-'visible' x forces the y axis to compute
-     as 'auto' (CSS overflow spec), which still clips the same way. */
 }
 
-
-
 .nav-center-wrap {
-  /* Its own grid column (see .navbar) — a real track boundary, not an
-     absolutely-positioned overlay, so .nav-group--left/--right growing
-     (more languages' nav-text-link labels, say) shrinks this column
-     instead of letting either side run underneath it. */
-  min-width: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
+  max-width: calc(100% - 46rem);
+  height: 100%;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 1400px) {
+  .nav-center-wrap {
+    max-width: calc(100% - 36rem);
+  }
+}
+
+@media (max-width: 1100px) {
+  .nav-center-wrap {
+    max-width: calc(100% - 22rem);
+  }
 }
 
 .nav-center-slot {
@@ -116,29 +111,40 @@
 }
 
 .nav-arrows {
-  /* First grid column — flush against the bar's own left padding (like the
-     mouse side buttons they mirror) by virtue of being the first thing in
-     the row, no absolute positioning needed now that the layout is grid. */
   display: flex;
   align-items: center;
   gap: 0.25rem;
   pointer-events: auto;
+  flex-shrink: 0;
 }
 
 .nav-group--left {
-  /* Extra fixed gap on top of the grid's own column-gap, specifically
-     between the back/forward arrows and home — the two are functionally
-     unrelated (history nav vs. destinations) and read as one cramped
-     cluster without it. */
   margin-left: 8rem;
+  flex-shrink: 0;
 }
 
 .nav-group--right {
-  /* Mirrors nav-group--left's gap, but against the bar's own right edge —
-     settings otherwise sits flush against it with nothing after it to
-     create breathing room the way the center column does for everyone
-     else. */
+  margin-left: auto;
   margin-right: 8rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1400px) {
+  .nav-group--left {
+    margin-left: 3rem;
+  }
+  .nav-group--right {
+    margin-right: 3rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .nav-group--left {
+    margin-left: 1rem;
+  }
+  .nav-group--right {
+    margin-right: 1rem;
+  }
 }
 
 .nav-icon-btn {

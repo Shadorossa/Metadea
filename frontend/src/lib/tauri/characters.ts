@@ -59,6 +59,10 @@ export async function getAllCharacters(): Promise<CharacterEntry[]> {
   return tauriCmd<CharacterEntry[]>('get_all_characters', []);
 }
 
+export async function searchCharactersDb(query: string): Promise<CharacterEntry[]> {
+  return tauriCmd<CharacterEntry[]>('search_characters_db', [], { query });
+}
+
 export async function setCharacterReaction(externalId: string, reaction: string | null): Promise<void> {
   return tauriRun('set_character_reaction', { externalId, reaction });
 }

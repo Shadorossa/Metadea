@@ -141,6 +141,7 @@ export const es = {
     lists_characters_count: 'personajes',
     lists_empty_characters: 'Esta lista está vacía. Añade personajes a tu lista.',
     lists_settings: 'Configuración de la lista',
+    lists_ranking: 'Ranking',
     stats_loading: 'Cargando estadísticas...',
     stats_empty: 'Aún no tienes suficientes datos para generar estadísticas.',
     stats_by_time: 'Tiempo consumido por categoría',

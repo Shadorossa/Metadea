@@ -112,6 +112,7 @@ commands.allow = [
   "save_character",
   "get_character",
   "get_all_characters",
+  "search_characters_db",
   "delete_character",
   "get_community_characters",
   "set_character_reaction",

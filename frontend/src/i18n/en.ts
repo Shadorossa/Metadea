@@ -141,6 +141,7 @@ export const en = {
     lists_characters_count: 'characters',
     lists_empty_characters: 'This list is empty. Add characters to your list.',
     lists_settings: 'List settings',
+    lists_ranking: 'Ranking',
     stats_loading: 'Loading statistics...',
     stats_empty: "You don't have enough data to generate statistics yet.",
     stats_by_time: 'Time consumed by category',

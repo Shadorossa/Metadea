@@ -3234,9 +3234,9 @@
 .list-detail-panel {
   position: sticky;
   top: 64px;
-  width: 55vw;
-  max-width: 820px;
-  min-width: 360px;
+  width: 60vw;
+  max-width: 980px;
+  min-width: 380px;
   max-height: calc(100vh - 88px);
   overflow-y: auto;
   flex-shrink: 0;
@@ -3475,32 +3475,55 @@
 .list-back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  font-size: 0.82rem;
-  line-height: 1;
   cursor: pointer;
-  padding: 0.4rem 0;
-  transition: color 0.12s;
+  line-height: 1;
+  transition: all 0.15s ease;
 }
 
 .list-back-btn:hover {
   color: var(--text-main);
+  background: color-mix(in srgb, var(--text-main) 8%, transparent);
+  border-color: color-mix(in srgb, var(--border-color) 80%, transparent);
 }
 
-.list-back-btn--danger {
+.list-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  border: 1px solid transparent;
   color: #ef4444;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1;
+  transition: all 0.15s ease;
 }
 
-.list-back-btn--danger:hover {
+.list-delete-btn:hover {
   color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
-.list-back-btn--confirm {
-  font-weight: 700;
-  text-decoration: underline;
+.list-delete-btn--confirm {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+  padding: 0.35rem 0.65rem;
+}
+
+.list-delete-confirm-text {
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .list-settings-menu-wrapper {
@@ -3801,21 +3824,37 @@
 
 .list-items-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 0.55rem;
 }
 
 .list-item-card {
   position: relative;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg-elevated);
+  min-width: 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  background: transparent;
+  border: none !important;
+}
+
+.list-item-card:active {
+  cursor: grabbing;
 }
 
 .list-item-cover-link {
   position: relative;
   display: block;
   aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.list-item-card:hover .list-item-cover-link {
+  border-color: rgba(255, 255, 255, 0.45) !important;
 }
 
 .list-item-cover {
@@ -3824,6 +3863,9 @@
   object-fit: cover;
   display: block;
   background: var(--bg-elevated);
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
 }
 
 .list-item-cover--fallback {
@@ -3865,6 +3907,52 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.25;
+}
+
+.list-item-rank-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0 0;
+  background: transparent;
+  border: none !important;
+  user-select: none;
+}
+
+.list-item-rank-num {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-dim);
+  letter-spacing: -0.01em;
+}
+
+.list-item-rank-prefix {
+  font-size: 0.72em;
+  opacity: 0.7;
+  margin-right: 1px;
+}
+
+.list-item-rank-val {
+  font-feature-settings: 'tnum';
+}
+
+.list-item-rank-num--top1 {
+  color: #f59e0b;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.list-item-rank-num--top2 {
+  color: #cbd5e1;
+  text-shadow: 0 0 6px rgba(203, 213, 225, 0.3);
+}
+
+.list-item-rank-num--top3 {
+  color: #d97706;
+  text-shadow: 0 0 6px rgba(217, 119, 6, 0.3);
 }
 
 .list-item-remove {
@@ -3920,10 +4008,27 @@
   cursor: grabbing;
 }
 
-.list-item-card.drag-source {
-  opacity: 0.35;
-  border: 1px dashed var(--accent) !important;
-  transition: none;
+.list-item-placeholder {
+  border: 2px dashed var(--accent, #6366f1) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
+  aspect-ratio: 2 / 3 !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+}
+
+.list-item-card.drag-source,
+.list-item-card.is-dragging-card {
+  opacity: 0.65 !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+  cursor: grabbing !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.list-item-card.is-dragging-card .list-item-cover-link {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent) !important;
 }
 
 .list-add-panel {

@@ -942,6 +942,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 49)?;
     }
+    if v < 50 {
+        let _ = conn.execute("ALTER TABLE user_lists ADD COLUMN is_ranked INTEGER NOT NULL DEFAULT 0", []);
+        mark_migration(conn, 50)?;
+    }
 
     Ok(())
 }
@@ -1364,6 +1368,7 @@ CREATE TABLE IF NOT EXISTS user_lists (
     description TEXT NOT NULL DEFAULT '',
     is_fav      INTEGER NOT NULL DEFAULT 0,
     is_private  INTEGER NOT NULL DEFAULT 0,
+    is_ranked   INTEGER NOT NULL DEFAULT 0,
     list_type   TEXT NOT NULL DEFAULT 'media',
     name        TEXT NOT NULL DEFAULT '',
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP,

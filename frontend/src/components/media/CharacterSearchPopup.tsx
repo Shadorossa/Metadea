@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { search, type SearchResult as ApiSearchResult } from '../../lib/search';
 import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { getT } from '../../i18n/client';
@@ -7,9 +8,10 @@ export interface CharacterSearchPopupProps {
   onSelect: (result: ApiSearchResult) => void;
   onClose: () => void;
   excludeIds?: string[];
+  closeOnSelect?: boolean;
 }
 
-export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: CharacterSearchPopupProps) {
+export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [], closeOnSelect = false }: CharacterSearchPopupProps) {
   const t = getT();
   const ce = t.character_editor;
   const [query, setQuery] = useState('');
@@ -23,7 +25,12 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
     r => r.externalId,
   );
 
-  return (
+  const handleSelect = (r: ApiSearchResult) => {
+    if (closeOnSelect) onClose();
+    onSelect(r);
+  };
+
+  const modal = (
     <div className="pr-editor-search-popup" onClick={e => { e.stopPropagation(); onClose(); }}>
       <div className="pr-editor-search-popup-content pr-editor-search-popup-content--wide" onClick={e => e.stopPropagation()}>
         <div className="pr-editor-search-controls">
@@ -48,9 +55,7 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
                 key={r.externalId}
                 type="button"
                 className="pr-editor-search-result-card"
-                onClick={() => {
-                  onSelect(r);
-                }}
+                onClick={() => handleSelect(r)}
               >
                 {r.coverUrl ? (
                   <img src={r.coverUrl} alt="" className="pr-editor-search-result-cover" />
@@ -68,4 +73,6 @@ export function CharacterSearchPopup({ onSelect, onClose, excludeIds = [] }: Cha
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 }

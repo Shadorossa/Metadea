@@ -4351,11 +4351,13 @@
 .pr-editor-search-popup {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2001;
+  z-index: 10000;
 }
 
 .pr-editor-search-popup-content {

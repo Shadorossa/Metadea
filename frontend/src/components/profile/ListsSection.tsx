@@ -11,6 +11,7 @@ import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
+import { IconTrash } from '../local/ui/icons';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
@@ -166,7 +167,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   p: P;
   onBack: () => void;
   onDeleted: () => void;
-  onMetaSaved: (name: string, description: string, isPrivate: boolean, listType?: string) => void;
+  onMetaSaved: (name: string, description: string, isPrivate: boolean, listType?: string, isRanked?: boolean) => void;
   onCountChanged: (delta: number) => void;
   readOnly?: boolean;
   fetchItems?: (listKey: string) => Promise<ListItemFull[]>;
@@ -174,6 +175,14 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   const [listItems, setListItems] = useState<ListItemFull[]>([]);
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [listType, setListType] = useState(list.list_type || 'media');
+  const [isRanked, setIsRanked] = useState<boolean>(() => {
+    if (list.is_ranked !== undefined) return list.is_ranked;
+    try {
+      return localStorage.getItem(`metadea_list_ranked_${list.key}`) === '1';
+    } catch {
+      return false;
+    }
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
@@ -186,7 +195,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   const confirmDeleteTimeoutRef = useRef<number | null>(null);
   useEffect(() => () => { if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current); }, []);
 
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
   const listItemsRef = useRef(listItems);
   listItemsRef.current = listItems;
 
@@ -219,90 +228,176 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   }, [settingsOpen]);
 
   useEffect(() => {
-    const grid = gridRef.current;
-    if (!grid) return;
+    if (!gridEl || readOnly) return;
 
+    let potentialCard: HTMLElement | null = null;
     let draggingCard: HTMLElement | null = null;
-    let cardRects: { el: HTMLElement; id: string; left: number; top: number; right: number; bottom: number }[] = [];
-    let initialX = 0, initialY = 0;
-    let hasMoved = false;
+    let placeholder: HTMLElement | null = null;
+    let grabOffsetX = 0;
+    let grabOffsetY = 0;
+    let downX = 0;
+    let downY = 0;
+    let isDragging = false;
+    let didDrag = false;
 
-    const refreshRectCache = () => {
-      const cards = Array.from(grid.querySelectorAll('.list-item-card')) as HTMLElement[];
-      cardRects = cards.map(el => {
-        const r = el.getBoundingClientRect();
-        return { el, id: el.dataset.id!, left: r.left, top: r.top, right: r.right, bottom: r.bottom };
-      });
+    let allCards: HTMLElement[] = [];
+    let slotBoxes: { cx: number; cy: number }[] = [];
+    let dragIndex = -1;
+    let currentSlot = -1;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('.list-item-remove')) return;
+
+      const card = target.closest('.list-item-card') as HTMLElement | null;
+      if (!card || !gridEl.contains(card)) return;
+
+      potentialCard = card;
+      downX = e.clientX;
+      downY = e.clientY;
+      isDragging = false;
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!draggingCard) return;
-      const dx = e.clientX - initialX;
-      const dy = e.clientY - initialY;
-      if (!hasMoved && Math.hypot(dx, dy) < 4) return;
-      hasMoved = true;
-      draggingCard.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      if (!potentialCard) return;
 
-      const hit = cardRects.find(c => c.el !== draggingCard && e.clientX >= c.left && e.clientX <= c.right && e.clientY >= c.top && e.clientY <= c.bottom);
-      if (hit) {
-        const draggingIdx = cardRects.findIndex(c => c.el === draggingCard);
-        const targetIdx = cardRects.findIndex(c => c.el === hit.el);
-        if (draggingIdx !== -1 && targetIdx !== -1 && draggingIdx !== targetIdx) {
-          if (draggingIdx < targetIdx) grid.insertBefore(draggingCard, hit.el.nextSibling);
-          else grid.insertBefore(draggingCard, hit.el);
-          refreshRectCache();
+      if (!isDragging) {
+        if (Math.hypot(e.clientX - downX, e.clientY - downY) < 5) return;
+        isDragging = true;
+        draggingCard = potentialCard;
+
+        const rect = draggingCard.getBoundingClientRect();
+        grabOffsetX = downX - rect.left;
+        grabOffsetY = downY - rect.top;
+
+        allCards = Array.from(gridEl.querySelectorAll('.list-item-card')) as HTMLElement[];
+        dragIndex = allCards.indexOf(draggingCard);
+        currentSlot = dragIndex;
+
+        slotBoxes = allCards.map(c => {
+          const r = c.getBoundingClientRect();
+          return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+        });
+
+        placeholder = document.createElement('div');
+        placeholder.className = 'list-item-placeholder';
+        placeholder.style.width = `${rect.width}px`;
+        placeholder.style.height = `${rect.height}px`;
+
+        gridEl.insertBefore(placeholder, draggingCard);
+
+        draggingCard.classList.add('is-dragging-card');
+        draggingCard.style.position = 'fixed';
+        draggingCard.style.zIndex = '99999';
+        draggingCard.style.left = `${e.clientX - grabOffsetX}px`;
+        draggingCard.style.top = `${e.clientY - grabOffsetY}px`;
+        draggingCard.style.width = `${rect.width}px`;
+        draggingCard.style.height = `${rect.height}px`;
+        draggingCard.style.pointerEvents = 'none';
+
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'grabbing';
+      }
+
+      if (!draggingCard || !placeholder) return;
+
+      draggingCard.style.left = `${e.clientX - grabOffsetX}px`;
+      draggingCard.style.top = `${e.clientY - grabOffsetY}px`;
+
+      let targetSlot = currentSlot;
+      let minDist = Infinity;
+      for (let i = 0; i < slotBoxes.length; i++) {
+        const dist = Math.hypot(e.clientX - slotBoxes[i].cx, e.clientY - slotBoxes[i].cy);
+        if (dist < minDist) {
+          minDist = dist;
+          targetSlot = i;
+        }
+      }
+
+      if (targetSlot !== currentSlot) {
+        currentSlot = targetSlot;
+        const remaining = allCards.filter(c => c !== draggingCard);
+        if (targetSlot >= remaining.length) {
+          gridEl.appendChild(placeholder);
+        } else {
+          gridEl.insertBefore(placeholder, remaining[targetSlot]);
         }
       }
     };
 
     const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      if (!draggingCard) return;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
 
-      const card = draggingCard;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+
+      if (isDragging && draggingCard && placeholder) {
+        didDrag = true;
+        setTimeout(() => { didDrag = false; }, 150);
+
+        placeholder.remove();
+
+        draggingCard.classList.remove('is-dragging-card');
+        draggingCard.style.position = '';
+        draggingCard.style.zIndex = '';
+        draggingCard.style.left = '';
+        draggingCard.style.top = '';
+        draggingCard.style.width = '';
+        draggingCard.style.height = '';
+        draggingCard.style.pointerEvents = '';
+        draggingCard.style.transform = '';
+
+        if (currentSlot !== -1 && currentSlot !== dragIndex) {
+          const nextItems = [...listItemsRef.current];
+          const [moved] = nextItems.splice(dragIndex, 1);
+          nextItems.splice(currentSlot, 0, moved);
+          const updated = nextItems.map((item, idx) => ({ ...item, position: idx }));
+          setListItems(updated);
+          const newOrder = updated.map(i => i.external_id);
+          reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
+        }
+      }
+
+      potentialCard = null;
       draggingCard = null;
-      card.classList.remove('drag-source');
-      card.style.transform = '';
-
-      if (!hasMoved) return;
-
-      const newOrder = (Array.from(grid.querySelectorAll('.list-item-card')) as HTMLElement[])
-        .map(el => el.dataset.id!)
-        .filter(Boolean);
-
-      const oldMap = new Map(listItemsRef.current.map(i => [i.external_id, i]));
-      const nextItems = newOrder.map((id, idx) => ({ ...oldMap.get(id)!, position: idx })).filter(Boolean);
-      setListItems(nextItems);
-      reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
+      placeholder = null;
+      isDragging = false;
+      allCards = [];
+      slotBoxes = [];
+      dragIndex = -1;
+      currentSlot = -1;
     };
 
-    const onMouseDown = (e: MouseEvent) => {
-      if (readOnly) return;
-      const handle = (e.target as HTMLElement).closest('.list-item-drag-handle');
-      if (!handle) return;
-      const card = handle.closest('.list-item-card') as HTMLElement | null;
-      if (!card) return;
-
+    const onDragStart = (e: DragEvent) => {
       e.preventDefault();
-      draggingCard = card;
-      initialX = e.clientX;
-      initialY = e.clientY;
-      hasMoved = false;
-      card.classList.add('drag-source');
-      refreshRectCache();
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
     };
 
-    grid.addEventListener('mousedown', onMouseDown);
+    const onClickCapture = (e: MouseEvent) => {
+      if (didDrag) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    gridEl.addEventListener('mousedown', onMouseDown);
+    gridEl.addEventListener('dragstart', onDragStart);
+    gridEl.addEventListener('click', onClickCapture, true);
+
     return () => {
-      grid.removeEventListener('mousedown', onMouseDown);
-      grid.removeEventListener('mousemove', onMouseMove);
-      grid.removeEventListener('mouseup', onMouseUp);
+      gridEl.removeEventListener('mousedown', onMouseDown);
+      gridEl.removeEventListener('dragstart', onDragStart);
+      gridEl.removeEventListener('click', onClickCapture, true);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     };
-  }, [list.key, readOnly]);
+  }, [gridEl, list.key, readOnly]);
 
   const handleAddMediaFromSearch = async (result: ApiSearchResult) => {
     if (currentIds.has(result.externalId)) return;
@@ -356,30 +451,40 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
   const handleSetListType = async (newType: string) => {
     if (!canChangeType || newType === listType) return;
     setListType(newType);
-    await updateUserList(list.key, list.name, list.description ?? '', list.is_private, newType).catch(console.error);
-    onMetaSaved(list.name, list.description ?? '', list.is_private, newType);
+    await updateUserList(list.key, list.name, list.description ?? '', list.is_private, newType, isRanked).catch(console.error);
+    onMetaSaved(list.name, list.description ?? '', list.is_private, newType, isRanked);
+  };
+
+  const toggleRanked = async () => {
+    const next = !isRanked;
+    setIsRanked(next);
+    try {
+      localStorage.setItem(`metadea_list_ranked_${list.key}`, next ? '1' : '0');
+    } catch {}
+    await updateUserList(list.key, list.name, list.description ?? '', list.is_private, listType, next).catch(console.error);
+    onMetaSaved(list.name, list.description ?? '', list.is_private, listType, next);
   };
 
   const commitName = async () => {
     setEditingName(false);
     const trimmed = nameDraft.trim();
     if (!trimmed || trimmed === list.name) { setNameDraft(list.name); return; }
-    await updateUserList(list.key, trimmed, list.description ?? '', list.is_private, listType).catch(err => console.error('Failed to save list name:', err));
-    onMetaSaved(trimmed, list.description ?? '', list.is_private, listType);
+    await updateUserList(list.key, trimmed, list.description ?? '', list.is_private, listType, isRanked).catch(err => console.error('Failed to save list name:', err));
+    onMetaSaved(trimmed, list.description ?? '', list.is_private, listType, isRanked);
   };
 
   const commitDesc = async () => {
     setEditingDesc(false);
     const trimmed = descDraft.trim();
     if (trimmed === (list.description ?? '')) return;
-    await updateUserList(list.key, list.name, trimmed, list.is_private, listType).catch(err => console.error('Failed to save list description:', err));
-    onMetaSaved(list.name, trimmed, list.is_private, listType);
+    await updateUserList(list.key, list.name, trimmed, list.is_private, listType, isRanked).catch(err => console.error('Failed to save list description:', err));
+    onMetaSaved(list.name, trimmed, list.is_private, listType, isRanked);
   };
 
   const togglePrivate = async () => {
     const next = !list.is_private;
-    await updateUserList(list.key, list.name, list.description ?? '', next, listType).catch(err => console.error('Failed to save list privacy:', err));
-    onMetaSaved(list.name, list.description ?? '', next, listType);
+    await updateUserList(list.key, list.name, list.description ?? '', next, listType, isRanked).catch(err => console.error('Failed to save list privacy:', err));
+    onMetaSaved(list.name, list.description ?? '', next, listType, isRanked);
   };
 
   const handleDeleteClick = () => {
@@ -462,9 +567,6 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
                         </button>
                       </div>
                     </div>
-                    {!canChangeType && (
-                      <span className="list-settings-hint">{p.lists_type_locked_hint}</span>
-                    )}
                   </div>
 
                   <div className="list-settings-divider" />
@@ -476,6 +578,20 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
                         type="checkbox"
                         checked={list.is_private}
                         onChange={togglePrivate}
+                        className="list-settings-checkbox"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="list-settings-divider" />
+
+                  <div className="list-settings-section">
+                    <label className="list-settings-toggle-row">
+                      <span className="list-settings-item-title">{p.lists_ranking ?? 'Ranking'}</span>
+                      <input
+                        type="checkbox"
+                        checked={isRanked}
+                        onChange={toggleRanked}
                         className="list-settings-checkbox"
                       />
                     </label>
@@ -513,6 +629,7 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
             onSelect={handleAddCharacterFromSearch}
             onClose={() => setShowAddPanel(false)}
             excludeIds={Array.from(currentIds)}
+            closeOnSelect={false}
           />
         ) : (
           <MediaSearchPopup
@@ -526,8 +643,8 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
       <div className="list-detail-content">
         {listItems.length > 0 ? (
-          <div className="list-items-grid" ref={gridRef}>
-            {listItems.map(item => {
+          <div className="list-items-grid" ref={setGridEl}>
+            {listItems.map((item, index) => {
               const title = item.title_main ?? item.external_id;
               const cover = item.cover_url ?? '';
               const isCharItem = item.external_id.startsWith('character:') || isCharacters;
@@ -538,14 +655,22 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
               return (
                 <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
                   {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
-                  <a className="list-item-cover-link" href={url}>
+                  <a className="list-item-cover-link" href={url} draggable={false}>
                     {cover
-                      ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" />
+                      ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
                       : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
                     <div className="list-item-info">
                       <span className="list-item-title">{title}</span>
                     </div>
                   </a>
+                  {isRanked && (
+                    <div className="list-item-rank-bar">
+                      <span className={`list-item-rank-num${index < 3 ? ` list-item-rank-num--top${index + 1}` : ''}`}>
+                        <span className="list-item-rank-prefix">#</span>
+                        <span className="list-item-rank-val">{index + 1}</span>
+                      </span>
+                    </div>
+                  )}
                   {!readOnly && (
                     <button className="list-item-remove" title={p.lists_remove} onClick={() => handleRemove(item.external_id)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -564,13 +689,19 @@ function ListDetail({ list, catalogMap, p, onBack, onDeleted, onMetaSaved, onCou
 
       <div className="list-detail-footer">
         <div className="list-detail-footer-left">
-          <button className="list-back-btn" onClick={onBack}>
+          <button type="button" className="list-back-btn" onClick={onBack} title={p.lists_back} aria-label={p.lists_back}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><polyline points="12 19 5 12 12 5" /></svg>
-            {p.lists_back}
           </button>
           {!readOnly && (
-            <button className={`list-back-btn list-back-btn--danger${confirmDelete ? ' list-back-btn--confirm' : ''}`} onClick={handleDeleteClick}>
-              {confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+            <button
+              type="button"
+              className={`list-delete-btn${confirmDelete ? ' list-delete-btn--confirm' : ''}`}
+              onClick={handleDeleteClick}
+              title={confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+              aria-label={confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+            >
+              <IconTrash size={16} />
+              {confirmDelete && <span className="list-delete-confirm-text">{p.lists_delete_confirm}</span>}
             </button>
           )}
         </div>
@@ -655,7 +786,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
             p={p}
             onBack={() => setActiveListKey(null)}
             onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
-            onMetaSaved={(name, description, isPrivate, listType) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate, ...(listType ? { list_type: listType } : {}) } : l))}
+            onMetaSaved={(name, description, isPrivate, listType, isRankedVal) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate, ...(listType ? { list_type: listType } : {}), ...(isRankedVal !== undefined ? { is_ranked: isRankedVal } : {}) } : l))}
             onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
             readOnly={readOnly}
             fetchItems={overrideFetchItems}
