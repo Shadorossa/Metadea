@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 
-import { CATEGORIES, LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
+import { CATEGORIES, LAUNCHER_ORDER, type CategoryId, type PlatformId } from './utils/constants';
 import { useLocalGames }        from './hooks/useLocalGames';
 import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCoverCacheBatch }   from './hooks/useCoverCacheBatch';
@@ -12,24 +12,21 @@ import { useActivePlatform }    from './hooks/useActivePlatform';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
-import { readLocalUrlState, writeLocalUrlState } from './utils/urlState';
+import { readLocalUrlState } from './utils/urlState';
 import {
   useLocalPanelSelection, resolveCatalogSelection, resolveGameSelection,
   resolvePendingSelection, resolvePendingLaunchGame,
 } from './hooks/useLocalPanelSelection';
 
 import { PlatformSidebar }  from './PlatformSidebar';
-import { FolderRouteControls } from './FolderRouteControls';
-import { GameCard }         from './cards/GameCard';
-import { LocalMediaCard }   from './cards/LocalMediaCard';
 import { GameDetailPanel }  from './details/GameDetailPanel';
 import { LocalMediaDetailPanel } from './details/LocalMediaDetailPanel';
 import { DetailPanelShell } from './details/DetailPanelShell';
 import { MetadataModal, type MetaProgress } from './modals/MetadataModal';
 import { MetaTypeSelector, type MetaType }  from './modals/MetaTypeSelector';
 import { LocalMediaSection } from './LocalMediaSection';
+import { VideojuegosGrid } from './VideojuegosGrid';
 import { useGridFlip } from './hooks/useGridFlip';
-import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 
 export default function LocalLibrary() {
   const t = getT();
@@ -308,6 +305,8 @@ export default function LocalLibrary() {
     if (list.length > 0) acc.set(id, list);
     return acc;
   }, new Map());
+  const pausedGames  = filterGames(statusBuckets.paused);
+  const droppedGames = filterGames(statusBuckets.dropped);
 
   const availablePlatforms = new Set(safeGames.map(g => g.launcher));
 
@@ -494,128 +493,29 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             ) : (
               /* ── Games view (Videojuegos only — LOCAL_MEDIA_TYPE_BY_CATEGORY
                   covers every other category) ──────────────────────────── */
-              <div className="local-content" ref={videojuegosGridRef}>
-                <div className="local-content-header">
-                  <span className="local-content-count">
-                    {gamesState === 'done' ? (games.length !== 1 ? t.local.games_count.replace('{count}', String(games.length)) : t.local.game_count.replace('{count}', String(games.length))) : ''}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <FolderRouteControls rootFolder={routes['videojuegos']} onSetRoute={() => setRoute('videojuegos')} onClearRoute={() => clearRoute('videojuegos')} />
-                    <button type="button" className="local-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'} title={isMounted ? (gamesState === 'loading' ? t.local.scanning : t.local.scan_again) : (gamesState === 'loading' ? 'Escaneando…' : 'Escanear de nuevo')}>
-                      <IconRefresh />
-                    </button>
-                  </div>
-                </div>
-
-                {sectionsReady && currentlyEntries.length > 0 && (
-                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
-                    <h3 className="library-section-title">{t.profile.section_in_progress}</h3>
-                    <div className="local-games-grid">
-                      {currentlyEntries.map((entry, i) => entry.kind === 'game' ? (
-                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setGameSelection} />
-                      ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingSelection(i, entry.launchGame)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {sectionsReady && planningEntries.length > 0 && (
-                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
-                    <h3 className="library-section-title">{t.profile.section_planning}</h3>
-                    <div className="local-games-grid">
-                      {planningEntries.map((entry, i) => entry.kind === 'game' ? (
-                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setGameSelection} />
-                      ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingSelection(i, entry.launchGame)} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {filterGames(statusBuckets.paused).length > 0 && (
-                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
-                    <h3 className="library-section-title">Pausado</h3>
-                    <div className="local-games-grid">
-                      {filterGames(statusBuckets.paused).map((g, i) => (
-                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setGameSelection} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {filterGames(statusBuckets.dropped).length > 0 && (
-                  <div className="library-section" style={{ marginBottom: '1.5rem' }}>
-                    <h3 className="library-section-title">Abandonado</h3>
-                    <div className="local-games-grid">
-                      {filterGames(statusBuckets.dropped).map((g, i) => (
-                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setGameSelection} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {gamesState === 'idle' || gamesState === 'loading' ? (
-                  <div className="local-state-placeholder">
-                    {gamesState === 'loading' && <div className="spinner" />}
-                    <p>{gamesState === 'loading' ? t.local.scanning_installed : ''}</p>
-                  </div>
-                ) : gamesState === 'empty' ? (
-                  <div className="local-state-placeholder">
-                    <IconMonitor />
-                    <p>{t.local.no_games_found}</p>
-                    <span>{t.local.compatible_launchers}</span>
-                    {scanError && (
-                      <span style={{ color: 'var(--color-error, #ff6b6b)', fontSize: '0.75rem', marginTop: '0.5rem', wordBreak: 'break-word', maxWidth: '400px' }}>
-                        Error: {scanError}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      style={{ marginTop: '0.75rem', fontSize: '0.7rem', opacity: 0.5, background: 'transparent', border: '1px solid currentColor', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', color: 'inherit' }}
-                      onClick={runDiagnostics}
-                    >
-                      {t.local.diagnostics}
-                    </button>
-                    {debugInfo && (
-                      <pre style={{ fontSize: '0.65rem', textAlign: 'left', marginTop: '0.5rem', background: 'rgba(0,0,0,0.4)', padding: '0.5rem', borderRadius: '4px', maxWidth: '500px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                        {debugInfo}
-                      </pre>
-                    )}
-                  </div>
-                ) : (
-                  Array.from(groupedGames.entries()).map(([launcher, list], idx) => (
-                    <section
-                      key={launcher}
-                      id={`launcher-${launcher}`}
-                      ref={el => { if (el) sectionRefs.current.set(launcher, el); }}
-                      className="local-launcher-section"
-                    >
-                      <h2 className="local-launcher-title">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                          <span className="local-launcher-icon">
-                            {PLATFORM_LOGO[launcher]
-                              ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
-                              : <IconFolder />}
-                          </span>
-                          {PLATFORM_LABEL[launcher]}
-                          <span className="local-launcher-count">{list.length} juego{list.length !== 1 ? 's' : ''}</span>
-                        </div>
-                        {idx === 0 && (
-                          <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={loadGames} disabled={gamesState === 'loading'}>
-                            <IconRefresh />
-                          </button>
-                        )}
-                      </h2>
-                      <div className="local-games-grid">
-                        {list.map((g, i) => (
-                          <GameCard key={i} game={g} coverCache={coverCache} onClick={setGameSelection} />
-                        ))}
-                      </div>
-                    </section>
-                  ))
-                )}
-              </div>
+              <VideojuegosGrid
+                gridRef={videojuegosGridRef}
+                gamesState={gamesState}
+                gamesCount={games.length}
+                rootFolder={routes['videojuegos']}
+                onSetRoute={() => setRoute('videojuegos')}
+                onClearRoute={() => clearRoute('videojuegos')}
+                onRefreshScan={loadGames}
+                isMounted={isMounted}
+                currentlyEntries={sectionsReady ? currentlyEntries : []}
+                planningEntries={sectionsReady ? planningEntries : []}
+                pausedGames={pausedGames}
+                droppedGames={droppedGames}
+                coverCache={coverCache}
+                coverCacheHits={coverCacheHits}
+                onSelectGame={setGameSelection}
+                onSelectPending={openPendingSelection}
+                scanError={scanError}
+                debugInfo={debugInfo}
+                onRunDiagnostics={runDiagnostics}
+                groupedGames={groupedGames}
+                sectionRefs={sectionRefs}
+              />
             )}
           </div>
 
