@@ -38,13 +38,12 @@ export default function LocalLibrary() {
   // read the URL synchronously here either) and gets corrected from ?type=
   // in the restore-from-URL effect further down, right alongside the
   // selected item it was showing.
-  const [activeCategory, setActiveCategoryRaw] = useState<CategoryId>('videojuegos');
-  // Just a plain rename at this point — useLocalPanelSelection's own render-
-  // phase category-swap logic (below) is what actually keeps the URL in
-  // sync on every tab switch now (?type= AND ?sel=, together, always
-  // matching whatever that category's own remembered selection resolves
-  // to), so this doesn't need to write anything itself.
-  const setActiveCategory = setActiveCategoryRaw;
+  // useLocalPanelSelection's own render-phase category-swap logic (below) is
+  // what actually keeps the URL in sync on every tab switch now (?type= AND
+  // ?sel=, together, always matching whatever that category's own
+  // remembered selection resolves to), so this doesn't need to write
+  // anything else itself.
+  const [activeCategory, setActiveCategory] = useState<CategoryId>('videojuegos');
   // Starts null unconditionally (not a lazy initializer reading the DOM) so
   // the client's very first hydration render matches what the server
   // produced (always null, no document there) — reading document.getElementById
@@ -86,7 +85,7 @@ export default function LocalLibrary() {
   // which would've had the server and client disagree on the very first render.
   useLayoutEffect(() => {
     const { type } = readLocalUrlState();
-    if (type && CATEGORIES.some(c => c.id === type)) setActiveCategoryRaw(type);
+    if (type && CATEGORIES.some(c => c.id === type)) setActiveCategory(type);
   }, []);
 
   // Single source of truth for "what's open" (see useLocalPanelSelection) —
@@ -324,9 +323,6 @@ export default function LocalLibrary() {
   // Resolved fresh every render from `selection` — see useLocalPanelSelection.
   const selectedGame = resolveGameSelection(selection, games);
   const selectedPendingItem = resolvePendingSelection(selection, pendingGameItems);
-  const selectedPendingLaunchGame = resolvePendingLaunchGame(selection, games);
-  const openPendingItem = (item: LocalMediaItem, launchGame?: LocalGame) => openPendingSelection(item, launchGame);
-  const setSelectedGame = (g: LocalGame | null) => setGameSelection(g);
   useGridFlip(videojuegosGridRef, '.local-game-card', !!(selectedGame || selectedPendingItem));
 
   // Resolved against whichever category is ACTUALLY active — unlike
@@ -516,9 +512,9 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     <h3 className="library-section-title">{t.profile.section_in_progress}</h3>
                     <div className="local-games-grid">
                       {currentlyEntries.map((entry, i) => entry.kind === 'game' ? (
-                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
+                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setGameSelection} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingItem(i, entry.launchGame)} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingSelection(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>
@@ -529,9 +525,9 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     <h3 className="library-section-title">{t.profile.section_planning}</h3>
                     <div className="local-games-grid">
                       {planningEntries.map((entry, i) => entry.kind === 'game' ? (
-                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setSelectedGame} />
+                        <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={setGameSelection} />
                       ) : (
-                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingItem(i, entry.launchGame)} />
+                        <LocalMediaCard key={entry.item.externalId} item={entry.item} cachedPath={coverCacheHits[entry.item.externalId]} onClick={i => openPendingSelection(i, entry.launchGame)} />
                       ))}
                     </div>
                   </div>
@@ -542,7 +538,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     <h3 className="library-section-title">Pausado</h3>
                     <div className="local-games-grid">
                       {filterGames(statusBuckets.paused).map((g, i) => (
-                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setGameSelection} />
                       ))}
                     </div>
                   </div>
@@ -553,7 +549,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                     <h3 className="library-section-title">Abandonado</h3>
                     <div className="local-games-grid">
                       {filterGames(statusBuckets.dropped).map((g, i) => (
-                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                        <GameCard key={g.app_id ?? i} game={g} coverCache={coverCache} onClick={setGameSelection} />
                       ))}
                     </div>
                   </div>
@@ -613,7 +609,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                       </h2>
                       <div className="local-games-grid">
                         {list.map((g, i) => (
-                          <GameCard key={i} game={g} coverCache={coverCache} onClick={setSelectedGame} />
+                          <GameCard key={i} game={g} coverCache={coverCache} onClick={setGameSelection} />
                         ))}
                       </div>
                     </section>
