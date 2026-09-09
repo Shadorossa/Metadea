@@ -286,6 +286,30 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     return () => { cancelled = true; };
   }, [bundledRelations, externalId, bundleChildrenLoadedFor]);
 
+  // A character created via "+ Crear personaje" (onOpenCreate below) opens
+  // the real CharacterPrEditorModal directly instead of anything owned by
+  // this component — the only way back into this entry's own cast list is
+  // this event, dispatched by that modal the instant its own local save
+  // succeeds (see its handleSubmit), independent of whether its GitHub
+  // proposal step succeeds/fails/never runs at all. Functional setCharacters
+  // update (not the closure-capturing addCharacter helper below) so this
+  // listener never needs re-registering on every character-list edit.
+  useEffect(() => {
+    function onCharacterSaved(e: Event) {
+      const detail = (e as CustomEvent<{ externalId: string; name: string; imageUrl: string | null }>).detail;
+      if (!detail?.externalId) return;
+      setCharacters(prev => prev.some(c => c.external_id === detail.externalId) ? prev : [...prev, {
+        external_id: detail.externalId,
+        name: detail.name,
+        image_url: detail.imageUrl,
+        relation_type: 'SUPPORTING',
+        character_name: null,
+      }]);
+    }
+    window.addEventListener('metadea:character-saved', onCharacterSaved);
+    return () => window.removeEventListener('metadea:character-saved', onCharacterSaved);
+  }, []);
+
   // ── Character handlers ──────────────────────────────────────────────────────
 
   const removeCharacter = (charExternalId: string) =>

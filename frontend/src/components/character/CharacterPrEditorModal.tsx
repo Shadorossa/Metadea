@@ -502,6 +502,16 @@ export function CharacterPrEditorModal() {
         nativeFields.gender, nativeFields.age, nativeFields.bloodType,
         nativeFields.dobYear, nativeFields.dobMonth, nativeFields.dobDay,
       );
+
+      // Local persistence just succeeded — announce it regardless of
+      // whatever the GitHub proposal step further down does (missing
+      // token, network failure, etc.). PrEditorModal listens for this to
+      // attach a character created from its own "+ Crear personaje" button
+      // straight into the media entry's cast list, without waiting on (or
+      // depending on) a GitHub round trip that may never happen.
+      window.dispatchEvent(new CustomEvent('metadea:character-saved', {
+        detail: { externalId: currentId, name: updatedCharacter.name, imageUrl: updatedCharacter.image_url ?? null },
+      }));
       if (appearancesChanged()) {
         await saveCharacterAppearances(currentId, appearances.map(a => ({
           media_external_id: a.media_external_id,
