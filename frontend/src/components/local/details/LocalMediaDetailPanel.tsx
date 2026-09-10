@@ -153,7 +153,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [item.externalId, item.libraryEntry.type]);
 
-  const isSingleEpisode = item.catalogEntry?.total_count === 1 || isMovieFormat || hasSingleTomoEdition;
+  const isManga = item.libraryEntry.type === 'manga';
+  const mangaTotalVols = isManga ? (item.catalogEntry?.total_count_2 ?? null) : null;
+  const isSingleEpisode = isManga
+    ? (mangaTotalVols != null && mangaTotalVols > 0 ? mangaTotalVols === 1 : item.catalogEntry?.total_count === 1)
+    : (item.catalogEntry?.total_count === 1 || isMovieFormat || hasSingleTomoEdition);
 
   // Same "not released yet" rule LocalMediaSection uses to group things into
   // "Sin estrenar" — null release_year counts as unreleased too, since
@@ -317,46 +321,59 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [subEntries, itemSeason, item.externalId, item.title]);
 
-  // The next episode/chapter to watch/read — one past whatever's saved as
-  // progress, or the first one when the entry is still just "planning".
-  // nextNumber itself stays season-relative (progress/history/marking are
-  // all tracked per this season's own 1..N numbering) — only the file
-  // lookup below gets the absolute-numbering offset added on top.
-  const nextNumber = item.status === 'planning' ? 1 : item.progress + 1;
-  const nextFile = deepFileMatch
-    ? { name: deepFileMatch.absPath.slice(dirname(deepFileMatch.absPath).length + 1), is_dir: false, size: 0 } as LocalFolderEntry
-    : rootFileMatch ?? (subEntries
-    ? findMatchingEpisodeFile(subEntries, nextNumber + seasonOffset, itemSeason)
-      // A single-episode work's lone file often has no episode number
-      // anywhere in its name (a movie filename has nothing to number) — the
-      // numeric match above always misses it, but there's nothing else it
-      // could be. Also tried for any reading-type work (not gated on
-      // isSingleEpisode) when the matched folder holds exactly one media
-      // file regardless of what total_count says it should have — e.g. a
-      // folder matched by name for a comic whose loose-issue PDFs total
-      // 8 (total_count), but actually holds one single-tomo compiled PDF
-      // instead. soleMediaFile only ever returns non-null when there's
-      // exactly one candidate, so this never guesses between several.
-      ?? ((isSingleEpisode || isReadingType(item.libraryEntry.type)) ? soleMediaFile(subEntries) : null)
-    : null);
-  // Filenames like "... S01 E01 - SA - Section-9 ...mkv" carry the actual
-  // episode title right there — show that instead of the raw filename when
-  // it's there, since it's usually far more readable.
-  const nextFileEpisodeTitle = nextFile ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null : null;
-  // media_catalog's total_count is the known episode/chapter count (kept
-  // fresh for RELEASING shows too — see media-status.ts's weekly resync).
-  // Once nextNumber goes past it there simply isn't a "next" one yet/ever —
-  // that's not a missing-file problem, so it shouldn't render like one.
-  const totalCount = item.catalogEntry?.total_count ?? null;
+  const isReading = isReadingType(item.libraryEntry.type);
+  const nextNumber = item.status === 'planning'
+    ? 1
+    : isManga
+    ? Math.floor(item.libraryEntry.progress_2 ?? 0) + 1
+    : item.progress + 1;
+
+  const totalCount = (isManga && mangaTotalVols != null && mangaTotalVols > 0)
+    ? mangaTotalVols
+    : (item.catalogEntry?.total_count ?? null);
   const isCaughtUp = totalCount != null && totalCount > 0 && nextNumber > totalCount;
 
-  // VLC's own last-seen position for this exact episode, if it was ever
-  // paused/closed partway through without finishing it (see playback-
-  // service.ts's saveResumePosition/clearResumePosition) — shown on the
-  // play button itself so re-opening an episode you parked mid-watch says
-  // so instead of just "Reproducir" as if starting from zero. Re-fetched
-  // whenever playback for this item stops (isThisPlaying flipping back to
-  // false), since that's exactly when the saved position last changed.
+  const mediaFiles = useMemo(() => {
+    if (!subEntries) return [];
+    return subEntries.filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name));
+  }, [subEntries]);
+
+  const sortedMediaFiles = useMemo(() => {
+    return [...mediaFiles].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+  }, [mediaFiles]);
+
+  const hasDefinedMangaVols = isManga && mangaTotalVols != null && mangaTotalVols > 0;
+  const mangaTomosMismatch = hasDefinedMangaVols && subEntries !== null && mediaFiles.length !== mangaTotalVols;
+
+  const nextFile = useMemo<LocalFolderEntry | null>(() => {
+    if (mangaTomosMismatch) return null;
+    if (deepFileMatch) {
+      return { name: deepFileMatch.absPath.slice(dirname(deepFileMatch.absPath).length + 1), is_dir: false, size: 0 } as LocalFolderEntry;
+    }
+    if (rootFileMatch) return rootFileMatch;
+    if (!subEntries) return null;
+
+    if (isManga) {
+      const match = findMatchingEpisodeFile(subEntries, nextNumber, null);
+      if (match) return match;
+      if (hasDefinedMangaVols && !mangaTomosMismatch && nextNumber >= 1 && nextNumber <= sortedMediaFiles.length) {
+        return sortedMediaFiles[nextNumber - 1];
+      }
+      return isSingleEpisode ? soleMediaFile(subEntries) : null;
+    }
+
+    return findMatchingEpisodeFile(subEntries, nextNumber + seasonOffset, itemSeason)
+      ?? ((isSingleEpisode || isReading) ? soleMediaFile(subEntries) : null);
+  }, [
+    mangaTomosMismatch, deepFileMatch, rootFileMatch, subEntries, isManga,
+    nextNumber, hasDefinedMangaVols, sortedMediaFiles, isSingleEpisode,
+    seasonOffset, itemSeason, isReading,
+  ]);
+
+  const nextFileEpisodeTitle = nextFile ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null : null;
+
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -366,11 +383,6 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [item.externalId, nextNumber, isThisPlaying]);
 
-  // Reading types (comic/manga/lnovel/book) open the in-app reader instead
-  // of VLC — same idea as resumeSeconds above, just page number instead of
-  // seconds. Re-fetched once the reader closes (readerOpen flipping back to
-  // false), since that's exactly when the saved position last changed.
-  const isReading = isReadingType(item.libraryEntry.type);
   const [readerOpen, setReaderOpen] = useState(false);
   const [readingProgress, setReadingProgress] = useState<{ pageNumber: number; totalPages: number | null } | null>(null);
   useEffect(() => {
@@ -700,7 +712,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   type="button"
                   className="local-game-detail-play"
                   disabled={isUnreleased || !playPath}
-                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo capítulo/número'}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : mangaTomosMismatch ? `Se esperaban exactamente ${mangaTotalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})` : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo volumen'}
                   onClick={() => setReaderOpen(true)}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -785,11 +797,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   subLoading ? (
                     <span className="local-media-match-chip">
                       <div className="spinner spinner--sm" />
-                      Buscando próximo episodio…
+                      {isReading ? 'Buscando próximo volumen…' : 'Buscando próximo episodio…'}
                     </span>
                   ) : isCaughtUp ? (
                     <span className="local-media-match-chip ok">
-                      Al día — no hay episodios/capítulos nuevos ({totalCount} en total)
+                      {isReading
+                        ? `Al día — no hay volúmenes nuevos (${totalCount} en total)`
+                        : `Al día — no hay episodios/capítulos nuevos (${totalCount} en total)`}
                     </span>
                   ) : (
                     <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
@@ -798,12 +812,15 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                           {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
                             {isSingleEpisode
                               ? (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name))
+                              : isReading
+                              ? `Vol. ${nextNumber} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`
                               : `${formatEpisodeLabel(itemSeason, nextNumber)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
                           </strong>
                         </>
                       ) : (
                         isMovieFormat ? 'Película no encontrada'
                           : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado'
+                          : mangaTomosMismatch ? `Se esperaban exactamente ${mangaTotalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
                           : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
                           : `Próximo episodio (${nextNumber}) no encontrado`
                       )}
@@ -966,7 +983,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {readerOpen && playPath && nextFile && (
         <ComicReaderModal
           externalId={item.externalId}
-          title={isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`}
+          title={isSingleEpisode ? item.title : `${item.title} - ${isReading ? `Vol. ${nextNumber}` : formatEpisodeLabel(itemSeason, nextNumber)}`}
           filePath={playPath}
           episodeNumber={nextNumber}
           totalCount={totalCount}
@@ -977,7 +994,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           onStandBy={(spreadIndex, totalSpreads, pageCount) => {
             setReadingSession({
               externalId: item.externalId,
-              title: isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`,
+              title: isSingleEpisode ? item.title : `${item.title} - ${isReading ? `Vol. ${nextNumber}` : formatEpisodeLabel(itemSeason, nextNumber)}`,
               cover: item.cover,
               filePath: playPath,
               episodeNumber: nextNumber,

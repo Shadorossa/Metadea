@@ -48,17 +48,17 @@ export async function markChapterRead(
   const startedAt = libraryEntry.started_at ?? today;
   const finishedAt = finishing ? today : libraryEntry.finished_at;
 
+  const isManga = libraryEntry.type === 'manga';
   const saved = await saveLibraryEntry({
     ...libraryEntry,
-    progress: progressNumber,
+    progress: isManga ? (libraryEntry.progress ?? 0) : progressNumber,
+    progress_2: isManga ? progressNumber : (libraryEntry.progress_2 ?? 0),
     status: nextStatus,
     started_at: startedAt,
     finished_at: finishedAt,
   });
 
   saveEpisodeHistoryEntry(externalId, progressNumber).catch(err => console.error('Failed to save reading history', err));
-  // Now read — nothing left to resume for this one, so opening it again
-  // (a reread) starts from page 1 instead of wherever this pass ended.
   clearReadingProgress(externalId, readingProgressKey).catch(() => {});
   if (finishing) {
     addSequelToPlanning(externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
@@ -66,8 +66,9 @@ export async function markChapterRead(
   if (isAniListType(libraryEntry.type)) {
     syncToAniList({
       externalId, type: libraryEntry.type, status: nextStatus ?? '',
-      rating: libraryEntry.rating ?? 0, progress: progressNumber,
-      progressVolumes: libraryEntry.progress_2 ?? 0,
+      rating: libraryEntry.rating ?? 0,
+      progress: isManga ? (libraryEntry.progress ?? 0) : progressNumber,
+      progressVolumes: isManga ? progressNumber : (libraryEntry.progress_2 ?? 0),
       startedAt: startedAt ?? '', finishedAt: finishedAt ?? '',
       notes: libraryEntry.notes ?? '',
     }).catch(err => console.error('Failed to sync read chapter to AniList:', err));
