@@ -39,12 +39,20 @@ function toEntry(item: TierListItemFull): Entry {
   };
 }
 
-function CoverCard({ entry, faded, small }: { entry: Entry; faded?: boolean; small?: boolean }) {
+function CoverCard({ entry, faded, small, draggable, onDragStart, onDragEnd }: {
+  entry: Entry; faded?: boolean; small?: boolean;
+  draggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
+}) {
   const name = entry.title_main ?? entry.external_id;
   return (
     <div
       className={`tier-card${small ? ' tier-card--sm' : ''}${faded ? ' tier-card--faded' : ''}`}
       title={name}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
     >
       {entry.cover_url
         ? <img src={entry.cover_url} alt={name} draggable={false} />
@@ -66,10 +74,8 @@ export default function TierMaker() {
   const [pickerQuery, setPickerQuery] = useState('');
   const [pickerResults, setPickerResults] = useState<Entry[]>([]);
 
-  // Refs that don't need re-renders
-  const ghostRef   = useRef<HTMLDivElement>(null);
-  const dragSrc    = useRef<{ itemId: string; fromTier: string | 'pool' } | null>(null);
-  const dragOffset = useRef({ x: 0, y: 0 });
+  // Doesn't need re-renders — read by commitDrop on drop.
+  const dragSrc = useRef<{ itemId: string; fromTier: string | 'pool' } | null>(null);
 
   useEffect(() => {
     if (!tierListId) { setLoading(false); return; }
@@ -96,18 +102,6 @@ export default function TierMaker() {
     ];
     setTierListPlacements(next.id, placements).catch(() => {});
   }, []);
-
-  const getDropZone = (x: number, y: number): string | null => {
-    const ghost = ghostRef.current;
-    if (ghost) ghost.style.display = 'none';
-    const el = document.elementFromPoint(x, y) as HTMLElement | null;
-    if (ghost) ghost.style.display = '';
-
-    const tierEl = el?.closest('[data-tier-id]') as HTMLElement | null;
-    if (tierEl?.dataset.tierId) return tierEl.dataset.tierId;
-    if (el?.closest('[data-pool]')) return 'pool';
-    return null;
-  };
 
   const commitDrop = useCallback((toId: string) => {
     const src = dragSrc.current;
@@ -137,59 +131,41 @@ export default function TierMaker() {
     });
   }, [persistPlacements]);
 
-  const startDrag = useCallback((e: React.PointerEvent, entry: Entry, fromTier: string | 'pool') => {
-    // Ignore right-click / multi-touch
-    if (e.button !== undefined && e.button !== 0) return;
-
-    e.stopPropagation();
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  // Native HTML5 drag & drop — the browser/OS renders the drag ghost that
+  // tracks the cursor, entirely outside our own render loop, so it can't
+  // stutter. Unlike the old pointer-based version, there's no ghost element
+  // to position and no document.elementFromPoint() call (itself a
+  // layout-forcing call) on every pointer move — dragover already tells us
+  // exactly which tier/pool container the cursor is over, via ordinary
+  // event handlers on each drop zone.
+  const handleDragStart = (e: React.DragEvent, entry: Entry, fromTier: string | 'pool') => {
     dragSrc.current = { itemId: entry.external_id, fromTier };
-
-    // Position ghost before showing it
-    const ghost = ghostRef.current;
-    if (ghost) {
-      ghost.style.left    = `${rect.left}px`;
-      ghost.style.top     = `${rect.top}px`;
-      ghost.style.width   = `${rect.width}px`;
-      ghost.style.height  = `${rect.height}px`;
-      ghost.style.display = 'block';
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', entry.external_id);
     }
-
-    // Prevent text selection globally while dragging
-    document.body.style.userSelect    = 'none';
-    document.body.style.pointerEvents = 'none';
-    if (ghost) ghost.style.pointerEvents = 'auto';
-
     setDraggingId(entry.external_id);
+  };
 
-    const onMove = (ev: PointerEvent) => {
-      if (ghost) {
-        ghost.style.left = `${ev.clientX - dragOffset.current.x}px`;
-        ghost.style.top  = `${ev.clientY - dragOffset.current.y}px`;
-      }
-      setDropTarget(getDropZone(ev.clientX, ev.clientY));
-    };
+  // Fires whether the drag ended on a valid drop target or not (e.g.
+  // released outside any tier/pool) — always cleans up either way, same as
+  // it did on pointerup before.
+  const handleDragEnd = () => {
+    dragSrc.current = null;
+    setDraggingId(null);
+    setDropTarget(null);
+  };
 
-    const onUp = (ev: PointerEvent) => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault(); // required for this to be a valid drop target
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    if (dropTarget !== targetId) setDropTarget(targetId);
+  };
 
-      document.body.style.userSelect    = '';
-      document.body.style.pointerEvents = '';
-      if (ghost) { ghost.style.display = 'none'; ghost.style.pointerEvents = ''; }
-
-      const toId = getDropZone(ev.clientX, ev.clientY);
-      if (toId) commitDrop(toId);
-
-      dragSrc.current = null;
-      setDraggingId(null);
-      setDropTarget(null);
-    };
-
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  }, [commitDrop]);
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    commitDrop(targetId);
+  };
 
   const onLabelChange = (tierId: string, v: string) =>
     setState(prev => {
@@ -269,8 +245,9 @@ export default function TierMaker() {
             {tiers.map(tier => (
               <div
                 key={tier.id}
-                data-tier-id={tier.id}
                 className={`tier-row${dropTarget === tier.id ? ' tier-row--over' : ''}`}
+                onDragOver={e => handleDragOver(e, tier.id)}
+                onDrop={e => handleDrop(e, tier.id)}
               >
                 <div className="tier-label" style={{ background: tier.color }}>
                   <input className="tier-label-input" value={tier.label} maxLength={4}
@@ -278,12 +255,16 @@ export default function TierMaker() {
                   <input type="color" className="tier-color-input" value={tier.color}
                     onChange={e => onColorChange(tier.id, e.target.value)} />
                 </div>
-                <div className="tier-items" data-tier-id={tier.id}>
+                <div className="tier-items">
                   {tier.items.map(entry => (
-                    <div key={entry.external_id} className="tier-card-wrap"
-                      onPointerDown={e => startDrag(e, entry, tier.id)}>
-                      <CoverCard entry={entry} faded={draggingId === entry.external_id} />
-                    </div>
+                    <CoverCard
+                      key={entry.external_id}
+                      entry={entry}
+                      faded={draggingId === entry.external_id}
+                      draggable
+                      onDragStart={e => handleDragStart(e, entry, tier.id)}
+                      onDragEnd={handleDragEnd}
+                    />
                   ))}
                 </div>
               </div>
@@ -291,31 +272,28 @@ export default function TierMaker() {
           </div>
 
           {/* Pool */}
-          <div data-pool="true"
-            className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}>
+          <div
+            className={`tier-pool${dropTarget === 'pool' ? ' tier-pool--over' : ''}`}
+            onDragOver={e => handleDragOver(e, 'pool')}
+            onDrop={e => handleDrop(e, 'pool')}
+          >
             <p className="tier-pool-label">
               {pool.length === 0 ? t.pool_empty : t.pool_unclassified.replace('{count}', String(pool.length))}
             </p>
-            <div className="tier-pool-grid" data-pool="true">
+            <div className="tier-pool-grid">
               {pool.map(entry => (
-                <div key={entry.external_id} className="tier-card-wrap"
-                  onPointerDown={e => startDrag(e, entry, 'pool')}>
-                  <CoverCard entry={entry} faded={draggingId === entry.external_id} />
-                </div>
+                <CoverCard
+                  key={entry.external_id}
+                  entry={entry}
+                  faded={draggingId === entry.external_id}
+                  draggable
+                  onDragStart={e => handleDragStart(e, entry, 'pool')}
+                  onDragEnd={handleDragEnd}
+                />
               ))}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Ghost card — positioned via direct DOM in pointermove, no React re-renders */}
-      <div ref={ghostRef} className="tier-ghost" style={{ display: 'none' }}>
-        {draggingId && (() => {
-          const entry =
-            pool.find(e => e.external_id === draggingId) ??
-            tiers.flatMap(t => t.items).find(e => e.external_id === draggingId);
-          return entry ? <CoverCard entry={entry} faded={false} /> : null;
-        })()}
       </div>
 
       {showPicker && (

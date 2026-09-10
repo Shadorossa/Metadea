@@ -493,24 +493,6 @@
   justify-items: center;
 }
 
-/* ── Ghost (floating card while dragging) ────────────────────────────────── */
-
-.tier-ghost {
-  position: fixed;
-  z-index: 9999;
-  opacity: 0.92;
-  transform: scale(1.06) rotate(2deg);
-  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.55));
-  cursor: grabbing;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.tier-card-wrap {
-  cursor: grab;
-  display: contents;
-}
-
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 
 .tier-loading {
