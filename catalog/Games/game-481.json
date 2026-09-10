@@ -19,12 +19,12 @@
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coavaf.jpg"
     },
     {
-      "media_external_id": "game:481",
       "related_media_external_id": "game:22066",
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Silent Hill 2: Restless Dreams",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3weh.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3weh.jpg",
+      "media_external_id": "game:481"
     },
     {
       "media_external_id": "game:481",
@@ -40,11 +40,19 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Silent Hill 3",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3kol.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3kol.jpg"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "external_id": "character:cs:964912",
+      "name": "James Sunderland",
+      "image_url": "https://static.wikia.nocookie.net/silent/images/6/62/James_Sunderland.webp/revision/latest?cb=20231001005315",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Silent Hill"
+  "saga_name": "Silent Hill",
+  "story_arcs": []
 }
