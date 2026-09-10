@@ -568,10 +568,11 @@
   text-decoration-color: var(--accent);
 }
 
-.media-stat-item--has-carousel {
+.media-stat-item:has(.media-stat-main-row),
+#char-stats-list .media-stat-item {
   display: flex;
   flex-direction: column;
-  padding: 0.55rem 0 0.35rem;
+  padding: 0.45rem 0 0.15rem;
   border-bottom: none !important;
 }
 
@@ -579,6 +580,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 28px;
   gap: 0.75rem;
   width: 100%;
 }
@@ -681,7 +683,8 @@
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  margin-top: 0.35rem;
+  height: 14px;
+  margin-top: 0.25rem;
 }
 
 .media-stat-divider-line {

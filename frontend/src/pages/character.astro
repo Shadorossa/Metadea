@@ -558,31 +558,36 @@ const translations = useTranslations(lang);
 
       function renderStatItemHtml(displayLabel: string, items: string[]): string {
         if (items.length === 0) return '';
-        if (items.length === 1) {
-          return `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${formatStatValueContent(items[0])}</div></div>`;
+        const isCarousel = items.length > 1;
+
+        let valueContent = '';
+        if (!isCarousel) {
+          valueContent = formatStatValueContent(items[0]);
+        } else {
+          const itemsHtml = items.map((val, idx) => {
+            const plainText = val.replace(/<[^>]+>/g, '').trim();
+            const isFirst = idx === 0;
+            return `<div class="media-stat-carousel-item ${isFirst ? 'active' : ''}" style="${isFirst ? '' : 'display: none;'}" title="${escapeHtml(plainText)}">${formatStatValueContent(val)}</div>`;
+          }).join('');
+
+          valueContent = `
+            <div class="media-stat-carousel">
+              <button type="button" class="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior">‹</button>
+              <div class="media-stat-carousel-items">${itemsHtml}</div>
+              <button type="button" class="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente">›</button>
+            </div>
+          `.trim();
         }
 
-        const itemsHtml = items.map((val, idx) => {
-          const plainText = val.replace(/<[^>]+>/g, '').trim();
-          const isFirst = idx === 0;
-          return `<div class="media-stat-carousel-item ${isFirst ? 'active' : ''}" style="${isFirst ? '' : 'display: none;'}" title="${escapeHtml(plainText)}">${formatStatValueContent(val)}</div>`;
-        }).join('');
-
         return `
-          <div class="media-stat-item media-stat-item--has-carousel">
+          <div class="media-stat-item">
             <div class="media-stat-main-row">
               <span class="media-stat-label">${escapeHtml(displayLabel)}</span>
-              <div class="media-stat-value">
-                <div class="media-stat-carousel">
-                  <button type="button" class="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior">‹</button>
-                  <div class="media-stat-carousel-items">${itemsHtml}</div>
-                  <button type="button" class="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente">›</button>
-                </div>
-              </div>
+              <div class="media-stat-value">${valueContent}</div>
             </div>
             <div class="media-stat-divider-row">
               <div class="media-stat-divider-line"></div>
-              <span class="media-stat-carousel-count">(1/${items.length})</span>
+              ${isCarousel ? `<span class="media-stat-carousel-count">(1/${items.length})</span>` : ''}
             </div>
           </div>
         `.trim();
