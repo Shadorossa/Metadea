@@ -56,6 +56,20 @@ function buildSpreads(pageCount: number): number[][] {
   return spreads;
 }
 
+// Preload window shared by the PDF pre-render and image preload effects
+// below — the current spread plus the next three and the previous one.
+// Only what each effect actually does with these pages differs (queue a
+// PDF render vs. decode an <img>), not which pages to target.
+function getPreloadTargetSpreads(spreads: number[][], spreadIndex: number): number[][] {
+  return [
+    spreads[spreadIndex],
+    spreads[spreadIndex + 1],
+    spreads[spreadIndex + 2],
+    spreads[spreadIndex + 3],
+    spreads[spreadIndex - 1],
+  ].filter((spread): spread is number[] => !!spread);
+}
+
 async function renderPdfPage(pdfDoc: any, pageNumber: number): Promise<PdfRenderItem> {
   const page = await pdfDoc.getPage(pageNumber);
   const viewport = page.getViewport({ scale: 2.0 });
@@ -365,16 +379,9 @@ export function ReaderModal({
   // Pre-calculate adjacent PDF pages in advance to eliminate page-turn latency
   useEffect(() => {
     if (!pdfDoc || loadState !== 'ready') return;
-    const targetSpreads = [
-      spreads[spreadIndex],
-      spreads[spreadIndex + 1],
-      spreads[spreadIndex + 2],
-      spreads[spreadIndex + 3],
-      spreads[spreadIndex - 1],
-    ];
+    const targetSpreads = getPreloadTargetSpreads(spreads, spreadIndex);
 
     for (const spread of targetSpreads) {
-      if (!spread) continue;
       for (const pIdx of spread) {
         const pageNum = pIdx + 1;
         if (pageNum >= 1 && pageNum <= pdfDoc.numPages) {
@@ -400,15 +407,8 @@ export function ReaderModal({
   const preloadedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (loadState !== 'ready' || isPdf) return;
-    const targetSpreads = [
-      spreads[spreadIndex],
-      spreads[spreadIndex + 1],
-      spreads[spreadIndex + 2],
-      spreads[spreadIndex + 3],
-      spreads[spreadIndex - 1],
-    ];
+    const targetSpreads = getPreloadTargetSpreads(spreads, spreadIndex);
     for (const spread of targetSpreads) {
-      if (!spread) continue;
       for (const pageIdx of spread) {
         const url = wrapAssetUrl(pages[pageIdx]);
         if (preloadedRef.current.has(url)) continue;

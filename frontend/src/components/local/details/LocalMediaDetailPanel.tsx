@@ -661,6 +661,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     handlePlay();
   };
 
+  // Shared by both the ReaderModal prop and the stand-by session it can
+  // hand off to (onStandBy below) — computed once instead of twice.
+  const readerTitle = isSingleEpisode
+    ? item.title
+    : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`;
+
   return (
     <>
       <div className="local-game-detail-header">
@@ -990,7 +996,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {readerOpen && playPath && nextFile && (
         <ReaderModal
           externalId={item.externalId}
-          title={isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`}
+          title={readerTitle}
           filePath={playPath}
           episodeNumber={nextNumber}
           totalCount={totalCount}
@@ -1001,7 +1007,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           onStandBy={(spreadIndex, totalSpreads, pageCount) => {
             setReadingSession({
               externalId: item.externalId,
-              title: isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`,
+              title: readerTitle,
               cover: item.cover,
               filePath: playPath,
               episodeNumber: nextNumber,
