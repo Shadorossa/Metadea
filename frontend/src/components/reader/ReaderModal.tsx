@@ -15,14 +15,14 @@ import {
   resetDiscordPresence,
   type LibraryEntry,
 } from '../../lib/tauri';
-import { markChapterRead } from '../../lib/local/reading-service';
+import { markChapterRead } from '../../lib/reader/reading-service';
 
 if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
 import { toSmallCover } from '../../lib/shared/small-cover';
-import { IconX } from './ui/icons';
+import { IconX } from '../local/ui/icons';
 
 interface Props {
   externalId:    string;

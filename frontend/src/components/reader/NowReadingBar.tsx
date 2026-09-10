@@ -3,13 +3,13 @@
 // it survives page transitions. Resume re-opens ReaderModal at the saved page.
 // resumeOpen is managed in the reading-session singleton (not local useState)
 // so clicks reliably update state even inside transition:persist islands.
-import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSession, openResumeModal, closeResumeModal } from '../../lib/local/reading-session';
+import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSession, openResumeModal, closeResumeModal } from '../../lib/reader/reading-session';
 import { usePlaybackState } from '../../lib/local/playback-service';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
-import { NowMediaBar } from './NowMediaBar';
+import { NowMediaBar } from '../shared/NowMediaBar';
 import { ReaderModal } from './ReaderModal';
-import { IconX } from './ui/icons';
+import { IconX } from '../local/ui/icons';
 
 export function NowReadingBar() {
   const session = useReadingSession();

@@ -6,8 +6,8 @@ import {
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
   getResumePosition, getReadingProgress,
 } from '../../../lib/tauri';
-import { ReaderModal } from '../ReaderModal';
-import { setReadingSession } from '../../../lib/local/reading-session';
+import { ReaderModal } from '../../reader/ReaderModal';
+import { setReadingSession } from '../../../lib/reader/reading-session';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {

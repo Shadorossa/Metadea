@@ -1,7 +1,7 @@
 import { invoke } from '../tauri';
 import { ICON_GITHUB } from '../shared/icon-strings';
-import { setAuthButtonBusy } from '../shared/auth-button';
-import { showAuthConnected, showAuthDisconnected } from '../shared/auth-status';
+import { setAuthButtonBusy } from './auth-button';
+import { showAuthConnected, showAuthDisconnected } from './auth-status';
 import { showModal, hideModal } from '../shared/modal-utils';
 import { byId } from '../shared/dom';
 import { getT } from '../../i18n/client';

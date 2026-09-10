@@ -8,7 +8,7 @@ import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { isReadingType } from '../../lib/constants/media';
 import { formatPlaybackTime } from './utils/formatters';
-import { NowMediaBar } from './NowMediaBar';
+import { NowMediaBar } from '../shared/NowMediaBar';
 import { IconX } from './ui/icons';
 
 export function NowPlayingBar() {

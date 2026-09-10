@@ -1,7 +1,7 @@
 import { getAniListToken } from '../tauri';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
-import { sessionCacheGet, sessionCacheSet } from '../cache/session-ttl-cache';
+import { sessionCacheGet, sessionCacheSet } from '../shared/session-ttl-cache';
 
 // AniList's own site uses this exact query shape ("who I follow has scored
 // this") — Page.mediaList's isFollowing filter resolves relative to the
