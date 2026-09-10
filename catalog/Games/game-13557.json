@@ -25,8 +25,53 @@
       "type_label": "Sequel",
       "title": "The Legend of Heroes: Trails of Cold Steel II",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co44mb.jpg"
+    },
+    {
+      "related_media_external_id": "game:75973",
+      "relation_type": "REMASTER",
+      "type_label": "Remaster",
+      "title": "The Legend of Heroes: Trails of Cold Steel I - Kai",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2onb.jpg",
+      "media_external_id": "game:13557"
     }
   ],
-  "characters": [],
-  "media_authors": []
+  "characters": [
+    {
+      "external_id": "character:a:127452",
+      "name": "Rean Schwarzer",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_127452.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:191328",
+      "name": "Crow Armbrust",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b191328-wXMXKSjrA2gu.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:134606",
+      "name": "Fie Claussell",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b134606-KKz07GtT1aPv.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:298406",
+      "name": "Claire Rieveldt",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b298406-2WEnkeMLewkx.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:199309",
+      "name": "Giliath Osborne",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_a_199309.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [],
+  "story_arcs": []
 }
