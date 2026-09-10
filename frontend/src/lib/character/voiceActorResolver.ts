@@ -21,15 +21,15 @@ export async function correlateVoiceActor(
   }
 
   const matchBase = clean.match(/^([^(]+)(?:\s*\(([^)]+)\))?$/);
-  const baseName = (matchBase ? matchBase[1] : clean).trim();
+  const baseName = (matchBase ? matchBase[1] : clean).replace(/\s*\([^)]*\)/g, '').trim();
+  const parenthetical = matchBase ? matchBase[2]?.trim() : (clean.match(/\(([^)]+)\)/)?.[1]?.trim());
 
-  // 1. Base de datos local
   try {
     const dbMatch = await findActorByExactName(baseName);
     if (dbMatch) {
       return {
         externalId: dbMatch.external_id,
-        name: dbMatch.name,
+        name: parenthetical ? `${dbMatch.name} (${parenthetical})` : dbMatch.name,
         native: dbMatch.name_native || undefined,
         language,
         image: dbMatch.image_url || undefined,
@@ -40,13 +40,12 @@ export async function correlateVoiceActor(
     console.warn('[VoiceActorResolver] Local DB check error:', err);
   }
 
-  // 2. Coincidencia exacta en AniList
   try {
     const anilistMatch = await findAniListStaffExactMatch(baseName, signal);
     if (anilistMatch) {
       return {
         externalId: `person:a${anilistMatch.id}`,
-        name: anilistMatch.name,
+        name: parenthetical ? `${anilistMatch.name} (${parenthetical})` : anilistMatch.name,
         native: anilistMatch.nameNative || undefined,
         language,
         image: anilistMatch.image || undefined,

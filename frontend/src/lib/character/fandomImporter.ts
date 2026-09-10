@@ -131,13 +131,25 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     lowerHeader === 'physical information' ||
     lowerHeader === 'physical info' ||
     lowerHeader === 'información física' ||
+    lowerHeader === 'physical description' ||
+    lowerHeader === 'descripción física' ||
+    lowerHeader === 'career and family information' ||
+    lowerHeader === 'career & family information' ||
+    lowerHeader === 'career information' ||
+    lowerHeader === 'family information' ||
+    lowerHeader === 'behind the scenes' ||
+    lowerHeader === 'detrás de las cámaras' ||
     lowerHeader === 'general information' ||
     lowerHeader === 'general info' ||
     lowerHeader === 'información general' ||
     lowerHeader === 'appearance' ||
     lowerHeader === 'apariencia' ||
     lowerHeader === 'portrayal' ||
-    lowerHeader === 'voice actors'
+    lowerHeader === 'voice actors' ||
+    lowerHeader === 'actores de voz' ||
+    lowerHeader === 'production information' ||
+    lowerHeader === 'overview' ||
+    lowerHeader === 'profile'
   ) {
     return cleanLabel;
   }
@@ -313,7 +325,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
   // Extraer biografía limpia
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;
   contentRoot.querySelectorAll(
-    '.portable-infobox, table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery'
+    '.portable-infobox, table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery, figcaption, .thumbcaption, .thumb, figure, aside, .page-header, .page-footer'
   ).forEach(n => n.remove());
 
   const bioParagraphs: string[] = [];

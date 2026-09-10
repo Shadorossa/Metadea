@@ -209,7 +209,21 @@ export function FandomImportModal({ isOpen, onClose, onApply }: FandomImportModa
                             {va.name.charAt(0)}
                           </span>
                         )}
-                        <span style={{ fontWeight: 600 }}>{va.name}</span>
+                        {(() => {
+                          const m = va.name.match(/^([^(]+)(?:\s*(\([^)]+\)))?$/);
+                          const base = m ? m[1].trim() : va.name;
+                          const paren = m && m[2] ? m[2].trim() : '';
+                          return (
+                            <>
+                              <span style={{ fontWeight: 600 }}>{base}</span>
+                              {paren && (
+                                <small style={{ opacity: 0.75, fontSize: '0.75em', fontWeight: 'normal', marginLeft: '0.2rem' }}>
+                                  {paren}
+                                </small>
+                              )}
+                            </>
+                          );
+                        })()}
                         {va.native && <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>({va.native})</span>}
                         <span style={{ fontSize: '0.62rem', padding: '0.05rem 0.25rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '2px' }}>
                           {va.language}

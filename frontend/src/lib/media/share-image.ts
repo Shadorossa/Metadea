@@ -212,22 +212,33 @@ function drawAvatarFallback(ctx: CanvasRenderingContext2D, letter: string, cx: n
   ctx.restore();
 }
 
-// Metadea's own mark for the watermark row — a square outline (sharp
-// corners, not rounded) with a bold serif "M" centered inside, drawn
-// straight on the canvas instead of loaded from a raster asset so it's
-// always crisp at this resolution and follows the active theme's accent
-// color automatically.
 function drawMLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
   ctx.save();
   ctx.strokeStyle = color;
-  const lineWidth = Math.max(2, size * 0.08);
-  ctx.lineWidth = lineWidth;
-  ctx.strokeRect(x + lineWidth / 2, y + lineWidth / 2, size - lineWidth, size - lineWidth);
+  const lineWidth = Math.max(1.5, size * 0.045);
+  ctx.lineJoin = 'miter';
+  ctx.miterLimit = 10;
+
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const r = (size - lineWidth) / 2;
+
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const px = cx + r * Math.cos(angle);
+    const py = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.stroke();
+
   ctx.fillStyle = color;
-  ctx.font = `700 ${Math.round(size * 0.56)}px Georgia, serif`;
+  ctx.font = `700 ${Math.round(size * 0.5)}px Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('M', x + size / 2, y + size / 2 + size * 0.04);
+  ctx.fillText('M', cx, cy);
   ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }

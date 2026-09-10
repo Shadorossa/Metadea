@@ -25,93 +25,86 @@ const translations = useTranslations(lang);
     <!-- Contenido del Personaje -->
     <div id="character-content" style="display: none;" data-char-key="">
 
-      <!-- Grid principal (hero + contenido + datos) -->
+      <!-- Grid principal: contenido principal a la izquierda y datos a la derecha -->
       <div class="character-grid">
-      <!-- Hero principal -->
-      <div class="character-hero-body">
-        <div class="character-hero-left-col">
-          <div class="character-action-row" id="char-action-row">
-            <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title={translations.character.action_favorite}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              <span>{translations.character.action_favorite}</span>
-            </button>
-            <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title={translations.character.action_like} disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
-              </svg>
-              <span>{translations.character.action_like}</span>
-            </button>
-            <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title={translations.character.action_interested} disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-              <span>{translations.character.action_interested}</span>
-            </button>
-            <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title={translations.character.action_dislike} disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
-              </svg>
-              <span>{translations.character.action_dislike}</span>
-            </button>
+        <div class="character-main-content">
+          <!-- Hero principal -->
+          <div class="character-hero-left-col">
+            <div class="character-action-row" id="char-action-row">
+              <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title={translations.character.action_favorite}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span>{translations.character.action_favorite}</span>
+              </button>
+              <button class="char-action-btn" id="char-like-btn" data-action="like" data-reaction="like" title={translations.character.action_like} disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>
+                </svg>
+                <span>{translations.character.action_like}</span>
+              </button>
+              <button class="char-action-btn" id="char-interested-btn" data-action="interested" data-reaction="interested" title={translations.character.action_interested} disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>{translations.character.action_interested}</span>
+              </button>
+              <button class="char-action-btn" id="char-dislike-btn" data-action="dislike" data-reaction="dislike" title={translations.character.action_dislike} disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
+                </svg>
+                <span>{translations.character.action_dislike}</span>
+              </button>
+            </div>
+            <div class="character-avatar-frame">
+              <div class="character-avatar-wrap" id="char-avatar-container"></div>
+              <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="character-avatar-frame">
-            <div class="character-avatar-wrap" id="char-avatar-container"></div>
-            <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
+
+          <div class="character-hero-right-col">
+            <div class="character-name-row">
+              <h1 class="media-title-main" id="char-name-full"></h1>
+            </div>
+            <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
+            
+            <div class="character-alt-names-wrap" id="char-alt-names-wrap" style="display: none;">
+              <div class="character-alt-names" id="char-alt-names"></div>
+            </div>
+          </div>
+
+          <!-- Columna 1: Biografía (debajo de la imagen) -->
+          <div class="media-col-synopsis" id="char-bio-section" style="display: none;">
+            <div class="media-section-header-row">
+              <p class="section-label">{translations.character.biography}</p>
+              <div class="media-section-header-line"></div>
+            </div>
+            <div class="media-description-text" id="char-description"></div>
+          </div>
+
+          <!-- Columna 2: Apariciones en Obras (debajo del nombre) -->
+          <div class="media-col-related" id="char-appearances-section" style="display: none;">
+            <div class="media-section-header-row">
+              <p class="section-label">{translations.character.appearances}</p>
+              <div class="media-section-header-line"></div>
+            </div>
+            <div class="media-relations-grid" id="char-appearances-grid"></div>
+
+            <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+              <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">{translations.character.pagination_prev}</button>
+              <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{translations.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
+              <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">{translations.character.pagination_next}</button>
+            </div>
           </div>
         </div>
 
-        <div class="character-hero-right-col">
-          <div class="character-name-row">
-            <h1 class="media-title-main" id="char-name-full"></h1>
-          </div>
-          <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
-          
-          <div class="character-alt-names-wrap" id="char-alt-names-wrap" style="display: none;">
-            <div class="character-alt-names" id="char-alt-names"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Body: Biografía, Apariciones en Obras -->
-      <div class="media-body" style="padding-top: 2rem;">
-        <!-- Columna 1: Biografía -->
-        <div class="media-col-synopsis" id="char-bio-section" style="display: none;">
-          <div class="media-section-header-row">
-            <p class="section-label">{translations.character.biography}</p>
-            <div class="media-section-header-line"></div>
-          </div>
-          <div class="media-description-text" id="char-description"></div>
-        </div>
-
-        <!-- Columna 2: Apariciones en Obras -->
-        <div class="media-col-related" id="char-appearances-section" style="display: none;">
-          <div class="media-section-header-row">
-            <p class="section-label">{translations.character.appearances}</p>
-            <div class="media-section-header-line"></div>
-          </div>
-          <div class="media-relations-grid" id="char-appearances-grid"></div>
-
-          <!-- Paginación -->
-          <div id="appearances-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-            <button class="btn btn--sm btn--secondary" id="btn-prev-appearances" style="min-width: 100px;">{translations.character.pagination_prev}</button>
-            <span id="txt-appearances-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{translations.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
-            <button class="btn btn--sm btn--secondary" id="btn-next-appearances" style="min-width: 100px;">{translations.character.pagination_next}</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Columna 3: Datos — abarca desde la fila del hero hasta la del
-           cuerpo (grid-row: 1 / 3 en character.css), mismo ancho/columna
-           que antes tenía a la derecha de Apariciones. Editar vive en su
-           propia cabecera, a la derecha, centrado con la línea de "Datos". -->
-      <div class="media-col-stats character-hero-stats" id="char-stats-card" style="display: none;">
+        <!-- Columna lateral: Datos -->
+        <div class="media-col-stats character-hero-stats" id="char-stats-card" style="display: none;">
         <button type="button" class="btn btn--sm btn--secondary char-edit-btn-header" id="char-edit-btn-header" title={translations.character.edit_tooltip} aria-label={translations.character.edit_button}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
         </button>
@@ -571,7 +564,7 @@ const translations = useTranslations(lang);
         const day = character.dateOfBirth.day ?? '?';
         const month = character.dateOfBirth.month ?? '?';
         const year = character.dateOfBirth.year ? `/${character.dateOfBirth.year}` : '';
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_birthday)}</span><span class="media-stat-value">${day}/${month}${year}</span></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_birthday)}</span><div class="media-stat-value">${day}/${month}${year}</div></div>`;
         addedLabels.add('birthday');
         addedLabels.add('cumpleaños');
       }
@@ -615,27 +608,40 @@ const translations = useTranslations(lang);
         ) continue;
 
         let displayLabel = stat.cleanLabel;
-        if (lowerLabel === 'height') displayLabel = 'Estatura';
-        else if (lowerLabel === 'weight') displayLabel = 'Peso';
-        else if (lowerLabel === 'hair color') displayLabel = 'Pelo';
-        else if (lowerLabel === 'eye color') displayLabel = 'Ojos';
-        else if (lowerLabel === 'affiliations' || lowerLabel === 'affiliation') displayLabel = 'Afiliación';
-        else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
-        else if (lowerLabel === 'gender') displayLabel = 'Género';
-        else if (lowerLabel === 'age') displayLabel = 'Edad';
-        else if (lowerLabel === 'status') displayLabel = 'Estado';
-        else if (lowerLabel === 'nationality') displayLabel = 'Nacionalidad';
+        if (lowerLabel === 'height' || lowerLabel === 'estatura' || lowerLabel === 'altura') displayLabel = 'Estatura';
+        else if (lowerLabel === 'weight' || lowerLabel === 'peso') displayLabel = 'Peso';
+        else if (lowerLabel === 'hair color' || lowerLabel === 'hair' || lowerLabel === 'color de pelo' || lowerLabel === 'pelo' || lowerLabel === 'cabello') displayLabel = 'Pelo';
+        else if (lowerLabel === 'eye color' || lowerLabel === 'eyes' || lowerLabel === 'eye colour' || lowerLabel === 'color de ojos' || lowerLabel === 'ojos') displayLabel = 'Ojos';
+        else if (lowerLabel === 'affiliations' || lowerLabel === 'affiliation' || lowerLabel.startsWith('affiliation') || lowerLabel.startsWith('afiliaci')) displayLabel = 'Afiliación';
+        else if (lowerLabel === 'bounty' || lowerLabel === 'recompensa') displayLabel = 'Bounty';
+        else if (lowerLabel === 'gender' || lowerLabel === 'sex' || lowerLabel === 'género' || lowerLabel === 'sexo') displayLabel = 'Género';
+        else if (lowerLabel === 'age' || lowerLabel === 'edad') displayLabel = 'Edad';
+        else if (lowerLabel === 'status' || lowerLabel === 'estado') displayLabel = 'Estado';
+        else if (lowerLabel === 'nationality' || lowerLabel === 'nacionalidad') displayLabel = 'Nacionalidad';
+        else if (lowerLabel === 'ethnicity' || lowerLabel === 'etnia') displayLabel = 'Etnia';
+        else if (lowerLabel === 'born' || lowerLabel === 'birth date' || lowerLabel === 'date of birth' || lowerLabel === 'nacimiento' || lowerLabel === 'fecha de nacimiento') displayLabel = 'Nacimiento';
+        else if (lowerLabel === 'died' || lowerLabel === 'death date' || lowerLabel === 'date of death' || lowerLabel === 'fallecimiento' || lowerLabel === 'muerte') displayLabel = 'Fallecimiento';
+        else if (lowerLabel === 'occupation' || lowerLabel === 'occupations' || lowerLabel === 'ocupación' || lowerLabel === 'profesión') displayLabel = 'Ocupación';
+        else if (lowerLabel === 'notable family' || lowerLabel === 'family' || lowerLabel === 'familia') displayLabel = 'Familia';
+        else if (lowerLabel === 'blood type' || lowerLabel === 'bloodtype' || lowerLabel === 'grupo sanguíneo') displayLabel = 'Grupo sanguíneo';
+        else if (lowerLabel === 'birthday' || lowerLabel === 'cumpleaños') displayLabel = 'Cumpleaños';
+        else if (lowerLabel === 'created by' || lowerLabel === 'creador' || lowerLabel === 'creado por') displayLabel = 'Creador';
+        else if (lowerLabel === 'designed by' || lowerLabel === 'diseño' || lowerLabel === 'diseñado por') displayLabel = 'Diseño';
+        else if (lowerLabel === 'main appearance(s)' || lowerLabel === 'appearances' || lowerLabel === 'apariciones') displayLabel = 'Apariciones';
 
         const sectionHeader = sectionTracker.next(stat.section);
         if (sectionHeader) {
           statsHtml += `<div class="media-stat-section-header">${escapeHtml(sectionHeader)}</div>`;
         }
 
-        const plainTextLength = stat.value.replace(/<[^>]+>/g, '').length;
-        const isLongValue = plainTextLength > 50;
+        const lines = stat.value
+          .replace(/<\/?(?:ul|ol)[^>]*>/gi, '')
+          .replace(/<\/?li[^>]*>/gi, '\n')
+          .split(/<br\s*\/?>|\n/i)
+          .map(v => v.trim())
+          .filter(Boolean);
 
-        const lines = stat.value.split(/<br\s*\/?>|\n/i).map(v => v.trim()).filter(Boolean);
-        const values = isLongValue ? [stat.value] : lines.flatMap(line => {
+        const values = lines.flatMap(line => {
           let clean = line;
           if (!clean.includes('<small>') && !clean.includes('<sup>')) {
             clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
@@ -644,8 +650,7 @@ const translations = useTranslations(lang);
         });
         const valueHtml = values.map(v => `<div>${sanitizeStatValue(v)}</div>`).join('');
 
-        const itemClass = isLongValue ? 'media-stat-item media-stat-item--stacked' : 'media-stat-item';
-        statsHtml += `<div class="${itemClass}"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
         addedLabels.add(lowerRaw);
       }
@@ -657,10 +662,15 @@ const translations = useTranslations(lang);
         statsList.style.display = 'none';
       }
 
-      // Render seiyūs por pestañas de idiomas (abajo del último apartado de datos)
       const seiyuSection = document.getElementById('char-seiyu-section');
       const seiyuTabsEl = document.getElementById('char-seiyu-lang-tabs');
       const seiyuListEl = document.getElementById('char-seiyu-list');
+
+      function formatVoiceActorName(rawName: string): string {
+        const match = rawName.match(/^([^(]+)(?:\s*(\([^)]+\)))?$/);
+        if (!match || !match[2]) return escapeHtml(rawName);
+        return `${escapeHtml(match[1].trim())} <small style="font-size: 0.8em; opacity: 0.75; font-weight: normal;">${escapeHtml(match[2].trim())}</small>`;
+      }
 
       if (availableLangs.length > 0 && seiyuSection && seiyuTabsEl && seiyuListEl) {
         let activeLang = availableLangs.includes('JP') ? 'JP' : availableLangs[0];
@@ -689,19 +699,22 @@ const translations = useTranslations(lang);
 
           const vas = vaByLang.get(activeLang) || [];
           seiyuListEl.innerHTML = vas
-            .map(va => `
+            .map(va => {
+              const baseInitial = (va.name.replace(/\s*\([^)]*\)/g, '').trim().charAt(0) || '?').toUpperCase();
+              return `
               <div class="media-author-pill">
                 ${va.image
                   ? `<img src="${safeUrl(va.image)}" alt="${escapeHtml(va.name)}" class="media-author-avatar" />`
-                  : `<div class="media-author-avatar media-author-avatar--placeholder">${escapeHtml(va.name.charAt(0).toUpperCase())}</div>`}
+                  : `<div class="media-author-avatar media-author-avatar--placeholder">${escapeHtml(baseInitial)}</div>`}
                 <div class="media-author-info">
                   ${va.siteUrl
-                    ? `<a href="${safeUrl(va.siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">${escapeHtml(va.name)}</a>`
-                    : `<span class="media-author-name">${escapeHtml(va.name)}</span>`}
+                    ? `<a href="${safeUrl(va.siteUrl)}" target="_blank" rel="noopener noreferrer" class="media-author-name media-author-name--link" style="text-decoration: none; color: inherit;">${formatVoiceActorName(va.name)}</a>`
+                    : `<span class="media-author-name">${formatVoiceActorName(va.name)}</span>`}
                   ${va.native && va.native !== va.name ? `<span class="media-author-role">${escapeHtml(va.native)}</span>` : ''}
                 </div>
               </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         renderSeiyuList(activeLang);

@@ -298,6 +298,61 @@ pub async fn sync_community_catalog(
             // trusting what was just copied in above verbatim.
             let _ = crate::db::merge_fragmented_sagas(&conn);
 
+            // Story arcs
+            let has_story_arc_tables: bool = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM community.sqlite_master WHERE type = 'table' AND name = 'story_arcs'",
+                    [],
+                    |r| r.get(0),
+                )
+                .map(|c: i64| c > 0)
+                .unwrap_or(false);
+
+            if has_story_arc_tables {
+                changes += conn.execute(
+                    "INSERT INTO story_arcs (id, name, image_base64, sort_order, created_at, updated_at)
+                     SELECT ca.id, ca.name, ca.image_base64,
+                            (COALESCE((SELECT MAX(sort_order) FROM story_arcs), 0) + ROW_NUMBER() OVER (ORDER BY ca.sort_order, ca.name)),
+                            ca.created_at, ca.updated_at
+                     FROM community.story_arcs ca
+                     WHERE NOT EXISTS (SELECT 1 FROM story_arcs sa WHERE sa.id = ca.id)",
+                    [],
+                ).str_err()? as i64;
+
+                changes += conn.execute(
+                    "UPDATE story_arcs
+                     SET name = (SELECT ca.name FROM community.story_arcs ca WHERE ca.id = story_arcs.id),
+                         image_base64 = COALESCE(
+                             (SELECT ca.image_base64 FROM community.story_arcs ca WHERE ca.id = story_arcs.id AND ca.image_base64 IS NOT NULL),
+                             story_arcs.image_base64
+                         ),
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE EXISTS (SELECT 1 FROM community.story_arcs ca WHERE ca.id = story_arcs.id)",
+                    [],
+                ).str_err()? as i64;
+
+                changes += conn.execute(
+                    "DELETE FROM story_arc_items
+                     WHERE EXISTS (SELECT 1 FROM community.story_arcs ca WHERE ca.id = story_arc_items.arc_id)",
+                    [],
+                ).str_err()? as i64;
+
+                changes += conn.execute(
+                    "INSERT OR REPLACE INTO story_arc_items (id, arc_id, media_external_id, ep_start, ep_end, position)
+                     SELECT ci.id, ci.arc_id, ci.media_external_id, ci.ep_start, ci.ep_end, ci.position
+                     FROM community.story_arc_items ci
+                     WHERE NOT EXISTS (SELECT 1 FROM blocked_media_catalog mc WHERE mc.external_id = ci.media_external_id)",
+                    [],
+                ).str_err()? as i64;
+
+                conn.execute(
+                    "DELETE FROM story_arcs
+                     WHERE EXISTS (SELECT 1 FROM community.story_arcs ca WHERE ca.id = story_arcs.id)
+                       AND NOT EXISTS (SELECT 1 FROM story_arc_items sai WHERE sai.arc_id = story_arcs.id)",
+                    [],
+                ).str_err()?;
+            }
+
             // ── Community-side deletions ────────────────────────────────
             // In last sync's snapshot (community_synced_ids) but missing from
             // this download now = removed upstream. Only deleted locally if
@@ -331,6 +386,7 @@ pub async fn sync_community_catalog(
                     ("media_staff_relation", "media_external_id"),
                     ("media_by_author", "media_external_id"),
                     ("saga_relations", "media_external_id"),
+                    ("story_arc_items", "media_external_id"),
                 ] {
                     let ids_params = rusqlite::params_from_iter(removed_ids.iter());
                     conn.execute(&format!("DELETE FROM {table} WHERE {column} IN ({placeholders})"), ids_params).str_err()?;

@@ -11,14 +11,20 @@ export interface ParsedBiography {
 }
 
 export function parseCharacterBiography(rawHtml: string | null | undefined): ParsedBiography {
-  const doc = new DOMParser().parseFromString(rawHtml || '', 'text/html');
+  if (!rawHtml) return { characteristics: [], cleanBiography: '' };
+
+  const normalized = rawHtml
+    .replace(/(?:__|\*\*)([^\n_*\<]+?)(?:__|\*\*)\s*:\s*/g, '<b>$1:</b> ')
+    .replace(/(?:__|\*\*)([^\n_*\<]+?)(?:__|\*\*)/g, '<b>$1</b>');
+
+  const doc = new DOMParser().parseFromString(normalized, 'text/html');
   const boldElements = doc.querySelectorAll('b, strong');
   const characteristics: ParsedCharacteristic[] = [];
   const elementsToRemove: Node[] = [];
 
   for (const el of boldElements) {
     const label = (el.textContent || '').trim().replace(/:$/, '').trim();
-    if (label.length > 30 || label.length < 2) continue;
+    if (label.length > 80 || label.length < 2) continue;
 
     let nextNode: Node | null = el.nextSibling;
     const valueParts: string[] = [];
@@ -68,7 +74,11 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
   }
 
   for (const node of elementsToRemove) {
-    node.parentNode?.removeChild(node);
+    const parent = node.parentNode;
+    parent?.removeChild(node);
+    if (parent && parent.nodeName === 'P' && !(parent.textContent || '').trim()) {
+      parent.parentNode?.removeChild(parent);
+    }
   }
 
   const cleanBiography = doc.body.innerHTML

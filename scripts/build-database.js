@@ -177,6 +177,26 @@ CREATE TABLE saga_relations (
     order_index       REAL,
     PRIMARY KEY (media_external_id, saga_id)
 );
+
+CREATE TABLE story_arcs (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL DEFAULT '',
+    image_base64 TEXT,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE story_arc_items (
+    id                TEXT PRIMARY KEY,
+    arc_id            TEXT NOT NULL,
+    media_external_id TEXT NOT NULL,
+    ep_start          INTEGER,
+    ep_end            INTEGER,
+    position          INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS story_arc_items_arc_idx ON story_arc_items(arc_id);
+CREATE INDEX IF NOT EXISTS story_arc_items_media_idx ON story_arc_items(media_external_id);
 `;
 
 // Mirrors reciprocal_relation() in media_catalog.rs — PrEditorModal already
@@ -288,9 +308,17 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   const sagaRelationStmt = db.prepare(
     'INSERT OR REPLACE INTO saga_relations (media_external_id, saga_id) VALUES (?, ?)'
   );
+  const arcStmt = db.prepare(
+    'INSERT OR REPLACE INTO story_arcs (id, name, image_base64, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  );
+  const deleteArcItemsStmt = db.prepare('DELETE FROM story_arc_items WHERE arc_id = ?');
+  const arcItemStmt = db.prepare(
+    'INSERT OR REPLACE INTO story_arc_items (id, arc_id, media_external_id, ep_start, ep_end, position) VALUES (?, ?, ?, ?, ?, ?)'
+  );
 
   let catalogCount = 0;
   const sagaNameById = new Map();
+  const seenArcItemCounts = new Map();
   for (const bundle of mediaBundles) {
     const entry = bundle.media_catalog;
     const externalId = entry.external_id;
@@ -322,15 +350,6 @@ function buildDatabase({ mediaBundles, characterBundles }) {
     }
 
     if (bundle.saga_name) {
-      // NOT written to sagas/saga_relations here — see the post-loop pass
-      // below for why. A "saga member" proposal file's own media_relations
-      // only ever carries *that member's* outgoing edges (see
-      // buildRelatedProposalBundle in pr-editor-submit.ts), so `owners` here
-      // is really just {externalId} for those files — anchoring a
-      // standalone single-member saga per file instead of joining the real,
-      // multi-member one. Just remember the proposed name against every id
-      // this file actually touches; the real chain gets reconstructed from
-      // media_relations once every bundle has been inserted.
       const sagaOwners = owners.size > 0 ? [...owners] : [externalId];
       for (const owner of sagaOwners) {
         if (!sagaNameById.has(owner)) sagaNameById.set(owner, bundle.saga_name);
@@ -347,6 +366,34 @@ function buildDatabase({ mediaBundles, characterBundles }) {
       if (!author.external_id) continue;
       authorStmt.run(author.external_id, author.name || '', author.image ?? null, author.url ?? null, now, now);
       byAuthorStmt.run(externalId, author.external_id, author.role ?? null);
+    }
+
+    for (const arc of bundle.story_arcs || []) {
+      if (!arc.id || !arc.name) continue;
+      const items = arc.items || [];
+      const prevCount = seenArcItemCounts.get(arc.id);
+      if (prevCount !== undefined && prevCount > items.length) continue;
+      arcStmt.run(
+        arc.id,
+        arc.name,
+        arc.image_base64 || null,
+        arc.sort_order || 0,
+        now,
+        now
+      );
+      deleteArcItemsStmt.run(arc.id);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        arcItemStmt.run(
+          item.id || crypto.randomUUID(),
+          arc.id,
+          item.media_external_id || externalId,
+          item.ep_start ?? null,
+          item.ep_end ?? null,
+          item.position ?? i
+        );
+      }
+      seenArcItemCounts.set(arc.id, items.length);
     }
   }
 
@@ -403,7 +450,7 @@ function buildDatabase({ mediaBundles, characterBundles }) {
   }
 
   db.close();
-  return { catalogCount, characterCount };
+  return { catalogCount, characterCount, storyArcCount: seenArcItemCounts.size };
 }
 
 // Rebuilds sagas/saga_relations from the real, always-reciprocal PREQUEL/
@@ -462,8 +509,8 @@ function buildSagasFromRelationGraph(db, sagaStmt, sagaRelationStmt, sagaNameByI
 }
 
 const { mediaBundles, characterBundles } = readBundles();
-const { catalogCount, characterCount } = buildDatabase({ mediaBundles, characterBundles });
+const { catalogCount, characterCount, storyArcCount } = buildDatabase({ mediaBundles, characterBundles });
 console.log(
-  `Built ${DB_PATH} with ${catalogCount} catalog entries from ${mediaBundles.length} media files ` +
-  `and ${characterCount} characters from ${characterBundles.length} character files.`
+  `Built ${DB_PATH} with ${catalogCount} catalog entries from ${mediaBundles.length} media files, ` +
+  `${storyArcCount} story arcs, and ${characterCount} characters from ${characterBundles.length} character files.`
 );
