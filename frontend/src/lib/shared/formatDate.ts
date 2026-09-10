@@ -45,3 +45,11 @@ export function formatLocalDateLong(dateStr: string | null | undefined): string 
   const [year, month, day] = parts;
   return formatDateLong(new Date(Number(year), Number(month) - 1, Number(day)));
 }
+
+// Format month as abbreviated uppercase (e.g. "ENE", "FEB") for monthly badges.
+export function formatMonthLabel(year: number, month: number): string {
+  return new Date(year, month - 1)
+    .toLocaleDateString(getLocaleCode(), { month: 'short' })
+    .toUpperCase()
+    .replace('.', '');
+}

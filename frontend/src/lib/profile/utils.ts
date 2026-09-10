@@ -1,27 +1,9 @@
-import { getT, getLangCode } from '../../i18n/client';
+import { getT } from '../../i18n/client';
+
+export { pad, decodeJwtPayload } from '../shared/encoding-utils';
+export { formatMonthLabel } from '../shared/formatDate';
 
 export function typeLabel(t: string): string {
   const types = getT().search.types as Record<string, string>;
   return types[t] ?? t;
-}
-
-export function pad(n: number): string {
-  if (n < 10)  return '00' + n;
-  if (n < 100) return '0'  + n;
-  return String(n);
-}
-
-export function decodeJwtPayload(token: string): Record<string, unknown> {
-  try {
-    const [, p] = token.split('.');
-    return JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/')));
-  } catch { return {}; }
-}
-
-/** "ENE", "FEB", etc. — for monthly history badges */
-export function formatMonthLabel(year: number, month: number): string {
-  return new Date(year, month - 1)
-    .toLocaleDateString(getLangCode(), { month: 'short' })
-    .toUpperCase()
-    .replace('.', '');
 }
