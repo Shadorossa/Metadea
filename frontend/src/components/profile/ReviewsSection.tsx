@@ -5,6 +5,7 @@ import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from 
 import { typeIconMap } from '../../lib/shared/icon-strings';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { beginGlobalLoading } from '../../lib/shared/global-loading';
 import { getTypeLabel } from '../../lib/constants/media';
 
 type SortMode = 'date' | 'rating';
@@ -23,7 +24,6 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   const p = t.profile;
   const TYPE_ICON = useMemo(() => typeIconMap(14), []);
 
-  const [loading, setLoading] = useState(overrideItems === undefined);
   const [reviewed, setReviewed] = useState<LibraryEntry[]>(
     overrideItems ? overrideItems.filter(item => item.notes && item.notes.trim().length > 0) : []
   );
@@ -32,18 +32,25 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // No blocking "Cargando..." placeholder — renders immediately (empty at
+  // first, or already filled from cache) while the global bottom loading
+  // bar (BaseLayout.astro) shows the fetch is in flight.
   useEffect(() => {
     if (overrideItems) return;
     let cancelled = false;
+    const endLoading = beginGlobalLoading();
     (async () => {
-      const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
-      // Refreshes the localStorage cache read by getActiveRatingSystem() below.
-      await syncActiveRatingSystem();
-      if (cancelled) return;
+      try {
+        const { items, catalog: catalogEntries } = await getCachedLibraryAndCatalog();
+        // Refreshes the localStorage cache read by getActiveRatingSystem() below.
+        await syncActiveRatingSystem();
+        if (cancelled) return;
 
-      setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
-      setReviewed(items.filter(item => item.notes && item.notes.trim().length > 0));
-      setLoading(false);
+        setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
+        setReviewed(items.filter(item => item.notes && item.notes.trim().length > 0));
+      } finally {
+        endLoading();
+      }
     })();
     return () => { cancelled = true; };
   }, [overrideItems]);
@@ -75,10 +82,6 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
   }, [reviewed, filterType, searchQuery, sortMode, catalogMap]);
 
   const system = getActiveRatingSystem();
-
-  if (loading) {
-    return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
-  }
 
   if (reviewed.length === 0) {
     return (

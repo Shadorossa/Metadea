@@ -26,27 +26,31 @@
 .global-loading-bar-fill {
   position: absolute;
   top: 0;
-  left: -40%;
+  left: 0;
   height: 100%;
   width: 40%;
   border-radius: 999px;
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent-glow, transparent);
-}
-
-.global-loading-bar.visible .global-loading-bar-fill {
+  /* transform, not left/width — left/width trigger layout on every frame,
+     which is exactly what a page busy fetching/rendering data starves the
+     animation of, making it visibly stutter or freeze mid-slide. transform
+     is compositor-only, so it keeps sliding smoothly regardless of how
+     busy the main thread is with the load this bar is indicating. */
+  transform: translateX(-100%);
+  will-change: transform;
   animation: global-loading-bar-slide 1.1s ease-in-out infinite;
 }
 
 @keyframes global-loading-bar-slide {
-  0%   { left: -40%; }
-  100% { left: 100%; }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .global-loading-bar.visible .global-loading-bar-fill {
+  .global-loading-bar-fill {
     animation: none;
-    left: 0;
+    transform: none;
     width: 100%;
   }
 }

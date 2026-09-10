@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getAllLibraryEntries, readUserJourney, getAllMediaRelations } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { beginGlobalLoading } from '../../lib/shared/global-loading';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatAverageScore, averageScoreSuffix, type RatingSystem } from '../../lib/media/rating-utils';
 import { ICON_STACK, ICON_CLOCK, ICON_STAR, ICON_CHART, STATUS_ICONS_14 } from '../../lib/shared/icon-strings';
@@ -55,22 +56,30 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
   useEffect(() => {
     if (overrideItems) return;
     let cancelled = false;
+    const endLoading = beginGlobalLoading();
     (async () => {
-      const [{ items, catalog: catalogEntries }, system, journey, relations] = await Promise.all([
-        getCachedLibraryAndCatalog(),
-        syncActiveRatingSystem(),
-        readUserJourney().catch(() => []),
-        getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
-      ]);
-      if (cancelled) return;
-      const catalogMap = new Map<string, MediaCatalogEntry>(catalogEntries.map(e => [e.external_id, e]));
-      setData({ items, catalogMap, system, journey, relations });
+      try {
+        const [{ items, catalog: catalogEntries }, system, journey, relations] = await Promise.all([
+          getCachedLibraryAndCatalog(),
+          syncActiveRatingSystem(),
+          readUserJourney().catch(() => []),
+          getAllMediaRelations().catch(() => [] as DbMediaRelation[]),
+        ]);
+        if (cancelled) return;
+        const catalogMap = new Map<string, MediaCatalogEntry>(catalogEntries.map(e => [e.external_id, e]));
+        setData({ items, catalogMap, system, journey, relations });
+      } finally {
+        endLoading();
+      }
     })();
     return () => { cancelled = true; };
   }, [overrideItems]);
 
+  // No blocking "Cargando..." placeholder — the global bottom loading bar
+  // (BaseLayout.astro) shows the fetch is in flight; render nothing until
+  // it resolves, since everything below reads straight off `data`.
   if (!data) {
-    return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
+    return null;
   }
 
   const { items, catalogMap, system, journey, relations } = data;
