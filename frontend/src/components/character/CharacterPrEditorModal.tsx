@@ -10,7 +10,7 @@ import { fetchAniListCharacterDetail, type AniListStaffSearchResult } from '../.
 import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
-import { compareByReleaseDate, mapExternalFormatToType } from '../../lib/media/mapper-utils';
+import { compareByReleaseDateThenTitle, mapExternalFormatToType } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import { FandomImportModal, type SelectedImportFields } from './FandomImportModal';
@@ -346,7 +346,7 @@ export function CharacterPrEditorModal() {
           });
         }
 
-        resolved.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
+        resolved.sort(compareByReleaseDateThenTitle);
 
         const pendingAppearance = pendingAppearanceRef.current;
         pendingAppearanceRef.current = null;
@@ -361,7 +361,7 @@ export function CharacterPrEditorModal() {
             release_month: pendingAppearance.release_month ?? null,
             release_day: pendingAppearance.release_day ?? null,
           }];
-          resolvedWithPending.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
+          resolvedWithPending.sort(compareByReleaseDateThenTitle);
         }
 
         setAppearances(resolvedWithPending);
@@ -475,7 +475,7 @@ export function CharacterPrEditorModal() {
       release_month: result.releaseMonth,
       release_day: result.releaseDay,
     }];
-    next.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
+    next.sort(compareByReleaseDateThenTitle);
     setAppearances(next);
   };
 

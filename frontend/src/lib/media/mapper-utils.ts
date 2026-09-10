@@ -176,6 +176,12 @@ export function compareByReleaseDateDesc<T extends { release_year?: number | nul
   return (a.id || '').localeCompare(b.id || '');
 }
 
+/** compareByReleaseDate, with title as the tiebreaker instead of ID — used
+ *  for appearance lists where entries are keyed by title, not a stable ID. */
+export function compareByReleaseDateThenTitle<T extends { release_year?: number | null; release_month?: number | null; release_day?: number | null; title: string }>(a: T, b: T): number {
+  return compareByReleaseDate(a, b) || a.title.localeCompare(b.title);
+}
+
 /** Map AniList type/format to internal media types ('anime', 'lnovel', 'manga'). */
 export function mapExternalFormatToType(type: string | null | undefined, format: string | null | undefined): 'anime' | 'lnovel' | 'manga' {
   const lowerType = type?.toLowerCase();

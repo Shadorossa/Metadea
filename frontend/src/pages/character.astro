@@ -148,7 +148,7 @@ const translations = useTranslations(lang);
 <script>
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
-  import { compareByReleaseDate, mapExternalFormatToType } from '../lib/media/mapper-utils';
+  import { compareByReleaseDateThenTitle, mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import { getT } from '../i18n/client';
@@ -833,10 +833,10 @@ const translations = useTranslations(lang);
         };
       }));
 
-      mergedAppearances.sort((a, b) => compareByReleaseDate(
-        { release_year: a.year, release_month: a.month, release_day: a.day, id: a.mediaId },
-        { release_year: b.year, release_month: b.month, release_day: b.day, id: b.mediaId },
-      ) || a.title.localeCompare(b.title));
+      mergedAppearances.sort((a, b) => compareByReleaseDateThenTitle(
+        { release_year: a.year, release_month: a.month, release_day: a.day, id: a.mediaId, title: a.title },
+        { release_year: b.year, release_month: b.month, release_day: b.day, id: b.mediaId, title: b.title },
+      ));
 
       let currentPage = 1;
       const itemsPerPage = 8;
