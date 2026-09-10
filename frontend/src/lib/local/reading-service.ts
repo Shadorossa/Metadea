@@ -1,10 +1,11 @@
-// Marks a chapter/issue/volume as read once the in-app reader (Comic
-// ReaderModal) reaches its last page — the reading-type counterpart to
+// Marks a chapter/issue/volume as read once the in-app reader (ReaderModal)
+// reaches its last page — the reading-type counterpart to
 // playback-service.ts's markEpisodeWatched. Kept separate (not folded into
 // that module) since the trigger is completely different: an exact "last
 // page reached" from synchronous in-page state here, vs. VLC poll-tick
-// position/track-boundary detection there — no queue, no Discord presence,
-// no external process to poll.
+// position/track-boundary detection there — no queue, no external process to
+// poll. Discord presence while reading is handled directly in ReaderModal,
+// not here.
 import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, type LibraryEntry } from '../tauri';
 import { clearReadingProgress } from '../tauri/comic-reader';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';

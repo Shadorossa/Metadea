@@ -7,9 +7,10 @@
 // ".extracted" marker file is present, the same "cache, don't redo" idea
 // custom_image/metadata caching already uses elsewhere in this codebase.
 //
-// CBR (RAR) only for now — CBZ/PDF/EPUB are meant to reuse this same
-// extract_comic_archive command, just adding a case to extract_by_format
-// once those are actually implemented.
+// extract_by_format below handles CBR (RAR) and CBZ (ZIP) — an EPUB case
+// would slot in the same way if that's ever added. PDF doesn't go through
+// here at all: ReaderModal reads it directly via read_comic_binary_file
+// and renders pages client-side with pdfjs-dist, no extraction step needed.
 use crate::db::ToStringErr;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
