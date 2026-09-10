@@ -137,8 +137,6 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (c.publisher) { const m = toMediaCompany(c, 'publisher'); if (m) entries.push(m); }
     return entries;
   });
-  const publisherNames = getPublisherNamesString(companies);
-
   // Cover uses IGDB's actual cover-art template — '1080p' here (a leftover
   // copy-paste from bannerUrl below) served the same size as the banner,
   // bypassing toSmallCover's IGDB regex entirely (it only matches "_big"),
@@ -212,7 +210,8 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   // Platforms get their own Datos block (MediaPage.tsx) — this slot is
   // publisher-only, for consistency with other content types.
   const metaLines: string[] = [];
-  if (publisherNames.length) metaLines.push(publisherNames.join(', '));
+  const publisherNamesStr = getPublisherNamesString(companies);
+  if (publisherNamesStr) metaLines.push(publisherNamesStr);
 
   const relations: MediaRelation[] = [];
 
