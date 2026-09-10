@@ -1944,12 +1944,9 @@
   border-color: var(--accent);
 }
 
-/* Fullscreen mode — hides the header so only pages are visible */
+/* Fullscreen mode — hides the header (title/buttons) so only the pages and
+   the progress bar stay visible. */
 .comic-reader-overlay--fullscreen .comic-reader-header {
-  display: none;
-}
-
-.comic-reader-overlay--fullscreen .comic-reader-progress-bar {
   display: none;
 }
 

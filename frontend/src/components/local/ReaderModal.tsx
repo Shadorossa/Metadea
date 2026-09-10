@@ -482,12 +482,13 @@ export function ReaderModal({
         handleClose();
         return;
       }
+      if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); return; }
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goNext(); return; }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goPrev(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, handleClose, contextMenu]);
+  }, [goNext, goPrev, handleClose, contextMenu, toggleFullscreen]);
 
   useEffect(() => {
     if (!contextMenu) return;
