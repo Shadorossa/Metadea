@@ -19,13 +19,26 @@ const START_STATUS_BY_TYPE: Record<string, string> = {
 export async function markChapterRead(
   externalId: string,
   libraryEntry: LibraryEntry,
-  episodeNumber: number,
+  // Value written to library progress/history/AniList sync — normally the
+  // file's own episode number, but a single-tomo edition of an otherwise
+  // multi-issue series passes totalCount here instead (see
+  // ComicReaderModal's isSingleTomo): finishing that one file means the
+  // *whole* work is done, not just "episode 1" of it.
+  progressNumber: number,
   totalCount: number | null,
+  // The actual file's own episode number, for clearing its saved reading
+  // position specifically — defaults to progressNumber (the normal case,
+  // where they're the same number). Kept separate for the single-tomo
+  // case above: the page position was saved under the file's real episode
+  // number throughout the reading session, not under totalCount, so
+  // clearing has to target that same key or it'd leave a stale row behind
+  // and clear nothing.
+  readingProgressKey: number = progressNumber,
 ): Promise<LibraryEntry> {
   // Same "finishing" rule as markEpisodeWatched: reaching the last
   // chapter/issue BY ACTUALLY READING IT THROUGH is what completes a work
   // here, not just progress catching up to total_count in the abstract.
-  const finishing = totalCount != null && totalCount > 0 && episodeNumber >= totalCount;
+  const finishing = totalCount != null && totalCount > 0 && progressNumber >= totalCount;
   const nextStatus = finishing
     ? 'completed'
     : libraryEntry.status === 'planning'
@@ -37,23 +50,23 @@ export async function markChapterRead(
 
   const saved = await saveLibraryEntry({
     ...libraryEntry,
-    progress: episodeNumber,
+    progress: progressNumber,
     status: nextStatus,
     started_at: startedAt,
     finished_at: finishedAt,
   });
 
-  saveEpisodeHistoryEntry(externalId, episodeNumber).catch(err => console.error('Failed to save reading history', err));
+  saveEpisodeHistoryEntry(externalId, progressNumber).catch(err => console.error('Failed to save reading history', err));
   // Now read — nothing left to resume for this one, so opening it again
   // (a reread) starts from page 1 instead of wherever this pass ended.
-  clearReadingProgress(externalId, episodeNumber).catch(() => {});
+  clearReadingProgress(externalId, readingProgressKey).catch(() => {});
   if (finishing) {
     addSequelToPlanning(externalId).catch(err => console.error('Failed to auto-add sequel to planning:', err));
   }
   if (isAniListType(libraryEntry.type)) {
     syncToAniList({
       externalId, type: libraryEntry.type, status: nextStatus ?? '',
-      rating: libraryEntry.rating ?? 0, progress: episodeNumber,
+      rating: libraryEntry.rating ?? 0, progress: progressNumber,
       progressVolumes: libraryEntry.progress_2 ?? 0,
       startedAt: startedAt ?? '', finishedAt: finishedAt ?? '',
       notes: libraryEntry.notes ?? '',
@@ -62,6 +75,6 @@ export async function markChapterRead(
   // Same event playback-service.ts's markEpisodeWatched dispatches —
   // LocalMediaDetailPanel already listens for it to refetch history and
   // refresh the parent grid, no separate wiring needed for reading.
-  window.dispatchEvent(new CustomEvent('metadea:episode-marked', { detail: { externalId, episodeNumber } }));
+  window.dispatchEvent(new CustomEvent('metadea:episode-marked', { detail: { externalId, episodeNumber: progressNumber } }));
   return saved;
 }

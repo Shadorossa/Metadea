@@ -970,6 +970,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           episodeNumber={nextNumber}
           totalCount={totalCount}
           libraryEntry={item.libraryEntry}
+          isSingleTomo={isSingleEpisode}
           onClose={() => setReaderOpen(false)}
           onProgressSaved={onProgressSaved}
         />

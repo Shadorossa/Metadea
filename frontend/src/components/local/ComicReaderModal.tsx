@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { extractComicArchive, getReadingProgress, saveReadingProgress, wrapAssetUrl, type LibraryEntry } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/local/reading-service';
@@ -12,28 +12,50 @@ interface Props {
   episodeNumber: number;
   totalCount:    number | null;
   libraryEntry:  LibraryEntry;
+  // True when this one file/volume actually covers the whole catalog
+  // entry (a single-tomo edition of an otherwise multi-issue series) — see
+  // LocalMediaDetailPanel's isSingleEpisode. Finishing it then has to mark
+  // the *whole* work complete (progress = totalCount), not just this one
+  // "episode" number.
+  isSingleTomo:  boolean;
   onClose:       () => void;
   onProgressSaved: () => void;
 }
 
 type LoadState = 'loading' | 'ready' | 'error';
 
+// Page 0 (the cover) reads alone; every pair after that is a spread —
+// (1,2), (3,4), (5,6)... same convention most comic/manga readers use so a
+// two-page splash panel doesn't get cut in half across two spreads.
+function buildSpreads(pageCount: number): number[][] {
+  if (pageCount === 0) return [];
+  const spreads: number[][] = [[0]];
+  for (let i = 1; i < pageCount; i += 2) {
+    spreads.push(i + 1 < pageCount ? [i, i + 1] : [i]);
+  }
+  return spreads;
+}
+
 // Full-screen paginated image viewer for a CBR/CBZ/etc. archive — extraction
 // and page listing live in comic_reader.rs (extractComicArchive), this only
 // ever deals with the already-resolved list of page image paths.
-export function ComicReaderModal({ externalId, title, filePath, episodeNumber, totalCount, libraryEntry, onClose, onProgressSaved }: Props) {
+export function ComicReaderModal({ externalId, title, filePath, episodeNumber, totalCount, libraryEntry, isSingleTomo, onClose, onProgressSaved }: Props) {
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [pages, setPages] = useState<string[]>([]);
-  const [pageIndex, setPageIndex] = useState(0);
+  const [spreadIndex, setSpreadIndex] = useState(0);
   // Guards markChapterRead against firing more than once per session (the
-  // user can sit on the last page, flip back, and forward again) and against
-  // running before the initial resume position (also landing on the last
-  // page for an already-finished reread) has actually been applied.
+  // user can sit on the last spread, flip back, and forward again) and
+  // against running before the initial resume position (also landing on
+  // the last spread for an already-finished reread) has actually been
+  // applied.
   const markedRef = useRef(false);
   const resumedRef = useRef(false);
+
+  const spreads = useMemo(() => buildSpreads(pages.length), [pages.length]);
+  const currentSpread = spreads[spreadIndex] ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -50,9 +72,11 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
 
         const progress = await getReadingProgress(externalId, episodeNumber).catch(() => null);
         if (cancelled) return;
-        const resumeIndex = progress ? Math.min(Math.max(progress.pageNumber - 1, 0), res.pages.length - 1) : 0;
+        const savedSpreads = buildSpreads(res.pages.length);
+        const savedPage0 = progress ? Math.min(Math.max(progress.pageNumber - 1, 0), res.pages.length - 1) : 0;
+        const resumeSpread = Math.max(0, savedSpreads.findIndex(s => s.includes(savedPage0)));
         resumedRef.current = true;
-        setPageIndex(resumeIndex);
+        setSpreadIndex(resumeSpread);
         setLoadState('ready');
       })
       .catch(err => {
@@ -64,26 +88,30 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
     return () => { cancelled = true; };
   }, [filePath, externalId, episodeNumber]);
 
-  // Persists on every page change (not debounced — a page turn is a
+  // Persists on every spread change (not debounced — a page turn is a
   // discrete user action, not a continuous stream like video seconds, so
   // there's nothing to coalesce) and auto-marks the chapter read the first
-  // time the last page is actually reached, same "finishing" rule
-  // markEpisodeWatched uses for video.
+  // time the last spread is actually reached, same "finishing" rule
+  // markEpisodeWatched uses for video. A single-tomo edition completes the
+  // *whole* catalog entry (progress = totalCount) instead of just this one
+  // file's own episode number, since reading it through means the whole
+  // work is done, not just "episode 1" of it.
   useEffect(() => {
-    if (loadState !== 'ready' || !resumedRef.current || pages.length === 0) return;
-    saveReadingProgress(externalId, episodeNumber, pageIndex + 1, pages.length).catch(() => {});
+    if (loadState !== 'ready' || !resumedRef.current || currentSpread.length === 0) return;
+    saveReadingProgress(externalId, episodeNumber, currentSpread[0] + 1, pages.length).catch(() => {});
 
-    if (pageIndex === pages.length - 1 && !markedRef.current) {
+    if (currentSpread.includes(pages.length - 1) && !markedRef.current) {
       markedRef.current = true;
-      markChapterRead(externalId, libraryEntry, episodeNumber, totalCount)
+      const finishNumber = isSingleTomo && totalCount ? totalCount : episodeNumber;
+      markChapterRead(externalId, libraryEntry, finishNumber, totalCount, episodeNumber)
         .then(onProgressSaved)
         .catch(err => console.error('Failed to mark chapter read', err));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, loadState, pages.length]);
+  }, [spreadIndex, loadState, pages.length]);
 
-  const goPrev = useCallback(() => setPageIndex(i => Math.max(0, i - 1)), []);
-  const goNext = useCallback(() => setPageIndex(i => Math.min(pages.length - 1, i + 1)), [pages.length]);
+  const goPrev = useCallback(() => setSpreadIndex(i => Math.max(0, i - 1)), []);
+  const goNext = useCallback(() => setSpreadIndex(i => Math.min(spreads.length - 1, i + 1)), [spreads.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -102,12 +130,16 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
     else if (clickX > rect.width * 0.55) goNext();
   };
 
+  const pageLabel = currentSpread.length === 2
+    ? `${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pages.length}`
+    : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
+
   return createPortal(
     <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}`}>
       <div className="comic-reader-header">
         <span className="comic-reader-title" title={title}>{title}</span>
         {loadState === 'ready' && (
-          <span className="comic-reader-page-count">{pageIndex + 1} / {pages.length}</span>
+          <span className="comic-reader-page-count">{pageLabel}</span>
         )}
         <button type="button" className="comic-reader-close" onClick={handleClose} title="Cerrar (Esc)">
           <IconX />
@@ -131,17 +163,22 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
 
         {loadState === 'ready' && (
           <div className="comic-reader-page-wrap" onClick={handleImageClick}>
-            <img
-              className="comic-reader-page"
-              src={wrapAssetUrl(pages[pageIndex])}
-              alt={`Página ${pageIndex + 1}`}
-              draggable={false}
-            />
+            <div className={`comic-reader-spread${currentSpread.length === 2 ? ' comic-reader-spread--double' : ''}`}>
+              {currentSpread.map(idx => (
+                <img
+                  key={idx}
+                  className="comic-reader-page"
+                  src={wrapAssetUrl(pages[idx])}
+                  alt={`Página ${idx + 1}`}
+                  draggable={false}
+                />
+              ))}
+            </div>
             <button
               type="button"
               className="comic-reader-nav comic-reader-nav--prev"
               onClick={e => { e.stopPropagation(); goPrev(); }}
-              disabled={pageIndex === 0}
+              disabled={spreadIndex === 0}
               aria-label="Página anterior"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +189,7 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
               type="button"
               className="comic-reader-nav comic-reader-nav--next"
               onClick={e => { e.stopPropagation(); goNext(); }}
-              disabled={pageIndex === pages.length - 1}
+              disabled={spreadIndex === spreads.length - 1}
               aria-label="Página siguiente"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -163,9 +200,9 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
         )}
       </div>
 
-      {loadState === 'ready' && pages.length > 1 && (
+      {loadState === 'ready' && spreads.length > 1 && (
         <div className="comic-reader-progress-bar">
-          <div className="comic-reader-progress-fill" style={{ width: `${((pageIndex + 1) / pages.length) * 100}%` }} />
+          <div className="comic-reader-progress-fill" style={{ width: `${(((currentSpread[currentSpread.length - 1] ?? 0) + 1) / pages.length) * 100}%` }} />
         </div>
       )}
     </div>,

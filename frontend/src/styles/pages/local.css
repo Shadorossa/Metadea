@@ -1957,6 +1957,15 @@
   user-select: none;
 }
 
+.comic-reader-spread {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  width: 100%;
+}
+
 .comic-reader-page {
   max-height: 100%;
   max-width: 100%;
@@ -1964,6 +1973,13 @@
   width: auto;
   object-fit: contain;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Two pages side by side — each capped to half the row (minus the gap) so
+   neither one alone stretches to fill the full width once its sibling is
+   present. */
+.comic-reader-spread--double .comic-reader-page {
+  max-width: calc(50% - 2px);
 }
 
 .comic-reader-nav {
