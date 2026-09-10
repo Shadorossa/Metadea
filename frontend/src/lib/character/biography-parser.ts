@@ -1,4 +1,4 @@
-import { sanitizeStatValue } from '../shared/sanitize-html';
+import { sanitizeStatValue, escapeHtml } from '../shared/sanitize-html';
 
 export interface ParsedCharacteristic {
   label: string;
@@ -99,6 +99,3 @@ export function buildBiographyHtml(characteristics: ParsedCharacteristic[], clea
   return cleanBiography ? `${statLines}<br>\n<br>\n${cleanBiography}` : statLines;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}

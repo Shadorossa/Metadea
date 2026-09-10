@@ -5,12 +5,7 @@ import { unifyGenres } from './genre-unifier';
 import { formatDateParts, parseFlexibleDate } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 import { canonicalizeAlwaysFinished } from './media-status';
-
-// Comic Vine descriptions/decks are HTML — strip tags for plain-text display
-// since MediaPageData.description is rendered as plain text elsewhere.
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-}
+import { stripHtml } from '../shared/description-utils';
 
 // Comic Vine's person_credits (writer, penciler, inker, colorist, ...) is
 // the same underlying data `authors` is built from — this just re-keys the

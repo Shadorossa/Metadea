@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { dedupeByKey } from './dedupe';
 
 // Shared "type into a box, wait, fire an abortable search" pattern that used
 // to be reimplemented near-identically in every search popup (character/
@@ -44,12 +45,5 @@ export function useDebouncedSearch<T>(
   return { results, isLoading };
 }
 
-export function dedupeByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
-  const seen = new Set<string>();
-  return items.filter(item => {
-    const key = keyFn(item);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
+// Re-export from dedupe.ts for backward compatibility
+export { dedupeByKey } from './dedupe';
