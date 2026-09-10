@@ -188,17 +188,21 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     });
   };
 
-  // Pointer-based reordering (works in Tauri WebView) — direct DOM
-  // manipulation during the drag itself (not React state), matching the
-  // same rAF-throttled approach used elsewhere (e.g. Lists' item reorder):
-  // committing to React state and persisting only happens on mouseup.
+  // Native HTML5 drag & drop (same approach as Lists' item reorder,
+  // ListsSection.tsx) — the browser/OS renders the drag ghost that tracks
+  // the cursor, entirely outside our own render loop, so it can't stutter.
+  // Cards stay draggable={true} only while reorderModeActive (the "edit
+  // mode" toggle below), which also keeps its own wiggle animation
+  // (.fav-card.reordering, profile.css) untouched — that's a permanent
+  // visual while edit mode is on, independent of whether a drag is
+  // actually in progress.
   useEffect(() => {
     if (readOnly || !reorderModeActive) return;
     const container = gridRef.current;
     if (!container) return;
 
     let dragCard: HTMLElement | null = null;
-    let dragActive = false;
+    let didMove = false;
 
     type CardRect = { el: HTMLElement; cx: number; cy: number; left: number; width: number };
     let rectCache: CardRect[] = [];
@@ -221,8 +225,8 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     };
 
     let rafId = 0;
+    let pendingEvent: DragEvent | null = null;
     let lastMoveX = 0;
-    let lastMoveY = 0;
     let prevMoveX = 0;
 
     // Which side of the target card the dragged card lands on is decided by
@@ -230,13 +234,15 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
     // avoids the oscillation flicker a fixed midpoint check causes.
     const reorderTick = () => {
       rafId = 0;
-      if (!dragCard) return;
-      const target = getClosestCard(lastMoveX, lastMoveY);
+      if (!dragCard || !pendingEvent) return;
+      lastMoveX = pendingEvent.clientX;
+      const target = getClosestCard(pendingEvent.clientX, pendingEvent.clientY);
       if (target && target.el !== dragCard) {
         const movingRight = lastMoveX >= prevMoveX;
         const midpoint = target.left + target.width / 2;
         const passedMidpoint = movingRight ? lastMoveX > midpoint : lastMoveX < midpoint;
         if (passedMidpoint) {
+          didMove = true;
           if (movingRight) container.insertBefore(dragCard, target.el.nextSibling);
           else container.insertBefore(dragCard, target.el);
           refreshRectCache();
@@ -245,55 +251,73 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
       prevMoveX = lastMoveX;
     };
 
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragActive || !dragCard) return;
-      e.preventDefault();
-      lastMoveX = e.clientX;
-      lastMoveY = e.clientY;
+    const onDragStart = (e: DragEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.fav-crown-btn')) { e.preventDefault(); return; } // ignore drags starting on the crown button
+
+      const card = target.closest<HTMLElement>('.fav-card');
+      if (!card || !container.contains(card)) { e.preventDefault(); return; }
+
+      dragCard = card;
+      prevMoveX = e.clientX;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.id ?? '');
+      }
+      // Dim the source a frame later — the browser snapshots the drag
+      // ghost synchronously, so dimming it right away would fade the ghost
+      // that follows the cursor too.
+      requestAnimationFrame(() => card.classList.add('drag-source'));
+      container.classList.add('is-dragging');
+      refreshRectCache();
+    };
+
+    const onDragOver = (e: DragEvent) => {
+      if (!dragCard) return;
+      e.preventDefault(); // required for this to be a valid drop target
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      pendingEvent = e;
       if (!rafId) rafId = requestAnimationFrame(reorderTick);
     };
 
-    const onMouseUp = async () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+    const finishDrag = async () => {
       if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+      pendingEvent = null;
+      if (!dragCard) return;
 
-      dragActive = false;
+      dragCard.classList.remove('drag-source');
       container.classList.remove('is-dragging');
-      if (dragCard) {
-        dragCard.classList.remove('drag-source');
-        const newOrder = Array.from(container.querySelectorAll('.fav-card'))
-          .map(c => (c as HTMLElement).dataset.id)
-          .filter(Boolean) as string[];
-        const next = { ...favDataRef.current, [activeCatKeyRef.current]: newOrder };
-        dragCard = null;
-        await persistFavData(next);
-      }
+      dragCard = null;
+      const moved = didMove;
+      didMove = false;
+      if (!moved) return;
+
+      const newOrder = Array.from(container.querySelectorAll('.fav-card'))
+        .map(c => (c as HTMLElement).dataset.id)
+        .filter(Boolean) as string[];
+      const next = { ...favDataRef.current, [activeCatKeyRef.current]: newOrder };
+      await persistFavData(next);
     };
 
-    const onMouseDown = (e: MouseEvent) => {
-      const card = (e.target as HTMLElement).closest<HTMLElement>('.fav-card');
-      if (!card || !container.contains(card)) return;
-      if ((e.target as HTMLElement).closest('.fav-crown-btn')) return; // ignore clicks on crown buttons
+    const onDrop = (e: DragEvent) => {
       e.preventDefault();
-      window.getSelection()?.removeAllRanges();
-
-      dragCard = card;
-      dragActive = true;
-      prevMoveX = e.clientX;
-      card.classList.add('drag-source');
-      container.classList.add('is-dragging');
-      refreshRectCache();
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      finishDrag();
     };
 
-    container.addEventListener('mousedown', onMouseDown);
+    // Fires whether the drag ended on a valid drop target or not (e.g.
+    // released outside the grid) — always cleans up either way.
+    const onDragEnd = () => finishDrag();
+
+    container.addEventListener('dragstart', onDragStart);
+    container.addEventListener('dragover', onDragOver);
+    container.addEventListener('drop', onDrop);
+    container.addEventListener('dragend', onDragEnd);
     return () => {
-      container.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      container.removeEventListener('dragstart', onDragStart);
+      container.removeEventListener('dragover', onDragOver);
+      container.removeEventListener('drop', onDrop);
+      container.removeEventListener('dragend', onDragEnd);
+      if (rafId) cancelAnimationFrame(rafId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reorderModeActive, activeCatKey]);
@@ -350,8 +374,8 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
               const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
 
               return (
-                <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} key={item.external_id}>
-                  <a className="fav-card-link" href={mediaUrl} />
+                <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} key={item.external_id} draggable={reorderModeActive && !readOnly}>
+                  <a className="fav-card-link" href={mediaUrl} draggable={false} />
                   <div className="fav-badge">#{idx + 1}</div>
 
                   {!readOnly && (
@@ -395,7 +419,7 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
                       }}
                     />
                   ) : rawCover ? (
-                    <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" />
+                    <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" draggable={false} />
                   ) : (
                     <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
                   )}
