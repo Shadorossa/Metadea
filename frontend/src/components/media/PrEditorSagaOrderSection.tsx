@@ -1,12 +1,13 @@
 import type { MetaResolver } from '../../lib/media/sagaGrouping';
 import { getT } from '../../i18n/client';
+import type { DragHandlers } from './hooks/useDragReorder';
 
 interface Props {
   externalId: string;
   sagaOrder: string[];
   sagaGroups: Record<string, string>;
   draggedIndex: number | null;
-  onStartDrag: (index: number) => void;
+  dragHandlers: (index: number) => DragHandlers;
   onRemove: (id: string) => void;
   onUpdateGroup: (id: string, group: string) => void;
   resolveMeta: MetaResolver;
@@ -19,7 +20,7 @@ interface Props {
 // useDragReorder, in the parent.
 export function PrEditorSagaOrderSection({
   externalId, sagaOrder, sagaGroups,
-  draggedIndex, onStartDrag, onRemove, onUpdateGroup, resolveMeta,
+  draggedIndex, dragHandlers, onRemove, onUpdateGroup, resolveMeta,
 }: Props) {
   const pe = getT().pr_editor;
   return (
@@ -30,12 +31,8 @@ export function PrEditorSagaOrderSection({
           return (
             <div
               key={id}
-              data-saga-index={index}
               className={`pr-editor-media-card${id === externalId ? ' pr-editor-media-card--current' : ''}${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-              onPointerDown={e => {
-                e.preventDefault();
-                onStartDrag(index);
-              }}
+              {...dragHandlers(index)}
             >
               <div className="pr-editor-media-card-cover">
                 {meta.cover
@@ -45,7 +42,6 @@ export function PrEditorSagaOrderSection({
                   <button
                     type="button"
                     className="pr-editor-media-card-remove"
-                    onPointerDown={e => e.stopPropagation()}
                     onClick={() => onRemove(id)}
                   >
                     ×
@@ -60,7 +56,6 @@ export function PrEditorSagaOrderSection({
                 placeholder={pe.concept_group_placeholder}
                 value={sagaGroups[id] || ''}
                 onChange={e => onUpdateGroup(id, e.target.value)}
-                onPointerDown={e => e.stopPropagation()}
                 className="pr-editor-media-card-group-input"
               />
             </div>

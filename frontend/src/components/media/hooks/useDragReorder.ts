@@ -1,43 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, type DragEvent } from 'react';
 
-function toKebabCase(name: string): string {
-  return name.replace(/([A-Z])/g, '-$1').toLowerCase();
+export interface DragHandlers {
+  draggable: true;
+  onDragStart: (e: DragEvent) => void;
+  onDragOver: (e: DragEvent) => void;
+  onDrop: (e: DragEvent) => void;
+  onDragEnd: () => void;
 }
 
-// Pointer-based drag reorder for a grid of cards, each rendered with a
-// `data-{datasetName}={index}` attribute (e.g. data-saga-index). Tracks which
-// card is currently being dragged and calls onReorder whenever the pointer
-// moves over a different card's index — used by both the saga-order list and
-// the relations list in PrEditorModal.tsx, which used to duplicate this
-// pointermove/pointerup wiring verbatim.
-export function useDragReorder(
-  datasetName: string,
-  onReorder: (fromIndex: number, toIndex: number) => void,
-) {
+// Native HTML5 drag & drop reorder for a flat list of cards — the browser/OS
+// renders the drag ghost that tracks the cursor, entirely outside our own
+// render loop, so it can't stutter. Each card gets `dragHandlers(index)`
+// spread onto it directly; its own onDragOver already tells us which index
+// the cursor is over, so unlike the old pointer-based version there's no
+// data-{attr}-index attribute to read and no document.elementFromPoint()
+// scan (itself a layout-forcing call) running on every raw pointer move.
+//
+// Used by the saga-order list and the relations lists in PrEditorModal.tsx,
+// which used to each pass their own dataset attribute name into this hook.
+export function useDragReorder(onReorder: (fromIndex: number, toIndex: number) => void) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (draggedIndex === null) return;
+  const dragHandlers = (index: number): DragHandlers => ({
+    draggable: true,
+    onDragStart: (e: DragEvent) => {
+      // Let clicks on nested controls (remove button, group-name input,
+      // relation-type select) behave normally instead of starting a drag.
+      const target = e.target as HTMLElement;
+      if (target.closest('button, input, textarea, select')) {
+        e.preventDefault();
+        return;
+      }
+      dragIndexRef.current = index;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(index));
+      }
+      setDraggedIndex(index);
+    },
+    onDragOver: (e: DragEvent) => {
+      if (dragIndexRef.current === null) return;
+      e.preventDefault(); // required for this to be a valid drop target
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      if (dragIndexRef.current !== index) {
+        onReorder(dragIndexRef.current, index);
+        dragIndexRef.current = index;
+        setDraggedIndex(index);
+      }
+    },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+    },
+    // Fires whether the drag ended on a valid drop target or not — always
+    // cleans up either way.
+    onDragEnd: () => {
+      dragIndexRef.current = null;
+      setDraggedIndex(null);
+    },
+  });
 
-    const attr = toKebabCase(datasetName);
-    const handleMove = (e: PointerEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const card = el?.closest<HTMLElement>(`[data-${attr}]`);
-      if (!card) return;
-      const overIndex = parseInt(card.dataset[datasetName] || '', 10);
-      if (Number.isNaN(overIndex) || overIndex === draggedIndex) return;
-      onReorder(draggedIndex, overIndex);
-      setDraggedIndex(overIndex);
-    };
-    const handleUp = () => setDraggedIndex(null);
-
-    document.addEventListener('pointermove', handleMove);
-    document.addEventListener('pointerup', handleUp);
-    return () => {
-      document.removeEventListener('pointermove', handleMove);
-      document.removeEventListener('pointerup', handleUp);
-    };
-  }, [draggedIndex, datasetName, onReorder]);
-
-  return { draggedIndex, setDraggedIndex };
+  return { draggedIndex, dragHandlers };
 }

@@ -382,10 +382,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     setEditableRelations(next);
   };
 
-  const { draggedIndex: draggedSagaIndex, setDraggedIndex: setDraggedSagaIndex } =
-    useDragReorder('sagaIndex', reorderSaga);
-  const { draggedIndex: draggedRelationIndex, setDraggedIndex: setDraggedRelationIndex } =
-    useDragReorder('relationIndex', reorderRelations);
+  const { draggedIndex: draggedSagaIndex, dragHandlers: sagaDragHandlers } =
+    useDragReorder(reorderSaga);
+  const { draggedIndex: draggedRelationIndex, dragHandlers: relationDragHandlers } =
+    useDragReorder(reorderRelations);
 
   // ── Bundled-in handlers ────────────────────────────────────────────────────
 
@@ -429,10 +429,10 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     setContainedRelations(next);
   };
 
-  const { draggedIndex: draggedBundledIndex, setDraggedIndex: setDraggedBundledIndex } =
-    useDragReorder('bundledIndex', reorderBundled);
-  const { draggedIndex: draggedContainedIndex, setDraggedIndex: setDraggedContainedIndex } =
-    useDragReorder('containedIndex', reorderContained);
+  const { draggedIndex: draggedBundledIndex, dragHandlers: bundledDragHandlers } =
+    useDragReorder(reorderBundled);
+  const { draggedIndex: draggedContainedIndex, dragHandlers: containedDragHandlers } =
+    useDragReorder(reorderContained);
 
   // ── Referenced bundle's own Contains handlers ─────────────────────────────
 
@@ -455,8 +455,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     next.splice(toIndex, 0, moved);
     setBundleChildren(next);
   };
-  const { draggedIndex: draggedBundleChildIndex, setDraggedIndex: setDraggedBundleChildIndex } =
-    useDragReorder('bundleChildIndex', reorderBundleChildren);
+  const { draggedIndex: draggedBundleChildIndex, dragHandlers: bundleChildDragHandlers } =
+    useDragReorder(reorderBundleChildren);
 
   // ── Editable relation handlers ────────────────────────────────────────────
 
@@ -501,8 +501,8 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     next.splice(toIndex, 0, moved);
     setIssueRelations(next);
   };
-  const { draggedIndex: draggedIssueIndex, setDraggedIndex: setDraggedIssueIndex } =
-    useDragReorder('issueIndex', reorderIssueRelations);
+  const { draggedIndex: draggedIssueIndex, dragHandlers: issueDragHandlers } =
+    useDragReorder(reorderIssueRelations);
 
   const handleChange = (field: keyof MediaCatalogEntry, value: string | number | null) => {
     if (!entry) return;
@@ -1006,7 +1006,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   sagaOrder={sagaOrder}
                   sagaGroups={sagaGroups}
                   draggedIndex={draggedSagaIndex}
-                  onStartDrag={setDraggedSagaIndex}
+                  dragHandlers={sagaDragHandlers}
                   onRemove={removeFromSaga}
                   onUpdateGroup={updateSagaGroup}
                   resolveMeta={resolveMeta}
@@ -1027,7 +1027,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     relationOptions={EDITABLE_RELATION_OPTIONS}
                     relationLabels={relationLabels as unknown as Record<string, string>}
                     draggedIndex={draggedRelationIndex}
-                    onStartDrag={setDraggedRelationIndex}
+                    dragHandlers={relationDragHandlers}
                     onRemove={removeEditableRelation}
                     onUpdateType={updateEditableRelationType}
                   />
@@ -1040,10 +1040,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('bundled')}>+ Add</button>
                 </div>
                 <PrEditorRelationCardList
-                  dataAttr="bundled-index"
                   relations={bundledRelations}
                   draggedIndex={draggedBundledIndex}
-                  onStartDrag={setDraggedBundledIndex}
+                  dragHandlers={bundledDragHandlers}
                   onRemove={removeBundledRelation}
                 />
               </div>
@@ -1072,10 +1071,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   </div>
                   {issuesExpanded && (
                     <PrEditorRelationCardList
-                      dataAttr="issue-index"
                       relations={issueRelations}
                       draggedIndex={draggedIssueIndex}
-                      onStartDrag={setDraggedIssueIndex}
+                      dragHandlers={issueDragHandlers}
                       onRemove={removeIssueRelation}
                     />
                   )}
@@ -1096,10 +1094,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     Esta obra ya queda incluida automáticamente — añade aquí el resto de obras del bundle.
                   </p>
                   <PrEditorRelationCardList
-                    dataAttr="bundle-child-index"
                     relations={bundleChildren}
                     draggedIndex={draggedBundleChildIndex}
-                    onStartDrag={setDraggedBundleChildIndex}
+                    dragHandlers={bundleChildDragHandlers}
                     onRemove={removeBundleChild}
                   />
                 </div>
@@ -1115,10 +1112,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                     <button type="button" className="pr-editor-add-btn" onClick={() => setSearchPopupMode('contains')}>+ Add</button>
                   </div>
                   <PrEditorRelationCardList
-                    dataAttr="contained-index"
                     relations={containedRelations}
                     draggedIndex={draggedContainedIndex}
-                    onStartDrag={setDraggedContainedIndex}
+                    dragHandlers={containedDragHandlers}
                     onRemove={removeContainedRelation}
                   />
                 </div>

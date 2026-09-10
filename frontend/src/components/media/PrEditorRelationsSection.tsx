@@ -1,4 +1,5 @@
 import { RelationTypeSelect } from './RelationTypeSelect';
+import type { DragHandlers } from './hooks/useDragReorder';
 
 interface EditableRelation {
   related_media_external_id: string;
@@ -13,7 +14,7 @@ interface Props {
   relationOptions: string[];
   relationLabels: Record<string, string>;
   draggedIndex: number | null;
-  onStartDrag: (index: number) => void;
+  dragHandlers: (index: number) => DragHandlers;
   onRemove: (id: string) => void;
   onUpdateType: (id: string, relationType: string) => void;
 }
@@ -25,7 +26,7 @@ interface Props {
 // useDragReorder, in the parent.
 export function PrEditorRelationsSection({
   editableRelations, relationOptions, relationLabels,
-  draggedIndex, onStartDrag, onRemove, onUpdateType,
+  draggedIndex, dragHandlers, onRemove, onUpdateType,
 }: Props) {
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
@@ -33,12 +34,8 @@ export function PrEditorRelationsSection({
         {editableRelations.map((r, index) => (
           <div
             key={r.related_media_external_id}
-            data-relation-index={index}
             className={`pr-editor-media-card${draggedIndex === index ? ' pr-editor-media-card--dragging' : ''}`}
-            onPointerDown={e => {
-              e.preventDefault();
-              onStartDrag(index);
-            }}
+            {...dragHandlers(index)}
           >
             <div className="pr-editor-media-card-cover">
               {r.cover
