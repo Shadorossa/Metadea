@@ -6,7 +6,7 @@ import {
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
   getResumePosition, getReadingProgress,
 } from '../../../lib/tauri';
-import { ComicReaderModal } from '../ComicReaderModal';
+import { ReaderModal } from '../ReaderModal';
 import { setReadingSession } from '../../../lib/local/reading-session';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
@@ -988,7 +988,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       )}
 
       {readerOpen && playPath && nextFile && (
-        <ComicReaderModal
+        <ReaderModal
           externalId={item.externalId}
           title={isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`}
           filePath={playPath}

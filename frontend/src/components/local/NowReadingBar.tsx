@@ -7,7 +7,7 @@ import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSessio
 import { usePlaybackState } from '../../lib/local/playback-service';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
-import { ComicReaderModal } from './ComicReaderModal';
+import { ReaderModal } from './ReaderModal';
 import { IconX } from './ui/icons';
 
 export function NowReadingBar() {
@@ -74,7 +74,7 @@ export function NowReadingBar() {
       )}
 
       {session && resumeOpen && (
-        <ComicReaderModal
+        <ReaderModal
           externalId={session.externalId}
           title={session.title}
           filePath={session.filePath}

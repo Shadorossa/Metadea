@@ -1845,7 +1845,7 @@
   margin-top: 0.15rem;
 }
 
-/* ── Comic/manga/book reader (ComicReaderModal.tsx) ──────────────────────── */
+/* ── Reader modal for comic/manga/lnovel/book (ReaderModal.tsx) ────────── */
 .comic-reader-overlay {
   position: fixed;
   inset: 0;
