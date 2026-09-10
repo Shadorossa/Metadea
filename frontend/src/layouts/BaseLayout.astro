@@ -4,6 +4,7 @@ import '../styles/components/components.css';
 import '../styles/components/navbar.css';
 import '../styles/components/quick-search.css';
 import '../styles/components/footer.css';
+import '../styles/components/global-loading-bar.css';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
@@ -100,6 +101,13 @@ const t = useTranslations(lang);
          across Astro page transitions since the check that drives it only
          ever runs once per app session, not per page. -->
     <div id="global-toast" class="global-toast" transition:persist></div>
+
+    <!-- Global bottom loading bar — driven by lib/shared/global-loading.ts
+         (beginGlobalLoading/withGlobalLoading) from anywhere in the app,
+         instead of each screen rolling its own "Cargando..." placeholder. -->
+    <div id="global-loading-bar" class="global-loading-bar" transition:persist>
+      <div class="global-loading-bar-fill"></div>
+    </div>
 
     <!-- Auth modal -->
     <dialog id="auth-modal" class="auth-modal">
@@ -200,6 +208,21 @@ const t = useTranslations(lang);
       function hideGlobalToast() {
         document.getElementById('global-toast')?.classList.remove('visible');
       }
+
+      // Global bottom loading bar (lib/shared/global-loading.ts) — ref
+      // counted so e.g. two tabs loading at once don't hide it as soon as
+      // the first one finishes.
+      let globalLoadingRefCount = 0;
+      window.addEventListener('metadea:loading-start', () => {
+        globalLoadingRefCount++;
+        document.getElementById('global-loading-bar')?.classList.add('visible');
+      });
+      window.addEventListener('metadea:loading-end', () => {
+        globalLoadingRefCount = Math.max(0, globalLoadingRefCount - 1);
+        if (globalLoadingRefCount === 0) {
+          document.getElementById('global-loading-bar')?.classList.remove('visible');
+        }
+      });
 
       // Own rate limiter (lib/api/rate-limiter.ts) dispatches this whenever
       // it has to delay an AniList call to stay under budget — shown on

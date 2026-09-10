@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  getAllLibraryEntries, getUserInfo,
+  getUserInfo,
   getAllUserLists, getListItemsFull, createUserList, updateUserList,
   deleteUserList, addItemToList, removeItemFromList, reorderListItems,
   getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage,
@@ -10,12 +10,12 @@ import { saveCharacter, getAllCharacters, type CharacterEntry } from '../../lib/
 import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
+import { beginGlobalLoading } from '../../lib/shared/global-loading';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { IconTrash } from '../local/ui/icons';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
-type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 type P = ReturnType<typeof getT>['profile'];
 
 function fallbackGradient(type: string | null | undefined): string {
@@ -776,7 +776,6 @@ interface ListsSectionProps {
 export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchItems, readOnly }: ListsSectionProps = {}) {
   const p = getT().profile;
 
-  const [items, setItems] = useState<Items | null>(overrideLists ? [] : null);
   const [catalogMap, setCatalogMap] = useState<Map<string, MediaCatalogEntry>>(overrideCatalogMap ?? new Map());
   const [charactersMap, setCharactersMap] = useState<Map<string, CharacterEntry>>(new Map());
   const [customImagesMap, setCustomImagesMap] = useState<Map<string, FavoriteCustomImage>>(new Map());
@@ -784,29 +783,34 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
   const [customLists, setCustomLists] = useState<ListInfo[]>(overrideLists ?? []);
   const [activeListKey, setActiveListKey] = useState<string | null>(null);
 
+  // No blocking "Cargando..." placeholder here — the grid renders right
+  // away (empty at first, or already filled from cache) while the global
+  // bottom loading bar (BaseLayout.astro) shows the fetch is in flight.
   useEffect(() => {
     if (overrideLists) return;
     let cancelled = false;
+    const endLoading = beginGlobalLoading();
     (async () => {
-      const [{ items: libItems, catalog: catalogEntries }, allLists, profile, allChars, customImgs] = await Promise.all([
-        getCachedLibraryAndCatalog(),
-        getAllUserLists().catch(() => [] as ListInfo[]),
-        getUserInfo().catch(() => ({} as Record<string, unknown>)),
-        getAllCharacters().catch(() => [] as CharacterEntry[]),
-        getCustomImagesMap().catch(() => new Map<string, FavoriteCustomImage>()),
-      ]);
-      if (cancelled) return;
-      setItems(libItems);
-      setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
-      setCharactersMap(new Map(allChars.map(c => [c.external_id, c])));
-      setCustomImagesMap(customImgs);
-      setUsername((profile.display_name as string | undefined)?.toLowerCase().replace(/\s+/g, '_') || 'user');
-      setCustomLists(allLists.filter(l => !l.is_fav));
+      try {
+        const [{ catalog: catalogEntries }, allLists, profile, allChars, customImgs] = await Promise.all([
+          getCachedLibraryAndCatalog(),
+          getAllUserLists().catch(() => [] as ListInfo[]),
+          getUserInfo().catch(() => ({} as Record<string, unknown>)),
+          getAllCharacters().catch(() => [] as CharacterEntry[]),
+          getCustomImagesMap().catch(() => new Map<string, FavoriteCustomImage>()),
+        ]);
+        if (cancelled) return;
+        setCatalogMap(new Map(catalogEntries.map(e => [e.external_id, e])));
+        setCharactersMap(new Map(allChars.map(c => [c.external_id, c])));
+        setCustomImagesMap(customImgs);
+        setUsername((profile.display_name as string | undefined)?.toLowerCase().replace(/\s+/g, '_') || 'user');
+        setCustomLists(allLists.filter(l => !l.is_fav));
+      } finally {
+        endLoading();
+      }
     })();
     return () => { cancelled = true; };
   }, [overrideLists]);
-
-  if (items === null) return <div className="profile-empty"><p>{p.stats_loading}</p></div>;
 
   const activeList = activeListKey ? customLists.find(l => l.key === activeListKey) : null;
 
