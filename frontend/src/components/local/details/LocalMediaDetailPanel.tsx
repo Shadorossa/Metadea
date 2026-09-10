@@ -24,7 +24,8 @@ import {
   usePlaybackState, startQueuePlayback, pausePlayback, resumePlayback,
   type PlaybackQueueItem,
 } from '../../../lib/local/playback-service';
-import { formatWatchedAt, catalogReleaseTimestampMs, firstCsvUrl, formatPlaybackTime } from '../utils/formatters';
+import { formatWatchedAt, formatPlaybackTime } from '../utils/formatters';
+import { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mapper-utils';
 import { isReadingType } from '../../../lib/constants/media';
 import { formatDateLong } from '../../../lib/shared/formatDate';
 import { IconX, IconFolder, IconCheck, IconPencil } from '../ui/icons';

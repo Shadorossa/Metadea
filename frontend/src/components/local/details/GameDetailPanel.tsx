@@ -10,9 +10,9 @@ import { AchievementCell } from './AchievementCell';
 import { CatalogLinkIcon } from './CatalogLinkIcon';
 import { IgdbPickerModal } from '../modals/IgdbPickerModal';
 import { IconMonitor, IconPencil } from '../ui/icons';
-import { formatPlaytime, formatLastPlayed, formatDate, firstCsvUrl, catalogReleaseTimestampMs } from '../utils/formatters';
+import { formatPlaytime, formatLastPlayed, formatUnixDateLong } from '../utils/formatters';
 import { toSmallCover } from '../../../lib/shared/small-cover';
-import { gameExternalId } from '../../../lib/media/mapper-utils';
+import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
@@ -240,7 +240,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const displayGenres = catalogEntry?.genres_csv
     ? catalogEntry.genres_csv.split(',').map(g => g.trim()).filter(Boolean).join(', ')
     : gameInfo?.genres?.join(', ');
-  const metaDots   = [formatDate(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
+  const metaDots   = [formatUnixDateLong(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
   const displaySummary = catalogEntry?.synopsis || gameInfo?.summary;
   // catalogDevelopers (this identity's own IGDB lookup) wins over
   // gameInfo.developers (launchTarget's cached info) — same "own identity"

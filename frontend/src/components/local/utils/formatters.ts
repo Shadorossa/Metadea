@@ -1,5 +1,4 @@
 import { formatUnixTimestampShort, formatDateLong } from '../../../lib/shared/formatDate';
-export { catalogReleaseTimestampMs, firstCsvUrl } from '../../../lib/media/mapper-utils';
 
 export function formatPlaytime(minutes?: number): string {
   if (!minutes || minutes === 0) return '—';
@@ -15,7 +14,10 @@ export function formatLastPlayed(ts?: number): string {
   return formatUnixTimestampShort(ts) ?? '—';
 }
 
-export function formatDate(timestamp?: number): string | null {
+// Named for the unix-seconds input it actually takes (not just "a date") —
+// distinct from lib/shared/formatDate.ts's own same-named module, which
+// this used to collide with by both exporting a plain `formatDate`.
+export function formatUnixDateLong(timestamp?: number): string | null {
   if (!timestamp) return null;
   try {
     return formatDateLong(new Date(timestamp * 1000));

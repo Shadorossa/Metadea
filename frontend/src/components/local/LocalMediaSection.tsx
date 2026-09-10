@@ -13,7 +13,7 @@ import { buildLibraryStatusEntries, candidateExternalIdsForGame } from './utils/
 import type { MetaEntry } from '../../lib/tauri';
 import { IconFolder, IconPlus } from './ui/icons';
 import { LAUNCHER_ORDER, PLATFORM_LABEL, PLATFORM_LOGO, type CategoryId, type PlatformId } from './utils/constants';
-import { catalogReleaseTimestampMs } from './utils/formatters';
+import { catalogReleaseTimestampMs } from '../../lib/media/mapper-utils';
 import { type LocalPanelSelection } from './hooks/useLocalPanelSelection';
 
 // null = no release date on file at all (never resolved a catalog entry, or
