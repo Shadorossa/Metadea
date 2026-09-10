@@ -4,8 +4,9 @@ import {
   scanFolderContents, getEpisodeHistory, deleteEpisodeHistoryEntry, type EpisodeHistoryEntry,
   type LocalFolderEntry,
   pickFolder, pickFile, renamePath, getMediaRelationsForEditor, getCatalogEntry,
-  getResumePosition,
+  getResumePosition, getReadingProgress,
 } from '../../../lib/tauri';
+import { ComicReaderModal } from '../ComicReaderModal';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {
@@ -332,6 +333,22 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [item.externalId, nextNumber, isThisPlaying]);
 
+  // Reading types (comic/manga/lnovel/book) open the in-app reader instead
+  // of VLC — same idea as resumeSeconds above, just page number instead of
+  // seconds. Re-fetched once the reader closes (readerOpen flipping back to
+  // false), since that's exactly when the saved position last changed.
+  const isReading = isReadingType(item.libraryEntry.type);
+  const [readerOpen, setReaderOpen] = useState(false);
+  const [readingProgress, setReadingProgress] = useState<{ pageNumber: number; totalPages: number | null } | null>(null);
+  useEffect(() => {
+    if (!isReading) return;
+    let cancelled = false;
+    getReadingProgress(item.externalId, nextNumber).then(progress => {
+      if (!cancelled) setReadingProgress(progress);
+    }).catch(() => { if (!cancelled) setReadingProgress(null); });
+    return () => { cancelled = true; };
+  }, [isReading, item.externalId, nextNumber, readerOpen]);
+
   const playContainer = deepFileMatch
     ? dirname(deepFileMatch.absPath)
     : rootFileMatch
@@ -645,32 +662,54 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         ) : (
           <div className={`local-media-info-row${(prequelInfo || sequelInfo || bundleChildren.length > 0) ? ' local-media-info-row--has-neighbors' : ''}`}>
             <div className="local-media-left-col">
-              <button
-                type="button"
-                className={`local-game-detail-play${playState === 'paused' ? ' local-game-detail-play--paused' : ''}`}
-                // Once this item's own queue is actually playing, the button
-                // is a pause/resume toggle — always enabled, even once
-                // nextFile/playPath (recomputed from item.progress, which
-                // doesn't advance in this component's own props mid-queue)
-                // goes stale or empty from episodes the queue already
-                // played through.
-                disabled={!isThisPlaying && (isUnreleased || !playPath)}
-                title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
-                onClick={handlePlayButtonClick}
-              >
-                {playState === 'playing' ? (
-                  <span className="spinner spinner--sm" />
-                ) : playState === 'paused' ? (
-                  <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+              {isReading ? (
+                <button
+                  type="button"
+                  className="local-game-detail-play"
+                  disabled={isUnreleased || !playPath}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : 'No se encontró el archivo del próximo capítulo/número'}
+                  onClick={() => setReaderOpen(true)}
+                >
+                  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
                   </svg>
-                ) : (
-                  <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                )}
-                {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
-              </button>
+                  {isUnreleased
+                    ? releaseLabel
+                    : readingProgress
+                    ? (isSingleEpisode
+                      ? `Seguir por la página ${readingProgress.pageNumber}`
+                      : `Seguir por la página ${readingProgress.pageNumber} del volumen ${nextNumber}`)
+                    : 'Empezar a leer'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`local-game-detail-play${playState === 'paused' ? ' local-game-detail-play--paused' : ''}`}
+                  // Once this item's own queue is actually playing, the button
+                  // is a pause/resume toggle — always enabled, even once
+                  // nextFile/playPath (recomputed from item.progress, which
+                  // doesn't advance in this component's own props mid-queue)
+                  // goes stale or empty from episodes the queue already
+                  // played through.
+                  disabled={!isThisPlaying && (isUnreleased || !playPath)}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : isMovieFormat ? 'No se encontró el archivo de la película' : 'No se encontró el archivo del próximo episodio/capítulo'}
+                  onClick={handlePlayButtonClick}
+                >
+                  {playState === 'playing' ? (
+                    <span className="spinner spinner--sm" />
+                  ) : playState === 'paused' ? (
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                  ) : (
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  )}
+                  {playState === 'playing' ? 'Reproduciendo' : playState === 'paused' ? 'En pausa' : isUnreleased ? releaseLabel : (resumeSeconds && resumeSeconds > 5 ? `Seguir viendo en ${formatPlaybackTime(resumeSeconds)}` : 'Reproducir')}
+                </button>
+              )}
               <div className="local-media-divider-line" />
               <div className="local-media-match-row">
                 <div className="local-media-detail-locate-wrap">
@@ -886,6 +925,19 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           </div>
         </div>,
         document.body,
+      )}
+
+      {readerOpen && playPath && nextFile && (
+        <ComicReaderModal
+          externalId={item.externalId}
+          title={isMovieFormat || totalCount === 1 ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`}
+          filePath={playPath}
+          episodeNumber={nextNumber}
+          totalCount={totalCount}
+          libraryEntry={item.libraryEntry}
+          onClose={() => setReaderOpen(false)}
+          onProgressSaved={onProgressSaved}
+        />
       )}
     </>
   );

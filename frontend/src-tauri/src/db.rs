@@ -950,6 +950,28 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         crate::vestigial_cleanup::fix_character_ids(conn);
         mark_migration(conn, 51)?;
     }
+    if v < 52 {
+        // Where the in-app comic/manga/book reader last left off inside one
+        // archive/document — same "resume position" idea as
+        // episode_resume_position (migration 43), just page_number instead
+        // of position_seconds. One row per (external_id, episode_number):
+        // episode_number is whichever issue/chapter/volume file this is (the
+        // same numbering already used for episode_history), page_number is
+        // the position within *that* file specifically. total_pages is
+        // cached alongside it so the UI can show "página X de Y" without
+        // re-opening the archive just to count pages.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS reading_progress (
+                external_id    TEXT NOT NULL,
+                episode_number REAL NOT NULL,
+                page_number    INTEGER NOT NULL,
+                total_pages    INTEGER,
+                updated_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (external_id, episode_number)
+             );",
+        )?;
+        mark_migration(conn, 52)?;
+    }
 
     Ok(())
 }

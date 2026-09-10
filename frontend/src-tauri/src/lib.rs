@@ -4,6 +4,7 @@ mod characters;
 mod companies;
 mod staff;
 mod comicvine;
+mod comic_reader;
 mod db;
 mod episode_history;
 mod favorite_images;
@@ -21,6 +22,7 @@ mod media_episodes;
 mod media_relations;
 mod platform_scanning;
 mod proposal_bundle;
+mod reading_progress;
 mod resume_position;
 mod sagas;
 mod share_image;
@@ -128,6 +130,10 @@ pub fn run() {
             resume_position::get_resume_position,
             resume_position::save_resume_position,
             resume_position::clear_resume_position,
+            reading_progress::get_reading_progress,
+            reading_progress::save_reading_progress,
+            reading_progress::clear_reading_progress,
+            comic_reader::extract_comic_archive,
             user_library::save_library_entry,
             user_library::get_library_entry,
             user_library::delete_library_entry,
