@@ -9,6 +9,7 @@ import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { QuickSearchOverlay } from '../components/search/QuickSearchOverlay';
 import { NowPlayingBar } from '../components/local/NowPlayingBar';
+import { NowReadingBar } from '../components/local/NowReadingBar';
 import '../styles/components/now-playing-bar.css';
 import { CharacterPrEditorModal } from '../components/character/CharacterPrEditorModal';
 import type { Locale, Translations } from '../i18n/index';
@@ -87,6 +88,7 @@ const t = useTranslations(lang);
          #page-content and transition:persist so it survives page swaps the
          same way #global-toast/#app-bg do. -->
     <NowPlayingBar client:load transition:persist />
+    <NowReadingBar client:load transition:persist />
 
     <!-- Global character editor (see window.openCharacterEditor) — used to
          only be mounted per-page (character.astro, admin/catalog.astro),

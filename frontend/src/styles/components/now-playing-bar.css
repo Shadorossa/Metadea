@@ -120,3 +120,35 @@
     display: none;
   }
 }
+
+/* ── Global "now reading" bar (see NowReadingBar.tsx) ───────────────────────── */
+.now-reading-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 199;
+  background: color-mix(in srgb, var(--bg-base) 88%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* Shifts up when NowPlayingBar is also visible (z-index: 200) */
+.now-reading-bar--above-player {
+  bottom: 60px;
+}
+
+.now-reading-progress-track {
+  height: 2px;
+  width: 100%;
+  background: color-mix(in srgb, var(--border-color) 60%, transparent);
+}
+
+.now-reading-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.5s ease;
+}
+

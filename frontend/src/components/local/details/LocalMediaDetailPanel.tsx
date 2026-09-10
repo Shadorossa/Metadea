@@ -7,6 +7,7 @@ import {
   getResumePosition, getReadingProgress,
 } from '../../../lib/tauri';
 import { ComicReaderModal } from '../ComicReaderModal';
+import { setReadingSession } from '../../../lib/local/reading-session';
 import { getT } from '../../../i18n/client';
 import type { LocalMediaItem } from '../hooks/useLocalMediaEntries';
 import {
@@ -973,6 +974,21 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           isSingleTomo={isSingleEpisode}
           cover={item.cover}
           onClose={() => setReaderOpen(false)}
+          onStandBy={(spreadIndex, totalSpreads, pageCount) => {
+            setReadingSession({
+              externalId: item.externalId,
+              title: isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`,
+              cover: item.cover,
+              filePath: playPath,
+              episodeNumber: nextNumber,
+              totalCount,
+              libraryEntry: item.libraryEntry,
+              isSingleTomo: isSingleEpisode,
+              pageCount,
+              spreadIndex,
+              totalSpreads,
+            });
+          }}
           onProgressSaved={onProgressSaved}
         />
       )}

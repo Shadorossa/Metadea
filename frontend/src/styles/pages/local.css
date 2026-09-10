@@ -1898,6 +1898,26 @@
   flex-shrink: 0;
 }
 
+.comic-reader-header-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted, rgba(255, 255, 255, 0.7));
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.comic-reader-header-btn:hover {
+  color: var(--text-main, #fff);
+  border-color: var(--accent);
+}
+
 .comic-reader-close {
   flex-shrink: 0;
   width: 30px;
@@ -1916,6 +1936,44 @@
 .comic-reader-close:hover {
   color: var(--text-main, #fff);
   border-color: var(--accent);
+}
+
+/* Fullscreen mode — hides the header so only pages are visible */
+.comic-reader-overlay--fullscreen .comic-reader-header {
+  display: none;
+}
+
+.comic-reader-overlay--fullscreen .comic-reader-progress-bar {
+  display: none;
+}
+
+/* Floating button to exit fullscreen — sits at top-right, fades in on hover */
+.comic-reader-fullscreen-exit {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm, 4px);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.comic-reader-overlay--fullscreen:hover .comic-reader-fullscreen-exit {
+  opacity: 1;
+}
+
+.comic-reader-fullscreen-exit:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .comic-reader-body {
