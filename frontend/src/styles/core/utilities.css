@@ -98,3 +98,70 @@
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+/* ── Spacing Utilities ─────────────────────────────────────────────────────────── */
+/* Common gap values used throughout the codebase. Extract from flex containers. */
+.gap-xs { gap: 0.15rem; }     /* 54 uses found */
+.gap-sm { gap: 0.35rem; }     /* 31 uses found */
+.gap-md { gap: 0.5rem; }      /* 76 uses found */
+.gap-lg { gap: 0.75rem; }     /* 56 uses found */
+.gap-xl { gap: 1rem; }        /* 44 uses found */
+.gap-2xl { gap: 1.5rem; }     /* 12 uses found */
+
+/* Common padding values */
+.p-xs { padding: 0.25rem; }
+.p-sm { padding: 0.5rem; }
+.p-md { padding: 1rem; }
+.p-lg { padding: 1.5rem; }
+.p-xl { padding: 2rem; }
+
+/* ── Border Radius Utilities ───────────────────────────────────────────────────── */
+/* Standardize border-radius across components. These appear 200+ times total. */
+.rounded-xs { border-radius: 2px; }        /* 7 uses */
+.rounded-sm { border-radius: var(--radius-sm, 4px); }   /* 126 uses */
+.rounded-md { border-radius: var(--radius-md, 8px); }   /* 73 uses */
+.rounded-lg { border-radius: var(--radius-lg); }        /* 9 uses */
+.rounded-full { border-radius: 50%; }                    /* 24 uses */
+.rounded-pill { border-radius: 99px; }                   /* 7 uses */
+
+/* ── Text Overflow ─────────────────────────────────────────────────────────────── */
+/* Common text overflow patterns for truncated/ellipsis text. */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ── Display & Visibility ──────────────────────────────────────────────────────── */
+/* Quick toggle utilities for common display scenarios. */
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.grid-auto {
+  display: grid;
+  grid-auto-flow: row;
+  grid-auto-rows: auto;
+}
+
+/* ── Border Utilities ──────────────────────────────────────────────────────────── */
+/* Simplified border patterns (835 border declarations found). */
+.border-thin { border: 1px solid rgba(255, 255, 255, 0.1); }
+.border-light { border: 1px solid rgba(255, 255, 255, 0.15); }
+.border-accent { border: 1px solid var(--accent); }
+.border-top-thin { border-top: 1px solid rgba(255, 255, 255, 0.1); }
