@@ -548,10 +548,10 @@ const translations = useTranslations(lang);
         }).filter(Boolean);
       }
 
-      function renderStatValueHtml(items: string[]): string {
+      function renderStatItemHtml(displayLabel: string, items: string[]): string {
         if (items.length === 0) return '';
         if (items.length === 1) {
-          return `<div>${sanitizeStatValue(items[0])}</div>`;
+          return `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value"><div>${sanitizeStatValue(items[0])}</div></div></div>`;
         }
 
         const itemsHtml = items.map((val, idx) => {
@@ -561,11 +561,21 @@ const translations = useTranslations(lang);
         }).join('');
 
         return `
-          <div class="media-stat-carousel">
-            <button type="button" class="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior">‹</button>
-            <div class="media-stat-carousel-items">${itemsHtml}</div>
-            <button type="button" class="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente">›</button>
-            <span class="media-stat-carousel-count">(1/${items.length})</span>
+          <div class="media-stat-item media-stat-item--has-carousel">
+            <div class="media-stat-main-row">
+              <span class="media-stat-label">${escapeHtml(displayLabel)}</span>
+              <div class="media-stat-value">
+                <div class="media-stat-carousel">
+                  <button type="button" class="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior">‹</button>
+                  <div class="media-stat-carousel-items">${itemsHtml}</div>
+                  <button type="button" class="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente">›</button>
+                </div>
+              </div>
+            </div>
+            <div class="media-stat-divider-row">
+              <div class="media-stat-divider-line"></div>
+              <span class="media-stat-carousel-count">(1/${items.length})</span>
+            </div>
           </div>
         `.trim();
       }
@@ -581,19 +591,19 @@ const translations = useTranslations(lang);
 
       if (character.gender) {
         const items = parseStatItems(character.gender);
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
+        statsHtml += renderStatItemHtml(t.stat_gender, items);
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
         const items = parseStatItems(String(character.age));
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
+        statsHtml += renderStatItemHtml(t.stat_age, items);
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
         const items = parseStatItems(character.bloodType);
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
+        statsHtml += renderStatItemHtml(t.stat_blood_type, items);
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
@@ -601,7 +611,7 @@ const translations = useTranslations(lang);
         const day = character.dateOfBirth.day ?? '?';
         const month = character.dateOfBirth.month ?? '?';
         const year = character.dateOfBirth.year ? `/${character.dateOfBirth.year}` : '';
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_birthday)}</span><div class="media-stat-value">${day}/${month}${year}</div></div>`;
+        statsHtml += renderStatItemHtml(t.stat_birthday, [`${day}/${month}${year}`]);
         addedLabels.add('birthday');
         addedLabels.add('cumpleaños');
       }
@@ -672,7 +682,7 @@ const translations = useTranslations(lang);
         }
 
         const values = parseStatItems(stat.value);
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${renderStatValueHtml(values)}</div></div>`;
+        statsHtml += renderStatItemHtml(displayLabel, values);
         addedLabels.add(lowerLabel);
         addedLabels.add(lowerRaw);
       }
@@ -689,9 +699,9 @@ const translations = useTranslations(lang);
             e.preventDefault();
             e.stopPropagation();
 
-            const carousel = btn.closest('.media-stat-carousel');
-            if (!carousel) return;
-            const items = carousel.querySelectorAll<HTMLElement>('.media-stat-carousel-item');
+            const statItem = btn.closest('.media-stat-item');
+            if (!statItem) return;
+            const items = statItem.querySelectorAll<HTMLElement>('.media-stat-carousel-item');
             if (items.length <= 1) return;
 
             let currentIndex = Array.from(items).findIndex(el => el.classList.contains('active'));
@@ -706,9 +716,9 @@ const translations = useTranslations(lang);
             items[currentIndex].style.display = 'none';
 
             items[newIndex].classList.add('active');
-            items[newIndex].style.display = 'inline-block';
+            items[newIndex].style.display = 'block';
 
-            const countEl = carousel.querySelector('.media-stat-carousel-count');
+            const countEl = statItem.querySelector('.media-stat-carousel-count');
             if (countEl) {
               countEl.textContent = `(${newIndex + 1}/${items.length})`;
             }

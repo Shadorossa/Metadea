@@ -568,25 +568,45 @@
   text-decoration-color: var(--accent);
 }
 
-.media-stat-carousel {
-  display: inline-flex;
+.media-stat-item--has-carousel {
+  display: flex;
+  flex-direction: column;
+  padding: 0.55rem 0 0.35rem;
+  border-bottom: none !important;
+}
+
+.media-stat-main-row {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.35rem;
-  justify-content: flex-end;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.media-stat-carousel {
+  display: grid;
+  grid-template-columns: 20px 1fr 20px;
+  align-items: center;
+  width: 190px;
   max-width: 100%;
+  gap: 0.25rem;
 }
 
 .media-stat-carousel-items {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   min-width: 0;
+  overflow: hidden;
+  text-align: center;
 }
 
 .media-stat-carousel-item {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  text-align: center;
+  width: 100%;
   line-height: 1.3;
 }
 
@@ -598,12 +618,14 @@
 
 .media-stat-carousel-btn {
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   color: var(--text-dim);
   font-size: 1.15rem;
   font-family: inherit;
   line-height: 1;
-  padding: 0.1rem 0.3rem;
+  padding: 0;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   cursor: pointer;
   display: inline-flex;
@@ -612,6 +634,7 @@
   user-select: none;
   opacity: 0.55;
   transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
 }
 
 .media-stat-carousel-btn:hover {
@@ -624,15 +647,30 @@
   transform: scale(0.92);
 }
 
+.media-stat-divider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.media-stat-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+  opacity: 0.8;
+}
+
 .media-stat-carousel-count {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--text-dim);
   opacity: 0.75;
   font-family: var(--font-sans, system-ui, sans-serif);
   user-select: none;
-  margin-left: 0.15rem;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
 .media-stat-value small,
