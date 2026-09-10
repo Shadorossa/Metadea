@@ -144,3 +144,46 @@ pub async fn extract_comic_archive(app_handle: tauri::AppHandle, path: String) -
 
     Ok(ComicPages { pages, cache_dir: dest.to_string_lossy().to_string() })
 }
+
+#[tauri::command]
+pub async fn save_comic_page_as_png(
+    app_handle: tauri::AppHandle,
+    source_page_path: String,
+    title: String,
+    page_number: i64,
+) -> Result<String, String> {
+    let pic_dir = app_handle
+        .path()
+        .picture_dir()
+        .map_err(|e| format!("No se pudo obtener la carpeta de imágenes: {e}"))?;
+
+    let metadea_pics = pic_dir.join("Metadea");
+    if !metadea_pics.exists() {
+        let _ = std::fs::create_dir_all(&metadea_pics);
+    }
+    let target_dir = if metadea_pics.exists() { metadea_pics } else { pic_dir };
+
+    let clean_title: String = title
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    let clean_title = clean_title.trim();
+    let clean_title = if clean_title.is_empty() { "comic" } else { clean_title };
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let filename = format!("{clean_title}_pag_{page_number}_{timestamp}.png");
+    let dest_path = target_dir.join(filename);
+
+    let img = image::open(&source_page_path)
+        .map_err(|e| format!("Error abriendo la imagen de página: {e}"))?;
+
+    img.save_with_format(&dest_path, image::ImageFormat::Png)
+        .map_err(|e| format!("Error guardando la página como PNG: {e}"))?;
+
+    Ok(dest_path.to_string_lossy().to_string())
+}
+

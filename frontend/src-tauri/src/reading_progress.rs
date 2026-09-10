@@ -59,3 +59,48 @@ pub async fn clear_reading_progress(
     ).str_err()?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_comic_bookmarks(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+    episode_number: f64,
+) -> Result<Vec<i64>, String> {
+    let conn = state.conn.lock().str_err()?;
+    let mut stmt = conn.prepare(
+        "SELECT page_number FROM comic_bookmarks WHERE external_id = ?1 AND episode_number = ?2 ORDER BY page_number ASC"
+    ).str_err()?;
+    let rows = stmt.query_map(rusqlite::params![external_id, episode_number], |r| r.get(0)).str_err()?;
+    let mut out = Vec::new();
+    for row in rows {
+        if let Ok(page) = row {
+            out.push(page);
+        }
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn toggle_comic_bookmark(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    external_id: String,
+    episode_number: f64,
+    page_number: i64,
+) -> Result<bool, String> {
+    let conn = state.conn.lock().str_err()?;
+    let deleted = conn.execute(
+        "DELETE FROM comic_bookmarks WHERE external_id = ?1 AND episode_number = ?2 AND page_number = ?3",
+        rusqlite::params![external_id, episode_number, page_number],
+    ).str_err()?;
+
+    if deleted > 0 {
+        Ok(false)
+    } else {
+        conn.execute(
+            "INSERT INTO comic_bookmarks (external_id, episode_number, page_number) VALUES (?1, ?2, ?3)",
+            rusqlite::params![external_id, episode_number, page_number],
+        ).str_err()?;
+        Ok(true)
+    }
+}
+

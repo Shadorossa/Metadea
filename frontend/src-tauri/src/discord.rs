@@ -115,9 +115,39 @@ fn apply_activity(
 }
 
 
-// -- Comandos Tauri -------------------------------------------------------------
+fn send_activity(
+    guard: &mut Option<DiscordIpcClient>,
+    details: &str,
+    state: &str,
+    large_img: &str,
+    large_txt: &str,
+    small_img: &str,
+    small_txt: &str,
+    start_time: Option<u64>,
+    end_time: Option<u64>,
+) -> Result<(), String> {
+    if guard.is_some() {
+        if let Some(client) = guard.as_mut() {
+            if apply_activity(client, details, state, large_img, large_txt, small_img, small_txt, start_time, end_time) {
+                return Ok(());
+            }
+        }
+    }
+    if let Some(mut old) = guard.take() {
+        let _ = old.close();
+    }
+    ensure_connected(guard)?;
+    if let Some(client) = guard.as_mut() {
+        if apply_activity(client, details, state, large_img, large_txt, small_img, small_txt, start_time, end_time) {
+            return Ok(());
+        }
+    }
+    if let Some(mut old) = guard.take() {
+        let _ = old.close();
+    }
+    Err("set_activity failed".into())
+}
 
-// Update Discord Rich Presence details and status state
 #[tauri::command]
 pub fn update_presence(
     discord: tauri::State<'_, DiscordState>,
@@ -131,50 +161,32 @@ pub fn update_presence(
     end_time: Option<u64>,
 ) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
-    ensure_connected(&mut guard)?;
-    
-    let client = guard.as_mut().ok_or("no client")?;
-    let ok = apply_activity(
-        client, 
-        &details, 
-        &state, 
-        &large_image.unwrap_or_else(|| "metadea".to_string()), 
-        &large_text.unwrap_or_else(|| "Metadea".to_string()), 
-        &small_image.unwrap_or_default(), 
+    send_activity(
+        &mut guard,
+        &details,
+        &state,
+        &large_image.unwrap_or_else(|| "metadea".to_string()),
+        &large_text.unwrap_or_else(|| "Metadea".to_string()),
+        &small_image.unwrap_or_default(),
         &small_text.unwrap_or_default(),
         start_time,
         end_time,
-    );
-
-    if !ok {
-        *guard = None;
-        return Err("set_activity failed".into());
-    }
-    Ok(())
+    )
 }
 
-/// Restablece la presencia por defecto "Explorando la biblioteca" con la imagen de Metadea
 #[tauri::command]
 pub fn reset_presence(discord: tauri::State<'_, DiscordState>) -> Result<(), String> {
     let mut guard = discord.client.lock().map_err(|e| format!("mutex: {e}"))?;
-    ensure_connected(&mut guard)?;
-    let client = guard.as_mut().ok_or("no client")?;
-
-    let ok = apply_activity(
-        client, 
-        DEFAULT_DETAILS, 
-        DEFAULT_STATE, 
-        "metadea", 
-        "Metadea", 
-        "", 
+    send_activity(
+        &mut guard,
+        DEFAULT_DETAILS,
+        DEFAULT_STATE,
+        "metadea",
+        "Metadea",
+        "",
         "",
         None,
         None,
-    );
-
-    if !ok {
-        *guard = None;
-        return Err("reset failed".into());
-    }
-    Ok(())
+    )
 }
+

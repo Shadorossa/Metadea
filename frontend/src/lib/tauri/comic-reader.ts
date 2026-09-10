@@ -25,3 +25,16 @@ export async function saveReadingProgress(externalId: string, episodeNumber: num
 export async function clearReadingProgress(externalId: string, episodeNumber: number): Promise<void> {
   return tauriRun('clear_reading_progress', { externalId, episodeNumber });
 }
+
+export async function getComicBookmarks(externalId: string, episodeNumber: number): Promise<number[]> {
+  return tauriCmd<number[]>('get_comic_bookmarks', [], { externalId, episodeNumber });
+}
+
+export async function toggleComicBookmark(externalId: string, episodeNumber: number, pageNumber: number): Promise<boolean> {
+  return tauriCmd<boolean>('toggle_comic_bookmark', false, { externalId, episodeNumber, pageNumber });
+}
+
+export async function saveComicPageAsPng(sourcePagePath: string, title: string, pageNumber: number): Promise<string> {
+  return tauriCmd<string>('save_comic_page_as_png', '', { sourcePagePath, title, pageNumber });
+}
+

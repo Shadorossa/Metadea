@@ -19,6 +19,7 @@ export interface ReadingSessionState {
 }
 
 let state: ReadingSessionState | null = null;
+let resumeOpen = false;
 const listeners = new Set<() => void>();
 
 function notify() {
@@ -34,8 +35,16 @@ export function getReadingSession(): ReadingSessionState | null {
   return state;
 }
 
+export function getResumeOpen(): boolean {
+  return resumeOpen;
+}
+
 export function useReadingSession(): ReadingSessionState | null {
   return useSyncExternalStore(subscribeReadingSession, getReadingSession, () => null);
+}
+
+export function useResumeOpen(): boolean {
+  return useSyncExternalStore(subscribeReadingSession, getResumeOpen, () => false);
 }
 
 export function setReadingSession(next: ReadingSessionState | null): void {
@@ -44,5 +53,18 @@ export function setReadingSession(next: ReadingSessionState | null): void {
 }
 
 export function clearReadingSession(): void {
-  setReadingSession(null);
+  state = null;
+  resumeOpen = false;
+  notify();
+}
+
+export function openResumeModal(): void {
+  if (!state) return;
+  resumeOpen = true;
+  notify();
+}
+
+export function closeResumeModal(): void {
+  resumeOpen = false;
+  notify();
 }

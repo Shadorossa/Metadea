@@ -1854,6 +1854,12 @@
   flex-direction: column;
   background: #0a0a0c;
   animation: comic-reader-fade-in 150ms ease;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.comic-reader-overlay::-webkit-scrollbar {
+  display: none;
 }
 
 .comic-reader-overlay--closing {
@@ -1982,6 +1988,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .comic-reader-state {
@@ -2019,25 +2026,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0;
   height: 100%;
   width: 100%;
 }
 
 .comic-reader-page {
+  height: 100%;
   max-height: 100%;
-  max-width: 100%;
-  height: auto;
   width: auto;
+  max-width: 100%;
   object-fit: contain;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-  /* Each page turn mounts a brand-new <img> (a new page index is a new key,
-     not a src swap on the same element) — preloading (ComicReaderModal)
-     means it almost always has an already-decoded bitmap ready to paint
-     immediately, but this fade covers the rare case it doesn't, so a
-     slower decode reads as a quick soft fade-in instead of an abrupt flash
-     between the old page vanishing and the new one snapping into place. */
   animation: comic-reader-page-in 120ms ease;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 @keyframes comic-reader-page-in {
@@ -2045,11 +2048,8 @@
   to   { opacity: 1; }
 }
 
-/* Two pages side by side — each capped to half the row (minus the gap) so
-   neither one alone stretches to fill the full width once its sibling is
-   present. */
 .comic-reader-spread--double .comic-reader-page {
-  max-width: calc(50% - 2px);
+  max-width: 50%;
 }
 
 .comic-reader-nav {
@@ -2099,4 +2099,122 @@
   background: var(--accent);
   transition: width 150ms ease;
 }
+
+html.comic-reader-active,
+html.comic-reader-active body {
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+}
+
+html.comic-reader-active::-webkit-scrollbar,
+html.comic-reader-active body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.comic-reader-header-btn--active {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+.comic-context-menu {
+  position: fixed;
+  z-index: 600;
+  background: rgba(18, 18, 24, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md, 8px);
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+  animation: comic-menu-in 120ms ease;
+}
+
+@keyframes comic-menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.comic-context-menu-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
+.comic-context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 0.84rem;
+  color: var(--text-main, #fff);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  text-align: left;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.comic-context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.comic-context-menu-item--accent {
+  color: var(--accent);
+}
+
+.comic-context-menu-item svg {
+  flex-shrink: 0;
+}
+
+.comic-context-menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.comic-context-bookmarks-list {
+  max-height: 120px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.comic-reader-toast {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 15, 22, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  z-index: 700;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: comic-toast-in 150ms ease;
+}
+
+@keyframes comic-toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 

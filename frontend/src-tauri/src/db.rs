@@ -973,6 +973,21 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         mark_migration(conn, 52)?;
     }
 
+    if v < 53 {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS comic_bookmarks (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                external_id    TEXT NOT NULL,
+                episode_number REAL NOT NULL,
+                page_number    INTEGER NOT NULL,
+                created_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(external_id, episode_number, page_number)
+             );
+             CREATE INDEX IF NOT EXISTS idx_comic_bookmarks_entry ON comic_bookmarks(external_id, episode_number);",
+        )?;
+        mark_migration(conn, 53)?;
+    }
+
     Ok(())
 }
 
