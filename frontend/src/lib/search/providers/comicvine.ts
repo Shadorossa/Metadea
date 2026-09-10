@@ -39,7 +39,20 @@ const COLLECTED_EDITION_REGEX = /\b(deluxe edition|omnibus|compendium|complete c
 // of its own is the only remaining signal in that case.
 const NO_KEYWORD_ISSUE_CAP = 3;
 
-type VolumeIdentity = Pick<ComicVineVolume, 'id' | 'name' | 'count_of_issues'>;
+// `year` instead of reusing ComicVineVolume's raw (string) start_year
+// directly — isReprintOf's "own volume" stand-in (comic-collected-
+// editions.ts) already has the page's resolved release year as a number,
+// not a fresh ComicVineVolume to re-derive one from.
+export interface VolumeIdentity {
+  id: number;
+  name: string;
+  count_of_issues: number | null;
+  year: number | null;
+}
+
+export function volumeIdentity(v: ComicVineVolume): VolumeIdentity {
+  return { id: v.id, name: v.name, count_of_issues: v.count_of_issues ?? null, year: yearFrom(v) };
+}
 
 export function isCollectedEditionVolume(v: VolumeIdentity): boolean {
   return COLLECTED_EDITION_REGEX.test(v.name) && (v.count_of_issues ?? 0) <= NO_KEYWORD_ISSUE_CAP;
@@ -66,8 +79,17 @@ export function collectedEditionBaseName(name: string): string {
 // real ongoing series would only ever false-positive in its first couple
 // of issues, and even then only against another volume with the exact
 // same name, which is already a narrow coincidence.
+//
+// A reprint can only ever be published the same year as or after what it
+// reprints — never before, since the issues it collects have to exist
+// first. When both years are known, this rules it out outright regardless
+// of the name/issue-count signals above; when either is missing (Comic
+// Vine doesn't always have start_year filled in), the check is skipped
+// rather than blocking on data that isn't there.
 export function isReprintOf(v: VolumeIdentity, original: VolumeIdentity): boolean {
   if (v.id === original.id) return false;
+  if (v.year !== null && original.year !== null && v.year < original.year) return false;
+
   const vCount = v.count_of_issues ?? 0;
   const originalCount = original.count_of_issues ?? 0;
   if (isCollectedEditionVolume(v) && collectedEditionBaseName(v.name) === collectedEditionBaseName(original.name)) {
@@ -183,8 +205,9 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
   // no way to find it. The reprint itself isn't lost either way — it's
   // resurfaced as an "Editions" relation on the run's own page, see
   // comic-collected-editions.ts.
+  const identities = candidates.map(volumeIdentity);
   const results = candidates
-    .filter(v => !candidates.some(other => isReprintOf(v, other)))
+    .filter((_v, i) => !identities.some(other => isReprintOf(identities[i], other)))
     .map(mapVolume);
 
   return {

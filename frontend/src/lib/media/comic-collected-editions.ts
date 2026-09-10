@@ -7,7 +7,7 @@
 // own page, so it's still reachable (and still selectable when filing a
 // local CBZ under the right catalog entry).
 import { comicVineSearch } from '../tauri';
-import { isReprintOf } from '../search/providers/comicvine';
+import { isReprintOf, volumeIdentity } from '../search/providers/comicvine';
 import type { MediaPageData } from './types';
 
 export async function fetchComicCollectedEditions(
@@ -16,6 +16,7 @@ export async function fetchComicCollectedEditions(
   editionsLabel: string,
   titleMain?: string,
   totalCount?: number,
+  releaseYear?: number,
 ): Promise<MediaPageData['relations'] | null> {
   if (!rawId.startsWith('comic:') || !titleMain) return null;
 
@@ -23,11 +24,11 @@ export async function fetchComicCollectedEditions(
   if (!searchRes?.volumes.length) return null;
 
   // A minimal stand-in for "this comic's own volume" — isReprintOf only
-  // reads id/name/count_of_issues, all of which the page already has,
+  // reads id/name/count_of_issues/year, all of which the page already has,
   // without needing to refetch the full volume record just for this check.
   const ownVolumeId = parseInt(rawId.slice(rawId.indexOf(':') + 1), 10);
-  const original = { id: ownVolumeId, name: titleMain, count_of_issues: totalCount ?? 0 };
-  const editions = searchRes.volumes.filter(v => isReprintOf(v, original));
+  const original = { id: ownVolumeId, name: titleMain, count_of_issues: totalCount ?? 0, year: releaseYear ?? null };
+  const editions = searchRes.volumes.filter(v => isReprintOf(volumeIdentity(v), original));
   if (!editions.length) return null;
 
   const editionRelations: MediaPageData['relations'] = editions
