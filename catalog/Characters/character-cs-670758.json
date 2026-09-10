@@ -1,0 +1,47 @@
+{
+  "character": {
+    "external_id": "character:cs:670758",
+    "name": "Vita Clotilde",
+    "aliases_csv": "Witch of the Abyss,Azure Abyss,Azure Diva,Misty",
+    "biography": "<b>Debut:</b> <i>Trails in the Sky the 3rd</i> <small>(by voice)</small><br><i>Trails of Cold Steel</i><br>\n<b>Age:</b> 24 <small>(CS1-2)</small><br>26 <small>(CS3)</small><br>\n<b>Date of birth:</b> S.1180<br>\n<b>Status:</b> Alive<br>\n<b>Affiliation:</b> Ouroboros<br>Hexen Clan<br>\n<b>Occupation:</b> Anguis<br>Opera singer<br>\n<b>Gender:</b> Female<br>\n<b>Weapon [Trails of Cold Steel II]:</b> Kerykeion<br>\n<b>Orbment type [Trails of Cold Steel II]:</b> Mirage, Water<br>\n<b>Weapon [Trails of Cold Steel IV]:</b> Grianos<br>\n<b>Orbment type [Trails of Cold Steel IV]:</b> Mirage, Water<br>\n<br>\n<p>Vita Clotilde (ヴィータ・クロチルダ), also known as the Azure Diva (蒼(あお)の歌姫(ディーヴァ)), is a renowned opera diva.</p>\n<p>Vita is a young woman with long sandstone colored hair and violet color eyes.</p>\n<p>Throughout her appearances she adopts a number of different attires:</p>\n<p>Vita initially uses the staff of the Elder, which turns into a an azure, green shade in her possession. The staff is a stylized version of the Cadaceus, with a prominent crystal surrounded by two spiked crystal protrusions. After returning the staff, Vita uses an ornate lace blue and black fan covered in swirling patterns. She created the fan out of Grianos' feathers.</p>\n<p>Initially, Vita puts on the air of a very friendly celebrity who is enjoyable to be around with. In her Misty persona, she tends to act like a cheery yet spunky young woman who is not afraid to say what is on her mind and tends to over-exaggerate stuff, especially on the radio.</p>\n<p>However, in her true role as an Anguis, Vita maintains a very cold persona and acts like a selfish diva at times. Her voice also changes to create a booming effect and she has a mysterious air around her at times. She also has a sadistic teasing side to her whenever she mocks her opponents, but she is very serious when it comes to work with Ouroboros and her duty as a witch and can be quite violent and scary if one is not careful. Vita can also be rather meticulous when it comes to planning out her next steps.</p>\n<p>However, despite the act she puts on, Vita does have a kind and compassionate side to her personality which she keeps hidden. This kind side shows itself whenever it comes to individuals like Emma and Crow who she considers important people in her life. Despite initially acting harsh towards Emma, she in fact does it to help Emma who is like a younger sister to her develop as a witch. She also appeared to care a lot for Crow and was even saddened and heart-broken by his death.</p>",
+    "image_url": "https://static.wikia.nocookie.net/kiseki/images/1/1c/Vita_Clotilde_%28Sen_III%29.png/revision/latest?cb=20210402132611"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:13557",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:13558",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:26564",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:78115",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "va:Ayaka Maeda (The 3rd Evo)",
+      "name": "Ayaka Maeda (The 3rd Evo)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a95027",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a127365",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
