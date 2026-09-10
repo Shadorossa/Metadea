@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { extractComicArchive, getReadingProgress, saveReadingProgress, wrapAssetUrl, type LibraryEntry } from '../../lib/tauri';
+import { extractComicArchive, getReadingProgress, saveReadingProgress, wrapAssetUrl, updateDiscordPresence, resetDiscordPresence, type LibraryEntry } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/local/reading-service';
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
+import { toSmallCover } from '../../lib/shared/small-cover';
 import { IconX } from './ui/icons';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   episodeNumber: number;
   totalCount:    number | null;
   libraryEntry:  LibraryEntry;
+  cover:         string | null;
   // True when this one file/volume actually covers the whole catalog
   // entry (a single-tomo edition of an otherwise multi-issue series) — see
   // LocalMediaDetailPanel's isSingleEpisode. Finishing it then has to mark
@@ -39,7 +41,7 @@ function buildSpreads(pageCount: number): number[][] {
 // Full-screen paginated image viewer for a CBR/CBZ/etc. archive — extraction
 // and page listing live in comic_reader.rs (extractComicArchive), this only
 // ever deals with the already-resolved list of page image paths.
-export function ComicReaderModal({ externalId, title, filePath, episodeNumber, totalCount, libraryEntry, isSingleTomo, onClose, onProgressSaved }: Props) {
+export function ComicReaderModal({ externalId, title, filePath, episodeNumber, totalCount, libraryEntry, isSingleTomo, cover, onClose, onProgressSaved }: Props) {
   const { isClosing, close: handleClose } = useClosingTransition(onClose);
 
   const [loadState, setLoadState] = useState<LoadState>('loading');
@@ -56,6 +58,9 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
 
   const spreads = useMemo(() => buildSpreads(pages.length), [pages.length]);
   const currentSpread = spreads[spreadIndex] ?? [];
+  const pageLabel = currentSpread.length === 2
+    ? `${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pages.length}`
+    : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +143,22 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
     }
   }, [spreadIndex, loadState, spreads, pages]);
 
+  // Same idea as playback-service.ts's own updateDiscordForTick for
+  // watching — "Reading {title}" / "Page X of Y" instead of "Watching
+  // {title} - Episode N" / a video time range. No start/end timestamps
+  // (no progress bar): those are what Discord uses to render a countdown,
+  // which only makes sense for something with an actual continuous
+  // position like video playback, not a page-turner.
+  useEffect(() => {
+    if (loadState !== 'ready') return;
+    const coverUrl = cover && cover.startsWith('http') ? toSmallCover(cover) : undefined;
+    updateDiscordPresence(`Reading ${title}`, `Page ${pageLabel}`, undefined, undefined, coverUrl, title, 'metadea', 'Metadea').catch(() => {});
+  }, [loadState, pageLabel, title, cover]);
+
+  useEffect(() => {
+    return () => { resetDiscordPresence().catch(() => {}); };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { handleClose(); return; }
@@ -154,10 +175,6 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
     if (clickX < rect.width * 0.45) goPrev();
     else if (clickX > rect.width * 0.55) goNext();
   };
-
-  const pageLabel = currentSpread.length === 2
-    ? `${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pages.length}`
-    : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
 
   return createPortal(
     <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}`}>
