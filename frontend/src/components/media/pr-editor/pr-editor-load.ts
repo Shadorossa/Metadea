@@ -1,17 +1,17 @@
 // The relations/saga half of PrEditorModal's load() effect — a pure
 // computation of `externalId` alone, split out since it reads no component
 // state. (The catalog-entry half stays in the component, in its own try block.)
-import { getCatalogEntry, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
-import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri/catalog';
-import { invoke } from '../../lib/tauri';
+import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
+import type { MediaCatalogEntry, DbMediaRelation } from '../../../lib/tauri/catalog';
+import { invoke } from '../../../lib/tauri';
 import {
   BUNDLE_RELATION_TYPES, PART_OF_RELATION_TYPES, CONTAINS_RELATION_TYPES,
   isSagaRelationType, normalizeLegacyRelationType, type SagaRelationType,
-} from '../../lib/media/sagaTypes';
-import { reconstructSagaOrder, type MediaMeta } from '../../lib/media/sagaGrouping';
-import { compareByReleaseDate } from '../../lib/media/mapper-utils';
-import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
-import type { BundledRelation, EditableRelation } from './PrEditorModal';
+} from '../../../lib/media/sagaTypes';
+import { reconstructSagaOrder, type MediaMeta } from '../../../lib/media/sagaGrouping';
+import { compareByReleaseDate } from '../../../lib/media/mapper-utils';
+import { CANONICAL_RELATION_LABELS } from '../../../lib/media/canonical-relations';
+import type { BundledRelation, EditableRelation } from '../PrEditorModal';
 
 export interface PrEditorRelationsAndSagaResult {
   bundledRelations: BundledRelation[];

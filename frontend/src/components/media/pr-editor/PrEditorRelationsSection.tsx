@@ -1,5 +1,5 @@
-import { RelationTypeSelect } from './RelationTypeSelect';
-import type { DragHandlers } from './hooks/useDragReorder';
+import { RelationTypeSelect } from '../RelationTypeSelect';
+import type { DragHandlers } from '../hooks/useDragReorder';
 
 interface EditableRelation {
   related_media_external_id: string;

@@ -1,6 +1,6 @@
-import type { MetaResolver } from '../../lib/media/sagaGrouping';
-import { getT } from '../../i18n/client';
-import type { DragHandlers } from './hooks/useDragReorder';
+import type { MetaResolver } from '../../../lib/media/sagaGrouping';
+import { getT } from '../../../i18n/client';
+import type { DragHandlers } from '../hooks/useDragReorder';
 
 interface Props {
   externalId: string;

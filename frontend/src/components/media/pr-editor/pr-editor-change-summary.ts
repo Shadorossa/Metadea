@@ -1,10 +1,10 @@
 // buildChangeSummary, split out of PrEditorModal.tsx: formats the "- " PR
 // body from precomputed values, same reasoning as SubmitPrEditorParams.
-import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
-import type { MediaMeta } from '../../lib/media/sagaGrouping';
-import type { SagaRelationType } from '../../lib/media/sagaTypes';
-import { DIFF_FIELDS } from '../../lib/media/constants';
-import type { BundledRelation, EditableRelation } from './PrEditorModal';
+import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
+import type { MediaMeta } from '../../../lib/media/sagaGrouping';
+import type { SagaRelationType } from '../../../lib/media/sagaTypes';
+import { DIFF_FIELDS } from '../../../lib/media/constants';
+import type { BundledRelation, EditableRelation } from '../PrEditorModal';
 
 export interface PrEditorDiff {
   addedBundled: BundledRelation[];

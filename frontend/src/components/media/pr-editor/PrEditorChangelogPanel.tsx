@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { invoke } from '../../lib/tauri';
-import { fetchCommitHistoryForPath, type CatalogFileCommit } from '../../lib/github/api';
-import { catalogFilePath } from '../../lib/github/catalogPaths';
-import { getT } from '../../i18n/client';
+import { invoke } from '../../../lib/tauri';
+import { fetchCommitHistoryForPath, type CatalogFileCommit } from '../../../lib/github/api';
+import { catalogFilePath } from '../../../lib/github/catalogPaths';
+import { getT } from '../../../i18n/client';
 
 function relativeTime(timestamp: number): string {
   const diffMs = Date.now() - timestamp;

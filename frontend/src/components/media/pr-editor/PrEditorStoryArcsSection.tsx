@@ -13,11 +13,11 @@
 // soon as each arc is saved — no GitHub proposal step, same as Favorites'
 // custom images; this isn't part of the shared community catalog.
 import { useEffect, useState } from 'react';
-import { getStoryArcsForMedia, saveStoryArc, reorderStoryArcs, deleteStoryArc, type StoryArc, type StoryArcItem } from '../../lib/tauri/story-arcs';
-import { getCatalogEntry, getMediaRelationsForEditor } from '../../lib/tauri/catalog';
-import { openImageCropModal } from '../shared/ImageCropModal';
-import { MediaSearchPopup } from './MediaSearchPopup';
-import type { SearchResult as ApiSearchResult } from '../../lib/search';
+import { getStoryArcsForMedia, saveStoryArc, reorderStoryArcs, deleteStoryArc, type StoryArc, type StoryArcItem } from '../../../lib/tauri/story-arcs';
+import { getCatalogEntry, getMediaRelationsForEditor } from '../../../lib/tauri/catalog';
+import { openImageCropModal } from '../../shared/ImageCropModal';
+import { MediaSearchPopup } from '../MediaSearchPopup';
+import type { SearchResult as ApiSearchResult } from '../../../lib/search';
 
 interface EditingItem {
   media_external_id: string;

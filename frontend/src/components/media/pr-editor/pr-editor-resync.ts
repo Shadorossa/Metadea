@@ -2,12 +2,12 @@
 // as functions the component calls from inside its own setState updaters
 // (not returning a final state directly) so a resync always merges against
 // the latest entry/editableRelations, not a stale closure snapshot.
-import type { MediaCatalogEntry } from '../../lib/tauri/catalog';
-import type { DbMediaCharacter } from '../../lib/tauri/characters';
-import type { MediaPageData } from '../../lib/media/types';
-import { CANONICAL_RELATION_LABELS } from '../../lib/media/canonical-relations';
-import { setField } from '../../lib/shared/object-utils';
-import type { EditableRelation } from './PrEditorModal';
+import type { MediaCatalogEntry } from '../../../lib/tauri/catalog';
+import type { DbMediaCharacter } from '../../../lib/tauri/characters';
+import type { MediaPageData } from '../../../lib/media/types';
+import { CANONICAL_RELATION_LABELS } from '../../../lib/media/canonical-relations';
+import { setField } from '../../../lib/shared/object-utils';
+import type { EditableRelation } from '../PrEditorModal';
 
 // Only fills fields currently empty — a live re-fetch must never overwrite a manual edit.
 export const RESYNC_FIELDS: (keyof MediaCatalogEntry)[] = [

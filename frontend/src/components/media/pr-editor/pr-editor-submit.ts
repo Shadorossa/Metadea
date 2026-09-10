@@ -2,20 +2,20 @@
 // saga-chain edges, persists locally, propagates reciprocal relations, and
 // (in 'proposal' mode) submits the GitHub PR. Takes precomputed diff values
 // instead of the component's own closures.
-import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../lib/tauri/catalog';
-import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { getStoryArcsForMedia, type StoryArc } from '../../lib/tauri/story-arcs';
-import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../lib/tauri/catalog';
-import type { DbMediaCharacter } from '../../lib/tauri/characters';
-import type { SagaEntry } from '../../lib/anilist/saga';
-import { saveCachedSaga } from '../../lib/tauri/catalog';
-import { invalidateCachedMediaData } from '../../lib/media/mediaService';
-import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../lib/media/sagaGrouping';
-import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle, type ProposalFileEntry } from '../../lib/github/submitCollaborativeProposal';
-import { REL_TYPE_TO_PAIR } from '../../lib/media/constants';
-import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../lib/media/sagaTypes';
-import { setField } from '../../lib/shared/object-utils';
-import type { BundledRelation, EditableRelation } from './PrEditorModal';
+import { saveCatalogEntry, saveMediaRelations, getMediaRelationsForEditor, getCatalogEntry } from '../../../lib/tauri/catalog';
+import { saveCharactersSkeleton } from '../../../lib/tauri/characters';
+import { getStoryArcsForMedia, type StoryArc } from '../../../lib/tauri/story-arcs';
+import type { MediaCatalogEntry, DbMediaRelation, DbMediaAuthor } from '../../../lib/tauri/catalog';
+import type { DbMediaCharacter } from '../../../lib/tauri/characters';
+import type { SagaEntry } from '../../../lib/anilist/saga';
+import { saveCachedSaga } from '../../../lib/tauri/catalog';
+import { invalidateCachedMediaData } from '../../../lib/media/mediaService';
+import { classifySagaChain, createMetaResolver, type MediaMeta } from '../../../lib/media/sagaGrouping';
+import { submitCollaborativeProposal, openUrlInBrowser, type ProposalBundle, type ProposalFileEntry } from '../../../lib/github/submitCollaborativeProposal';
+import { REL_TYPE_TO_PAIR } from '../../../lib/media/constants';
+import { ALL_CHAIN_RELATION_TYPES, type SagaRelationType } from '../../../lib/media/sagaTypes';
+import { setField } from '../../../lib/shared/object-utils';
+import type { BundledRelation, EditableRelation } from '../PrEditorModal';
 
 // A proposal only needs enough to identify the row plus whatever the user
 // actually hand-edited (`editedFields`) — auto-fetched fields (synopsis,

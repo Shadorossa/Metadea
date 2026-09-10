@@ -1,4 +1,4 @@
-import type { DragHandlers } from './hooks/useDragReorder';
+import type { DragHandlers } from '../hooks/useDragReorder';
 
 interface RelationCard {
   external_id: string;

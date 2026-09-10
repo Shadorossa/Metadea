@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { DbMediaCharacter } from '../../lib/tauri/characters';
-import type { Translations } from '../../i18n/index';
+import type { DbMediaCharacter } from '../../../lib/tauri/characters';
+import type { Translations } from '../../../i18n/index';
 
 interface Props {
   t: Translations;
