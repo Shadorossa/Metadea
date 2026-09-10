@@ -1,0 +1,30 @@
+/* Character Voice Actor Language Selection Buttons
+   Consolidated from character.css and media.css (identical definitions).
+   Used in: Character page voice actors section, Media page character voice actors.
+*/
+
+.char-seiyu-lang-btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.char-seiyu-lang-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.char-seiyu-lang-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

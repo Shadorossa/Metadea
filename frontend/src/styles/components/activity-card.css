@@ -1,0 +1,109 @@
+/* Activity Feed Card Component
+   Consolidated from home.css and profile.css (identical definitions).
+   Used in: Home page activity feed, Profile page activity section.
+*/
+
+.act-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  min-height: 52px;
+}
+
+.act-card:hover {
+  transform: translateY(-1.5px);
+  border-color: var(--accent);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.act-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.act-card-cover {
+  flex-shrink: 0;
+  width: 40px;
+  height: 52px;
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.act-card-cover-fallback {
+  width: 32px;
+  height: 44px;
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.act-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.act-card-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.act-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.act-card-date {
+  flex-shrink: 0;
+}
+
+.act-card-type-label {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.act-card-type-icon {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.act-card-bold-title {
+  font-weight: 600;
+}
+
+.act-card:hover .act-card-bold-title {
+  color: var(--accent);
+}

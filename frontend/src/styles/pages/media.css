@@ -1,5 +1,8 @@
 /* ── Media detail page ───────────────────────────────────────────────────── */
 
+@import '../core/utilities.css';
+@import '../components/character-lang-buttons.css';
+
 .media-page {
   min-height: 100vh;
 }
@@ -2985,7 +2988,7 @@
   padding: 0.75rem 0.9rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
@@ -3382,7 +3385,7 @@
   gap: 0.15rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   padding: 0.25rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   z-index: 5;
@@ -3420,7 +3423,7 @@
   min-width: 10rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   padding: 0.3rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   z-index: 20;
@@ -3600,7 +3603,7 @@
 .pr-editor-va-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   padding: 0.6rem 0.55rem 0.5rem;
   display: flex;
   flex-direction: column;
@@ -3620,7 +3623,7 @@
   justify-content: space-between;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   padding: 0.15rem 0.2rem;
   margin-top: 0.25rem;
   user-select: none;
@@ -3668,36 +3671,7 @@
   color: var(--text-main);
 }
 
-.char-seiyu-lang-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 0.16rem 0.38rem;
-  border-radius: var(--radius-sm, 3px);
-  cursor: pointer;
-  transition: all 120ms ease;
-  line-height: 1.2;
-  font-family: inherit;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.char-seiyu-lang-btn:hover {
-  color: var(--text-main);
-  border-color: var(--accent);
-  background: var(--accent-soft, rgba(255, 255, 255, 0.05));
-}
-
-.char-seiyu-lang-btn--active {
-  background: var(--accent) !important;
-  color: var(--text-on-accent, #ffffff) !important;
-  border-color: var(--accent) !important;
-  font-weight: 700;
-}
+/* Character voice actor buttons now imported from character-lang-buttons.css */
 
 .pr-editor-field textarea {
   padding-top: 4px !important;
@@ -3742,7 +3716,7 @@
   width: 100%;
   padding: 0.4rem 0.5rem;
   background: var(--bg-elevated, #1b1917);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
 }
 
 .pr-editor-slots-box:focus-within {
@@ -3926,7 +3900,7 @@
 
 .pr-editor-alert {
   padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   font-size: 0.85rem;
   margin-bottom: 1.25rem;
 }
@@ -4025,7 +3999,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   overflow: hidden;
   border: 1px solid rgba(124, 106, 247, 0.3);
   background: var(--bg-elevated, #1b1917);
@@ -4094,7 +4068,7 @@
   border: 1px solid rgba(124, 106, 247, 0.4);
   background-color: rgba(124, 106, 247, 0.08);
   color: var(--accent, #7c6af7);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -4139,7 +4113,7 @@
   border: 1px solid rgba(124, 106, 247, 0.4);
   background-color: rgba(124, 106, 247, 0.08);
   color: var(--accent, #7c6af7);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   cursor: pointer;
   transition: border-color 120ms, background-color 120ms;
 }
@@ -4171,7 +4145,7 @@
   padding: 0.35rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 8px); /* .rounded-md utility */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
@@ -4182,7 +4156,7 @@
   font-weight: 500;
   color: var(--text-main, #e3e1db);
   padding: 0.4rem 0.6rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   background: transparent;
   cursor: pointer;
   transition: background-color 100ms;
@@ -4290,7 +4264,7 @@
   padding: 0.5rem 0.6rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
 }
 
 .pr-editor-arc-card-reorder {
@@ -4327,7 +4301,7 @@
   width: 42px;
   height: 60px;
   flex-shrink: 0;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   overflow: hidden;
   background: var(--bg-primary, #12110f);
 }
@@ -4418,7 +4392,7 @@
   flex-shrink: 0;
   padding: 0;
   font: inherit;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   border: 1px dashed var(--border-color, #2d2a24);
   background: var(--bg-primary, #12110f);
   display: flex;
@@ -4455,7 +4429,7 @@
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-primary, #12110f);
   color: var(--text-main, #e3e1db);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   transition: border-color var(--anim-fast, 120ms);
 }
 
@@ -4498,7 +4472,7 @@
   padding: 0.35rem 0.5rem;
   background: var(--bg-primary, #12110f);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
 }
 
 .pr-editor-arc-item-cover {
@@ -4547,7 +4521,7 @@
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
   color: var(--text-main, #e3e1db);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   transition: border-color var(--anim-fast, 120ms);
   -moz-appearance: textfield;
 }
@@ -4596,7 +4570,7 @@
   padding: 0.4rem;
   background: var(--bg-elevated, #1b1917);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 6;
 }
@@ -4736,7 +4710,7 @@
   font-weight: 600;
   background: transparent;
   border: 1px dashed var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   color: var(--accent, #7c6af7);
   cursor: pointer;
   transition: all 120ms ease;
@@ -4783,7 +4757,7 @@
   max-width: none;
   max-height: none;
   box-shadow: none;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 8px); /* .rounded-md utility */
 }
 
 /* Fixed 10-per-row instead of auto-fill — the admin panel is wide enough
@@ -4864,7 +4838,7 @@
   gap: 0.6rem;
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   padding: 0.5rem;
   cursor: pointer;
   transition: all 120ms ease;
@@ -4923,7 +4897,7 @@
   color: var(--text-main, #e3e1db);
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   transition: all 120ms ease;
   width: 100%;
 }
@@ -4948,7 +4922,7 @@
   padding: 0.5rem 1.25rem;
   font-size: 0.85rem;
   font-weight: 600;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   cursor: pointer;
   transition: all 120ms ease;
   font-family: inherit;
@@ -4994,7 +4968,7 @@
   padding: 0.5rem 1.1rem;
   font-size: 0.8rem;
   font-weight: 600;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   cursor: pointer;
   transition: all 120ms ease;
   background: rgba(220, 38, 38, 0.12);
@@ -5021,7 +4995,7 @@
   border: 1px solid rgba(124, 106, 247, 0.3);
   color: var(--accent, #7c6af7);
   padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -5064,7 +5038,7 @@
   overflow-y: auto;
   background: var(--bg-dropdown, #141211);
   border: 1px solid var(--border-color, #2d2a24);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   z-index: 1001;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
@@ -5089,7 +5063,7 @@
   width: 42px;
   height: 60px;
   object-fit: cover;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
 }
@@ -5117,7 +5091,7 @@
   width: 150px;
   height: 84px;
   object-fit: cover;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm, 4px); /* .rounded-sm utility */
   border: 1px solid var(--border-color, #2d2a24);
   background: var(--bg-elevated, #1b1917);
   display: block;

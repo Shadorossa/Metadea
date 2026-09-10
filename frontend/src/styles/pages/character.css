@@ -1,3 +1,6 @@
+@import '../core/utilities.css';
+@import '../components/character-lang-buttons.css';
+
 .character-grid {
   display: grid;
   grid-template-columns: minmax(0, 4.1fr) minmax(260px, 0.9fr);
@@ -353,30 +356,7 @@
   border-top: 1px dashed var(--border-color);
 }
 
-.char-seiyu-lang-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-color);
-  color: var(--text-muted);
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-sm, 4px);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  line-height: 1.2;
-  font-family: inherit;
-}
-
-.char-seiyu-lang-btn:hover {
-  color: var(--text-main);
-  border-color: var(--accent);
-}
-
-.char-seiyu-lang-btn--active {
-  background: var(--accent);
-  color: var(--text-on-accent, #ffffff);
-  border-color: var(--accent);
-}
+/* Character voice actor buttons now imported from character-lang-buttons.css */
 
 #char-stats-list .media-stat-item:last-child {
   border-bottom: none !important;

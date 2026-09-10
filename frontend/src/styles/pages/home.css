@@ -1,4 +1,8 @@
 /* ── Home page ────────────────────────────────────────────────────────────── */
+
+@import '../core/utilities.css';
+@import '../components/activity-card.css';
+
 .home-page-container {
   display: flex;
   flex-direction: column;
@@ -250,12 +254,8 @@
   color: var(--accent);
 }
 
-/* Card format below is copied from the profile page's own "Actividad
-   reciente" (.act-card and friends, profile.css) so both feeds look and
-   behave the same — home.astro doesn't import profile.css, so the rules
-   are duplicated here rather than pulling in that entire stylesheet.
-   .act-card-user-avatar is the one addition: a small friend-avatar badge,
-   since this feed spans multiple people instead of just the local user. */
+/* Activity card component now imported from activity-card.css */
+/* Home-specific overrides for activity card layout */
 .activity-feed {
   display: flex;
   flex-direction: column;
@@ -271,31 +271,7 @@
   border-radius: var(--radius-md);
 }
 
-.act-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.65rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, 8px);
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-  min-height: 52px;
-}
-
-.act-card:hover {
-  transform: translateY(-1.5px);
-  border-color: var(--accent);
-  background-color: rgba(255, 255, 255, 0.04);
-}
-
-.act-card-link {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-}
-
+/* Home-specific: larger cover with shadow, different fallback styling */
 .act-card-cover {
   width: 32px;
   height: 44px;
@@ -318,6 +294,7 @@
   flex-shrink: 0;
 }
 
+/* Home-specific: user avatar badge */
 .act-card-user-avatar {
   position: absolute;
   left: 0.65rem;
@@ -334,6 +311,7 @@
   background: var(--bg-elevated);
 }
 
+/* Home-specific: activity content with tighter gap */
 .act-card-content {
   flex: 1;
   min-width: 0;
