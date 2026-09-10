@@ -149,6 +149,7 @@ const translations = useTranslations(lang);
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
   import { compareByReleaseDateThenTitle, mapExternalFormatToType } from '../lib/media/mapper-utils';
+  import { parseStatSectionLabel, StatSectionTracker } from '../lib/shared/stat-sections';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import { getT } from '../i18n/client';
@@ -590,14 +591,10 @@ const translations = useTranslations(lang);
       }
 
       const processedStats: ProcessedStat[] = parsedStats.map(stat => {
-        const match = stat.label.match(/^(.*?)\s*\[(.*?)\]\s*(.*?)$/);
-        const section = match ? match[2].replace(/[:：\s]+$/, '').trim() : null;
-        const clean = match
-          ? `${match[1]} ${match[3]}`.trim().replace(/[:：\s]+$/, '')
-          : stat.label.trim().replace(/[:：\s]+$/, '');
+        const { section, cleanLabel } = parseStatSectionLabel(stat.label);
         return {
           rawLabel: stat.label,
-          cleanLabel: clean,
+          cleanLabel,
           section,
           value: stat.value,
         };
@@ -611,7 +608,7 @@ const translations = useTranslations(lang);
         }
       }
 
-      let currentSection: string | null = null;
+      const sectionTracker = new StatSectionTracker();
 
       for (const stat of processedStats) {
         const lowerLabel = stat.cleanLabel.toLowerCase();
@@ -636,13 +633,9 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'status') displayLabel = 'Estado';
         else if (lowerLabel === 'nationality') displayLabel = 'Nacionalidad';
 
-        if (stat.section) {
-          if (stat.section.toLowerCase() !== currentSection?.toLowerCase()) {
-            statsHtml += `<div class="media-stat-section-header">${escapeHtml(stat.section)}</div>`;
-            currentSection = stat.section;
-          }
-        } else {
-          currentSection = null;
+        const sectionHeader = sectionTracker.next(stat.section);
+        if (sectionHeader) {
+          statsHtml += `<div class="media-stat-section-header">${escapeHtml(sectionHeader)}</div>`;
         }
 
         const plainTextLength = stat.value.replace(/<[^>]+>/g, '').length;

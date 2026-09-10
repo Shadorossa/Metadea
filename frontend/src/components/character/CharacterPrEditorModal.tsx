@@ -350,9 +350,8 @@ export function CharacterPrEditorModal() {
 
         const pendingAppearance = pendingAppearanceRef.current;
         pendingAppearanceRef.current = null;
-        let resolvedWithPending = resolved;
-        if (pendingAppearance && !resolved.some(a => a.media_external_id === pendingAppearance.media_external_id)) {
-          resolvedWithPending = [...resolved, {
+        const resolvedWithPending = (pendingAppearance && !resolved.some(a => a.media_external_id === pendingAppearance.media_external_id))
+          ? [...resolved, {
             media_external_id: pendingAppearance.media_external_id,
             relation_type: appearanceRelationType,
             title: pendingAppearance.title,
@@ -360,9 +359,12 @@ export function CharacterPrEditorModal() {
             release_year: pendingAppearance.release_year ?? null,
             release_month: pendingAppearance.release_month ?? null,
             release_day: pendingAppearance.release_day ?? null,
-          }];
-          resolvedWithPending.sort(compareByReleaseDateThenTitle);
-        }
+          }]
+          : resolved;
+        // Always sorted here, unconditionally — so this stays correct even if
+        // the pending-appearance branch above changes, instead of relying on
+        // a sort call nested inside that branch.
+        resolvedWithPending.sort(compareByReleaseDateThenTitle);
 
         setAppearances(resolvedWithPending);
         setOriginalAppearances(resolved);

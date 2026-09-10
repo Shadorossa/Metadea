@@ -18,6 +18,7 @@ import { useDiscordPresence } from './hooks/useDiscordPresence';
 import { MediaStoreLinks, openLink } from './MediaStoreLinks';
 import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
+import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
 import { saveStaffSkeleton } from '../../lib/tauri/staff';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
@@ -1214,7 +1215,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
 
                 <div className="media-stats-list">
                   {(() => {
-                    let currentSection: string | null = null;
+                    const sectionTracker = new StatSectionTracker();
                     const filtered = data.stats.filter(s => {
                       if (!data.authors || data.authors.length === 0) return true;
                       const labelLower = s.label.toLowerCase();
@@ -1227,26 +1228,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     });
 
                     return filtered.map((s, i) => {
-                      const match = s.label.match(/^(.*?)\s*\[(.*?)\]\s*(.*?)$/);
-                      const sectionName = match ? match[2].replace(/[:：\s]+$/, '').trim() : null;
-                      const cleanLabel = match
-                        ? `${match[1]} ${match[3]}`.trim().replace(/[:：\s]+$/, '')
-                        : s.label;
-
-                      let showHeader = false;
-                      if (sectionName) {
-                        if (sectionName.toLowerCase() !== currentSection?.toLowerCase()) {
-                          showHeader = true;
-                          currentSection = sectionName;
-                        }
-                      } else {
-                        currentSection = null;
-                      }
+                      const { section, cleanLabel } = parseStatSectionLabel(s.label);
+                      const sectionHeader = sectionTracker.next(section);
 
                       return (
                         <Fragment key={i}>
-                          {showHeader && (
-                            <div className="media-stat-section-header">{sectionName}</div>
+                          {sectionHeader && (
+                            <div className="media-stat-section-header">{sectionHeader}</div>
                           )}
                           {s.isScore ? (
                             <div className="media-stat-item media-stat-item--score">

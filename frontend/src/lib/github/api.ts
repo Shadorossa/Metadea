@@ -1,5 +1,5 @@
 import { REPO_OWNER, REPO_NAME } from './ownership';
-import { MEDIA_CATALOG_FOLDERS, catalogRootPath } from './catalogPaths';
+import { MEDIA_CATALOG_FOLDERS, catalogRootPath, externalIdFromFilename } from './catalogPaths';
 
 export interface GitHubPull {
   number: number;
@@ -90,19 +90,10 @@ export async function deleteFileFromMain(token: string, path: string, sha: strin
   });
 }
 
-// catalog/<Folder>/{type}-{id}.json → "{type}:{id}" — mirrors the filename
-// convention set by catalogPaths.ts's catalogFilePath (externalId with ':'
-// replaced by '-').
-export function externalIdFromDatabaseFilename(name: string): string {
-  const bare = name.replace(/\.json$/, '');
-  if (bare.startsWith('character-')) {
-    const parts = bare.split('-');
-    if (parts.length >= 3) {
-      return `character:${parts[1]}:${parts.slice(2).join('-')}`;
-    }
-  }
-  return bare.replace('-', ':');
-}
+// catalog/<Folder>/{type}-{id}.json → "{type}:{id}" — the inverse of
+// catalogPaths.ts's catalogFilePath, kept there as its single source of
+// truth so encode/decode can't drift apart.
+export const externalIdFromDatabaseFilename = externalIdFromFilename;
 
 export async function mergePull(token: string, number: number): Promise<void> {
   await githubFetch(token, `/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${number}/merge`, {
