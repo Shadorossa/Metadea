@@ -40,9 +40,25 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "The Legend of Heroes: Trails in the Sky SC",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co74em.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co74em.jpg"
     }
   ],
-  "characters": [],
-  "media_authors": []
+  "characters": [
+    {
+      "external_id": "character:a:30247",
+      "name": "Estelle Bright",
+      "image_url": "http://asset.localhost/C%3A%5CUsers%5CNacho%5CAppData%5CRoaming%5Ccom.metadea.app%5Cuser_metadata%5Ccustom_image%5Ccharacter%5Ccharacter_30247.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:50121",
+      "name": "Joshua Bright",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b50121-ZICSm4Cevqha.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    }
+  ],
+  "media_authors": [],
+  "story_arcs": []
 }
