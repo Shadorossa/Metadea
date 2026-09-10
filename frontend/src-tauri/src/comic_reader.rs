@@ -144,8 +144,9 @@ fn extract_by_format(ext: &str, src: &Path, dest: &Path) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn read_comic_binary_file(path: String) -> Result<Vec<u8>, String> {
-    std::fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))
+pub async fn read_comic_binary_file(path: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = std::fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?;
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 #[tauri::command]

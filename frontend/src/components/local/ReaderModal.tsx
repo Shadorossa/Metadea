@@ -105,14 +105,12 @@ function PdfCanvasPage({
   inFlightMap,
   resolvedMap,
   onContextMenu,
-  noFade = false,
 }: {
   pdfDoc: any;
   pageNumber: number;
   inFlightMap: Map<number, Promise<PdfRenderItem>>;
   resolvedMap: Map<number, PdfRenderItem>;
   onContextMenu: (e: React.MouseEvent, canvas: HTMLCanvasElement) => void;
-  noFade?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -151,7 +149,7 @@ function PdfCanvasPage({
   return (
     <canvas
       ref={canvasRef}
-      className={`comic-reader-page${noFade ? ' comic-reader-page--no-fade' : ''}`}
+      className="comic-reader-page"
       onContextMenu={e => {
         if (canvasRef.current) onContextMenu(e, canvasRef.current);
       }}
@@ -250,9 +248,24 @@ export function ReaderModal({
     pdfResolvedRef.current.clear();
 
     if (isPdf) {
-      readComicBinaryFile(filePath)
-        .then(async bytes => {
+      (async () => {
+        try {
+          let bytes: Uint8Array | null = null;
+          const assetUrl = wrapAssetUrl(filePath);
+          if (assetUrl.startsWith('http') || assetUrl.startsWith('asset:')) {
+            try {
+              const res = await fetch(assetUrl);
+              if (res.ok) {
+                const ab = await res.arrayBuffer();
+                bytes = new Uint8Array(ab);
+              }
+            } catch {}
+          }
+          if (!bytes || bytes.length === 0) {
+            bytes = await readComicBinaryFile(filePath);
+          }
           if (cancelled) return;
+
           const loadingTask = pdfjsLib.getDocument({ data: bytes });
           const doc = await loadingTask.promise;
           if (cancelled) {
@@ -281,12 +294,12 @@ export function ReaderModal({
           getComicBookmarks(externalId, episodeNumber)
             .then(bm => { if (!cancelled) setBookmarks(bm); })
             .catch(() => {});
-        })
-        .catch(err => {
+        } catch (err) {
           if (cancelled) return;
           setErrorMsg(err instanceof Error ? err.message : String(err));
           setLoadState('error');
-        });
+        }
+      })();
 
       return () => {
         cancelled = true;
@@ -383,12 +396,18 @@ export function ReaderModal({
     }
   }, [spreadIndex, pdfDoc, loadState, spreads]);
 
-  // Preload nearby image files into browser image cache
+  // Pre-calculate and pre-decode nearby image files for instant page transitions
   const preloadedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (loadState !== 'ready' || isPdf) return;
-    for (let si = spreadIndex - 1; si <= spreadIndex + 2; si++) {
-      const spread = spreads[si];
+    const targetSpreads = [
+      spreads[spreadIndex],
+      spreads[spreadIndex + 1],
+      spreads[spreadIndex + 2],
+      spreads[spreadIndex + 3],
+      spreads[spreadIndex - 1],
+    ];
+    for (const spread of targetSpreads) {
       if (!spread) continue;
       for (const pageIdx of spread) {
         const url = wrapAssetUrl(pages[pageIdx]);
@@ -396,6 +415,9 @@ export function ReaderModal({
         preloadedRef.current.add(url);
         const img = new Image();
         img.src = url;
+        if (img.decode) {
+          img.decode().catch(() => {});
+        }
       }
     }
   }, [spreadIndex, loadState, spreads, pages, isPdf]);
@@ -486,7 +508,7 @@ export function ReaderModal({
   };
 
   return createPortal(
-    <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}${isBookOrNovel ? ' comic-reader-overlay--no-fade' : ''}`}>
+    <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}>
       <div className="comic-reader-header">
         <span className="comic-reader-title" title={title}>{title}</span>
         {loadState === 'ready' && (
@@ -540,7 +562,7 @@ export function ReaderModal({
         {loadState === 'loading' && (
           <div className="comic-reader-state">
             <div className="spinner" />
-            <p>Extrayendo páginas…</p>
+            <p>{isPdf ? 'Cargando documento…' : 'Extrayendo páginas…'}</p>
           </div>
         )}
 
@@ -562,7 +584,6 @@ export function ReaderModal({
                     pageNumber={idx + 1}
                     inFlightMap={pdfInFlightRef.current}
                     resolvedMap={pdfResolvedRef.current}
-                    noFade={isBookOrNovel}
                     onContextMenu={(e, canvas) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -578,10 +599,12 @@ export function ReaderModal({
                 ) : (
                   <img
                     key={idx}
-                    className={`comic-reader-page${isBookOrNovel ? ' comic-reader-page--no-fade' : ''}`}
+                    className="comic-reader-page"
                     src={wrapAssetUrl(pages[idx])}
                     alt={`Página ${idx + 1}`}
                     draggable={false}
+                    decoding="sync"
+                    loading="eager"
                     onContextMenu={e => {
                       e.preventDefault();
                       e.stopPropagation();

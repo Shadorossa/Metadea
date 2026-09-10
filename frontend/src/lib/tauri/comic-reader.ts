@@ -14,8 +14,10 @@ export async function extractComicArchive(path: string): Promise<ComicPages> {
 }
 
 export async function readComicBinaryFile(path: string): Promise<Uint8Array> {
-  const bytes = await tauriCmd<Uint8Array | number[]>('read_comic_binary_file', [], { path });
-  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  const res = await tauriCmd<ArrayBuffer | Uint8Array | number[]>('read_comic_binary_file', new Uint8Array(), { path });
+  if (res instanceof Uint8Array) return res;
+  if (res instanceof ArrayBuffer) return new Uint8Array(res);
+  return new Uint8Array(res as any);
 }
 
 export async function getReadingProgress(externalId: string, episodeNumber: number): Promise<{ pageNumber: number; totalPages: number | null } | null> {

@@ -27,7 +27,7 @@
       "dangerousDisableAssetCspModification": ["style-src"],
       "assetProtocol": {
         "enable": true,
-        "scope": ["$APPDATA/metadata/**", "$APPDATA/user_metadata/**"]
+        "scope": ["$APPDATA/metadata/**", "$APPDATA/user_metadata/**", "**"]
       }
     },
     "withGlobalTauri": true
