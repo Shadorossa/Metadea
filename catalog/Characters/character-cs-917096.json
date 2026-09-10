@@ -10,6 +10,10 @@
     {
       "media_external_id": "game:376",
       "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:380",
+      "relation_type": "BACKGROUND"
     }
   ],
   "actors": [
