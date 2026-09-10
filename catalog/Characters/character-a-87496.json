@@ -1,0 +1,65 @@
+{
+  "character": {
+    "external_id": "character:a:87496",
+    "aliases_csv": "Sweetie (by Jeanne),Love (by Loki),Cerezita (by Luka),Mummy (by Cereza & Viola),Dear, Sweet Child (by Rosa & Balder),A Witch with No Memories,The Famed Witch,The Witch of Genesis,Arch-Eve Origin,Little One (by her older self),The Overseer of the Left Eye,The Forbidden Child",
+    "biography": "<b>Real Name:</b> Cereza<br>\n<b>Real Name:</b> Cereza<br>\n<b>Gender:</b> Female<br>\n<b>Born:</b> December 19, 1411<br>Vigrid<br>\n<b>Race:</b> Human<br>\n<b>Clan:</b> Umbra Witches<br>\n<b>Family:</b> Rosa <small>(Mother)</small><br>Balder <small>(Father)</small><br>\n<b>Occupation:</b> Nun<br>Mercenary<br>Left Eye of Darkness<br>\n<b>Affiliation(s):</b> Umbra Witches<br>\n<b>Eye Color:</b> Gray<br>\n<b>Eye Color:</b> Gray<br>\n<b>Hair Color:</b> Black<br>\n<b>Pact With [Magical Abilities]:</b> Madama Butterfly<br>\n<b>Pact With [Magical Abilities]:</b> Madama Butterfly<br>\n<b>Power(s) [Magical Abilities]:</b> Charisma<br>Seduction<br>High intelligence<br>Superhuman Abilities<br>The Bullet Arts<br>Witch Time<br>Bat Within<br>Beast Within<br>Umbran Climax<br>Umbran Witch Walk<br>Umbran Witch Magic<br>Umbran Witch Twists/After Burner Kicks<br>Wicked Weaves<br>Summoning Demons<br>Demon Masquerade/Slave<br>Time Control<br>Reality Warping<br>\n<b>Weapon(s) [Magical Abilities]:</b> Scarborough Fair<br>Love Is Blue<br>Colour My World<br>\n<b>Animal Form(s) [Magical Abilities]:</b> Panther, Crow, Bat &amp; Snake <small>(Bayonetta 2 only)</small><br>\n<br>\n<p>Bayonetta (real name Cereza) is the main protagonist of the Bayonetta series. She is a coquettish and mysterious Umbra Witch. Considered the black sheep of the Umbra Witches due to her Umbran and Lumen descent, she possesses a remarkable talent for Bullet Arts and possessed the Left Eye of Darkness.</p>\n<p>In the first game, she was sealed away during the Witch Hunts until she was found and awakened 500 years later. Spending 20 years with amnesia, she battles against the angelic hordes of Paradiso and fights to end the malicious plans of the last Lumen Sage, Balder.</p>\n<p>In the second game, Bayonetta journeys to Inferno to save Jeanne's soul while also uncovering a deeper plot of a former god conspiring to reclaim his lost power and discovering the truth behind the Witch Hunts.</p>\n<p>In the third game, Bayonetta encounters new enemies called Homunculi led by Singularity, who intends to destroy the Multiverse. She meets Viola, a witch-in-training from an alternate universe who joins her to defeat Singularity.</p>\n<p>Bayonetta's past is explored in Bayonetta Origins: Cereza and the Lost Demon, where her younger self is put to the test in Avalon Forest, a maze-like magical place where malevolent creatures known as Faeries reside.</p>\n<p>As the main character, she is playable in all games in the series.</p>\n<p>Cereza was born as the forbidden child between a Lumen Sage and an Umbra Witch. Her birth caused a rift between the two clans due to a tenet claiming that \"the intersection of light of dark will bring calamity to this earth\". In turn, her father was exiled and her mother was imprisoned. She was originally prohibited from learning magic and grew up an outcast among the witches; despite this, Cereza met Jeanne and formed a strong friendship with her, often playing together as children and later forming a friendly rivalry. As a child, the little comfort Cereza had were the times she could sneak into her mother's cell. Her mother would try to express her affection despite her confinement, creating Cereza's Cheshire doll and often singing Fly Me To The Moon to her every night. Cereza was later given her Umbran Watch as a birthday present from her mother.</p>\n<p>On the eve of Cereza's tenth birthday, Rosa was to be moved to an even more solitary cell with no hope of seeing daylight again. The girl tried to stage a rescue, but her lack of strength and ability in the dark arts meant it was doomed to end in failure.</p>"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:2136",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "manga:89812",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "anime:20442",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:2135",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:76888",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:228528",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a95100",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a190541",
+      "role": "voice",
+      "language": "Portuguese"
+    },
+    {
+      "external_id": "person:a194000",
+      "role": "voice",
+      "language": "Spanish"
+    },
+    {
+      "external_id": "person:a95266",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95266",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a104918",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
