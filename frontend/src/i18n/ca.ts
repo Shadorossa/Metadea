@@ -696,6 +696,7 @@ export const ca = {
     load_error: 'Error en carregar el personatge',
     role_supporting: 'Secundari',
     role_background: 'Background',
+    role_cameo: 'Cameo',
     page_title: 'Detall de Personatge',
     loading: 'Carregant informació del personatge...',
     biography: 'Biografia',

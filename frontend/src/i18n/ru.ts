@@ -696,6 +696,7 @@ export const ru = {
     load_error: 'Ошибка загрузки персонажа',
     role_supporting: 'Второстепенная роль',
     role_background: 'Фоновая роль',
+    role_cameo: 'Камео',
     page_title: 'Детали персонажа',
     loading: 'Загрузка информации о персонаже...',
     biography: 'Биография',

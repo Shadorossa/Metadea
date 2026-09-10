@@ -28,13 +28,14 @@ import {
   type AppearanceRow, type VoiceActorRow, type CharacterDiffFields,
 } from '../../lib/character/prEditorDiff';
 
-const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND'];
+const RELATION_TYPE_OPTIONS = ['MAIN', 'SUPPORTING', 'BACKGROUND', 'CAMEO'];
 const getRelationTypeLabels = () => {
   const t = getT();
   return {
     MAIN: t.character.role_main,
     SUPPORTING: t.character.role_supporting,
     BACKGROUND: t.character.role_background,
+    CAMEO: t.character.role_cameo,
   };
 };
 

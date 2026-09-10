@@ -363,7 +363,7 @@ pub async fn get_media_characters(
              WHERE ca.media_external_id = ?1
              ORDER BY
                 (ca.position IS NULL), ca.position,
-                CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'BACKGROUND' THEN 2 ELSE 3 END",
+                 CASE ca.relation_type WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'CAMEO' THEN 2 WHEN 'BACKGROUND' THEN 3 ELSE 4 END",
         )
         .str_err()?;
     let rows = stmt

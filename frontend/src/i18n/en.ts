@@ -741,6 +741,7 @@ export const en = {
     load_error: 'Error loading character',
     role_supporting: 'Supporting',
     role_background: 'Background',
+    role_cameo: 'Cameo',
     page_title: 'Character Detail',
     loading: 'Loading character information...',
     biography: 'Biography',

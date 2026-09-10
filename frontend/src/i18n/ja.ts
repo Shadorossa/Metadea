@@ -702,6 +702,7 @@ export const ja = {
     load_error: 'キャラクターの読み込みエラー',
     role_supporting: '準主人公',
     role_background: 'モブ',
+    role_cameo: 'カメオ',
     page_title: 'キャラクター詳細',
     loading: 'キャラクター情報を読み込み中...',
     biography: 'プロフィール',

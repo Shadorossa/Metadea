@@ -696,6 +696,7 @@ export const it = {
     load_error: 'Errore nel caricamento del personaggio',
     role_supporting: 'Secondario',
     role_background: 'Background',
+    role_cameo: 'Cameo',
     page_title: 'Dettaglio Personaggio',
     loading: 'Caricamento informazioni sul personaggio...',
     biography: 'Biografia',

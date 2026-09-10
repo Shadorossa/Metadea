@@ -72,6 +72,7 @@ export function PrEditorCharactersSection({ t, characters, changed, onRemove, on
               <option value="MAIN">{t.character.role_main}</option>
               <option value="SUPPORTING">{t.character.role_supporting}</option>
               <option value="BACKGROUND">{t.character.role_background}</option>
+              <option value="CAMEO">{t.character.role_cameo}</option>
             </select>
           </div>
         ))}

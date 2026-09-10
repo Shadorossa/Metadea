@@ -696,6 +696,7 @@ export const fr = {
     load_error: 'Erreur lors du chargement du personnage',
     role_supporting: 'Secondaire',
     role_background: 'Arrière-plan',
+    role_cameo: 'Caméo',
     page_title: 'Détails du personnage',
     loading: 'Chargement des informations du personnage...',
     biography: 'Biographie',

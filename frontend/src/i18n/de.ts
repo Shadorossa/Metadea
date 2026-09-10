@@ -696,6 +696,7 @@ export const de = {
     load_error: 'Fehler beim Laden des Charakters',
     role_supporting: 'Nebencharakter',
     role_background: 'Background',
+    role_cameo: 'Cameo',
     page_title: 'Charakterdetails',
     loading: 'Charakterinformationen werden geladen...',
     biography: 'Biografie',
