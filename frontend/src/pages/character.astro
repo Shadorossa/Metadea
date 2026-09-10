@@ -540,24 +540,32 @@ const translations = useTranslations(lang);
           .filter(Boolean);
 
         return lines.flatMap(line => {
-          let clean = line;
-          if (!clean.includes('<small>') && !clean.includes('<sup>')) {
-            clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
-          }
-          return clean.includes(',') && !clean.includes('<') ? clean.split(',').map(v => v.trim()) : [clean];
+          const clean = line.replace(/<\/?small>/gi, '').trim();
+          return clean.includes(',') && !clean.includes('(') ? clean.split(',').map(v => v.trim()) : [clean];
         }).filter(Boolean);
+      }
+
+      function formatStatValueContent(raw: string): string {
+        const cleaned = raw.replace(/<\/?small>/gi, '').trim();
+        const match = cleaned.match(/^(.*?)\s*(\([^)]+\))$/);
+        if (match && match[1].trim()) {
+          const mainText = sanitizeStatValue(match[1].trim());
+          const subText = sanitizeStatValue(match[2].trim());
+          return `<div class="media-stat-val-main">${mainText}</div><div class="media-stat-val-sub">${subText}</div>`;
+        }
+        return `<div class="media-stat-val-main">${sanitizeStatValue(cleaned)}</div>`;
       }
 
       function renderStatItemHtml(displayLabel: string, items: string[]): string {
         if (items.length === 0) return '';
         if (items.length === 1) {
-          return `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value"><div>${sanitizeStatValue(items[0])}</div></div></div>`;
+          return `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${formatStatValueContent(items[0])}</div></div>`;
         }
 
         const itemsHtml = items.map((val, idx) => {
           const plainText = val.replace(/<[^>]+>/g, '').trim();
           const isFirst = idx === 0;
-          return `<div class="media-stat-carousel-item ${isFirst ? 'active' : ''}" style="${isFirst ? '' : 'display: none;'}" title="${escapeHtml(plainText)}">${sanitizeStatValue(val)}</div>`;
+          return `<div class="media-stat-carousel-item ${isFirst ? 'active' : ''}" style="${isFirst ? '' : 'display: none;'}" title="${escapeHtml(plainText)}">${formatStatValueContent(val)}</div>`;
         }).join('');
 
         return `
