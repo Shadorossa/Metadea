@@ -1213,8 +1213,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 )}
 
                 <div className="media-stats-list">
-                  {data.stats
-                    .filter(s => {
+                  {(() => {
+                    let currentSection: string | null = null;
+                    const filtered = data.stats.filter(s => {
                       if (!data.authors || data.authors.length === 0) return true;
                       const labelLower = s.label.toLowerCase();
                       const isAuthorStat = labelLower.includes('autor') ||
@@ -1223,34 +1224,59 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         labelLower.includes('story') ||
                         labelLower.includes('director');
                       return !isAuthorStat;
-                    })
-                    .map((s, i) => (
-                      s.isScore ? (
-                        <div key={i} className="media-stat-item media-stat-item--score">
-                          <span
-                            title={`${formatAverageScore(Number(s.value), ratingSystem)}${averageScoreSuffix(ratingSystem)}`}
-                            dangerouslySetInnerHTML={{ __html: formatRatingHtml(Number(s.value), ratingSystem, 'media-stat-score-value') }}
-                          />
-                        </div>
-                      ) : s.label2 ? (
-                        <div key={i} className="media-stat-item media-stat-item--split">
-                          <span className="media-stat-col">
-                            <span className="media-stat-label">{s.label}</span>
-                            <span className="media-stat-value">{s.value}</span>
-                          </span>
-                          <span className="media-stat-divider" />
-                          <span className="media-stat-col">
-                            <span className="media-stat-label">{s.label2}</span>
-                            <span className="media-stat-value">{s.value2}</span>
-                          </span>
-                        </div>
-                      ) : (
-                        <div key={i} className="media-stat-item">
-                          <span className="media-stat-label">{s.label}</span>
-                          <span className="media-stat-value">{s.value}</span>
-                        </div>
-                      )
-                    ))}
+                    });
+
+                    return filtered.map((s, i) => {
+                      const match = s.label.match(/^(.*?)\s*\[(.*?)\]\s*(.*?)$/);
+                      const sectionName = match ? match[2].replace(/[:：\s]+$/, '').trim() : null;
+                      const cleanLabel = match
+                        ? `${match[1]} ${match[3]}`.trim().replace(/[:：\s]+$/, '')
+                        : s.label;
+
+                      let showHeader = false;
+                      if (sectionName) {
+                        if (sectionName.toLowerCase() !== currentSection?.toLowerCase()) {
+                          showHeader = true;
+                          currentSection = sectionName;
+                        }
+                      } else {
+                        currentSection = null;
+                      }
+
+                      return (
+                        <Fragment key={i}>
+                          {showHeader && (
+                            <div className="media-stat-section-header">{sectionName}</div>
+                          )}
+                          {s.isScore ? (
+                            <div className="media-stat-item media-stat-item--score">
+                              <span
+                                title={`${formatAverageScore(Number(s.value), ratingSystem)}${averageScoreSuffix(ratingSystem)}`}
+                                dangerouslySetInnerHTML={{ __html: formatRatingHtml(Number(s.value), ratingSystem, 'media-stat-score-value') }}
+                              />
+                            </div>
+                          ) : s.label2 ? (
+                            <div className="media-stat-item media-stat-item--split">
+                              <span className="media-stat-col">
+                                <span className="media-stat-label">{cleanLabel}</span>
+                                <span className="media-stat-value">{s.value}</span>
+                              </span>
+                              <span className="media-stat-divider" />
+                              <span className="media-stat-col">
+                                <span className="media-stat-label">{s.label2}</span>
+                                <span className="media-stat-value">{s.value2}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="media-stat-item">
+                              <span className="media-stat-label">{cleanLabel}</span>
+                              <span className="media-stat-value">{s.value}</span>
+                            </div>
+                          )}
+                        </Fragment>
+                      );
+                    });
+                  })()}
 
                   {data.platforms && data.platforms.length > 0 && (
                     <div className="media-stat-item media-stat-item--platforms">

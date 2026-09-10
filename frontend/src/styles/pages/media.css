@@ -459,6 +459,24 @@
   gap: 0;
 }
 
+.media-stat-section-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  padding: 0.85rem 0 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.media-stat-section-header:first-child {
+  margin-top: 0;
+  padding-top: 0.15rem;
+}
+
 .media-stat-item {
   display: flex;
   justify-content: space-between;
@@ -3399,6 +3417,66 @@
 
 .pr-editor-char-remove:hover {
   color: var(--color-error, #f87171);
+}
+
+.pr-editor-va-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  padding: 0.6rem 0.55rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  min-width: 0;
+  transition: border-color 120ms ease;
+}
+
+.pr-editor-va-card:hover {
+  border-color: var(--accent-border, var(--border-color));
+}
+
+.pr-editor-va-langs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.pr-editor-lang-btn,
+.char-seiyu-lang-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.16rem 0.38rem;
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  transition: all 120ms ease;
+  line-height: 1.2;
+  font-family: inherit;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-editor-lang-btn:hover,
+.char-seiyu-lang-btn:hover {
+  color: var(--text-main);
+  border-color: var(--accent);
+  background: var(--accent-soft, rgba(255, 255, 255, 0.05));
+}
+
+.pr-editor-lang-btn--active,
+.char-seiyu-lang-btn--active {
+  background: var(--accent) !important;
+  color: var(--text-on-accent, #ffffff) !important;
+  border-color: var(--accent) !important;
+  font-weight: 700;
 }
 
 .pr-editor-field textarea {

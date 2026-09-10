@@ -10,7 +10,7 @@ import { fetchAniListCharacterDetail, type AniListStaffSearchResult } from '../.
 import { submitCollaborativeProposal, openUrlInBrowser, type CharacterProposalBundle } from '../../lib/github/submitCollaborativeProposal';
 import { openImageCropModal } from '../shared/ImageCropModal';
 import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic } from '../../lib/character/biography-parser';
-import { compareByReleaseDateDesc, mapExternalFormatToType } from '../../lib/media/mapper-utils';
+import { compareByReleaseDate, mapExternalFormatToType } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
 import { FandomImportModal, type SelectedImportFields } from './FandomImportModal';
@@ -75,7 +75,14 @@ export function CharacterPrEditorModal() {
   // FROM (via PrEditorModal's "+ Crear personaje") should already be in its
   // "Apariciones en obras" list, not left for the user to search/re-add by
   // hand right after typing its name.
-  const pendingAppearanceRef = useRef<{ media_external_id: string; title: string; cover: string | null } | null>(null);
+  const pendingAppearanceRef = useRef<{
+    media_external_id: string;
+    title: string;
+    cover: string | null;
+    release_year?: number | null;
+    release_month?: number | null;
+    release_day?: number | null;
+  } | null>(null);
 
   const [name, setName] = useState('');
   const [nameNative, setNameNative] = useState('');
@@ -119,7 +126,14 @@ export function CharacterPrEditorModal() {
   useEffect(() => {
     (window as any).openCharacterEditor = (
       externalId: string,
-      initialAppearance?: { media_external_id: string; title: string; cover: string | null },
+      initialAppearance?: {
+        media_external_id: string;
+        title: string;
+        cover: string | null;
+        release_year?: number | null;
+        release_month?: number | null;
+        release_day?: number | null;
+      },
     ) => {
       pendingAppearanceRef.current = initialAppearance ?? null;
       setCurrentId(externalId);
@@ -332,19 +346,23 @@ export function CharacterPrEditorModal() {
           });
         }
 
-        resolved.sort(compareByReleaseDateDesc);
+        resolved.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
 
-        // Consumed once — the media entry this character was created FROM
-        // (if any) goes in as an already-present appearance, but only in
-        // `appearances` (not `originalAppearances`): it's a genuinely new
-        // addition relative to what's actually saved (nothing, for a brand
-        // new character), so appearancesChanged() still detects it and
-        // saveCharacterAppearances still runs on submit.
         const pendingAppearance = pendingAppearanceRef.current;
         pendingAppearanceRef.current = null;
-        const resolvedWithPending = (pendingAppearance && !resolved.some(a => a.media_external_id === pendingAppearance.media_external_id))
-          ? [{ media_external_id: pendingAppearance.media_external_id, relation_type: appearanceRelationType, title: pendingAppearance.title, cover: pendingAppearance.cover }, ...resolved]
-          : resolved;
+        let resolvedWithPending = resolved;
+        if (pendingAppearance && !resolved.some(a => a.media_external_id === pendingAppearance.media_external_id)) {
+          resolvedWithPending = [...resolved, {
+            media_external_id: pendingAppearance.media_external_id,
+            relation_type: appearanceRelationType,
+            title: pendingAppearance.title,
+            cover: pendingAppearance.cover,
+            release_year: pendingAppearance.release_year ?? null,
+            release_month: pendingAppearance.release_month ?? null,
+            release_day: pendingAppearance.release_day ?? null,
+          }];
+          resolvedWithPending.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
+        }
 
         setAppearances(resolvedWithPending);
         setOriginalAppearances(resolved);
@@ -457,7 +475,7 @@ export function CharacterPrEditorModal() {
       release_month: result.releaseMonth,
       release_day: result.releaseDay,
     }];
-    next.sort(compareByReleaseDateDesc);
+    next.sort((a, b) => compareByReleaseDate(a, b) || a.title.localeCompare(b.title));
     setAppearances(next);
   };
 
@@ -911,7 +929,10 @@ export function CharacterPrEditorModal() {
                       ×
                     </button>
                   </div>
-                  <div className="pr-editor-media-card-title" title={a.title}>{a.title}</div>
+                  <div className="pr-editor-media-card-title" title={a.release_year ? `${a.title} (${a.release_year})` : a.title}>
+                    {a.title}
+                    {a.release_year ? <span style={{ opacity: 0.65, fontSize: '0.62rem', marginLeft: '0.25rem' }}>({a.release_year})</span> : null}
+                  </div>
                   <select
                     value={a.relation_type ?? 'SUPPORTING'}
                     onChange={e => updateAppearanceRelationType(a.media_external_id, e.target.value)}
@@ -943,9 +964,9 @@ export function CharacterPrEditorModal() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.6rem' }}>
               {voiceActors.map((va, idx) => (
-                <div key={idx} className="pr-editor-media-card" style={{ padding: '0.6rem 0.5rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', position: 'relative' }}>
+                <div key={idx} className="pr-editor-va-card">
                   <button
                     type="button"
                     className="pr-editor-media-card-remove"
@@ -983,36 +1004,31 @@ export function CharacterPrEditorModal() {
                   />
 
                   {/* Selector de Etiquetas de Idioma */}
-                  <div style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap', marginTop: '0.1rem' }}>
+                  <div className="pr-editor-va-langs">
                     {['JP', 'ES', 'EN', 'IT', 'DE', 'FR', 'PT', 'KR', 'ZH'].map(langTag => {
                       const LANG_TAG_MAP: Record<string, string> = {
                         'JP': 'Japanese', 'ES': 'Spanish', 'EN': 'English', 'IT': 'Italian',
                         'DE': 'German', 'FR': 'French', 'PT': 'Portuguese', 'KR': 'Korean', 'ZH': 'Chinese',
                       };
                       const curCode = (va.language || 'Japanese').toLowerCase();
-                      // No generic curCode.includes(langTag) fallback here —
-                      // "Japanese".includes("es") is true, so that check used
-                      // to light up the ES tag for every actor still on the
-                      // default Japanese language. Only these exact,
-                      // unambiguous per-language substrings decide it.
                       const isSelected =
-                        (langTag === 'JP' && curCode.includes('japan')) ||
-                        (langTag === 'ES' && curCode.includes('span')) ||
-                        (langTag === 'EN' && curCode.includes('engl')) ||
-                        (langTag === 'IT' && curCode.includes('ital')) ||
-                        (langTag === 'DE' && curCode.includes('germ')) ||
-                        (langTag === 'FR' && curCode.includes('fren')) ||
-                        (langTag === 'PT' && curCode.includes('port')) ||
-                        (langTag === 'KR' && curCode.includes('kore')) ||
-                        (langTag === 'ZH' && (curCode.includes('chin') || curCode.includes('mand')));
+                        (langTag === 'JP' && (curCode.includes('japan') || curCode.includes('japon') || curCode === 'jp')) ||
+                        (langTag === 'ES' && (curCode.includes('span') || curCode.includes('españ') || curCode.includes('espan') || curCode === 'es')) ||
+                        (langTag === 'EN' && (curCode.includes('engl') || curCode.includes('ingl') || curCode === 'en')) ||
+                        (langTag === 'IT' && (curCode.includes('ital') || curCode === 'it')) ||
+                        (langTag === 'DE' && (curCode.includes('germ') || curCode.includes('alem') || curCode === 'de')) ||
+                        (langTag === 'FR' && (curCode.includes('fren') || curCode.includes('franc') || curCode === 'fr')) ||
+                        (langTag === 'PT' && (curCode.includes('port') || curCode === 'pt')) ||
+                        (langTag === 'KR' && (curCode.includes('kore') || curCode.includes('core') || curCode === 'kr')) ||
+                        (langTag === 'ZH' && (curCode.includes('chin') || curCode.includes('mand') || curCode === 'zh'));
 
                       return (
                         <button
                           key={langTag}
                           type="button"
-                          className={`char-seiyu-lang-btn ${isSelected ? 'char-seiyu-lang-btn--active' : ''}`}
+                          className={`pr-editor-lang-btn ${isSelected ? 'pr-editor-lang-btn--active' : ''}`}
                           onClick={() => updateVoiceActor(idx, 'language', LANG_TAG_MAP[langTag] || langTag)}
-                          style={{ fontSize: '0.6rem', padding: '0.1rem 0.3rem' }}
+                          title={LANG_TAG_MAP[langTag] || langTag}
                         >
                           {langTag}
                         </button>

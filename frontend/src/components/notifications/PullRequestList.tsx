@@ -11,8 +11,12 @@ interface Props {
 }
 
 // branch name convention set by submitCollaborativeProposal.ts:
-// `proposal-${externalId.replace(':','-')}-${username}`
+// `proposal-${externalId.replace(/:/g,'-')}-${username}`
 function externalIdFromBranch(ref: string): string | null {
+  const charMatch = ref.match(/^proposal-character-([a-z0-9]+)-(.+?)-[^-]+$/i);
+  if (charMatch) {
+    return `character:${charMatch[1]}:${charMatch[2]}`;
+  }
   const match = ref.match(/^proposal-([a-z]+)-(.+?)-[^-]+$/);
   if (!match) return null;
   return `${match[1]}:${match[2]}`;

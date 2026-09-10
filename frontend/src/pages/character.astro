@@ -148,7 +148,7 @@ const translations = useTranslations(lang);
 <script>
   import { fetchAniListCharacterDetail, type AniListCharacterDetail } from '../lib/search/providers/anilist';
   import { parseCharacterBiography } from '../lib/character/biography-parser';
-  import { compareByReleaseDateDesc, mapExternalFormatToType } from '../lib/media/mapper-utils';
+  import { compareByReleaseDate, mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
   import { getT } from '../i18n/client';
@@ -582,9 +582,41 @@ const translations = useTranslations(lang);
         addedLabels.add('cumpleaños');
       }
 
-      for (const stat of parsedStats) {
-        const lowerLabel = stat.label.toLowerCase();
-        if (addedLabels.has(lowerLabel)) continue;
+      interface ProcessedStat {
+        rawLabel: string;
+        cleanLabel: string;
+        section: string | null;
+        value: string;
+      }
+
+      const processedStats: ProcessedStat[] = parsedStats.map(stat => {
+        const match = stat.label.match(/^(.*?)\s*\[(.*?)\]\s*(.*?)$/);
+        const section = match ? match[2].replace(/[:：\s]+$/, '').trim() : null;
+        const clean = match
+          ? `${match[1]} ${match[3]}`.trim().replace(/[:：\s]+$/, '')
+          : stat.label.trim().replace(/[:：\s]+$/, '');
+        return {
+          rawLabel: stat.label,
+          cleanLabel: clean,
+          section,
+          value: stat.value,
+        };
+      });
+
+      for (let i = 0; i < processedStats.length - 1; i++) {
+        if (!processedStats[i].section && processedStats[i + 1].section) {
+          if (processedStats[i].cleanLabel.toLowerCase() === processedStats[i + 1].section!.toLowerCase()) {
+            processedStats[i].section = processedStats[i + 1].section;
+          }
+        }
+      }
+
+      let currentSection: string | null = null;
+
+      for (const stat of processedStats) {
+        const lowerLabel = stat.cleanLabel.toLowerCase();
+        const lowerRaw = stat.rawLabel.toLowerCase();
+        if (addedLabels.has(lowerLabel) || addedLabels.has(lowerRaw)) continue;
         if (
           lowerLabel.includes('alias') ||
           lowerLabel.includes('nombre') ||
@@ -592,13 +624,26 @@ const translations = useTranslations(lang);
           lowerLabel.includes('aka')
         ) continue;
 
-        let displayLabel = stat.label;
+        let displayLabel = stat.cleanLabel;
         if (lowerLabel === 'height') displayLabel = 'Estatura';
         else if (lowerLabel === 'weight') displayLabel = 'Peso';
         else if (lowerLabel === 'hair color') displayLabel = 'Pelo';
         else if (lowerLabel === 'eye color') displayLabel = 'Ojos';
-        else if (lowerLabel === 'affiliations') displayLabel = 'Afiliación';
+        else if (lowerLabel === 'affiliations' || lowerLabel === 'affiliation') displayLabel = 'Afiliación';
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
+        else if (lowerLabel === 'gender') displayLabel = 'Género';
+        else if (lowerLabel === 'age') displayLabel = 'Edad';
+        else if (lowerLabel === 'status') displayLabel = 'Estado';
+        else if (lowerLabel === 'nationality') displayLabel = 'Nacionalidad';
+
+        if (stat.section) {
+          if (stat.section.toLowerCase() !== currentSection?.toLowerCase()) {
+            statsHtml += `<div class="media-stat-section-header">${escapeHtml(stat.section)}</div>`;
+            currentSection = stat.section;
+          }
+        } else {
+          currentSection = null;
+        }
 
         const plainTextLength = stat.value.replace(/<[^>]+>/g, '').length;
         const isLongValue = plainTextLength > 50;
@@ -616,6 +661,7 @@ const translations = useTranslations(lang);
         const itemClass = isLongValue ? 'media-stat-item media-stat-item--stacked' : 'media-stat-item';
         statsHtml += `<div class="${itemClass}"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
         addedLabels.add(lowerLabel);
+        addedLabels.add(lowerRaw);
       }
 
       if (statsHtml) {
@@ -787,12 +833,10 @@ const translations = useTranslations(lang);
         };
       }));
 
-      // Newest release first, oldest last — same ordering as the character
-      // editor's own appearances list (compareByReleaseDateDesc).
-      mergedAppearances.sort((a, b) => compareByReleaseDateDesc(
-        { release_year: a.year, release_month: a.month, release_day: a.day },
-        { release_year: b.year, release_month: b.month, release_day: b.day },
-      ));
+      mergedAppearances.sort((a, b) => compareByReleaseDate(
+        { release_year: a.year, release_month: a.month, release_day: a.day, id: a.mediaId },
+        { release_year: b.year, release_month: b.month, release_day: b.day, id: b.mediaId },
+      ) || a.title.localeCompare(b.title));
 
       let currentPage = 1;
       const itemsPerPage = 8;

@@ -47,13 +47,19 @@ export function buildPrEditorChangeSummary(p: BuildChangeSummaryParams): string 
     lines.push(entry.blocked_at ? '- Blocked (hidden from Metadea)' : '- Unblocked (restored to Metadea)');
   }
 
+  const formatFieldVal = (v: any) => {
+    const s = String(v ?? '');
+    if (s.startsWith('data:')) return '(imagen base64)';
+    return s.length > 150 ? `${s.slice(0, 150)}...` : s;
+  };
+
   for (const [field, label] of DIFF_FIELDS) {
     if (!isFieldChanged(field)) continue;
     const before = originalEntry?.[field] ?? null;
     const after = entry[field] ?? null;
-    if (before == null || before === '') lines.push(`- Added ${label}: "${after}"`);
-    else if (after == null || after === '') lines.push(`- Removed ${label} (was "${before}")`);
-    else lines.push(`- Changed ${label}: "${before}" → "${after}"`);
+    if (before == null || before === '') lines.push(`- Added ${label}: "${formatFieldVal(after)}"`);
+    else if (after == null || after === '') lines.push(`- Removed ${label} (was "${formatFieldVal(before)}")`);
+    else lines.push(`- Changed ${label}: "${formatFieldVal(before)}" → "${formatFieldVal(after)}"`);
   }
 
   const formatWork = (id: string, title?: string | null): string => {

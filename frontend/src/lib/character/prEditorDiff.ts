@@ -11,9 +11,6 @@ export interface AppearanceRow {
   relation_type: string | null;
   title: string;
   cover: string | null;
-  // Sort key for "newest first" ordering (compareByReleaseDateDesc) — not
-  // persisted, just whatever the catalog/AniList already had cached when
-  // this row was resolved.
   release_year?: number | null;
   release_month?: number | null;
   release_day?: number | null;
@@ -92,7 +89,12 @@ export const buildChangeSummary = (originalCharacter: CharacterEntry | null, f: 
   if (isFieldChanged(f.name, f.originalName)) changes.push(`Nombre: ${f.name}`);
   if (isFieldChanged(f.nameNative, f.originalNameNative)) changes.push(`Nombre nativo: ${f.nameNative || '(vacío)'}`);
   if (aliasesChanged(f.aliases, f.originalAliases)) changes.push(`Aliases: ${f.aliases.length ? f.aliases.join(', ') : '(vacío)'}`);
-  if (isFieldChanged(f.imageUrl, f.originalImageUrl)) changes.push(`Imagen: ${f.imageUrl || '(vacío)'}`);
+  if (isFieldChanged(f.imageUrl, f.originalImageUrl)) {
+    const displayImg = f.imageUrl?.startsWith('data:')
+      ? '(imagen en base64 actualizada)'
+      : (f.imageUrl && f.imageUrl.length > 100 ? `${f.imageUrl.slice(0, 100)}...` : (f.imageUrl || '(vacío)'));
+    changes.push(`Imagen: ${displayImg}`);
+  }
   if (isFieldChanged(f.cleanBiography, f.originalCleanBiography)) changes.push('Biografía: Actualizada');
   if (characteristicsChanged(f.characteristics, f.originalCharacteristics)) changes.push(`Características: ${f.characteristics.length} campo(s)`);
   if (appearancesChanged(f.appearances, f.originalAppearances)) changes.push(`Apariciones: ${f.appearances.length} obra(s)`);

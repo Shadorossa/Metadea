@@ -142,17 +142,19 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     return cleanLabel;
   }
 
-  const parenMatch = cleanHeader.match(/\(([^)]+)\)$/);
-  const colonMatch = cleanHeader.match(/[:–—\-]\s*(.+)$/);
+  const cleanHeaderNoColon = cleanHeader.replace(/[:：\s]+$/, '').trim();
+  const parenMatch = cleanHeaderNoColon.match(/\(([^)]+)\)$/);
+  const colonMatch = cleanHeaderNoColon.match(/[:–—\-]\s*(.+)$/);
 
-  let tag = cleanHeader;
+  let tag = cleanHeaderNoColon;
   if (parenMatch) {
     tag = parenMatch[1].trim();
   } else if (colonMatch) {
     tag = colonMatch[1].trim();
   }
+  tag = tag.replace(/[:：\s]+$/, '').trim();
 
-  if (!cleanLabel.includes('[') && !cleanLabel.toLowerCase().includes(tag.toLowerCase())) {
+  if (!cleanLabel.includes('[') && tag) {
     return `${cleanLabel} [${tag}]`;
   }
 

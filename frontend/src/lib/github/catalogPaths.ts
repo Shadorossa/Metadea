@@ -30,7 +30,7 @@ export function catalogFolderForExternalId(externalId: string): string {
 // Same filename convention as before the folder split (externalId with ':'
 // replaced by '-'), just nested one level deeper under its type's folder.
 export function catalogFilePath(externalId: string): string {
-  return `${CATALOG_ROOT}/${catalogFolderForExternalId(externalId)}/${externalId.replace(':', '-')}.json`;
+  return `${CATALOG_ROOT}/${catalogFolderForExternalId(externalId)}/${externalId.replace(/:/g, '-')}.json`;
 }
 
 export const MEDIA_CATALOG_FOLDERS: readonly string[] = [...new Set(Object.values(MEDIA_TYPE_FOLDERS))];

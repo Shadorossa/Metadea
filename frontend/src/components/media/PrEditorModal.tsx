@@ -979,6 +979,9 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                 media_external_id: externalId,
                 title: entry?.title_main || externalId,
                 cover: entry?.cover_url ?? null,
+                release_year: entry?.release_year ?? null,
+                release_month: entry?.release_month ?? null,
+                release_day: entry?.release_day ?? null,
               })}
             />
           )}

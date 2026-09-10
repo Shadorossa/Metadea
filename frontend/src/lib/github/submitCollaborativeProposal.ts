@@ -254,7 +254,7 @@ export async function submitCollaborativeProposal(
   const user = await invoke<GitHubUserProfile>('get_github_user_profile', { token });
   const username = user.login;
 
-  const branchName = `proposal-${primaryExternalId.replace(':', '-')}-${username}`;
+  const branchName = `proposal-${primaryExternalId.replace(/:/g, '-')}-${username}`;
 
   const isOwner = await checkRepoWriteAccess(token, username);
   const headRef = isOwner ? branchName : `${username}:${branchName}`;
@@ -296,8 +296,13 @@ export async function submitCollaborativeProposal(
     },
     body: JSON.stringify({ ref: `refs/heads/${branchName}`, sha: mainSha }),
   });
-  if (!createBranchRes.ok && createBranchRes.status !== 422) {
-    throw new Error('Failed to create proposal branch.');
+  if (!createBranchRes.ok) {
+    const errorBody = await createBranchRes.json().catch(() => null);
+    const isAlreadyExists = errorBody?.message?.includes('Reference already exists');
+    if (!isAlreadyExists) {
+      console.error('Failed to create proposal branch:', errorBody);
+      throw new Error(`Failed to create proposal branch: ${errorBody?.message || createBranchRes.statusText}`);
+    }
   }
 
   // One commit per affected entry, all on the same branch — a saga edit that
@@ -336,14 +341,19 @@ export async function submitCollaborativeProposal(
       }),
     });
     if (!commitRes.ok) {
-      throw new Error(`Failed to commit JSON file for ${externalId} to GitHub.`);
+      const errData = await commitRes.json().catch(() => null);
+      throw new Error(`Failed to commit JSON file for ${externalId} to GitHub: ${errData?.message || commitRes.statusText}`);
     }
   }
 
   // Always open a PR to keep the workflow consistent and provide a review URL.
   onStatus('Opening Pull Request...');
   const affectedList = entries.map(e => `- **${entryTitle(e)}** (\`${e.externalId}\`)`).join('\n');
-  const prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for:\n${affectedList}\n\n### Changes\n${changeSummary}`;
+  let prBody = `Proposal submitted from Metadea desktop application by user @${username}.\n\nUpdates collaborative catalog data for:\n${affectedList}\n\n### Changes\n${changeSummary}`;
+  const MAX_PR_BODY_LEN = 60000;
+  if (prBody.length > MAX_PR_BODY_LEN) {
+    prBody = prBody.slice(0, MAX_PR_BODY_LEN) + '\n\n... [resumen truncado por límite de tamaño de GitHub]';
+  }
   const prRes = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls`, {
     method: 'POST',
     headers: {

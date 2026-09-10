@@ -94,7 +94,14 @@ export async function deleteFileFromMain(token: string, path: string, sha: strin
 // convention set by catalogPaths.ts's catalogFilePath (externalId with ':'
 // replaced by '-').
 export function externalIdFromDatabaseFilename(name: string): string {
-  return name.replace(/\.json$/, '').replace('-', ':');
+  const bare = name.replace(/\.json$/, '');
+  if (bare.startsWith('character-')) {
+    const parts = bare.split('-');
+    if (parts.length >= 3) {
+      return `character:${parts[1]}:${parts.slice(2).join('-')}`;
+    }
+  }
+  return bare.replace('-', ':');
 }
 
 export async function mergePull(token: string, number: number): Promise<void> {
