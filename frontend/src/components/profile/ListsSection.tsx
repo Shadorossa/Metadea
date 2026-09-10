@@ -199,8 +199,20 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   const [descDraft, setDescDraft] = useState(list.description ?? '');
 
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const confirmDeleteTimeoutRef = useRef<number | null>(null);
-  useEffect(() => () => { if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current); }, []);
+  const [deleteCountdown, setDeleteCountdown] = useState(0);
+  const deleteTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setConfirmDelete(false);
+    setDeleteCountdown(0);
+    if (deleteTimerRef.current) {
+      window.clearInterval(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    return () => {
+      if (deleteTimerRef.current) window.clearInterval(deleteTimerRef.current);
+    };
+  }, [list.key]);
 
   const [gridEl, setGridEl] = useState<HTMLDivElement | null>(null);
   const listItemsRef = useRef(listItems);
@@ -497,10 +509,31 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   const handleDeleteClick = () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
-      confirmDeleteTimeoutRef.current = window.setTimeout(() => setConfirmDelete(false), 3000);
+      setDeleteCountdown(5);
+
+      if (deleteTimerRef.current) window.clearInterval(deleteTimerRef.current);
+
+      let timeLeft = 5;
+      deleteTimerRef.current = window.setInterval(() => {
+        timeLeft -= 1;
+        if (timeLeft > 0) {
+          setDeleteCountdown(timeLeft);
+        } else if (timeLeft === 0) {
+          setDeleteCountdown(0);
+        } else if (timeLeft <= -6) {
+          if (deleteTimerRef.current) window.clearInterval(deleteTimerRef.current);
+          deleteTimerRef.current = null;
+          setConfirmDelete(false);
+          setDeleteCountdown(0);
+        }
+      }, 1000);
       return;
     }
-    if (confirmDeleteTimeoutRef.current) window.clearTimeout(confirmDeleteTimeoutRef.current);
+
+    if (deleteCountdown > 0) return;
+
+    if (deleteTimerRef.current) window.clearInterval(deleteTimerRef.current);
+    deleteTimerRef.current = null;
     deleteUserList(list.key).catch(err => console.error('Failed to delete list:', err)).then(onDeleted);
   };
 
@@ -703,13 +736,18 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
           {!readOnly && (
             <button
               type="button"
-              className={`list-delete-btn${confirmDelete ? ' list-delete-btn--confirm' : ''}`}
+              className={`list-delete-btn${confirmDelete ? ' list-delete-btn--confirm' : ''}${confirmDelete && deleteCountdown > 0 ? ' list-delete-btn--waiting' : ''}`}
               onClick={handleDeleteClick}
-              title={confirmDelete ? p.lists_delete_confirm : p.lists_delete}
+              disabled={confirmDelete && deleteCountdown > 0}
+              title={confirmDelete ? (deleteCountdown > 0 ? `${p.lists_delete_confirm} (${deleteCountdown}s)` : p.lists_delete_confirm) : p.lists_delete}
               aria-label={confirmDelete ? p.lists_delete_confirm : p.lists_delete}
             >
               <IconTrash size={16} />
-              {confirmDelete && <span className="list-delete-confirm-text">{p.lists_delete_confirm}</span>}
+              {confirmDelete && (
+                <span className="list-delete-confirm-text">
+                  {deleteCountdown > 0 ? `${p.lists_delete_confirm} (${deleteCountdown}s)` : p.lists_delete_confirm}
+                </span>
+              )}
             </button>
           )}
         </div>

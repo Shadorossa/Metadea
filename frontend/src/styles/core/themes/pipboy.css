@@ -15,6 +15,7 @@ html[data-theme="pipboy"], [data-theme="pipboy"] {
   --accent-soft: rgba(29, 255, 115, 0.08);
   --accent-border: #1dff73;
   --accent-glow: rgba(29, 255, 115, 0.35);
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 0px;
   --radius-md: 0px;

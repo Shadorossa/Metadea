@@ -13,6 +13,9 @@ import { parseCharacterBiography, buildBiographyHtml, type ParsedCharacteristic 
 import { compareByReleaseDateDesc, mapExternalFormatToType } from '../../lib/media/mapper-utils';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { VoiceActorSearchPopup } from './VoiceActorSearchPopup';
+import { FandomImportModal, type SelectedImportFields } from './FandomImportModal';
+import { correlateVoiceActor } from '../../lib/character/voiceActorResolver';
+import type { FandomCharacterData } from '../../lib/character/fandomImporter';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 import { getT } from '../../i18n/client';
 import { normField, Field } from '../shared/PrEditorField';
@@ -96,6 +99,7 @@ export function CharacterPrEditorModal() {
   const [appearanceRelationType, setAppearanceRelationType] = useState('SUPPORTING');
   const [appearanceSearchOpen, setAppearanceSearchOpen] = useState(false);
   const [voiceActorSearchOpen, setVoiceActorSearchOpen] = useState(false);
+  const [fandomModalOpen, setFandomModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'appearances' | 'voices'>('general');
 
   useEffect(() => {
@@ -109,6 +113,7 @@ export function CharacterPrEditorModal() {
     setErrorMsg('');
     setStatusMsg('');
     setAppearanceSearchOpen(false);
+    setFandomModalOpen(false);
   };
 
   useEffect(() => {
@@ -642,8 +647,70 @@ export function CharacterPrEditorModal() {
     setVoiceActors(prev => prev.map((va, i) => i === index ? { ...va, [field]: value } : va));
   };
 
+  const handleVoiceActorBlur = async (index: number, name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const current = voiceActors[index];
+    if (current && (!current.externalId || current.externalId.startsWith('va:'))) {
+      const match = await correlateVoiceActor(clean, current.language);
+      if (match.matchedFrom !== 'none') {
+        setVoiceActors(prev => prev.map((va, i) => {
+          if (i !== index) return va;
+          return {
+            ...va,
+            externalId: match.externalId,
+            name: match.name,
+            native: match.native || va.native,
+            image: match.image || va.image,
+          };
+        }));
+      }
+    }
+  };
+
   const removeVoiceActor = (index: number) => {
     setVoiceActors(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleApplyFandomData = (data: FandomCharacterData, fields: SelectedImportFields) => {
+    if (fields.name && data.name) {
+      setName(data.name);
+    }
+    if (fields.image && data.imageUrl) {
+      setImageUrl(data.imageUrl);
+    }
+    if (fields.aliases && data.aliases.length > 0) {
+      setAliases(prev => Array.from(new Set([...prev, ...data.aliases])));
+    }
+    if (fields.characteristics && data.characteristics.length > 0) {
+      setCharacteristics(prev => {
+        if (prev.length === 0) return data.characteristics;
+        const existingLabels = new Set(prev.map(c => c.label.toLowerCase().trim()));
+        const toAdd = data.characteristics.filter(c => !existingLabels.has(c.label.toLowerCase().trim()));
+        return [...prev, ...toAdd];
+      });
+    }
+    if (fields.biography && data.cleanBiography) {
+      setCleanBiography(data.cleanBiography);
+    }
+    if (fields.voiceActors && data.voiceActors.length > 0) {
+      const newVas: VoiceActorRow[] = data.voiceActors.map(va => ({
+        externalId: va.externalId || `va:${va.name}`,
+        name: va.name,
+        native: va.native || '',
+        language: va.language,
+        image: va.image || '',
+        role: 'voice',
+      }));
+      setVoiceActors(prev => {
+        const existingNames = new Set(prev.map(v => v.name.toLowerCase().trim()));
+        const toAdd = newVas.filter(v => !existingNames.has(v.name.toLowerCase().trim()));
+        return [...prev, ...toAdd];
+      });
+    }
+
+    setStatusMsg(t.import_fandom_success);
+    setTimeout(() => setStatusMsg(''), 4000);
   };
 
   if (!mounted || !isOpen) return null;
@@ -669,12 +736,28 @@ export function CharacterPrEditorModal() {
             <span className="pr-editor-title">{t.title}</span>
             <span className="pr-editor-subtitle">ID: {currentId}</span>
           </div>
-          {statusMsg && (
-            <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
-              <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-              <span>{statusMsg}</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {statusMsg && (
+              <div className="pr-editor-header-status" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--accent, #7c6af7)' }}>
+                <div className="spinner spinner--small" style={{ width: '14px', height: '14px', border: '2px solid rgba(124, 106, 247, 0.2)', borderTopColor: 'var(--accent, #7c6af7)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <span>{statusMsg}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className="pr-editor-btn pr-editor-btn--secondary"
+              onClick={() => setFandomModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+              title={t.import_fandom_title}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>{t.import_fandom}</span>
+            </button>
+          </div>
         </div>
 
         <div className="pr-editor-tabs">
@@ -884,6 +967,7 @@ export function CharacterPrEditorModal() {
                       className="pr-editor-char-input"
                       value={va.name}
                       onChange={e => updateVoiceActor(idx, 'name', e.target.value)}
+                      onBlur={() => handleVoiceActorBlur(idx, va.name)}
                       placeholder={t.actor_name_ph}
                       style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: '0.75rem' }}
                     />
@@ -967,6 +1051,14 @@ export function CharacterPrEditorModal() {
           onSelect={addVoiceActor}
           onClose={() => setVoiceActorSearchOpen(false)}
           excludeIds={voiceActors.map(v => v.externalId).filter((id): id is string => !!id)}
+        />
+      )}
+
+      {fandomModalOpen && (
+        <FandomImportModal
+          isOpen={fandomModalOpen}
+          onClose={() => setFandomModalOpen(false)}
+          onApply={handleApplyFandomData}
         />
       )}
     </div>,

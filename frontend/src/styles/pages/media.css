@@ -528,6 +528,14 @@
   text-decoration-color: var(--accent);
 }
 
+.media-stat-value small,
+.media-stat-value sup {
+  font-size: 0.76em;
+  color: var(--text-muted);
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
 /* Long-form values (a character's per-work spoiler trivia, say) — label on
    its own line, value below spanning the full row width instead of jammed
    into the same line's right-aligned half. */
@@ -3361,6 +3369,14 @@
   margin: 0 !important;
 }
 
+.pr-editor-char-richtext small,
+.pr-editor-char-richtext sup {
+  font-size: 0.76em;
+  color: var(--text-muted);
+  font-weight: 500;
+  vertical-align: baseline;
+}
+
 .pr-editor-char-richtext::-webkit-scrollbar {
   display: none;
 }
@@ -4637,27 +4653,33 @@
   border-radius: var(--radius-sm, 4px);
   cursor: pointer;
   transition: all 120ms ease;
+  font-family: inherit;
 }
 
-.pr-editor-btn--cancel {
+.pr-editor-btn--cancel,
+.pr-editor-btn--secondary {
   background: transparent;
-  border: 1px solid var(--border-color, #2d2a24);
-  color: var(--text-main, #e3e1db);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
 }
 
-.pr-editor-btn--cancel:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+.pr-editor-btn--cancel:hover:not(:disabled),
+.pr-editor-btn--secondary:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
-.pr-editor-btn--submit {
-  background: var(--accent, #7c6af7);
-  border: 1px solid var(--accent, #7c6af7);
-  color: #fff;
+.pr-editor-btn--submit,
+.pr-editor-btn--primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--text-on-accent, #ffffff);
 }
 
-.pr-editor-btn--submit:hover:not(:disabled) {
+.pr-editor-btn--submit:hover:not(:disabled),
+.pr-editor-btn--primary:hover:not(:disabled) {
   filter: brightness(1.1);
-  box-shadow: 0 0 12px rgba(124, 106, 247, 0.3);
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .pr-editor-btn:disabled {

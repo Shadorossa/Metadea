@@ -18,6 +18,7 @@
   --accent-soft: rgba(192, 132, 252, 0.1);
   --accent-border: rgba(192, 132, 252, 0.25);
   --accent-glow: rgba(192, 132, 252, 0.3);
+  --text-on-accent: #ffffff;
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -54,6 +55,10 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
 }
 
 html {

@@ -124,6 +124,7 @@ commands.allow = [
   "get_media_staff",
   "get_character_actors",
   "save_character_actors",
+  "find_actor_by_exact_name",
   "get_media_companies",
   "save_media_companies",
   "save_favorite_custom_image",

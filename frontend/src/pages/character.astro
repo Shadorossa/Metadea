@@ -549,7 +549,13 @@ const translations = useTranslations(lang);
       // line next to the label — each comma-part gets its own <div> line
       // instead, same as parsedStats' own values already do below.
       function statValueHtml(value: string): string {
-        return value.split(',').map(v => `<div>${escapeHtml(v.trim())}</div>`).join('');
+        return value.split(',').map(v => {
+          let clean = v.trim();
+          if (!clean.includes('<small>') && !clean.includes('<sup>')) {
+            clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
+          }
+          return `<div>${sanitizeStatValue(clean)}</div>`;
+        }).join('');
       }
 
       if (character.gender) {
@@ -594,17 +600,17 @@ const translations = useTranslations(lang);
         else if (lowerLabel === 'affiliations') displayLabel = 'Afiliación';
         else if (lowerLabel === 'bounty') displayLabel = 'Bounty';
 
-        // Most stats here are short (a height, a hair color) and read fine
-        // label-left/value-right on one line — but AniList's own bolded bio
-        // lines are also where per-work spoiler trivia lives ("In Fate/Zero:
-        // <a spoiler paragraph>"), which can run to several sentences. Squeezed
-        // into that same right-aligned column, a paragraph that long just
-        // reads as a wall of text jammed against the row's right edge, so
-        // long values get their own full-width line below the label instead.
         const plainTextLength = stat.value.replace(/<[^>]+>/g, '').length;
         const isLongValue = plainTextLength > 50;
 
-        const values = isLongValue ? [stat.value] : stat.value.split(',').map(v => v.trim()).filter(v => v);
+        const lines = stat.value.split(/<br\s*\/?>|\n/i).map(v => v.trim()).filter(Boolean);
+        const values = isLongValue ? [stat.value] : lines.flatMap(line => {
+          let clean = line;
+          if (!clean.includes('<small>') && !clean.includes('<sup>')) {
+            clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
+          }
+          return clean.includes(',') && !clean.includes('<') ? clean.split(',').map(v => v.trim()) : [clean];
+        });
         const valueHtml = values.map(v => `<div>${sanitizeStatValue(v)}</div>`).join('');
 
         const itemClass = isLongValue ? 'media-stat-item media-stat-item--stacked' : 'media-stat-item';

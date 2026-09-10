@@ -1,4 +1,4 @@
-// Parses a character's biography HTML into bold characteristics and free-text description.
+import { sanitizeStatValue } from '../shared/sanitize-html';
 
 export interface ParsedCharacteristic {
   label: string;
@@ -20,41 +20,50 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
     const label = (el.textContent || '').trim().replace(/:$/, '').trim();
     if (label.length > 30 || label.length < 2) continue;
 
-    // A value can span text fragments, line breaks, or spoiler spans
     let nextNode: Node | null = el.nextSibling;
     const valueParts: string[] = [];
+    const thisCharNodes: Node[] = [el];
 
     while (nextNode) {
+      if (nextNode.nodeType === Node.ELEMENT_NODE && (nextNode.nodeName === 'B' || nextNode.nodeName === 'STRONG')) {
+        break;
+      }
+
       if (nextNode.nodeType === Node.TEXT_NODE) {
-        const txt = nextNode.textContent?.trim();
-        if (txt) valueParts.push(txt);
-      } else if (nextNode.nodeName === 'BR') {
-        if (valueParts.length > 0) {
-          nextNode = nextNode.nextSibling;
-          break;
+        const txt = nextNode.textContent || '';
+        if (txt.trim()) {
+          valueParts.push(txt.trim());
         }
-      } else if (nextNode instanceof Element && nextNode.classList.contains('markdown_spoiler')) {
-        // Keeps the spoiler <span> itself (not just its text), so the value
-        // still renders hidden-until-hover instead of leaking the spoiler
-        // text in plain sight.
-        valueParts.push(nextNode.outerHTML);
+        thisCharNodes.push(nextNode);
+      } else if (nextNode.nodeName === 'BR') {
+        let lookAhead: Node | null = nextNode.nextSibling;
+        while (lookAhead && lookAhead.nodeType === Node.TEXT_NODE && !lookAhead.textContent?.trim()) {
+          lookAhead = lookAhead.nextSibling;
+        }
+
+        if (!lookAhead || lookAhead.nodeName === 'BR' || 
+            (lookAhead.nodeType === Node.ELEMENT_NODE && (lookAhead.nodeName === 'B' || lookAhead.nodeName === 'STRONG'))) {
+          thisCharNodes.push(nextNode);
+          break;
+        } else {
+          valueParts.push('<br>');
+          thisCharNodes.push(nextNode);
+        }
+      } else if (nextNode.nodeType === Node.ELEMENT_NODE) {
+        valueParts.push((nextNode as Element).outerHTML);
+        thisCharNodes.push(nextNode);
       } else {
         break;
       }
       nextNode = nextNode.nextSibling;
     }
 
-    const value = valueParts.join(' ').trim().replace(/^:\s*/, '').trim();
+    const value = valueParts.join(' ').replace(/\s*<br>\s*/gi, '<br>').trim().replace(/^:\s*/, '').trim();
     if (value) {
       characteristics.push({ label, value });
-      elementsToRemove.push(el);
-
-      let toRemove = el.nextSibling;
-      while (toRemove && toRemove !== nextNode) {
-        elementsToRemove.push(toRemove);
-        toRemove = toRemove.nextSibling;
+      for (const n of thisCharNodes) {
+        elementsToRemove.push(n);
       }
-      if (nextNode) elementsToRemove.push(nextNode);
     }
   }
 
@@ -70,11 +79,10 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
   return { characteristics, cleanBiography };
 }
 
-// Reassembles characteristics and description back into standard HTML biography string
 export function buildBiographyHtml(characteristics: ParsedCharacteristic[], cleanBiography: string): string {
   const statLines = characteristics
     .filter(c => c.label.trim() && c.value.trim())
-    .map(c => `<b>${escapeHtml(c.label.trim())}:</b> ${escapeHtml(c.value.trim())}`)
+    .map(c => `<b>${escapeHtml(c.label.trim())}:</b> ${sanitizeStatValue(c.value.trim())}`)
     .join('<br>\n');
 
   if (!statLines) return cleanBiography;

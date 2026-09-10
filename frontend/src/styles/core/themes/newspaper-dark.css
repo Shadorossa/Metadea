@@ -15,6 +15,7 @@ html[data-theme="newspaper-dark"], [data-theme="newspaper-dark"] {
   --accent-soft: rgba(166, 154, 125, 0.08);
   --accent-border: #4a4237;
   --accent-glow: transparent;
+  --text-on-accent: var(--bg-primary);
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -1117,6 +1118,3 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay svg {
   color: var(--accent) !important;
 }
-
-
-

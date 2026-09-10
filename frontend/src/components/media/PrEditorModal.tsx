@@ -594,6 +594,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
     // label, but flipping it is still a real change that must enable Submit.
     if (entry.blocked_at !== originalEntry.blocked_at) return true;
     if (DIFF_FIELDS.some(([field]) => isFieldChanged(field))) return true;
+    if (charactersChanged()) return true;
     const d = getDiff();
     return d.addedBundled.length > 0 || d.removedBundledIds.length > 0
       || d.addedContained.length > 0 || d.removedContainedIds.length > 0

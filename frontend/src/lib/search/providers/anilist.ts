@@ -552,6 +552,31 @@ export async function searchAniListStaff(
   };
 }
 
+export async function findAniListStaffExactMatch(
+  name: string,
+  signal?: AbortSignal,
+): Promise<AniListStaffSearchResult | null> {
+  const clean = name.trim();
+  if (!clean) return null;
+
+  try {
+    const { results } = await searchAniListStaff(clean, signal ?? new AbortController().signal);
+    if (!results || results.length === 0) return null;
+
+    const lower = clean.toLowerCase();
+    const match = results.find(r => {
+      const fullLower = (r.name || '').toLowerCase().trim();
+      const nativeLower = (r.nameNative || '').toLowerCase().trim();
+      return fullLower === lower || nativeLower === lower;
+    });
+
+    return match ?? null;
+  } catch (err) {
+    console.warn('[AniList] Staff exact match search error for:', clean, err);
+    return null;
+  }
+}
+
 export interface AniListCharacterDetail {
   id: number;
   name: {

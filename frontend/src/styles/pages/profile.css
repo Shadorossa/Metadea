@@ -3521,6 +3521,11 @@
   padding: 0.35rem 0.65rem;
 }
 
+.list-delete-btn--waiting {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+}
+
 .list-delete-confirm-text {
   font-size: 0.8rem;
   font-weight: 600;

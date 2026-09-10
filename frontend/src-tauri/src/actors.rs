@@ -103,3 +103,70 @@ pub async fn save_character_actors(
     tx.commit().str_err()?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn find_actor_by_exact_name(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    name: String,
+) -> Result<Option<CharacterActor>, String> {
+    let clean = name.trim();
+    if clean.is_empty() {
+        return Ok(None);
+    }
+    let conn = state.conn.lock().str_err()?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT external_id, name, name_native, image_url
+             FROM actors
+             WHERE LOWER(TRIM(name)) = LOWER(?1)
+                OR (name_native IS NOT NULL AND LOWER(TRIM(name_native)) = LOWER(?1))
+             LIMIT 1",
+        )
+        .str_err()?;
+
+    let mut rows = stmt
+        .query_map([clean], |row| {
+            Ok(CharacterActor {
+                external_id: row.get(0)?,
+                name: row.get(1)?,
+                name_native: row.get(2)?,
+                image_url: row.get(3)?,
+                role: Some("voice".to_string()),
+                language: None,
+            })
+        })
+        .str_err()?;
+
+    if let Some(Ok(actor)) = rows.next() {
+        return Ok(Some(actor));
+    }
+
+    let mut stmt2 = conn
+        .prepare(
+            "SELECT external_id, name, image_url
+             FROM media_staff
+             WHERE LOWER(TRIM(name)) = LOWER(?1)
+             LIMIT 1",
+        )
+        .str_err()?;
+
+    let mut rows2 = stmt2
+        .query_map([clean], |row| {
+            Ok(CharacterActor {
+                external_id: row.get(0)?,
+                name: row.get(1)?,
+                name_native: None,
+                image_url: row.get(2)?,
+                role: Some("voice".to_string()),
+                language: None,
+            })
+        })
+        .str_err()?;
+
+    if let Some(Ok(staff)) = rows2.next() {
+        return Ok(Some(staff));
+    }
+
+    Ok(None)
+}

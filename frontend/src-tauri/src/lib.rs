@@ -204,6 +204,7 @@ pub fn run() {
             staff::get_media_staff,
             actors::get_character_actors,
             actors::save_character_actors,
+            actors::find_actor_by_exact_name,
             companies::get_media_companies,
             companies::save_media_companies,
             favorite_images::save_favorite_custom_image,

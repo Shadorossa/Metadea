@@ -30,7 +30,7 @@ export function sanitizeHtml(html: string | null | undefined): string {
 export function sanitizeStatValue(html: string | null | undefined): string {
   if (!html) return '';
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'span', 'a', 'br'],
+    ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'span', 'a', 'br', 'small', 'sup', 'sub'],
     ALLOWED_ATTR: ['class', 'href', 'target', 'rel'],
   });
 }

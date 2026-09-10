@@ -17,3 +17,7 @@ export async function getCharacterActors(characterExternalId: string): Promise<D
 export async function saveCharacterActors(characterExternalId: string, actors: DbCharacterActor[]): Promise<void> {
   return tauriRun('save_character_actors', { characterExternalId, actors });
 }
+
+export async function findActorByExactName(name: string): Promise<DbCharacterActor | null> {
+  return tauriCmd<DbCharacterActor | null>('find_actor_by_exact_name', null, { name });
+}
