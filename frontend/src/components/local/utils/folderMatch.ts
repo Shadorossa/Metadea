@@ -464,7 +464,7 @@ export function buildLocateRenamePlan(
     const fileType = mediaType ?? fileExternalId.split(':')[0] ?? null;
     const tag = encodeExternalIdForFilename(fileExternalId);
     const ext = entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
-    const episodeTitle = info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '';
+    const episodeTitle = (fileType === 'lnovel') ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
     const label = formatEpisodeLabel(fileSeason, episode, fileType);
     const parts = [label, fileTitleSanitized, episodeTitle].filter(Boolean);
     const base = `${parts.join(' - ')} [${tag}]`;

@@ -372,7 +372,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     seasonOffset, itemSeason, isReading,
   ]);
 
-  const nextFileEpisodeTitle = nextFile ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null : null;
+  const nextFileEpisodeTitle = (nextFile && item.libraryEntry.type !== 'lnovel')
+    ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null
+    : null;
 
   const [resumeSeconds, setResumeSeconds] = useState<number | null>(null);
   useEffect(() => {
@@ -583,7 +585,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const episode = info ? Math.round(info.episode) : 1;
     const tag = encodeExternalIdForFilename(item.externalId);
     const titleSanitized = sanitizeForFilename(item.title);
-    const episodeTitle = info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '';
+    const isLnovel = item.libraryEntry.type === 'lnovel';
+    const episodeTitle = isLnovel ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
     const ext = oldName.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const label = formatEpisodeLabel(itemSeason, episode, item.libraryEntry.type);
     const parts = [label, titleSanitized, episodeTitle].filter(Boolean);
@@ -814,7 +817,9 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                         <>
                           {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
                             {isSingleEpisode
-                              ? (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name))
+                              ? (item.libraryEntry.type === 'lnovel' ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type) : (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)))
+                              : item.libraryEntry.type === 'lnovel'
+                              ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)
                               : `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
                           </strong>
                         </>
