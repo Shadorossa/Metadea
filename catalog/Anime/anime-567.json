@@ -1,0 +1,153 @@
+{
+  "media_catalog": {
+    "id": "4b81b5ae7f8bcbff4b81b5ae7f8bcbff",
+    "external_id": "anime:567",
+    "type": "anime",
+    "title_main": "THE Big O",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "manga:30283",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
+      "title": "The Big O",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30283-hD7Ghnm02dJ9.jpg",
+      "media_external_id": "anime:567"
+    },
+    {
+      "media_external_id": "anime:567",
+      "related_media_external_id": "anime:129608",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "THE Big O (2003)",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx129608-fKarGt6WZ9Mb.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:a:2015",
+      "name": "Roger Smith",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/2015.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:2256",
+      "name": "Angel Rosewater",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/2256.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:2253",
+      "name": "R. Dorothy Wayneright",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b2253-RyrmrLOfM5eu.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:2254",
+      "name": "Norman Burg",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/2254.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5136",
+      "name": "Big Ear",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/5136.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5883",
+      "name": "Alan Gabriel",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/5883.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5283",
+      "name": "Alex Rosewater",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/5283.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:19200",
+      "name": "Gordon Rosewater",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/19200.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:28396",
+      "name": "Louise Ferry",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/28396.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:4961",
+      "name": "Michael Seebach",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/4961.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:2255",
+      "name": "Dan Dastun",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/2255.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:37968",
+      "name": "Bonnie Frazier",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/37968.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5887",
+      "name": "Vera Ronstadt",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/5887.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:75424",
+      "name": "Timothy Wayneright I",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/75424.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:5884",
+      "name": "Jason Beck",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/5884.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:a97197",
+      "name": "Hajime Yatate",
+      "image": "https://s4.anilist.co/file/anilistcdn/staff/large/n97197-6NsKNt4EPoul.jpg",
+      "role": "Original Creator",
+      "url": "/author?id=person:a97197",
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "saga_name": "THE Big O (2003)",
+  "story_arcs": []
+}
