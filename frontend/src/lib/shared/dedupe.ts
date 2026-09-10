@@ -1,10 +1,6 @@
 // Unified deduplication utilities consolidating 6+ scattered implementations
 // across the codebase. All follow the same Set-based pattern.
 
-export interface Deduped<T> {
-  (items: T[]): T[];
-}
-
 // Generic dedupe function: remove duplicates by calling a key function on each item
 export function dedupeByKey<T>(
   items: T[],
