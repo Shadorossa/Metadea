@@ -174,6 +174,10 @@ commands.allow = [
   "get_reading_progress",
   "save_reading_progress",
   "clear_reading_progress",
-  "extract_comic_archive"
+  "get_comic_bookmarks",
+  "toggle_comic_bookmark",
+  "extract_comic_archive",
+  "read_comic_binary_file",
+  "save_comic_page_as_png"
 ]
 
