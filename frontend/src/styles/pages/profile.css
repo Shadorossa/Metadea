@@ -4013,15 +4013,6 @@
   cursor: grabbing;
 }
 
-.list-item-placeholder {
-  border: 2px dashed var(--accent, #6366f1) !important;
-  border-radius: var(--radius-sm, 4px) !important;
-  background: color-mix(in srgb, var(--accent, #6366f1) 12%, transparent) !important;
-  aspect-ratio: 2 / 3 !important;
-  box-sizing: border-box !important;
-  min-width: 0 !important;
-}
-
 .list-item-card.drag-source,
 .list-item-card.is-dragging-card {
   opacity: 0.65 !important;

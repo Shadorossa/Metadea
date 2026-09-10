@@ -246,193 +246,92 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     };
   }, [settingsOpen]);
 
+  // Native HTML5 drag & drop instead of a hand-rolled mouse-follow drag:
+  // the browser/OS renders the drag ghost that tracks the cursor, entirely
+  // outside our own render loop, so it can't stutter no matter what this
+  // tab's JS is doing. We only reorder the actual DOM nodes as the cursor
+  // crosses into another card (dragover), and persist the final order on
+  // drop — no floating clone, no per-pixel style writes to chase the mouse.
   useEffect(() => {
     if (!gridEl || readOnly) return;
 
-    let potentialCard: HTMLElement | null = null;
-    let draggingCard: HTMLElement | null = null;
-    let placeholder: HTMLElement | null = null;
-    let grabOffsetX = 0;
-    let grabOffsetY = 0;
-    let downX = 0;
-    let downY = 0;
-    let isDragging = false;
+    let dragEl: HTMLElement | null = null;
+    let pendingEvent: DragEvent | null = null;
+    let rafId: number | null = null;
     let didDrag = false;
 
-    // Base fixed left/top the card is pinned to once dragging starts — set
-    // once (a single layout write), never touched again. All subsequent
-    // movement happens via `transform`, which the compositor can animate
-    // without recalculating layout, so it doesn't matter how many
-    // mousemove events land in a frame.
-    let baseLeft = 0;
-    let baseTop = 0;
-
-    let allCards: HTMLElement[] = [];
-    let slotBoxes: { cx: number; cy: number }[] = [];
-    let dragIndex = -1;
-    let currentSlot = -1;
-
-    // Native mousemove can fire far more often than the display refreshes
-    // (a high-poll-rate mouse easily hits several hundred Hz vs. 60-144Hz).
-    // Each call below used to do its own layout-triggering DOM writes, so
-    // firing it once per raw event meant doing many times more layout work
-    // than the screen could ever show — that's the stutter. Instead, just
-    // remember the latest event and do the actual work at most once per
-    // animation frame.
-    let pendingEvent: MouseEvent | null = null;
-    let rafId: number | null = null;
-
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
+    const onDragStart = (e: DragEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('.list-item-remove')) return;
+      if (target.closest('.list-item-remove')) { e.preventDefault(); return; }
 
       const card = target.closest('.list-item-card') as HTMLElement | null;
-      if (!card || !gridEl.contains(card)) return;
+      if (!card || !gridEl.contains(card)) { e.preventDefault(); return; }
 
-      potentialCard = card;
-      downX = e.clientX;
-      downY = e.clientY;
-      isDragging = false;
-
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
+      dragEl = card;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.id ?? '');
+      }
+      // Dim the source a frame later — the browser snapshots the drag
+      // ghost synchronously from the current element, so dimming it right
+      // away would make the ghost that follows the cursor look faded too.
+      requestAnimationFrame(() => card.classList.add('is-dragging-card'));
     };
 
-    const onMouseMove = (e: MouseEvent) => {
+    const onDragOver = (e: DragEvent) => {
+      if (!dragEl) return;
+      e.preventDefault(); // required for this to be a valid drop target
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       pendingEvent = e;
-      if (rafId === null) rafId = requestAnimationFrame(processPendingMove);
+      if (rafId === null) rafId = requestAnimationFrame(processPendingOver);
     };
 
-    const processPendingMove = () => {
+    const processPendingOver = () => {
       rafId = null;
       const e = pendingEvent;
-      if (!e || !potentialCard) return;
+      if (!e || !dragEl) return;
 
-      if (!isDragging) {
-        if (Math.hypot(e.clientX - downX, e.clientY - downY) < 5) return;
-        isDragging = true;
-        draggingCard = potentialCard;
+      const target = (e.target as HTMLElement)?.closest('.list-item-card') as HTMLElement | null;
+      if (!target || target === dragEl || !gridEl.contains(target)) return;
 
-        const rect = draggingCard.getBoundingClientRect();
-        grabOffsetX = downX - rect.left;
-        grabOffsetY = downY - rect.top;
-
-        allCards = Array.from(gridEl.querySelectorAll('.list-item-card')) as HTMLElement[];
-        dragIndex = allCards.indexOf(draggingCard);
-        currentSlot = dragIndex;
-
-        slotBoxes = allCards.map(c => {
-          const r = c.getBoundingClientRect();
-          return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
-        });
-
-        placeholder = document.createElement('div');
-        placeholder.className = 'list-item-placeholder';
-        placeholder.style.width = `${rect.width}px`;
-        placeholder.style.height = `${rect.height}px`;
-
-        gridEl.insertBefore(placeholder, draggingCard);
-
-        baseLeft = downX - grabOffsetX;
-        baseTop = downY - grabOffsetY;
-
-        draggingCard.classList.add('is-dragging-card');
-        draggingCard.style.position = 'fixed';
-        draggingCard.style.zIndex = '99999';
-        draggingCard.style.left = `${baseLeft}px`;
-        draggingCard.style.top = `${baseTop}px`;
-        draggingCard.style.width = `${rect.width}px`;
-        draggingCard.style.height = `${rect.height}px`;
-        draggingCard.style.pointerEvents = 'none';
-        draggingCard.style.willChange = 'transform';
-
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'grabbing';
-      }
-
-      if (!draggingCard || !placeholder) return;
-
-      // transform, not left/top — left/top force a full layout recalc on
-      // every write, transform is compositor-only.
-      const dx = (e.clientX - grabOffsetX) - baseLeft;
-      const dy = (e.clientY - grabOffsetY) - baseTop;
-      draggingCard.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-
-      let targetSlot = currentSlot;
-      let minDist = Infinity;
-      for (let i = 0; i < slotBoxes.length; i++) {
-        const dist = Math.hypot(e.clientX - slotBoxes[i].cx, e.clientY - slotBoxes[i].cy);
-        if (dist < minDist) {
-          minDist = dist;
-          targetSlot = i;
-        }
-      }
-
-      if (targetSlot !== currentSlot) {
-        currentSlot = targetSlot;
-        const remaining = allCards.filter(c => c !== draggingCard);
-        if (targetSlot >= remaining.length) {
-          gridEl.appendChild(placeholder);
-        } else {
-          gridEl.insertBefore(placeholder, remaining[targetSlot]);
-        }
-      }
+      const rect = target.getBoundingClientRect();
+      const insertAfter = e.clientX > rect.left + rect.width / 2;
+      didDrag = true;
+      if (insertAfter) target.after(dragEl);
+      else target.before(dragEl);
     };
 
-    const onMouseUp = () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+    const finishDrag = () => {
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
       pendingEvent = null;
+      if (!dragEl) return;
 
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
+      dragEl.classList.remove('is-dragging-card');
+      dragEl = null;
+      setTimeout(() => { didDrag = false; }, 150);
 
-      if (isDragging && draggingCard && placeholder) {
-        didDrag = true;
-        setTimeout(() => { didDrag = false; }, 150);
+      if (!didDrag) return;
+      const newOrder = Array.from(gridEl.querySelectorAll('.list-item-card'))
+        .map(el => (el as HTMLElement).dataset.id)
+        .filter((id): id is string => !!id);
 
-        placeholder.remove();
-
-        draggingCard.classList.remove('is-dragging-card');
-        draggingCard.style.position = '';
-        draggingCard.style.zIndex = '';
-        draggingCard.style.left = '';
-        draggingCard.style.top = '';
-        draggingCard.style.width = '';
-        draggingCard.style.height = '';
-        draggingCard.style.pointerEvents = '';
-        draggingCard.style.transform = '';
-        draggingCard.style.willChange = '';
-
-        if (currentSlot !== -1 && currentSlot !== dragIndex) {
-          const nextItems = [...listItemsRef.current];
-          const [moved] = nextItems.splice(dragIndex, 1);
-          nextItems.splice(currentSlot, 0, moved);
-          const updated = nextItems.map((item, idx) => ({ ...item, position: idx }));
-          setListItems(updated);
-          const newOrder = updated.map(i => i.external_id);
-          reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
-        }
-      }
-
-      potentialCard = null;
-      draggingCard = null;
-      placeholder = null;
-      isDragging = false;
-      allCards = [];
-      slotBoxes = [];
-      dragIndex = -1;
-      currentSlot = -1;
+      const byId = new Map(listItemsRef.current.map(item => [item.external_id, item]));
+      const updated = newOrder.map((id, idx) => ({ ...byId.get(id)!, position: idx }));
+      setListItems(updated);
+      reorderListItems(list.key, newOrder).catch(err => console.error('Failed to save list order:', err));
     };
 
-    const onDragStart = (e: DragEvent) => {
+    const onDrop = (e: DragEvent) => {
       e.preventDefault();
+      finishDrag();
     };
+
+    // Fires whether the drag ended on a valid drop target or not (e.g.
+    // released outside the grid) — always cleans up either way.
+    const onDragEnd = () => finishDrag();
 
     const onClickCapture = (e: MouseEvent) => {
       if (didDrag) {
@@ -441,19 +340,19 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
       }
     };
 
-    gridEl.addEventListener('mousedown', onMouseDown);
     gridEl.addEventListener('dragstart', onDragStart);
+    gridEl.addEventListener('dragover', onDragOver);
+    gridEl.addEventListener('drop', onDrop);
+    gridEl.addEventListener('dragend', onDragEnd);
     gridEl.addEventListener('click', onClickCapture, true);
 
     return () => {
-      gridEl.removeEventListener('mousedown', onMouseDown);
       gridEl.removeEventListener('dragstart', onDragStart);
+      gridEl.removeEventListener('dragover', onDragOver);
+      gridEl.removeEventListener('drop', onDrop);
+      gridEl.removeEventListener('dragend', onDragEnd);
       gridEl.removeEventListener('click', onClickCapture, true);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
       if (rafId !== null) cancelAnimationFrame(rafId);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
     };
   }, [gridEl, list.key, readOnly]);
 
@@ -733,7 +632,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
                 : `/media?id=${encodeURIComponent(item.external_id)}`;
 
               return (
-                <div className="list-item-card" data-id={item.external_id} key={item.external_id}>
+                <div className="list-item-card" data-id={item.external_id} key={item.external_id} draggable={!readOnly}>
                   {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
                   <a className="list-item-cover-link" href={url} draggable={false}>
                     {cover
