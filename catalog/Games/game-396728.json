@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "d3be307d32a6af37d3be307d32a6af37",
+    "external_id": "game:396728",
+    "type": "game",
+    "title_main": "Resident Evil 2",
+    "source": null,
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": "2026-09-10T22:33:36.788Z"
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "game:880",
+      "relation_type": "PARENT",
+      "type_label": "Parent Story",
+      "title": "Resident Evil 2",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2vz0.jpg",
+      "media_external_id": "game:396728"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "story_arcs": []
+}
