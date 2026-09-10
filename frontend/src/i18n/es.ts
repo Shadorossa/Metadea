@@ -741,6 +741,7 @@ export const es = {
     load_error: 'Error al cargar personaje',
     role_supporting: 'Secundario',
     role_background: 'Background',
+    role_cameo: 'Cameo',
     page_title: 'Detalle de Personaje',
     loading: 'Cargando información del personaje...',
     biography: 'Biografía',
