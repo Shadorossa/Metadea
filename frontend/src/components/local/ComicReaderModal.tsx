@@ -113,6 +113,31 @@ export function ComicReaderModal({ externalId, title, filePath, episodeNumber, t
   const goPrev = useCallback(() => setSpreadIndex(i => Math.max(0, i - 1)), []);
   const goNext = useCallback(() => setSpreadIndex(i => Math.min(spreads.length - 1, i + 1)), [spreads.length]);
 
+  // The flicker on page turn was the browser reading+decoding each page
+  // fresh off disk the moment it became visible — however fast that is,
+  // it's still a blank frame between the old <img> unmounting (a new page
+  // index is a new React key, so it's a fresh element, not a src swap on
+  // the same one) and the new one finishing its first paint. Warms the
+  // browser's own image cache for a small window around the current spread
+  // ahead of time so that by the time the user actually turns to one of
+  // these, the <img> just paints an already-decoded bitmap instantly
+  // instead of decoding on demand.
+  const preloadedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (loadState !== 'ready') return;
+    for (let si = spreadIndex - 1; si <= spreadIndex + 2; si++) {
+      const spread = spreads[si];
+      if (!spread) continue;
+      for (const pageIdx of spread) {
+        const url = wrapAssetUrl(pages[pageIdx]);
+        if (preloadedRef.current.has(url)) continue;
+        preloadedRef.current.add(url);
+        const img = new Image();
+        img.src = url;
+      }
+    }
+  }, [spreadIndex, loadState, spreads, pages]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { handleClose(); return; }

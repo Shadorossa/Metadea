@@ -1973,6 +1973,18 @@
   width: auto;
   object-fit: contain;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  /* Each page turn mounts a brand-new <img> (a new page index is a new key,
+     not a src swap on the same element) — preloading (ComicReaderModal)
+     means it almost always has an already-decoded bitmap ready to paint
+     immediately, but this fade covers the rare case it doesn't, so a
+     slower decode reads as a quick soft fade-in instead of an abrupt flash
+     between the old page vanishing and the new one snapping into place. */
+  animation: comic-reader-page-in 120ms ease;
+}
+
+@keyframes comic-reader-page-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Two pages side by side — each capped to half the row (minus the gap) so
