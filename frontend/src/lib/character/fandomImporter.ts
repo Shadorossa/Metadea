@@ -111,11 +111,9 @@ function stripHiddenNoise(el: Element): void {
 }
 
 function formatCharacteristicItem(html: string): string {
-  // No <sup> survives to reach here — stripHiddenNoise already removed every
-  // one (citations, help-icon "?" links) from valEl before this runs.
   let clean = html
     .replace(/<img[^>]*>/gi, '')
-    .replace(/<\/?(?:span|p|div|a)[^>]*>/gi, '')
+    .replace(/<\/?(?:span|p|div|a|b|strong)[^>]*>/gi, '')
     .trim();
 
   if (!clean.includes('<small>')) {

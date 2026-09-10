@@ -23,7 +23,16 @@ export function parseCharacterBiography(rawHtml: string | null | undefined): Par
   const elementsToRemove: Node[] = [];
 
   for (const el of boldElements) {
-    const label = (el.textContent || '').trim().replace(/:$/, '').trim();
+    const rawLabelText = (el.textContent || '').trim();
+    const hasColonInside = /[:：]$/.test(rawLabelText);
+    const nextSibling = el.nextSibling;
+    const hasColonAfter = nextSibling && nextSibling.nodeType === Node.TEXT_NODE && /^[:：]/.test((nextSibling.textContent || '').trim());
+
+    if (!hasColonInside && !hasColonAfter) {
+      continue;
+    }
+
+    const label = rawLabelText.replace(/[:：]+$/, '').trim();
     if (label.length > 80 || label.length < 2) continue;
 
     let nextNode: Node | null = el.nextSibling;
