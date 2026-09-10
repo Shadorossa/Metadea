@@ -28,8 +28,32 @@ export interface ListItemFull {
   format:      string | null;
 }
 
-export async function getAllUserLists(): Promise<ListInfo[]> {
-  return tauriTry<ListInfo[]>('get_all_user_lists', []);
+// getAllUserLists() is refetched by every profile Lists-tab mount — cache
+// it at module level, invalidated by this file's own mutators, the same
+// pattern used for the library (library-data-cache.ts) and character
+// (characters.ts) caches.
+let cachedLists: ListInfo[] | null = null;
+let listsCachePromise: Promise<ListInfo[]> | null = null;
+
+function invalidateUserListsCache() {
+  cachedLists = null;
+  listsCachePromise = null;
+}
+
+export async function getAllUserLists(forceRefresh = false): Promise<ListInfo[]> {
+  if (cachedLists && !forceRefresh) return cachedLists;
+  if (listsCachePromise && !forceRefresh) return listsCachePromise;
+
+  listsCachePromise = tauriTry<ListInfo[]>('get_all_user_lists', []).then(list => {
+    cachedLists = list;
+    listsCachePromise = null;
+    return list;
+  }).catch(() => {
+    listsCachePromise = null;
+    return cachedLists ?? [];
+  });
+
+  return listsCachePromise;
 }
 
 export async function getListItems(listKey: string): Promise<string[]> {
@@ -41,25 +65,32 @@ export async function getListItemsFull(listKey: string): Promise<ListItemFull[]>
 }
 
 export async function createUserList(username: string, name: string, description: string, listType?: string): Promise<string> {
-  return invoke<string>('create_user_list', { username, name, description, listType });
+  const key = await invoke<string>('create_user_list', { username, name, description, listType });
+  invalidateUserListsCache();
+  return key;
 }
 
 export async function updateUserList(key: string, name: string, description: string, isPrivate: boolean, listType?: string, isRanked?: boolean): Promise<void> {
-  return tauriRun('update_user_list', { key, name, description, isPrivate, listType, isRanked });
+  await tauriRun('update_user_list', { key, name, description, isPrivate, listType, isRanked });
+  invalidateUserListsCache();
 }
 
 export async function deleteUserList(key: string): Promise<void> {
-  return tauriRun('delete_user_list', { key });
+  await tauriRun('delete_user_list', { key });
+  invalidateUserListsCache();
 }
 
 export async function addItemToList(listKey: string, externalId: string): Promise<void> {
-  return tauriRun('add_item_to_list', { listKey, externalId });
+  await tauriRun('add_item_to_list', { listKey, externalId });
+  invalidateUserListsCache();
 }
 
 export async function removeItemFromList(listKey: string, externalId: string): Promise<void> {
-  return tauriRun('remove_item_from_list', { listKey, externalId });
+  await tauriRun('remove_item_from_list', { listKey, externalId });
+  invalidateUserListsCache();
 }
 
 export async function reorderListItems(listKey: string, externalIds: string[]): Promise<void> {
-  return tauriRun('reorder_list_items', { listKey, externalIds });
+  await tauriRun('reorder_list_items', { listKey, externalIds });
+  invalidateUserListsCache();
 }

@@ -29,6 +29,18 @@ export interface CharacterAppearance {
   cover?:              string | null;
 }
 
+// getAllCharacters() is fetched fresh by several profile tabs (Lists,
+// Favorites) and modals every time they mount — cache it the same way
+// favorite-images.ts caches getAllFavoriteCustomImages(), invalidated by
+// this file's own mutators so callers never see stale data.
+let cachedCharacters: CharacterEntry[] | null = null;
+let charactersCachePromise: Promise<CharacterEntry[]> | null = null;
+
+function invalidateCharactersCache() {
+  cachedCharacters = null;
+  charactersCachePromise = null;
+}
+
 export async function saveCharacter(
   externalId: string,
   name: string,
@@ -44,19 +56,34 @@ export async function saveCharacter(
   dobDay?: number | null,
 ): Promise<CharacterEntry> {
   if (!isTauri()) throw new Error('Tauri not available');
-  return invoke<CharacterEntry>('save_character', {
+  const res = await invoke<CharacterEntry>('save_character', {
     externalId, name, imageUrl, nameNative, aliasesCsv, biography,
     gender, age, bloodType, dobYear, dobMonth, dobDay,
   });
+  invalidateCharactersCache();
+  return res;
 }
 
 export async function getCharacter(externalId: string): Promise<CharacterEntry | null> {
   return tauriCmd<CharacterEntry | null>('get_character', null, { externalId });
 }
 
-// Fetch all cached characters (e.g. for profile Favorites tab)
-export async function getAllCharacters(): Promise<CharacterEntry[]> {
-  return tauriCmd<CharacterEntry[]>('get_all_characters', []);
+// Fetch all cached characters (e.g. for profile Favorites/Lists tabs).
+// Cached at module level — see invalidateCharactersCache above.
+export async function getAllCharacters(forceRefresh = false): Promise<CharacterEntry[]> {
+  if (cachedCharacters && !forceRefresh) return cachedCharacters;
+  if (charactersCachePromise && !forceRefresh) return charactersCachePromise;
+
+  charactersCachePromise = tauriCmd<CharacterEntry[]>('get_all_characters', []).then(list => {
+    cachedCharacters = list;
+    charactersCachePromise = null;
+    return list;
+  }).catch(() => {
+    charactersCachePromise = null;
+    return cachedCharacters ?? [];
+  });
+
+  return charactersCachePromise;
 }
 
 export async function searchCharactersDb(query: string): Promise<CharacterEntry[]> {
@@ -64,11 +91,13 @@ export async function searchCharactersDb(query: string): Promise<CharacterEntry[
 }
 
 export async function setCharacterReaction(externalId: string, reaction: string | null): Promise<void> {
-  return tauriRun('set_character_reaction', { externalId, reaction });
+  await tauriRun('set_character_reaction', { externalId, reaction });
+  invalidateCharactersCache();
 }
 
 export async function deleteCharacter(externalId: string): Promise<void> {
-  return tauriRun('delete_character', { externalId });
+  await tauriRun('delete_character', { externalId });
+  invalidateCharactersCache();
 }
 
 // Admin catalog editor's GitHub > Personajes tab — reads straight from the
