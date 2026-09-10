@@ -106,6 +106,59 @@ function formatCharacteristicItem(html: string): string {
   return clean.replace(/\s+/g, ' ').trim();
 }
 
+function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): string {
+  const cleanLabel = rawLabel.replace(/<[^>]+>/g, '').trim();
+  if (!sectionHeader) return cleanLabel;
+
+  const cleanHeader = sectionHeader
+    .replace(/<[^>]+>/g, '')
+    .replace(/&#32;/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleanHeader) return cleanLabel;
+
+  const lowerHeader = cleanHeader.toLowerCase();
+  if (
+    lowerHeader === 'biographical information' ||
+    lowerHeader === 'biographical info' ||
+    lowerHeader === 'biography' ||
+    lowerHeader === 'información biográfica' ||
+    lowerHeader === 'personal information' ||
+    lowerHeader === 'personal info' ||
+    lowerHeader === 'información personal' ||
+    lowerHeader === 'physical information' ||
+    lowerHeader === 'physical info' ||
+    lowerHeader === 'información física' ||
+    lowerHeader === 'general information' ||
+    lowerHeader === 'general info' ||
+    lowerHeader === 'información general' ||
+    lowerHeader === 'appearance' ||
+    lowerHeader === 'apariencia' ||
+    lowerHeader === 'portrayal' ||
+    lowerHeader === 'voice actors'
+  ) {
+    return cleanLabel;
+  }
+
+  const parenMatch = cleanHeader.match(/\(([^)]+)\)$/);
+  const colonMatch = cleanHeader.match(/[:–—\-]\s*(.+)$/);
+
+  let tag = cleanHeader;
+  if (parenMatch) {
+    tag = parenMatch[1].trim();
+  } else if (colonMatch) {
+    tag = colonMatch[1].trim();
+  }
+
+  if (!cleanLabel.includes('[') && !cleanLabel.toLowerCase().includes(tag.toLowerCase())) {
+    return `${cleanLabel} [${tag}]`;
+  }
+
+  return cleanLabel;
+}
+
   // Parsear campos del Infobox
   const characteristics: ParsedCharacteristic[] = [];
   const voiceActors: ExtractedVoiceActor[] = [];
@@ -126,6 +179,26 @@ function formatCharacteristicItem(html: string): string {
     }
 
     if (!label || !valEl) return;
+
+    let headerText = '';
+    if (el.matches('.pi-item.pi-data')) {
+      const group = el.closest('.pi-group, section');
+      if (group) {
+        headerText = group.querySelector('.pi-header, h2, h3')?.textContent || '';
+      }
+    } else {
+      let prev = el.previousElementSibling;
+      while (prev) {
+        const headerTh = prev.querySelector('th[colspan]');
+        if (headerTh) {
+          headerText = headerTh.textContent || '';
+          break;
+        }
+        prev = prev.previousElementSibling;
+      }
+    }
+
+    const finalLabel = formatCharacteristicLabel(label, headerText);
 
     valEl.querySelectorAll('.reference, .cite-bracket, sup.reference').forEach(r => r.remove());
     valEl.querySelectorAll('sup').forEach(sup => {
@@ -231,7 +304,7 @@ function formatCharacteristicItem(html: string): string {
     } else if (sourceAttr === 'image' || sourceAttr === 'name' || sourceAttr === 'title') {
       // Ignorar campos ya resueltos
     } else {
-      characteristics.push({ label, value: cleanVal });
+      characteristics.push({ label: finalLabel, value: cleanVal });
     }
   });
 
