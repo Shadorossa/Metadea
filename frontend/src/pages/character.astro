@@ -1083,4 +1083,14 @@ const translations = useTranslations(lang);
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     loadCharacterData();
   }
+
+  window.addEventListener('metadea:character-saved', (e: Event) => {
+    const detail = (e as CustomEvent)?.detail;
+    const urlParams = new URLSearchParams(window.location.search);
+    const idParam = urlParams.get('id') ?? '';
+    const bareId = idParam.startsWith('character:') ? idParam.slice('character:'.length) : idParam;
+    if (detail?.externalId && (detail.externalId === idParam || detail.externalId === `character:${bareId}`)) {
+      loadCharacterData();
+    }
+  });
 </script>

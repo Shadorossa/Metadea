@@ -361,8 +361,11 @@ export async function fetchMediaData(
       await saveMediaCompanies(rawId, data.companies).catch(console.error);
     }
 
-    // Reload so the result reflects curated relations/authors.
-    const { relations: finalRels, authors: finalAuthors } = await loadDbRelationsAndAuthors(rawId);
+    // Reload so the result reflects curated relations/authors/characters.
+    const [{ relations: finalRels, authors: finalAuthors }, dbChars] = await Promise.all([
+      loadDbRelationsAndAuthors(rawId),
+      getMediaCharacters(rawId).catch(() => [] as DbMediaCharacter[]),
+    ]);
 
     if (finalRels.length > 0) {
       const { relations, hasSaga } = sortRelationsForDisplay(finalRels);
@@ -372,6 +375,10 @@ export async function fetchMediaData(
 
     if (finalAuthors.length > 0) {
       data.authors = finalAuthors.map(dbAuthorToMediaAuthor);
+    }
+
+    if (dbChars.length > 0) {
+      data.characters = dbChars.map(dbCharacterToMediaCharacter);
     }
 
     setCachedMediaData(rawId, data);

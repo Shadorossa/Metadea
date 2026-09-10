@@ -5,6 +5,7 @@
 // of the component's own closures.
 import { saveCharacter, saveCharacterAppearances, type CharacterEntry } from '../tauri/characters';
 import { saveCharacterActors } from '../tauri/actors';
+import { markSynced } from '../tauri';
 import { submitCollaborativeProposal, type CharacterProposalBundle } from '../github/submitCollaborativeProposal';
 import { buildBiographyHtml, type ParsedCharacteristic } from './biography-parser';
 import { normField } from '../../components/shared/PrEditorField';
@@ -82,6 +83,7 @@ export async function submitCharacterProposal(p: SubmitCharacterEditorParams): P
     nativeFields.gender, nativeFields.age, nativeFields.bloodType,
     nativeFields.dobYear, nativeFields.dobMonth, nativeFields.dobDay,
   );
+  markSynced(p.currentId).catch(() => {});
 
   // Local persistence just succeeded — announce it regardless of whatever
   // the GitHub proposal step further down does (missing token, network
