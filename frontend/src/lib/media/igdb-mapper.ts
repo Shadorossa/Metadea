@@ -292,8 +292,8 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (!seenRelatedIds.has(relatedExternalId)) {
       seenRelatedIds.add(relatedExternalId);
       relations.push({
-        typeLabel: canonicalRelationLabels.PARENT,
-        relationType: 'PARENT',
+        typeLabel: canonicalRelationLabels.BASE_EDITION,
+        relationType: 'BASE_EDITION',
         title: cleanEditionTitle(parentSub.name),
         cover: parentSub.cover?.image_id ? igdbImageUrl(parentSub.cover.image_id, 'cover_big') : undefined,
         url: `/media?id=${relatedExternalId}`,
@@ -360,8 +360,8 @@ export function mergeBaseGameRelation(data: MediaPageData, baseGames: IgdbSubGam
     if (cover) queryParams.set('c', cover);
 
     return {
-      typeLabel: canonicalRelationLabels.PARENT,
-      relationType: 'PARENT',
+      typeLabel: canonicalRelationLabels.BASE_EDITION,
+      relationType: 'BASE_EDITION',
       title,
       cover,
       url: `/media?${queryParams.toString()}`,
@@ -394,7 +394,7 @@ const VIA_TO_RELATION_TYPE: Record<string, string> = {
   standalone_expansions: 'STANDALONE',
   expanded_games: 'EXPANDED_GAME',
   forks: 'FORK',
-  parent_game: 'PARENT',
+  parent_game: 'BASE_EDITION',
 };
 
 export function mergeRelationGraph(data: MediaPageData, nodes: RelationGraphNode[], gameType?: number): MediaPageData {

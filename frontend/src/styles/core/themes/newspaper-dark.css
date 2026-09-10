@@ -464,6 +464,15 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   padding: 0 !important;
 }
 
+[data-theme="newspaper-dark"] .rel-type-select-group + .rel-type-select-group {
+  border-top: 3px double var(--border-color) !important;
+}
+
+[data-theme="newspaper-dark"] .rel-type-select-group-header {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-dim) !important;
+}
+
 /* Dashed dividers between entries (last one dropped) so the open list reads
    like a little printed table of contents rather than a plain floating box. */
 [data-theme="newspaper-dark"] .rel-type-select-option {

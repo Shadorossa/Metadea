@@ -4172,6 +4172,31 @@
   font-weight: 700;
 }
 
+/* Groups options by the label the OTHER work ends up showing once one of
+   them is picked (see sagaTypes.ts's groupRelationOptions) — a thin
+   separator line between groups, not extra padding, so the panel doesn't
+   grow much taller than the flat list it replaced. */
+.rel-type-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.rel-type-select-group + .rel-type-select-group {
+  border-top: 1px solid var(--border-color, #2d2a24);
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+}
+
+.rel-type-select-group-header {
+  padding: 0.25rem 0.6rem 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim, #8a877e);
+}
+
 .pr-editor-media-card-group-input {
   width: 100%;
   font-size: 0.65rem;

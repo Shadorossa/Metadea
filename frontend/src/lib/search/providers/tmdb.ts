@@ -137,6 +137,18 @@ export interface TmdbTvDetail extends TmdbDetailBase {
    *  counts. One of: Documentary, News, Miniseries, Reality, Scripted,
    *  Talk Show, Video. */
   type?: string;
+  /** Per-season summary, always present on the detail response (no
+   *  append_to_response needed) — season_number 0 is specials, same
+   *  convention as fetchTmdbEpisodes. Used by anime-tmdb-match.ts to line up
+   *  TMDB's own season split against an AniList prequel/sequel chain. */
+  seasons?: TmdbSeasonSummary[];
+}
+
+export interface TmdbSeasonSummary {
+  season_number: number;
+  episode_count?: number;
+  air_date?: string | null;
+  name?: string;
 }
 
 export function buildPosterUrl(posterPath: string | null): string | null {
@@ -289,6 +301,35 @@ export const searchMovies = (searchQuery: string, signal: AbortSignal, page = 1)
 export const searchSeries = (searchQuery: string, signal: AbortSignal, page = 1) =>
   fetchTmdbPage('search/tv', `query=${encodeURIComponent(searchQuery)}`, 'series', signal, page);
 
+// Bare TMDB tv search results (just id/name/first_air_date), deliberately
+// NOT filtered through isAnime() the way searchSeries/fetchTmdbPage is —
+// that filter exists so the app's own search UI doesn't show a Japanese
+// animation twice (once from TMDB, once from AniList), but anime-tmdb-
+// match.ts is searching TMDB specifically to find an anime's own TMDB
+// listing, so filtering anime out would defeat the point (this was
+// silently dropping every real candidate, e.g. Gintama, id 57041). One
+// TMDB page (20 results) is always enough for the top-5 candidates the
+// caller actually checks.
+export interface TmdbTvSearchHit {
+  id: number;
+  name?: string;
+  first_air_date?: string;
+}
+
+export async function searchTvIncludingAnime(query: string, signal: AbortSignal): Promise<TmdbTvSearchHit[]> {
+  const auth = await getTmdbAuth();
+  if (!auth) return [];
+
+  const headers: Record<string, string> = {};
+  if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;
+
+  let url = `${API_ENDPOINTS.TMDB}/search/tv?query=${encodeURIComponent(query)}&page=1&language=${tmdbLocale()}`;
+  if (auth.apiKey) url += `&api_key=${encodeURIComponent(auth.apiKey)}`;
+
+  const data = await fetchJson<TmdbPageResponse>(url, { signal, headers }).catch(() => null);
+  return data?.results ?? [];
+}
+
 // TMDB's /discover endpoint (unlike /search) has no free-text query param at
 // all, but does support the year/genre filters this app's toolbar offers —
 // year+season become a primary_release_date/first_air_date range (same
@@ -376,12 +417,10 @@ export interface TmdbEpisodeSummary {
 }
 
 // One request per season (TMDB has no single "all episodes" endpoint) — runs
-// in parallel since each season's fetch is independent. Season 0 (specials)
-// is included: TMDB numbers it like any other season, and the media page's
-// episode table doesn't need to treat it differently.
-export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number): Promise<TmdbEpisodeSummary[]> {
+// in parallel since each season's fetch is independent.
+export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers: number[]): Promise<TmdbEpisodeSummary[]> {
   const auth = await getTmdbAuth();
-  if (!auth || numberOfSeasons <= 0) return [];
+  if (!auth || seasonNumbers.length === 0) return [];
 
   const headers: Record<string, string> = {};
   if (auth.accessToken) headers['Authorization'] = `Bearer ${auth.accessToken}`;
@@ -393,13 +432,15 @@ export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number)
   };
 
   const seasons = await Promise.all(
-    Array.from({ length: numberOfSeasons }, (_, i) =>
-      fetchJson<TmdbSeasonResponse>(buildUrl(i), { headers }).catch(() => null),
+    seasonNumbers.map(seasonNumber =>
+      fetchJson<TmdbSeasonResponse>(buildUrl(seasonNumber), { headers })
+        .then(season => ({ seasonNumber, season }))
+        .catch(() => ({ seasonNumber, season: null as TmdbSeasonResponse | null })),
     ),
   );
 
   const episodes: TmdbEpisodeSummary[] = [];
-  seasons.forEach((season, seasonNumber) => {
+  for (const { seasonNumber, season } of seasons) {
     for (const ep of season?.episodes ?? []) {
       episodes.push({
         season_number:  seasonNumber,
@@ -408,6 +449,16 @@ export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number)
         cover_url:      buildPosterUrl(ep.still_path),
       });
     }
-  });
+  }
   return episodes;
+}
+
+// Season 0 (specials) through numberOfSeasons-1, TMDB's own contiguous
+// numbering — the common case (a series with no AniList season-split to
+// worry about). Season 0 is included: TMDB numbers it like any other
+// season, and the media page's episode table doesn't need to treat it
+// differently.
+export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number): Promise<TmdbEpisodeSummary[]> {
+  if (numberOfSeasons <= 0) return [];
+  return fetchTmdbEpisodesForSeasons(tmdbId, Array.from({ length: numberOfSeasons }, (_, i) => i));
 }

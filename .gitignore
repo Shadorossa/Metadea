@@ -12,3 +12,7 @@ frontend/.tauri-keys.pub
 # exceptions (.agents/AGENTS.md, .claude/launch.json) stay tracked regardless.
 .agents/
 .claude/
+*.db-shm
+*.db-wal
+dbcopy*
+frontend/dbcheck*

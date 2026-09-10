@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
 import { RelationTypeSelect } from '../RelationTypeSelect';
 import type { DragHandlers } from '../hooks/useDragReorder';
+import { groupRelationOptions } from '../../../lib/media/sagaTypes';
+import { RELATION_TYPE_RECIPROCAL } from '../../../lib/media/canonical-relations';
 
 interface EditableRelation {
   related_media_external_id: string;
@@ -28,6 +31,14 @@ export function PrEditorRelationsSection({
   editableRelations, relationOptions, relationLabels,
   draggedIndex, dragHandlers, onRemove, onUpdateType,
 }: Props) {
+  // Same groups for every card (doesn't depend on the individual relation),
+  // so this is computed once per relationOptions/relationLabels change
+  // instead of once per card render.
+  const relationGroups = useMemo(
+    () => groupRelationOptions(relationOptions, RELATION_TYPE_RECIPROCAL, relationLabels),
+    [relationOptions, relationLabels],
+  );
+
   return (
     <div className="pr-editor-subsection pr-editor-subsection--saga" style={{ flex: 1, minWidth: '200px' }}>
       <div className="pr-editor-media-group-cards pr-editor-media-group-cards--six" style={{ marginBottom: '1.25rem' }}>
@@ -51,7 +62,7 @@ export function PrEditorRelationsSection({
             </div>
             <RelationTypeSelect
               value={r.relation_type}
-              options={relationOptions}
+              groups={relationGroups}
               labels={relationLabels}
               extraOption={{ value: r.relation_type, label: r.type_label }}
               onChange={type => onUpdateType(r.related_media_external_id, type)}

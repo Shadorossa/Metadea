@@ -2,9 +2,10 @@
 // mediaService.ts the same way comic-issues.ts/book-editions.ts are —
 // sourced from TMDB (series) or AniList's streamingEpisodes (anime), the
 // only two providers this app uses that expose anything episode-level at all.
-import { fetchTmdbDetail, fetchTmdbEpisodes, type TmdbTvDetail } from '../search/providers/tmdb';
+import { fetchTmdbDetail, fetchTmdbEpisodes, fetchTmdbEpisodesForSeasons, type TmdbTvDetail, type TmdbEpisodeSummary } from '../search/providers/tmdb';
 import { fetchAniListStreamingEpisodes } from '../search/providers/anilist';
 import { parseExternalId } from './mapper-utils';
+import { matchTmdbSeasonsForAnime } from './anime-tmdb-match';
 import { getMediaEpisodes, saveMediaEpisodes, type MediaEpisode } from '../tauri';
 
 // AniList's streamingEpisodes titles read like "Episode 12 - The Title"
@@ -31,6 +32,42 @@ async function fetchFromAniList(numericId: number, externalId: string): Promise<
       cover_url:      ep.thumbnail ?? null,
     };
   });
+}
+
+// TMDB's per-episode data (real thumbnails, translated titles) beats
+// AniList's own streamingEpisodes (a flat list scraped from streaming
+// sites — spotty thumbnails, titles like "Episode 12" with nothing else).
+// anime-tmdb-match.ts works out which TMDB (season, episode-range) slice(s)
+// correspond to this one AniList entry within its prequel/sequel chain
+// (best-effort — returns null for anything it can't confidently line up,
+// e.g. an anime with no TMDB listing at all). Numbers episodes sequentially
+// across the matched slices (1, 2, 3, ...) rather than keeping TMDB's own
+// per-season numbering, so they read the same way AniList's own flat
+// episode list always has.
+async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string): Promise<MediaEpisode[]> {
+  const match = await matchTmdbSeasonsForAnime(rawId);
+  if (!match) return [];
+
+  const seasonNumbers = [...new Set(match.slices.map(s => s.season_number))];
+  const episodes = await fetchTmdbEpisodesForSeasons(match.tmdbId, seasonNumbers);
+  if (!episodes.length) return [];
+
+  const inMatchedRange = (ep: TmdbEpisodeSummary) => match.slices.some(s =>
+    s.season_number === ep.season_number && ep.episode_number >= s.episodeStart && ep.episode_number <= s.episodeEnd,
+  );
+
+  const filtered = episodes
+    .filter(inMatchedRange)
+    .sort((a, b) => a.season_number - b.season_number || a.episode_number - b.episode_number);
+  if (!filtered.length) return [];
+
+  return filtered.map((ep, i) => ({
+    external_id:    externalId,
+    season_number:  0,
+    episode_number: i + 1,
+    name:           ep.name,
+    cover_url:      ep.cover_url,
+  }));
 }
 
 // knownSeasonCount comes from the main media page's own already-fetched
@@ -72,7 +109,10 @@ export async function fetchMediaEpisodes(rawId: string, force = false, knownSeas
 
   let fresh: MediaEpisode[] = [];
   if (type === 'anime') {
-    fresh = await fetchFromAniList(numericId, rawId).catch(() => []);
+    fresh = await fetchAnimeEpisodesFromTmdb(rawId, rawId).catch(() => []);
+    if (fresh.length === 0) {
+      fresh = await fetchFromAniList(numericId, rawId).catch(() => []);
+    }
   } else if (type === 'series') {
     fresh = await fetchFromTmdb(numericId, rawId, knownSeasonCount).catch(() => []);
   } else {

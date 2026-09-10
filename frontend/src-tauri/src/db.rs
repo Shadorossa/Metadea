@@ -987,6 +987,31 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 53)?;
     }
+    if v < 54 {
+        // 'PARENT' used to double as two unrelated concepts sharing one
+        // string: AniList's own real relation type (the main story a side
+        // story/movie/OVA is attached to — igdb/comicvine never see this
+        // one) AND this app's own choice of key for "the base game/comic
+        // volume an edition or issue belongs to" (igdb-mapper.ts/
+        // comicvine-mapper.ts). That collision is what made the editor's
+        // relation dropdown show a "Base Edition"-ish label right next to
+        // "Source Material" for completely different reasons depending on
+        // whether you were looking at an anime or a game. Splitting the
+        // game/comic sense out to its own BASE_EDITION key leaves PARENT
+        // meaning only the AniList concept from here on. Scoped to game/
+        // vnovel/comic rows specifically (by the OWNING media's catalog
+        // type) rather than every PARENT row, since anime/manga/lnovel
+        // entries with a real AniList PARENT edge must keep it as-is.
+        conn.execute(
+            "UPDATE media_relations SET relation_type = 'BASE_EDITION', type_label = 'Base Edition'
+             WHERE relation_type = 'PARENT'
+             AND media_external_id IN (
+                 SELECT external_id FROM media_catalog WHERE type IN ('game', 'vnovel', 'comic')
+             )",
+            [],
+        )?;
+        mark_migration(conn, 54)?;
+    }
 
     Ok(())
 }
@@ -1001,11 +1026,13 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
 fn canonical_relation_labels() -> &'static [(&'static str, &'static str)] {
     &[
         ("SEQUEL", "Sequel"), ("PREQUEL", "Prequel"), ("SIDE_STORY", "Side story"),
-        ("ALTERNATIVE", "Alternative"), ("ADAPTATION", "Adaptation"), ("PARENT", "Source"),
+        ("ALTERNATIVE", "Alternative"), ("ADAPTATION", "Adaptation"), ("PARENT", "Parent Story"),
+        ("BASE_EDITION", "Base Edition"),
         ("SUMMARY", "Summary"), ("SPIN_OFF", "Spin-off"), ("OTHER", "Other"),
         ("CHARACTER", "Character"), ("CONTAINS", "Contains"), ("RECOMMENDATION", "Recommended"),
         ("EDITIONS", "Editions"),
         ("REL_ADAPTATION", "Adaptation"),
+        ("REL_SOURCE", "Source Material"),
         ("REL_ALTERNATIVE", "Alternative Version"),
         ("REMASTER", "Remaster"),
         ("REMAKE", "Remake"),

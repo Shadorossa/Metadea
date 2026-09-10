@@ -4,7 +4,7 @@ use chrono::Utc;
 use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use crate::db::ToStringErr;
-use crate::media_catalog::{existing_catalog_ids, reciprocal_relation, infer_type_from_id, infer_source_from_id};
+use crate::media_catalog::{existing_catalog_ids, reciprocal_relation, format_to_edition_relation, infer_type_from_id, infer_source_from_id};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -100,9 +100,33 @@ pub async fn save_media_relations(
         )
         .str_err()?;
 
-        if let Some((recip_type, recip_label)) = reciprocal_relation(&rel.relation_type) {
+        // BASE_EDITION's reciprocal isn't a fixed lookup like the rest —
+        // the base game's own row needs to say WHICH kind of edition this
+        // one is, which comes from this entry's own already-known catalog
+        // format (REMASTER/REMAKE/DLC/...) rather than the relation_type
+        // string alone. See format_to_edition_relation's own comment.
+        let reciprocal = if rel.relation_type == "BASE_EDITION" {
+            let format: Option<String> = tx.query_row(
+                "SELECT format FROM media_catalog WHERE external_id = ?1",
+                [&media_external_id],
+                |row| row.get::<_, Option<String>>(0),
+            ).ok().flatten();
+            format.as_deref().and_then(format_to_edition_relation)
+        } else {
+            reciprocal_relation(&rel.relation_type)
+        };
+
+        if let Some((recip_type, recip_label)) = reciprocal {
+            // REPLACE, not IGNORE: a curator flipping an existing SOURCE<->
+            // ADAPTATION (or PREQUEL<->SEQUEL/EPISODE<->PART_OF/UPDATE<->
+            // PART_OF) pair in the editor must also flip the OTHER side's
+            // already-existing row, not just skip it because a (now-stale,
+            // contradictory) row is already there. IGNORE only ever helped
+            // the very first time a pair was created, when the reciprocal
+            // side genuinely didn't exist yet — from then on it silently
+            // froze that side at whatever it was first written as.
             tx.execute(
-                "INSERT OR IGNORE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
+                "INSERT OR REPLACE INTO media_relations (media_external_id, related_media_external_id, relation_type, type_label)
                  VALUES (?1, ?2, ?3, ?4)",
                 rusqlite::params![&rel.related_media_external_id, &media_external_id, recip_type, recip_label],
             )

@@ -88,10 +88,11 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
   const t = getT();
   const tm = t.media;
   const pe = t.pr_editor;
-  // Shown in the editor, in the UI's own language.
-  const relationLabels = tm.relations;
-  // What actually gets persisted to type_label — always English, regardless
-  // of UI language, so the shared catalog doesn't mix languages per-row.
+  // Also what the Relations dropdown itself displays (not just what gets
+  // persisted) — a curator's own UI language shouldn't decide what a PR
+  // reviewer in a different language sees on that same option, and this is
+  // the exact text that ends up in type_label (see updateEditableRelationType
+  // below), so showing anything else here would just be misleading.
   const canonicalRelationLabels = CANONICAL_RELATION_LABELS;
 
   // A remaster/remake/expanded-edition/bundle relation picked here should
@@ -1025,7 +1026,7 @@ export function PrEditorModal({ externalId, onClose, onSaved, mode = 'proposal',
                   <PrEditorRelationsSection
                     editableRelations={editableRelations}
                     relationOptions={EDITABLE_RELATION_OPTIONS}
-                    relationLabels={relationLabels as unknown as Record<string, string>}
+                    relationLabels={canonicalRelationLabels}
                     draggedIndex={draggedRelationIndex}
                     dragHandlers={relationDragHandlers}
                     onRemove={removeEditableRelation}

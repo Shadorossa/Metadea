@@ -93,11 +93,29 @@ export async function fetchFandomCharacter(url: string): Promise<FandomCharacter
     }
   }
 
+// Fandom's Portable Infobox pairs an on-hover "explain" tooltip (native
+// `title=` attribute on a `.explain` span) with an invisible screen-reader
+// duplicate of that same note text (`<span style="display: none;"> (...)
+// </span>`), plus a "?" help-icon `<sup>` link pointing at the wiki's own
+// explanation page — none of which ever renders as visible running text on
+// the live wiki page, but `.textContent`/`.innerHTML` don't know that (CSS
+// `display:none` is invisible to both) and were pulling all of it in
+// verbatim, e.g. turning the label "Reckoned birth year(s)" into "Reckoned
+// birth year(s) (this is for age comparison purposes, and so may look odd;
+// click on the question mark for details)?". Mutates in place — always
+// called on values already local to this parse (never the live page's own
+// DOM), so mutating instead of cloning is safe and avoids the extra copy.
+function stripHiddenNoise(el: Element): void {
+  el.querySelectorAll('sup, [style*="display: none" i], [style*="display:none" i], .reference, .cite-bracket')
+    .forEach(n => n.remove());
+}
+
 function formatCharacteristicItem(html: string): string {
+  // No <sup> survives to reach here — stripHiddenNoise already removed every
+  // one (citations, help-icon "?" links) from valEl before this runs.
   let clean = html
     .replace(/<img[^>]*>/gi, '')
     .replace(/<\/?(?:span|p|div|a)[^>]*>/gi, '')
-    .replace(/<\/?sup[^>]*>/gi, m => m.startsWith('</') ? '</small>' : '<small>')
     .trim();
 
   if (!clean.includes('<small>')) {
@@ -187,9 +205,13 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
       : el.querySelector('td');
 
     if (el.matches('.pi-item.pi-data')) {
-      label = el.querySelector('.pi-data-label')?.textContent?.trim() || '';
+      const labelEl = el.querySelector('.pi-data-label');
+      if (labelEl) stripHiddenNoise(labelEl);
+      label = labelEl?.textContent?.trim() || '';
     } else {
-      label = el.querySelector('th')?.textContent?.trim() || '';
+      const labelEl = el.querySelector('th');
+      if (labelEl) stripHiddenNoise(labelEl);
+      label = labelEl?.textContent?.trim() || '';
     }
 
     if (!label || !valEl) return;
@@ -214,13 +236,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
 
     const finalLabel = formatCharacteristicLabel(label, headerText);
 
-    valEl.querySelectorAll('.reference, .cite-bracket, sup.reference').forEach(r => r.remove());
-    valEl.querySelectorAll('sup').forEach(sup => {
-      const txt = sup.textContent?.trim() || '';
-      if (/^\[\d+\]$/.test(txt) || sup.classList.contains('reference') || sup.querySelector('a[href*="#cite"]')) {
-        sup.remove();
-      }
-    });
+    stripHiddenNoise(valEl);
 
     const sourceAttr = (el.getAttribute('data-source') || '').toLowerCase();
     const normLabel = label.toLowerCase();
@@ -234,8 +250,12 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
         .filter(Boolean)
         .join('<br>');
     } else {
+      // <hr> is Fandom's own separator between an infobox field's distinct
+      // values (e.g. Occupation: "Law student <hr> Prosecutor (...)") —
+      // treated as a line break just like <br>/<p>/<div>, not left as a
+      // literal tag glued into one line's text.
       const rawLines = valHtml
-        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<(?:br|hr)\s*\/?>/gi, '\n')
         .replace(/<\/?(?:p|div)[^>]*>/gi, '\n')
         .split('\n')
         .map(l => formatCharacteristicItem(l))
@@ -325,7 +345,7 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
   // Extraer biografía limpia
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;
   contentRoot.querySelectorAll(
-    '.portable-infobox, table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery, figcaption, .thumbcaption, .thumb, figure, aside, .page-header, .page-footer'
+    '.portable-infobox, table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery, figcaption, .thumbcaption, .thumb, figure, aside, .page-header, .page-footer, [style*="display: none" i], [style*="display:none" i]'
   ).forEach(n => n.remove());
 
   const bioParagraphs: string[] = [];

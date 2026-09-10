@@ -12,13 +12,20 @@ import { lookupLabel } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 // Order of relations: Fuente > Prequel > Sequel > Adaptation > Side story
-// (Historia paralela) > Alternative > Other. Only SOURCE/PARENT count as
-// "Fuente" (the original work) — ADAPTATION is the derivative work, so it
-// belongs after Prequel/Sequel, not grouped alongside the source.
+// (Historia paralela) > Alternative > Other. SOURCE (the original work an
+// adaptation/summary/fork/side story is based on) and BASE_EDITION (the base
+// edition/volume a game edition or comic issue belongs to — a distinct
+// concept, see canonical-relations.ts) both sort first since either one is
+// "what this entry depends on" — ADAPTATION is the derivative work, so it
+// belongs after Prequel/Sequel, not grouped alongside the source. PARENT
+// (AniList's own "main story this side content is attached to") sorts here
+// too, for the same "what this entry depends on" reasoning.
 const RELATION_SORT_PRIORITY: Record<string, number> = {
   // Fuente
   SOURCE: 1,
+  REL_SOURCE: 1,
   PARENT: 1,
+  BASE_EDITION: 1,
 
   // Prequel
   PREQUEL: 2,
@@ -99,7 +106,7 @@ function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
 // ...) doesn't have that problem and keeps its full relations.
 const FULL_EDITION_FORMATS = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME', 'PORT', 'FORK']);
 const FULL_EDITION_ALLOWED_RELATION_TYPES = new Set([
-  'PARENT', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
+  'BASE_EDITION', 'DLC', 'EXPANSION', 'STANDALONE', 'REMASTER', 'EXPANDED_GAME', 'REL_UPDATE',
   // Saga-chain edges and Bundled In are explicit, user-set relations, never
   // IGDB-inherited noise — always kept regardless of format.
   'PREQUEL', 'SEQUEL', 'ALTERNATIVE', 'PART_OF',

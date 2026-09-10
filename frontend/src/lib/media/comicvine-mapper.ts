@@ -150,8 +150,8 @@ export function mapComicVineIssueToMedia(issue: ComicVineIssueDetail, externalId
   const tm = getT().media;
   const relations: MediaPageData['relations'] = issue.volume
     ? [{
-        typeLabel: canonicalRelationLabels.PARENT,
-        relationType: 'PARENT',
+        typeLabel: canonicalRelationLabels.BASE_EDITION,
+        relationType: 'BASE_EDITION',
         title: issue.volume.name,
         url: `/media?id=comic:${issue.volume.id}`,
         relatedExternalId: `comic:${issue.volume.id}`,

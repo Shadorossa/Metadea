@@ -1,12 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../../lib/shared/useEscapeKey';
+import type { RelationOptionGroup } from '../../lib/media/sagaTypes';
 
 interface RelationTypeSelectProps {
   value:        string;
-  options:      string[];
+  /** Pre-grouped via sagaTypes.ts's groupRelationOptions — each group's own
+   *  header names the label the OTHER work ends up showing once you pick
+   *  one of its options (e.g. everything under "Source Material" makes the
+   *  other side show that). The trailing group with an empty header (if
+   *  any) holds options with no defined reciprocal, rendered without a
+   *  header of their own. */
+  groups:       RelationOptionGroup[];
   labels:       Record<string, string>;
-  /** A pre-existing relation type outside the curated `options` list (e.g.
+  /** A pre-existing relation type outside the curated `groups` (e.g.
    *  CHARACTER, OTHER) — shown as an extra, still-selectable entry so the
    *  dropdown doesn't silently snap away from it on first render. */
   extraOption?: { value: string; label: string };
@@ -20,7 +27,7 @@ interface RelationTypeSelectProps {
 // <body> (the editor modal has `overflow: hidden` for its rounded corners,
 // which would otherwise clip the panel for any card near its edge) and
 // positioned under the trigger via a measured rect.
-export function RelationTypeSelect({ value, options, labels, extraOption, onChange }: RelationTypeSelectProps) {
+export function RelationTypeSelect({ value, groups, labels, extraOption, onChange }: RelationTypeSelectProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -62,9 +69,10 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
   }, [open]);
   useEscapeKey(open, () => setOpen(false));
 
-  const allOptions = extraOption && !options.includes(extraOption.value)
-    ? [extraOption.value, ...options]
-    : options;
+  const hasExtra = extraOption && !groups.some(g => g.options.includes(extraOption.value));
+  const allGroups: RelationOptionGroup[] = hasExtra
+    ? [...groups, { header: '', options: [extraOption.value] }]
+    : groups;
 
   // `labels` (the canonical/localized dictionary) wins whenever it actually
   // has this value — e.g. ADAPTATION and REL_ADAPTATION are the same concept
@@ -98,21 +106,28 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
           role="listbox"
           style={{ top: rect.top, left: rect.left, minWidth: rect.width }}
         >
-          {allOptions.map(opt => {
-            const label = labels[opt] || (opt === extraOption?.value ? extraOption.label : opt);
-            return (
-              <button
-                type="button"
-                key={opt}
-                role="option"
-                aria-selected={opt === value}
-                className={`rel-type-select-option${opt === value ? ' active' : ''}`}
-                onClick={() => { onChange(opt); setOpen(false); }}
-              >
-                {label}
-              </button>
-            );
-          })}
+          {allGroups.map((group, groupIndex) => (
+            <div className="rel-type-select-group" key={group.header || `ungrouped-${groupIndex}`}>
+              {group.header && (
+                <div className="rel-type-select-group-header">{group.header}</div>
+              )}
+              {group.options.map(opt => {
+                const label = labels[opt] || (opt === extraOption?.value ? extraOption.label : opt);
+                return (
+                  <button
+                    type="button"
+                    key={opt}
+                    role="option"
+                    aria-selected={opt === value}
+                    className={`rel-type-select-option${opt === value ? ' active' : ''}`}
+                    onClick={() => { onChange(opt); setOpen(false); }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>,
         document.body,
       )}

@@ -57,8 +57,10 @@ pub(crate) fn existing_catalog_ids(
 // The other side's edge (SEQUEL<->PREQUEL, etc.) — get_transitive_relation_ids'
 // recursive CTE only walks forward via media_external_id, so a one-sided
 // write silently breaks traversal partway through a saga. Callers use
-// INSERT OR IGNORE with this, not REPLACE: a curator may have deliberately
-// classified the other side differently (e.g. SIDE_STORY over plain SEQUEL).
+// INSERT OR REPLACE with this (see save_media_relations), not IGNORE: a
+// curator flipping an existing pair's direction in the editor must also
+// flip the other side's already-existing row, not have it silently frozen
+// at whatever it was first written as.
 pub(crate) fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, &'static str)> {
     match relation_type {
         "SEQUEL"     => Some(("PREQUEL", "Prequel")),
@@ -67,6 +69,73 @@ pub(crate) fn reciprocal_relation(relation_type: &str) -> Option<(&'static str, 
         "ADAPTATION" => Some(("SOURCE", "Source Material")),
         "EPISODE"    => Some(("PART_OF", "Part of")),
         "UPDATE"     => Some(("PART_OF", "Part of")),
+        // REL_SOURCE/REL_ADAPTATION/REL_ALTERNATIVE are the generic-editor's
+        // own prefixed spellings of SOURCE/ADAPTATION/ALTERNATIVE (see
+        // sagaTypes.ts's EDITABLE_RELATION_OPTIONS comment — the prefix
+        // exists purely so a plain edit here doesn't get swept into the
+        // saga-chain walker, which only recognizes the unprefixed literals).
+        // REL_ADAPTATION reciprocates to REL_SOURCE, not the literal SOURCE,
+        // so the OTHER side doesn't risk that same collision if it's ever
+        // added to a saga chain later. Whatever this media is derived FROM
+        // as a different work (an adaptation, a summary, a fork) is
+        // genuinely its source, i.e. the original work.
+        "REL_SOURCE"     => Some(("REL_ADAPTATION", "Adaptation")),
+        "REL_ADAPTATION" => Some(("REL_SOURCE", "Source Material")),
+        "SUMMARY"        => Some(("REL_SOURCE", "Source Material")),
+        "FORK"           => Some(("REL_SOURCE", "Source Material")),
+        // SIDE_STORY/PARENT is AniList's own real pair (the main story a
+        // side story/movie/OVA is attached to) — distinct from SOURCE, which
+        // is about a DIFFERENT work this one adapts/summarizes/forks, not a
+        // side story still within the same continuity.
+        "SIDE_STORY" => Some(("PARENT", "Parent Story")),
+        "PARENT"     => Some(("SIDE_STORY", "Side story")),
+        // Symmetric — AniList itself has no separate inverse label for
+        // either of these, both sides just read the same way.
+        "SPIN_OFF"       => Some(("SPIN_OFF", "Spin-off")),
+        "REL_ALTERNATIVE" => Some(("REL_ALTERNATIVE", "Alternative Version")),
+        // Update/Season are episodic content released INTO the base work
+        // over time (a big free update, a season pass' season), not a
+        // separate purchasable product the way a remaster/DLC/expansion is
+        // — same "lives inside the base work" relationship Bundled In/
+        // Contains already models for comics/anime (EPISODE/PART_OF above),
+        // so these reuse that exact pair instead of BASE_EDITION.
+        "REL_UPDATE" => Some(("PART_OF", "Part of")),
+        "SEASON"     => Some(("PART_OF", "Part of")),
+        // Every remaining game-edition flavor (see FULL_EDITION_FORMATS in
+        // media-relations.ts) reciprocates the same way regardless of which
+        // one it is: from the edition's own side, the other work is always
+        // its BASE_EDITION. The reverse (BASE_EDITION itself) has no fixed
+        // entry here — it can't say which of these the other side actually
+        // is from the relation_type string alone — see
+        // format_to_edition_relation below, which save_media_relations
+        // calls instead specifically for BASE_EDITION, using the edition's
+        // own already-known catalog format.
+        "REMASTER"      => Some(("BASE_EDITION", "Base Edition")),
+        "REMAKE"        => Some(("BASE_EDITION", "Base Edition")),
+        "EXPANDED_GAME" => Some(("BASE_EDITION", "Base Edition")),
+        "DLC"           => Some(("BASE_EDITION", "Base Edition")),
+        "EXPANSION"     => Some(("BASE_EDITION", "Base Edition")),
+        "STANDALONE"    => Some(("BASE_EDITION", "Base Edition")),
+        _ => None,
+    }
+}
+
+// A BASE_EDITION relation's reciprocal isn't fixed the way the others in
+// reciprocal_relation() are — the base game's own row needs to say WHICH
+// kind of edition the other side is (remaster/remake/DLC/...), and that's
+// exactly what the edition's own media_catalog.format column already holds
+// (IGDB sets it directly — see GAME_TYPE_FORMAT in igdb-mapper.ts). E.g.
+// Silent Hill 2 (2024) has format=REMAKE, so marking the 2001 original as
+// its BASE_EDITION writes REMAKE back onto the original's own relation to
+// the 2024 entry, instead of leaving that side undecided.
+pub(crate) fn format_to_edition_relation(format: &str) -> Option<(&'static str, &'static str)> {
+    match format {
+        "REMASTER"      => Some(("REMASTER", "Remaster")),
+        "REMAKE"        => Some(("REMAKE", "Remake")),
+        "EXPANDED_GAME" => Some(("EXPANDED_GAME", "Expanded Edition")),
+        "DLC"           => Some(("DLC", "DLC")),
+        "EXPANSION"     => Some(("EXPANSION", "Content Expansion")),
+        "STANDALONE"    => Some(("STANDALONE", "Standalone Expansion")),
         _ => None,
     }
 }

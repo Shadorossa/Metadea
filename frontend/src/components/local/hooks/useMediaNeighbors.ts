@@ -14,7 +14,7 @@ export interface MediaNeighbors {
 // Resolves the "what comes before/after this" (or, for a bundle, "what's
 // inside it") neighbor row shown by both GameDetailPanel and
 // LocalMediaDetailPanel — was independently reimplemented by each (Game's own
-// version being the fuller one: PARENT/edition-matching/bundle-children,
+// version being the fuller one: BASE_EDITION/edition-matching/bundle-children,
 // Local's own a simpler PREQUEL/SEQUEL-only subset that missed VN-adjacent
 // bundles and remaster/remake chains entirely). Pulled out here so a fix to
 // this logic reaches every category, not just whichever panel it was
@@ -40,9 +40,11 @@ export function useMediaNeighbors(relationsExternalId: string | undefined, selfT
       let prequelRel = relations.find(r => r.relation_type === 'PREQUEL');
       let sequelRel = relations.find(r => r.relation_type === 'SEQUEL');
       // A remaster/remake never carries its own PREQUEL/SEQUEL/CONTAINS —
-      // those live on the original it's an edition of (see PARENT, the
+      // those live on the original it's an edition of (see BASE_EDITION, the
       // reverse-direction label REMASTER/REMAKE gets recorded under on the
-      // edition's own side). Same "borrow the original's saga identity"
+      // edition's own side — not AniList's PARENT, a different concept
+      // entirely; see canonical-relations.ts). Same "borrow the original's
+      // saga identity"
       // fallback library-grouping.ts's refineSagaGroups already relies on
       // for the profile grid — and, like that same code, the neighbor
       // itself gets swapped for ITS OWN remaster/remake edition when one
@@ -57,7 +59,7 @@ export function useMediaNeighbors(relationsExternalId: string | undefined, selfT
       // to come back first.
       let selfEditionType: string | undefined;
       if (!prequelRel && !sequelRel) {
-        const parent = relations.find(r => r.relation_type === 'PARENT');
+        const parent = relations.find(r => r.relation_type === 'BASE_EDITION');
         if (parent) {
           const parentRelations = await getMediaRelationsForEditor(parent.related_media_external_id).catch(() => []);
           if (cancelled) return;

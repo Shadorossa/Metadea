@@ -35,13 +35,56 @@ const SAGA_RELATION_TYPE_OPTIONS: Array<{ value: SagaRelationType; label: string
   { value: 'update', label: 'Update' },
 ];
 
-// REL_ADAPTATION / REL_ALTERNATIVE llevan prefijo para no colisionar con
-// los strings que el saga-chain escribe internamente (ADAPTATION/ALTERNATIVE).
-// Reutilizarlos haría que una relación plain quedara dentro del saga walk.
+// REL_SOURCE / REL_ADAPTATION / REL_ALTERNATIVE llevan prefijo para no
+// colisionar con los strings que el saga-chain escribe internamente
+// (SOURCE/ADAPTATION/ALTERNATIVE). Reutilizarlos haría que una relación
+// plain quedara dentro del saga walk.
 export const EDITABLE_RELATION_OPTIONS: string[] = [
-  'REL_ADAPTATION', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'SIDE_STORY', 'SUMMARY', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'REL_UPDATE',
+  'REL_ADAPTATION', 'REL_SOURCE', 'SPIN_OFF', 'REL_ALTERNATIVE', 'PARENT', 'BASE_EDITION', 'SIDE_STORY', 'SUMMARY', 'REMASTER', 'REMAKE', 'EXPANDED_GAME', 'REL_UPDATE',
   'DLC', 'EXPANSION', 'STANDALONE', 'FORK', 'SEASON',
 ];
+
+export interface RelationOptionGroup {
+  /** Canonical label of the reciprocal type this group's options all share
+   *  (e.g. picking any option under "Source Material" makes the OTHER work
+   *  show that label pointing back here) — empty for the trailing ungrouped
+   *  bucket, whose options have no defined reciprocal at all. */
+  header: string;
+  options: string[];
+}
+
+// Buckets `options` by RELATION_TYPE_RECIPROCAL so PrEditorModal's Relations
+// dropdown can show, as each group's own title, what the OTHER work will
+// display once you pick something from it — rather than a flat list where
+// that connection isn't visible at all. Options with no reciprocal defined
+// (BASE_EDITION, CHARACTER, ...) land in one trailing ungrouped bucket
+// instead of being silently dropped.
+export function groupRelationOptions(
+  options: string[],
+  reciprocalMap: Record<string, string>,
+  labels: Record<string, string>,
+): RelationOptionGroup[] {
+  const byReciprocal = new Map<string, string[]>();
+  const ungrouped: string[] = [];
+
+  for (const opt of options) {
+    const reciprocal = reciprocalMap[opt];
+    if (!reciprocal) {
+      ungrouped.push(opt);
+      continue;
+    }
+    const bucket = byReciprocal.get(reciprocal);
+    if (bucket) bucket.push(opt);
+    else byReciprocal.set(reciprocal, [opt]);
+  }
+
+  const groups: RelationOptionGroup[] = [...byReciprocal.entries()].map(([reciprocal, opts]) => ({
+    header: labels[reciprocal] || reciprocal,
+    options: opts,
+  }));
+  if (ungrouped.length > 0) groups.push({ header: '', options: ungrouped });
+  return groups;
+}
 
 export function isSagaRelationType(value: string): value is SagaRelationType {
   return SAGA_RELATION_TYPE_OPTIONS.some(o => o.value === value);
