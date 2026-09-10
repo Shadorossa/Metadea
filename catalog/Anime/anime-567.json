@@ -12,8 +12,8 @@
   "media_relations": [
     {
       "related_media_external_id": "manga:30283",
-      "relation_type": "REL_SOURCE",
-      "type_label": "Source Material",
+      "relation_type": "REL_ADAPTATION",
+      "type_label": "Adaptation",
       "title": "The Big O",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30283-hD7Ghnm02dJ9.jpg",
       "media_external_id": "anime:567"
