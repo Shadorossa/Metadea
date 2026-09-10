@@ -1,0 +1,62 @@
+{
+  "character": {
+    "external_id": "character:cs:964912",
+    "name": "James Sunderland",
+    "biography": "<b>Full Name::</b> James Sunderland<br>(ジェイムス・サンダーランド, <i> Jeimusu Sandārando</i>)<br>\n<b>Gender::</b> Male<br>\n<b>Age::</b> 29<br>\n<b>Occupation::</b> Clerk<br>\n<b>Status::</b> Determinant<br>\n<b>Affiliations::</b> Mary Shepherd-Sunderland <small>(wife)</small><br>Maria<br>Frank Sunderland <small>(father)</small><br>\n<b>Also In: [Behind The Scenes]:</b> <i>Silent Hill 3</i> <small>(cameo)</small><br><i>Silent Hill 4: The Room</i> <small>(mentioned)</small><br><i>Silent Hill: Shattered Memories</i> <small>(cameo)</small><br><i>Silent Hill: Downpour <small>(cameo)</small></i><br><i>Silent Hill: Book of Memories</i> <small>(cameo)</small><br><i>Silent Hill HD Collection</i><br><i>Hunger</i> <small>(cameo)</small><br><i>Dead by Daylight: Chapter XVI - Silent Hill</i><br><i>Silent Hill 2</i> <small>(2024 video game)</small><br>\n<br>\n<p>This article requires cleanup to meet quality standards. Please help Silent Hill Wiki by improving this article if you can.</p>\n<p>James Sunderland is the protagonist of Silent Hill 2. As the game begins, James remarks that his wife, Mary Shepherd-Sunderland, has been dead for three years. Regardless, he has received a mysterious letter in Mary's handwriting, claiming that she is waiting for him in their \"special place\", somewhere in Silent Hill. When James arrives at the town, he becomes ensnared in a series of bizarre and nightmarish events which force him to question his sanity, morality, memory and personality.</p>\n<p>James also appears in Silent Hill: Downpour, Book of Memories, Dead by Daylight: Chapter XVI - Silent Hill.</p>\n<p>James is polite and mild-tempered, and acts courteously towards other characters.</p>\n<p>When he meets Angela Orosco, he tries to help her cope with her emotional distress and attempts to touch her shoulder in comfort. James shows concern for Eddie Dombrowski at first, advising him to leave the town. He also shows concern for Laura, and worriedly follows her through the town. Maria knows he has a kind side when she mentions it to Ernest Baldwin. In her letter to Laura, Mary describes James as \"a little surly\", that he does not talk much, but underneath his enigmatic exterior he is a sweet person.</p>\n<p>James avoids eye contact with \"Mary\".</p>\n<p>However, James's darker side is revealed through some of his actions. James lost some of his confidence and self-respect when Mary became ill, progressing to deep grief and depression after her eventual passing.  He is convinced that she died as a result of her illness, refusing to accept that he played any part in her death.</p>\n<p>James is borderline suicidal, yet seems to deny his suicidal feelings. James originally came to Silent Hill to kill himself, and actually does so in the \"In Water\" ending. In the novelization, James says, \"Actually, I guess I am dead, heart's as good as dead anyway.\" He wasn't filled with a sense of loss, he just felt like his life wasn't worth living anymore. He had become indifferent. Work and free time – none of it really mattered anymore.</p>",
+    "image_url": "https://static.wikia.nocookie.net/silent/images/6/62/James_Sunderland.webp/revision/latest?cb=20231001005315"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:481",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:222341",
+      "relation_type": "MAIN"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "va:Guy Cihi (SH2)",
+      "name": "Guy Cihi (SH2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a95182",
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Tomm Hulett (SH:SM)",
+      "name": "Tomm Hulett (SH:SM)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:James Dorton (DbD)",
+      "name": "James Dorton (DbD)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "va:Luke Roberts (SH2 2024)",
+      "name": "Luke Roberts (SH2 2024)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    },
+    {
+      "external_id": "person:a124703",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
