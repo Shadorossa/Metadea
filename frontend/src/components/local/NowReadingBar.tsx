@@ -7,6 +7,7 @@ import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSessio
 import { usePlaybackState } from '../../lib/local/playback-service';
 import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { NowMediaBar } from './NowMediaBar';
 import { ReaderModal } from './ReaderModal';
 import { IconX } from './ui/icons';
 
@@ -32,21 +33,17 @@ export function NowReadingBar() {
   return (
     <>
       {session && (
-        <div className={`now-reading-bar${playback ? ' now-reading-bar--above-player' : ''}`}>
-          <div className="now-reading-progress-track">
-            <div className="now-reading-progress-fill" style={{ width: `${progressPct}%` }} />
-          </div>
-          <div className="now-playing-content">
-            <a className="now-playing-cover-link" href={mediaUrl}>
-              {cover
-                ? <img className="now-playing-cover" src={cover} alt="" />
-                : <div className="now-playing-cover now-playing-cover--empty" />}
-            </a>
-            <div className="now-playing-info">
-              <a className="now-playing-title" href={mediaUrl}>{session.title}</a>
-              <span className="now-playing-episode">{pageLabel} &middot; En pausa</span>
-            </div>
-            <div className="now-playing-controls">
+        <NowMediaBar
+          className={`now-reading-bar${playback ? ' now-reading-bar--above-player' : ''}`}
+          progressTrackClassName="now-reading-progress-track"
+          progressFillClassName="now-reading-progress-fill"
+          progressPct={progressPct}
+          mediaUrl={mediaUrl}
+          cover={cover}
+          title={session.title}
+          subtitle={<>{pageLabel} &middot; En pausa</>}
+          controls={
+            <>
               <button
                 type="button"
                 className="now-playing-btn"
@@ -68,9 +65,9 @@ export function NowReadingBar() {
               >
                 <IconX size={14} />
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       )}
 
       {session && resumeOpen && (

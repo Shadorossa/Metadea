@@ -8,6 +8,7 @@ import { wrapAssetUrl } from '../../lib/tauri';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { isReadingType } from '../../lib/constants/media';
 import { formatPlaybackTime } from './utils/formatters';
+import { NowMediaBar } from './NowMediaBar';
 import { IconX } from './ui/icons';
 
 export function NowPlayingBar() {
@@ -22,24 +23,22 @@ export function NowPlayingBar() {
   const mediaUrl = `/media?id=${encodeURIComponent(playback.externalId)}`;
 
   return (
-    <div className="now-playing-bar">
-      <div className="now-playing-progress-track">
-        <div className="now-playing-progress-fill" style={{ width: `${progressPct}%` }} />
-      </div>
-      <div className="now-playing-content">
-        <a className="now-playing-cover-link" href={mediaUrl}>
-          {cover
-            ? <img className="now-playing-cover" src={cover} alt="" />
-            : <div className="now-playing-cover now-playing-cover--empty" />}
-        </a>
-        <div className="now-playing-info">
-          <a className="now-playing-title" href={mediaUrl}>{playback.title}</a>
-          <span className="now-playing-episode">
-            {episodeLabel} {current?.episodeNumber}
-            {playback.length > 0 && ` · ${formatPlaybackTime(playback.time)} / ${formatPlaybackTime(playback.length)}`}
-          </span>
-        </div>
-        <div className="now-playing-controls">
+    <NowMediaBar
+      className="now-playing-bar"
+      progressTrackClassName="now-playing-progress-track"
+      progressFillClassName="now-playing-progress-fill"
+      progressPct={progressPct}
+      mediaUrl={mediaUrl}
+      cover={cover}
+      title={playback.title}
+      subtitle={
+        <>
+          {episodeLabel} {current?.episodeNumber}
+          {playback.length > 0 && ` · ${formatPlaybackTime(playback.time)} / ${formatPlaybackTime(playback.length)}`}
+        </>
+      }
+      controls={
+        <>
           <button
             type="button"
             className="now-playing-btn"
@@ -66,8 +65,8 @@ export function NowPlayingBar() {
           <button type="button" className="now-playing-btn now-playing-btn--close" onClick={stopPlayback} aria-label="Detener">
             <IconX size={14} />
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
