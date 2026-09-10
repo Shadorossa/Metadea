@@ -20,7 +20,7 @@ import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { saveStaffSkeleton } from '../../lib/tauri/staff';
+import { saveStaffSkeleton } from '../../lib/tauri/misc-commands';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';

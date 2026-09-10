@@ -4,8 +4,8 @@
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaStaffMember, MediaRelation, MediaCompany } from './types';
 import { getMediaRelations, getMediaAuthors, saveMediaRelations, getDeletedRelations, type DbMediaRelation, type DbMediaAuthor } from '../tauri/catalog';
 import type { DbMediaCharacter, SkeletonCharacter } from '../tauri/characters';
-import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/staff';
-import type { DbMediaCompany } from '../tauri/companies';
+import type { SkeletonStaffMember, DbMediaStaffMember } from '../tauri/misc-commands';
+import type { DbMediaCompany } from '../tauri/misc-commands';
 import { getT } from '../../i18n/client';
 import { normalizeLegacyRelationType } from './sagaTypes';
 import { lookupLabel } from './mapper-utils';

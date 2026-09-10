@@ -2,7 +2,7 @@ import { getAllLibraryEntries, getAllCatalogEntries, saveLibraryEntry, saveCatal
 import type { LibraryEntry } from '../tauri';
 import { unifyGenres } from '../media/genre-unifier';
 import type { MediaCatalogEntry } from '../tauri';
-import { saveMediaCompanies } from '../tauri/companies';
+import { saveMediaCompanies } from '../tauri/misc-commands';
 import { ANIME_FORMAT_SET, MANGA_FORMAT_SET, ANILIST_TO_APP_STATUS } from '../constants/media';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { graphqlPost } from '../api/client';
