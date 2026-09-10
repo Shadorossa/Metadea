@@ -22,7 +22,7 @@ export async function markChapterRead(
   // Value written to library progress/history/AniList sync — normally the
   // file's own episode number, but a single-tomo edition of an otherwise
   // multi-issue series passes totalCount here instead (see
-  // ComicReaderModal's isSingleTomo): finishing that one file means the
+  // ReaderModal's isSingleTomo): finishing that one file means the
   // *whole* work is done, not just "episode 1" of it.
   progressNumber: number,
   totalCount: number | null,

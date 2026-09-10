@@ -1,6 +1,6 @@
 // Global "now reading" bar -- mirrors NowPlayingBar but for the comic reader
 // stand-by state. Mounted once in BaseLayout.astro (transition:persist) so
-// it survives page transitions. Resume re-opens ComicReaderModal at the saved page.
+// it survives page transitions. Resume re-opens ReaderModal at the saved page.
 // resumeOpen is managed in the reading-session singleton (not local useState)
 // so clicks reliably update state even inside transition:persist islands.
 import { useReadingSession, useResumeOpen, clearReadingSession, setReadingSession, openResumeModal, closeResumeModal } from '../../lib/local/reading-session';

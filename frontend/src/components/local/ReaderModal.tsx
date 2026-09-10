@@ -726,5 +726,3 @@ export function ReaderModal({
     document.body,
   );
 }
-
-export const ComicReaderModal = ReaderModal;
