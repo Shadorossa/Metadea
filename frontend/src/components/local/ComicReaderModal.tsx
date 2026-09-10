@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import * as pdfjsLib from 'pdfjs-dist';
 import {
   extractComicArchive,
+  readComicBinaryFile,
   getReadingProgress,
   saveReadingProgress,
   getComicBookmarks,
@@ -14,6 +16,10 @@ import {
   type LibraryEntry,
 } from '../../lib/tauri';
 import { markChapterRead } from '../../lib/local/reading-service';
+
+if (typeof window !== 'undefined' && pdfjsLib.GlobalWorkerOptions) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+}
 import { useClosingTransition } from '../../lib/shared/useClosingTransition';
 import { toSmallCover } from '../../lib/shared/small-cover';
 import { IconX } from './ui/icons';
@@ -41,6 +47,69 @@ function buildSpreads(pageCount: number): number[][] {
     spreads.push(i + 1 < pageCount ? [i, i + 1] : [i]);
   }
   return spreads;
+}
+
+function PdfCanvasPage({
+  pdfDoc,
+  pageNumber,
+  onContextMenu,
+}: {
+  pdfDoc: any;
+  pageNumber: number;
+  onContextMenu: (e: React.MouseEvent, canvas: HTMLCanvasElement) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const taskRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!pdfDoc || !canvasRef.current) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const page = await pdfDoc.getPage(pageNumber);
+        if (cancelled || !canvasRef.current) return;
+
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = canvasRef.current;
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.aspectRatio = `${viewport.width} / ${viewport.height}`;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        if (taskRef.current) {
+          try { taskRef.current.cancel(); } catch {}
+        }
+
+        const renderTask = page.render({ canvasContext: ctx, viewport });
+        taskRef.current = renderTask;
+        await renderTask.promise;
+      } catch (err: any) {
+        if (err?.name !== 'RenderingCancelledException') {
+          console.error('Error rendering PDF page', err);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (taskRef.current) {
+        try { taskRef.current.cancel(); } catch {}
+      }
+    };
+  }, [pdfDoc, pageNumber]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="comic-reader-page"
+      onContextMenu={e => {
+        if (canvasRef.current) onContextMenu(e, canvasRef.current);
+      }}
+    />
+  );
 }
 
 export function ComicReaderModal({
@@ -133,12 +202,63 @@ export function ComicReaderModal({
     ? `${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pages.length}`
     : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
 
+  const isPdf = useMemo(() => filePath.toLowerCase().endsWith('.pdf'), [filePath]);
+  const [pdfDoc, setPdfDoc] = useState<any | null>(null);
+  const pdfDocRef = useRef<any | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     setLoadState('loading');
     setErrorMsg('');
     markedRef.current = false;
     resumedRef.current = false;
+
+    if (isPdf) {
+      readComicBinaryFile(filePath)
+        .then(async bytes => {
+          if (cancelled) return;
+          const loadingTask = pdfjsLib.getDocument({ data: bytes });
+          const doc = await loadingTask.promise;
+          if (cancelled) {
+            try { doc.destroy(); } catch {}
+            return;
+          }
+          if (!doc.numPages) {
+            setErrorMsg('El archivo PDF no contiene páginas.');
+            setLoadState('error');
+            return;
+          }
+          pdfDocRef.current = doc;
+          setPdfDoc(doc);
+          const pageArr = Array.from({ length: doc.numPages }, (_, i) => `pdf-page-${i + 1}`);
+          setPages(pageArr);
+
+          const progress = await getReadingProgress(externalId, episodeNumber).catch(() => null);
+          if (cancelled) return;
+          const savedSpreads = buildSpreads(doc.numPages);
+          const savedPage0 = progress ? Math.min(Math.max(progress.pageNumber - 1, 0), doc.numPages - 1) : 0;
+          const resumeSpread = Math.max(0, savedSpreads.findIndex(s => s.includes(savedPage0)));
+          resumedRef.current = true;
+          setSpreadIndex(resumeSpread);
+          setLoadState('ready');
+
+          getComicBookmarks(externalId, episodeNumber)
+            .then(bm => { if (!cancelled) setBookmarks(bm); })
+            .catch(() => {});
+        })
+        .catch(err => {
+          if (cancelled) return;
+          setErrorMsg(err instanceof Error ? err.message : String(err));
+          setLoadState('error');
+        });
+
+      return () => {
+        cancelled = true;
+        if (pdfDocRef.current) {
+          try { pdfDocRef.current.destroy(); } catch {}
+        }
+      };
+    }
 
     extractComicArchive(filePath)
       .then(async res => {
@@ -170,7 +290,7 @@ export function ComicReaderModal({
       });
 
     return () => { cancelled = true; };
-  }, [filePath, externalId, episodeNumber]);
+  }, [filePath, externalId, episodeNumber, isPdf]);
 
   useEffect(() => {
     if (loadState !== 'ready' || !resumedRef.current || currentSpread.length === 0) return;
@@ -366,23 +486,42 @@ export function ComicReaderModal({
           <div className="comic-reader-page-wrap" onClick={handleImageClick}>
             <div className={`comic-reader-spread${currentSpread.length === 2 ? ' comic-reader-spread--double' : ''}`}>
               {currentSpread.map(idx => (
-                <img
-                  key={idx}
-                  className="comic-reader-page"
-                  src={wrapAssetUrl(pages[idx])}
-                  alt={`Página ${idx + 1}`}
-                  draggable={false}
-                  onContextMenu={e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setContextMenu({
-                      x: Math.min(e.clientX, window.innerWidth - 220),
-                      y: Math.min(e.clientY, window.innerHeight - 200),
-                      pageNumber: idx + 1,
-                      pagePath: pages[idx],
-                    });
-                  }}
-                />
+                isPdf && pdfDoc ? (
+                  <PdfCanvasPage
+                    key={idx}
+                    pdfDoc={pdfDoc}
+                    pageNumber={idx + 1}
+                    onContextMenu={(e, canvas) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const dataUrl = canvas.toDataURL('image/png');
+                      setContextMenu({
+                        x: Math.min(e.clientX, window.innerWidth - 220),
+                        y: Math.min(e.clientY, window.innerHeight - 200),
+                        pageNumber: idx + 1,
+                        pagePath: dataUrl,
+                      });
+                    }}
+                  />
+                ) : (
+                  <img
+                    key={idx}
+                    className="comic-reader-page"
+                    src={wrapAssetUrl(pages[idx])}
+                    alt={`Página ${idx + 1}`}
+                    draggable={false}
+                    onContextMenu={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setContextMenu({
+                        x: Math.min(e.clientX, window.innerWidth - 220),
+                        y: Math.min(e.clientY, window.innerHeight - 200),
+                        pageNumber: idx + 1,
+                        pagePath: pages[idx],
+                      });
+                    }}
+                  />
+                )
               ))}
             </div>
             <button

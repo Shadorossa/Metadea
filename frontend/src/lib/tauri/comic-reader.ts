@@ -13,6 +13,11 @@ export async function extractComicArchive(path: string): Promise<ComicPages> {
   return tauriCmd<ComicPages>('extract_comic_archive', { pages: [], cache_dir: '' }, { path });
 }
 
+export async function readComicBinaryFile(path: string): Promise<Uint8Array> {
+  const bytes = await tauriCmd<Uint8Array | number[]>('read_comic_binary_file', [], { path });
+  return bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+}
+
 export async function getReadingProgress(externalId: string, episodeNumber: number): Promise<{ pageNumber: number; totalPages: number | null } | null> {
   const res = await tauriCmd<{ page_number: number; total_pages: number | null } | null>('get_reading_progress', null, { externalId, episodeNumber });
   return res ? { pageNumber: res.page_number, totalPages: res.total_pages } : null;

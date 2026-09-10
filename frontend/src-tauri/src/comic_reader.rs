@@ -108,11 +108,44 @@ fn extract_rar(src: &Path, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn extract_zip(src: &Path, dest: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(src)
+        .map_err(|e| format!("No se pudo abrir el archivo ZIP/CBZ: {e}"))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|e| format!("Error leyendo ZIP/CBZ: {e}"))?;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)
+            .map_err(|e| format!("Error leyendo entrada ZIP: {e}"))?;
+        let outpath = match file.enclosed_name() {
+            Some(path) => dest.join(path),
+            None => continue,
+        };
+        if file.is_dir() {
+            let _ = std::fs::create_dir_all(&outpath);
+        } else if is_image(&outpath) {
+            if let Some(p) = outpath.parent() {
+                let _ = std::fs::create_dir_all(p);
+            }
+            let mut outfile = std::fs::File::create(&outpath)
+                .map_err(|e| format!("Error creando archivo: {e}"))?;
+            std::io::copy(&mut file, &mut outfile)
+                .map_err(|e| format!("Error extrayendo imagen: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
 fn extract_by_format(ext: &str, src: &Path, dest: &Path) -> Result<(), String> {
     match ext {
         "cbr" | "rar" => extract_rar(src, dest),
+        "cbz" | "zip" => extract_zip(src, dest),
         other => Err(format!("Formato no soportado todavía: .{other}")),
     }
+}
+
+#[tauri::command]
+pub async fn read_comic_binary_file(path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))
 }
 
 #[tauri::command]
@@ -178,11 +211,23 @@ pub async fn save_comic_page_as_png(
     let filename = format!("{clean_title}_pag_{page_number}_{timestamp}.png");
     let dest_path = target_dir.join(filename);
 
-    let img = image::open(&source_page_path)
-        .map_err(|e| format!("Error abriendo la imagen de página: {e}"))?;
-
-    img.save_with_format(&dest_path, image::ImageFormat::Png)
-        .map_err(|e| format!("Error guardando la página como PNG: {e}"))?;
+    if source_page_path.starts_with("data:") {
+        use base64::Engine;
+        let b64 = source_page_path
+            .split_once("base64,")
+            .map(|(_, rest)| rest)
+            .unwrap_or(&source_page_path);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(b64)
+            .map_err(|e| format!("Error decodificando imagen base64: {e}"))?;
+        std::fs::write(&dest_path, &bytes)
+            .map_err(|e| format!("Error guardando archivo PNG: {e}"))?;
+    } else {
+        let img = image::open(&source_page_path)
+            .map_err(|e| format!("Error abriendo la imagen de página: {e}"))?;
+        img.save_with_format(&dest_path, image::ImageFormat::Png)
+            .map_err(|e| format!("Error guardando la página como PNG: {e}"))?;
+    }
 
     Ok(dest_path.to_string_lossy().to_string())
 }

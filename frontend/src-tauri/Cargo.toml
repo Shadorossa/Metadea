@@ -39,6 +39,7 @@ tauri-plugin-process = "2"
 tauri-plugin-notification = "2"
 discord-rich-presence = "0.2"
 unrar = "0.5"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
