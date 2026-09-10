@@ -11,12 +11,12 @@
   },
   "media_relations": [
     {
-      "media_external_id": "game:376",
       "related_media_external_id": "game:474",
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Metal Gear Solid 2: Substance",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eg1.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eg1.jpg",
+      "media_external_id": "game:376"
     },
     {
       "media_external_id": "game:376",
@@ -32,11 +32,40 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 3: Snake Eater",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ei5.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5ei5.jpg"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "external_id": "character:a:272535",
+      "name": "Solid Snake",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b272535-MdATaTz715Kx.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:272948",
+      "name": "Raiden",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b272948-ZzW7nDQcDrha.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:cs:917096",
+      "name": "Solidus Snake",
+      "image_url": "https://static.wikia.nocookie.net/metalgear/images/c/c8/SolidusHD.jpg/revision/latest?cb=20251027190030",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:cs:270973",
+      "name": "Hal Emmerich",
+      "image_url": "https://static.wikia.nocookie.net/metalgear/images/9/95/MGS4_Otacon.png/revision/latest?cb=20251007203843",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Metal gear"
+  "saga_name": "Metal gear",
+  "story_arcs": []
 }
