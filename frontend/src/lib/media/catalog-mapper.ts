@@ -3,6 +3,7 @@
 import type { MediaCatalogEntry } from '../tauri';
 import type { MediaPageData, MediaStat } from './types';
 import { formatDateParts, lookupLabel, countryName, firstCsvUrl } from './mapper-utils';
+import { parseDelimitedString } from '../shared/string-utils';
 import { getT } from '../../i18n/client';
 import { IN_PROGRESS_STATUSES, isReadingType } from '../constants/media';
 
@@ -58,7 +59,7 @@ export function mapCatalogEntryToPartialData(c: MediaCatalogEntry, progressLabel
     stats.push({ label: tm.stat_country, value: countryName(c.country_code) ?? c.country_code });
   }
 
-  const platforms = c.platforms_csv ? c.platforms_csv.split(',').filter(Boolean) : [];
+  const platforms = parseDelimitedString(c.platforms_csv);
 
   // "platform|url" pairs.
   const storeLinks = c.shop_links_csv

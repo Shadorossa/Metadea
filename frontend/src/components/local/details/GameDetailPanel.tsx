@@ -13,6 +13,7 @@ import { IconMonitor, IconPencil } from '../ui/icons';
 import { formatPlaytime, formatLastPlayed, formatUnixDateLong } from '../utils/formatters';
 import { toSmallCover } from '../../../lib/shared/small-cover';
 import { gameExternalId, firstCsvUrl, catalogReleaseTimestampMs } from '../../../lib/media/mapper-utils';
+import { parseCSV } from '../../../lib/shared/string-utils';
 import { useMediaNeighbors } from '../hooks/useMediaNeighbors';
 import { NeighborsRow } from './NeighborsRow';
 import { openMediaEditor } from '../../../lib/media/openMediaEditor';
@@ -238,7 +239,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
   const catalogReleaseMs = catalogReleaseTimestampMs(catalogEntry);
   const catalogReleaseTimestamp = catalogReleaseMs !== null ? Math.floor(catalogReleaseMs / 1000) : undefined;
   const displayGenres = catalogEntry?.genres_csv
-    ? catalogEntry.genres_csv.split(',').map(g => g.trim()).filter(Boolean).join(', ')
+    ? parseCSV(catalogEntry.genres_csv).join(', ')
     : gameInfo?.genres?.join(', ');
   const metaDots   = [formatUnixDateLong(catalogReleaseTimestamp ?? gameInfo?.release_date ?? undefined), displayGenres].filter(Boolean).join('  ·  ');
   const displaySummary = catalogEntry?.synopsis || gameInfo?.summary;

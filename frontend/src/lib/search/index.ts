@@ -5,6 +5,7 @@ import { searchBooks }                 from './providers/openlibrary';
 import { searchComics, searchComicVineCharacters } from './providers/comicvine';
 import { MissingApiKeyError }          from './errors';
 import { searchCatalog, getBlockedExternalIds, getReclassifiedExternalIds, type MediaCatalogEntry } from '../tauri/catalog';
+import { parseCSV } from '../shared/string-utils';
 import { searchCharactersDb, type CharacterEntry } from '../tauri/characters';
 import { getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../tauri';
 
@@ -240,7 +241,7 @@ function catalogEntryToSearchResult(entry: MediaCatalogEntry): SearchResult {
     releaseMonth: entry.release_month ?? null,
     releaseDay: entry.release_day ?? null,
     scoreGlobal: entry.score_global ?? null,
-    genres: entry.genres_csv ? entry.genres_csv.split(',').map(g => g.trim()).filter(Boolean) : [],
+    genres: parseCSV(entry.genres_csv),
   };
 }
 

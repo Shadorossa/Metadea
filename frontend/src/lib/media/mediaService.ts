@@ -15,6 +15,7 @@ import { getMediaCharacters, type DbMediaCharacter } from '../tauri/characters';
 import { getMediaStaff } from '../tauri/misc-commands';
 import { getMediaCompanies, saveMediaCompanies } from '../tauri/misc-commands';
 import { parseExternalId, firstCsvUrl } from './mapper-utils';
+import { getPublisherNames } from '../shared/string-utils';
 import { ANILIST_TYPES, IGDB_TYPES } from '../constants/media';
 import { needsResync } from './media-status';
 
@@ -408,7 +409,7 @@ export function prefetchMediaData(rawId: string): void {
 // fallback (format has its own dedicated Stats row). Book/comic's line is
 // authors, untouched by this.
 function companyMetaLine(companies: MediaCompany[]): string | undefined {
-  const names = companies.filter(c => c.role === 'publisher').map(c => c.name);
+  const names = getPublisherNames(companies);
   return names.length > 0 ? names.join(', ') : undefined;
 }
 

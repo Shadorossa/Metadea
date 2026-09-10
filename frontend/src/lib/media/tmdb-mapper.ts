@@ -6,6 +6,7 @@ import { getT } from '../../i18n/client';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { formatDateParts, lookupLabel, countryName, pickPreferredCountry } from './mapper-utils';
 import { canonicalizeTmdbStatus, STATUS_BADGE_CLASS } from './media-status';
+import { getPublisherNamesString } from '../shared/string-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
 // TMDB doesn't rank cast by relevance beyond its own `order` field — capping
@@ -147,7 +148,7 @@ export function mapTmdbToMedia(
   // square) — it must not also repeat here, under the studios/companies
   // line. That line is always the publisher role only (the network, for TV)
   // — movies have no network, so this is empty for them, never a fallback.
-  const metaLines = [companies.filter(c => c.role === 'publisher').map(c => c.name).join(', ')].filter(Boolean);
+  const metaLines = [getPublisherNamesString(companies)].filter(Boolean);
 
   // Cards here represent the in-fiction character, not the actor — the
   // photo is necessarily the actor's own (TMDB has no separate character

@@ -4,6 +4,7 @@ import type { MediaPageData, MediaRelation, MediaStat, MediaCompany } from './ty
 import { unifyGenres } from './genre-unifier';
 import { cleanEditionTitle, dedupeEditionVariants } from './title-utils';
 import { unixToDateParts, formatDateParts, normalizeScore100, lookupLabel, parseExternalId } from './mapper-utils';
+import { getPublisherNamesString } from '../shared/string-utils';
 import { canonicalizeIgdbStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 
@@ -136,7 +137,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
     if (c.publisher) { const m = toMediaCompany(c, 'publisher'); if (m) entries.push(m); }
     return entries;
   });
-  const publisherNames = companies.filter(c => c.role === 'publisher').map(c => c.name);
+  const publisherNames = getPublisherNamesString(companies);
 
   // Cover uses IGDB's actual cover-art template — '1080p' here (a leftover
   // copy-paste from bannerUrl below) served the same size as the banner,

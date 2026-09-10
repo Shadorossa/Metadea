@@ -88,6 +88,7 @@ const t = useTranslations(lang);
   import { mapExternalFormatToType } from '../lib/media/mapper-utils';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
+  import { parseCSV } from '../lib/shared/string-utils';
   import { getT } from '../i18n/client';
   import {
     getAuthor,
@@ -120,7 +121,7 @@ const t = useTranslations(lang);
     return {
       name: a.name,
       nameNative: a.name_native ?? null,
-      aliases: a.aliases_csv ? a.aliases_csv.split(',').map(s => s.trim()).filter(Boolean) : [],
+      aliases: parseCSV(a.aliases_csv),
       image: a.image ?? null,
       biographyHtml: a.biography ? sanitizeHtml(a.biography) : null,
       birthDate: a.birth_date ?? null,

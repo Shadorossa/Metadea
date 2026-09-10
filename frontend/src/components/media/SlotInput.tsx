@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { parseCSV } from '../../lib/shared/string-utils';
 
 export interface SlotInputProps {
   label: string;
@@ -27,7 +28,7 @@ export function SlotInput({
   label, value, onChange, placeholder, preview, fullWidth,
   allowedSuggestions, restrictToSuggestions
 }: SlotInputProps) {
-  const items = value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const items = parseCSV(value);
   const [inputVal, setInputVal] = useState('');
   const [activeSugIndex, setActiveSugIndex] = useState(0);
   const [showSug, setShowSug] = useState(false);

@@ -138,6 +138,7 @@ const translations = useTranslations(lang);
   import { parseStatSectionLabel, StatSectionTracker } from '../lib/shared/stat-sections';
   import { needsResync } from '../lib/media/media-status';
   import { sanitizeHtml, sanitizeStatValue, escapeHtml, safeUrl } from '../lib/shared/sanitize-html';
+  import { parseCSV } from '../lib/shared/string-utils';
   import { getT } from '../i18n/client';
   import { openFavoriteImageEditor } from '../lib/profile/favorite-image-editor';
   import {
@@ -172,7 +173,7 @@ const translations = useTranslations(lang);
       name: {
         full: lc.name,
         native: lc.name_native ?? null,
-        alternative: lc.aliases_csv ? lc.aliases_csv.split(',').map(s => s.trim()).filter(Boolean) : [],
+        alternative: parseCSV(lc.aliases_csv),
         alternativeSpoiler: [],
       },
       image: { large: lc.image_url ?? null },

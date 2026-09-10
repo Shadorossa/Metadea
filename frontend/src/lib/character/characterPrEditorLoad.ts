@@ -10,6 +10,7 @@ import {
 import { getCharacterActors, type DbCharacterActor } from '../tauri/actors';
 import { getCatalogEntry, saveCatalogEntry } from '../tauri/catalog';
 import { fetchAniListCharacterDetail } from '../search/providers/anilist';
+import { parseCSV } from '../shared/string-utils';
 import { parseCharacterBiography, type ParsedCharacteristic } from './biography-parser';
 import { compareByReleaseDateThenTitle, mapExternalFormatToType } from '../media/mapper-utils';
 import type { AppearanceRow, VoiceActorRow } from './prEditorDiff';
@@ -95,7 +96,7 @@ export async function loadCharacterEditorData(
     ...(anilistDetail?.name?.alternative ?? []),
     ...(anilistDetail?.name?.alternativeSpoiler ?? []),
   ];
-  const localAlt = (data.aliases_csv || '').split(',').map(a => a.trim()).filter(Boolean);
+  const localAlt = parseCSV(data.aliases_csv);
   const combinedAliases = Array.from(new Set([...localAlt, ...aniListAlt]));
 
   // Same sticky-local-wins merge as `data` above, extended to the 4 native

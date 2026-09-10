@@ -2,6 +2,7 @@ import React, { useReducer, useEffect, useCallback, useMemo, useState, useRef } 
 import { createPortal } from 'react-dom';
 import type { LibraryEntry } from '../../lib/tauri';
 import { saveLibraryEntry, getLibraryEntry, deleteLibraryEntry, readMonthlyHistory, writeMonthlyHistory, syncFavorites, getCatalogEntry, saveImageFile } from '../../lib/tauri';
+import { parseDelimitedString } from '../../lib/shared/string-utils';
 import { getActiveRatingSystem } from '../../lib/media/rating-utils';
 import { generateShareImage } from '../../lib/media/share-image';
 import type { MediaPageData } from '../../lib/media/types';
@@ -301,7 +302,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
         // selected_version that weren't already loaded as candidates,
         // initialize them empty — also in parallel.
         if (baseEntry && baseEntry.selected_version) {
-          await Promise.all(baseEntry.selected_version.split(',').filter(Boolean).map(async versionId => {
+          await Promise.all(parseDelimitedString(baseEntry.selected_version).map(async versionId => {
             const ev = await getLibraryEntry(versionId);
             dispatchEntry({ type: 'LOAD_LOG', id: versionId, entry: ev ?? createEmptyVersionEntry(versionId) });
           }));

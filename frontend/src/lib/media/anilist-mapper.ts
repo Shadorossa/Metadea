@@ -3,6 +3,7 @@ import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaRelation, MediaAuthor, MediaCompany, MediaStat, MediaCharacter } from './types';
 import { unifyGenres } from './genre-unifier';
 import { formatDateParts, normalizeScore100, lookupLabel, countryName } from './mapper-utils';
+import { getPublisherNamesString } from '../shared/string-utils';
 import { canonicalizeAniListStatus, STATUS_BADGE_CLASS } from './media-status';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 import { isReadingType } from '../constants/media';
@@ -109,7 +110,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
   // "studios label" slot right under genre dots) — format has its own
   // dedicated Stats row above and must never show here instead, even when
   // there's no producer to show.
-  const publisherNames = studioCompanies.filter(c => c.role === 'publisher').map(c => c.name).join(', ');
+  const publisherNames = getPublisherNamesString(studioCompanies);
   const metaLines   = [publisherNames].filter(Boolean);
 
   const { core: coreGenres, tags: genreTags } = unifyGenres(raw.genres);

@@ -6,6 +6,7 @@
 import type { MediaCatalogEntry, DbMediaRelation, LibraryEntry } from '../../lib/tauri';
 import { compareByReleaseDate } from '../../lib/media/mapper-utils';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
+import { parseDelimitedString } from '../../lib/shared/string-utils';
 
 // Groups editions of the same work (remakes, remasters, ports) under one
 // grid slot. Gated behind "Agrupar por ediciones"; saga grouping is separate
@@ -20,7 +21,7 @@ export function groupEditions<T extends { external_id: string; selected_version:
 
   if (includeEditions) {
     for (const item of sectionItems) {
-      const linkedIds = item.selected_version ? item.selected_version.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const linkedIds = parseDelimitedString(item.selected_version);
       for (const linkedId of linkedIds) {
         if (linkedId !== item.external_id && byId.has(linkedId)) parentOf.set(linkedId, item.external_id);
       }
