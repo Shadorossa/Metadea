@@ -12,8 +12,8 @@
   "media_relations": [
     {
       "related_media_external_id": "vnovel:12328",
-      "relation_type": "PARENT",
-      "type_label": "Source",
+      "relation_type": "REL_SOURCE",
+      "type_label": "Source Material",
       "title": "Fate/Stay Night",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2h3l.jpg",
       "media_external_id": "anime:356"
@@ -93,8 +93,8 @@
     {
       "media_external_id": "anime:356",
       "related_media_external_id": "anime:19603",
-      "relation_type": "ALTERNATIVE",
-      "type_label": "Group 1 #0",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
       "title": "Fate/stay night: Unlimited Blade Works",
       "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx19603-ycT0pyEgDVQu.jpg"
     },
@@ -210,7 +210,7 @@
     {
       "external_id": "character:a:10010",
       "name": "Kiritsugu Emiya",
-      "image_url": "https://s4.anilist.co/file/anilistcdn/character/medium/b10010-fNspzan5MzNk.png",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b10010-fNspzan5MzNk.png",
       "relation_type": "SUPPORTING",
       "character_name": null
     },
