@@ -531,32 +531,69 @@ const translations = useTranslations(lang);
       let statsHtml = '';
       const addedLabels = new Set<string>();
 
-      // A comma-separated value (age's own "35 (chronologically), 15
-      // (physically)" being the recurring case) reads as one cramped run-on
-      // line next to the label — each comma-part gets its own <div> line
-      // instead, same as parsedStats' own values already do below.
-      function statValueHtml(value: string): string {
-        return value.split(',').map(v => {
-          let clean = v.trim();
+      function parseStatItems(rawValue: string): string[] {
+        const lines = rawValue
+          .replace(/<\/?(?:ul|ol)[^>]*>/gi, '')
+          .replace(/<\/?li[^>]*>/gi, '\n')
+          .split(/<br\s*\/?>|\n/i)
+          .map(v => v.trim())
+          .filter(Boolean);
+
+        return lines.flatMap(line => {
+          let clean = line;
           if (!clean.includes('<small>') && !clean.includes('<sup>')) {
             clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
           }
-          return `<div>${sanitizeStatValue(clean)}</div>`;
+          return clean.includes(',') && !clean.includes('<') ? clean.split(',').map(v => v.trim()) : [clean];
+        }).filter(Boolean);
+      }
+
+      function renderStatValueHtml(items: string[]): string {
+        if (items.length === 0) return '';
+        if (items.length === 1) {
+          return `<div>${sanitizeStatValue(items[0])}</div>`;
+        }
+
+        const itemsHtml = items.map((val, idx) => {
+          const plainText = val.replace(/<[^>]+>/g, '').trim();
+          const isFirst = idx === 0;
+          return `<div class="media-stat-carousel-item ${isFirst ? 'active' : ''}" style="${isFirst ? '' : 'display: none;'}" title="${escapeHtml(plainText)}">${sanitizeStatValue(val)}</div>`;
         }).join('');
+
+        return `
+          <div class="media-stat-carousel">
+            <button type="button" class="media-stat-carousel-btn media-stat-carousel-prev" title="Anterior" aria-label="Anterior">‹</button>
+            <div class="media-stat-carousel-items">${itemsHtml}</div>
+            <button type="button" class="media-stat-carousel-btn media-stat-carousel-next" title="Siguiente" aria-label="Siguiente">›</button>
+            <span class="media-stat-carousel-count">(1/${items.length})</span>
+          </div>
+        `.trim();
+      }
+
+      function formatSectionHeader(header: string): string {
+        const lower = header.toLowerCase().trim();
+        if (lower === 'physical description' || lower === 'descripción física') return 'Descripción física';
+        if (lower === 'career and family information' || lower === 'career and family' || lower === 'carrera y familia' || lower === 'información profesional') return 'Carrera y familia';
+        if (lower === 'behind the scenes' || lower === 'detrás de las cámaras' || lower === 'producción') return 'Detrás de las cámaras';
+        if (lower === 'personal information' || lower === 'información personal') return 'Información personal';
+        return header;
       }
 
       if (character.gender) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><div class="media-stat-value">${statValueHtml(character.gender)}</div></div>`;
+        const items = parseStatItems(character.gender);
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_gender)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
         addedLabels.add('gender');
         addedLabels.add('género');
       }
       if (character.age) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><div class="media-stat-value">${statValueHtml(String(character.age))}</div></div>`;
+        const items = parseStatItems(String(character.age));
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_age)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
         addedLabels.add('age');
         addedLabels.add('edad');
       }
       if (character.bloodType) {
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><div class="media-stat-value">${statValueHtml(character.bloodType)}</div></div>`;
+        const items = parseStatItems(character.bloodType);
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(t.stat_blood_type)}</span><div class="media-stat-value">${renderStatValueHtml(items)}</div></div>`;
         addedLabels.add('bloodtype');
         addedLabels.add('grupo sanguíneo');
       }
@@ -631,26 +668,11 @@ const translations = useTranslations(lang);
 
         const sectionHeader = sectionTracker.next(stat.section);
         if (sectionHeader) {
-          statsHtml += `<div class="media-stat-section-header">${escapeHtml(sectionHeader)}</div>`;
+          statsHtml += `<div class="media-stat-section-header">${escapeHtml(formatSectionHeader(sectionHeader))}</div>`;
         }
 
-        const lines = stat.value
-          .replace(/<\/?(?:ul|ol)[^>]*>/gi, '')
-          .replace(/<\/?li[^>]*>/gi, '\n')
-          .split(/<br\s*\/?>|\n/i)
-          .map(v => v.trim())
-          .filter(Boolean);
-
-        const values = lines.flatMap(line => {
-          let clean = line;
-          if (!clean.includes('<small>') && !clean.includes('<sup>')) {
-            clean = clean.replace(/\s*(\([^)]{1,40}\))/g, ' <small>$1</small>');
-          }
-          return clean.includes(',') && !clean.includes('<') ? clean.split(',').map(v => v.trim()) : [clean];
-        });
-        const valueHtml = values.map(v => `<div>${sanitizeStatValue(v)}</div>`).join('');
-
-        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${valueHtml}</div></div>`;
+        const values = parseStatItems(stat.value);
+        statsHtml += `<div class="media-stat-item"><span class="media-stat-label">${escapeHtml(displayLabel)}</span><div class="media-stat-value">${renderStatValueHtml(values)}</div></div>`;
         addedLabels.add(lowerLabel);
         addedLabels.add(lowerRaw);
       }
@@ -658,6 +680,40 @@ const translations = useTranslations(lang);
       if (statsHtml) {
         statsList.innerHTML = statsHtml;
         statsList.style.display = 'block';
+
+        if (!(statsList as any)._carouselBound) {
+          (statsList as any)._carouselBound = true;
+          statsList.addEventListener('click', (e) => {
+            const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.media-stat-carousel-btn');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const carousel = btn.closest('.media-stat-carousel');
+            if (!carousel) return;
+            const items = carousel.querySelectorAll<HTMLElement>('.media-stat-carousel-item');
+            if (items.length <= 1) return;
+
+            let currentIndex = Array.from(items).findIndex(el => el.classList.contains('active'));
+            if (currentIndex === -1) currentIndex = 0;
+
+            const isNext = btn.classList.contains('media-stat-carousel-next');
+            const newIndex = isNext
+              ? (currentIndex + 1) % items.length
+              : (currentIndex - 1 + items.length) % items.length;
+
+            items[currentIndex].classList.remove('active');
+            items[currentIndex].style.display = 'none';
+
+            items[newIndex].classList.add('active');
+            items[newIndex].style.display = 'inline-block';
+
+            const countEl = carousel.querySelector('.media-stat-carousel-count');
+            if (countEl) {
+              countEl.textContent = `(${newIndex + 1}/${items.length})`;
+            }
+          });
+        }
       } else {
         statsList.style.display = 'none';
       }
