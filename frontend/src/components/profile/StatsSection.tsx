@@ -261,13 +261,13 @@ export function StatsSection({ overrideItems, overrideCatalogMap, overrideJourne
       <div className="stats-block-custom">
         <h3 className="stats-block-title">{p.stats_heatmap}</h3>
         <div className="stats-heatmap-grid">
-          {heatmapData.map(({ date, dateKey, count, level }) => {
+          {heatmapData.map(({ date, dateKey, count, level }, idx) => {
             const formattedDate = formatDateShort(date);
             const actStr = count === 1
               ? (p.stats_activity_singular || '{count} actividad').replace('{count}', String(count))
               : (p.stats_activity_plural || '{count} actividades').replace('{count}', String(count));
             const tooltipText = `${formattedDate}: ${actStr}`;
-            return <div className={`heatmap-cell level-${level}`} key={dateKey} data-date={dateKey} data-tooltip={tooltipText} />;
+            return <div className={`heatmap-cell level-${level}`} key={`${dateKey}-${idx}`} data-date={dateKey} data-tooltip={tooltipText} />;
           })}
         </div>
         <div className="stats-heatmap-legend">

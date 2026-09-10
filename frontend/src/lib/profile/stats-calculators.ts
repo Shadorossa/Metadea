@@ -516,7 +516,11 @@ export function computeActivityHeatmap(journey: { date: string; events?: unknown
     activityMap[day.date] = (day.events || []).length;
   }
 
+  // Anchor to midday (12:00) so daylight saving time (DST) clock shifts
+  // (such as late March) don't jump hours across midnight and produce
+  // duplicate or skipped UTC dateKeys.
   const startDay = new Date();
+  startDay.setHours(12, 0, 0, 0);
   startDay.setDate(startDay.getDate() - daysBack);
 
   const cells: HeatmapCell[] = [];
