@@ -10,6 +10,22 @@ pub fn drop_media_saga_groups(conn: &Connection) {
 
 // Normalización de IDs de personajes a character:<code>:<id> (a/co/ms).
 pub fn fix_character_ids(conn: &Connection) {
+    // Fusionar metadatos de filas huérfanas numéricas a su versión canónica character:a:<id>
+    let _ = conn.execute(
+        "UPDATE characters
+         SET name_native = COALESCE(name_native, (SELECT t2.name_native FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13))),
+             aliases_csv = COALESCE(aliases_csv, (SELECT t2.aliases_csv FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13))),
+             biography   = COALESCE(biography, (SELECT t2.biography FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13))),
+             gender      = COALESCE(gender, (SELECT t2.gender FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13))),
+             age         = COALESCE(age, (SELECT t2.age FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13))),
+             blood_type  = COALESCE(blood_type, (SELECT t2.blood_type FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13)))
+         WHERE external_id GLOB 'character:a:[0-9]*'
+           AND EXISTS (
+             SELECT 1 FROM characters t2 WHERE t2.external_id = substr(characters.external_id, 13)
+           )",
+        [],
+    );
+
     let configs: &[(&str, &str, &str)] = &[
         ("characters", "external_id", ""),
         ("character_actors", "character_external_id", "AND t2.actor_external_id = {table}.actor_external_id"),
@@ -23,18 +39,28 @@ pub fn fix_character_ids(conn: &Connection) {
         ("character:comicvine:", "character:co:"),
         ("character:tmdb:", "character:ms:"),
         ("character:[0-9]*", "character:a:"),
+        ("[0-9]*", "character:a:"),
     ];
 
     for (table, column, composite_join) in configs {
         let join_cond = composite_join.replace("{table}", table);
         for (old_prefix, new_prefix) in rewrites {
-            let skip_len = if old_prefix.ends_with('*') { "character:".len() } else { old_prefix.len() };
+            let is_bare_numeric = old_prefix == "[0-9]*";
+            let skip_len = if is_bare_numeric {
+                0
+            } else if old_prefix.ends_with('*') {
+                "character:".len()
+            } else {
+                old_prefix.len()
+            };
             let glob_pattern = if old_prefix.ends_with('*') { old_prefix.to_string() } else { format!("{old_prefix}*") };
             let pos = skip_len + 1;
+            let numeric_filter = if is_bare_numeric { "AND {column} NOT GLOB '*[^0-9]*'" } else { "" };
+            let numeric_filter = numeric_filter.replace("{column}", column);
 
             let delete_sql = format!(
                 "DELETE FROM {table}
-                 WHERE {column} GLOB '{glob_pattern}'
+                 WHERE {column} GLOB '{glob_pattern}' {numeric_filter}
                    AND EXISTS (
                      SELECT 1 FROM {table} t2
                      WHERE t2.{column} = '{new_prefix}' || substr({table}.{column}, {pos}) {join_cond}
@@ -44,7 +70,7 @@ pub fn fix_character_ids(conn: &Connection) {
 
             let update_sql = format!(
                 "UPDATE {table} SET {column} = '{new_prefix}' || substr({column}, {pos})
-                 WHERE {column} GLOB '{glob_pattern}'"
+                 WHERE {column} GLOB '{glob_pattern}' {numeric_filter}"
             );
             let _ = conn.execute(&update_sql, []);
         }

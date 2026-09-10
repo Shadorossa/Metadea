@@ -3,7 +3,6 @@ use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use crate::db::ToStringErr;
-use crate::utils::base64_encode;
 
 // Local-only cover override for the profile Favorites tab — see the table
 // comment in db.rs. Applies equally to media (external_id like "anime:123")
@@ -147,7 +146,8 @@ pub async fn save_favorite_custom_image(
     let root = custom_image_root(&app_handle)?;
     let dir = root.join(&list_name);
     std::fs::create_dir_all(&dir).str_err()?;
-    std::fs::write(dir.join(&file_name), &png_bytes).str_err()?;
+    let file_path = dir.join(&file_name);
+    std::fs::write(&file_path, &png_bytes).str_err()?;
 
     let conn = state.conn.lock().str_err()?;
     let updated_at = Utc::now().to_rfc3339();
@@ -161,7 +161,7 @@ pub async fn save_favorite_custom_image(
         external_id,
         list_name,
         file_name,
-        image_url: format!("data:image/png;base64,{}", base64_encode(&png_bytes)),
+        image_url: file_path.to_string_lossy().into_owned(),
         bg_size,
         pos_x,
         pos_y,

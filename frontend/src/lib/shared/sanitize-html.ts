@@ -51,10 +51,10 @@ export function escapeHtml(text: string | null | undefined): string {
 // For URLs interpolated into a src/href attribute — a plain string escape
 // isn't enough there, since `javascript:alert(1)` or `data:text/html,...`
 // need the whole value rejected, not just its quote characters. Only
-// http(s) and the app's own asset:// protocol are ever legitimate here.
+// http(s), the app's asset:// protocol, and image data URIs are legitimate.
 export function safeUrl(url: string | null | undefined): string {
   if (!url) return '';
   const trimmed = url.trim();
-  if (/^(https?:|asset:)/i.test(trimmed)) return escapeHtml(trimmed);
+  if (/^(https?:|asset:|data:image\/(?:png|jpe?g|webp|gif|svg\+xml|avif);base64,)/i.test(trimmed)) return escapeHtml(trimmed);
   return '';
 }

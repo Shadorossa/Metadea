@@ -14,7 +14,7 @@ import { getT } from '../../i18n/client';
 
 // Fallback bounds while the image's natural size hasn't loaded yet.
 const DEFAULT_MIN_ZOOM = 100;
-const DEFAULT_MAX_ZOOM = 400;
+const DEFAULT_MAX_ZOOM = 1200;
 
 export interface ImageCropModalOptions {
   title: string;
@@ -63,34 +63,21 @@ function ImageCropModal({ opts, onResolve }: Props) {
   const loadTokenRef = useRef(0);
   const naturalSizeRef = useRef({ w: 0, h: 0 });
 
-  // Recomputes the zoom range from the image's own natural resolution
-  // whenever the URL changes, so:
-  //  - the minimum always fully covers the frame (same crop math as
-  //    object-fit: cover, no gaps at rest), and
-  //  - the maximum never scales the image past its native pixel size,
-  //    which is what produces soft/jagged ("dientes de sierra") edges.
   useEffect(() => {
     if (!imageUrl) return;
     const token = ++loadTokenRef.current;
     const probe = new Image();
     probe.onload = () => {
-      if (token !== loadTokenRef.current) return; // a newer URL loaded meanwhile
+      if (token !== loadTokenRef.current) return;
       const naturalW = probe.naturalWidth || 0;
       const naturalH = probe.naturalHeight || 0;
       if (!naturalW || !naturalH) return;
       naturalSizeRef.current = { w: naturalW, h: naturalH };
 
-      const rect = viewportRef.current?.getBoundingClientRect();
-      const viewportW = rect?.width || 300;
       const imgAspect = naturalW / naturalH;
-
-      // background-size: X% sets displayed width to X% of the container and
-      // scales height to preserve the image's own aspect ratio, so covering
-      // the frame vertically needs X% >= (Hc/Wc) * imgAspect.
       const coverPercent = Math.round(Math.max(100, (1 / aspectRatio) * imgAspect * 100));
-      const nativePercent = Math.round((naturalW / viewportW) * 100);
       const newMin = coverPercent;
-      const newMax = Math.max(newMin, Math.min(DEFAULT_MAX_ZOOM, nativePercent));
+      const newMax = Math.max(newMin * 3, DEFAULT_MAX_ZOOM);
 
       setZoomMin(newMin);
       setZoomMax(newMax);
@@ -99,10 +86,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
     probe.src = wrapAssetUrl(imageUrl);
   }, [imageUrl, aspectRatio]);
 
-  // Drag-to-pan — pixel delta is converted to a background-position percent
-  // delta relative to the viewport's own size, which reads as a natural
-  // "grab and drag the image" motion without needing the image's real
-  // pixel dimensions.
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!imageUrl) return;
     draggingRef.current = true;
@@ -117,10 +100,19 @@ function ImageCropModal({ opts, onResolve }: Props) {
     const dxPercent = ((e.clientX - lastRef.current.x) / rect.width) * 100;
     const dyPercent = ((e.clientY - lastRef.current.y) / rect.height) * 100;
     lastRef.current = { x: e.clientX, y: e.clientY };
-    // Dragging right moves the visible window left, so the image appears to
-    // follow the pointer — hence the position moving opposite the delta.
-    setPosX(p => clamp(p - dxPercent, 0, 100));
-    setPosY(p => clamp(p - dyPercent, 0, 100));
+
+    const { w: naturalW, h: naturalH } = naturalSizeRef.current;
+    const displayedW = rect.width * (bgSize / 100);
+    const displayedH = naturalW ? displayedW * (naturalH / naturalW) : rect.height;
+
+    const denomX = (displayedW - rect.width) / rect.width;
+    const denomY = (displayedH - rect.height) / rect.height;
+
+    const stepX = denomX > 0.001 ? dxPercent / denomX : dxPercent;
+    const stepY = denomY > 0.001 ? dyPercent / denomY : dyPercent;
+
+    setPosX(p => clamp(p - stepX, 0, 100));
+    setPosY(p => clamp(p - stepY, 0, 100));
   };
 
   const stopDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -173,8 +165,15 @@ function ImageCropModal({ opts, onResolve }: Props) {
   // exactly as reliable as before for plain display) — isolates the CORS
   // attempt to this one save-time request, so a host that doesn't send
   // permissive CORS headers only fails *this* load, not the live preview.
-  // Falls back to the raw source + crop numbers (the pre-cropping behavior)
-  // if anything here fails.
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!imageUrl) return;
+    e.preventDefault();
+    const step = Math.max(10, Math.round((zoomMax - zoomMin) * 0.04));
+    const delta = e.deltaY < 0 ? step : -step;
+    hasCustomBgSizeRef.current = true;
+    setBgSize(prev => clamp(prev + delta, zoomMin, zoomMax));
+  };
+
   const buildCroppedResult = (): Promise<Extract<ImageCropModalResult, { action: 'saved' }>> => {
     const fallback = { action: 'saved' as const, imageUrl, bgSize, posX, posY };
     return new Promise(resolve => {
@@ -197,20 +196,20 @@ function ImageCropModal({ opts, onResolve }: Props) {
           const imgLeft = (posX / 100) * (viewportW - displayedW);
           const imgTop = (posY / 100) * (viewportH - displayedH);
 
-          // Output at the crop's own native resolution (how many real image
-          // pixels the viewport spans) instead of a fixed size — avoids
-          // both inventing detail (upscaling a small zoomed-in region) and
-          // wasting it (downscaling a large one).
           const scale = displayedW / naturalW;
-          const canvasW = Math.max(1, Math.round(viewportW / scale));
-          const canvasH = Math.max(1, Math.round(viewportH / scale));
-          const outScale = canvasW / viewportW;
+          const nativeCropW = Math.max(1, Math.round(viewportW / scale));
+          const targetW = Math.max(nativeCropW, Math.round(viewportW * 2));
+          const targetH = Math.round(targetW / aspectRatio);
+          const outScale = targetW / viewportW;
 
           const canvas = document.createElement('canvas');
-          canvas.width = canvasW;
-          canvas.height = canvasH;
+          canvas.width = targetW;
+          canvas.height = targetH;
           const ctx = canvas.getContext('2d');
           if (!ctx) { resolve(fallback); return; }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
 
           ctx.drawImage(
             source,
@@ -219,9 +218,6 @@ function ImageCropModal({ opts, onResolve }: Props) {
           );
 
           const croppedDataUrl = canvas.toDataURL('image/png');
-          // The saved file now *is* the crop — reset to neutral so a
-          // re-render (or a later re-edit session) doesn't apply the old
-          // pan/zoom on top of an image that's already framed correctly.
           resolve({ action: 'saved', imageUrl: croppedDataUrl, bgSize: 100, posX: 50, posY: 50 });
         } catch (err) {
           console.warn('[ImageCropModal] Falling back to uncropped save:', err);
@@ -255,6 +251,7 @@ function ImageCropModal({ opts, onResolve }: Props) {
           onPointerMove={handlePointerMove}
           onPointerUp={stopDrag}
           onPointerCancel={stopDrag}
+          onWheel={handleWheel}
           onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
           onDragLeave={() => setIsDraggingFile(false)}
           onDrop={e => {
