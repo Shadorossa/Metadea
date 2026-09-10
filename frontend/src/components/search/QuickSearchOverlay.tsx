@@ -12,6 +12,7 @@ import { ALL_MEDIA_TYPES } from '../../lib/constants/media';
 import { getT } from '../../i18n/client';
 import { STORAGE_KEYS } from '../../lib/shared/storage-keys';
 import { toSmallCover } from '../../lib/shared/small-cover';
+import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
@@ -130,12 +131,7 @@ export function QuickSearchOverlay() {
     }
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+  useEscapeKey(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open || query.trim().length < MIN_CHARS) {

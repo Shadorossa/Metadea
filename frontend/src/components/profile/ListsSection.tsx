@@ -11,6 +11,7 @@ import { getT } from '../../i18n/client';
 import { HOF_GRADIENTS } from '../../lib/profile/hof';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
 import { beginGlobalLoading } from '../../lib/shared/global-loading';
+import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
 import { IconTrash } from '../local/ui/icons';
@@ -235,16 +236,10 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
         setSettingsOpen(false);
       }
     };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSettingsOpen(false);
-    };
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [settingsOpen]);
+  useEscapeKey(settingsOpen, () => setSettingsOpen(false));
 
   // Native HTML5 drag & drop instead of a hand-rolled mouse-follow drag:
   // the browser/OS renders the drag ghost that tracks the cursor, entirely

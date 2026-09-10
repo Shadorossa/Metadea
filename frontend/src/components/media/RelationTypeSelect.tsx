@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 
 interface RelationTypeSelectProps {
   value:        string;
@@ -52,17 +53,14 @@ export function RelationTypeSelect({ value, options, labels, extraOption, onChan
       }
       setOpen(false);
     };
-    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('scroll', handleScroll, true);
-    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('scroll', handleScroll, true);
-      document.removeEventListener('keydown', handleEscape);
     };
   }, [open]);
+  useEscapeKey(open, () => setOpen(false));
 
   const allOptions = extraOption && !options.includes(extraOption.value)
     ? [extraOption.value, ...options]

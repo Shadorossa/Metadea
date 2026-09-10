@@ -8,6 +8,7 @@
 // that a heavier rich-text library would be overkill.
 import { useEffect, useRef, useState } from 'react';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
+import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 
 interface Props {
   value: string;
@@ -165,20 +166,18 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
   useEffect(() => {
     if (!contextMenuPos) return;
     const close = () => setContextMenuPos(null);
-    const closeOnEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     // 'click' rather than 'mousedown' — the menu's own wrapper already
     // preventDefaults mousedown (to keep the text selection alive for
     // applyCommand to act on), so a 'mousedown' listener here would never
     // actually see that event reach window at all.
     window.addEventListener('click', close);
     window.addEventListener('contextmenu', close);
-    window.addEventListener('keydown', closeOnEscape);
     return () => {
       window.removeEventListener('click', close);
       window.removeEventListener('contextmenu', close);
-      window.removeEventListener('keydown', closeOnEscape);
     };
   }, [contextMenuPos]);
+  useEscapeKey(!!contextMenuPos, () => setContextMenuPos(null));
 
   return (
     <div className="pr-editor-richtext-wrap">
