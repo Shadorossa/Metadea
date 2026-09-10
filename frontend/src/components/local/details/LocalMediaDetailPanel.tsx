@@ -153,10 +153,11 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [item.externalId, item.libraryEntry.type]);
 
-  const isManga = item.libraryEntry.type === 'manga';
-  const mangaTotalVols = isManga ? (item.catalogEntry?.total_count_2 ?? null) : null;
-  const isSingleEpisode = isManga
-    ? (mangaTotalVols != null && mangaTotalVols > 0 ? mangaTotalVols === 1 : item.catalogEntry?.total_count === 1)
+  const isReading = isReadingType(item.libraryEntry.type);
+  const totalVols = item.catalogEntry?.total_count_2 ?? null;
+  const hasDefinedVols = isReading && totalVols != null && totalVols > 0;
+  const isSingleEpisode = hasDefinedVols
+    ? totalVols === 1
     : (item.catalogEntry?.total_count === 1 || isMovieFormat || hasSingleTomoEdition);
 
   // Same "not released yet" rule LocalMediaSection uses to group things into
@@ -321,15 +322,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return () => { cancelled = true; };
   }, [subEntries, itemSeason, item.externalId, item.title]);
 
-  const isReading = isReadingType(item.libraryEntry.type);
   const nextNumber = item.status === 'planning'
     ? 1
-    : isManga
+    : hasDefinedVols
     ? Math.floor(item.libraryEntry.progress_2 ?? 0) + 1
     : item.progress + 1;
 
-  const totalCount = (isManga && mangaTotalVols != null && mangaTotalVols > 0)
-    ? mangaTotalVols
+  const totalCount = hasDefinedVols
+    ? totalVols
     : (item.catalogEntry?.total_count ?? null);
   const isCaughtUp = totalCount != null && totalCount > 0 && nextNumber > totalCount;
 
@@ -344,21 +344,20 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     );
   }, [mediaFiles]);
 
-  const hasDefinedMangaVols = isManga && mangaTotalVols != null && mangaTotalVols > 0;
-  const mangaTomosMismatch = hasDefinedMangaVols && subEntries !== null && mediaFiles.length !== mangaTotalVols;
+  const tomosMismatch = hasDefinedVols && subEntries !== null && mediaFiles.length !== totalVols;
 
   const nextFile = useMemo<LocalFolderEntry | null>(() => {
-    if (mangaTomosMismatch) return null;
+    if (tomosMismatch) return null;
     if (deepFileMatch) {
       return { name: deepFileMatch.absPath.slice(dirname(deepFileMatch.absPath).length + 1), is_dir: false, size: 0 } as LocalFolderEntry;
     }
     if (rootFileMatch) return rootFileMatch;
     if (!subEntries) return null;
 
-    if (isManga) {
+    if (isReading) {
       const match = findMatchingEpisodeFile(subEntries, nextNumber, null);
       if (match) return match;
-      if (hasDefinedMangaVols && !mangaTomosMismatch && nextNumber >= 1 && nextNumber <= sortedMediaFiles.length) {
+      if (hasDefinedVols && !tomosMismatch && nextNumber >= 1 && nextNumber <= sortedMediaFiles.length) {
         return sortedMediaFiles[nextNumber - 1];
       }
       return isSingleEpisode ? soleMediaFile(subEntries) : null;
@@ -367,12 +366,13 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     return findMatchingEpisodeFile(subEntries, nextNumber + seasonOffset, itemSeason)
       ?? ((isSingleEpisode || isReading) ? soleMediaFile(subEntries) : null);
   }, [
-    mangaTomosMismatch, deepFileMatch, rootFileMatch, subEntries, isManga,
-    nextNumber, hasDefinedMangaVols, sortedMediaFiles, isSingleEpisode,
-    seasonOffset, itemSeason, isReading,
+    tomosMismatch, deepFileMatch, rootFileMatch, subEntries, isReading,
+    nextNumber, hasDefinedVols, sortedMediaFiles, isSingleEpisode,
+    seasonOffset, itemSeason,
   ]);
 
-  const nextFileEpisodeTitle = (nextFile && item.libraryEntry.type !== 'lnovel')
+  const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
+  const nextFileEpisodeTitle = (nextFile && !isBookOrNovel)
     ? extractEpisodeInfo(nextFile.name)?.episodeTitle ?? null
     : null;
 
@@ -585,8 +585,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const episode = info ? Math.round(info.episode) : 1;
     const tag = encodeExternalIdForFilename(item.externalId);
     const titleSanitized = sanitizeForFilename(item.title);
-    const isLnovel = item.libraryEntry.type === 'lnovel';
-    const episodeTitle = isLnovel ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
+    const isBookOrNovel = item.libraryEntry.type === 'lnovel' || item.libraryEntry.type === 'book';
+    const episodeTitle = isBookOrNovel ? '' : (info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '');
     const ext = oldName.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const label = formatEpisodeLabel(itemSeason, episode, item.libraryEntry.type);
     const parts = [label, titleSanitized, episodeTitle].filter(Boolean);
@@ -716,7 +716,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   type="button"
                   className="local-game-detail-play"
                   disabled={isUnreleased || !playPath}
-                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : mangaTomosMismatch ? `Se esperaban exactamente ${mangaTotalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})` : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo volumen'}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : tomosMismatch ? `Se esperaban exactamente ${totalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})` : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo volumen'}
                   onClick={() => setReaderOpen(true)}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -817,8 +817,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                         <>
                           {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
                             {isSingleEpisode
-                              ? (item.libraryEntry.type === 'lnovel' ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type) : (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)))
-                              : item.libraryEntry.type === 'lnovel'
+                              ? (isBookOrNovel ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type) : (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)))
+                              : isBookOrNovel
                               ? formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)
                               : `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
                           </strong>
@@ -826,7 +826,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                       ) : (
                         isMovieFormat ? 'Película no encontrada'
                           : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado'
-                          : mangaTomosMismatch ? `Se esperaban exactamente ${mangaTotalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
+                          : tomosMismatch ? `Se esperaban exactamente ${totalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
                           : item.libraryEntry.type === 'comic' ? `Próximo número (${nextNumber}) no encontrado`
                           : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
                           : `Próximo episodio (${nextNumber}) no encontrado`

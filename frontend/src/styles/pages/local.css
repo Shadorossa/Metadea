@@ -2043,6 +2043,17 @@
   -webkit-user-drag: none;
 }
 
+.comic-reader-overlay--no-fade {
+  animation: none !important;
+}
+
+.comic-reader-overlay--no-fade .comic-reader-page,
+.comic-reader-page--no-fade {
+  animation: none !important;
+  opacity: 1 !important;
+  transition: none !important;
+}
+
 @keyframes comic-reader-page-in {
   from { opacity: 0; }
   to   { opacity: 1; }

@@ -48,11 +48,13 @@ export async function markChapterRead(
   const startedAt = libraryEntry.started_at ?? today;
   const finishedAt = finishing ? today : libraryEntry.finished_at;
 
-  const isManga = libraryEntry.type === 'manga';
+  const tracksVolumes = libraryEntry.type === 'manga'
+    || libraryEntry.type === 'lnovel'
+    || (libraryEntry.total_count_2 != null && libraryEntry.total_count_2 > 0);
   const saved = await saveLibraryEntry({
     ...libraryEntry,
-    progress: isManga ? (libraryEntry.progress ?? 0) : progressNumber,
-    progress_2: isManga ? progressNumber : (libraryEntry.progress_2 ?? 0),
+    progress: tracksVolumes ? (libraryEntry.progress ?? 0) : progressNumber,
+    progress_2: tracksVolumes ? progressNumber : (libraryEntry.progress_2 ?? 0),
     status: nextStatus,
     started_at: startedAt,
     finished_at: finishedAt,
@@ -67,8 +69,8 @@ export async function markChapterRead(
     syncToAniList({
       externalId, type: libraryEntry.type, status: nextStatus ?? '',
       rating: libraryEntry.rating ?? 0,
-      progress: isManga ? (libraryEntry.progress ?? 0) : progressNumber,
-      progressVolumes: isManga ? progressNumber : (libraryEntry.progress_2 ?? 0),
+      progress: tracksVolumes ? (libraryEntry.progress ?? 0) : progressNumber,
+      progressVolumes: tracksVolumes ? progressNumber : (libraryEntry.progress_2 ?? 0),
       startedAt: startedAt ?? '', finishedAt: finishedAt ?? '',
       notes: libraryEntry.notes ?? '',
     }).catch(err => console.error('Failed to sync read chapter to AniList:', err));

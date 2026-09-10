@@ -53,10 +53,12 @@ function PdfCanvasPage({
   pdfDoc,
   pageNumber,
   onContextMenu,
+  noFade = false,
 }: {
   pdfDoc: any;
   pageNumber: number;
   onContextMenu: (e: React.MouseEvent, canvas: HTMLCanvasElement) => void;
+  noFade?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const taskRef = useRef<any>(null);
@@ -104,7 +106,7 @@ function PdfCanvasPage({
   return (
     <canvas
       ref={canvasRef}
-      className="comic-reader-page"
+      className={`comic-reader-page${noFade ? ' comic-reader-page--no-fade' : ''}`}
       onContextMenu={e => {
         if (canvasRef.current) onContextMenu(e, canvasRef.current);
       }}
@@ -202,6 +204,7 @@ export function ComicReaderModal({
     ? `${currentSpread[0] + 1}-${currentSpread[1] + 1} / ${pages.length}`
     : `${(currentSpread[0] ?? 0) + 1} / ${pages.length}`;
 
+  const isBookOrNovel = libraryEntry?.type === 'lnovel' || libraryEntry?.type === 'book';
   const isPdf = useMemo(() => filePath.toLowerCase().endsWith('.pdf'), [filePath]);
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const pdfDocRef = useRef<any | null>(null);
@@ -417,7 +420,7 @@ export function ComicReaderModal({
   };
 
   return createPortal(
-    <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}`}>
+    <div className={`comic-reader-overlay${isClosing ? ' comic-reader-overlay--closing' : ''}${isFullscreen ? ' comic-reader-overlay--fullscreen' : ''}${isBookOrNovel ? ' comic-reader-overlay--no-fade' : ''}`}>
       <div className="comic-reader-header">
         <span className="comic-reader-title" title={title}>{title}</span>
         {loadState === 'ready' && (
@@ -491,6 +494,7 @@ export function ComicReaderModal({
                     key={idx}
                     pdfDoc={pdfDoc}
                     pageNumber={idx + 1}
+                    noFade={isBookOrNovel}
                     onContextMenu={(e, canvas) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -506,7 +510,7 @@ export function ComicReaderModal({
                 ) : (
                   <img
                     key={idx}
-                    className="comic-reader-page"
+                    className={`comic-reader-page${isBookOrNovel ? ' comic-reader-page--no-fade' : ''}`}
                     src={wrapAssetUrl(pages[idx])}
                     alt={`Página ${idx + 1}`}
                     draggable={false}
