@@ -1,0 +1,38 @@
+{
+  "character": {
+    "external_id": "character:cs:270973",
+    "name": "Hal Emmerich",
+    "aliases_csv": "Otacon",
+    "biography": "<b>Real name:</b> Hal Emmerich<br>\n<b>Nationality:</b> American<br>\n<b>Born:</b> 1980<br>\n<b>Age:</b> 38 <small>(2018)</small><br>\n<b>Eye color [Physical description]:</b> Blue<br>\n<b>Hair color [Physical description]:</b> Gray <small>(2005)</small><br>Brown <small>(2007-2014)</small><br>\n<b>Ethnicity [Physical description]:</b> Caucasian<br>\n<b>Height [Physical description]:</b> 177 cm (5'10\") <small>(2005)</small><br>180 cm (5'11\") <small>(2009)</small><br>\n<b>Weight [Physical description]:</b> 61.2 kg <small>(2005)</small><br>\n<b>Affiliation(s) [Career and family information]:</b> FBI<br>ArmsTech<br>Philanthropy<br>\n<b>Occupation [Career and family information]:</b> Engineer, computer programmer<br>\n<b>Notable family [Career and family information]:</b> Emmerich <small>(paternal grandfather)</small><br>Huey Emmerich <small>(father)</small><br>Strangelove <small>(mother)</small><br>Julie Danziger <small>(stepmother)</small><br>Emma Emmerich-Danziger <small>(stepsister)</small><br>Sunny Emmerich<small> (adopted daughter)</small><br>\n<b>Main appearance(s) [Behind the scenes]:</b> <i>Metal Gear Solid</i><br><i>Metal Gear Solid 2: Sons of Liberty</i><br><i>Metal Gear Solid 4: Guns of the Patriots</i><br>\n<b>Created by [Behind the scenes]:</b> Hideo Kojima<br>\n<br>\n<p>Dr. Hal \"Otacon\" Emmerich was the chief engineer of Metal Gear REX. He became a close friend of Solid Snake after Snake rescued him during the Shadow Moses Incident in 2005. Later that year, he and Snake founded the anti-Metal Gear NGO Philanthropy. Following the Guns of the Patriots Incident, he became the adoptive father of Sunny. A devoted fan of anime, Hal's chosen nickname was derived from \"Otaku Convention\", which he directly mentions to Snake during an in game conversation (this has no relationship to the American anime convention known as \"Otakon\" which has a different spelling and pronunciation; Kojima himself has never referenced this DC convention as an inspiration).</p>\n<p>Hal Emmerich was born in 1980 to scientists Huey Emmerich and Strangelove via Caesarean section. Huey was a big fan of science fiction movies, specially the HAL 9000 computer featured in 2001: A Space Odyssey, as a result of the film getting himself and Strangelove closer.</p>\n<p>Hal Emmerich with his mother.</p>\n<p>Hal spent his early years living with his parents in an XOF research facility in Afghanistan. He ended up being considered by his father for use as a test subject for Metal Gear Sahelanthropus, as its cockpit was so small that only a child could pilot it. This resulted in a huge falling out between Hal's parents. Strangelove vehemently disagreed with Huey's proposition. Wanting to protect Hal from Huey's experiment, Strangelove secretly hid Hal in America. In retaliation, Huey sealed Strangelove inside the Mammal Pod where she later suffocated.</p>\n<p>Hal's father, having been exiled from Mother Base, returned to America and eventually reunited with Hal. In the 1990s, his father married British native Julie Danziger. Danziger had a daughter of her own, named Emma, who adopted the Emmerich surname. Hal and Emma often times played \"House\" together in their youth.</p>\n<p>While living at the family home, Hal was seduced by his stepmother Julie (despite him still being a young teenager) and they had an affair. Circa 1997, Hal's father, after learning about this, committed suicide by drowning himself in the family pool. He dragged Emma with him, but she managed to survive. Emma expected Hal to come to the rescue, but Hal didn't know it was happening as he was with Julie at the time. Surviving the incident, Emma always claimed to hate her brother because she believed he had abandoned her.</p>\n<p>Afterwards, Hal, experiencing tremendous guilt for \"betraying\" Emma and his role in his father's suicide, ran away from home and didn't see any of his family members until several years later, although he did maintain contact with Julie via letters, where he ended up learning about Emma's intense aquaphobia as a result of the \"accident.\" Hal dropped out of school but through Internet-based self study, he secured acceptance to the Massachusetts Institute of Technology (MIT), where he earned his PhD at a young age. He also earned additional Bachelor's and Master's Degrees from Princeton University. Scouted by the FBI as a student, he joined their ERF (Engineering Research Facility). After being caught monitoring and hacking their central database, Hal was forced out of the FBI.</p>\n<p>Eventually, Hal was hired by the defense contractor ArmsTech. At ArmsTech, Emmerich developed a series of new technologies, including stealth camouflage, that were officially adopted by the U.S. Army. Following this, he became the lead engineer for the Metal Gear REX project. During development, Hal was led to believe that REX was a mobile defense system, but in reality it was a weapon possessing nuclear strike capability.</p>",
+    "image_url": "https://static.wikia.nocookie.net/metalgear/images/9/95/MGS4_Otacon.png/revision/latest?cb=20251007203843"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:375",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:376",
+      "relation_type": "SUPPORTING"
+    },
+    {
+      "media_external_id": "game:380",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a95234",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:Christopher Randolph",
+      "name": "Christopher Randolph",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
