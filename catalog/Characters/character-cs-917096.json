@@ -1,0 +1,33 @@
+{
+  "character": {
+    "external_id": "character:cs:917096",
+    "name": "Solidus Snake",
+    "aliases_csv": "Solid Snake,King",
+    "biography": "<b>Real name:</b> George Sears<br>\n<b>Nationality:</b> American<br>\n<b>Born:</b> 1972<br>United States of America<br>\n<b>Died:</b> April 30, 2009, Federal Hall, New York City, United States <small>(brain death)</small><br>2014, Volta River, Eastern Europe <small>(clinical death)</small><br>\n<b>Age:</b> 37 at brain death<br>42 at clinical death<br>\n<b>Eye color [Physical description]:</b> Blue-gray<br>\n<b>Hair color [Physical description]:</b> Gray<br>\n<b>Ethnicity [Physical description]:</b> Caucasian<br>\n<b>Height [Physical description]:</b> 184 cm <small>(6'⅝\")</small><br>\n<b>Affiliation(s) [Career and family information]:</b> CIA<br>Army of the Devil<br>The Patriots<br>U.S. Government<br>Dead Cell<br>Sons of Liberty<br>\n<b>Occupation [Career and family information]:</b> Soldier<br>Spy<br>Politician<br>\n<b>Notable family [Career and family information]:</b> Big Boss <small>(genetic template/\"father\")</small><br>Solid Snake <small>(\"brother\")</small><br>Liquid Snake <small>(\"brother\")</small><br>Raiden <small>(adopted son)</small><br>Gene therapy test subjects<br><i>Six unborn brothers</i><br>\n<b>Main appearance(s) [Behind the scenes]:</b> <i>Metal Gear Solid</i> <small>(off-screen)</small><br><i>Metal Gear Solid 2: Sons of Liberty</i><br><i>Metal Gear Solid 4: Guns of the Patriots</i> <small>(biomort only)</small><br>\n<b>Created by [Behind the scenes]:</b> Hideo Kojima<br>\n<b>Designed by [Behind the scenes]:</b> Yoji Shinkawa<br>\n<br>\n<p>Solidus Snake, real name George Sears, and also known as King, or simply Solidus, was the 43rd President of the United States, and a product of the Les Enfants Terribles project, making him the third son of Big Boss. After secretly instigating the events on Shadow Moses Island, he became directly involved in the Big Shell Incident.</p>\n<p>An adult Solidus Snake was foreseen by Elisa and Ursula in 1970, in a prophetic vision of Big Boss's future.</p>\n<p>Solidus was the third son of Big Boss created by a secret organization in 1972, through somatic cell cloning, as part of the Les Enfants Terribles project. The project's initial phase produced genetically diverse twin clones with one expressing Big Boss's \"inferior\" genetic traits and another expressing Big Boss's \"superior\" traits, thus he was created as a perfect clone, identified as \"George Sears\" to the public, with the same \"perfect balance\" of dominant and recessive traits that Big Boss possessed.</p>\n<p>In his teenage years, Sears was dispatched to Liberia in the late 1980s, to participate in the civil war. To test a hypothesis regarding the nature of his existence, he adopted a young boy, Jack, during the war after killing the boy's parents, and trained Jack to be a ruthless killer from as early as the age of six. Seeing himself as the boy's godfather, Sears had Jack serve as part of his Small Boy Unit in the Army of the Devil. Jack proved himself to be one of Sears's best child soldiers with an amazing record of kills, gaining platoon leadership of the unit at just ten years old, and earning Jack the nicknames \"White Devil\" and \"Jack the Ripper.\"</p>\n<p>Solidus (left) orders a physician to administer an injection to Jack.</p>\n<p>During this time, Sears worked as a CIA paramilitary, and smoked cigars like Big Boss. At some point, he allowed a physician to inject Jack with a substance that he claimed would \"never make [Jack] the same\" although not before warning the physician that he would kill the former if it permanently harmed Jack. He taught Jack that blades were \"honorable\" compared to guns, killing a soldier on one occasion by slitting a throat in front of the boy.</p>\n<p>After the war ended, Jack suddenly disappeared from a relief center which left Sears to wonder what happened to Jack for some time.</p>\n<p>During the Gulf War, some U.S. soldiers were injected with soldier genes in an attempt to replicate the results of Les Enfants Terribles, making them, and the reported \"Gulf War Babies,\" Sears's siblings, in a sense.</p>",
+    "image_url": "https://static.wikia.nocookie.net/metalgear/images/c/c8/SolidusHD.jpg/revision/latest?cb=20251027190030"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:376",
+      "relation_type": "SUPPORTING"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "va:Akio Ōtsuka (MGS2)",
+      "name": "Akio Ōtsuka (MGS2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "va:John Cygan (MGS2)",
+      "name": "John Cygan (MGS2)",
+      "name_native": null,
+      "image_url": null,
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
