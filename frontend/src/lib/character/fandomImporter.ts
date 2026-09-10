@@ -191,47 +191,54 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
   return cleanLabel;
 }
 
-  // Parsear campos del Infobox
+  // Parsear campos del Infobox usando patrones estructurales y semánticos universales
   const characteristics: ParsedCharacteristic[] = [];
   const voiceActors: ExtractedVoiceActor[] = [];
   let aliases: string[] = [];
   let appearsIn: string | null = null;
 
-  const dataItems = doc.querySelectorAll('.portable-infobox .pi-item.pi-data, table.infobox tr');
-  dataItems.forEach(el => {
-    let label = '';
-    const valEl = el.matches('.pi-item.pi-data')
-      ? el.querySelector('.pi-data-value')
-      : el.querySelector('td');
+  const dataItems = doc.querySelectorAll(
+    '[data-source], .portable-infobox .pi-item.pi-data, aside .pi-data, aside [class*="item"], table.infobox tr, [class*="infobox"] tr, dl.infobox, .pi-item.pi-data'
+  );
+  const seenElements = new Set<Element>();
 
-    if (el.matches('.pi-item.pi-data')) {
-      const labelEl = el.querySelector('.pi-data-label');
+  dataItems.forEach(el => {
+    if (seenElements.has(el)) return;
+    if (el.matches('figure, .pi-image, .pi-title, .pi-header, [data-source="image"], [data-source="name"], [data-source="title"]')) {
+      return;
+    }
+
+    let label = '';
+    let valEl: Element | null = null;
+
+    if (el.matches('[data-source], .pi-item.pi-data, aside .pi-data, aside [class*="item"]')) {
+      const labelEl = el.querySelector('.pi-data-label, [class*="label"], dt, b, strong');
+      valEl = el.querySelector('.pi-data-value, [class*="value"], dd');
+      if (!valEl && labelEl && labelEl.nextElementSibling) {
+        valEl = labelEl.nextElementSibling;
+      }
       if (labelEl) stripHiddenNoise(labelEl);
       label = labelEl?.textContent?.trim() || '';
-    } else {
-      const labelEl = el.querySelector('th');
+    } else if (el.matches('tr')) {
+      const labelEl = el.querySelector('th, td:first-child');
+      valEl = el.querySelector('td:last-child');
+      if (labelEl === valEl) valEl = null;
+      if (labelEl) stripHiddenNoise(labelEl);
+      label = labelEl?.textContent?.trim() || '';
+    } else if (el.matches('dl')) {
+      const labelEl = el.querySelector('dt');
+      valEl = el.querySelector('dd');
       if (labelEl) stripHiddenNoise(labelEl);
       label = labelEl?.textContent?.trim() || '';
     }
 
     if (!label || !valEl) return;
+    seenElements.add(el);
 
     let headerText = '';
-    if (el.matches('.pi-item.pi-data')) {
-      const group = el.closest('.pi-group, section');
-      if (group) {
-        headerText = group.querySelector('.pi-header, h2, h3')?.textContent || '';
-      }
-    } else {
-      let prev = el.previousElementSibling;
-      while (prev) {
-        const headerTh = prev.querySelector('th[colspan]');
-        if (headerTh) {
-          headerText = headerTh.textContent || '';
-          break;
-        }
-        prev = prev.previousElementSibling;
-      }
+    const group = el.closest('.pi-group, section, aside, table, div[class*="infobox"]');
+    if (group) {
+      headerText = group.querySelector('.pi-header, caption, th[colspan], h2, h3')?.textContent || '';
     }
 
     const finalLabel = formatCharacteristicLabel(label, headerText);
@@ -342,22 +349,37 @@ function formatCharacteristicLabel(rawLabel: string, sectionHeader?: string): st
     }
   });
 
-  // Extraer biografía limpia
+  // Extraer biografía limpia eliminando todo elemento de infobox o ficha lateral
   const contentRoot = doc.querySelector('.mw-parser-output') || doc.body;
   contentRoot.querySelectorAll(
-    '.portable-infobox, table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery, figcaption, .thumbcaption, .thumb, figure, aside, .page-header, .page-footer, [style*="display: none" i], [style*="display:none" i]'
+    'aside, [data-source], .portable-infobox, [class*="infobox"], table.infobox, table.navbox, .navbox, #toc, .toc, .mw-editsection, .reference, sup, script, style, .gallery, .wikia-gallery, figcaption, .thumbcaption, .thumb, figure, .page-header, .page-footer, [style*="display: none" i], [style*="display:none" i]'
   ).forEach(n => n.remove());
 
   const bioParagraphs: string[] = [];
   const paragraphs = contentRoot.querySelectorAll('p');
   for (const p of Array.from(paragraphs)) {
     p.querySelectorAll('sup, .reference, .mw-editsection').forEach(s => s.remove());
-    // Convertir enlaces internos en texto plano
     p.querySelectorAll('a').forEach(a => {
       a.replaceWith(document.createTextNode(a.textContent || ''));
     });
+
     const cleanText = (p.textContent || '').replace(/\[\d+\]/g, '').trim();
-    if (cleanText.length > 25 && !cleanText.toLowerCase().startsWith('for other uses') && !cleanText.toLowerCase().startsWith('see also')) {
+    if (
+      cleanText.length > 25 &&
+      !cleanText.toLowerCase().startsWith('for other uses') &&
+      !cleanText.toLowerCase().startsWith('see also')
+    ) {
+      // Si un párrafo es puramente un par clave-valor que se coló, extráelo a características
+      const colonMatch = cleanText.match(/^([A-Za-zÀ-ÿ\s/()_-]{2,35}):\s*(.+)$/);
+      if (colonMatch && colonMatch[2].trim().length < 150 && !colonMatch[2].includes('.')) {
+        const fallbackLabel = colonMatch[1].trim();
+        const fallbackVal = colonMatch[2].trim();
+        if (!characteristics.some(c => c.label.toLowerCase() === fallbackLabel.toLowerCase())) {
+          characteristics.push({ label: fallbackLabel, value: fallbackVal });
+        }
+        continue;
+      }
+
       bioParagraphs.push(`<p>${cleanText}</p>`);
     }
     if (bioParagraphs.length >= 8) break;
