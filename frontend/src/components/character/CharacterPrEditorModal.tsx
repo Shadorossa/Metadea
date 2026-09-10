@@ -41,6 +41,87 @@ const getRelationTypeLabels = () => {
   };
 };
 
+const VA_LANGUAGES = [
+  { code: 'JP', label: 'Japonés', name: 'Japanese' },
+  { code: 'ES', label: 'Español', name: 'Spanish' },
+  { code: 'EN', label: 'Inglés', name: 'English' },
+  { code: 'IT', label: 'Italiano', name: 'Italian' },
+  { code: 'DE', label: 'Alemán', name: 'German' },
+  { code: 'FR', label: 'Francés', name: 'French' },
+  { code: 'PT', label: 'Portugués', name: 'Portuguese' },
+  { code: 'KR', label: 'Coreano', name: 'Korean' },
+  { code: 'ZH', label: 'Chino', name: 'Chinese' },
+];
+
+function getVaLangIndex(rawLang?: string): number {
+  if (!rawLang) return 0;
+  const cur = rawLang.toLowerCase();
+  if (cur.includes('japan') || cur.includes('japon') || cur === 'jp') return 0;
+  if (cur.includes('span') || cur.includes('españ') || cur.includes('espan') || cur === 'es') return 1;
+  if (cur.includes('engl') || cur.includes('ingl') || cur === 'en') return 2;
+  if (cur.includes('ital') || cur === 'it') return 3;
+  if (cur.includes('germ') || cur.includes('alem') || cur === 'de') return 4;
+  if (cur.includes('fren') || cur.includes('franc') || cur === 'fr') return 5;
+  if (cur.includes('port') || cur === 'pt') return 6;
+  if (cur.includes('kore') || cur.includes('core') || cur === 'kr') return 7;
+  if (cur.includes('chin') || cur.includes('mand') || cur === 'zh') return 8;
+  return 0;
+}
+
+function VoiceActorLangStepper({
+  language,
+  onChange,
+}: {
+  language?: string;
+  onChange: (newLang: string) => void;
+}) {
+  const curIdx = getVaLangIndex(language);
+  const curLang = VA_LANGUAGES[curIdx];
+
+  const prev = () => {
+    const prevIdx = (curIdx - 1 + VA_LANGUAGES.length) % VA_LANGUAGES.length;
+    onChange(VA_LANGUAGES[prevIdx].name);
+  };
+  const next = () => {
+    const nextIdx = (curIdx + 1) % VA_LANGUAGES.length;
+    onChange(VA_LANGUAGES[nextIdx].name);
+  };
+
+  return (
+    <div className="pr-editor-va-stepper">
+      <button
+        type="button"
+        className="pr-editor-va-stepper-btn"
+        onClick={prev}
+        title="Idioma anterior"
+        aria-label="Idioma anterior"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+      <span
+        className="pr-editor-va-stepper-label"
+        onClick={next}
+        title={`${curLang.label} (${curLang.name})`}
+      >
+        {curLang.code}
+      </span>
+      <button
+        type="button"
+        className="pr-editor-va-stepper-btn"
+        onClick={next}
+        title="Siguiente idioma"
+        aria-label="Siguiente idioma"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 interface CachedCharacterData {
   character: CharacterEntry;
   originalCharacter: CharacterEntry;
@@ -847,7 +928,7 @@ export function CharacterPrEditorModal() {
             </span>
             <div className="pr-editor-char-grid">
               {characteristics.map((c, idx) => {
-                const isLong = c.value.replace(/<[^>]+>/g, '').length > 50;
+                const isLong = c.value.replace(/<[^>]+>/g, '').length > 200;
                 return (
                 <div key={idx} className={`pr-editor-char-row${isLong ? ' pr-editor-char-row--wide' : ''}`}>
                   <input
@@ -856,7 +937,6 @@ export function CharacterPrEditorModal() {
                     value={c.label}
                     onChange={e => updateCharacteristic(idx, 'label', e.target.value)}
                     placeholder={t.char_label_ph}
-                    style={{ flex: '0 0 35%', minWidth: 0, fontWeight: 600 }}
                   />
                   <div className="pr-editor-char-divider" />
                   <RichTextEditor
@@ -1005,38 +1085,10 @@ export function CharacterPrEditorModal() {
                     style={{ fontSize: '0.7rem' }}
                   />
 
-                  {/* Selector de Etiquetas de Idioma */}
-                  <div className="pr-editor-va-langs">
-                    {['JP', 'ES', 'EN', 'IT', 'DE', 'FR', 'PT', 'KR', 'ZH'].map(langTag => {
-                      const LANG_TAG_MAP: Record<string, string> = {
-                        'JP': 'Japanese', 'ES': 'Spanish', 'EN': 'English', 'IT': 'Italian',
-                        'DE': 'German', 'FR': 'French', 'PT': 'Portuguese', 'KR': 'Korean', 'ZH': 'Chinese',
-                      };
-                      const curCode = (va.language || 'Japanese').toLowerCase();
-                      const isSelected =
-                        (langTag === 'JP' && (curCode.includes('japan') || curCode.includes('japon') || curCode === 'jp')) ||
-                        (langTag === 'ES' && (curCode.includes('span') || curCode.includes('españ') || curCode.includes('espan') || curCode === 'es')) ||
-                        (langTag === 'EN' && (curCode.includes('engl') || curCode.includes('ingl') || curCode === 'en')) ||
-                        (langTag === 'IT' && (curCode.includes('ital') || curCode === 'it')) ||
-                        (langTag === 'DE' && (curCode.includes('germ') || curCode.includes('alem') || curCode === 'de')) ||
-                        (langTag === 'FR' && (curCode.includes('fren') || curCode.includes('franc') || curCode === 'fr')) ||
-                        (langTag === 'PT' && (curCode.includes('port') || curCode === 'pt')) ||
-                        (langTag === 'KR' && (curCode.includes('kore') || curCode.includes('core') || curCode === 'kr')) ||
-                        (langTag === 'ZH' && (curCode.includes('chin') || curCode.includes('mand') || curCode === 'zh'));
-
-                      return (
-                        <button
-                          key={langTag}
-                          type="button"
-                          className={`pr-editor-lang-btn ${isSelected ? 'pr-editor-lang-btn--active' : ''}`}
-                          onClick={() => updateVoiceActor(idx, 'language', LANG_TAG_MAP[langTag] || langTag)}
-                          title={LANG_TAG_MAP[langTag] || langTag}
-                        >
-                          {langTag}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <VoiceActorLangStepper
+                    language={va.language}
+                    onChange={lang => updateVoiceActor(idx, 'language', lang)}
+                  />
                 </div>
               ))}
             </div>

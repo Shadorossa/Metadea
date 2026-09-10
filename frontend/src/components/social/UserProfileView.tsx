@@ -218,6 +218,17 @@ function OverviewTab({ data, p }: { data: ProfileData; p: ReturnType<typeof getT
   );
 }
 
+function getInitialTab(): Tab {
+  if (typeof window === 'undefined') return 'overview';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('list')) return 'lists';
+  const tabParam = params.get('tab') as Tab;
+  if (TABS.includes(tabParam)) return tabParam;
+  const hash = window.location.hash.replace('#', '') as Tab;
+  if (TABS.includes(hash)) return hash;
+  return 'overview';
+}
+
 export function UserProfileView() {
   const s = getT().social;
   const p = getT().profile;
@@ -226,8 +237,32 @@ export function UserProfileView() {
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<ProfileData | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>(getInitialTab);
   const [isRedirectingSelf, setIsRedirectingSelf] = useState(false);
+
+  const switchTab = (tab: Tab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (tab === 'overview') {
+        url.searchParams.delete('tab');
+      } else {
+        url.searchParams.set('tab', tab);
+      }
+      if (tab !== 'lists') {
+        url.searchParams.delete('list');
+      }
+      history.pushState(history.state, '', url.toString());
+    }
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveTab(getInitialTab());
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Your own profile is never read from Turso — it's your real, always-local
   // /profile page (full library editor, stats, etc.), not the read-only
@@ -355,12 +390,12 @@ export function UserProfileView() {
       </div>
 
       <nav className="profile-tabs">
-        <button className={`profile-tab${activeTab === 'overview' ? ' active' : ''}`} data-tooltip={p.tab_overview} onClick={() => setActiveTab('overview')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_OVERVIEW }} />
-        <button className={`profile-tab${activeTab === 'library' ? ' active' : ''}`} data-tooltip={p.tab_library} onClick={() => setActiveTab('library')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LIBRARY }} />
-        <button className={`profile-tab${activeTab === 'favorites' ? ' active' : ''}`} data-tooltip={p.favorites} onClick={() => setActiveTab('favorites')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_FAVORITES }} />
-        <button className={`profile-tab${activeTab === 'stats' ? ' active' : ''}`} data-tooltip={p.tab_stats} onClick={() => setActiveTab('stats')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_STATS }} />
-        <button className={`profile-tab${activeTab === 'reviews' ? ' active' : ''}`} data-tooltip={p.reviews} onClick={() => setActiveTab('reviews')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_REVIEWS }} />
-        <button className={`profile-tab${activeTab === 'lists' ? ' active' : ''}`} data-tooltip={p.lists} onClick={() => setActiveTab('lists')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LISTS }} />
+        <button className={`profile-tab${activeTab === 'overview' ? ' active' : ''}`} data-tooltip={p.tab_overview} onClick={() => switchTab('overview')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_OVERVIEW }} />
+        <button className={`profile-tab${activeTab === 'library' ? ' active' : ''}`} data-tooltip={p.tab_library} onClick={() => switchTab('library')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LIBRARY }} />
+        <button className={`profile-tab${activeTab === 'favorites' ? ' active' : ''}`} data-tooltip={p.favorites} onClick={() => switchTab('favorites')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_FAVORITES }} />
+        <button className={`profile-tab${activeTab === 'stats' ? ' active' : ''}`} data-tooltip={p.tab_stats} onClick={() => switchTab('stats')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_STATS }} />
+        <button className={`profile-tab${activeTab === 'reviews' ? ' active' : ''}`} data-tooltip={p.reviews} onClick={() => switchTab('reviews')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_REVIEWS }} />
+        <button className={`profile-tab${activeTab === 'lists' ? ' active' : ''}`} data-tooltip={p.lists} onClick={() => switchTab('lists')} dangerouslySetInnerHTML={{ __html: ICON_PROFILE_LISTS }} />
       </nav>
 
       <div className="profile-tab-content">

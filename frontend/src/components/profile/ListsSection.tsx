@@ -719,7 +719,52 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
   const [customImagesMap, setCustomImagesMap] = useState<Map<string, FavoriteCustomImage>>(new Map());
   const [username, setUsername] = useState('user');
   const [customLists, setCustomLists] = useState<ListInfo[]>(overrideLists ?? []);
-  const [activeListKey, setActiveListKey] = useState<string | null>(null);
+  const [activeListKey, setActiveListKey] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('list');
+  });
+
+  useEffect(() => {
+    if (overrideLists) {
+      setCustomLists(overrideLists);
+    }
+  }, [overrideLists]);
+
+  useEffect(() => {
+    if (overrideCatalogMap) {
+      setCatalogMap(overrideCatalogMap);
+    }
+  }, [overrideCatalogMap]);
+
+  const handleOpenList = (key: string | null) => {
+    setActiveListKey(key);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const current = url.searchParams.get('list');
+      if (current === (key ?? null)) return;
+      if (key) {
+        url.searchParams.set('list', key);
+        if (url.pathname === '/user') {
+          url.searchParams.set('tab', 'lists');
+        } else if (url.pathname === '/profile') {
+          url.hash = 'lists';
+        }
+        history.pushState(history.state, '', url.toString());
+      } else {
+        url.searchParams.delete('list');
+        history.pushState(history.state, '', url.toString());
+      }
+    }
+  };
+
+  useEffect(() => {
+    const onPopState = () => {
+      const listFromUrl = new URLSearchParams(window.location.search).get('list');
+      setActiveListKey(listFromUrl);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // No blocking "Cargando..." placeholder here — the grid renders right
   // away (empty at first, or already filled from cache) while the global
@@ -760,7 +805,7 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
         charactersMap={charactersMap}
         customImagesMap={customImagesMap}
         p={p}
-        onOpen={setActiveListKey}
+        onOpen={handleOpenList}
         activeKey={activeListKey}
         readOnly={readOnly}
         onCreate={async (name, description) => {
@@ -777,13 +822,15 @@ export function ListsSection({ overrideLists, overrideCatalogMap, overrideFetchI
             catalogMap={catalogMap}
             customImagesMap={customImagesMap}
             p={p}
-            onBack={() => setActiveListKey(null)}
-            onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); setActiveListKey(null); }}
+            onBack={() => handleOpenList(null)}
+            onDeleted={() => { setCustomLists(prev => prev.filter(l => l.key !== activeList.key)); handleOpenList(null); }}
             onMetaSaved={(name, description, isPrivate, listType, isRankedVal) => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, name, description, is_private: isPrivate, ...(listType ? { list_type: listType } : {}), ...(isRankedVal !== undefined ? { is_ranked: isRankedVal } : {}) } : l))}
             onCountChanged={delta => setCustomLists(prev => prev.map(l => l.key === activeList.key ? { ...l, item_count: Math.max(0, l.item_count + delta) } : l))}
             readOnly={readOnly}
             fetchItems={overrideFetchItems}
           />
+        ) : activeListKey && customLists.length === 0 ? (
+          <div className="list-detail-panel-empty"></div>
         ) : (
           <div className="list-detail-panel-empty">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /></svg>

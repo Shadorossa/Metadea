@@ -25,27 +25,11 @@ const translations = useTranslations(lang);
     <!-- Contenido del Personaje -->
     <div id="character-content" style="display: none;" data-char-key="">
 
-      <!-- Grid unificado (hero + cuerpo): Datos ocupa su propia columna a la
-           derecha desde la altura del hero (bajo Editar) hasta la del
-           cuerpo, con el mismo ancho que antes tenía a la derecha de
-           Apariciones — así, si tiene mucho contenido, sigue bajando por
-           ese mismo espacio en vez de quedar encajonado bajo el avatar.
-           character-hero-body/media-body se vuelven display:contents (ver
-           character.css) para que sus hijos actúen como items directos de
-           esta grid sin tener que aplanar el HTML entero. -->
+      <!-- Grid principal (hero + contenido + datos) -->
       <div class="character-grid">
       <!-- Hero principal -->
       <div class="character-hero-body">
         <div class="character-hero-left-col">
-          <div class="character-avatar-frame">
-            <div class="character-avatar-wrap" id="char-avatar-container"></div>
-            <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </button>
-          </div>
           <div class="character-action-row" id="char-action-row">
             <button class="char-action-btn" id="char-fav-btn" data-action="favorite" title={translations.character.action_favorite}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -70,6 +54,15 @@ const translations = useTranslations(lang);
                 <path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L14 22a3.13 3.13 0 0 1-3-3.88Z"/>
               </svg>
               <span>{translations.character.action_dislike}</span>
+            </button>
+          </div>
+          <div class="character-avatar-frame">
+            <div class="character-avatar-wrap" id="char-avatar-container"></div>
+            <button class="char-avatar-edit-btn" id="char-avatar-edit-btn" title="Editar imagen">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
             </button>
           </div>
         </div>

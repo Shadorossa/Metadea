@@ -89,7 +89,8 @@ const t    = useTranslations(lang);
       <button class="profile-tab" data-tab="lists" data-tooltip={t.profile.lists} set:html={ICON_PROFILE_LISTS}></button>
       <script is:inline>
         (function() {
-          var hash = window.location.hash.replace('#', '');
+          var params = new URLSearchParams(window.location.search);
+          var hash = params.get('list') ? 'lists' : window.location.hash.replace('#', '');
           var tabs = ['overview', 'library', 'favorites', 'stats', 'reviews', 'lists'];
           if (hash && tabs.indexOf(hash) !== -1) {
             var buttons = document.querySelectorAll('.profile-tab');
@@ -157,6 +158,8 @@ const t    = useTranslations(lang);
   type Tab = typeof TABS[number];
 
   function getTabFromHash(): Tab {
+    const params = new URLSearchParams(location.search);
+    if (params.get('list')) return 'lists';
     const h = location.hash.replace('#', '') as Tab;
     return TABS.includes(h) ? h : 'overview';
   }
@@ -165,11 +168,6 @@ const t    = useTranslations(lang);
   let cachedCatalog: Awaited<ReturnType<typeof getAllCatalogEntries>> = [];
   let activeTab: Tab = getTabFromHash();
 
-  // Every tab gets its own permanent pane (see the template above) instead
-  // of sharing one container that gets torn down and rebuilt per switch —
-  // all six are rendered once, up front (see init below), and switching
-  // tabs after that is just a visibility toggle: no re-render, no async
-  // gap, no blank flash while the new tab's data/DOM builds.
   function getPanes(): Record<Tab, HTMLElement | null> {
     return {
       overview:  document.getElementById('tab-pane-overview'),
@@ -183,14 +181,15 @@ const t    = useTranslations(lang);
 
   function switchTab(tab: Tab) {
     activeTab = tab;
-    // Preserves whatever state object Astro's ClientRouter already attached
-    // to this history entry ({index, scrollX, scrollY} — see
-    // node_modules/astro/dist/transitions/router.js) instead of clobbering
-    // it to null. A null state makes the router's own popstate handler
-    // silently no-op on that entry (`if (ev.state === null) return;`),
-    // which made browser Back appear to skip straight past Profile/Search
-    // to whatever entry before them still had real state.
-    history.replaceState(history.state, '', tab === 'overview' ? '/profile' : `/profile#${tab}`);
+    const url = new URL(window.location.href);
+    if (tab === 'overview') {
+      url.hash = '';
+      url.searchParams.delete('list');
+    } else {
+      url.hash = tab;
+      if (tab !== 'lists') url.searchParams.delete('list');
+    }
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
 
     document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tab);
