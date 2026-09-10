@@ -16,7 +16,8 @@
       "relation_type": "REMAKE",
       "type_label": "Remake",
       "title": "Metal Gear Solid Delta: Snake Eater",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coac1n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/coac1n.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:379",
@@ -24,7 +25,8 @@
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Metal Gear Solid 3: Subsistence",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1vd6.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1vd6.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:379",
@@ -40,11 +42,11 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 4: Guns of the Patriots",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5eju.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5eju.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Metal gear"
+  "saga_name": "Metal gear",
+  "story_arcs": []
 }

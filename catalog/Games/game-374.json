@@ -11,12 +11,13 @@
   },
   "media_relations": [
     {
+      "media_external_id": "game:374",
       "related_media_external_id": "game:307493",
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Metal Gear",
       "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8ful.jpg",
-      "media_external_id": "game:374"
+      "format": null
     },
     {
       "media_external_id": "game:374",
@@ -24,11 +25,11 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear 2: Solid Snake",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co3whu.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co3whu.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Metal gear"
+  "saga_name": "Metal gear",
+  "story_arcs": []
 }
