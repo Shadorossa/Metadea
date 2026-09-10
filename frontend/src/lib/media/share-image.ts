@@ -146,7 +146,7 @@ function drawAvatarPhotoCard(ctx: CanvasRenderingContext2D, img: HTMLImageElemen
   const ringPad = 5;
   ctx.save();
   ctx.strokeStyle = ringColor;
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3;
   roundedRectPath(ctx, x - ringPad, y - ringPad, size + ringPad * 2, size + ringPad * 2, radius + ringPad);
   ctx.stroke();
   ctx.restore();
@@ -286,7 +286,7 @@ export async function generateShareImage(opts: ShareImageOptions): Promise<strin
 
   if (cover) {
     ctx.save();
-    ctx.filter = 'blur(60px) brightness(0.45)';
+    ctx.filter = 'blur(35px) brightness(0.45)';
     const scale = Math.max(WIDTH / cover.width, HEIGHT / cover.height) * 1.15;
     const bw = cover.width * scale;
     const bh = cover.height * scale;
