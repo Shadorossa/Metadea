@@ -986,30 +986,36 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
   background: var(--bg-elevated) !important;
 }
 
-[data-theme="newspaper-dark"] .list-settings-segmented {
+[data-theme="newspaper-dark"] .list-settings-type-btn {
   border-radius: 0 !important;
   border: 1px solid var(--border-color) !important;
   background: var(--bg-primary) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
 }
 
-[data-theme="newspaper-dark"] .list-settings-segment {
+[data-theme="newspaper-dark"] .list-settings-type-dropdown {
+  border-radius: 0 !important;
+  border: 2px solid var(--border-color) !important;
+  background: var(--bg-elevated) !important;
+}
+
+[data-theme="newspaper-dark"] .list-settings-type-option {
   border-radius: 0 !important;
   font-family: 'Georgia', 'Times New Roman', serif !important;
-  font-size: 0.72rem !important;
+  font-size: 0.74rem !important;
   color: var(--text-muted) !important;
 }
 
-[data-theme="newspaper-dark"] .list-settings-segment:hover:not(.list-settings-segment--disabled) {
+[data-theme="newspaper-dark"] .list-settings-type-option:hover {
   color: var(--text-main) !important;
 }
 
-[data-theme="newspaper-dark"] .list-settings-segment--active {
-  background: var(--accent) !important;
-  color: var(--bg-primary) !important;
+[data-theme="newspaper-dark"] .list-settings-type-option--active {
+  color: var(--accent) !important;
   font-weight: 700 !important;
 }
 
-[data-theme="newspaper-dark"] .list-settings-segment--disabled {
+[data-theme="newspaper-dark"] .list-settings-type-btn--disabled {
   opacity: 0.35 !important;
 }
 

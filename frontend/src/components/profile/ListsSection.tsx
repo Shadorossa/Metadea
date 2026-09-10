@@ -193,6 +193,8 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(list.name);
@@ -234,12 +236,29 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     const handleClickOutside = (e: MouseEvent) => {
       if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
         setSettingsOpen(false);
+        setTypeMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [settingsOpen]);
-  useEscapeKey(settingsOpen, () => setSettingsOpen(false));
+
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) {
+        setTypeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [typeMenuOpen]);
+
+  useEscapeKey(settingsOpen, () => {
+    setSettingsOpen(false);
+    setTypeMenuOpen(false);
+  });
+  useEscapeKey(typeMenuOpen, () => setTypeMenuOpen(false));
 
   // Native HTML5 drag & drop instead of a hand-rolled mouse-follow drag:
   // the browser/OS renders the drag ghost that tracks the cursor, entirely
@@ -521,23 +540,51 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
                   <div className="list-settings-section">
                     <div className="list-settings-row">
                       <span className="list-settings-item-title">{p.lists_type}</span>
-                      <div className="list-settings-segmented">
+                      <div className="list-settings-type-wrapper" ref={typeMenuRef}>
                         <button
                           type="button"
-                          className={`list-settings-segment${listType === 'media' ? ' list-settings-segment--active' : ''}${!canChangeType && listType !== 'media' ? ' list-settings-segment--disabled' : ''}`}
-                          onClick={() => handleSetListType('media')}
-                          disabled={!canChangeType && listType !== 'media'}
+                          className={`list-settings-type-btn${typeMenuOpen ? ' list-settings-type-btn--active' : ''}${!canChangeType ? ' list-settings-type-btn--disabled' : ''}`}
+                          onClick={() => { if (canChangeType) setTypeMenuOpen(o => !o); }}
+                          disabled={!canChangeType}
+                          title={!canChangeType ? p.lists_type_locked_hint : undefined}
                         >
-                          {p.lists_type_media}
+                          <span className="list-settings-type-label">
+                            {listType === 'characters'
+                              ? p.lists_type_characters
+                              : listType === 'episodes'
+                                ? (p.lists_type_episodes || 'Episodios')
+                                : p.lists_type_media}
+                          </span>
+                          <svg className="list-settings-type-caret" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
                         </button>
-                        <button
-                          type="button"
-                          className={`list-settings-segment${listType === 'characters' ? ' list-settings-segment--active' : ''}${!canChangeType && listType !== 'characters' ? ' list-settings-segment--disabled' : ''}`}
-                          onClick={() => handleSetListType('characters')}
-                          disabled={!canChangeType && listType !== 'characters'}
-                        >
-                          {p.lists_type_characters}
-                        </button>
+                        {typeMenuOpen && (
+                          <div className="list-settings-type-dropdown">
+                            {[
+                              { id: 'media', label: p.lists_type_media },
+                              { id: 'characters', label: p.lists_type_characters },
+                              { id: 'episodes', label: p.lists_type_episodes || 'Episodios' },
+                            ].map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                className={`list-settings-type-option${listType === opt.id ? ' list-settings-type-option--active' : ''}`}
+                                onClick={() => {
+                                  handleSetListType(opt.id);
+                                  setTypeMenuOpen(false);
+                                }}
+                              >
+                                <span className="list-settings-type-option-text">{opt.label}</span>
+                                {listType === opt.id && (
+                                  <svg className="list-settings-type-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

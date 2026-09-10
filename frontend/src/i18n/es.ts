@@ -136,6 +136,7 @@ export const es = {
     lists_type: 'Tipo',
     lists_type_media: 'Obras',
     lists_type_characters: 'Personajes',
+    lists_type_episodes: 'Episodios',
     lists_type_locked_hint: 'Vacía la lista para cambiar el tipo',
     lists_add_characters: 'Añadir personajes',
     lists_characters_count: 'personajes',

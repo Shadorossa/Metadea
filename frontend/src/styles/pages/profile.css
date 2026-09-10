@@ -3573,45 +3573,98 @@
   color: var(--text-dim);
 }
 
-.list-settings-segmented {
-  display: flex;
-  border-radius: calc(var(--radius-sm) - 2px);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  padding: 2px;
-  gap: 2px;
-  flex-shrink: 0;
+.list-settings-type-wrapper {
+  position: relative;
+  display: inline-flex;
 }
 
-.list-settings-segment {
-  flex: 1;
-  padding: 0.22rem 0.45rem;
-  font-size: 0.72rem;
+.list-settings-type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.74rem;
   font-weight: 500;
   font-family: inherit;
-  white-space: nowrap;
+  color: var(--text-main);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.list-settings-type-btn:hover:not(.list-settings-type-btn--disabled),
+.list-settings-type-btn--active {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+
+.list-settings-type-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.list-settings-type-label {
+  line-height: 1;
+}
+
+.list-settings-type-caret {
+  color: var(--text-dim);
+  transition: transform 0.15s ease;
+}
+
+.list-settings-type-btn--active .list-settings-type-caret {
+  transform: rotate(180deg);
+}
+
+.list-settings-type-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 60;
+  min-width: 140px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 18px -2px rgba(0, 0, 0, 0.45);
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list-settings-type-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.32rem 0.5rem;
+  font-size: 0.74rem;
+  font-family: inherit;
   color: var(--text-dim);
   background: transparent;
   border: none;
-  border-radius: calc(var(--radius-sm) - 4px);
+  border-radius: calc(var(--radius-sm) - 2px);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-  text-align: center;
+  transition: color 0.12s, background 0.12s;
+  text-align: left;
 }
 
-.list-settings-segment:hover:not(.list-settings-segment--disabled) {
+.list-settings-type-option:hover {
   color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.list-settings-segment--active {
-  background: var(--accent);
-  color: #fff;
+.list-settings-type-option--active {
+  color: var(--accent);
   font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.list-settings-segment--disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.list-settings-type-check {
+  color: var(--accent);
+  flex-shrink: 0;
 }
 
 .list-settings-hint {

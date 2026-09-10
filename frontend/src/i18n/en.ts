@@ -136,6 +136,7 @@ export const en = {
     lists_type: 'Type',
     lists_type_media: 'Works',
     lists_type_characters: 'Characters',
+    lists_type_episodes: 'Episodes',
     lists_type_locked_hint: 'Empty the list to change its type',
     lists_add_characters: 'Add characters',
     lists_characters_count: 'characters',
