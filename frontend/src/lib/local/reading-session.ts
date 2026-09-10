@@ -1,7 +1,7 @@
 // Global "now reading" stand-by state -- the reading-type counterpart to
 // playback-service.ts's PlaybackState. Stored at module level (survives Astro
 // page transitions) so NowReadingBar can show the paused session and resume.
-import { useSyncExternalStore } from 'react';
+import { createExternalStore } from '../shared/external-store';
 import type { LibraryEntry } from '../tauri';
 
 export interface ReadingSessionState {
@@ -18,53 +18,26 @@ export interface ReadingSessionState {
   totalSpreads: number;
 }
 
-let state: ReadingSessionState | null = null;
-let resumeOpen = false;
-const listeners = new Set<() => void>();
+const sessionStore = createExternalStore<ReadingSessionState | null>(null);
+const resumeOpenStore = createExternalStore(false);
 
-function notify() {
-  for (const cb of listeners) cb();
-}
-
-export function subscribeReadingSession(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => { listeners.delete(cb); };
-}
-
-export function getReadingSession(): ReadingSessionState | null {
-  return state;
-}
-
-export function getResumeOpen(): boolean {
-  return resumeOpen;
-}
-
-export function useReadingSession(): ReadingSessionState | null {
-  return useSyncExternalStore(subscribeReadingSession, getReadingSession, () => null);
-}
-
-export function useResumeOpen(): boolean {
-  return useSyncExternalStore(subscribeReadingSession, getResumeOpen, () => false);
-}
-
-export function setReadingSession(next: ReadingSessionState | null): void {
-  state = next;
-  notify();
-}
+export const subscribeReadingSession = sessionStore.subscribe;
+export const getReadingSession = sessionStore.get;
+export const getResumeOpen = resumeOpenStore.get;
+export const useReadingSession = sessionStore.use;
+export const useResumeOpen = resumeOpenStore.use;
+export const setReadingSession = sessionStore.set;
 
 export function clearReadingSession(): void {
-  state = null;
-  resumeOpen = false;
-  notify();
+  sessionStore.set(null);
+  resumeOpenStore.set(false);
 }
 
 export function openResumeModal(): void {
-  if (!state) return;
-  resumeOpen = true;
-  notify();
+  if (!sessionStore.get()) return;
+  resumeOpenStore.set(true);
 }
 
 export function closeResumeModal(): void {
-  resumeOpen = false;
-  notify();
+  resumeOpenStore.set(false);
 }

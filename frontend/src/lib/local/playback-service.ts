@@ -8,12 +8,12 @@
 // the same way any other imported module's state does under Astro's
 // ClientRouter, which swaps DOM without tearing down the JS module graph)
 // that keeps polling VLC and saving progress regardless of what's mounted.
-import { useSyncExternalStore } from 'react';
 import { saveLibraryEntry, saveEpisodeHistoryEntry, addSequelToPlanning, updateDiscordPresence, resetDiscordPresence, type LibraryEntry } from '../tauri';
 import { getResumePosition, saveResumePosition, clearResumePosition } from '../tauri/resume-position';
 import { playFileWithVlc, getVlcPlaybackStatus, sendVlcCommand, type VlcPlaybackStatus } from '../tauri/anime-local';
 import { syncToAniList, isAniListType } from '../media/anilist-sync';
 import { toSmallCover } from '../shared/small-cover';
+import { createExternalStore } from '../shared/external-store';
 
 export interface PlaybackQueueItem {
   episodeNumber: number;
@@ -118,8 +118,14 @@ function detectTrackBoundary(status: VlcPlaybackStatus, current: PlaybackQueueIt
   return Math.abs(status.length - knownLength) > 2;
 }
 
+// The reactive (subscribe/useSyncExternalStore) half of this module's
+// pub/sub — internal code below still reads/writes the plain `state`
+// variable directly everywhere, same as before; the store only mirrors it
+// at each point `notify()` already ran, which is exactly the same set of
+// points external subscribers previously learned about a change at.
+const playbackStore = createExternalStore<PlaybackState | null>(null);
+
 let state: PlaybackState | null = null;
-const listeners = new Set<() => void>();
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 // Mirrors of per-session state pollTick needs across ticks — reset whenever
 // the active episode changes (queue advance or a fresh startQueuePlayback).
@@ -133,7 +139,7 @@ let lastPresenceStart: number | null = null;
 let lastMarkedAt = 0;
 
 function notify() {
-  for (const cb of listeners) cb();
+  playbackStore.set(state);
 }
 
 // Persists just enough to rebuild the bar after an F5 — a full reload wipes
@@ -158,24 +164,15 @@ function setState(next: PlaybackState | null) {
   notify();
 }
 
-export function subscribePlayback(cb: () => void): () => void {
-  listeners.add(cb);
-  return () => { listeners.delete(cb); };
-}
-
-export function getPlaybackState(): PlaybackState | null {
-  return state;
-}
+export const subscribePlayback = playbackStore.subscribe;
+export const getPlaybackState = playbackStore.get;
 
 // React binding — any component can call this to reactively read the
 // current playback state without needing its own subscribe/useEffect glue.
 // NowPlayingBar renders via an Astro island (client:load), which does an
-// initial SSR pass on the server — getServerSnapshot must be given
-// explicitly there since there's obviously no VLC session to report; it just
-// renders as "nothing playing" until the client takes over and subscribes.
-export function usePlaybackState(): PlaybackState | null {
-  return useSyncExternalStore(subscribePlayback, getPlaybackState, () => null);
-}
+// initial SSR pass on the server, reporting "nothing playing" (the store's
+// own initial value) until the client takes over and subscribes.
+export const usePlaybackState = playbackStore.use;
 
 async function markEpisodeWatched(episodeNumber: number): Promise<void> {
   if (!state || markedEpisode === episodeNumber) return;
