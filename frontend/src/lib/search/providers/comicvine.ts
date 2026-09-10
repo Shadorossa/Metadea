@@ -31,19 +31,53 @@ function yearFrom(volume: ComicVineVolume): number | null {
 // nothing more reliable to go on.
 const COLLECTED_EDITION_REGEX = /\b(deluxe edition|omnibus|compendium|complete collection|collected edition|absolute edition|trade paperback|tpb|box set|anthology)\b/i;
 
-export function isCollectedEditionVolume(v: ComicVineVolume): boolean {
-  return COLLECTED_EDITION_REGEX.test(v.name) && (v.count_of_issues ?? 0) <= 3;
+// Comic Vine doesn't always bother adding any of the wording above to a
+// reprint's name either — a hardcover collection can be titled exactly the
+// same as the run it collects (e.g. "Batman: White Knight" appearing
+// twice: an 8-issue limited series and, separately, a single-tome
+// "complete volume" reprint under the identical name). A low issue count
+// of its own is the only remaining signal in that case.
+const NO_KEYWORD_ISSUE_CAP = 3;
+
+type VolumeIdentity = Pick<ComicVineVolume, 'id' | 'name' | 'count_of_issues'>;
+
+export function isCollectedEditionVolume(v: VolumeIdentity): boolean {
+  return COLLECTED_EDITION_REGEX.test(v.name) && (v.count_of_issues ?? 0) <= NO_KEYWORD_ISSUE_CAP;
 }
 
 // Strips the matched reprint-format wording (plus whatever punctuation/
 // connector was sitting right before it, e.g. ": ", " - ") so "Batman:
 // White Knight: The Deluxe Edition" and "Batman: White Knight" reduce to
-// the same comparable base name.
+// the same comparable base name. A title with no such wording (the
+// same-name case above) reduces to itself, trimmed/lowercased.
 export function collectedEditionBaseName(name: string): string {
   return name
     .replace(new RegExp(`[:\\-–—]?\\s*(the\\s+)?${COLLECTED_EDITION_REGEX.source}.*$`, 'i'), '')
     .trim()
     .toLowerCase();
+}
+
+// True when `v` looks like a reprint/collected edition of `original` —
+// either by the keyword+base-name match above, or by sharing `original`'s
+// exact name while carrying far fewer issues of its own (the no-wording
+// case). The issue-count cap keeps this from misfiring on an ongoing or
+// rebooted series that legitimately shares an older run's exact title and
+// simply hasn't caught up in issue count yet — capped low enough that a
+// real ongoing series would only ever false-positive in its first couple
+// of issues, and even then only against another volume with the exact
+// same name, which is already a narrow coincidence.
+export function isReprintOf(v: VolumeIdentity, original: VolumeIdentity): boolean {
+  if (v.id === original.id) return false;
+  const vCount = v.count_of_issues ?? 0;
+  const originalCount = original.count_of_issues ?? 0;
+  if (isCollectedEditionVolume(v) && collectedEditionBaseName(v.name) === collectedEditionBaseName(original.name)) {
+    return true;
+  }
+  if (vCount > 0 && vCount <= NO_KEYWORD_ISSUE_CAP && originalCount > vCount &&
+      v.name.trim().toLowerCase() === original.name.trim().toLowerCase()) {
+    return true;
+  }
+  return false;
 }
 
 function mapVolume(volume: ComicVineVolume): SearchResult {
@@ -140,19 +174,17 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
   // Hide a collected/deluxe/omnibus reprint from the results list when the
   // "real" numbered-issues run it reprints is sitting right there in the
   // same page too — keeps search from showing both "Batman: White Knight"
-  // and "Batman: White Knight: The Deluxe Edition" as if they were
-  // unrelated comics. Only when a sibling is actually present, though: a
-  // reprint with no matching run in this page of results (e.g. the run
-  // itself never got its own volume, or just didn't rank into this page)
-  // still needs to show up, or it'd vanish from search entirely with no
-  // way to find it. The reprint itself isn't lost either way — it's
+  // and "Batman: White Knight: The Deluxe Edition" (or even two volumes
+  // both named exactly "Batman: White Knight" — see isReprintOf) as if
+  // they were unrelated comics. Only when a sibling is actually present,
+  // though: a reprint with no matching run in this page of results (e.g.
+  // the run itself never got its own volume, or just didn't rank into this
+  // page) still needs to show up, or it'd vanish from search entirely with
+  // no way to find it. The reprint itself isn't lost either way — it's
   // resurfaced as an "Editions" relation on the run's own page, see
   // comic-collected-editions.ts.
-  const baseNames = new Set(
-    candidates.filter(v => !isCollectedEditionVolume(v)).map(v => collectedEditionBaseName(v.name)),
-  );
   const results = candidates
-    .filter(v => !isCollectedEditionVolume(v) || !baseNames.has(collectedEditionBaseName(v.name)))
+    .filter(v => !candidates.some(other => isReprintOf(v, other)))
     .map(mapVolume);
 
   return {

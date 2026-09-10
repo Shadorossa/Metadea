@@ -564,7 +564,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             // type, so whichever finished last would silently wipe out the
             // other's additions.
             if (full.type === 'comic') {
-              fetchComicCollectedEditions(currentId, relations ?? full.relations, tm.relations.EDITIONS, full.titleMain).then(editionRelations => {
+              fetchComicCollectedEditions(currentId, relations ?? full.relations, tm.relations.EDITIONS, full.titleMain, full.totalCount).then(editionRelations => {
                 if (cancelled || !editionRelations) return;
                 patchCachedRelations(currentId, editionRelations);
                 patchIfCurrent({ relations: editionRelations });
