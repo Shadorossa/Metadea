@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchMediaEpisodes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
+import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
 import type { LibraryEntry, MediaEpisode } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
@@ -548,13 +548,29 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               patchIfCurrent({ genreDots, genreTagDots });
             }
 
-            if (!relations) return;
-            patchCachedRelations(currentId, relations);
-            patchIfCurrent({ relations });
-            // Issues used to only ever land in the session cache — never
-            // media_relations — so they never showed up as editable
-            // relations in the collaborative catalog editor either.
-            mergeAndPersistRelations(currentId, relations).catch(console.error);
+            if (relations) {
+              patchCachedRelations(currentId, relations);
+              patchIfCurrent({ relations });
+              // Issues used to only ever land in the session cache — never
+              // media_relations — so they never showed up as editable
+              // relations in the collaborative catalog editor either.
+              mergeAndPersistRelations(currentId, relations).catch(console.error);
+            }
+
+            // Chained (not a separate top-level fetch) so it builds off
+            // whatever fetchComicIssues just resolved rather than racing it
+            // — both would otherwise start from the same `full.relations`
+            // snapshot and independently strip+append their own relation
+            // type, so whichever finished last would silently wipe out the
+            // other's additions.
+            if (full.type === 'comic') {
+              fetchComicCollectedEditions(currentId, relations ?? full.relations, tm.relations.EDITIONS, full.titleMain).then(editionRelations => {
+                if (cancelled || !editionRelations) return;
+                patchCachedRelations(currentId, editionRelations);
+                patchIfCurrent({ relations: editionRelations });
+                mergeAndPersistRelations(currentId, editionRelations).catch(console.error);
+              });
+            }
           });
         }
 

@@ -27,15 +27,17 @@ import {
 import type { ProposalBundle } from '../github/submitCollaborativeProposal';
 import { fetchBookEditions } from './book-editions';
 import { fetchComicIssues } from './comic-issues';
+import { fetchComicCollectedEditions } from './comic-collected-editions';
 import { fetchMediaEpisodes } from './episode-list';
 
 // Re-exported so callers keep one import path despite the split into
-// media-cache/media-relations/catalog-mapper/book-editions/comic-issues/episode-list.
+// media-cache/media-relations/catalog-mapper/book-editions/comic-issues/
+// comic-collected-editions/episode-list.
 export {
   patchCachedRelations, patchCachedCharacters, invalidateCachedMediaData, CACHE_PREFIX,
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
-  fetchBookEditions, fetchComicIssues, fetchMediaEpisodes,
+  fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes,
 };
 export type { ComicIssuesResult } from './comic-issues';
 

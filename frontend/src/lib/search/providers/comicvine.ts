@@ -20,6 +20,32 @@ function yearFrom(volume: ComicVineVolume): number | null {
   return Number.isFinite(y) ? y : null;
 }
 
+// Comic Vine has no API field for "this volume collects/reprints that
+// other volume" (its website's own "Collected Editions" box on a volume
+// page is curated wiki data, not exposed via the public API — confirmed
+// against their docs) — so a collected/deluxe/omnibus reprint of an
+// ongoing or limited series shows up as its own unrelated volume in
+// search, indistinguishable from the "real" numbered-issues run except by
+// name and issue count. Same best-effort heuristic approach as isManga()
+// below: a title match on common reprint-format wording, since there's
+// nothing more reliable to go on.
+const COLLECTED_EDITION_REGEX = /\b(deluxe edition|omnibus|compendium|complete collection|collected edition|absolute edition|trade paperback|tpb|box set|anthology)\b/i;
+
+export function isCollectedEditionVolume(v: ComicVineVolume): boolean {
+  return COLLECTED_EDITION_REGEX.test(v.name) && (v.count_of_issues ?? 0) <= 3;
+}
+
+// Strips the matched reprint-format wording (plus whatever punctuation/
+// connector was sitting right before it, e.g. ": ", " - ") so "Batman:
+// White Knight: The Deluxe Edition" and "Batman: White Knight" reduce to
+// the same comparable base name.
+export function collectedEditionBaseName(name: string): string {
+  return name
+    .replace(new RegExp(`[:\\-–—]?\\s*(the\\s+)?${COLLECTED_EDITION_REGEX.source}.*$`, 'i'), '')
+    .trim()
+    .toLowerCase();
+}
+
 function mapVolume(volume: ComicVineVolume): SearchResult {
   return {
     externalId:   `comic:${volume.id}`,
@@ -109,8 +135,24 @@ export async function searchComics(searchQuery: string, _signal: AbortSignal, pa
     throw new Error(message);
   }
 
-  const results = pageResult.volumes
-    .filter(v => coverUrlFrom(v) && !isManga(v))
+  const candidates = pageResult.volumes.filter(v => coverUrlFrom(v) && !isManga(v));
+
+  // Hide a collected/deluxe/omnibus reprint from the results list when the
+  // "real" numbered-issues run it reprints is sitting right there in the
+  // same page too — keeps search from showing both "Batman: White Knight"
+  // and "Batman: White Knight: The Deluxe Edition" as if they were
+  // unrelated comics. Only when a sibling is actually present, though: a
+  // reprint with no matching run in this page of results (e.g. the run
+  // itself never got its own volume, or just didn't rank into this page)
+  // still needs to show up, or it'd vanish from search entirely with no
+  // way to find it. The reprint itself isn't lost either way — it's
+  // resurfaced as an "Editions" relation on the run's own page, see
+  // comic-collected-editions.ts.
+  const baseNames = new Set(
+    candidates.filter(v => !isCollectedEditionVolume(v)).map(v => collectedEditionBaseName(v.name)),
+  );
+  const results = candidates
+    .filter(v => !isCollectedEditionVolume(v) || !baseNames.has(collectedEditionBaseName(v.name)))
     .map(mapVolume);
 
   return {
