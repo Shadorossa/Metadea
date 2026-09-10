@@ -13,14 +13,6 @@
     {
       "media_external_id": "game:1985",
       "related_media_external_id": "game:5328",
-      "relation_type": "STANDALONE",
-      "type_label": "Standalone Expansion",
-      "title": "Metal Gear Solid V: Ground Zeroes",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v88.jpg"
-    },
-    {
-      "media_external_id": "game:1985",
-      "related_media_external_id": "game:5328",
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Metal Gear Solid V: Ground Zeroes",
@@ -29,6 +21,6 @@
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Metal gear"
+  "saga_name": "Metal gear",
+  "story_arcs": []
 }
