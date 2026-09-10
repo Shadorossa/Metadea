@@ -492,7 +492,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
         return;
       }
       const seasonMap = await resolveSeasonExternalIds(item.externalId, item.title, itemSeason);
-      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap);
+      const plan = buildLocateRenamePlan(entries, item.title, item.externalId, itemSeason, seasonMap, item.libraryEntry.type);
       const relatedMatches = await findRelatedSiblingMatches(parent, normalizedPicked);
       setLocatePreview({ pickedPath: normalizedPicked, parentDir: parent, plan, relatedMatches });
     } catch (err) {
@@ -585,7 +585,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
     const titleSanitized = sanitizeForFilename(item.title);
     const episodeTitle = info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '';
     const ext = oldName.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
-    const parts = [formatEpisodeLabel(itemSeason, episode), titleSanitized, episodeTitle].filter(Boolean);
+    const label = formatEpisodeLabel(itemSeason, episode, item.libraryEntry.type);
+    const parts = [label, titleSanitized, episodeTitle].filter(Boolean);
     const newName = `${parts.join(' - ')} [${tag}]${ext}`;
 
     setLocateFilePreview({ container, oldName, newName });
@@ -724,6 +725,8 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     : readingProgress
                     ? (isSingleEpisode
                       ? `Seguir por la página ${readingProgress.pageNumber}`
+                      : item.libraryEntry.type === 'comic'
+                      ? `Seguir por la página ${readingProgress.pageNumber} del número ${nextNumber}`
                       : `Seguir por la página ${readingProgress.pageNumber} del volumen ${nextNumber}`)
                     : 'Empezar a leer'}
                 </button>
@@ -812,15 +815,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                           {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
                             {isSingleEpisode
                               ? (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name))
-                              : isReading
-                              ? `Vol. ${nextNumber} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`
-                              : `${formatEpisodeLabel(itemSeason, nextNumber)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
+                              : `${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
                           </strong>
                         </>
                       ) : (
                         isMovieFormat ? 'Película no encontrada'
                           : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado'
                           : mangaTomosMismatch ? `Se esperaban exactamente ${mangaTotalVols} tomos en la carpeta (encontrados: ${mediaFiles.length})`
+                          : item.libraryEntry.type === 'comic' ? `Próximo número (${nextNumber}) no encontrado`
                           : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
                           : `Próximo episodio (${nextNumber}) no encontrado`
                       )}
@@ -983,7 +985,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {readerOpen && playPath && nextFile && (
         <ComicReaderModal
           externalId={item.externalId}
-          title={isSingleEpisode ? item.title : `${item.title} - ${isReading ? `Vol. ${nextNumber}` : formatEpisodeLabel(itemSeason, nextNumber)}`}
+          title={isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`}
           filePath={playPath}
           episodeNumber={nextNumber}
           totalCount={totalCount}
@@ -994,7 +996,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
           onStandBy={(spreadIndex, totalSpreads, pageCount) => {
             setReadingSession({
               externalId: item.externalId,
-              title: isSingleEpisode ? item.title : `${item.title} - ${isReading ? `Vol. ${nextNumber}` : formatEpisodeLabel(itemSeason, nextNumber)}`,
+              title: isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber, item.libraryEntry.type)}`,
               cover: item.cover,
               filePath: playPath,
               episodeNumber: nextNumber,

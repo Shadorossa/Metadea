@@ -196,22 +196,20 @@ export function findMatchingFile(
 // "SxxExx" instead of a bare episode number — consistent with how a lot of
 // the source filenames themselves already label things (e.g. "1 - Eizouken
 // ni wa Te wo Dasu na! - S01E01"), even for a single-season show where the
-// season would otherwise just be implied.
-export function formatEpisodeLabel(season: number | null, episode: number): string {
+export function formatEpisodeLabel(season: number | null, episode: number, mediaType?: string | null): string {
   const pad = (n: number) => String(n).padStart(2, '0');
+  if (mediaType === 'lnovel' || mediaType === 'manga' || mediaType === 'book') {
+    return `Vol.${pad(episode)}`;
+  }
+  if (mediaType === 'comic') {
+    return `No.${pad(episode)}`;
+  }
+  if (mediaType === 'movie') {
+    return '';
+  }
   return `S${pad(season ?? 1)}E${pad(episode)}`;
 }
 
-// UI-facing fallback for when extractEpisodeInfo found no episodeTitle to
-// show (e.g. "[SubsPlease] Burn the Witch - #0.8 (1080p) [6CE13449].mkv",
-// where nothing meaningful follows the "#0.8" marker) — strips the same
-// release-group/quality-tag noise extractEpisodeInfo already strips
-// internally before matching, so the raw filename (brackets, resolution,
-// hash, extension and all) is never what ends up on screen.
-// Rip/quality/codec tags that show up as bare words (not wrapped in [] or
-// () — those are already stripped above) after the real title, e.g.
-// "Sacco E Vanzetti 1080p BDRip x264" — everything from the first match
-// onward is release noise, not part of the title.
 const QUALITY_NOISE = /\b(2160p|1080p|720p|480p|360p|4k|bdrip|brrip|dvdrip|webrip|web-?dl|hdrip|hdtv|bluray|blu-ray|x264|x265|h\.?264|h\.?265|hevc|avc|xvid|divx|aac\d?|flac\d?|ac3|dts|\d{1,2}bit)\b/i;
 
 export function cleanFilenameForDisplay(filename: string): string {
@@ -226,10 +224,8 @@ export function cleanFilenameForDisplay(filename: string): string {
   return cleaned
     .replace(/\s+/g, ' ')
     .trim()
-    // Also drop a leading bare episode number ("04 - Show Name" -> "Show
-    // Name") — already shown up front via formatEpisodeLabel, so leaving it
-    // here would just show the same number twice.
     .replace(/^\d{1,4}[\s\-:._]+/, '')
+    .replace(/^(?:s\d{1,2}e\d{1,4}|vol\.?\s*\d{1,4}|no\.?\s*\d{1,4}|tomo\.?\s*\d{1,4})[\s\-:._]+/i, '')
     .replace(/[\s\-:._]+$/, '');
 }
 
@@ -244,8 +240,9 @@ const EPISODE_MARKERS = [
   /(?:^|[^0-9])E(?:p(?:isode)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^0-9])cap(?:[ií]tulo)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^0-9])ch(?:apter)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])v(?:ol(?:[uú]men|ume)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
-  /(?:^|[^0-9])tomo[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])v(?:ol(?:[uú]men|ume)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])tomo[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
+  /(?:^|[^a-z0-9])n(?:[oº]|um(?:ber|ero)?)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^0-9])OVA[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   /(?:^|[^0-9])SP(?:ecial)?[.\s_-]?(\d{1,4})(?:$|[^0-9])/i,
   // "#0.8" style specials (SubsPlease and others number these with a decimal
@@ -443,10 +440,11 @@ export function buildLocateRenamePlan(
   externalId: string,
   season: number | null,
   seasonMap?: SeasonExternalIdMap,
+  mediaType?: string | null,
 ): LocateRenamePlan {
   const mediaFiles = entries
     .filter(e => !e.is_dir && MEDIA_EXTENSIONS.test(e.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
   const titleSanitized = sanitizeForFilename(workTitle);
   let nextSequential = 1;
@@ -455,28 +453,20 @@ export function buildLocateRenamePlan(
 
   const fileRenames = mediaFiles.map(entry => {
     const info = extractEpisodeInfo(entry.name);
-    // Decimal specials (see the "#0.8" marker) round to the nearest whole
-    // episode for the SxxExx label — a real fractional episode number isn't
-    // representable in that format, and this is a rare enough case that an
-    // approximate label beats not labeling it at all.
     const episode = info ? Math.round(info.episode) : nextSequential;
     nextSequential = Math.max(nextSequential, episode + 1);
-    // A file's OWN season marker (e.g. the original "S02 E01" in a folder
-    // that mixes two seasons' episodes together) always wins over the
-    // caller's single `season` — that param is only a fallback for files
-    // that carry no season marker of their own. Blindly stamping every file
-    // with the same `season` mislabeled a real mixed-season folder as if it
-    // were all one season, with duplicate SxxExx numbers to boot.
     const fileSeason = info?.season ?? season;
     const seasonInfo = fileSeason != null ? seasonMap?.[fileSeason] : undefined;
     const fileExternalId = seasonInfo?.externalId ?? externalId;
     const fileTitleSanitized = seasonInfo ? sanitizeForFilename(seasonInfo.title) : titleSanitized;
     usedExternalIds.add(fileExternalId);
 
+    const fileType = mediaType ?? fileExternalId.split(':')[0] ?? null;
     const tag = encodeExternalIdForFilename(fileExternalId);
     const ext = entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
     const episodeTitle = info?.episodeTitle ? sanitizeForFilename(info.episodeTitle) : '';
-    const parts = [formatEpisodeLabel(fileSeason, episode), fileTitleSanitized, episodeTitle].filter(Boolean);
+    const label = formatEpisodeLabel(fileSeason, episode, fileType);
+    const parts = [label, fileTitleSanitized, episodeTitle].filter(Boolean);
     const base = `${parts.join(' - ')} [${tag}]`;
 
     let newName = `${base}${ext}`;
@@ -589,12 +579,15 @@ export function matchRelationsToFiles(
       const tag = encodeExternalIdForFilename(rel.related_media_external_id);
       const ext = best.entry.name.match(/\.[a-z0-9]+$/i)?.[0] ?? '';
       const titleSanitized = sanitizeForFilename(rel.title);
+      const relType = rel.related_media_external_id.split(':')[0] ?? null;
+      const label = formatEpisodeLabel(null, 1, relType);
+      const parts = [label, titleSanitized].filter(Boolean);
       results.push({
         relatedExternalId: rel.related_media_external_id,
         relatedTitle: rel.title,
         containerPath: best.containerPath,
         entry: best.entry,
-        newName: `${formatEpisodeLabel(null, 1)} - ${titleSanitized} [${tag}]${ext}`,
+        newName: `${parts.join(' - ')} [${tag}]${ext}`,
       });
     }
   }
