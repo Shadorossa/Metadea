@@ -126,7 +126,33 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
   // 'MOVIE', tracked right alongside the TV series. Checking format (not
   // just libraryEntry.type) is what actually catches that case.
   const isMovieFormat = item.libraryEntry.type === 'movie' || item.catalogEntry?.format === 'MOVIE';
-  const isSingleEpisode = item.catalogEntry?.total_count === 1 || isMovieFormat;
+
+  // A comic tracked against the numbered-issues run (total_count > 1, since
+  // that's what search actually surfaces — see comicvine.ts's collected-
+  // edition filter) can still be sitting on disk as a single collected-
+  // edition CBR/CBZ, not one file per issue. No local flag says so directly
+  // — the only signal available is whether an "Editions" relation (see
+  // comic-collected-editions.ts) points at a collection with exactly 1
+  // issue of its own, which is as close to "this whole run also exists as
+  // one tomo" as the data gets.
+  const [hasSingleTomoEdition, setHasSingleTomoEdition] = useState(false);
+  useEffect(() => {
+    setHasSingleTomoEdition(false);
+    if (item.libraryEntry.type !== 'comic') return;
+    let cancelled = false;
+    (async () => {
+      const relations = await getMediaRelationsForEditor(item.externalId).catch(() => []);
+      const editions = relations.filter(r => r.relation_type === 'EDITIONS');
+      for (const rel of editions) {
+        if (cancelled) return;
+        const entry = await getCatalogEntry(rel.related_media_external_id).catch(() => null);
+        if (entry?.total_count === 1) { if (!cancelled) setHasSingleTomoEdition(true); return; }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [item.externalId, item.libraryEntry.type]);
+
+  const isSingleEpisode = item.catalogEntry?.total_count === 1 || isMovieFormat || hasSingleTomoEdition;
 
   // Same "not released yet" rule LocalMediaSection uses to group things into
   // "Sin estrenar" — null release_year counts as unreleased too, since
@@ -303,8 +329,14 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       // A single-episode work's lone file often has no episode number
       // anywhere in its name (a movie filename has nothing to number) — the
       // numeric match above always misses it, but there's nothing else it
-      // could be.
-      ?? (isSingleEpisode ? soleMediaFile(subEntries) : null)
+      // could be. Also tried for any reading-type work (not gated on
+      // isSingleEpisode) when the matched folder holds exactly one media
+      // file regardless of what total_count says it should have — e.g. a
+      // folder matched by name for a comic whose loose-issue PDFs total
+      // 8 (total_count), but actually holds one single-tomo compiled PDF
+      // instead. soleMediaFile only ever returns non-null when there's
+      // exactly one candidate, so this never guesses between several.
+      ?? ((isSingleEpisode || isReadingType(item.libraryEntry.type)) ? soleMediaFile(subEntries) : null)
     : null);
   // Filenames like "... S01 E01 - SA - Section-9 ...mkv" carry the actual
   // episode title right there — show that instead of the raw filename when
@@ -667,7 +699,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   type="button"
                   className="local-game-detail-play"
                   disabled={isUnreleased || !playPath}
-                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : 'No se encontró el archivo del próximo capítulo/número'}
+                  title={isUnreleased ? releaseLabel : playPath ? undefined : isCaughtUp ? 'Ya estás al día' : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado' : 'No se encontró el archivo del próximo capítulo/número'}
                   onClick={() => setReaderOpen(true)}
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -719,12 +751,12 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     className="local-media-detail-locate-btn"
                     onClick={() => {
                       // "Elegir un archivo suelto" only makes sense for a
-                      // single-episode/movie work (totalCount === 1) — for
+                      // single-episode/movie/single-tomo-comic work — for
                       // anything else there's no ambiguity to offer a choice
                       // for, so the icon goes straight to "elegir carpeta"
                       // instead of showing a dropdown with one option that's
                       // never actually the right one to pick.
-                      if (totalCount !== 1) { handleLocateFolder(); return; }
+                      if (!isSingleEpisode) { handleLocateFolder(); return; }
                       if (!locateMenuOpen) {
                         const rect = locateBtnRef.current?.getBoundingClientRect();
                         if (rect) setLocateMenuPos({ top: rect.bottom + 6, left: rect.left + rect.width / 2 });
@@ -736,7 +768,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                   >
                     {locateBusy ? <span className="spinner spinner--sm" /> : <IconFolder size={14} strokeWidth={2} />}
                   </button>
-                  {totalCount === 1 && locateMenuOpen && locateMenuPos && createPortal(
+                  {isSingleEpisode && locateMenuOpen && locateMenuPos && createPortal(
                     <div
                       className="local-media-detail-locate-menu local-media-detail-locate-menu--portal"
                       style={{ top: locateMenuPos.top, left: locateMenuPos.left }}
@@ -762,14 +794,17 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
                     <span className={`local-media-match-chip${nextFile ? ' ok' : ' fail'}`}>
                       {nextFile ? (
                         <>
-                          {t.local.next_episode_label} <strong>
-                            {isMovieFormat || totalCount === 1
+                          {isReading ? t.local.next_volume_label : t.local.next_episode_label} <strong>
+                            {isSingleEpisode
                               ? (nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name))
                               : `${formatEpisodeLabel(itemSeason, nextNumber)} - ${nextFileEpisodeTitle || cleanFilenameForDisplay(nextFile.name)}`}
                           </strong>
                         </>
                       ) : (
-                        isMovieFormat ? 'Película no encontrada' : `Próximo episodio (${nextNumber}) no encontrado`
+                        isMovieFormat ? 'Película no encontrada'
+                          : (item.libraryEntry.type === 'comic' && isSingleEpisode) ? 'Volumen no encontrado'
+                          : isReading ? `Próximo volumen (${nextNumber}) no encontrado`
+                          : `Próximo episodio (${nextNumber}) no encontrado`
                       )}
                     </span>
                   )
@@ -930,7 +965,7 @@ export function LocalMediaDetailPanel({ item, rootFolder, rootEntries, rootLoadi
       {readerOpen && playPath && nextFile && (
         <ComicReaderModal
           externalId={item.externalId}
-          title={isMovieFormat || totalCount === 1 ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`}
+          title={isSingleEpisode ? item.title : `${item.title} - ${formatEpisodeLabel(itemSeason, nextNumber)}`}
           filePath={playPath}
           episodeNumber={nextNumber}
           totalCount={totalCount}

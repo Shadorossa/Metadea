@@ -662,6 +662,7 @@ export const fr = {
     stat_achievements: 'Succès',
     no_folder_for_category: 'Aucun dossier assigné pour cette catégorie.',
     next_episode_label: 'Prochain épisode :',
+    next_volume_label: 'Prochain volume :',
     will_release_on: 'Sortira le {date}',
     will_release_soon: 'Sortira prochainement',
     episode_chapter_label: 'Épisode/chapitre',

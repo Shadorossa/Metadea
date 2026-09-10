@@ -662,6 +662,7 @@ export const ca = {
     stat_achievements: 'Assoliments',
     no_folder_for_category: 'No hi ha cap carpeta assignada per a aquesta categoria.',
     next_episode_label: 'Pròxim episodi:',
+    next_volume_label: 'Pròxim volum:',
     will_release_on: "S'estrenarà el {date}",
     will_release_soon: "S'estrenarà properament",
     episode_chapter_label: 'Episodi/capítol',

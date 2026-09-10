@@ -707,6 +707,7 @@ export const en = {
     stat_achievements: 'Achievements',
     no_folder_for_category: 'No folder assigned for this category.',
     next_episode_label: 'Next episode:',
+    next_volume_label: 'Next volume:',
     will_release_on: 'Releasing on {date}',
     will_release_soon: 'Releasing soon',
     episode_chapter_label: 'Episode/chapter',

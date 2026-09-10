@@ -170,6 +170,10 @@ commands.allow = [
   "get_social_activity",
   "get_social_monthly_history",
   "get_social_lists",
-  "get_social_list_items"
+  "get_social_list_items",
+  "get_reading_progress",
+  "save_reading_progress",
+  "clear_reading_progress",
+  "extract_comic_archive"
 ]
 

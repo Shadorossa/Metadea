@@ -662,6 +662,7 @@ export const de = {
     stat_achievements: 'Erfolge',
     no_folder_for_category: 'Für diese Kategorie ist kein Ordner zugewiesen.',
     next_episode_label: 'Nächste Episode:',
+    next_volume_label: 'Nächster Band:',
     will_release_on: 'Erscheint am {date}',
     will_release_soon: 'Erscheint demnächst',
     episode_chapter_label: 'Episode/Kapitel',

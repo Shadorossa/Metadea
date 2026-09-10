@@ -662,6 +662,7 @@ export const ru = {
     stat_achievements: 'Достижения',
     no_folder_for_category: 'Для этой категории не назначена папка.',
     next_episode_label: 'Следующий эпизод:',
+    next_volume_label: 'Следующий том:',
     will_release_on: 'Выйдет {date}',
     will_release_soon: 'Скоро выйдет',
     episode_chapter_label: 'Эпизод/глава',
