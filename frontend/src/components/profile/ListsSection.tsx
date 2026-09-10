@@ -259,10 +259,28 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     let isDragging = false;
     let didDrag = false;
 
+    // Base fixed left/top the card is pinned to once dragging starts — set
+    // once (a single layout write), never touched again. All subsequent
+    // movement happens via `transform`, which the compositor can animate
+    // without recalculating layout, so it doesn't matter how many
+    // mousemove events land in a frame.
+    let baseLeft = 0;
+    let baseTop = 0;
+
     let allCards: HTMLElement[] = [];
     let slotBoxes: { cx: number; cy: number }[] = [];
     let dragIndex = -1;
     let currentSlot = -1;
+
+    // Native mousemove can fire far more often than the display refreshes
+    // (a high-poll-rate mouse easily hits several hundred Hz vs. 60-144Hz).
+    // Each call below used to do its own layout-triggering DOM writes, so
+    // firing it once per raw event meant doing many times more layout work
+    // than the screen could ever show — that's the stutter. Instead, just
+    // remember the latest event and do the actual work at most once per
+    // animation frame.
+    let pendingEvent: MouseEvent | null = null;
+    let rafId: number | null = null;
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -282,7 +300,14 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!potentialCard) return;
+      pendingEvent = e;
+      if (rafId === null) rafId = requestAnimationFrame(processPendingMove);
+    };
+
+    const processPendingMove = () => {
+      rafId = null;
+      const e = pendingEvent;
+      if (!e || !potentialCard) return;
 
       if (!isDragging) {
         if (Math.hypot(e.clientX - downX, e.clientY - downY) < 5) return;
@@ -309,14 +334,18 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
 
         gridEl.insertBefore(placeholder, draggingCard);
 
+        baseLeft = downX - grabOffsetX;
+        baseTop = downY - grabOffsetY;
+
         draggingCard.classList.add('is-dragging-card');
         draggingCard.style.position = 'fixed';
         draggingCard.style.zIndex = '99999';
-        draggingCard.style.left = `${e.clientX - grabOffsetX}px`;
-        draggingCard.style.top = `${e.clientY - grabOffsetY}px`;
+        draggingCard.style.left = `${baseLeft}px`;
+        draggingCard.style.top = `${baseTop}px`;
         draggingCard.style.width = `${rect.width}px`;
         draggingCard.style.height = `${rect.height}px`;
         draggingCard.style.pointerEvents = 'none';
+        draggingCard.style.willChange = 'transform';
 
         document.body.style.userSelect = 'none';
         document.body.style.cursor = 'grabbing';
@@ -324,8 +353,11 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
 
       if (!draggingCard || !placeholder) return;
 
-      draggingCard.style.left = `${e.clientX - grabOffsetX}px`;
-      draggingCard.style.top = `${e.clientY - grabOffsetY}px`;
+      // transform, not left/top — left/top force a full layout recalc on
+      // every write, transform is compositor-only.
+      const dx = (e.clientX - grabOffsetX) - baseLeft;
+      const dy = (e.clientY - grabOffsetY) - baseTop;
+      draggingCard.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
 
       let targetSlot = currentSlot;
       let minDist = Infinity;
@@ -351,6 +383,11 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
     const onMouseUp = () => {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      pendingEvent = null;
 
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
@@ -370,6 +407,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
         draggingCard.style.height = '';
         draggingCard.style.pointerEvents = '';
         draggingCard.style.transform = '';
+        draggingCard.style.willChange = '';
 
         if (currentSlot !== -1 && currentSlot !== dragIndex) {
           const nextItems = [...listItemsRef.current];
@@ -413,6 +451,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
       gridEl.removeEventListener('click', onClickCapture, true);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      if (rafId !== null) cancelAnimationFrame(rafId);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
