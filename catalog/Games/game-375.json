@@ -16,7 +16,8 @@
       "relation_type": "REMAKE",
       "type_label": "Remake",
       "title": "Metal Gear Solid: The Twin Snakes",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v8c.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co1v8c.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:375",
@@ -24,7 +25,8 @@
       "relation_type": "EXPANDED_GAME",
       "type_label": "Expanded Edition",
       "title": "Metal Gear Solid: Integral",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpal.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/cobpal.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:375",
@@ -32,7 +34,8 @@
       "relation_type": "STANDALONE",
       "type_label": "Standalone Expansion",
       "title": "Metal Gear Solid: VR Missions",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co2s8n.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co2s8n.jpg",
+      "format": null
     },
     {
       "media_external_id": "game:375",
@@ -48,11 +51,11 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Metal Gear Solid 2: Sons of Liberty",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5e1c.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co5e1c.jpg"
     }
   ],
   "characters": [],
   "media_authors": [],
-  "saga_groups": {},
-  "saga_name": "Metal gear"
+  "saga_name": "Metal gear",
+  "story_arcs": []
 }
