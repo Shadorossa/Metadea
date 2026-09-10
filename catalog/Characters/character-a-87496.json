@@ -7,7 +7,7 @@
   "appearances": [
     {
       "media_external_id": "game:2136",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     },
     {
       "media_external_id": "manga:89812",
@@ -19,15 +19,15 @@
     },
     {
       "media_external_id": "game:2135",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     },
     {
       "media_external_id": "game:76888",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     },
     {
       "media_external_id": "game:228528",
-      "relation_type": "SUPPORTING"
+      "relation_type": "MAIN"
     }
   ],
   "actors": [
@@ -45,11 +45,6 @@
       "external_id": "person:a194000",
       "role": "voice",
       "language": "Spanish"
-    },
-    {
-      "external_id": "person:a95266",
-      "role": "voice",
-      "language": "English"
     },
     {
       "external_id": "person:a95266",
