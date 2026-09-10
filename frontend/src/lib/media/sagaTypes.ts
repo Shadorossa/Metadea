@@ -102,6 +102,7 @@ const LEGACY_RELATION_TYPE_LABELS: Record<string, string> = {
   'Expansion': 'EXPANSION', 'Standalone': 'STANDALONE',
   'Expanded Edition': 'EXPANDED_GAME', 'Fork': 'FORK',
   // Variantes en español que difieren del literal inglés.
+  'Expansión': 'EXPANSION',
   'Expansión de contenido': 'EXPANSION',
   'Expansión autónoma': 'STANDALONE',
   'Edición expandida': 'EXPANDED_GAME',
