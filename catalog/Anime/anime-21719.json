@@ -1,0 +1,25 @@
+{
+  "media_catalog": {
+    "id": "761561661cc793e7761561661cc793e7",
+    "external_id": "anime:21719",
+    "type": "anime",
+    "title_main": "Fate/stay night [Heaven's Feel] III. spring song",
+    "source": "anilist",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "anime:21719",
+      "related_media_external_id": "anime:21718",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Fate/stay night [Heaven's Feel] II. lost butterfly",
+      "cover": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx21718-Hjj26Sapx1bd.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": [],
+  "saga_name": "Fate/Zero"
+}
