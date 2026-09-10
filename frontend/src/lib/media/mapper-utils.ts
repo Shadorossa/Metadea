@@ -17,6 +17,35 @@ export function unixToDateParts(unixSeconds: number): DateParts {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
+// Provider dates come in different shapes: ComicVine's cover_date is a
+// consistent "YYYY-MM-DD", Open Library's first_publish_date is free text —
+// most often a bare year ("1954"), sometimes ISO-ish ("1954-07-29"/
+// "1954-07"), occasionally long-form ("July 29, 1954"). The ISO-ish branch
+// already covers ComicVine's exact format, so one parser serves both
+// mappers instead of two independently-written near-duplicates. Tried in
+// order below; falls back to the JS Date parser (which understands the
+// long-form case) before giving up entirely.
+export function parseFlexibleDate(raw: string | null | undefined): DateParts | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (/^\d{4}$/.test(trimmed)) {
+    return { year: parseInt(trimmed, 10) };
+  }
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+  if (isoMatch) {
+    return {
+      year:  parseInt(isoMatch[1], 10),
+      month: parseInt(isoMatch[2], 10),
+      day:   isoMatch[3] ? parseInt(isoMatch[3], 10) : undefined,
+    };
+  }
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return { year: parsed.getFullYear(), month: parsed.getMonth() + 1, day: parsed.getDate() };
+  }
+  return null;
+}
+
 /** Format a date triple using the active UI locale. */
 export function formatDateParts(
   d: DateParts | null | undefined,

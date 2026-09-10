@@ -2,7 +2,7 @@ import type { ComicVineVolume, ComicVineIssueDetail } from '../tauri';
 import { getT } from '../../i18n/client';
 import type { MediaPageData, MediaAuthor, MediaCharacter, MediaCompany, MediaStaffMember } from './types';
 import { unifyGenres } from './genre-unifier';
-import { formatDateParts, type DateParts } from './mapper-utils';
+import { formatDateParts, parseFlexibleDate } from './mapper-utils';
 import { CANONICAL_RELATION_LABELS as canonicalRelationLabels } from './canonical-relations';
 import { canonicalizeAlwaysFinished } from './media-status';
 
@@ -25,14 +25,6 @@ function authorsToStaff(authors: MediaAuthor[]): MediaStaffMember[] {
     image: a.image,
     role: a.role,
   }));
-}
-
-// Comic Vine dates are plain "YYYY-MM-DD" strings.
-function parseCoverDate(date: string | null | undefined): DateParts | null {
-  if (!date) return null;
-  const [year, month, day] = date.split('-').map(n => parseInt(n, 10));
-  if (!Number.isFinite(year)) return null;
-  return { year, month: Number.isFinite(month) ? month : undefined, day: Number.isFinite(day) ? day : undefined };
 }
 
 export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string): MediaPageData {
@@ -84,8 +76,8 @@ export function mapComicVineToMedia(volume: ComicVineVolume, externalId: string)
   // Prefer the real first/last issue cover dates (resolved by the Rust side
   // with two lightweight extra requests) over start_year alone, so the badge
   // reads like a proper "Ene 2012 - Oct 2013" range instead of just a year.
-  const startParts = parseCoverDate(volume.first_issue_cover_date) ?? (volume.start_year ? { year: parseInt(volume.start_year, 10) } : null);
-  const endParts = parseCoverDate(volume.last_issue_cover_date);
+  const startParts = parseFlexibleDate(volume.first_issue_cover_date) ?? (volume.start_year ? { year: parseInt(volume.start_year, 10) } : null);
+  const endParts = parseFlexibleDate(volume.last_issue_cover_date);
   const startFmt = startParts ? formatDateParts(startParts) : undefined;
   const endFmt = endParts ? formatDateParts(endParts) : undefined;
   const dateBadge = startFmt
