@@ -377,6 +377,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 0.85rem;
+  contain: layout style;
 }
 
 /* Grid item / positioning host for a card + its (optional) saga/edition
@@ -388,15 +389,9 @@
    grouped card look wider than its column whenever you hovered it. */
 .library-card-cell {
   position: relative;
-  /* .library-card used to be the grid item directly, and its own
-     overflow:hidden incidentally contained its size to the 1fr track. Now
-     that this wrapper (overflow:visible, so the flyout can escape) is the
-     grid item instead, it inherits CSS Grid's default min-width:auto — a
-     grid item never shrinks below its content's min-content size, so the
-     column (and every card in it) was stretching wider than the 1fr share
-     to fit whatever it contained. min-width:0 is the standard override. */
   min-width: 0;
   z-index: 1;
+  will-change: z-index;
 }
 
 .library-card-cell:hover {
@@ -436,12 +431,13 @@
   border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--bg-base) 85%, #000);
   color: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  will-change: border-color, box-shadow;
 }
 
 .library-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 0 16px rgba(var(--accent-rgb, 139, 92, 246), 0.4);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb, 139, 92, 246), 0.3);
 }
 
 .library-card-cell--stacked .library-card {
@@ -455,7 +451,7 @@
   box-shadow:
     0.2rem 0.2rem 0 0 color-mix(in srgb, var(--bg-base) 90%, #000),
     0.2rem 0.2rem 0 1px var(--accent),
-    0 0 16px rgba(var(--accent-rgb, 139, 92, 246), 0.4);
+    0 0 12px rgba(var(--accent-rgb, 139, 92, 246), 0.3);
 }
 
 /* Hidden peek at whichever entries are collapsed under the "+N" badge —
@@ -472,14 +468,6 @@
   display: flex;
   align-items: stretch;
   gap: 0.4rem;
-  /* The left inset must be padding, not margin — margin sits outside this
-     element's own box, so the cursor crossing it (moving right from the
-     card into the flyout) would briefly leave every hoverable element at
-     once and collapse the flyout before it's reached. Padding is 0 at rest
-     and only grows to its real value on hover, alongside max-width — even
-     with box-sizing:border-box, max-width:0 can't shrink a box below its
-     own padding, so a fixed nonzero padding here always rendered a small
-     rounded sliver poking out past the card's right edge at rest. */
   padding: 0;
   max-width: 0;
   overflow-x: auto;
@@ -487,11 +475,13 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   background: color-mix(in srgb, var(--bg-base) 55%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 8px;
   transition: max-width 0.35s ease, padding 0.35s ease;
   pointer-events: none;
+  will-change: max-width, padding;
+  transform: translateZ(0);
 }
 
 .library-card-stack-extra::-webkit-scrollbar {

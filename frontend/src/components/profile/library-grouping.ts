@@ -200,9 +200,6 @@ export function groupBundles<T extends { external_id: string; started_at: string
   const bundleGroups: Array<{ item: T; grouped: T[]; bundleMeta: MediaCatalogEntry }> = [];
 
   for (const [containerId, childIds] of childIdsByContainer) {
-    const catalogEntry = catalogMap.get(containerId);
-    if (!catalogEntry) continue;
-
     // Counted by matched children, not root-group indices — an earlier saga
     // pass can fuse two contained works into one root group already.
     const matchedChildIds = new Set(
@@ -235,7 +232,27 @@ export function groupBundles<T extends { external_id: string; started_at: string
     // arrives in the page's own "ordenar por" order, unrelated to the
     // sequence the user actually went through these in.
     merged = merged.sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
-    bundleGroups.push({ item: representative!, grouped: merged, bundleMeta: catalogEntry });
+
+    let catalogEntry = catalogMap.get(containerId);
+    if (!catalogEntry && representative) {
+      // Bundle container doesn't have a catalog entry yet — create a synthetic one
+      // from the first child's metadata plus the container ID. This allows bundles
+      // to display even before visiting the media page.
+      const firstChildMeta = catalogMap.get((representative as any).external_id);
+      if (firstChildMeta) {
+        catalogEntry = {
+          ...firstChildMeta,
+          external_id: containerId,
+          title_main: `${containerId}`,
+          parent_id: undefined,
+        };
+      }
+    }
+
+    // Only add to bundleGroups if we have a catalog entry AND merged items
+    if (catalogEntry && merged.length > 0) {
+      bundleGroups.push({ item: representative!, grouped: merged, bundleMeta: catalogEntry });
+    }
   }
 
   const remaining = groups.filter((_, i) => !consumed.has(i));

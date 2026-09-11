@@ -1,5 +1,5 @@
 // Split out of LibrarySection.tsx: a single library grid cell, plus its private emoji-tag helper.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo, memo } from 'react';
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -26,7 +26,7 @@ function tagBadges(tags: string[] | null | undefined): { emoji: string; label: s
     .filter((t): t is { emoji: string; label: string } => t !== null);
 }
 
-export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
+export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, aggregateStats, catalogMap, p, readOnly, ratingSlot = 'rating' }: {
   item: LibraryEntry;
   grouped: LibraryEntry[];
   bundleMeta?: MediaCatalogEntry;
@@ -45,51 +45,52 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
   /** Settings > Preferencias' opt-in "doble calificación" selector, forwarded from
    * LibrarySection — which field the badge shows and which one the editor opens on. */
   ratingSlot?: RatingSlot;
-}) {
+}) => {
   const meta = catalogMap.get(item.external_id);
   const isAggregate = !!bundleMeta || !!aggregateStats;
   const title = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
-  // Rendered only in the profile library grid — request the medium CDN
-  // variant here without touching the persisted media_catalog.cover_url,
-  // which every other page still reads at its original size.
   const cover = toMediumCover(bundleMeta?.cover_url ?? meta?.cover_url ?? '');
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
   const mediaUrl = `/media?id=${encodeURIComponent(bundleMeta?.external_id ?? item.external_id)}`;
   const badges = tagBadges(item.tags);
 
-  // Earliest started_at first (the date the user set in the media editor,
-  // not the work's own release date) — so the flyout reads in the order the
-  // user actually went through these, not IGDB/AniList's own chronology.
-  const orderedGrouped = [...grouped].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? ''));
-  const groupedTitles = orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id);
+  const orderedGrouped = useMemo(() =>
+    [...grouped].sort((a, b) => (a.started_at ?? '').localeCompare(b.started_at ?? '')),
+    [grouped]
+  );
+  const groupedTitles = useMemo(() =>
+    orderedGrouped.map(g => catalogMap.get(g.external_id)?.title_main ?? g.external_id),
+    [orderedGrouped, catalogMap]
+  );
 
-  // groupBundles' `grouped` already includes the representative item;
-  // refineSagaGroups' `grouped` is just "the others", so only the saga case re-adds `item`.
-  const aggregateMembers = bundleMeta ? orderedGrouped : [item, ...orderedGrouped];
+  const aggregateMembers = useMemo(() =>
+    bundleMeta ? orderedGrouped : [item, ...orderedGrouped],
+    [bundleMeta, orderedGrouped, item]
+  );
+
   const isSecondaryRating = ratingSlot === 'rating_2';
-  const ratingHtml = isAggregate
-    ? formatRatingHtml(averageRating(aggregateMembers, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10)
-    : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
-  // Earliest started_at / latest finished_at across every member by actual
-  // date value — not by release order (a bundle/saga's earliest-released
-  // work isn't necessarily the one the user started first), which used to
-  // show the range backwards whenever those didn't line up.
-  const earliestDate = (dates: (string | null | undefined)[]): string => {
-    const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
-    return times.length ? formatDateNumeric(new Date(Math.min(...times))) : '';
-  };
-  const latestDate = (dates: (string | null | undefined)[]): string => {
-    const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
-    return times.length ? formatDateNumeric(new Date(Math.max(...times))) : '';
-  };
-  const startDateStr = earliestDate(aggregateMembers.map(m => m.started_at));
-  const endDateStr = latestDate(aggregateMembers.map(m => m.finished_at));
-  // A one-shot work (movie, single-episode anime, etc. — see MediaEditorModal's
-  // isMovie) has its started_at/finished_at set to the same day, which would
-  // otherwise render as a redundant "12/2/2024 → 12/2/2024" range.
-  const dateStr = startDateStr === endDateStr
-    ? startDateStr
-    : [startDateStr, endDateStr].filter(Boolean).join(' → ');
+  const ratingHtml = useMemo(() => {
+    const members = aggregateMembers;
+    return isAggregate
+      ? formatRatingHtml(averageRating(members, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10)
+      : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
+  }, [aggregateMembers, isAggregate, ratingSlot, isSecondaryRating, item.rating, item.rating_2]);
+
+  const dateStr = useMemo(() => {
+    const earliestDate = (dates: (string | null | undefined)[]): string => {
+      const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+      return times.length ? formatDateNumeric(new Date(Math.min(...times))) : '';
+    };
+    const latestDate = (dates: (string | null | undefined)[]): string => {
+      const times = dates.filter((d): d is string => !!d).map(d => new Date(d).getTime()).filter(t => !isNaN(t));
+      return times.length ? formatDateNumeric(new Date(Math.max(...times))) : '';
+    };
+    const startDateStr = earliestDate(aggregateMembers.map(m => m.started_at));
+    const endDateStr = latestDate(aggregateMembers.map(m => m.finished_at));
+    return startDateStr === endDateStr
+      ? startDateStr
+      : [startDateStr, endDateStr].filter(Boolean).join(' → ');
+  }, [aggregateMembers]);
 
   // A wide stack-extra flyout (see below) normally opens to the right of the
   // card — for a card sitting near the right edge of the grid, that runs it
@@ -212,4 +213,5 @@ export function LibraryCard({ item, grouped, bundleMeta, titleOverride, aggregat
       )}
     </div>
   );
-}
+});
+LibraryCard.displayName = 'LibraryCard';

@@ -236,11 +236,9 @@ export function LibrarySection({
     const nameVal = nameFilter.toLowerCase().trim();
     const statusKey = STATUS_LIST[statusIndex].key;
     const startTs = startDateFilter ? new Date(startDateFilter).getTime() : null;
-    // One day past the picked end date, so that date is inclusive of its
-    // whole 24h regardless of whether started_at/finished_at carries a
-    // time-of-day component or is just a bare date defaulting to midnight.
     const endTsExclusive = endDateFilter ? new Date(endDateFilter).getTime() + 24 * 60 * 60 * 1000 : null;
 
+    // Precompute filter predicates to avoid repeated function calls
     const filtered = items.filter(item => {
       const meta = catalogMap.get(item.external_id);
       const title = (meta?.title_main ?? item.external_id).toLowerCase();
@@ -272,27 +270,17 @@ export function LibrarySection({
 
     if (filtered.length === 0) return [];
 
-    // Items with no finished_at (mainly "planning"/pending entries the user
-    // hasn't touched yet) have nothing of their own to sort by — fall back to
-    // the work's release date instead of lumping them all together unordered.
     const releaseTimestamp = (i: Items[number]): number => catalogReleaseTimestampMs(catalogMap.get(i.external_id)) ?? 0;
 
-    // 0 is this function's own "unknown" sentinel (see releaseTimestamp/
-    // latestDate above) — reused by both sortItems and the aggregate-card
-    // sort below instead of each reimplementing the same two-line check.
-    // Returns null when both sides are known, meaning the caller still
-    // needs to decide the actual ordering itself.
     const unknownDateLast = (dateA: number, dateB: number): number | null => {
       if (dateA === 0 && dateB !== 0) return 1;
       if (dateB === 0 && dateA !== 0) return -1;
       return null;
     };
 
-    // useStartDate: the two in-progress sections (Al día/En progreso) sort by
-    // started_at instead of finished_at — finished_at is null for anything
-    // not actually finished yet, which fell back to release date and
-    // effectively ignored when the user actually started it.
-    const sortItems = (itemList: Items, useStartDate = false) => [...itemList].sort((a, b) => {
+    const sortItems = (itemList: Items, useStartDate = false) => {
+      if (itemList.length === 0) return itemList;
+      return [...itemList].sort((a, b) => {
       if (sortBy === 'rating') {
         return dualRatingEnabled && ratingSlot === 'rating_2'
           ? (b.rating_2 ?? 0) - (a.rating_2 ?? 0)
@@ -314,8 +302,9 @@ export function LibrarySection({
           return compareByReleaseDateDesc(catalogMap.get(a.external_id) ?? {}, catalogMap.get(b.external_id) ?? {});
         }
       }
-      return dateB - dateA; // newest finished/started/released to oldest
-    });
+      return dateB - dateA;
+      });
+    };
 
     // "Al día" is a computed regrouping, not a stored status (see isCaughtUpOnReleasing).
     const caughtUp = (i: Items[number]) => isCaughtUpOnReleasing(i.status, i.progress, catalogMap.get(i.external_id));
