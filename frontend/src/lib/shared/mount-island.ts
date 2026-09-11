@@ -1,5 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { createElement, type ComponentType } from 'react';
+import { beginGlobalLoading } from './global-loading';
 
 // A React island mounted imperatively into a string-rendered page (see
 // profile.astro's switchTab) — the page replaces el's innerHTML wholesale on
@@ -22,8 +23,13 @@ export function createIslandRenderer<P extends object = Record<string, never>>(
 ) {
   return async (el: HTMLElement, props?: P): Promise<void> => {
     rootsByElement.get(el)?.unmount();
-    const root = createRoot(el);
-    rootsByElement.set(el, root);
-    root.render(createElement(Component, props as P));
+    const endLoading = beginGlobalLoading();
+    try {
+      const root = createRoot(el);
+      rootsByElement.set(el, root);
+      root.render(createElement(Component, props as P));
+    } finally {
+      endLoading();
+    }
   };
 }

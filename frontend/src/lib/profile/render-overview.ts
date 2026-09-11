@@ -5,6 +5,7 @@ import type { MediaCatalogEntry, FavoriteCustomImage, DayJourney, DbMediaRelatio
 import { pad, typeLabel } from './utils';
 import { getT } from '../../i18n/client';
 import { HofSection } from '../../components/profile/HofSection';
+import { beginGlobalLoading } from '../shared/global-loading';
 import { ActivitySection } from '../../components/profile/ActivitySection';
 import { buildMonthlyHistoryHtml, initMonthlyHistoryListeners } from './monthly';
 import { syncActiveRatingSystem, formatAverageScore } from '../media/rating-utils';
@@ -25,6 +26,7 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
   hofRoot = null;
   activityRoot?.unmount();
   activityRoot = null;
+  const endLoading = beginGlobalLoading();
   try {
     const t = getT();
     const p = t.profile;
@@ -187,5 +189,7 @@ export async function renderOverview(el: HTMLElement, items: Items, catalog?: Me
       Error al renderizar perfil: ${message}<br/>
       <pre>${stack}</pre>
     </div>`;
+  } finally {
+    endLoading();
   }
 }
