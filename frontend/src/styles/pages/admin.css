@@ -1,19 +1,19 @@
 .catalog-admin-panel {
   max-width: 1800px;
   margin: 0 auto;
-  padding: 5.5rem 1rem 2rem;
+  padding: clamp(3rem, 6vw, 5.5rem) clamp(0.75rem, 1.5vw, 1rem) clamp(1.5rem, 3vw, 2rem);
 }
 
 .catalog-admin-title {
-  font-size: 1.4rem;
-  margin-bottom: 1.25rem;
+  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+  margin-bottom: clamp(0.8rem, 1.8vw, 1.25rem);
 }
 
 .catalog-admin-top-bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  gap: clamp(0.5rem, 1vw, 0.75rem);
+  margin-bottom: clamp(0.8rem, 1.8vw, 1.25rem);
   flex-wrap: wrap;
 }
 
@@ -33,25 +33,25 @@
 
 .catalog-admin-search {
   width: 100%;
-  padding: 0.55rem 0.9rem;
+  padding: clamp(0.4rem, 0.8vw, 0.55rem) clamp(0.6rem, 1.3vw, 0.9rem);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text, #fff);
   margin-bottom: 0;
-  font-size: 0.85rem;
-  height: 38px;
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
+  height: clamp(32px, 5vw, 38px);
   box-sizing: border-box;
 }
 
 .catalog-admin-type-select {
-  height: 38px;
+  height: clamp(32px, 5vw, 38px);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.04);
   color: var(--text-main, #e3e1db);
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
+  padding: 0 clamp(0.5rem, 1vw, 0.75rem);
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
   cursor: pointer;
   flex-shrink: 0;
   box-sizing: border-box;
