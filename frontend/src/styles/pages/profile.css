@@ -404,7 +404,7 @@
      higher value than this let a *just-left* neighbor's residual elevation
      outrank the card actually being hovered right now, covering its flyout
      instead of the other way around. */
-  z-index: 11;
+  z-index: 9999;
 }
 
 /* Held for the same 0.35s the flyout takes to slide shut after the cursor
