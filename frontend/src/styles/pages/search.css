@@ -45,10 +45,10 @@
   position: relative;
   display: flex !important;
   align-items: center !important;
-  gap: 0.35rem !important;
-  padding: 0 0.6rem !important;
+  gap: clamp(0.2rem, 0.5vw, 0.35rem) !important;
+  padding: 0 clamp(0.4rem, 1vw, 0.6rem) !important;
   height: 48px !important;
-  font-size: 0.75rem !important;
+  font-size: clamp(0.65rem, 1vw, 0.75rem) !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
@@ -61,8 +61,8 @@
   transition: color var(--anim-fast) var(--anim-ease) !important;
 }
 .search-tab svg {
-  width: 14px !important;
-  height: 14px !important;
+  width: clamp(11px, 1.3vw, 14px) !important;
+  height: clamp(11px, 1.3vw, 14px) !important;
   flex-shrink: 0 !important;
   opacity: 0.7 !important;
 }
@@ -92,10 +92,10 @@
 .search-bar-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
   max-width: 80rem;
   margin: 0 auto;
-  padding: 0.6rem 1.5rem;
+  padding: clamp(0.4rem, 1vw, 0.6rem) clamp(1rem, 2vw, 1.5rem);
 }
 
 .search-input-wrap {
@@ -105,12 +105,12 @@
 
 .search-page-wrapper .search-input {
   width: 100% !important;
-  padding: 0.65rem 1rem !important;
+  padding: clamp(0.45rem, 1vw, 0.65rem) clamp(0.7rem, 1.5vw, 1rem) !important;
   background: rgba(255, 255, 255, 0.03) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: var(--radius-md) !important;
   color: var(--text-main) !important;
-  font-size: 0.8rem !important;
+  font-size: clamp(0.7rem, 1vw, 0.8rem) !important;
   letter-spacing: -0.01em !important;
   outline: none !important;
   transition: border-color var(--anim-fast) var(--anim-ease), background var(--anim-fast) !important;
@@ -126,8 +126,8 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 2.25rem !important;
-  height: 2.25rem !important;
+  width: clamp(1.8rem, 3vw, 2.25rem) !important;
+  height: clamp(1.8rem, 3vw, 2.25rem) !important;
   flex-shrink: 0 !important;
   border-radius: var(--radius-md) !important;
   background: rgba(255, 255, 255, 0.04) !important;
