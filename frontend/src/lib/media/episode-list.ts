@@ -5,7 +5,7 @@
 import { fetchTmdbDetail, fetchTmdbEpisodes, fetchTmdbEpisodesForSeasons, type TmdbTvDetail, type TmdbEpisodeSummary } from '../search/providers/tmdb';
 import { fetchAniListStreamingEpisodes } from '../search/providers/anilist';
 import { parseExternalId } from './mapper-utils';
-import { matchTmdbSeasonsForAnime } from './anime-tmdb-match';
+import { matchTmdbSeasonsForAnime, getAnimePrequelEpisodeOffset } from './anime-tmdb-match';
 import { getMediaEpisodes, saveMediaEpisodes, type MediaEpisode } from '../tauri';
 
 // AniList's streamingEpisodes titles read like "Episode 12 - The Title"
@@ -19,7 +19,7 @@ function parseStreamingEpisodeTitle(title: string, fallbackNumber: number): { nu
   return { number: parseFloat(match[1]), name: match[2]?.trim() || null };
 }
 
-async function fetchFromAniList(numericId: number, externalId: string): Promise<MediaEpisode[]> {
+async function fetchFromAniList(numericId: number, externalId: string, episodeOffset = 0): Promise<MediaEpisode[]> {
   const streamingEpisodes = await fetchAniListStreamingEpisodes(numericId);
   if (!streamingEpisodes?.length) return [];
   return streamingEpisodes.map((ep, i) => {
@@ -27,24 +27,15 @@ async function fetchFromAniList(numericId: number, externalId: string): Promise<
     return {
       external_id:    externalId,
       season_number:  0,
-      episode_number: number,
+      episode_number: number + episodeOffset,
       name,
       cover_url:      ep.thumbnail ?? null,
     };
   });
 }
 
-// TMDB's per-episode data (real thumbnails, translated titles) beats
-// AniList's own streamingEpisodes (a flat list scraped from streaming
-// sites — spotty thumbnails, titles like "Episode 12" with nothing else).
-// anime-tmdb-match.ts works out which TMDB (season, episode-range) slice(s)
-// correspond to this one AniList entry within its prequel/sequel chain
-// (best-effort — returns null for anything it can't confidently line up,
-// e.g. an anime with no TMDB listing at all). Numbers episodes sequentially
-// across the matched slices (1, 2, 3, ...) rather than keeping TMDB's own
-// per-season numbering, so they read the same way AniList's own flat
-// episode list always has.
-async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string): Promise<MediaEpisode[]> {
+// Numbers episodes continuously (e.g., continuing after prequels' episode counts).
+async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string, episodeOffset = 0): Promise<MediaEpisode[]> {
   const match = await matchTmdbSeasonsForAnime(rawId);
   if (!match) return [];
 
@@ -64,7 +55,7 @@ async function fetchAnimeEpisodesFromTmdb(rawId: string, externalId: string): Pr
   return filtered.map((ep, i) => ({
     external_id:    externalId,
     season_number:  0,
-    episode_number: i + 1,
+    episode_number: episodeOffset + i + 1,
     name:           ep.name,
     cover_url:      ep.cover_url,
   }));
@@ -99,19 +90,31 @@ async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonC
 // visit would already fetch fresh, but force lets the button refresh a
 // title that's since gotten new episodes too, not just a never-fetched one.
 export async function fetchMediaEpisodes(rawId: string, force = false, knownSeasonCount?: number): Promise<MediaEpisode[]> {
-  if (!force) {
-    const cached = await getMediaEpisodes(rawId).catch(() => []);
-    if (cached.length > 0) return cached;
-  }
-
   const { type, id: numericId } = parseExternalId(rawId);
   if (!numericId) return [];
 
+  const episodeOffset = type === 'anime' ? await getAnimePrequelEpisodeOffset(rawId).catch(() => 0) : 0;
+
+  if (!force) {
+    const cached = await getMediaEpisodes(rawId).catch(() => []);
+    if (cached.length > 0) {
+      if (episodeOffset > 0 && cached[0].episode_number < episodeOffset) {
+        const shifted = cached.map(ep => ({
+          ...ep,
+          episode_number: ep.episode_number + episodeOffset,
+        }));
+        saveMediaEpisodes(rawId, shifted).catch(err => console.error('Failed to update shifted episodes', err));
+        return shifted;
+      }
+      return cached;
+    }
+  }
+
   let fresh: MediaEpisode[] = [];
   if (type === 'anime') {
-    fresh = await fetchAnimeEpisodesFromTmdb(rawId, rawId).catch(() => []);
+    fresh = await fetchAnimeEpisodesFromTmdb(rawId, rawId, episodeOffset).catch(() => []);
     if (fresh.length === 0) {
-      fresh = await fetchFromAniList(numericId, rawId).catch(() => []);
+      fresh = await fetchFromAniList(numericId, rawId, episodeOffset).catch(() => []);
     }
   } else if (type === 'series') {
     fresh = await fetchFromTmdb(numericId, rawId, knownSeasonCount).catch(() => []);

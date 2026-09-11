@@ -197,12 +197,14 @@ pub async fn get_list_items_full(
             ul.id, ul.status, ul.rating,
             COALESCE(ul.progress, 0.0), COALESCE(ul.progress_2, 0.0),
             COALESCE(ul.is_favorite, 0), COALESCE(ul.is_platinum, 0),
-            COALESCE(mc.title_main, c.name), COALESCE(mc.cover_url, c.image_url),
+            COALESCE(mc.title_main, c.name, me.name),
+            COALESCE(mc.cover_url, c.image_url, me.cover_url),
             mc.type, mc.format
          FROM user_list_items li
          LEFT JOIN user_library ul ON ul.external_id = li.external_id
          LEFT JOIN media_catalog mc ON mc.external_id = li.external_id
          LEFT JOIN characters c ON c.external_id = li.external_id
+         LEFT JOIN media_episode me ON ('episode:' || me.external_id || ':' || CAST(me.season_number AS TEXT) || ':' || CAST(me.episode_number AS TEXT)) = li.external_id
          WHERE li.list_key = ?1
          ORDER BY li.position"
     ).str_err()?;

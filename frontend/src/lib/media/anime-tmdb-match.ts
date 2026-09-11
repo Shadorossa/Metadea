@@ -103,6 +103,13 @@ export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]>
   return [...backward, ...forward];
 }
 
+export async function getAnimePrequelEpisodeOffset(rawId: string): Promise<number> {
+  const chain = await buildAnimeChain(rawId);
+  const selfIdx = chain.findIndex(e => e.externalId === rawId);
+  if (selfIdx <= 0) return 0;
+  return chain.slice(0, selfIdx).reduce((sum, e) => sum + (e.totalCount || 0), 0);
+}
+
 interface TmdbSeasonCount {
   season_number: number;
   episode_count: number;
@@ -232,13 +239,55 @@ export async function matchTmdbSeasonsForAnime(rawId: string): Promise<TmdbSeaso
   if (type !== 'anime') return null;
 
   const chain = await buildAnimeChain(rawId);
-  if (chain.length === 0) return null;
+  if (chain.length > 0) {
+    const chainMatch = await resolveChainMatch(chain);
+    if (chainMatch) {
+      const slices = chainMatch.mapping.get(rawId);
+      if (slices?.length) {
+        return { tmdbId: chainMatch.tmdbId, slices };
+      }
+    }
+  }
 
-  const chainMatch = await resolveChainMatch(chain);
-  if (!chainMatch) return null;
+  // Fallback: standalone search on TMDB by the entry's own titles if not covered by the main saga
+  const self = await getCatalogEntry(rawId).catch(() => null);
+  if (!self) return null;
 
-  const slices = chainMatch.mapping.get(rawId);
-  if (!slices?.length) return null;
+  const candidateTitles = [self.title_english, self.title_romaji, self.title_main]
+    .filter((t): t is string => !!t && t.trim().length > 0);
 
-  return { tmdbId: chainMatch.tmdbId, slices };
+  const controller = new AbortController();
+  for (const title of candidateTitles) {
+    const hits = await searchTvIncludingAnime(title, controller.signal).catch(() => []);
+    for (const hit of hits.slice(0, 5)) {
+      if (!hit.id) continue;
+      const detail = await fetchTmdbDetail(hit.id, 'series').catch(() => null) as TmdbTvDetail | null;
+      if (!detail?.seasons?.length) continue;
+
+      const realSeasons = detail.seasons
+        .filter(s => s.season_number > 0 && !!s.episode_count)
+        .sort((a, b) => a.season_number - b.season_number);
+      if (realSeasons.length === 0) continue;
+
+      const slices: TmdbEpisodeSlice[] = [];
+      let remaining = self.total_count || Infinity;
+      for (const s of realSeasons) {
+        if (remaining <= 0) break;
+        const count = s.episode_count ?? 0;
+        const take = Math.min(remaining, count);
+        slices.push({
+          season_number: s.season_number,
+          episodeStart: 1,
+          episodeEnd: take,
+        });
+        remaining -= take;
+      }
+
+      if (slices.length > 0) {
+        return { tmdbId: hit.id, slices };
+      }
+    }
+  }
+
+  return null;
 }

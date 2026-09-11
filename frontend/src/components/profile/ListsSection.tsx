@@ -14,6 +14,7 @@ import { beginGlobalLoading } from '../../lib/shared/global-loading';
 import { useEscapeKey } from '../../lib/shared/useEscapeKey';
 import { MediaSearchPopup } from '../media/MediaSearchPopup';
 import { CharacterSearchPopup } from '../media/CharacterSearchPopup';
+import { EpisodeSearchPopup, type EpisodeSearchResult } from '../media/EpisodeSearchPopup';
 import { IconTrash } from '../local/ui/icons';
 import type { SearchResult as ApiSearchResult } from '../../lib/search';
 
@@ -35,6 +36,7 @@ function ListCard({ list, catalogMap, charactersMap, customImagesMap, p, active,
   onClick: () => void;
 }) {
   const isCharacters = list.list_type === 'characters';
+  const isEpisodes = list.list_type === 'episodes';
   const firstId = list.preview_ids.length > 0 ? list.preview_ids[0] : undefined;
   const firstCustom = firstId && customImagesMap ? customImagesMap.get(firstId) : undefined;
   const firstMeta = firstId ? catalogMap.get(firstId) : undefined;
@@ -49,12 +51,12 @@ function ListCard({ list, catalogMap, charactersMap, customImagesMap, p, active,
           ? (coverUrl
               ? <img className="list-card-collage-img" src={coverUrl} alt="" loading="lazy" decoding="async" />
               : <div className="list-card-collage-img list-card-collage-fallback" style={{ background: fallbackGradient(firstMeta?.type) }} />)
-          : <span className="list-card-empty-icon">{isCharacters ? '👤' : '📋'}</span>}
+          : <span className="list-card-empty-icon">{isCharacters ? '👤' : isEpisodes ? '📺' : '📋'}</span>}
       </div>
       <div className="list-card-info">
         <span className="list-card-title">{list.name}</span>
         <span className="list-card-count">
-          {list.item_count} {isCharacters ? p.lists_characters_count : p.lists_items}
+          {list.item_count} {isCharacters ? p.lists_characters_count : isEpisodes ? (p.lists_episodes_count || 'episodios') : p.lists_items}
         </span>
       </div>
     </div>
@@ -80,24 +82,24 @@ function ListsGrid({ customLists, catalogMap, charactersMap, customImagesMap, p,
   activeKey?: string | null;
   readOnly?: boolean;
 }) {
-  const [filterMode, setFilterMode] = useState<'all' | 'media' | 'characters'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'media' | 'characters' | 'episodes'>('all');
   const showMedia = filterMode === 'all' || filterMode === 'media';
   const showCharacters = filterMode === 'all' || filterMode === 'characters';
+  const showEpisodes = filterMode === 'all' || filterMode === 'episodes';
 
-  const toggleFilter = (type: 'media' | 'characters') => {
-    if (filterMode === 'all') {
-      setFilterMode(type === 'media' ? 'characters' : 'media');
-    } else if (filterMode === type) {
-      setFilterMode(type === 'media' ? 'characters' : 'media');
-    } else {
+  const toggleFilter = (type: 'media' | 'characters' | 'episodes') => {
+    if (filterMode === type) {
       setFilterMode('all');
+    } else {
+      setFilterMode(type);
     }
   };
 
   const filteredLists = useMemo(() => {
     if (filterMode === 'all') return customLists;
-    if (filterMode === 'media') return customLists.filter(l => l.list_type !== 'characters');
-    return customLists.filter(l => l.list_type === 'characters');
+    if (filterMode === 'media') return customLists.filter(l => l.list_type !== 'characters' && l.list_type !== 'episodes');
+    if (filterMode === 'characters') return customLists.filter(l => l.list_type === 'characters');
+    return customLists.filter(l => l.list_type === 'episodes');
   }, [customLists, filterMode]);
 
   return (
@@ -127,6 +129,18 @@ function ListsGrid({ customLists, catalogMap, charactersMap, customImagesMap, p,
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={`lists-filter-btn${showEpisodes ? ' lists-filter-btn--active' : ''}`}
+              onClick={() => toggleFilter('episodes')}
+              title={p.lists_type_episodes || 'Episodios'}
+              aria-label={p.lists_type_episodes || 'Episodios'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+                <polyline points="17 2 12 7 7 2" />
               </svg>
             </button>
           </div>
@@ -229,6 +243,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
 
   const currentIds = useMemo(() => new Set(listItems.map(i => i.external_id)), [listItems]);
   const isCharacters = listType === 'characters';
+  const isEpisodes = listType === 'episodes';
   const canChangeType = listItems.length === 0;
 
   useEffect(() => {
@@ -260,12 +275,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
   });
   useEscapeKey(typeMenuOpen, () => setTypeMenuOpen(false));
 
-  // Native HTML5 drag & drop instead of a hand-rolled mouse-follow drag:
-  // the browser/OS renders the drag ghost that tracks the cursor, entirely
-  // outside our own render loop, so it can't stutter no matter what this
-  // tab's JS is doing. We only reorder the actual DOM nodes as the cursor
-  // crosses into another card (dragover), and persist the final order on
-  // drop — no floating clone, no per-pixel style writes to chase the mouse.
+  // Native HTML5 drag & drop instead of a hand-rolled mouse-follow drag
   useEffect(() => {
     if (!gridEl || readOnly) return;
 
@@ -286,15 +296,12 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', card.dataset.id ?? '');
       }
-      // Dim the source a frame later — the browser snapshots the drag
-      // ghost synchronously from the current element, so dimming it right
-      // away would make the ghost that follows the cursor look faded too.
       requestAnimationFrame(() => card.classList.add('is-dragging-card'));
     };
 
     const onDragOver = (e: DragEvent) => {
       if (!dragEl) return;
-      e.preventDefault(); // required for this to be a valid drop target
+      e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       pendingEvent = e;
       if (rafId === null) rafId = requestAnimationFrame(processPendingOver);
@@ -343,8 +350,6 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
       finishDrag();
     };
 
-    // Fires whether the drag ended on a valid drop target or not (e.g.
-    // released outside the grid) — always cleans up either way.
     const onDragEnd = () => finishDrag();
 
     const onClickCapture = (e: MouseEvent) => {
@@ -408,6 +413,30 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
       title_main: result.titleMain,
       cover_url: result.coverUrl,
       media_type: null,
+      format: null,
+    }]);
+    onCountChanged(1);
+  };
+
+  const handleAddEpisodeFromSearch = async (result: EpisodeSearchResult) => {
+    const { episodeExternalId, episode, parentMedia } = result;
+    if (currentIds.has(episodeExternalId)) return;
+    await addItemToList(list.key, episodeExternalId).catch(console.error);
+    const title = episode.name || (episode.season_number > 0 ? `T${episode.season_number} E${episode.episode_number}` : `Ep. ${episode.episode_number}`);
+    const cover = episode.cover_url || parentMedia.coverUrl || null;
+    setListItems(prev => [...prev, {
+      external_id: episodeExternalId,
+      position: prev.length,
+      library_id: null,
+      status: null,
+      rating: null,
+      progress: 0,
+      progress_2: 0,
+      is_favorite: false,
+      is_platinum: false,
+      title_main: title,
+      cover_url: cover,
+      media_type: parentMedia.type,
       format: null,
     }]);
     onCountChanged(1);
@@ -516,7 +545,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
               </h2>
             )}
             <span className="list-detail-count">
-              {listItems.length} {isCharacters ? p.lists_characters_count : p.lists_items}
+              {listItems.length} {isCharacters ? p.lists_characters_count : isEpisodes ? (p.lists_episodes_count || 'episodios') : p.lists_items}
             </span>
           </div>
 
@@ -651,6 +680,13 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
             excludeIds={Array.from(currentIds)}
             closeOnSelect={false}
           />
+        ) : isEpisodes ? (
+          <EpisodeSearchPopup
+            onSelect={handleAddEpisodeFromSearch}
+            onClose={() => setShowAddPanel(false)}
+            excludeIds={Array.from(currentIds)}
+            closeOnSelect={false}
+          />
         ) : (
           <MediaSearchPopup
             onSelect={handleAddMediaFromSearch}
@@ -665,18 +701,39 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
         {listItems.length > 0 ? (
           <div className="list-items-grid" ref={setGridEl}>
             {listItems.map((item, index) => {
-              const title = item.title_main ?? item.external_id;
               const custom = customImagesMap?.get(item.external_id);
               const cover = custom ? wrapAssetUrl(custom.image_url) : (item.cover_url ?? '');
               const isCharItem = item.external_id.startsWith('character:') || isCharacters;
-              const url = isCharItem
-                ? `/character?id=${encodeURIComponent(item.external_id)}`
-                : `/media?id=${encodeURIComponent(item.external_id)}`;
+              const isEpItem = item.external_id.startsWith('episode:') || isEpisodes;
+
+              let url = `/media?id=${encodeURIComponent(item.external_id)}`;
+              let epBadge: string | null = null;
+              let title = item.title_main ?? item.external_id;
+
+              if (isCharItem) {
+                url = `/character?id=${encodeURIComponent(item.external_id)}`;
+              } else if (isEpItem) {
+                const parts = item.external_id.split(':');
+                // episode:<type>:<numericId>:<season>:<episode>
+                if (parts.length >= 5) {
+                  const parentId = `${parts[1]}:${parts[2]}`;
+                  const sNum = parseInt(parts[3], 10);
+                  const epNum = parts[4];
+                  url = `/media?id=${encodeURIComponent(parentId)}`;
+                  epBadge = sNum > 0 ? `T${sNum} E${epNum}` : `Ep. ${epNum}`;
+                }
+              }
 
               return (
-                <div className="list-item-card" data-id={item.external_id} key={item.external_id} draggable={!readOnly}>
+                <div
+                  className={`list-item-card${isEpItem ? ' list-item-card--episode' : ''}`}
+                  data-id={item.external_id}
+                  key={item.external_id}
+                  draggable={!readOnly}
+                >
                   {!readOnly && <span className="list-item-drag-handle" title={p.lists_drag_reorder}>⠿</span>}
                   <a className="list-item-cover-link" href={url} draggable={false}>
+                    {epBadge && <span className="list-item-episode-badge">{epBadge}</span>}
                     {cover
                       ? <img className="list-item-cover" src={cover} alt={title} loading="lazy" decoding="async" draggable={false} />
                       : <div className="list-item-cover list-item-cover--fallback" style={{ background: fallbackGradient(item.media_type) }}><span>{title.slice(0, 2).toUpperCase()}</span></div>}
@@ -703,7 +760,13 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
           </div>
         ) : (
           <div className="lists-empty-state" style={{ padding: '2rem 0' }}>
-            <p>{isCharacters ? p.lists_empty_characters : p.lists_empty_items}</p>
+            <p>
+              {isCharacters
+                ? p.lists_empty_characters
+                : isEpisodes
+                  ? (p.lists_empty_episodes || 'Esta lista está vacía. Añade episodios a tu lista.')
+                  : p.lists_empty_items}
+            </p>
           </div>
         )}
       </div>
@@ -735,7 +798,7 @@ function ListDetail({ list, catalogMap, customImagesMap, p, onBack, onDeleted, o
           {!readOnly && (
             <button className="list-btn list-btn--primary" onClick={() => setShowAddPanel(s => !s)}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              {isCharacters ? p.lists_add_characters : p.lists_add_items}
+              {isCharacters ? p.lists_add_characters : isEpisodes ? (p.lists_add_episodes || 'Añadir episodios') : p.lists_add_items}
             </button>
           )}
         </div>
