@@ -474,13 +474,11 @@
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background: color-mix(in srgb, var(--bg-base) 55%, transparent);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--bg-base) 70%, transparent);
   border-radius: 8px;
-  transition: max-width 0.35s ease, padding 0.35s ease;
+  transition: max-width 0.2s ease;
   pointer-events: none;
-  will-change: max-width, padding, backdrop-filter;
+  will-change: max-width;
   transform: translateZ(0);
 }
 
