@@ -2770,7 +2770,7 @@
 /* Insight trio: genres · score dist · by year */
 .stats-insight-trio {
   display: grid;
-  gap: 1.25rem;
+  gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
 }
 
@@ -2790,18 +2790,18 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 1.25rem;
+  padding: clamp(0.8rem, 2vw, 1.25rem);
   box-sizing: border-box;
 }
 
 /* KPI card sub-label (e.g. "4.2 d · 1.8 h/obra" below hours) */
 .stats-card-sub {
-  font-size: 0.65rem;
+  font-size: clamp(0.55rem, 0.9vw, 0.65rem);
   color: var(--text-dim);
   font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1;
-  margin-top: 0.25rem;
+  margin-top: clamp(0.15rem, 0.4vw, 0.25rem);
 }
 
 /* Time-by-category bars (inside stats-main-pair) — always shows every media
@@ -2810,9 +2810,9 @@
 .stats-time-bars {
   display: grid;
   grid-template-columns: 1fr;
-  column-gap: 1.5rem;
-  row-gap: 0.85rem;
-  margin-top: 0.75rem;
+  column-gap: clamp(1rem, 2vw, 1.5rem);
+  row-gap: clamp(0.6rem, 1.2vw, 0.85rem);
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
 }
 
 @media (min-width: 480px) {
@@ -2824,17 +2824,17 @@
 .stats-time-row {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: clamp(0.5rem, 1vw, 0.65rem);
 }
 
 .stats-time-label {
   flex-shrink: 0;
-  width: 110px;
+  width: clamp(80px, 14vw, 110px);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.78rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -2842,13 +2842,13 @@
 .stats-time-value {
   flex-shrink: 0;
   white-space: nowrap;
-  font-size: 0.78rem;
+  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
   color: var(--text-main);
   font-weight: 800;
 }
 
 .stats-time-count {
-  font-size: 0.68rem;
+  font-size: clamp(0.55rem, 0.95vw, 0.68rem);
   color: var(--text-dim);
   font-weight: 500;
 }
@@ -2858,24 +2858,24 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
-  font-size: 0.65rem;
+  gap: clamp(0.25rem, 0.6vw, 0.35rem);
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  font-size: clamp(0.55rem, 0.9vw, 0.65rem);
   color: var(--text-dim);
 }
 
 .heatmap-legend-cell {
-  width: 8px;
-  height: 8px;
+  width: clamp(6px, 1vw, 8px);
+  height: clamp(6px, 1vw, 8px);
   border-radius: 1px;
 }
 
 .stats-heatmap-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: clamp(2px, 0.5vw, 4px);
   max-width: 100%;
-  margin-top: 0.75rem;
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
 }
 
 @media (min-width: 640px) {
@@ -2890,7 +2890,7 @@
      the grid's own 1fr columns to fill the panel same as always, but
      height no longer scales along with it, so each cell reads as a short
      rectangle instead of ballooning into a square on a wide panel. */
-  height: 14px;
+  height: clamp(10px, 1.5vw, 14px);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 2px;
@@ -4195,26 +4195,26 @@
 .stats-histogram {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin-top: 0.75rem;
+  gap: clamp(0.3rem, 0.7vw, 0.45rem);
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
 }
 
 .stats-hist-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
 }
 
 .stats-hist-label {
-  font-size: 0.7rem;
+  font-size: clamp(0.6rem, 1vw, 0.7rem);
   color: var(--text-muted);
   flex-shrink: 0;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 130px;
-  min-width: 130px;
+  width: clamp(100px, 16vw, 130px);
+  min-width: clamp(100px, 16vw, 130px);
 }
 
 /* Same native <progress> approach as .stats-bar-outer above — see that
@@ -4224,7 +4224,7 @@
   -webkit-appearance: none;
   flex: 1;
   min-width: 0;
-  height: 10px;
+  height: clamp(8px, 1.2vw, 10px);
   border: 1px solid var(--border-color);
   border-radius: 3px;
   overflow: hidden;
@@ -4257,9 +4257,9 @@
 }
 
 .stats-hist-count {
-  font-size: 0.68rem;
+  font-size: clamp(0.55rem, 0.95vw, 0.68rem);
   color: var(--text-dim);
-  width: 26px;
+  width: clamp(20px, 3vw, 26px);
   text-align: right;
   flex-shrink: 0;
 }
