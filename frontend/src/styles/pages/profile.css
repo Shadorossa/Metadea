@@ -2478,25 +2478,25 @@
   flex-direction: column;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   width: 100%;
-  padding: 0.25rem 0 clamp(1.2rem, 2.5vw, 2rem);
+  padding: 0.25rem clamp(1.5rem, 3vw, 3rem) clamp(1.2rem, 2.5vw, 2rem);
   box-sizing: border-box;
 }
 
 @media (max-width: 1200px) {
   .stats-layout {
-    padding: 0 clamp(2rem, 6vw, 6rem);
+    padding: 0.25rem clamp(2rem, 6vw, 6rem) clamp(1.2rem, 2.5vw, 2rem);
   }
 }
 
 @media (max-width: 1024px) {
   .stats-layout {
-    padding: 0 clamp(1.5rem, 4vw, 3rem);
+    padding: 0.25rem clamp(1.5rem, 4vw, 3rem) clamp(1.2rem, 2.5vw, 2rem);
   }
 }
 
 @media (max-width: 768px) {
   .stats-layout {
-    padding: 0 clamp(0.5rem, 2vw, 1rem);
+    padding: 0.25rem clamp(0.5rem, 2vw, 1rem) clamp(1.2rem, 2.5vw, 2rem);
   }
 }
 
