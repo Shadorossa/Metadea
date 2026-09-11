@@ -1666,6 +1666,19 @@
   background: var(--accent);
 }
 
+/* When viewport narrows and tabs wrap into 3+ rows, show only icons */
+@media (max-width: 900px) {
+  .library-type-tab {
+    padding: 0.65rem 0.5rem;
+    gap: 0;
+    font-size: 0;
+  }
+
+  .library-type-tab svg {
+    margin: 0;
+  }
+}
+
 /* Header bar for sorting — also hosts the type tabs (when enabled) on the
    left, sharing this same row and bottom border instead of stacking above it. */
 .library-content-header {
