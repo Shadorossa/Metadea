@@ -16,14 +16,12 @@
 }
 
 .nav-center-wrap {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(100% - clamp(10rem, 6vw, 16rem));
+  flex: 1;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
   pointer-events: none;
