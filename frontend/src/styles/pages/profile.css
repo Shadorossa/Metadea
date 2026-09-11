@@ -2090,7 +2090,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .fav-tab-btn {
