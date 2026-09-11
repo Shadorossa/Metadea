@@ -42,19 +42,19 @@
 .nav-center-text {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   pointer-events: auto;
   /* On a narrow window there just isn't room for every type shortcut on
      one line — scrolls instead of overflowing into (visually overlapping)
      the avatar/search group, since wrapping to a second line isn't an
      option inside this bar's fixed 48px height. */
   width: 100%;
-  max-width: 100%;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  gap: clamp(0.3rem, 0.8vw, 0.85rem);
 }
 
 .nav-center-text::-webkit-scrollbar {
