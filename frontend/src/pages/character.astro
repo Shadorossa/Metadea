@@ -70,10 +70,6 @@ const translations = useTranslations(lang);
           <div class="character-hero-right-col">
             <div class="character-name-row">
               <h1 class="media-title-main" id="char-name-full"></h1>
-              <button type="button" class="char-edit-btn-main" id="char-edit-btn-main" title={translations.character.edit_tooltip} aria-label={translations.character.edit_button}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                {translations.character.edit_button}
-              </button>
             </div>
             <p class="media-title-native" id="char-name-native" style="display: none; margin-top: 0.25rem;"></p>
             
@@ -985,17 +981,12 @@ const translations = useTranslations(lang);
       // itself, not the dev server behind `tauri dev`'s devUrl — so it
       // silently did nothing in a built/installed app while still
       // appearing to work in dev.
-      const editBtnMain = document.getElementById('char-edit-btn-main');
-      const editBtnHeader = document.getElementById('char-edit-btn-header');
-      const setupEditBtn = (btn: HTMLElement | null) => {
-        if (btn) {
-          btn.onclick = () => {
-            if (window.openCharacterEditor) window.openCharacterEditor(charKeyStr);
-          };
-        }
-      };
-      setupEditBtn(editBtnMain);
-      setupEditBtn(editBtnHeader);
+      const editBtn = document.getElementById('char-edit-btn-header');
+      if (editBtn) {
+        editBtn.onclick = () => {
+          if (window.openCharacterEditor) window.openCharacterEditor(charKeyStr);
+        };
+      }
 
       const favBtn = document.getElementById('char-fav-btn');
       const reactionBtns = document.querySelectorAll('.char-action-btn[data-reaction]');
