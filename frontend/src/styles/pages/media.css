@@ -963,9 +963,25 @@
    cover-card grid as Episodios (media-relation-card), a badge (OP1/ED1/...)
    standing in for the episode-card's own "#N" pill since there's no cover
    image to show; clicking one opens theme-player-overlay below instead of
-   navigating anywhere. */
+   navigating anywhere. The card's own thumb is a live muted preview
+   (ThemePreviewCardVideo) instead of a static image — there's no cover art
+   for a song, but there IS the actual clip.  */
 .media-theme-card--playable {
   cursor: pointer;
+}
+
+/* Wider than the plain 52x78 poster-shaped thumb — a 16:9 clip cropped down
+   to that portrait box would show almost nothing useful. */
+.media-theme-thumb {
+  width: 96px;
+  height: 54px;
+}
+
+.media-theme-preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .media-theme-badge {

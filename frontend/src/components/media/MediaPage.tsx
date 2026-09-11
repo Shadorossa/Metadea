@@ -8,6 +8,7 @@ import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
+import { ThemePreviewCardVideo } from './ThemePreviewCardVideo';
 import { prefetchSagaData } from '../../lib/media/sagaData';
 import { PrEditorModal } from './PrEditorModal';
 import { STAR_PATH } from '../../lib/media/constants';
@@ -1165,6 +1166,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                       {t.theme_type}{t.sequence}
                     </span>
                     <div className="media-relation-card-content">
+                      <div className="media-relation-thumb media-theme-thumb">
+                        {t.video_url && <ThemePreviewCardVideo src={t.video_url} />}
+                      </div>
                       <div className="media-relation-info">
                         <span className="media-relation-title">{t.song_title ?? `${t.theme_type}${t.sequence}`}</span>
                         {t.artists && <span className="media-theme-artist">{t.artists}</span>}
