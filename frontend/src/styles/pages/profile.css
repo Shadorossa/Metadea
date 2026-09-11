@@ -1684,12 +1684,9 @@
 .library-content-header {
   display: flex;
   align-items: flex-end;
-  flex-wrap: nowrap;
-  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
 
 .library-content-header .library-group-toggles,
@@ -2090,9 +2087,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+}
+
+/* When tabs need to wrap into 2+ rows, show only icons */
+@media (max-width: 900px) {
+  .fav-tab-btn {
+    padding: 0.4rem 0.25rem !important;
+    gap: 0 !important;
+    font-size: 0 !important;
+  }
 }
 
 .fav-tab-btn {
