@@ -133,7 +133,7 @@ const t    = useTranslations(lang);
       <div id="tab-pane-lists" class="profile-tab-pane" hidden></div>
     </div>
 
-    <ProfileLibraryEditor client:load i18n={t.media} />
+    <ProfileLibraryEditor client:idle i18n={t.media} />
 
   </main>
 </BaseLayout>

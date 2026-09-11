@@ -372,42 +372,46 @@ export interface ScoreBucket {
 
 export function computeScoreDistribution(ratedItems: Items, system: RatingSystem): ScoreBucket[] {
   if (system === '5-star') {
-    // Stars are logged in half-star increments (RatingInput's StarRating —
-    // DB value v*2-1 or v*2 for v in 1..5, i.e. DB 1,2,3,...,10 = stars
-    // 0.5,1,1.5,...,5) — so the distribution needs 10 buckets, not 5, or
-    // every half-star rating would get rounded into a whole-star bucket.
-    // Rounds to the nearest half-star rather than requiring an exact match,
-    // so a rating logged under a different system (e.g. a 7.3 from 10-dec)
-    // still lands in a sensible bucket instead of being dropped entirely.
+    // Single pass: iterate once, tally into buckets (O(n) instead of O(10n))
+    const bucketCounts = new Map<number, number>();
+    for (const item of ratedItems) {
+      const rounded = Math.min(5, Math.max(0.5, Math.round(dbRatingToStars5(item.rating ?? 0) * 2) / 2));
+      bucketCounts.set(rounded, (bucketCounts.get(rounded) ?? 0) + 1);
+    }
     const buckets = Array.from({ length: 10 }, (_, i) => (i + 1) / 2);
     return buckets.map(star => ({
       label: `${star}★`,
-      count: ratedItems.filter(i => {
-        const rounded = Math.min(5, Math.max(0.5, Math.round(dbRatingToStars5(i.rating ?? 0) * 2) / 2));
-        return rounded === star;
-      }).length,
+      count: bucketCounts.get(star) ?? 0,
     }));
   }
 
   if (system === '3-emoji') {
+    // Single pass: tally moods once (O(n) instead of O(3n))
+    const moodCounts = { sad: 0, neutral: 0, happy: 0 };
+    for (const item of ratedItems) {
+      const rating = item.rating ?? 0;
+      const mood = rating <= 3.5 ? 'sad' : rating > 7 ? 'happy' : 'neutral';
+      moodCounts[mood]++;
+    }
     const moods: { key: 'sad' | 'neutral' | 'happy'; emoji: string }[] = [
       { key: 'sad', emoji: '😞' }, { key: 'neutral', emoji: '😐' }, { key: 'happy', emoji: '😊' },
     ];
     return moods.map(({ key, emoji }) => ({
       label: emoji,
-      count: ratedItems.filter(i => {
-        const rating = i.rating ?? 0;
-        const mood = rating <= 3.5 ? 'sad' : rating > 7 ? 'happy' : 'neutral';
-        return mood === key;
-      }).length,
+      count: moodCounts[key],
     }));
   }
 
-  // '10-dec' and '10': whole-number buckets 1 through 10
+  // Single pass: tally buckets 1-10 once (O(n) instead of O(10n))
+  const bucketCounts = new Map<number, number>();
+  for (const item of ratedItems) {
+    const bucket = Math.min(10, Math.max(1, Math.round(item.rating ?? 0)));
+    bucketCounts.set(bucket, (bucketCounts.get(bucket) ?? 0) + 1);
+  }
   const buckets = Array.from({ length: 10 }, (_, i) => i + 1);
   return buckets.map(n => ({
     label: String(n),
-    count: ratedItems.filter(i => Math.min(10, Math.max(1, Math.round(i.rating ?? 0))) === n).length,
+    count: bucketCounts.get(n) ?? 0,
   }));
 }
 
