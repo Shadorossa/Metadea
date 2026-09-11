@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   height: 100%;
   overflow: hidden;
