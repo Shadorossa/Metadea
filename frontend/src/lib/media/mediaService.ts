@@ -30,7 +30,7 @@ import { fetchBookEditions } from './book-editions';
 import { fetchComicIssues } from './comic-issues';
 import { fetchComicCollectedEditions } from './comic-collected-editions';
 import { fetchMediaEpisodes } from './episode-list';
-import { fetchMediaThemes } from './theme-list';
+import { fetchMediaThemes, getAnimePrequelThemeOffsets } from './theme-list';
 
 // Re-exported so callers keep one import path despite the split into
 // media-cache/media-relations/catalog-mapper/book-editions/comic-issues/
@@ -40,7 +40,7 @@ export {
   mapCatalogEntryToPartialData, mapMediaDataToCatalogEntry, inferProgressStatus,
   bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mergeAndPersistRelations,
   fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes,
-  fetchMediaThemes,
+  fetchMediaThemes, getAnimePrequelThemeOffsets,
 };
 export type { ComicIssuesResult } from './comic-issues';
 

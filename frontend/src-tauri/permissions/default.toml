@@ -171,6 +171,7 @@ commands.allow = [
   "save_theme_preview_frame",
   "get_theme_preview_frame",
   "cache_theme_video",
+  "get_cached_theme_video",
   "delete_cached_theme_video",
   "get_cached_covers_batch",
   "clear_all_ratings",

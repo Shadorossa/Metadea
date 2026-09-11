@@ -81,10 +81,15 @@ export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]>
     const prequel = relations.find(r => r.relation_type === 'PREQUEL');
     if (!prequel || visited.has(prequel.related_media_external_id)) break;
     const entry = await getCatalogEntry(prequel.related_media_external_id).catch(() => null);
-    if (!entry || entry.type !== 'anime') break;
-    backward.unshift(toChainEntry(entry));
-    visited.add(entry.external_id);
-    cursor = entry.external_id;
+    if (entry && entry.type !== 'anime') break;
+    if (!entry && !prequel.related_media_external_id.startsWith('anime:')) break;
+    backward.unshift(entry ? toChainEntry(entry) : {
+      externalId: prequel.related_media_external_id,
+      title: '',
+      totalCount: 0,
+    });
+    visited.add(prequel.related_media_external_id);
+    cursor = prequel.related_media_external_id;
   }
 
   const forward: AnimeChainEntry[] = [toChainEntry(self)];
@@ -94,10 +99,15 @@ export async function buildAnimeChain(rawId: string): Promise<AnimeChainEntry[]>
     const sequel = relations.find(r => r.relation_type === 'SEQUEL');
     if (!sequel || visited.has(sequel.related_media_external_id)) break;
     const entry = await getCatalogEntry(sequel.related_media_external_id).catch(() => null);
-    if (!entry || entry.type !== 'anime') break;
-    forward.push(toChainEntry(entry));
-    visited.add(entry.external_id);
-    cursor = entry.external_id;
+    if (entry && entry.type !== 'anime') break;
+    if (!entry && !sequel.related_media_external_id.startsWith('anime:')) break;
+    forward.push(entry ? toChainEntry(entry) : {
+      externalId: sequel.related_media_external_id,
+      title: '',
+      totalCount: 0,
+    });
+    visited.add(sequel.related_media_external_id);
+    cursor = sequel.related_media_external_id;
   }
 
   return [...backward, ...forward];

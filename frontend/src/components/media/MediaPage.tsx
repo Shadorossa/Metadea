@@ -22,7 +22,8 @@ import { MediaSourceLink } from './MediaSourceLink';
 import { Pagination } from './Pagination';
 import { parseStatSectionLabel, StatSectionTracker } from '../../lib/shared/stat-sections';
 import { saveCharactersSkeleton } from '../../lib/tauri/characters';
-import { saveStaffSkeleton } from '../../lib/tauri/misc-commands';
+import { saveStaffSkeleton, getThemeVideoPath, cacheThemeVideo } from '../../lib/tauri/misc-commands';
+import { getAnimePrequelEpisodeOffset } from '../../lib/media/anime-tmdb-match';
 import { CONTAINS_RELATION_TYPES } from '../../lib/media/sagaTypes';
 import { readUserFavorites, syncFavorites } from '../../lib/tauri/favorites';
 import { fetchFollowedFriendsScores, type FriendScore } from '../../lib/anilist/friends';
@@ -30,16 +31,36 @@ import { mergePlatformVersions } from '../../lib/media/mapper-utils';
 import { sanitizeHtml } from '../../lib/shared/sanitize-html';
 import { ANILIST_TYPES } from '../../lib/constants/media';
 
-// Breaks a "Prefix: Rest" relation title onto two lines after the colon
-// (e.g. "Alan Wake II: The Lake House") instead of letting it wrap wherever
-// it happens to run out of width — titles without a colon render unchanged.
 function splitTitleAfterColon(title: string): ReactNode {
   const colonIdx = title.indexOf(':');
   if (colonIdx === -1) return title;
   return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
 }
 
-function ThemeCardItem({ theme, onPlay, fallbackUrl }: { theme: MediaTheme; onPlay: () => void; fallbackUrl?: string }) {
+function formatThemeEpisodes(rawEpisodes: string | null | undefined, episodeOffset: number): string | null {
+  if (!rawEpisodes) return null;
+  const trimmed = rawEpisodes.trim();
+  if (!trimmed) return null;
+  if (episodeOffset <= 0) return trimmed;
+
+  const nums = trimmed.match(/\b\d+\b/g);
+  if (!nums || nums.length === 0) return trimmed;
+
+  const firstNum = parseInt(nums[0], 10);
+  if (firstNum > episodeOffset) return trimmed;
+
+  return trimmed.replace(/\b\d+\b/g, m => String(parseInt(m, 10) + episodeOffset));
+}
+
+function ThemeCardItem({
+  theme,
+  onPlay,
+  fallbackUrl,
+}: {
+  theme: MediaTheme;
+  onPlay: () => void;
+  fallbackUrl?: string;
+}) {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div
@@ -246,6 +267,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
   const [themes,             setThemes]             = useState<MediaTheme[]>([]);
   const [playingTheme,       setPlayingTheme]       = useState<MediaTheme | null>(null);
+  const [playingVideoSrc,    setPlayingVideoSrc]    = useState<string | null>(null);
+  const [episodeOffset,      setEpisodeOffset]      = useState(0);
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
   const [customImagesMap,    setCustomImagesMap]    = useState<Map<string, FavoriteCustomImage>>(new Map());
@@ -438,6 +461,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setEpisodes([]);
     setThemes([]);
     setPlayingTheme(null);
+    setPlayingVideoSrc(null);
+    setEpisodeOffset(0);
     setCharacterPage(1);
     setCharTab('characters');
     getCustomImagesMap().then(setCustomImagesMap).catch(() => {});
@@ -655,6 +680,47 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [playingTheme, themes]);
+
+  useEffect(() => {
+    if (!currentId) return;
+    let cancelled = false;
+    getAnimePrequelEpisodeOffset(currentId).then(off => {
+      if (!cancelled && off > 0) setEpisodeOffset(off);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentId]);
+
+  useEffect(() => {
+    if (episodes.length > 0 && episodes[0].episode_number > 1) {
+      setEpisodeOffset(episodes[0].episode_number - 1);
+    }
+  }, [episodes]);
+
+  useEffect(() => {
+    if (!playingTheme) {
+      setPlayingVideoSrc(null);
+      return;
+    }
+    let cancelled = false;
+    setPlayingVideoSrc(playingTheme.video_url ?? null);
+
+    getThemeVideoPath(playingTheme.external_id, playingTheme.slug).then(path => {
+      if (cancelled) return;
+      if (path) {
+        setPlayingVideoSrc(wrapAssetUrl(path));
+      } else if (playingTheme.video_url) {
+        cacheThemeVideo(playingTheme.video_url, playingTheme.external_id, playingTheme.slug)
+          .then(cachedPath => {
+            if (!cancelled && cachedPath) {
+              setPlayingVideoSrc(wrapAssetUrl(cachedPath));
+            }
+          })
+          .catch(() => {});
+      }
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [playingTheme]);
 
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
@@ -967,6 +1033,24 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
         const currentThemeIdx = themes.findIndex(t => t.slug === playingTheme.slug);
         const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
         const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
+        const formattedEps = formatThemeEpisodes(playingTheme.episodes, episodeOffset);
+
+        const handleNavigateToThemeEpisodes = (formatted: string) => {
+          const match = formatted.match(/\b\d+\b/);
+          if (match) {
+            const targetEpNum = parseInt(match[0], 10);
+            const targetIdx = episodes.findIndex(e => e.episode_number === targetEpNum);
+            if (targetIdx !== -1) {
+              setRelationPage(Math.floor(targetIdx / EPISODE_PAGE_SIZE) + 1);
+            }
+          }
+          setRelationsTab('episodes');
+          setPlayingTheme(null);
+          setTimeout(() => {
+            const section = document.querySelector('.media-relations-section');
+            section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        };
 
         return createPortal(
           <div className="theme-player-overlay" onClick={() => setPlayingTheme(null)}>
@@ -989,9 +1073,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 <video
                   key={playingTheme.slug}
                   className="theme-player-video"
-                  src={playingTheme.video_url ?? undefined}
+                  src={playingVideoSrc ?? undefined}
                   controls
                   autoPlay
+                  preload="auto"
                 />
                 <div className="theme-player-info">
                   <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
@@ -1001,11 +1086,16 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                     <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
                     {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
                   </div>
-                  {playingTheme.episodes && (
-                    <span className="theme-player-episodes">
-                      {playingTheme.episodes.includes('-') || playingTheme.episodes.includes(',') ? 'Episodios ' : 'Episodio '}
-                      {playingTheme.episodes}
-                    </span>
+                  {formattedEps && (
+                    <button
+                      type="button"
+                      className={`theme-player-episodes${hasEpisodes ? ' theme-player-episodes--interactive' : ''}`}
+                      onClick={() => hasEpisodes && handleNavigateToThemeEpisodes(formattedEps)}
+                      title={hasEpisodes ? 'Ir a los episodios' : undefined}
+                    >
+                      {formattedEps.includes('-') || formattedEps.includes(',') ? 'Episodios ' : 'Episodio '}
+                      {formattedEps}
+                    </button>
                   )}
                 </div>
               </div>

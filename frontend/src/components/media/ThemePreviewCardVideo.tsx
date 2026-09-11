@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, deleteCachedThemeVideo } from '../../lib/tauri/misc-commands';
+import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, getThemeVideoPath } from '../../lib/tauri/misc-commands';
 import { wrapAssetUrl } from '../../lib/tauri';
 
 interface Props {
@@ -22,10 +22,10 @@ type QueueItem = {
 };
 
 const captureQueue: QueueItem[] = [];
-const queueListeners = new Map<string, (url: string) => void>();
+const queueListeners = new Map<string, (frameUrl: string, videoUrl?: string) => void>();
 let isQueueProcessing = false;
 
-function subscribeToCapture(key: string, callback: (url: string) => void) {
+function subscribeToCapture(key: string, callback: (frameUrl: string, videoUrl?: string) => void) {
   queueListeners.set(key, callback);
 }
 
@@ -78,7 +78,6 @@ async function processNextQueueItem() {
         clearTimeout(timer);
         offscreenVideo.src = '';
         URL.revokeObjectURL(blobUrl);
-        deleteCachedThemeVideo(item.externalId, item.slug).catch(() => {});
       };
 
       const timer = setTimeout(() => {
@@ -103,7 +102,7 @@ async function processNextQueueItem() {
             const dataUrl = canvas.toDataURL('image/webp', 0.90);
             const savedPath = await saveThemePreviewFrame(item.externalId, item.slug, dataUrl);
             if (savedPath && listener) {
-              listener(wrapAssetUrl(savedPath));
+              listener(wrapAssetUrl(savedPath), assetUrl);
             }
           }
           cleanup();
@@ -148,23 +147,34 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
   const [localFrameUrl, setLocalFrameUrl] = useState<string | null>(
     () => initialPreviewUrl ? wrapAssetUrl(initialPreviewUrl) : null,
   );
+  const [localVideoSrc, setLocalVideoSrc] = useState<string | null>(null);
 
   const taskKey = `${externalId}::${slug}`;
 
   useEffect(() => {
+    let cancelled = false;
+
+    getThemeVideoPath(externalId, slug).then(path => {
+      if (!cancelled && path) {
+        setLocalVideoSrc(wrapAssetUrl(path));
+      }
+    }).catch(() => {});
+
     if (initialPreviewUrl) {
       setLocalFrameUrl(wrapAssetUrl(initialPreviewUrl));
-      return;
+      return () => { cancelled = true; };
     }
 
-    let cancelled = false;
     getThemePreviewFrame(externalId, slug).then(path => {
       if (cancelled) return;
       if (path) {
         setLocalFrameUrl(wrapAssetUrl(path));
       } else if (src) {
-        subscribeToCapture(taskKey, url => {
-          if (!cancelled) setLocalFrameUrl(url);
+        subscribeToCapture(taskKey, (url, videoUrl) => {
+          if (!cancelled) {
+            setLocalFrameUrl(url);
+            if (videoUrl) setLocalVideoSrc(videoUrl);
+          }
         });
         enqueueCapture({
           key: taskKey,
@@ -182,9 +192,11 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
     };
   }, [externalId, slug, initialPreviewUrl, src, taskKey]);
 
+  const activeVideoSrc = localVideoSrc || src;
+
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !src) return;
+    if (!video || !activeVideoSrc) return;
 
     if (isHovered) {
       if (midpointRef.current > 0) {
@@ -201,7 +213,7 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
         video.currentTime = midpointRef.current;
       }
     }
-  }, [isHovered, src]);
+  }, [isHovered, activeVideoSrc]);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
@@ -218,7 +230,7 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video || midpointRef.current <= 0) return;
-    if (video.currentTime - midpointRef.current >= PREVIEW_SECONDS || video.currentTime < midpointRef.current) {
+    if (video.currentTime >= midpointRef.current + PREVIEW_SECONDS) {
       video.currentTime = midpointRef.current;
     }
   };
@@ -239,14 +251,14 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
           }}
         />
       )}
-      {src && (
+      {activeVideoSrc && (
         <video
           ref={videoRef}
           className={`media-theme-preview-video${showVideo ? ' is-playing' : ' is-idle'}`}
-          src={src}
+          src={activeVideoSrc}
           muted
           playsInline
-          preload="metadata"
+          preload="auto"
           onLoadedMetadata={handleLoadedMetadata}
           onTimeUpdate={handleTimeUpdate}
           onPlaying={() => setIsPlaying(true)}

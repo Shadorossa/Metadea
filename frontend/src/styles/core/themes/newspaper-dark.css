@@ -1133,3 +1133,73 @@ body[data-theme="newspaper-dark"], html[data-theme="newspaper-dark"] body {
 [data-theme="newspaper-dark"] .pr-editor-photo-hover-overlay svg {
   color: var(--accent) !important;
 }
+
+[data-theme="newspaper-dark"] .theme-player-modal {
+  border-radius: 0px !important;
+  border: 3px double var(--border-color) !important;
+  background: var(--bg-elevated) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-info {
+  background: var(--bg-elevated) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-title {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-artist {
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-style: italic !important;
+  color: var(--text-muted) !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-nav {
+  border-radius: 0px !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-nav:hover:not(:disabled) {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+  transform: none !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-close {
+  border-radius: 0px !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-close:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-episodes {
+  border-radius: 0px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-main) !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  font-style: italic !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+[data-theme="newspaper-dark"] .theme-player-episodes--interactive:hover {
+  background: var(--text-main) !important;
+  color: var(--bg-primary) !important;
+  border-color: var(--text-main) !important;
+  transform: none !important;
+}

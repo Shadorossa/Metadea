@@ -170,6 +170,7 @@ pub fn run() {
             media_themes::save_theme_preview_frame,
             media_themes::get_theme_preview_frame,
             media_themes::cache_theme_video,
+            media_themes::get_cached_theme_video,
             media_themes::delete_cached_theme_video,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,

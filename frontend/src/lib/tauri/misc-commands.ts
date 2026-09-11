@@ -138,6 +138,10 @@ export async function cacheThemeVideo(url: string, externalId: string, slug: str
   return tauriCmd<string>('cache_theme_video', '', { url, externalId, slug });
 }
 
+export async function getThemeVideoPath(externalId: string, slug: string): Promise<string | null> {
+  return tauriCmd<string | null>('get_cached_theme_video', null, { externalId, slug });
+}
+
 export async function deleteCachedThemeVideo(externalId: string, slug: string): Promise<void> {
   return tauriRun('delete_cached_theme_video', { externalId, slug });
 }
