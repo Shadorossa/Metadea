@@ -811,17 +811,10 @@ const translations = useTranslations(lang);
         seiyuSection.style.display = 'none';
       }
 
-      if (statsHtml || availableLangs.length > 0) {
-        // 'flex', not 'block' — .media-col-stats/.character-hero-stats is a
-        // flex column (see character.css), and an inline style always wins
-        // over a class regardless of specificity, so 'block' here silently
-        // broke every flex-only rule scoped to this element (the Editar
-        // button's align-self among them — it never actually centered/
-        // right-aligned no matter what that CSS said).
-        statsCard.style.display = 'flex';
-      } else {
-        statsCard.style.display = 'none';
-      }
+      // Always show the stats card to keep the edit button visible,
+      // even if there's no data or voice actors. The button should always
+      // be accessible.
+      statsCard.style.display = 'flex';
 
       // Biografía
       const bioSection = document.getElementById('char-bio-section')!;
