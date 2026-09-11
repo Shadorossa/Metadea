@@ -989,18 +989,25 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  opacity: 0.7;
   display: block;
 }
 
 .media-theme-preview-img {
   z-index: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.media-theme-preview-img.is-hidden {
+  opacity: 0 !important;
 }
 
 .media-theme-preview-video {
   z-index: 2;
   opacity: 0;
   transition: opacity 0.2s ease;
+  filter: none;
+  transform: translateZ(0);
 }
 
 .media-theme-preview-video.is-playing {
@@ -1050,6 +1057,62 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+}
+
+.theme-player-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 980px;
+  position: relative;
+}
+
+.theme-player-nav {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(22, 20, 18, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--text-main, #fff);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.theme-player-nav:hover:not(:disabled) {
+  background: rgba(45, 42, 38, 0.95);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: scale(1.08);
+}
+
+.theme-player-nav:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.theme-player-nav:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.theme-player-episodes {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #a1a1aa);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
 }
 
 .theme-player-modal {
@@ -1253,10 +1316,19 @@
    read consistently. */
 .media-episode-bg-layer img,
 .media-relation-card--static:hover .media-episode-bg-layer img,
-.media-relation-card:hover .media-episode-bg-layer img {
+.media-relation-card:hover .media-episode-bg-layer img,
+.media-theme-bg-layer img:not(.is-hidden),
+.media-relation-card--static:hover .media-theme-bg-layer img:not(.is-hidden),
+.media-relation-card:hover .media-theme-bg-layer img:not(.is-hidden) {
   opacity: 0.7;
   filter: none;
   transform: translateZ(0);
+}
+
+.media-theme-bg-layer img.is-hidden,
+.media-relation-card--static:hover .media-theme-bg-layer img.is-hidden,
+.media-relation-card:hover .media-theme-bg-layer img.is-hidden {
+  opacity: 0 !important;
 }
 
 .media-relation-card-overlay {

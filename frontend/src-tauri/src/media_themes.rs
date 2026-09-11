@@ -119,50 +119,145 @@ pub async fn save_theme_preview_frame(
     let file_path = dir.join(format!("{}_{}.webp", safe_id, safe_slug));
     let file_str = file_path.to_string_lossy().into_owned();
 
-    if !file_path.exists() {
-        use base64::Engine;
-        let raw = if let Some((_, b64)) = data_base64.split_once(',') { b64 } else { &data_base64 };
-        let bytes = base64::engine::general_purpose::STANDARD.decode(raw).str_err()?;
-        let decoded = image::load_from_memory(&bytes).str_err()?;
-        let target_img = if decoded.width() > 320 {
-            let target_height = ((320.0 / decoded.width() as f32) * decoded.height() as f32).round() as u32;
-            decoded.resize_exact(320, target_height, image::imageops::FilterType::Triangle)
-        } else {
-            decoded
-        };
-        let mut webp_bytes: Vec<u8> = Vec::new();
-        target_img.write_to(&mut std::io::Cursor::new(&mut webp_bytes), image::ImageFormat::WebP).str_err()?;
-        std::fs::write(&file_path, &webp_bytes).str_err()?;
-    }
+    use base64::Engine;
+    let raw = if let Some((_, b64)) = data_base64.split_once(',') { b64 } else { &data_base64 };
+    let bytes = base64::engine::general_purpose::STANDARD.decode(raw).str_err()?;
+    std::fs::write(&file_path, &bytes).str_err()?;
 
-    // Persist preview_url path to SQLite media_theme row
     let conn = state.conn.lock().str_err()?;
-    let _ = conn.execute(
+    conn.execute(
         "UPDATE media_theme SET preview_url = ?1 WHERE external_id = ?2 AND slug = ?3",
         rusqlite::params![&file_str, &external_id, &slug],
-    );
+    ).str_err()?;
 
     Ok(file_str)
 }
 
-#[tauri::command]
-pub async fn fetch_theme_video_blob(url: String) -> Result<String, String> {
-    let client = crate::igdb::get_http_client();
-    let resp = client
-        .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-        .send()
-        .await
-        .str_err()?;
+fn theme_video_cache_dir(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    use tauri::Manager;
+    let dir = app_handle
+        .path()
+        .app_data_dir()
+        .str_err()?
+        .join("metadata")
+        .join("theme_video_cache");
+    std::fs::create_dir_all(&dir).str_err()?;
+    Ok(dir)
+}
 
-    if !resp.status().is_success() {
-        return Err(format!("Failed to fetch theme video: HTTP {}", resp.status()));
+static DOWNLOAD_SEMAPHORE: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
+
+#[tauri::command]
+pub async fn cache_theme_video(
+    app_handle: tauri::AppHandle,
+    url: String,
+    external_id: String,
+    slug: String,
+) -> Result<String, String> {
+    let dir = theme_video_cache_dir(&app_handle)?;
+    let safe_id = crate::favorite_images::sanitize_for_filename(&external_id);
+    let safe_slug = crate::favorite_images::sanitize_for_filename(&slug);
+    let file_path = dir.join(format!("{}_{}.webm", safe_id, safe_slug));
+
+    if !file_path.exists() {
+        let _permit = DOWNLOAD_SEMAPHORE.acquire().await.map_err(|e| e.to_string())?;
+
+        // Re-check existence in case another task completed it while waiting for the semaphore
+        if !file_path.exists() {
+            let client = crate::igdb::get_http_client();
+            let mut attempts = 0;
+            let bytes = loop {
+                attempts += 1;
+                let resp = client
+                    .get(&url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                    .header("Referer", "https://animethemes.moe/")
+                    .header("Range", "bytes=0-")
+                    .send()
+                    .await
+                    .str_err()?;
+
+                let status = resp.status();
+                if status.is_success() {
+                    break resp.bytes().await.str_err()?;
+                }
+
+                if (status.as_u16() == 503 || status.as_u16() == 429) && attempts < 4 {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(2000 * attempts as u64)).await;
+                    continue;
+                }
+
+                return Err(format!("Failed to fetch theme video: HTTP {}", status));
+            };
+
+            std::fs::write(&file_path, &bytes).str_err()?;
+            prune_theme_video_cache(&dir, 800 * 1024 * 1024);
+            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        }
     }
 
-    let bytes = resp.bytes().await.str_err()?;
-    use base64::Engine;
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-    Ok(format!("data:video/webm;base64,{}", b64))
+    Ok(file_path.to_string_lossy().into_owned())
+}
+
+fn prune_theme_video_cache(dir: &std::path::Path, max_bytes: u64) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        let mut files: Vec<(std::path::PathBuf, u64, std::time::SystemTime)> = Vec::new();
+        let mut total_size = 0u64;
+        for entry in entries.flatten() {
+            if let Ok(meta) = entry.metadata() {
+                if meta.is_file() {
+                    let len = meta.len();
+                    total_size += len;
+                    let mtime = meta.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                    files.push((entry.path(), len, mtime));
+                }
+            }
+        }
+        if total_size > max_bytes {
+            files.sort_by_key(|f| f.2);
+            for (path, len, _) in files {
+                if total_size <= max_bytes * 3 / 4 {
+                    break;
+                }
+                if std::fs::remove_file(&path).is_ok() {
+                    total_size = total_size.saturating_sub(len);
+                }
+            }
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_cached_theme_video(
+    app_handle: tauri::AppHandle,
+    external_id: String,
+    slug: String,
+) -> Result<Option<String>, String> {
+    let dir = theme_video_cache_dir(&app_handle)?;
+    let safe_id = crate::favorite_images::sanitize_for_filename(&external_id);
+    let safe_slug = crate::favorite_images::sanitize_for_filename(&slug);
+    let file_path = dir.join(format!("{}_{}.webm", safe_id, safe_slug));
+    if file_path.exists() {
+        Ok(Some(file_path.to_string_lossy().into_owned()))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub async fn delete_cached_theme_video(
+    app_handle: tauri::AppHandle,
+    external_id: String,
+    slug: String,
+) -> Result<(), String> {
+    let dir = theme_video_cache_dir(&app_handle)?;
+    let safe_id = crate::favorite_images::sanitize_for_filename(&external_id);
+    let safe_slug = crate::favorite_images::sanitize_for_filename(&slug);
+    let file_path = dir.join(format!("{}_{}.webm", safe_id, safe_slug));
+    if file_path.exists() {
+        std::fs::remove_file(&file_path).str_err()?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

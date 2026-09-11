@@ -39,7 +39,7 @@ function splitTitleAfterColon(title: string): ReactNode {
   return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
 }
 
-function ThemeCardItem({ theme, onPlay }: { theme: MediaTheme; onPlay: () => void }) {
+function ThemeCardItem({ theme, onPlay, fallbackUrl }: { theme: MediaTheme; onPlay: () => void; fallbackUrl?: string }) {
   const [isHovered, setIsHovered] = useState(false);
   return (
     <div
@@ -54,6 +54,7 @@ function ThemeCardItem({ theme, onPlay }: { theme: MediaTheme; onPlay: () => voi
           slug={theme.slug}
           src={theme.video_url ?? undefined}
           initialPreviewUrl={theme.preview_url ?? undefined}
+          fallbackUrl={fallbackUrl}
           isHovered={isHovered}
         />
       </div>
@@ -638,6 +639,23 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   }, [currentId, previewMode]);
 
 
+  useEffect(() => {
+    if (!playingTheme) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        const idx = themes.findIndex(t => t.slug === playingTheme.slug);
+        if (idx > 0) setPlayingTheme(themes[idx - 1]);
+      } else if (e.key === 'ArrowRight') {
+        const idx = themes.findIndex(t => t.slug === playingTheme.slug);
+        if (idx >= 0 && idx < themes.length - 1) setPlayingTheme(themes[idx + 1]);
+      } else if (e.key === 'Escape') {
+        setPlayingTheme(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [playingTheme, themes]);
+
   // Auto-open editor when ?edit=1 is in the URL (e.g. navigating from library)
   useEffect(() => {
     if (previewMode || !data) return;
@@ -933,30 +951,70 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       {!previewMode && showSaga && (
         <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
       )}
-      {playingTheme && createPortal(
-        <div className="theme-player-overlay" onClick={() => setPlayingTheme(null)}>
-          <div className="theme-player-modal" onClick={e => e.stopPropagation()}>
-            <button type="button" className="theme-player-close" onClick={() => setPlayingTheme(null)} aria-label="Close">×</button>
-            <video
-              key={playingTheme.slug}
-              className="theme-player-video"
-              src={playingTheme.video_url ?? undefined}
-              controls
-              autoPlay
-            />
-            <div className="theme-player-info">
-              <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
-                {playingTheme.theme_type}{playingTheme.sequence}
-              </span>
-              <div className="theme-player-text">
-                <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
-                {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
+      {playingTheme && (() => {
+        const currentThemeIdx = themes.findIndex(t => t.slug === playingTheme.slug);
+        const prevTheme = currentThemeIdx > 0 ? themes[currentThemeIdx - 1] : null;
+        const nextTheme = currentThemeIdx !== -1 && currentThemeIdx < themes.length - 1 ? themes[currentThemeIdx + 1] : null;
+
+        return createPortal(
+          <div className="theme-player-overlay" onClick={() => setPlayingTheme(null)}>
+            <div className="theme-player-container" onClick={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="theme-player-nav theme-player-nav--prev"
+                disabled={!prevTheme}
+                onClick={() => prevTheme && setPlayingTheme(prevTheme)}
+                aria-label="Anterior"
+                title={prevTheme ? (prevTheme.song_title ?? `${prevTheme.theme_type}${prevTheme.sequence}`) : undefined}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+
+              <div className="theme-player-modal">
+                <button type="button" className="theme-player-close" onClick={() => setPlayingTheme(null)} aria-label="Close">×</button>
+                <video
+                  key={playingTheme.slug}
+                  className="theme-player-video"
+                  src={playingTheme.video_url ?? undefined}
+                  controls
+                  autoPlay
+                />
+                <div className="theme-player-info">
+                  <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
+                    {playingTheme.theme_type}{playingTheme.sequence}
+                  </span>
+                  <div className="theme-player-text">
+                    <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
+                    {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
+                  </div>
+                  {playingTheme.episodes && (
+                    <span className="theme-player-episodes">
+                      {playingTheme.episodes.includes('-') || playingTheme.episodes.includes(',') ? 'Episodios ' : 'Episodio '}
+                      {playingTheme.episodes}
+                    </span>
+                  )}
+                </div>
               </div>
+
+              <button
+                type="button"
+                className="theme-player-nav theme-player-nav--next"
+                disabled={!nextTheme}
+                onClick={() => nextTheme && setPlayingTheme(nextTheme)}
+                aria-label="Siguiente"
+                title={nextTheme ? (nextTheme.song_title ?? `${nextTheme.theme_type}${nextTheme.sequence}`) : undefined}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        );
+      })()}
       {!previewMode && showPrEditor && (
         <PrEditorModal
           externalId={currentId}
@@ -1213,6 +1271,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         key={t.slug}
                         theme={t}
                         onPlay={() => setPlayingTheme(t)}
+                        fallbackUrl={data.bannerImage || data.cover}
                       />
                     ))}
                 </div>

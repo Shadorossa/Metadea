@@ -134,8 +134,12 @@ export async function getThemePreviewFrame(externalId: string, slug: string): Pr
   return tauriCmd<string | null>('get_theme_preview_frame', null, { externalId, slug });
 }
 
-export async function fetchThemeVideoBlob(url: string): Promise<string> {
-  return tauriCmd<string>('fetch_theme_video_blob', '', { url });
+export async function cacheThemeVideo(url: string, externalId: string, slug: string): Promise<string> {
+  return tauriCmd<string>('cache_theme_video', '', { url, externalId, slug });
+}
+
+export async function deleteCachedThemeVideo(externalId: string, slug: string): Promise<void> {
+  return tauriRun('delete_cached_theme_video', { externalId, slug });
 }
 
 
