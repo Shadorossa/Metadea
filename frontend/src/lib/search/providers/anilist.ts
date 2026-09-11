@@ -4,7 +4,7 @@ import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
 import { AniListSearchError } from '../errors';
-import { getAniListToken } from '../../anilist/import';
+import { getAniListToken } from '../../tauri/auth';
 
 // AniList's own fixed genre list (GenreCollection) — stable for years, not
 // worth a dedicated request to re-fetch on every mount just for a filter's
