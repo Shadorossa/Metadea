@@ -1,30 +1,43 @@
-import { getAllLibraryEntries, getAllCatalogEntries } from '../tauri';
-import type { LibraryEntry, MediaCatalogEntry } from '../tauri';
+import { getAllLibraryEntries, getAllCatalogEntries, getAllCharacters, getCustomImagesMap } from '../tauri';
+import type { LibraryEntry, MediaCatalogEntry, FavoriteCustomImage } from '../tauri';
+import type { CharacterEntry } from '../tauri/characters';
 
-// Every Profile tab (Library, Stats, Favorites, Lists, Reviews) used to
-// independently re-fetch the entire library + catalog on its own mount —
-// switching tabs meant re-issuing the same two full-table IPC round trips
-// every time, even when nothing had changed since the last visit. This
-// module-level cache makes the first fetch of a session shared by every
-// consumer; only a real mutation (library editor save/delete, which already
-// dispatches 'refresh-profile-library' — see ProfileLibraryEditor.tsx)
-// invalidates it.
-let cache: Promise<{ items: LibraryEntry[]; catalog: MediaCatalogEntry[] }> | null = null;
+// Module-level caches to avoid redundant IPC round trips across profile tabs.
+// Invalidated only when real mutations happen (library editor, character edits).
+let libraryCache: Promise<{ items: LibraryEntry[]; catalog: MediaCatalogEntry[] }> | null = null;
+let charactersCache: Promise<CharacterEntry[]> | null = null;
+let customImagesCache: Promise<Map<string, FavoriteCustomImage>> | null = null;
 
 export function getCachedLibraryAndCatalog(): Promise<{ items: LibraryEntry[]; catalog: MediaCatalogEntry[] }> {
-  if (!cache) {
-    cache = Promise.all([
+  if (!libraryCache) {
+    libraryCache = Promise.all([
       getAllLibraryEntries().catch(() => [] as LibraryEntry[]),
       getAllCatalogEntries().catch(() => [] as MediaCatalogEntry[]),
     ]).then(([items, catalog]) => ({ items, catalog }));
   }
-  return cache;
+  return libraryCache;
 }
 
-function invalidateLibraryDataCache() {
-  cache = null;
+export function getCachedCharacters(): Promise<CharacterEntry[]> {
+  if (!charactersCache) {
+    charactersCache = getAllCharacters().catch(() => [] as CharacterEntry[]);
+  }
+  return charactersCache;
+}
+
+export function getCachedCustomImages(): Promise<Map<string, FavoriteCustomImage>> {
+  if (!customImagesCache) {
+    customImagesCache = getCustomImagesMap().catch(() => new Map<string, FavoriteCustomImage>());
+  }
+  return customImagesCache;
+}
+
+function invalidateProfileDataCaches() {
+  libraryCache = null;
+  charactersCache = null;
+  customImagesCache = null;
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('refresh-profile-library', invalidateLibraryDataCache);
+  window.addEventListener('refresh-profile-library', invalidateProfileDataCaches);
 }
