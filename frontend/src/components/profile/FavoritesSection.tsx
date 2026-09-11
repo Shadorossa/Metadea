@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { getAllLibraryEntries, getAllCharacters, getAllFavoriteCustomImages, readUserFavorites, writeUserFavorites, wrapAssetUrl, saveLibraryEntry } from '../../lib/tauri';
 import type { MediaCatalogEntry, FavoriteCustomImage, CharacterEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -22,6 +22,100 @@ const REORDER_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none
 const EMPTY_ICON = `<svg class="fav-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
 interface FavItem { external_id: string; type: string; }
+
+interface FavCardProps {
+  item: FavItem;
+  idx: number;
+  catalogMap: Map<string, MediaCatalogEntry>;
+  characterMap: Map<string, CharacterEntry>;
+  customImageMap: Map<string, FavoriteCustomImage>;
+  reorderModeActive: boolean;
+  readOnly: boolean;
+  isCrowned: boolean;
+  onToggleCrown: (id: string) => void;
+  onRemove: (id: string, type: string) => void;
+  onEditImage: (item: FavItem) => void;
+}
+
+const MemoizedFavCard = memo(function FavCard({
+  item,
+  idx,
+  catalogMap,
+  characterMap,
+  customImageMap,
+  reorderModeActive,
+  readOnly,
+  isCrowned,
+  onToggleCrown,
+  onRemove,
+  onEditImage,
+}: FavCardProps) {
+  const title = item.type === 'character'
+    ? (characterMap.get(item.external_id)?.name ?? item.external_id)
+    : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
+  const rawCover = item.type === 'character'
+    ? (characterMap.get(item.external_id)?.image_url ?? '')
+    : (catalogMap.get(item.external_id)?.cover_url ?? '');
+  const customImg = customImageMap.get(item.external_id);
+  const mediaUrl = item.type === 'character'
+    ? `/character?id=${item.external_id.replace('character:', '')}`
+    : `/media?id=${encodeURIComponent(item.external_id)}`;
+
+  return (
+    <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} draggable={reorderModeActive && !readOnly}>
+      <a className="fav-card-link" href={mediaUrl} draggable={false} />
+      <div className="fav-badge">#{idx + 1}</div>
+
+      {!readOnly && (
+        <div className="fav-card-icons">
+          <div className="fav-card-icons-row">
+            {item.type !== 'character' && (
+              <button
+                type="button"
+                className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
+                title="Multimedia"
+                onClick={e => { e.stopPropagation(); onToggleCrown(item.external_id); }}
+                dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
+              />
+            )}
+            <button
+              type="button"
+              className="fav-remove-btn"
+              title="Eliminar"
+              onClick={e => { e.stopPropagation(); e.preventDefault(); onRemove(item.external_id, item.type); }}
+              dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
+            />
+          </div>
+          <button
+            type="button"
+            className="fav-edit-image-btn"
+            title="Editar imagen"
+            onClick={e => { e.stopPropagation(); e.preventDefault(); onEditImage(item); }}
+            dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
+          />
+        </div>
+      )}
+
+      {customImg ? (
+        <div
+          className="fav-cover-wrap fav-cover-wrap--custom"
+          style={{
+            backgroundImage: `url('${wrapAssetUrl(customImg.image_url)}')`,
+            backgroundSize: `${customImg.bg_size}% auto`,
+            backgroundPosition: `${customImg.pos_x}% ${customImg.pos_y}%`,
+          }}
+        />
+      ) : rawCover ? (
+        <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" draggable={false} />
+      ) : (
+        <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
+      )}
+      <div className="fav-overlay">
+        <span className="fav-title">{title}</span>
+      </div>
+    </div>
+  );
+});
 
 interface Props {
   // Someone else's profile (UserProfileView) already has the mapped
@@ -361,72 +455,22 @@ export function FavoritesSection({ overrideItems, overrideCatalogMap, overrideCh
         {catItems.length > 0 ? (
           <div className="fav-grid" ref={gridRef} key={activeCatKey}>
             {catItems.map((item, idx) => {
-              const title = item.type === 'character'
-                ? (characterMap.get(item.external_id)?.name ?? item.external_id)
-                : (catalogMap.get(item.external_id)?.title_main ?? item.external_id);
-              const rawCover = item.type === 'character'
-                ? (characterMap.get(item.external_id)?.image_url ?? '')
-                : (catalogMap.get(item.external_id)?.cover_url ?? '');
-              const customImg = customImageMap.get(item.external_id);
-              const mediaUrl = item.type === 'character'
-                ? `/character?id=${item.external_id.replace('character:', '')}`
-                : `/media?id=${encodeURIComponent(item.external_id)}`;
               const isCrowned = Boolean(favData.multimedia?.includes(item.external_id));
-
               return (
-                <div className={`fav-card ${reorderModeActive ? 'reordering' : ''}`} data-id={item.external_id} key={item.external_id} draggable={reorderModeActive && !readOnly}>
-                  <a className="fav-card-link" href={mediaUrl} draggable={false} />
-                  <div className="fav-badge">#{idx + 1}</div>
-
-                  {!readOnly && (
-                    <div className="fav-card-icons">
-                      <div className="fav-card-icons-row">
-                        {activeCatKey !== 'multimedia' && item.type !== 'character' && (
-                          <button
-                            type="button"
-                            className={`fav-crown-btn ${isCrowned ? 'active' : ''}`}
-                            title={p.favorites_multimedia}
-                            onClick={e => { e.stopPropagation(); toggleCrown(item.external_id); }}
-                            dangerouslySetInnerHTML={{ __html: isCrowned ? CROWN_ICON_ON : CROWN_ICON_OFF }}
-                          />
-                        )}
-                        <button
-                          type="button"
-                          className="fav-remove-btn"
-                          title={p.favorites_remove}
-                          onClick={e => { e.stopPropagation(); e.preventDefault(); removeFavorite(item.external_id, item.type); }}
-                          dangerouslySetInnerHTML={{ __html: REMOVE_ICON }}
-                        />
-                      </div>
-                      {/* Hover-only trigger, see .fav-edit-image-btn CSS */}
-                      <button
-                        type="button"
-                        className="fav-edit-image-btn"
-                        title={p.favorites_edit_image}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); editImage(item); }}
-                        dangerouslySetInnerHTML={{ __html: EDIT_IMAGE_ICON }}
-                      />
-                    </div>
-                  )}
-
-                  {customImg ? (
-                    <div
-                      className="fav-cover-wrap fav-cover-wrap--custom"
-                      style={{
-                        backgroundImage: `url('${wrapAssetUrl(customImg.image_url)}')`,
-                        backgroundSize: `${customImg.bg_size}% auto`,
-                        backgroundPosition: `${customImg.pos_x}% ${customImg.pos_y}%`,
-                      }}
-                    />
-                  ) : rawCover ? (
-                    <img className="fav-cover" src={wrapAssetUrl(rawCover)} alt={title} loading="lazy" decoding="async" draggable={false} />
-                  ) : (
-                    <div className="fav-no-cover"><span>{title.slice(0, 2).toUpperCase()}</span></div>
-                  )}
-                  <div className="fav-overlay">
-                    <span className="fav-title">{title}</span>
-                  </div>
-                </div>
+                <MemoizedFavCard
+                  key={item.external_id}
+                  item={item}
+                  idx={idx}
+                  catalogMap={catalogMap}
+                  characterMap={characterMap}
+                  customImageMap={customImageMap}
+                  reorderModeActive={reorderModeActive}
+                  readOnly={readOnly}
+                  isCrowned={isCrowned && activeCatKey !== 'multimedia'}
+                  onToggleCrown={toggleCrown}
+                  onRemove={removeFavorite}
+                  onEditImage={editImage}
+                />
               );
             })}
           </div>

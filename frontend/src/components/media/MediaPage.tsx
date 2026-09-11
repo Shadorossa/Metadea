@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, memo, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
@@ -58,6 +58,47 @@ function formatThemeEpisodes(rawEpisodes: string | null | undefined, episodeOffs
 
   return trimmed.replace(/\b\d+\b/g, m => String(parseInt(m, 10) + episodeOffset));
 }
+
+const EpisodeCard = memo(function EpisodeCard({ ep }: { ep: MediaEpisode }) {
+  return (
+    <div className="media-relation-card media-relation-card--static">
+      <div className="media-relation-bg-layer media-episode-bg-layer">
+        {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
+      </div>
+      <div className="media-relation-card-overlay" />
+      <span className="media-relation-type">{`#${formatEpisodeNumber(ep.episode_number)}`}</span>
+      <div className="media-relation-card-content">
+        <div className="media-relation-info">
+          <span className="media-relation-title">{ep.name ?? `#${formatEpisodeNumber(ep.episode_number)}`}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const RelationCard = memo(function RelationCard({ relation }: { relation: any }) {
+  const Wrapper = relation.url ? 'a' : 'div';
+  return (
+    <Wrapper
+      href={relation.url}
+      className={`media-relation-card${relation.url ? '' : ' media-relation-card--static'}`}
+    >
+      <div className="media-relation-bg-layer">
+        {relation.cover && <img src={relation.cover} alt="" loading="lazy" />}
+      </div>
+      <div className="media-relation-card-overlay" />
+      <span className="media-relation-type">{relation.typeLabel}</span>
+      <div className="media-relation-card-content">
+        <div className="media-relation-thumb">
+          {relation.cover && <img src={relation.cover} alt={relation.title} loading="lazy" />}
+        </div>
+        <div className="media-relation-info">
+          <span className="media-relation-title">{splitTitleAfterColon(relation.title)}</span>
+        </div>
+      </div>
+    </Wrapper>
+  );
+});
 
 function ThemeCardItem({
   theme,
@@ -1400,21 +1441,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   {episodes
                     .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
                     .map(ep => (
-                      <div
-                        key={`${ep.season_number}-${ep.episode_number}`}
-                        className="media-relation-card media-relation-card--static"
-                      >
-                        <div className="media-relation-bg-layer media-episode-bg-layer">
-                          {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
-                        </div>
-                        <div className="media-relation-card-overlay" />
-                        <span className="media-relation-type">{`#${formatEpisodeNumber(ep.episode_number)}`}</span>
-                        <div className="media-relation-card-content">
-                          <div className="media-relation-info">
-                            <span className="media-relation-title">{ep.name ?? `#${formatEpisodeNumber(ep.episode_number)}`}</span>
-                          </div>
-                        </div>
-                      </div>
+                      <EpisodeCard key={`${ep.season_number}-${ep.episode_number}`} ep={ep} />
                     ))}
                 </div>
                 {episodes.length > EPISODE_PAGE_SIZE && (
@@ -1431,32 +1458,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               <div className="media-relations-grid">
                 {visibleRelations
                   .slice((relationPage - 1) * pageSize, relationPage * pageSize)
-                  .map((r, i) => {
-                    // No url (manga's ComicVine issues — see comic-issues.ts) means
-                    // purely visual, not a real navigable entry.
-                    const Wrapper = r.url ? 'a' : 'div';
-                    return (
-                      <Wrapper
-                        key={r.url ?? `${r.typeLabel}-${r.title}-${i}`}
-                        href={r.url}
-                        className={`media-relation-card${r.url ? '' : ' media-relation-card--static'}`}
-                      >
-                        <div className="media-relation-bg-layer">
-                          {r.cover && <img src={r.cover} alt="" loading="lazy" />}
-                        </div>
-                        <div className="media-relation-card-overlay" />
-                        <span className="media-relation-type">{r.typeLabel}</span>
-                        <div className="media-relation-card-content">
-                          <div className="media-relation-thumb">
-                            {r.cover && <img src={r.cover} alt={r.title} loading="lazy" />}
-                          </div>
-                          <div className="media-relation-info">
-                            <span className="media-relation-title">{splitTitleAfterColon(r.title)}</span>
-                          </div>
-                        </div>
-                      </Wrapper>
-                    );
-                  })}
+                  .map((r, i) => (
+                    <RelationCard key={r.url ?? `${r.typeLabel}-${r.title}-${i}`} relation={r} />
+                  ))}
               </div>
               {visibleRelations.length > pageSize && (
                 <Pagination

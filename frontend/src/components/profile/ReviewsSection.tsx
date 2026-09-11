@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, memo } from 'react';
 import type { MediaCatalogEntry, LibraryEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getActiveRatingSystem, syncActiveRatingSystem, formatRatingHtml } from '../../lib/media/rating-utils';
@@ -18,6 +18,52 @@ interface Props {
   overrideItems?: LibraryEntry[];
   overrideCatalogMap?: Map<string, MediaCatalogEntry>;
 }
+
+interface ReviewCardProps {
+  item: LibraryEntry;
+  catalogMap: Map<string, MediaCatalogEntry>;
+  ratingSystem: ReturnType<typeof getActiveRatingSystem>;
+  typeIcon: Record<string, string>;
+}
+
+const MemoizedReviewCard = memo(function ReviewCard({ item, catalogMap, ratingSystem, typeIcon }: ReviewCardProps) {
+  const meta = catalogMap.get(item.external_id);
+  const title = meta?.title_main ?? item.external_id;
+  const cover = meta?.cover_url ?? '';
+  const fallback = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg,#374151,#1f2937)';
+  const date = (item.updated_at ?? item.added_at ?? '').slice(0, 10);
+  const ratingHtml = item.rating
+    ? formatRatingHtml(item.rating, ratingSystem, 'review-card-rating')
+    : `<span style="color:var(--text-dim)">—</span>`;
+  const url = `/media?id=${encodeURIComponent(item.external_id)}`;
+
+  return (
+    <article className="review-card" key={item.external_id}>
+      <div className="review-card-top">
+        <a className="review-card-cover-link" href={url}>
+          {cover ? (
+            <img className="review-card-cover" src={cover} alt={title} loading="lazy" decoding="async" />
+          ) : (
+            <div className="review-card-cover review-card-cover--fallback" style={{ background: fallback }}>
+              <span>{title.slice(0, 2).toUpperCase()}</span>
+            </div>
+          )}
+        </a>
+        <div className="review-card-headinfo">
+          <a href={url} className="review-card-title">{title}</a>
+          <div className="review-card-meta">
+            <span className="review-card-type">
+              <span dangerouslySetInnerHTML={{ __html: typeIcon[item.type] ?? '' }} /> {getTypeLabel(item.type)}
+            </span>
+            <span className="review-card-rating" dangerouslySetInnerHTML={{ __html: ratingHtml }} />
+            {date && <time className="review-card-date">{date}</time>}
+          </div>
+        </div>
+      </div>
+      <p className="review-card-note">{item.notes}</p>
+    </article>
+  );
+});
 
 export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}) {
   const t = getT();
@@ -146,50 +192,15 @@ export function ReviewsSection({ overrideItems, overrideCatalogMap }: Props = {}
       <p className="reviews-count">{reviewsCountText}</p>
       {filtered.length > 0 ? (
         <div className="reviews-list">
-          {filtered.map(item => {
-            const meta  = catalogMap.get(item.external_id);
-            const title = meta?.title_main ?? item.external_id;
-            const cover = meta?.cover_url ?? '';
-            const fallback = HOF_GRADIENTS[item.type] ?? 'linear-gradient(160deg,#374151,#1f2937)';
-            const date  = (item.updated_at ?? item.added_at ?? '').slice(0, 10);
-            const ratingHtml = item.rating
-              ? formatRatingHtml(item.rating, system, 'review-card-rating')
-              : `<span style="color:var(--text-dim)">—</span>`;
-            const url = `/media?id=${encodeURIComponent(item.external_id)}`;
-
-            return (
-              // Masonry via CSS columns (.reviews-list) instead of one full-
-              // width row per review — a short note used to leave most of
-              // the row empty since the row's height was set by a fixed-size
-              // cover, not by the text. Packing by each card's own natural
-              // height (cover now a small thumb above the note, not driving
-              // row height) fills that space instead.
-              <article className="review-card" key={item.external_id}>
-                <div className="review-card-top">
-                  <a className="review-card-cover-link" href={url}>
-                    {cover ? (
-                      <img className="review-card-cover" src={cover} alt={title} loading="lazy" decoding="async" />
-                    ) : (
-                      <div className="review-card-cover review-card-cover--fallback" style={{ background: fallback }}>
-                        <span>{title.slice(0, 2).toUpperCase()}</span>
-                      </div>
-                    )}
-                  </a>
-                  <div className="review-card-headinfo">
-                    <a href={url} className="review-card-title">{title}</a>
-                    <div className="review-card-meta">
-                      <span className="review-card-type">
-                        <span dangerouslySetInnerHTML={{ __html: TYPE_ICON[item.type] ?? '' }} /> {getTypeLabel(item.type)}
-                      </span>
-                      <span className="review-card-rating" dangerouslySetInnerHTML={{ __html: ratingHtml }} />
-                      {date && <time className="review-card-date">{date}</time>}
-                    </div>
-                  </div>
-                </div>
-                <p className="review-card-note">{item.notes}</p>
-              </article>
-            );
-          })}
+          {filtered.map(item => (
+            <MemoizedReviewCard
+              key={item.external_id}
+              item={item}
+              catalogMap={catalogMap}
+              ratingSystem={system}
+              typeIcon={TYPE_ICON}
+            />
+          ))}
         </div>
       ) : (
         <div className="profile-empty" style={{ padding: '2rem 0' }}><p>{t.search.no_results_generic}</p></div>
