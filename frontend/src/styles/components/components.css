@@ -28,11 +28,11 @@
     transform     var(--anim-base) var(--anim-ease),
     box-shadow    var(--anim-base) var(--anim-ease),
     border-color  var(--anim-base) var(--anim-ease);
-  will-change: transform;
 }
 .card-media-base:hover {
+  will-change: transform;
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--accent-border);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--accent-border);
   border-color: var(--accent-border);
 }
 .card-media-img {
