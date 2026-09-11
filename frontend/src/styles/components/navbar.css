@@ -97,26 +97,27 @@
 .nav-group {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: clamp(0.15rem, 0.5vw, 0.25rem);
   pointer-events: auto;
+  flex-shrink: 0;
 }
 
 .nav-arrows {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: clamp(0.15rem, 0.5vw, 0.25rem);
   pointer-events: auto;
   flex-shrink: 0;
 }
 
 .nav-group--left {
-  margin-left: clamp(0.5rem, 3vw, 8rem);
+  margin-left: clamp(0.25rem, 1.5vw, 8rem);
   flex-shrink: 0;
 }
 
 .nav-group--right {
   margin-left: auto;
-  margin-right: clamp(0.5rem, 3vw, 8rem);
+  margin-right: clamp(0.25rem, 1.5vw, 8rem);
   flex-shrink: 0;
 }
 
