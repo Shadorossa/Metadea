@@ -2744,6 +2744,7 @@
   display: grid;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
+  max-width: clamp(300px, 85%, 1000px);
 }
 
 @media (min-width: 860px) {
@@ -2757,6 +2758,7 @@
   display: grid;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
+  max-width: clamp(300px, 85%, 1200px);
 }
 
 @media (min-width: 700px) {
