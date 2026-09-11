@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  width: clamp(60vw, 80%, calc(100% - 20rem));
   height: 100%;
   overflow: hidden;
   pointer-events: none;
