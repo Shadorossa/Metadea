@@ -2757,6 +2757,8 @@
   display: grid;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (min-width: 700px) {
@@ -2777,6 +2779,8 @@
   border-radius: var(--radius-md);
   padding: clamp(0.8rem, 2vw, 1.25rem);
   box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* KPI card sub-label (e.g. "4.2 d · 1.8 h/obra" below hours) */
