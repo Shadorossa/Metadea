@@ -1,6 +1,7 @@
 import type { getAllLibraryEntries, MediaCatalogEntry, DbMediaRelation } from '../tauri';
 import { isInProgressStatus, ALL_MEDIA_TYPES, SUB_WORK_FORMATS } from '../constants/media';
 import { dbRatingToStars5, type RatingSystem } from '../media/rating-utils';
+import { buildEditionMaps, sagaIdentityOf } from '../../components/profile/library-grouping';
 
 type Items = Awaited<ReturnType<typeof getAllLibraryEntries>>;
 
@@ -93,10 +94,15 @@ const SAGA_RELATION_TYPES = new Set(['SEQUEL', 'SECUELA', 'PREQUEL', 'PRECUELA',
 //
 // Catalog-wide walk (not just relations between owned entries), so owning
 // season 1 and 3 but not 2 still merges them — same technique
-// refineSagaGroups uses for the library grid, simplified here: no edition-
-// redirect/bundle-suppression, just "which owned items share a saga chain."
-// Returns only real multi-member chains (a lone owned entry with no owned
-// relatives has nothing to merge with and isn't included).
+// refineSagaGroups uses for the library grid, including its edition
+// redirect (a remaster/remake with no saga edge of its own still folds into
+// its original's franchise here too — see sagaIdentityOf) so this can never
+// count the same IP twice just because one entry happens to be a different
+// edition. Bundle-suppression is still skipped: a bundle's own members
+// never carry SEQUEL/PREQUEL/ALTERNATIVE relations to begin with, so
+// there's nothing for this to accidentally merge. Returns only real
+// multi-member chains (a lone owned entry with no owned relatives has
+// nothing to merge with and isn't included).
 export function groupSagaChains(
   items: Items,
   relations: DbMediaRelation[],
@@ -115,6 +121,7 @@ export function groupSagaChains(
     if (ra !== rb) parent.set(ra, rb);
   };
 
+  const directSagaIds = new Set<string>();
   for (const rel of relations) {
     if (!rel.media_external_id || !SAGA_RELATION_TYPES.has(rel.relation_type)) continue;
     const a = rel.media_external_id;
@@ -124,6 +131,21 @@ export function groupSagaChains(
     if (typeA && !SAGA_GROUPABLE_TYPES.has(typeA)) continue;
     if (typeB && !SAGA_GROUPABLE_TYPES.has(typeB)) continue;
     union(a, b);
+    directSagaIds.add(a);
+    directSagaIds.add(b);
+  }
+
+  // Fold any owned remaster/remake/expanded edition with no direct saga edge
+  // of its own onto whichever franchise its original belongs to — e.g. a
+  // completed remake of Gintama, with no SEQUEL/PREQUEL row of its own,
+  // would otherwise count as a totally separate completed anime instead of
+  // joining the rest of the franchise.
+  const { ultimateOriginalOf, familyOf } = buildEditionMaps(relations);
+  for (const item of items) {
+    const id = item.external_id;
+    if (parent.has(id)) continue; // already directly part of a chain
+    const slot = sagaIdentityOf(id, directSagaIds, ultimateOriginalOf, familyOf);
+    if (slot && parent.has(slot)) union(id, slot);
   }
 
   const groups = new Map<string, string[]>();

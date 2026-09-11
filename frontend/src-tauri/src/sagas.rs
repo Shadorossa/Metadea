@@ -22,6 +22,14 @@ pub struct SagaEntry {
     pub day: Option<i32>,
 }
 
+// Sort key for "earliest release first", missing fields sorted last —
+// shared by get_cached_saga's own sort below and save_cached_saga's anchor-
+// name fallback, so the two don't drift into using different "unknown"
+// sentinels for the same idea.
+fn release_date_key(entry: &SagaEntry) -> (i32, i32, i32) {
+    (entry.year.unwrap_or(9999), entry.month.unwrap_or(12), entry.day.unwrap_or(31))
+}
+
 #[tauri::command]
 pub async fn get_cached_saga(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -85,21 +93,7 @@ pub async fn get_cached_saga(
     } else {
         // Sort entries by date locally to ensure correct timeline
         let mut sorted = entries;
-        sorted.sort_by(|a, b| {
-            let ay = a.year.unwrap_or(9999);
-            let by = b.year.unwrap_or(9999);
-            if ay != by {
-                return ay.cmp(&by);
-            }
-            let am = a.month.unwrap_or(12);
-            let bm = b.month.unwrap_or(12);
-            if am != bm {
-                return am.cmp(&bm);
-            }
-            let ad = a.day.unwrap_or(31);
-            let bd = b.day.unwrap_or(31);
-            ad.cmp(&bd)
-        });
+        sorted.sort_by_key(release_date_key);
         Ok(Some(sorted))
     }
 }
@@ -188,7 +182,19 @@ pub async fn save_cached_saga(
         .min_by(|a, b| a.external_id.cmp(&b.external_id))
         .expect("entries is non-empty, checked above");
     let saga_id = anchor.external_id.clone();
-    let final_saga_name = if saga_name.is_empty() { anchor.title.clone() } else { saga_name };
+
+    // The no-explicit-name fallback must be the chronologically FIRST
+    // entry's title, not the anchor's — the anchor is picked by a
+    // lexicographic string compare of external_id purely for saga_id
+    // stability, which has nothing to do with release order (AniList ids
+    // aren't zero-padded, so e.g. "anime:100784" — a 2018 entry — sorts
+    // before "anime:918" — the 2006 original — as plain text). Same
+    // release_date_key get_cached_saga's own sort above already uses.
+    let earliest = entries
+        .iter()
+        .min_by_key(|e| release_date_key(e))
+        .expect("entries is non-empty, checked above");
+    let final_saga_name = if saga_name.is_empty() { earliest.title.clone() } else { saga_name };
 
     // The anchor above can be a *different* id than a previous save's — e.g.
     // adding an earlier-released member later, whose external_id now sorts

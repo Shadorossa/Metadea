@@ -78,7 +78,12 @@ export function groupEditions<T extends { external_id: string; selected_version:
 // original's saga identity).
 const EDITION_SOURCE_RELATION_TYPES = new Set(['REMAKE', 'REMASTER', 'EXPANDED_GAME']);
 
-function buildEditionMaps(relations: DbMediaRelation[]): { ultimateOriginalOf: Map<string, string>; familyOf: Map<string, string[]> } {
+// Exported so stats-calculators.ts's groupSagaChains can redirect a saga-
+// less remaster/remake onto its original's saga identity too — same rule
+// the library grid's refineSagaGroups uses (see sagaIdentityOf below) — so
+// "how many works" doesn't disagree with the grid about what counts as the
+// same IP depending on which of the two independently re-derived it.
+export function buildEditionMaps(relations: DbMediaRelation[]): { ultimateOriginalOf: Map<string, string>; familyOf: Map<string, string[]> } {
   const originalOf = new Map<string, string>();
   for (const rel of relations) {
     if (!rel.media_external_id) continue;
@@ -104,6 +109,31 @@ function buildEditionMaps(relations: DbMediaRelation[]): { ultimateOriginalOf: M
     familyOf.set(origId, list);
   }
   return { ultimateOriginalOf, familyOf };
+}
+
+// A remake/remaster only borrows its original's saga identity when no
+// edition in its own family (the remake/remaster versions themselves, not
+// the original) has a saga relation of its own — e.g. Umineko's remake
+// versions have their own separate PREQUEL/SEQUEL chain curated
+// independently of the visual novel originals', so those keep their own
+// identity instead of redirecting. Returns undefined when there's nothing to
+// redirect to (not an edition, or its family already has its own saga
+// elsewhere and this specific edition still has no direct edge of its own —
+// it just stays ungrouped). Exported (alongside buildEditionMaps) so
+// stats-calculators.ts's groupSagaChains applies the exact same "what
+// counts as the same IP" rule the grid does, instead of a second,
+// independently-drifting copy of it.
+export function sagaIdentityOf(
+  id: string,
+  directSagaIds: Set<string>,
+  ultimateOriginalOfMap: Map<string, string>,
+  familyOf: Map<string, string[]>,
+): string | undefined {
+  if (directSagaIds.has(id)) return id;
+  if (!ultimateOriginalOfMap.has(id)) return undefined;
+  const original = ultimateOriginalOfMap.get(id)!;
+  const familyHasOwnSaga = (familyOf.get(original) ?? []).some(sib => directSagaIds.has(sib));
+  return familyHasOwnSaga ? undefined : original;
 }
 
 // Second pass: collapses groups a CONTAINS/EPISODE relation ties to one
@@ -270,24 +300,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
   // for selected_version chains) — a catalog-wide fact, not scoped to what's
   // owned. Shared with groupBundles above (see buildEditionMaps).
   const { ultimateOriginalOf: ultimateOriginalOfMap, familyOf } = buildEditionMaps(relations);
-  const ultimateOriginalOf = (id: string): string => ultimateOriginalOfMap.get(id) ?? id;
-
-  // A remake/remaster only borrows its original's saga identity when no
-  // edition in its own family (the remake/remaster versions themselves, not
-  // the original) has a saga relation of its own — e.g. Umineko's remake
-  // versions have their own separate PREQUEL/SEQUEL chain curated
-  // independently of the visual novel originals', so those keep their own
-  // identity instead of redirecting. Returns undefined when there's nothing
-  // to redirect to (not an edition, or its family already has its own saga
-  // elsewhere and this specific edition still has no direct edge of its
-  // own — it just stays ungrouped, same as before this existed).
-  const sagaIdentityOf = (id: string): string | undefined => {
-    if (directSagaIds.has(id)) return id;
-    if (!ultimateOriginalOfMap.has(id)) return undefined;
-    const original = ultimateOriginalOf(id);
-    const familyHasOwnSaga = (familyOf.get(original) ?? []).some(sib => directSagaIds.has(sib));
-    return familyHasOwnSaga ? undefined : original;
-  };
+  const sagaIdentityOfHere = (id: string): string | undefined => sagaIdentityOf(id, directSagaIds, ultimateOriginalOfMap, familyOf);
 
   // A bundle member (either side of EPISODE/PART_OF) never joins a saga
   // cluster, even with "Agrupar por bundle" off (bundleMeta unset then).
@@ -309,7 +322,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
     const memberIds = [g.item.external_id, ...g.grouped.map(m => m.external_id)];
     if (memberIds.some(id => bundleParticipantIds.has(id))) return;
     for (const id of memberIds) {
-      const slot = sagaIdentityOf(id);
+      const slot = sagaIdentityOfHere(id);
       if (slot && parent.has(slot)) {
         slotOf.set(i, slot);
         return;
@@ -380,7 +393,7 @@ export function refineSagaGroups<T extends { external_id: string }>(
       const g = groups[idx];
       const slot = idxToSlot.get(idx)!;
       for (const member of [g.item, ...g.grouped]) {
-        const sortId = member.external_id !== slot && sagaIdentityOf(member.external_id) === slot
+        const sortId = member.external_id !== slot && sagaIdentityOfHere(member.external_id) === slot
           ? slot
           : member.external_id;
         allMembers.push({ member, sortId });
