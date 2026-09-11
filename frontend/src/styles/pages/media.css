@@ -1052,11 +1052,13 @@
   inset: 0;
   z-index: 1000;
   background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
+  will-change: backdrop-filter;
 }
 
 .theme-player-container {
@@ -2645,8 +2647,9 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: blur(8px) brightness(0.5);
+  filter: blur(6px) brightness(0.5);
   z-index: 0;
+  will-change: filter;
 }
 
 .me-month-btn-cover-img {
@@ -2889,8 +2892,10 @@
   align-items: stretch;
   justify-content: center;
   background: rgba(0, 0, 0, 0.85) !important;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 0 !important;
+  will-change: backdrop-filter;
 }
 
 .saga-strip-container {

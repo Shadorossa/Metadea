@@ -475,12 +475,12 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   background: color-mix(in srgb, var(--bg-base) 55%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border-radius: 8px;
   transition: max-width 0.35s ease, padding 0.35s ease;
   pointer-events: none;
-  will-change: max-width, padding;
+  will-change: max-width, padding, backdrop-filter;
   transform: translateZ(0);
 }
 
@@ -551,7 +551,8 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  filter: blur(4px) saturate(0.8);
+  filter: blur(2px) saturate(0.8);
+  will-change: filter;
 }
 
 .library-card::after {
@@ -1451,11 +1452,13 @@
   transform: translateX(-50%) translateY(5px);
   background: rgba(19, 19, 31, 0.96);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-md);
   opacity: 0;
   pointer-events: none;
+  will-change: opacity, transform, backdrop-filter;
   z-index: 100;
   transition: opacity var(--anim-fast) var(--anim-ease), transform var(--anim-fast) var(--anim-ease);
   min-width: 100px;
