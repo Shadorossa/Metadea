@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { getAllLibraryEntries, getAllCatalogEntries, wrapAssetUrl } from '../../lib/tauri';
 import type { MediaCatalogEntry } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
@@ -20,15 +20,15 @@ type CalendarMode = 'mine' | 'general';
 const POPOVER_PAGE_SIZE = 8; // 4 columns × 2 rows
 const TYPE_ICON = typeIconMap(14);
 
-function TypeTabs({ releases, activeType, tabClass, onSelect, showIcons }: {
+const TypeTabs = memo(function TypeTabs({ releases, activeType, tabClass, onSelect, showIcons }: {
   releases: UpcomingRelease[];
   activeType: string | null;
   tabClass: string;
   onSelect: (type: string | null) => void;
   showIcons?: boolean;
 }) {
-  const present = new Set(releases.map(r => r.type));
-  const orderedTypes = ALL_MEDIA_TYPES.filter(ty => present.has(ty));
+  const present = useMemo(() => new Set(releases.map(r => r.type)), [releases]);
+  const orderedTypes = useMemo(() => ALL_MEDIA_TYPES.filter(ty => present.has(ty)), [present]);
   if (orderedTypes.length < 2) return null;
 
   const p = getT().profile;
@@ -55,24 +55,32 @@ function TypeTabs({ releases, activeType, tabClass, onSelect, showIcons }: {
       ))}
     </>
   );
-}
+});
 
-function ReleaseThumb({ release }: { release: UpcomingRelease }) {
+const ReleaseThumb = memo(function ReleaseThumb({ release }: { release: UpcomingRelease }) {
   return release.cover
     ? <img className="calendar-popover-cover" src={wrapAssetUrl(release.cover)} alt="" loading="lazy" />
     : <div className="calendar-popover-cover calendar-popover-cover--empty" />;
-}
+});
 
-function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
+const DayPopover = memo(function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
   const p = getT().profile;
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
-  const filtered = typeFilter ? releases.filter(r => r.type === typeFilter) : releases;
-  const pages: UpcomingRelease[][] = [];
-  for (let i = 0; i < filtered.length; i += POPOVER_PAGE_SIZE) {
-    pages.push(filtered.slice(i, i + POPOVER_PAGE_SIZE));
-  }
+  const filtered = useMemo(
+    () => typeFilter ? releases.filter(r => r.type === typeFilter) : releases,
+    [typeFilter, releases]
+  );
+
+  const pages = useMemo(() => {
+    const result: UpcomingRelease[][] = [];
+    for (let i = 0; i < filtered.length; i += POPOVER_PAGE_SIZE) {
+      result.push(filtered.slice(i, i + POPOVER_PAGE_SIZE));
+    }
+    return result;
+  }, [filtered]);
+
   const clampedPage = Math.min(page, Math.max(0, pages.length - 1));
 
   return (
@@ -112,7 +120,7 @@ function DayPopover({ releases }: { releases: UpcomingRelease[] }) {
       </div>
     </div>
   );
-}
+});
 
 export function CalendarSection() {
   const [isMounted, setIsMounted] = useState(false);
@@ -201,8 +209,16 @@ export function CalendarSection() {
     return () => document.removeEventListener('click', close);
   }, [openDay]);
 
-  const releases = mode === 'mine' ? mineReleases : (generalReleases ?? []);
-  const filtered = typeFilter ? releases.filter(r => r.type === typeFilter) : releases;
+  const releases = useMemo(
+    () => mode === 'mine' ? mineReleases : (generalReleases ?? []),
+    [mode, mineReleases, generalReleases]
+  );
+
+  const filtered = useMemo(
+    () => typeFilter ? releases.filter(r => r.type === typeFilter) : releases,
+    [typeFilter, releases]
+  );
+
   const { days: calendarDays, startOffset } = useMemo(
     () => computeCalendarMonth(filtered, now, currentYear, currentMonth),
     [filtered, now, currentYear, currentMonth]
@@ -210,7 +226,10 @@ export function CalendarSection() {
 
   const isBusy = mode === 'mine' ? loading : generalLoading;
 
-  const dayHeaders = p.calendar_days || ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const dayHeaders = useMemo(
+    () => p.calendar_days || ['L', 'M', 'X', 'J', 'V', 'S', 'D'],
+    [p.calendar_days]
+  );
 
   return (
     <div className="home-card">
