@@ -16,6 +16,32 @@ const ls = {
 
 const TOKEN_KEY = STORAGE_KEYS.anilistToken;
 
+function showToast(message: string, type: 'error' | 'success' = 'success') {
+  try {
+    const toast = document.createElement('div');
+    const bgColor = type === 'error' ? '#ef4444' : '#10b981';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${bgColor};
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease-out;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  } catch (e) {
+    console.warn('Failed to show toast:', e);
+  }
+}
+
 export function initAniListAuth() {
   const t = getT().settings;
   const anilistLoginBtn     = byId<HTMLButtonElement>('anilist-login-btn');
@@ -66,14 +92,25 @@ export function initAniListAuth() {
       if (user) {
         showConnected(user.name, user.avatar?.large);
       } else {
+        // Check if it's a token error
+        const errors = res?.errors;
+        if (errors?.some(e =>
+          e.message?.includes('Unauthorized') ||
+          e.message?.includes('expired') ||
+          e.message?.includes('invalid')
+        )) {
+          console.warn('AniList token is invalid or expired, disconnecting');
+          showToast(t.anilist_token_expired, 'error');
+        } else if (errors?.length) {
+          console.error('AniList validation error:', errors[0]?.message);
+          showToast(errors[0]?.message || t.anilist_token_validate_error, 'error');
+        }
         clearToken();
         showDisconnected();
       }
     }).catch(err => {
-      // Could be an expired/invalid token, but could just as easily be a
-      // network blip — log it so a real failure doesn't look identical to
-      // "token was fine, just logged out" with zero trace.
       console.error('AniList token validation failed:', err);
+      showToast(t.anilist_network_error, 'error');
       clearToken();
       showDisconnected();
     });
@@ -126,14 +163,27 @@ export function initAniListAuth() {
           ls.set(TOKEN_KEY, rawToken);
           hideModal(anilistTokenModal);
           showConnected(user.name, user.avatar?.large);
+          showToast(t.connect + ' ✓', 'success');
         } else {
-          alert(t.anilist_token_invalid);
+          const errors = res?.errors;
+          let errorMsg = t.anilist_token_invalid;
+
+          if (errors?.some(e =>
+            e.message?.includes('Unauthorized') ||
+            e.message?.includes('expired')
+          )) {
+            errorMsg = t.anilist_token_expired;
+          } else if (errors?.length) {
+            errorMsg = errors[0]?.message || t.anilist_token_validate_error;
+          }
+
+          showToast(errorMsg, 'error');
           anilistSaveTokenBtn.disabled = false;
           anilistSaveTokenBtn.textContent = t.anilist_validate_save;
         }
       } catch (err) {
         console.error(err);
-        alert(t.anilist_token_validate_error);
+        showToast(t.anilist_network_error, 'error');
         anilistSaveTokenBtn.disabled = false;
         anilistSaveTokenBtn.textContent = t.anilist_validate_save;
       }

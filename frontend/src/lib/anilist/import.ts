@@ -84,12 +84,54 @@ interface AniListImportPage {
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-async function fetchCurrentUserId(token: string): Promise<number | null> {
-  const { ok, result } = await graphqlPost<{ Viewer: { id: number } }>(
+export interface AniListError {
+  type: 'token_expired' | 'network_error' | 'unknown';
+  message: string;
+}
+
+async function fetchCurrentUserId(token: string): Promise<{ id: number | null; error?: AniListError }> {
+  const { ok, status, result } = await graphqlPost<{ Viewer: { id: number } }>(
     API_ENDPOINTS.ANILIST, CURRENT_USER_QUERY, undefined, { token },
   );
-  if (!ok || result?.errors) return null;
-  return result?.data?.Viewer?.id ?? null;
+
+  // Check for token expiration errors
+  if (result?.errors?.some(e =>
+    e.message?.includes('Unauthorized') ||
+    e.message?.includes('expired') ||
+    e.message?.includes('invalid')
+  )) {
+    return {
+      id: null,
+      error: {
+        type: 'token_expired',
+        message: result.errors[0]?.message || 'Token is invalid or expired'
+      }
+    };
+  }
+
+  // Check for network errors
+  if (!ok && status === 0) {
+    return {
+      id: null,
+      error: {
+        type: 'network_error',
+        message: 'Failed to connect to AniList'
+      }
+    };
+  }
+
+  // Check for other errors
+  if (!ok || result?.errors) {
+    return {
+      id: null,
+      error: {
+        type: 'unknown',
+        message: result?.errors?.[0]?.message || 'Unknown error'
+      }
+    };
+  }
+
+  return { id: result?.data?.Viewer?.id ?? null };
 }
 
 async function fetchAllPages(
@@ -125,8 +167,12 @@ async function fetchAniListItems(
   if (!token) return { ok: false, error: 'No AniList token found' };
 
   onProg({ current: 0, total: 0, status: 'loading', message: 'Obteniendo usuario...' });
-  const userId = await fetchCurrentUserId(token);
-  if (!userId) return { ok: false, error: 'Could not get user ID' };
+  const userResult = await fetchCurrentUserId(token);
+  if (!userResult.id) {
+    const error = userResult.error?.message || 'Could not get user ID';
+    return { ok: false, error };
+  }
+  const userId = userResult.id;
 
   const formatSet = new Set(selectedFormats);
   const needAnime = selectedFormats.some(f => ANIME_FORMAT_SET.has(f));

@@ -37,6 +37,37 @@ export class RateLimiter {
 function notifyRateLimitWait(provider: string, waitMs: number): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('metadea:rate-limit-wait', { detail: { provider, waitMs } }));
+
+  // Show toast notification to user
+  try {
+    const message = provider === 'AniList'
+      ? (window as any).__i18n?.settings?.anilist_rate_limit || 'You\'ve reached the maximum number of requests for 1 minute on AniList.'
+      : `Rate limited by ${provider}. Please wait ${Math.ceil(waitMs / 1000)}s.`;
+
+    // Create and show toast
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ef4444;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      animation: slideUp 0.3s ease-out;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Remove after 5 seconds
+    setTimeout(() => toast.remove(), 5000);
+  } catch (e) {
+    console.warn('Failed to show rate limit toast:', e);
+  }
 }
 
 // AniList's own documented limit is 90 requests/min — capped well under that
