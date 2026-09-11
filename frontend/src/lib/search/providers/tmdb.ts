@@ -435,22 +435,13 @@ export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers:
     seasonNumbers.map(seasonNumber =>
       fetchJson<TmdbSeasonResponse>(buildUrl(seasonNumber), { headers })
         .then(season => ({ seasonNumber, season }))
-        .catch(err => {
-          console.warn(`[TMDB] Failed to fetch season ${seasonNumber} for TV ${tmdbId}:`, err);
-          return { seasonNumber, season: null as TmdbSeasonResponse | null };
-        }),
+        .catch(() => ({ seasonNumber, season: null as TmdbSeasonResponse | null })),
     ),
   );
 
   const episodes: TmdbEpisodeSummary[] = [];
-  let skippedCount = 0;
   for (const { seasonNumber, season } of seasons) {
-    if (!season?.episodes) continue;
-    for (const ep of season.episodes) {
-      if (typeof ep.episode_number !== 'number') {
-        skippedCount++;
-        continue;
-      }
+    for (const ep of season?.episodes ?? []) {
       episodes.push({
         season_number:  seasonNumber,
         episode_number: ep.episode_number,
@@ -459,11 +450,6 @@ export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers:
       });
     }
   }
-
-  if (skippedCount > 0) {
-    console.warn(`[TMDB] Skipped ${skippedCount} episodes for TV ${tmdbId} (invalid episode_number)`);
-  }
-
   return episodes;
 }
 
