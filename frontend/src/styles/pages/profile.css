@@ -391,6 +391,7 @@
   min-width: 0;
   z-index: 1;
   will-change: z-index;
+  overflow: visible;
 }
 
 .library-card-cell:hover {
