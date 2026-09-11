@@ -575,6 +575,7 @@ export const fr = {
     anilist_rate_limit: 'Vous avez atteint le nombre maximum de requêtes pendant 1 minute sur AniList.',
     anilist_token_expired: 'Le jeton AniList a expiré. Veuillez vous reconnecter.',
     anilist_network_error: 'Impossible de se connecter à AniList. Vérifiez votre connexion Internet.',
+    anilist_search_failed: 'Impossible de rechercher sur AniList. Réessayez plus tard.',
     github_login_failed: 'Échec de la connexion : {error}',
     github_auth_flow_error: "Impossible de démarrer le flux d'authentification.",
     github_verifying: 'Vérification...',

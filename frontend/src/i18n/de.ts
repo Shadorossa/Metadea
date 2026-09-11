@@ -575,6 +575,7 @@ export const de = {
     anilist_rate_limit: 'Du hast die maximale Anzahl von Anfragen für 1 Minute bei AniList erreicht.',
     anilist_token_expired: 'Das AniList-Token ist abgelaufen. Bitte stelle die Verbindung wieder her.',
     anilist_network_error: 'Verbindung zu AniList fehlgeschlagen. Überprüfe deine Internetverbindung.',
+    anilist_search_failed: 'AniList-Suche fehlgeschlagen. Versuchen Sie es später erneut.',
     github_login_failed: 'Anmeldung fehlgeschlagen: {error}',
     github_auth_flow_error: 'Der Authentifizierungsvorgang konnte nicht gestartet werden.',
     github_verifying: 'Wird überprüft...',

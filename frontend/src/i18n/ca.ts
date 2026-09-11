@@ -575,6 +575,7 @@ export const ca = {
     anilist_rate_limit: 'Has assolit el nombre màxim de sol·licituds durant 1 minut a AniList.',
     anilist_token_expired: 'El token d\'AniList ha vençut. Si us plau, reconnecta.',
     anilist_network_error: 'Ha fallat la connexió a AniList. Comprova la teva connexió a Internet.',
+    anilist_search_failed: 'Ha fallat la cerca a AniList. Prova-ho més tard.',
     github_login_failed: 'Error en iniciar sessió: {error}',
     github_auth_flow_error: 'No s\'ha pogut iniciar el flux d\'autenticació.',
     github_verifying: 'Verificant...',

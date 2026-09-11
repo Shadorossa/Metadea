@@ -3,6 +3,7 @@ import { SEASON_MONTHS } from '../index';
 import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
+import { AniListSearchError } from '../errors';
 
 // AniList's own fixed genre list (GenreCollection) — stable for years, not
 // worth a dedicated request to re-fetch on every mount just for a filter's
@@ -363,19 +364,19 @@ function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']
       e.message?.includes('expired') ||
       e.message?.includes('invalid')
     )) {
-      throw new Error('AniList token has expired or is invalid. Please reconnect in Settings.');
+      throw new AniListSearchError('token_expired', 'AniList token has expired', 'anilist_token_expired');
     }
     // Check for other GraphQL errors
     if (result?.errors?.[0]) {
-      throw new Error(`AniList search failed: ${result.errors[0].message}`);
+      throw new AniListSearchError('unknown', result.errors[0].message, 'anilist_search_failed');
     }
-    throw new Error('Failed to reach AniList. Check your internet connection.');
+    throw new AniListSearchError('network_error', 'Failed to reach AniList', 'anilist_network_error');
   }
   const pageData = result?.data?.Page;
   if (!pageData) {
     // Check if there were errors even though ok was true (edge case)
     if (result?.errors?.length) {
-      throw new Error(`AniList search error: ${result.errors[0].message}`);
+      throw new AniListSearchError('unknown', result.errors[0].message, 'anilist_search_failed');
     }
     return { results: [], hasMore: false };
   }

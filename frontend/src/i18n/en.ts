@@ -620,6 +620,7 @@ export const en = {
     anilist_rate_limit: 'You\'ve reached the maximum number of requests for 1 minute on AniList.',
     anilist_token_expired: 'AniList token has expired. Please reconnect.',
     anilist_network_error: 'Failed to connect to AniList. Please check your internet connection.',
+    anilist_search_failed: 'AniList search failed. Try again later.',
     github_login_failed: 'Login failed: {error}',
     github_auth_flow_error: 'Could not start the authentication flow.',
     github_verifying: 'Verifying...',
