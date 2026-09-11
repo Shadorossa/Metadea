@@ -2476,45 +2476,47 @@
 .stats-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: clamp(0.8rem, 2vw, 1.25rem);
   width: 100%;
-  padding: 0.25rem 0 2rem;
+  padding: 0.25rem 0 clamp(1.2rem, 2.5vw, 2rem);
   box-sizing: border-box;
 }
 
 @media (max-width: 1200px) {
   .stats-layout {
-    padding: 0 6rem;
+    padding: 0 clamp(2rem, 6vw, 6rem);
   }
 }
 
 @media (max-width: 1024px) {
   .stats-layout {
-    padding: 0 3rem;
+    padding: 0 clamp(1.5rem, 4vw, 3rem);
   }
 }
 
 @media (max-width: 768px) {
   .stats-layout {
-    padding: 0 1rem;
+    padding: 0 clamp(0.5rem, 2vw, 1rem);
   }
 }
 
 .stats-grid-5 {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 18vw, 180px), 1fr));
+  gap: clamp(0.7rem, 1.5vw, 1rem);
 }
 
 @media (max-width: 900px) {
   .stats-grid-5 {
     grid-template-columns: repeat(3, 1fr);
+    gap: clamp(0.7rem, 1.5vw, 1rem);
   }
 }
 
 @media (max-width: 600px) {
   .stats-grid-5 {
     grid-template-columns: repeat(2, 1fr);
+    gap: clamp(0.7rem, 1.5vw, 1rem);
   }
 }
 
@@ -2580,19 +2582,19 @@
 .stats-status-list {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-  margin-top: 0.75rem;
+  gap: clamp(0.8rem, 1.8vw, 1.1rem);
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
 }
 
 .stats-status-row {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: clamp(0.8rem, 1.8vw, 1.25rem);
 }
 
 .stats-status-icon {
   color: var(--text-dim);
-  width: 16px;
+  width: clamp(12px, 1.5vw, 16px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2600,10 +2602,10 @@
 }
 
 .stats-status-label {
-  font-size: 0.75rem;
+  font-size: clamp(0.6rem, 1vw, 0.75rem);
   font-weight: 600;
   color: var(--text-muted);
-  width: 100px;
+  width: clamp(70px, 12vw, 100px);
   flex-shrink: 0;
 }
 
@@ -2617,7 +2619,7 @@
   appearance: none;
   -webkit-appearance: none;
   flex: 1;
-  height: 10px;
+  height: clamp(8px, 1.2vw, 10px);
   border: none;
   border-radius: 99px;
   overflow: hidden;
@@ -2659,18 +2661,18 @@
 }
 
 .stats-status-count {
-  font-size: 0.75rem;
+  font-size: clamp(0.6rem, 1vw, 0.75rem);
   font-weight: 900;
   color: var(--text-main);
-  width: 40px;
+  width: clamp(30px, 5vw, 40px);
   text-align: right;
   flex-shrink: 0;
 }
 
 .stats-status-percent {
-  font-size: 0.65rem;
+  font-size: clamp(0.55rem, 0.9vw, 0.65rem);
   color: var(--text-dim);
-  width: 40px;
+  width: clamp(30px, 5vw, 40px);
   text-align: right;
   flex-shrink: 0;
 }
@@ -2678,12 +2680,13 @@
 .stats-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: clamp(0.7rem, 1.5vw, 1rem);
 }
 
 @media (max-width: 768px) {
   .stats-grid-3 {
     grid-template-columns: repeat(2, 1fr);
+    gap: clamp(0.7rem, 1.5vw, 1rem);
   }
 }
 
