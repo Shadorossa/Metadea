@@ -47,7 +47,6 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
   ratingSlot?: RatingSlot;
 }) => {
   const meta = catalogMap.get(item.external_id);
-  const isAggregate = !!bundleMeta || !!aggregateStats;
   const title = bundleMeta?.title_main ?? titleOverride ?? meta?.title_main ?? item.external_id;
   const cover = toMediumCover(bundleMeta?.cover_url ?? meta?.cover_url ?? '');
   const typeIc = TYPE_ICON[item.type] ?? TYPE_ICON['book'];
@@ -68,13 +67,14 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     [bundleMeta, orderedGrouped, item]
   );
 
-  const isSecondaryRating = ratingSlot === 'rating_2';
   const ratingHtml = useMemo(() => {
+    const isAggregate = !!bundleMeta || !!aggregateStats;
+    const isSecondaryRating = ratingSlot === 'rating_2';
     const members = aggregateMembers;
     return isAggregate
       ? formatRatingHtml(averageRating(members, ratingSlot), isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10)
       : formatRatingHtml(isSecondaryRating ? item.rating_2 : item.rating, isSecondaryRating ? getRating2System() : getActiveRatingSystem(), 'library-card-rating', isSecondaryRating ? getRating2Max() : 10);
-  }, [aggregateMembers, isAggregate, ratingSlot, isSecondaryRating, item.rating, item.rating_2]);
+  }, [bundleMeta, aggregateStats, aggregateMembers, ratingSlot, item.rating, item.rating_2]);
 
   const dateStr = useMemo(() => {
     const earliestDate = (dates: (string | null | undefined)[]): string => {
