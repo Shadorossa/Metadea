@@ -23,29 +23,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  max-width: calc(100% - 28rem);
+  flex: 1;
   height: 100%;
   overflow: hidden;
   pointer-events: none;
   z-index: 1;
-}
-
-@media (max-width: 1600px) {
-  .nav-center-wrap {
-    max-width: calc(100% - 26rem);
-  }
-}
-
-@media (max-width: 1400px) {
-  .nav-center-wrap {
-    max-width: calc(100% - 24rem);
-  }
-}
-
-@media (max-width: 1100px) {
-  .nav-center-wrap {
-    max-width: calc(100% - 16rem);
-  }
 }
 
 .nav-center-slot {
