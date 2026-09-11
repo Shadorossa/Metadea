@@ -985,7 +985,7 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  opacity: 0.8;
+  opacity: 0.7;
   display: block;
 }
 
@@ -1220,6 +1220,20 @@
      declaration replaces the base rule's GPU-layer hack entirely otherwise. */
   transform: scale(1.05) translateZ(0);
   opacity: 0.15;
+}
+
+/* Episodios ("Temas" tab's sibling) — the cover fills the whole card as its
+   own main visual instead of the generic .media-relation-bg-layer img's
+   faint 0.08-opacity blurred backdrop (that treatment is for cards that
+   already have a separate sharp thumb next to the title; this card doesn't
+   have one anymore). Same opacity as the Temas tab's video preview so both
+   read consistently. */
+.media-episode-bg-layer img,
+.media-relation-card--static:hover .media-episode-bg-layer img,
+.media-relation-card:hover .media-episode-bg-layer img {
+  opacity: 0.7;
+  filter: none;
+  transform: translateZ(0);
 }
 
 .media-relation-card-overlay {

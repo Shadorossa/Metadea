@@ -1200,15 +1200,12 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         key={`${ep.season_number}-${ep.episode_number}`}
                         className="media-relation-card media-relation-card--static"
                       >
-                        <div className="media-relation-bg-layer">
+                        <div className="media-relation-bg-layer media-episode-bg-layer">
                           {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
                         </div>
                         <div className="media-relation-card-overlay" />
                         <span className="media-relation-type">{`#${ep.episode_number}`}</span>
                         <div className="media-relation-card-content">
-                          <div className="media-relation-thumb">
-                            {ep.cover_url && <img src={ep.cover_url} alt={ep.name ?? ''} loading="lazy" />}
-                          </div>
                           <div className="media-relation-info">
                             <span className="media-relation-title">{ep.name ?? `#${ep.episode_number}`}</span>
                           </div>
