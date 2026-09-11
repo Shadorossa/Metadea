@@ -11,13 +11,12 @@
   },
   "media_relations": [
     {
-      "media_external_id": "vnovel:36278",
       "related_media_external_id": "vnovel:144844",
       "relation_type": "REMASTER",
       "type_label": "Remaster",
       "title": "The House in Fata Morgana: Novectacle",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co5peu.jpg",
-      "format": null
+      "media_external_id": "vnovel:36278"
     },
     {
       "related_media_external_id": "vnovel:119577",
@@ -33,10 +32,109 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "The House in Fata Morgana: A Requiem for Innocence",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg",
-      "format": null
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coc4np.jpg"
     }
   ],
-  "characters": [],
-  "media_authors": []
+  "characters": [
+    {
+      "external_id": "character:a:126065",
+      "name": "Michel Bollinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126065-WvefnJdpBpnH.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132994",
+      "name": "Georges Bollinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n132994-yCshlEXIyxHe.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:133000",
+      "name": "Didier Bollinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n133000-KT1SUOgvcjld.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132999",
+      "name": "Aimee Bollinger",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n132999-5hsxbb23mtap.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132810",
+      "name": "Yakata no Jochuu",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b132810-MG3oF2PRVKeX.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126151",
+      "name": "Morgana",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126151-eNxJRLLjDUlQ.png",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132811",
+      "name": "Shiroi-kami no Musume",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b132811-kvfzIapYZVrr.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:126152",
+      "name": "Jacopo Bearzatti",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b126152-K8o2wI9y9waJ.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132992",
+      "name": "Pauline",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b132992-clvdZj62w4hz.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132993",
+      "name": "Maria Campanella",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b132993-O48wQaIScPsh.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132995",
+      "name": "Mell Rhodes",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n132995-4EVF9nvMOkEO.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132996",
+      "name": "Yukimasa Aida",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/b132996-iHgNHvcfZCnw.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132997",
+      "name": "Nellie Rhodes",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n132997-3ykavUVGiznc.png",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    },
+    {
+      "external_id": "character:a:132998",
+      "name": "Javi",
+      "image_url": "https://s4.anilist.co/file/anilistcdn/character/large/n132998-428BYisxHjas.jpg",
+      "relation_type": "SUPPORTING",
+      "character_name": null
+    }
+  ],
+  "media_authors": [],
+  "story_arcs": []
 }
