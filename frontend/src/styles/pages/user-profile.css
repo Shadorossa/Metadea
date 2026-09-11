@@ -1,16 +1,16 @@
 .user-profile-empty {
-  padding: 4rem 1.5rem;
+  padding: clamp(2.5rem, 5vw, 4rem) clamp(0.75rem, 2vw, 1.5rem);
   text-align: center;
   color: var(--text-dim);
 }
 
 .user-profile-follow-btn {
-  padding: 0.55rem 1.5rem;
+  padding: clamp(0.4rem, 0.8vw, 0.55rem) clamp(1rem, 2vw, 1.5rem);
   border-radius: var(--radius-sm);
   border: 1px solid var(--accent-border);
   background: var(--accent);
   color: #fff;
-  font-size: 0.85rem;
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
   font-weight: 700;
   cursor: pointer;
   transition: background var(--anim-fast), opacity var(--anim-fast);
