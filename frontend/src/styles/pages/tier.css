@@ -1,8 +1,8 @@
 /* ── /tier (índice) ──────────────────────────────────────────────────────── */
 
 .tier-page {
-  padding: 2rem 2.5rem;
-  padding-top: calc(48px + 2rem);
+  padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2.5rem);
+  padding-top: calc(48px + clamp(1.5rem, 2.5vw, 2rem));
   min-height: 100vh;
 }
 
@@ -10,11 +10,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.25rem;
+  margin-bottom: clamp(0.8rem, 1.8vw, 1.25rem);
 }
 
 .tier-index-title {
-  font-size: 1.4rem;
+  font-size: clamp(1.1rem, 2.2vw, 1.4rem);
   font-weight: 700;
   color: var(--text-main);
   margin: 0;
@@ -23,13 +23,13 @@
 .tier-index-create-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
+  gap: clamp(0.2rem, 0.6vw, 0.4rem);
+  padding: clamp(0.3rem, 0.7vw, 0.45rem) clamp(0.6rem, 1.3vw, 0.9rem);
   background: var(--accent);
   color: #fff;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1vw, 0.8rem);
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -40,12 +40,12 @@
 
 .tier-index-search-wrap {
   position: relative;
-  margin-bottom: 2rem;
+  margin-bottom: clamp(1.2rem, 2.5vw, 2rem);
 }
 
 .tier-index-search-icon {
   position: absolute;
-  left: 0.75rem;
+  left: clamp(0.5rem, 1vw, 0.75rem);
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-dim);
@@ -54,12 +54,12 @@
 
 .tier-index-search {
   width: 100%;
-  padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+  padding: clamp(0.4rem, 0.8vw, 0.55rem) clamp(0.5rem, 1vw, 0.75rem) clamp(0.4rem, 0.8vw, 0.55rem) clamp(1.5rem, 2.5vw, 2.25rem);
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-main);
-  font-size: 0.85rem;
+  font-size: clamp(0.7rem, 1.1vw, 0.85rem);
   outline: none;
   transition: border-color 0.15s;
 }
@@ -82,29 +82,29 @@
 
 .tier-index-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(100px, 15vw, 150px), 1fr));
+  gap: clamp(0.8rem, 1.8vw, 1.25rem);
 }
 
 .tier-index-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: clamp(0.3rem, 0.8vw, 0.5rem);
   text-decoration: none;
   color: inherit;
 }
 
 .tier-index-card-delete-btn {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  top: clamp(0.3rem, 0.6vw, 0.5rem);
+  right: clamp(0.3rem, 0.6vw, 0.5rem);
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: clamp(22px, 3vw, 28px);
+  height: clamp(22px, 3vw, 28px);
   border-radius: var(--radius-sm, 4px);
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid transparent;
