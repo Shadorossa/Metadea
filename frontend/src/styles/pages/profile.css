@@ -468,7 +468,7 @@
   display: flex;
   align-items: stretch;
   gap: 0.4rem;
-  padding: 0;
+  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
   max-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -494,7 +494,6 @@
      covers realistic group sizes; overflow-x above is the fallback for
      anything bigger instead of silently clipping again. */
   max-width: min(90vw, 2400px);
-  padding: 0.4rem 0.4rem 0.4rem 0.8rem;
   pointer-events: auto;
 }
 
@@ -507,9 +506,6 @@
 .library-card-cell--flyout-left .library-card-stack-extra {
   left: auto;
   right: 100%;
-}
-
-.library-card-cell--flyout-left.library-card-cell--stacked:hover .library-card-stack-extra {
   padding: 0.4rem 0.8rem 0.4rem 0.4rem;
 }
 
