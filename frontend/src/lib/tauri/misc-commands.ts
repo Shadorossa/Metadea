@@ -115,6 +115,7 @@ export interface MediaTheme {
   artists:     string | null;
   episodes:    string | null;
   video_url:   string | null;
+  preview_url?: string | null;
 }
 
 export async function getMediaThemes(externalId: string): Promise<MediaTheme[]> {
@@ -124,6 +125,19 @@ export async function getMediaThemes(externalId: string): Promise<MediaTheme[]> 
 export async function saveMediaThemes(externalId: string, themes: MediaTheme[]): Promise<void> {
   return tauriRun('save_media_themes', { externalId, themes });
 }
+
+export async function saveThemePreviewFrame(externalId: string, slug: string, dataBase64: string): Promise<string> {
+  return tauriCmd<string>('save_theme_preview_frame', '', { externalId, slug, dataBase64 });
+}
+
+export async function getThemePreviewFrame(externalId: string, slug: string): Promise<string | null> {
+  return tauriCmd<string | null>('get_theme_preview_frame', null, { externalId, slug });
+}
+
+export async function fetchThemeVideoBlob(url: string): Promise<string> {
+  return tauriCmd<string>('fetch_theme_video_blob', '', { url });
+}
+
 
 // ── Staff (crew) ─────────────────────────────────────────────────────────────
 

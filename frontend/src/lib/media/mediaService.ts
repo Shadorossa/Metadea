@@ -379,7 +379,8 @@ export async function fetchMediaData(
       data.authors = finalAuthors.map(dbAuthorToMediaAuthor);
     }
 
-    if (dbChars.length > 0) {
+    // If retry-sync requested fresh data and API returned characters, prefer them over stale DB characters.
+    if (dbChars.length > 0 && (!opts?.refreshAniListTotalCount || data.characters.length === 0)) {
       data.characters = dbChars.map(dbCharacterToMediaCharacter);
     }
 

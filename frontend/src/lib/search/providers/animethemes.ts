@@ -22,16 +22,9 @@ interface AnimeThemesEntry {
 }
 
 interface AnimeThemesTheme {
-  // animethemes.moe's own unique name per theme ("OP1", "OP1v2",
-  // "OP1-YorinukiGintamaSan", ...) — the real identifier. (type, sequence)
-  // alone can collide: animethemes.moe attaches a recap/compilation work's
-  // own OP1/ED1/... to the SAME anime entry as the main show's (confirmed
-  // on Gintama, id 918 — its animethemes array also carries "Yorinuki
-  // Gintama-san"'s themes, with their own OP1/OP2/... reusing those exact
-  // sequence numbers under different slugs).
   slug: string;
   type: string; // "OP" | "ED"
-  sequence: number;
+  sequence?: number | null;
   song?: { title?: string | null; artists?: AnimeThemesArtist[] } | null;
   animethemeentries?: AnimeThemesEntry[];
 }
@@ -81,10 +74,14 @@ export async function fetchAnimeThemes(anilistId: number): Promise<AnimeThemeSum
     .map(theme => {
       const entry = theme.animethemeentries?.[0];
       const video = pickBestVideo(entry?.videos);
+      const seqMatch = theme.slug.match(/^(?:OP|ED)(\d+)/i);
+      const sequence = (typeof theme.sequence === 'number' && !isNaN(theme.sequence))
+        ? theme.sequence
+        : (seqMatch ? parseInt(seqMatch[1], 10) : 1);
       return {
         slug: theme.slug,
         themeType: theme.type,
-        sequence: theme.sequence,
+        sequence,
         songTitle: theme.song?.title?.trim() || null,
         artists: theme.song?.artists?.map(a => a.name).filter(Boolean).join(', ') || null,
         episodes: entry?.episodes || null,

@@ -1129,6 +1129,10 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 57)?;
     }
+    if v < 58 {
+        let _ = conn.execute("ALTER TABLE media_theme ADD COLUMN preview_url TEXT", []);
+        mark_migration(conn, 58)?;
+    }
 
     Ok(())
 }

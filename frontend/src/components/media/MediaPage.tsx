@@ -39,6 +39,38 @@ function splitTitleAfterColon(title: string): ReactNode {
   return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
 }
 
+function ThemeCardItem({ theme, onPlay }: { theme: MediaTheme; onPlay: () => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+  return (
+    <div
+      className={`media-relation-card media-relation-card--static media-theme-card${theme.video_url ? ' media-theme-card--playable' : ''}`}
+      onClick={() => theme.video_url && onPlay()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="media-relation-bg-layer media-theme-bg-layer">
+        <ThemePreviewCardVideo
+          externalId={theme.external_id}
+          slug={theme.slug}
+          src={theme.video_url ?? undefined}
+          initialPreviewUrl={theme.preview_url ?? undefined}
+          isHovered={isHovered}
+        />
+      </div>
+      <div className="media-relation-card-overlay" />
+      <span className={`media-relation-type media-theme-badge media-theme-badge--${theme.theme_type.toLowerCase()}`}>
+        {theme.theme_type}{theme.sequence}
+      </span>
+      <div className="media-relation-card-content">
+        <div className="media-relation-info">
+          <span className="media-relation-title">{theme.song_title ?? `${theme.theme_type}${theme.sequence}`}</span>
+          {theme.artists && <span className="media-theme-artist">{theme.artists}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── StarRating ─────────────────────────────────────────────────────────────
 
 function StarRating({
@@ -714,7 +746,25 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setRetryingSync(true);
     invalidateCachedMediaData(currentId);
     fetchMediaData(currentId, { refreshAniListTotalCount: true, refreshSourceAdaptation: true }).then(fresh => {
-      if (fresh) setData(fresh);
+      if (fresh) {
+        setData(fresh);
+        if (fresh.characters && fresh.characters.length > 0) {
+          const isCastRole = fresh.type === 'movie' || fresh.type === 'series';
+          saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(fresh.characters, isCastRole)).catch(console.error);
+        }
+        if (fresh.staff && fresh.staff.length > 0) {
+          saveStaffSkeleton(currentId, mediaStaffToSkeleton(fresh.staff)).catch(console.error);
+        }
+        if (fresh.charactersHasMore) {
+          fetchExtraCharacters(currentId, fresh).then(characters => {
+            if (!characters) return;
+            patchCachedCharacters(currentId, characters);
+            setData(prev => (prev && prev.externalId === currentId) ? { ...prev, characters, charactersHasMore: false } : prev);
+            const isCastRole = fresh.type === 'movie' || fresh.type === 'series';
+            saveCharactersSkeleton(currentId, mediaCharactersToSkeleton(characters, isCastRole)).catch(console.error);
+          });
+        }
+      }
       // Chained off the fresh fetch (not fired alongside it) so a series'
       // already-known season count (totalCount_2) can be passed through —
       // same duplicate-TMDB-detail-request avoidance as the main load
@@ -1159,25 +1209,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                   {themes
                     .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
                     .map(t => (
-                      <div
+                      <ThemeCardItem
                         key={t.slug}
-                        className={`media-relation-card media-relation-card--static media-theme-card${t.video_url ? ' media-theme-card--playable' : ''}`}
-                        onClick={() => t.video_url && setPlayingTheme(t)}
-                      >
-                        <div className="media-relation-bg-layer media-theme-bg-layer">
-                          {t.video_url && <ThemePreviewCardVideo src={t.video_url} />}
-                        </div>
-                        <div className="media-relation-card-overlay" />
-                        <span className={`media-relation-type media-theme-badge media-theme-badge--${t.theme_type.toLowerCase()}`}>
-                          {t.theme_type}{t.sequence}
-                        </span>
-                        <div className="media-relation-card-content">
-                          <div className="media-relation-info">
-                            <span className="media-relation-title">{t.song_title ?? `${t.theme_type}${t.sequence}`}</span>
-                            {t.artists && <span className="media-theme-artist">{t.artists}</span>}
-                          </div>
-                        </div>
-                      </div>
+                        theme={t}
+                        onPlay={() => setPlayingTheme(t)}
+                      />
                     ))}
                 </div>
                 {themes.length > EPISODE_PAGE_SIZE && (
