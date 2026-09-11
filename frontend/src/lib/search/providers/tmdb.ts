@@ -453,12 +453,13 @@ export async function fetchTmdbEpisodesForSeasons(tmdbId: number, seasonNumbers:
   return episodes;
 }
 
-// Season 0 (specials) through numberOfSeasons-1, TMDB's own contiguous
+// Season 0 (specials) through numberOfSeasons, TMDB's own contiguous
 // numbering — the common case (a series with no AniList season-split to
 // worry about). Season 0 is included: TMDB numbers it like any other
 // season, and the media page's episode table doesn't need to treat it
-// differently.
+// differently. numberOfSeasons is the count of regular seasons (1-N),
+// so we add 1 to include season 0 (specials).
 export async function fetchTmdbEpisodes(tmdbId: number, numberOfSeasons: number): Promise<TmdbEpisodeSummary[]> {
   if (numberOfSeasons <= 0) return [];
-  return fetchTmdbEpisodesForSeasons(tmdbId, Array.from({ length: numberOfSeasons }, (_, i) => i));
+  return fetchTmdbEpisodesForSeasons(tmdbId, Array.from({ length: numberOfSeasons + 1 }, (_, i) => i));
 }
