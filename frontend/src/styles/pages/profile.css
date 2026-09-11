@@ -2757,7 +2757,7 @@
 /* Status + Time pair */
 .stats-main-pair {
   display: grid;
-  gap: 1.25rem;
+  gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
 }
 
