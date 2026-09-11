@@ -1,0 +1,24 @@
+{
+  "media_catalog": {
+    "id": "97bc0d6717573e8f97bc0d6717573e8f",
+    "external_id": "movie:272",
+    "type": "movie",
+    "title_main": "Batman Begins",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "movie:272",
+      "related_media_external_id": "movie:155",
+      "relation_type": "SEQUEL",
+      "type_label": "Sequel",
+      "title": "The Dark Knight",
+      "cover": "https://image.tmdb.org/t/p/w300/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
