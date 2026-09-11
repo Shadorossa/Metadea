@@ -100,6 +100,61 @@ const RelationCard = memo(function RelationCard({ relation }: { relation: any })
   );
 });
 
+interface CharacterCardProps {
+  character: any;
+  charTab: 'characters' | 'staff';
+  customImagesMap: Map<string, FavoriteCustomImage>;
+}
+
+const CharacterCard = memo(function CharacterCard({ character: c, charTab, customImagesMap }: CharacterCardProps) {
+  const href = c.id
+    ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(c.id)}` : `/character?id=${encodeURIComponent(c.id)}`)
+    : undefined;
+  const customImg = c.id ? customImagesMap.get(c.id) : undefined;
+  const displayImg = customImg ? wrapAssetUrl(customImg.image_url) : c.image;
+
+  return (
+    <a href={href} className="media-char-card">
+      <div className="media-char-bg-layer">
+        {displayImg && <img src={displayImg} alt="" loading="lazy" />}
+      </div>
+      <div className="media-char-card-overlay" />
+      <div className="media-char-card-content">
+        <div className="media-char-thumb">
+          {displayImg && <img src={displayImg} alt={c.name} loading="lazy" />}
+        </div>
+        <div className="media-char-info">
+          {c.role && <span className="media-char-role">{c.role}</span>}
+          <span className="media-char-name">{c.name}</span>
+        </div>
+      </div>
+    </a>
+  );
+});
+
+interface UserScoreCardProps {
+  score: FriendScore;
+  ratingSystem: RatingSystem;
+}
+
+const UserScoreCard = memo(function UserScoreCard({ score: f, ratingSystem }: UserScoreCardProps) {
+  return (
+    <div className="media-user-card" data-tooltip={f.name}>
+      <button
+        type="button"
+        className="media-user-avatar"
+        onClick={() => openLink(f.profileUrl)}
+        title={f.name}
+      >
+        {f.avatar
+          ? <img src={f.avatar} alt="" loading="lazy" />
+          : <div className="media-user-avatar-placeholder">{f.name[0]?.toUpperCase()}</div>}
+      </button>
+      <span dangerouslySetInnerHTML={{ __html: formatRatingHtml(f.score / 10, ratingSystem, 'media-user-score') }} />
+    </div>
+  );
+});
+
 function ThemeCardItem({
   theme,
   onPlay,
@@ -1610,36 +1665,9 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
               <div className="media-chars-grid">
                 {activeCharList
                   .slice((characterPage - 1) * CHARACTER_PAGE_SIZE, characterPage * CHARACTER_PAGE_SIZE)
-                  .map((c, i) => {
-                    // Characters have their own page; staff (director, writer,
-                    // composer, ...) route to the author page instead — same
-                    // id shape MediaAuthor cards already link to elsewhere.
-                    // No href at all (rather than "#") when c.id is missing —
-                    // an <a> without href isn't a link, so the card just
-                    // stops being clickable instead of navigating nowhere.
-                    const href = c.id
-                      ? (charTab === 'staff' ? `/author?id=${encodeURIComponent(c.id)}` : `/character?id=${encodeURIComponent(c.id)}`)
-                      : undefined;
-                    const customImg = c.id ? customImagesMap.get(c.id) : undefined;
-                    const displayImg = customImg ? wrapAssetUrl(customImg.image_url) : c.image;
-                    return (
-                  <a key={i} href={href} className="media-char-card">
-                    <div className="media-char-bg-layer">
-                      {displayImg && <img src={displayImg} alt="" loading="lazy" />}
-                    </div>
-                    <div className="media-char-card-overlay" />
-                    <div className="media-char-card-content">
-                      <div className="media-char-thumb">
-                        {displayImg && <img src={displayImg} alt={c.name} loading="lazy" />}
-                      </div>
-                      <div className="media-char-info">
-                        {c.role && <span className="media-char-role">{c.role}</span>}
-                        <span className="media-char-name">{c.name}</span>
-                      </div>
-                    </div>
-                  </a>
-                    );
-                  })}
+                  .map((c, i) => (
+                    <CharacterCard key={i} character={c} charTab={charTab} customImagesMap={customImagesMap} />
+                  ))}
               </div>
               {activeCharList.length > CHARACTER_PAGE_SIZE && (
                 <Pagination
@@ -1668,24 +1696,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                         <div key={i} className="media-user-card media-user-card--skeleton" />
                       ))
                     : friendsScores.map((f, i) => (
-                    <div key={i} className="media-user-card" data-tooltip={f.name}>
-                      <button
-                        type="button"
-                        className="media-user-avatar"
-                        onClick={() => openLink(f.profileUrl)}
-                        title={f.name}
-                      >
-                        {f.avatar
-                          ? <img src={f.avatar} alt="" loading="lazy" />
-                          : <div className="media-user-avatar-placeholder">{f.name[0]?.toUpperCase()}</div>}
-                      </button>
-                      {/* f.score is always 0-100 (POINT_100, see friends.ts) —
-                          ÷10 to match this app's 0-10 DB rating scale before
-                          formatting it per the user's own configured system.
-                          formatRatingHtml already returns its own <span
-                          class="media-user-score">, so no wrapper class here. */}
-                      <span dangerouslySetInnerHTML={{ __html: formatRatingHtml(f.score / 10, ratingSystem, 'media-user-score') }} />
-                    </div>
+                    <UserScoreCard key={i} score={f} ratingSystem={ratingSystem} />
                   ))}
                 </div>
               </div>
