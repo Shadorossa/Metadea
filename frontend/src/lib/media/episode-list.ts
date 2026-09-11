@@ -80,17 +80,6 @@ async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonC
 
   // Calculate cumulative episode numbers across seasons (like anime)
   // instead of resetting to 1 for each season
-  const episodesBySeasonStart = new Map<number, number>();
-  let cumulativeCount = 0;
-
-  // Group episodes by season and track the starting cumulative number
-  for (const ep of episodes) {
-    if (!episodesBySeasonStart.has(ep.season_number)) {
-      episodesBySeasonStart.set(ep.season_number, cumulativeCount);
-    }
-  }
-
-  // Update episode counts for each season
   const seasonEpisodeCounts = new Map<number, number>();
   for (const ep of episodes) {
     seasonEpisodeCounts.set(
