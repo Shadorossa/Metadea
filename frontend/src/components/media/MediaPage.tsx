@@ -916,8 +916,20 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // .media-relations-grid is a fixed 4-column grid — 3 rows worth per page.
   const EPISODE_PAGE_SIZE = 12;
   const CHARACTER_PAGE_SIZE = 12;
+  const roleOrder = (role?: string) => {
+    const normalizedRole = role?.toLowerCase().trim() || '';
+    if (normalizedRole === 'main') return 0;
+    if (normalizedRole === 'supporting') return 1;
+    if (normalizedRole === 'background') return 2;
+    return 3; // Unknown roles go last
+  };
+
+  const sortCharactersByRole = (chars: typeof data.characters) => {
+    return [...chars].sort((a, b) => roleOrder(a.role) - roleOrder(b.role));
+  };
+
   const hasStaff = !!(data.staff && data.staff.length > 0);
-  const activeCharList = charTab === 'staff' ? (data.staff ?? []) : data.characters;
+  const activeCharList = sortCharactersByRole(charTab === 'staff' ? (data.staff ?? []) : data.characters);
   const isAnilistType = (ANILIST_TYPES as readonly string[]).includes(data.type);
   const showUsers = isAnilistType && (friendsLoading || friendsScores.length > 0);
 
