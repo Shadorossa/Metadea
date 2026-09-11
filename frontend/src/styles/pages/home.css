@@ -108,6 +108,16 @@
   gap: clamp(0.5rem, 0.75vw, 0.75rem);
 }
 
+@media (max-width: 900px) {
+  .home-currently-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .home-currently-group-label {
+    display: none;
+  }
+}
+
 .home-currently-item {
   position: relative;
   min-width: 0;
