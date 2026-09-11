@@ -1103,6 +1103,32 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         )?;
         mark_migration(conn, 56)?;
     }
+    if v < 57 {
+        // Migration 56 above was edited in place (to switch the primary key
+        // from (external_id, theme_type, sequence) to (external_id, slug))
+        // after some installs had already run it — CREATE TABLE IF NOT
+        // EXISTS is a no-op against a table that already exists with the
+        // OLD (slug-less) schema, so those installs got stuck on it,
+        // failing every save with "no column named slug". Pure cache data
+        // (fully re-fetched from animethemes.moe on the next visit to any
+        // anime's "Temas" tab, same as media_episode), so dropping and
+        // recreating loses nothing that matters.
+        conn.execute_batch(
+            "DROP TABLE IF EXISTS media_theme;
+             CREATE TABLE media_theme (
+                external_id  TEXT NOT NULL,
+                slug         TEXT NOT NULL,
+                theme_type   TEXT NOT NULL,
+                sequence     INTEGER NOT NULL,
+                song_title   TEXT,
+                artists      TEXT,
+                episodes     TEXT,
+                video_url    TEXT,
+                PRIMARY KEY (external_id, slug)
+             );",
+        )?;
+        mark_migration(conn, 57)?;
+    }
 
     Ok(())
 }

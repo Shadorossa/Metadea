@@ -1154,29 +1154,40 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
           </div>
           {relationsTab === 'themes' ? (
             themes.length > 0 && (
-              <div className="media-relations-grid">
-                {themes.map(t => (
-                  <div
-                    key={t.slug}
-                    className={`media-relation-card media-relation-card--static media-theme-card${t.video_url ? ' media-theme-card--playable' : ''}`}
-                    onClick={() => t.video_url && setPlayingTheme(t)}
-                  >
-                    <div className="media-relation-card-overlay" />
-                    <span className={`media-relation-type media-theme-badge media-theme-badge--${t.theme_type.toLowerCase()}`}>
-                      {t.theme_type}{t.sequence}
-                    </span>
-                    <div className="media-relation-card-content">
-                      <div className="media-relation-thumb media-theme-thumb">
-                        {t.video_url && <ThemePreviewCardVideo src={t.video_url} />}
+              <>
+                <div className="media-relations-grid">
+                  {themes
+                    .slice((relationPage - 1) * EPISODE_PAGE_SIZE, relationPage * EPISODE_PAGE_SIZE)
+                    .map(t => (
+                      <div
+                        key={t.slug}
+                        className={`media-relation-card media-relation-card--static media-theme-card${t.video_url ? ' media-theme-card--playable' : ''}`}
+                        onClick={() => t.video_url && setPlayingTheme(t)}
+                      >
+                        <div className="media-relation-bg-layer media-theme-bg-layer">
+                          {t.video_url && <ThemePreviewCardVideo src={t.video_url} />}
+                        </div>
+                        <div className="media-relation-card-overlay" />
+                        <span className={`media-relation-type media-theme-badge media-theme-badge--${t.theme_type.toLowerCase()}`}>
+                          {t.theme_type}{t.sequence}
+                        </span>
+                        <div className="media-relation-card-content">
+                          <div className="media-relation-info">
+                            <span className="media-relation-title">{t.song_title ?? `${t.theme_type}${t.sequence}`}</span>
+                            {t.artists && <span className="media-theme-artist">{t.artists}</span>}
+                          </div>
+                        </div>
                       </div>
-                      <div className="media-relation-info">
-                        <span className="media-relation-title">{t.song_title ?? `${t.theme_type}${t.sequence}`}</span>
-                        {t.artists && <span className="media-theme-artist">{t.artists}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    ))}
+                </div>
+                {themes.length > EPISODE_PAGE_SIZE && (
+                  <Pagination
+                    currentPage={relationPage}
+                    totalPages={Math.ceil(themes.length / EPISODE_PAGE_SIZE)}
+                    onChange={setRelationPage}
+                  />
+                )}
+              </>
             )
           ) : relationsTab === 'episodes' ? (
             episodes.length > 0 && (
