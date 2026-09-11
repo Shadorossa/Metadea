@@ -1,0 +1,33 @@
+{
+  "media_catalog": {
+    "id": "3290cb84d3dee7ab3290cb84d3dee7ab",
+    "external_id": "game:377314",
+    "type": "game",
+    "title_main": "Trails in the Sky 2nd Chapter",
+    "source": "igdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "media_external_id": "game:377314",
+      "related_media_external_id": "game:16665",
+      "relation_type": "BASE_EDITION",
+      "type_label": "Base Edition",
+      "title": "The Legend of Heroes: Trails in the Sky SC",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co74em.jpg",
+      "format": null
+    },
+    {
+      "media_external_id": "game:377314",
+      "related_media_external_id": "game:314936",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "Trails in the Sky 1st Chapter",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co96kj.jpg"
+    }
+  ],
+  "characters": [],
+  "media_authors": []
+}
