@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import { getAllLibraryEntries, getAllMediaRelations, getCatalogEntry, getSagaNames, getSyncStates } from '../../lib/tauri';
 import type { MediaCatalogEntry, DbMediaRelation } from '../../lib/tauri';
 import { getCachedLibraryAndCatalog } from '../../lib/profile/library-data-cache';
@@ -93,6 +93,7 @@ export function LibrarySection({
   const [sagaNames, setSagaNames] = useState<Record<string, string>>(overrideSagaNames ?? {});
 
   const [nameFilter, setNameFilter] = useState('');
+  const deferredNameFilter = useDeferredValue(nameFilter);
   const [activeTypeTab, setActiveTypeTab] = useState('');
   const [selectedEditionFormats, setSelectedEditionFormats] = useState<string[]>(DEFAULT_EDITION_FILTERS);
   const [statusIndex, setStatusIndex] = useState(0);
@@ -233,7 +234,7 @@ export function LibrarySection({
   const sections = useMemo(() => {
     if (!items) return null;
 
-    const nameVal = nameFilter.toLowerCase().trim();
+    const nameVal = deferredNameFilter.toLowerCase().trim();
     const statusKey = STATUS_LIST[statusIndex].key;
     const startTs = startDateFilter ? new Date(startDateFilter).getTime() : null;
     const endTsExclusive = endDateFilter ? new Date(endDateFilter).getTime() + 24 * 60 * 60 * 1000 : null;
@@ -368,7 +369,7 @@ export function LibrarySection({
 
         return { title: sec.title, cards };
       });
-  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, nameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
+  }, [items, catalogMap, sagaRelations, sagaComponentOf, sagaNames, deferredNameFilter, activeTypeTab, selectedEditionFormats, statusIndex, startDateFilter, endDateFilter, sortBy, groupByEdition, groupByBundle, dualRatingEnabled, ratingSlot, STATUS_LIST, p]);
 
   const presentTypes = useMemo(() => {
     if (!items) return [];
