@@ -4,6 +4,7 @@ import { isAdultContentEnabled } from '../../settings/preferences';
 import { API_ENDPOINTS } from '../../api/endpoints';
 import { graphqlPost, type GraphQLResult } from '../../api/client';
 import { AniListSearchError } from '../errors';
+import { getAniListToken } from '../../anilist/import';
 
 // AniList's own fixed genre list (GenreCollection) — stable for years, not
 // worth a dedicated request to re-fetch on every mount just for a filter's
@@ -409,9 +410,14 @@ async function fetchAniListDoubledPage(
   signal: AbortSignal,
   page: number,
 ): Promise<SearchPage> {
+  // Try to use authenticated token if available (allows access to private lists/high rate limits)
+  // Falls back to public search if no token
+  const token = getAniListToken();
+  const opts = token ? { signal, token } : { signal };
+
   const [a, b] = await Promise.all([
-    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), { signal }),
-    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), { signal }),
+    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2 - 1), opts),
+    graphqlPost<AniListResponse['data']>(API_ENDPOINTS.ANILIST, query, buildVariables(page * 2), opts),
   ]);
   const pageA = toSearchPage(a.ok, a.result, mediaType);
   const pageB = toSearchPage(b.ok, b.result, mediaType);
@@ -488,11 +494,14 @@ export async function searchAniListCharacters(
   signal: AbortSignal,
   page = 1,
 ): Promise<SearchPage> {
+  const token = getAniListToken();
+  const opts = token ? { signal, token } : { signal };
+
   const { ok, result } = await graphqlPost<AniListCharResponse['data']>(
     API_ENDPOINTS.ANILIST,
     SEARCH_CHARACTERS_QUERY,
     { searchQuery, page },
-    { signal },
+    opts,
   );
 
   if (!ok) return { results: [], hasMore: false };
@@ -555,11 +564,14 @@ export async function searchAniListStaff(
   signal: AbortSignal,
   page = 1,
 ): Promise<{ results: AniListStaffSearchResult[]; hasMore: boolean }> {
+  const token = getAniListToken();
+  const opts = token ? { signal, token } : { signal };
+
   const { ok, result } = await graphqlPost<AniListStaffSearchResponse['data']>(
     API_ENDPOINTS.ANILIST,
     SEARCH_STAFF_QUERY,
     { searchQuery, page },
-    { signal },
+    opts,
   );
 
   if (!ok) return { results: [], hasMore: false };
