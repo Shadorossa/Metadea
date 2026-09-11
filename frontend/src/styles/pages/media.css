@@ -1012,6 +1012,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Theme player — a lightweight modal (not the full me-overlay/me-modal
@@ -1323,6 +1324,11 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  /* Episode covers and theme preview videos now fill the whole card at
+     0.7 opacity (not just a faint blurred backdrop) — a light offset
+     shadow keeps the title readable over a busy frame instead of relying
+     solely on the card-overlay gradient. */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Characters + Users share one row below the 3-col grid — Users pinned to

@@ -26,11 +26,14 @@ pub async fn get_media_themes(
     external_id: String,
 ) -> Result<Vec<MediaTheme>, String> {
     let conn = state.conn.lock().str_err()?;
+    // OP always before ED — plain ORDER BY theme_type ASC would sort them
+    // alphabetically ('ED' < 'OP'), undoing the fetch-time ordering
+    // (animethemes.ts's own sort) the moment this is read back from cache.
     let mut stmt = conn.prepare(
         "SELECT external_id, slug, theme_type, sequence, song_title, artists, episodes, video_url
          FROM media_theme
          WHERE external_id = ?1
-         ORDER BY theme_type ASC, sequence ASC, slug ASC"
+         ORDER BY CASE theme_type WHEN 'OP' THEN 0 ELSE 1 END, sequence ASC, slug ASC"
     ).str_err()?;
     let rows = stmt.query_map([&external_id], |r| {
         Ok(MediaTheme {
