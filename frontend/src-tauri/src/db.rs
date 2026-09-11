@@ -1075,6 +1075,34 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         }
         mark_migration(conn, 55)?;
     }
+    if v < 56 {
+        // Openings/endings from animethemes.moe (the "Temas" tab on an
+        // anime's media page) — cached locally after the first fetch, same
+        // pattern as media_episode above, so it's a straight DB read on
+        // every later visit instead of re-hitting animethemes.moe. sequence
+        // is the Nth OP/ED of that type (OP1, OP2, ED1, ...), but is NOT
+        // unique on its own — animethemes.moe attaches a recap/compilation
+        // work's own OP1/ED1/... to the SAME anime entry as the main
+        // show's (e.g. Gintama's id also carries "Yorinuki Gintama-san"'s
+        // themes), so two rows can share (theme_type, sequence) with
+        // different songs. slug is animethemes.moe's own real unique name
+        // per theme ("OP1" vs "OP1-YorinukiGintamaSan") and is what this
+        // keys on instead.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS media_theme (
+                external_id  TEXT NOT NULL,
+                slug         TEXT NOT NULL,
+                theme_type   TEXT NOT NULL,
+                sequence     INTEGER NOT NULL,
+                song_title   TEXT,
+                artists      TEXT,
+                episodes     TEXT,
+                video_url    TEXT,
+                PRIMARY KEY (external_id, slug)
+             );",
+        )?;
+        mark_migration(conn, 56)?;
+    }
 
     Ok(())
 }

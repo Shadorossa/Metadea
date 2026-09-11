@@ -312,6 +312,7 @@ export const it = {
     section_users: 'Utenti',
     stat_platforms: 'Piattaforme',
     stat_episodes: 'Episodi',
+    section_themes: 'Temi',
     stat_issues: 'Numeri',
     stat_seasons: 'Stagioni',
     stat_chapters: 'Capitoli',

@@ -335,6 +335,7 @@ export const es = {
     section_users: 'Usuarios',
     stat_platforms: 'Plataformas',
     stat_episodes: 'Episodios',
+    section_themes: 'Temas',
     stat_issues: 'Números',
     stat_seasons: 'Temporadas',
     stat_chapters: 'Capítulos',

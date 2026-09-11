@@ -104,6 +104,27 @@ export async function deleteMediaEpisode(externalId: string, seasonNumber: numbe
   return tauriRun('delete_media_episode', { externalId, seasonNumber, episodeNumber });
 }
 
+// ── Anime openings/endings, animethemes.moe (media page's "Temas" tab) ──────
+
+export interface MediaTheme {
+  external_id: string;
+  slug:        string;
+  theme_type:  'OP' | 'ED';
+  sequence:    number;
+  song_title:  string | null;
+  artists:     string | null;
+  episodes:    string | null;
+  video_url:   string | null;
+}
+
+export async function getMediaThemes(externalId: string): Promise<MediaTheme[]> {
+  return tauriCmd<MediaTheme[]>('get_media_themes', [], { externalId });
+}
+
+export async function saveMediaThemes(externalId: string, themes: MediaTheme[]): Promise<void> {
+  return tauriRun('save_media_themes', { externalId, themes });
+}
+
 // ── Staff (crew) ─────────────────────────────────────────────────────────────
 
 export interface DbMediaStaffMember {

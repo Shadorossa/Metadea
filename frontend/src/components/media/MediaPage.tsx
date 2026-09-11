@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import type { Translations } from '../../i18n/index';
-import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
+import { fetchMediaData, fetchMediaDataWithFallback, fetchExtraRelations, fetchExtraCharacters, fetchBookEditions, fetchComicIssues, fetchComicCollectedEditions, fetchMediaEpisodes, fetchMediaThemes, patchCachedRelations, patchCachedCharacters, mergeAndPersistRelations, bucketRelations, mediaCharactersToSkeleton, mediaStaffToSkeleton, mapMediaDataToCatalogEntry, invalidateCachedMediaData, CACHE_PREFIX } from '../../lib/media/mediaService';
 import { saveCatalogEntry, saveLibraryEntry, updateCatalogGenres, updateCatalogTotalCount, getCustomImagesMap, wrapAssetUrl, type FavoriteCustomImage } from '../../lib/tauri';
-import type { LibraryEntry, MediaEpisode } from '../../lib/tauri';
+import type { LibraryEntry, MediaEpisode, MediaTheme } from '../../lib/tauri';
 import type { MediaPageData } from '../../lib/media/types';
 import { MediaEditorModal } from './MediaEditorModal';
 import { SagaViewerModal } from './SagaViewerModal';
@@ -207,8 +208,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const [showSaga,           setShowSaga]           = useState(false);
   const [showPrEditor,       setShowPrEditor]       = useState(false);
   const [relationPage,       setRelationPage]       = useState(1);
-  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes'>('related');
+  const [relationsTab,       setRelationsTab]       = useState<'related' | 'recommended' | 'editions' | 'episodes' | 'themes'>('related');
   const [episodes,           setEpisodes]           = useState<MediaEpisode[]>([]);
+  const [themes,             setThemes]             = useState<MediaTheme[]>([]);
+  const [playingTheme,       setPlayingTheme]       = useState<MediaTheme | null>(null);
   const [characterPage,      setCharacterPage]      = useState(1);
   const [charTab,            setCharTab]            = useState<'characters' | 'staff'>('characters');
   const [customImagesMap,    setCustomImagesMap]    = useState<Map<string, FavoriteCustomImage>>(new Map());
@@ -399,6 +402,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
     setRelationPage(1);
     setRelationsTab('related');
     setEpisodes([]);
+    setThemes([]);
+    setPlayingTheme(null);
     setCharacterPage(1);
     setCharTab('characters');
     getCustomImagesMap().then(setCustomImagesMap).catch(() => {});
@@ -584,6 +589,13 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
             setEpisodes(eps);
           }).catch(console.error);
         }
+
+        if (full.type === 'anime') {
+          fetchMediaThemes(currentId).then(t => {
+            if (cancelled || t.length === 0) return;
+            setThemes(t);
+          }).catch(console.error);
+        }
       },
       ()      => { setPageState(prev => prev === 'ready' ? prev : 'error'); setIsFetchingFull(false); },
       ()      => cancelled,
@@ -714,6 +726,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       fetchMediaEpisodes(currentId, true, fresh?.type === 'series' ? fresh.totalCount_2 : undefined).then(eps => {
         if (eps.length > 0) setEpisodes(eps);
       }).catch(console.error);
+      if (fresh?.type === 'anime') {
+        fetchMediaThemes(currentId, true).then(t => {
+          if (t.length > 0) setThemes(t);
+        }).catch(console.error);
+      }
     }).finally(() => setRetryingSync(false));
   }, [currentId, retryingSync]);
 
@@ -819,7 +836,8 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasEpisodes             = episodes.length > 0;
-  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes;
+  const hasThemes               = themes.length > 0;
+  const hasTabs = hasRecommendedRelations || hasEditionRelations || hasEpisodes || hasThemes;
   const visibleRelations = relationsTab === 'recommended'
     ? recommendedRelations
     : relationsTab === 'editions'
@@ -863,6 +881,30 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       )}
       {!previewMode && showSaga && (
         <SagaViewerModal externalId={currentId} i18n={tm} onClose={() => setShowSaga(false)} />
+      )}
+      {playingTheme && createPortal(
+        <div className="theme-player-overlay" onClick={() => setPlayingTheme(null)}>
+          <div className="theme-player-modal" onClick={e => e.stopPropagation()}>
+            <button type="button" className="theme-player-close" onClick={() => setPlayingTheme(null)} aria-label="Close">×</button>
+            <video
+              key={playingTheme.slug}
+              className="theme-player-video"
+              src={playingTheme.video_url ?? undefined}
+              controls
+              autoPlay
+            />
+            <div className="theme-player-info">
+              <span className={`media-theme-badge media-theme-badge--${playingTheme.theme_type.toLowerCase()}`}>
+                {playingTheme.theme_type}{playingTheme.sequence}
+              </span>
+              <div className="theme-player-text">
+                <span className="theme-player-title">{playingTheme.song_title ?? `${playingTheme.theme_type}${playingTheme.sequence}`}</span>
+                {playingTheme.artists && <span className="theme-player-artist">{playingTheme.artists}</span>}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
       {!previewMode && showPrEditor && (
         <PrEditorModal
@@ -1102,13 +1144,37 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                 ...(hasEditionRelations ? [{ key: 'editions', label: editionsLabel, active: relationsTab === 'editions', onClick: () => { setRelationsTab('editions'); setRelationPage(1); } }] : []),
                 ...(hasRecommendedRelations ? [{ key: 'recommended', label: tm.relations.RECOMMENDATION, active: relationsTab === 'recommended', onClick: () => { setRelationsTab('recommended'); setRelationPage(1); } }] : []),
                 ...(hasEpisodes ? [{ key: 'episodes', label: tm.stat_episodes, active: relationsTab === 'episodes', onClick: () => { setRelationsTab('episodes'); setRelationPage(1); } }] : []),
+                ...(hasThemes ? [{ key: 'themes', label: tm.section_themes, active: relationsTab === 'themes', onClick: () => { setRelationsTab('themes'); setRelationPage(1); } }] : []),
               ] : []}
             />
             {data.storeLinks && data.storeLinks.length > 0 && (
               <MediaStoreLinks links={data.storeLinks} />
             )}
           </div>
-          {relationsTab === 'episodes' ? (
+          {relationsTab === 'themes' ? (
+            themes.length > 0 && (
+              <div className="media-relations-grid">
+                {themes.map(t => (
+                  <div
+                    key={t.slug}
+                    className={`media-relation-card media-relation-card--static media-theme-card${t.video_url ? ' media-theme-card--playable' : ''}`}
+                    onClick={() => t.video_url && setPlayingTheme(t)}
+                  >
+                    <div className="media-relation-card-overlay" />
+                    <span className={`media-relation-type media-theme-badge media-theme-badge--${t.theme_type.toLowerCase()}`}>
+                      {t.theme_type}{t.sequence}
+                    </span>
+                    <div className="media-relation-card-content">
+                      <div className="media-relation-info">
+                        <span className="media-relation-title">{t.song_title ?? `${t.theme_type}${t.sequence}`}</span>
+                        {t.artists && <span className="media-theme-artist">{t.artists}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : relationsTab === 'episodes' ? (
             episodes.length > 0 && (
               <>
                 <div className="media-relations-grid">

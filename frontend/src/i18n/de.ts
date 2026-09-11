@@ -312,6 +312,7 @@ export const de = {
     section_users: 'Nutzer',
     stat_platforms: 'Plattformen',
     stat_episodes: 'Episoden',
+    section_themes: 'Titelmusik',
     stat_issues: 'Ausgaben',
     stat_seasons: 'Staffeln',
     stat_chapters: 'Kapitel',

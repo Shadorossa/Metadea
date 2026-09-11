@@ -335,6 +335,7 @@ export const ja = {
     section_users: 'ユーザー',
     stat_platforms: 'プラットフォーム',
     stat_episodes: '話数',
+    section_themes: '主題歌',
     stat_issues: '号数',
     stat_seasons: 'シーズン数',
     stat_chapters: '話数',

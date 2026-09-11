@@ -20,6 +20,7 @@ mod media_authors;
 mod media_catalog;
 mod media_episodes;
 mod media_relations;
+mod media_themes;
 mod platform_scanning;
 mod proposal_bundle;
 mod reading_progress;
@@ -164,6 +165,8 @@ pub fn run() {
             media_episodes::save_media_episodes,
             media_episodes::delete_all_media_episodes,
             media_episodes::delete_media_episode,
+            media_themes::get_media_themes,
+            media_themes::save_media_themes,
             media_catalog::save_catalog_entry,
             media_catalog::get_catalog_entry,
             media_catalog::get_blocked_external_ids,

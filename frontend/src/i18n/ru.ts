@@ -312,6 +312,7 @@ export const ru = {
     section_users: 'Пользователи',
     stat_platforms: 'Платформы',
     stat_episodes: 'Серии',
+    section_themes: 'Темы',
     stat_issues: 'Выпуски',
     stat_seasons: 'Сезоны',
     stat_chapters: 'Главы',

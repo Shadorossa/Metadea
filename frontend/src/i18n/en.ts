@@ -335,6 +335,7 @@ export const en = {
     section_users: 'Users',
     stat_platforms: 'Platforms',
     stat_episodes: 'Episodes',
+    section_themes: 'Themes',
     stat_issues: 'Issues',
     stat_seasons: 'Seasons',
     stat_chapters: 'Chapters',

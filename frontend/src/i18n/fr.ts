@@ -312,6 +312,7 @@ export const fr = {
     section_users: 'Utilisateurs',
     stat_platforms: 'Plateformes',
     stat_episodes: 'Épisodes',
+    section_themes: 'Thèmes',
     stat_issues: 'Numéros',
     stat_seasons: 'Saisons',
     stat_chapters: 'Chapitres',

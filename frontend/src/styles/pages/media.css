@@ -959,6 +959,126 @@
   margin-bottom: 1.5rem;
 }
 
+/* Anime openings/endings ("Temas" tab, animethemes.moe) — same relation
+   cover-card grid as Episodios (media-relation-card), a badge (OP1/ED1/...)
+   standing in for the episode-card's own "#N" pill since there's no cover
+   image to show; clicking one opens theme-player-overlay below instead of
+   navigating anywhere. */
+.media-theme-card--playable {
+  cursor: pointer;
+}
+
+.media-theme-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  color: #fff;
+}
+
+.media-theme-badge--op {
+  background: var(--accent, #7c6af7);
+}
+
+.media-theme-badge--ed {
+  background: #d97757;
+}
+
+.media-theme-artist {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Theme player — a lightweight modal (not the full me-overlay/me-modal
+   editor chrome) portaled straight to <body>, since MediaPage's own layout
+   has no ancestor with room for a centered video. */
+.theme-player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.theme-player-modal {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  background: var(--bg-elevated, #1b1917);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.theme-player-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-player-close:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.theme-player-video {
+  width: 100%;
+  max-height: 70vh;
+  background: #000;
+  display: block;
+}
+
+.theme-player-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.theme-player-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.theme-player-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-player-artist {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Pagination */
 .media-pagination {
   display: flex;

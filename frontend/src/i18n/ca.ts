@@ -312,6 +312,7 @@ export const ca = {
     section_users: 'Usuaris',
     stat_platforms: 'Plataformes',
     stat_episodes: 'Episodis',
+    section_themes: 'Temes',
     stat_issues: 'Números',
     stat_seasons: 'Temporades',
     stat_chapters: 'Capítols',
