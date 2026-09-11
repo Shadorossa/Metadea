@@ -2478,30 +2478,35 @@
   flex-direction: column;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   width: 100%;
-  padding-left: clamp(0.75rem, 2.5vw, 3rem);
-  padding-right: clamp(0.75rem, 2.5vw, 3rem);
-  padding-top: 0.25rem;
-  padding-bottom: clamp(1.2rem, 2.5vw, 2rem);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.25rem 0 clamp(1.2rem, 2.5vw, 2rem);
   box-sizing: border-box;
 }
 
 .stats-grid-5 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(clamp(140px, 18vw, 180px), 1fr));
-  gap: clamp(0.7rem, 1.5vw, 1rem);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(130px, 16vw, 180px), 1fr));
+  gap: clamp(0.6rem, 1.2vw, 1rem);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
   .stats-grid-5 {
     grid-template-columns: repeat(3, 1fr);
-    gap: clamp(0.7rem, 1.5vw, 1rem);
   }
 }
 
 @media (max-width: 600px) {
   .stats-grid-5 {
     grid-template-columns: repeat(2, 1fr);
-    gap: clamp(0.7rem, 1.5vw, 1rem);
+  }
+}
+
+@media (max-width: 400px) {
+  .stats-grid-5 {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2509,10 +2514,12 @@
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: clamp(0.8rem, 2vw, 1.25rem);
+  padding: clamp(0.75rem, 1.5vw, 1.25rem);
   display: flex;
   flex-direction: column;
-  gap: clamp(0.3rem, 0.8vw, 0.5rem);
+  gap: clamp(0.25rem, 0.6vw, 0.5rem);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .stats-card-header {
@@ -2567,14 +2574,17 @@
 .stats-status-list {
   display: flex;
   flex-direction: column;
-  gap: clamp(0.8rem, 1.8vw, 1.1rem);
+  gap: clamp(0.6rem, 1.4vw, 1rem);
   margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  width: 100%;
 }
 
 .stats-status-row {
   display: flex;
   align-items: center;
-  gap: clamp(0.8rem, 1.8vw, 1.25rem);
+  gap: clamp(0.4rem, 1.2vw, 1rem);
+  width: 100%;
+  min-width: 0;
 }
 
 .stats-status-icon {
@@ -2590,21 +2600,19 @@
   font-size: clamp(0.6rem, 1vw, 0.75rem);
   font-weight: 600;
   color: var(--text-muted);
-  width: clamp(70px, 12vw, 100px);
+  width: clamp(65px, 10vw, 95px);
   flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* A native <progress value max> instead of two nested divs with an inline
-   `style="width:...%"` fill — the fill proportion is a plain HTML attribute,
-   not a CSS style, so it can't be affected by whatever silently drops
-   inline `style` attributes in the packaged production build (same class
-   of bug already fixed elsewhere for background-image). WebView2/Chromium
-   supports the standard -webkit- pseudo-elements for styling it. */
 .stats-bar-outer {
   appearance: none;
   -webkit-appearance: none;
   flex: 1;
-  height: clamp(8px, 1.2vw, 10px);
+  min-width: 0;
+  height: clamp(7px, 1vw, 10px);
   border: none;
   border-radius: 99px;
   overflow: hidden;
@@ -2649,15 +2657,15 @@
   font-size: clamp(0.6rem, 1vw, 0.75rem);
   font-weight: 900;
   color: var(--text-main);
-  width: clamp(30px, 5vw, 40px);
+  width: clamp(24px, 4vw, 36px);
   text-align: right;
   flex-shrink: 0;
 }
 
 .stats-status-percent {
-  font-size: clamp(0.55rem, 0.9vw, 0.65rem);
+  font-size: clamp(0.55rem, 0.85vw, 0.65rem);
   color: var(--text-dim);
-  width: clamp(30px, 5vw, 40px);
+  width: clamp(24px, 4vw, 36px);
   text-align: right;
   flex-shrink: 0;
 }
@@ -2744,10 +2752,11 @@
   display: grid;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
-  max-width: clamp(300px, 60vw, 800px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-@media (min-width: 860px) {
+@media (min-width: 960px) {
   .stats-main-pair {
     grid-template-columns: 1fr 1.35fr;
   }
@@ -2758,10 +2767,11 @@
   display: grid;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   grid-template-columns: 1fr;
-  max-width: clamp(300px, 60vw, 900px);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-@media (min-width: 700px) {
+@media (min-width: 760px) {
   .stats-insight-trio {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2780,10 +2790,10 @@
   padding: clamp(0.8rem, 2vw, 1.25rem);
   box-sizing: border-box;
   width: 100%;
-  max-width: 100%;
+  min-width: 0;
 }
 
-/* KPI card sub-label (e.g. "4.2 d · 1.8 h/obra" below hours) */
+/* KPI card sub-label */
 .stats-card-sub {
   font-size: clamp(0.55rem, 0.9vw, 0.65rem);
   color: var(--text-dim);
@@ -2793,18 +2803,16 @@
   margin-top: clamp(0.15rem, 0.4vw, 0.25rem);
 }
 
-/* Time-by-category bars (inside stats-main-pair) — always shows every media
-   type (see computeTypeBreakdown), laid out in two columns so the full list
-   fits without an overly tall single column. */
 .stats-time-bars {
   display: grid;
   grid-template-columns: 1fr;
-  column-gap: clamp(1rem, 2vw, 1.5rem);
-  row-gap: clamp(0.6rem, 1.2vw, 0.85rem);
+  column-gap: clamp(0.8rem, 1.8vw, 1.5rem);
+  row-gap: clamp(0.45rem, 1vw, 0.75rem);
   margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  width: 100%;
 }
 
-@media (min-width: 480px) {
+@media (min-width: 580px) {
   .stats-time-bars {
     grid-template-columns: 1fr 1fr;
   }
@@ -2813,17 +2821,19 @@
 .stats-time-row {
   display: flex;
   align-items: center;
-  gap: clamp(0.5rem, 1vw, 0.65rem);
+  gap: clamp(0.35rem, 0.8vw, 0.65rem);
+  width: 100%;
+  min-width: 0;
 }
 
 .stats-time-label {
   flex-shrink: 0;
-  width: clamp(80px, 14vw, 110px);
+  width: clamp(65px, 10vw, 95px);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
+  font-size: clamp(0.6rem, 1vw, 0.75rem);
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -2831,13 +2841,13 @@
 .stats-time-value {
   flex-shrink: 0;
   white-space: nowrap;
-  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
+  font-size: clamp(0.6rem, 1vw, 0.75rem);
   color: var(--text-main);
   font-weight: 800;
 }
 
 .stats-time-count {
-  font-size: clamp(0.55rem, 0.95vw, 0.68rem);
+  font-size: clamp(0.52rem, 0.85vw, 0.65rem);
   color: var(--text-dim);
   font-weight: 500;
 }
@@ -2861,16 +2871,17 @@
 
 .stats-heatmap-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: clamp(2px, 0.5vw, 4px);
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: clamp(2px, 0.4vw, 4px);
   max-width: 100%;
+  min-width: 0;
   margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  box-sizing: border-box;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 768px) {
   .stats-heatmap-grid {
-    grid-template-columns: repeat(28, 1fr);
-    /* Last ~6 months */
+    grid-template-columns: repeat(28, minmax(0, 1fr));
   }
 }
 
@@ -4184,44 +4195,40 @@
 .stats-histogram {
   display: flex;
   flex-direction: column;
-  gap: clamp(0.3rem, 0.7vw, 0.45rem);
+  gap: clamp(0.25rem, 0.6vw, 0.45rem);
   margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  width: 100%;
 }
 
 .stats-hist-row {
   display: flex;
   align-items: center;
-  gap: clamp(0.3rem, 0.8vw, 0.5rem);
+  gap: clamp(0.3rem, 0.6vw, 0.5rem);
+  width: 100%;
+  min-width: 0;
 }
 
 .stats-hist-label {
-  font-size: clamp(0.6rem, 1vw, 0.7rem);
+  font-size: clamp(0.58rem, 0.9vw, 0.7rem);
   color: var(--text-muted);
   flex-shrink: 0;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: clamp(100px, 16vw, 130px);
-  min-width: clamp(100px, 16vw, 130px);
+  width: clamp(65px, 10vw, 95px);
+  min-width: 0;
 }
 
-/* Same native <progress> approach as .stats-bar-outer above — see that
-   rule's comment. */
 .stats-hist-bar-outer {
   appearance: none;
   -webkit-appearance: none;
   flex: 1;
   min-width: 0;
-  height: clamp(8px, 1.2vw, 10px);
+  height: clamp(7px, 1vw, 10px);
   border: 1px solid var(--border-color);
   border-radius: 3px;
   overflow: hidden;
-  /* Was rgba(255,255,255,0.03) — nearly invisible against a dark theme,
-     let alone a warm/tan dynamic-theme background close in tone to the
-     accent-colored fill, which made every bar look like a solid block
-     regardless of its actual value since the empty track was indistinguishable
-     from the filled portion. */
   background: rgba(0, 0, 0, 0.35);
 }
 
@@ -4246,9 +4253,9 @@
 }
 
 .stats-hist-count {
-  font-size: clamp(0.55rem, 0.95vw, 0.68rem);
+  font-size: clamp(0.52rem, 0.85vw, 0.65rem);
   color: var(--text-dim);
-  width: clamp(20px, 3vw, 26px);
+  width: clamp(18px, 2.5vw, 24px);
   text-align: right;
   flex-shrink: 0;
 }
