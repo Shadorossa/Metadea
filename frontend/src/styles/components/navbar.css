@@ -48,7 +48,8 @@
      one line — scrolls instead of overflowing into (visually overlapping)
      the avatar/search group, since wrapping to a second line isn't an
      option inside this bar's fixed 48px height. */
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
