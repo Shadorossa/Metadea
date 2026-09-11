@@ -102,25 +102,25 @@
 }
 
 .media-hero--game .media-banner {
-  height: 520px;
+  height: clamp(300px, 45vw, 520px);
 }
 
 .media-hero--game .media-banner-badges-container {
-  top: calc(19rem + 200px);
+  top: calc(19rem + clamp(150px, 30vw, 200px));
 }
 
 .media-hero--game .media-hero-left {
-  padding-bottom: 2.8rem;
+  padding-bottom: clamp(2rem, 3vw, 2.8rem);
 }
 
 .media-hero--game .media-hero-right {
-  padding-top: 1.8rem;
+  padding-top: clamp(1.5rem, 2.5vw, 1.8rem);
 }
 
 .media-banner {
   position: relative;
   width: 100%;
-  height: 320px;
+  height: clamp(200px, 35vw, 320px);
   overflow: hidden;
   background: var(--bg-elevated);
 }
@@ -148,9 +148,9 @@
 .media-hero-body {
   display: flex;
   align-items: flex-end;
-  gap: 2rem;
-  padding: 0 15% 2rem;
-  margin-top: -170px;
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: 0 clamp(1rem, 8vw, 15%) clamp(1rem, 2.5vw, 2rem);
+  margin-top: clamp(-100px, -20vw, -170px);
 }
 
 .media-hero-left {
@@ -159,8 +159,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 0.4rem;
-  padding-bottom: 1.2rem;
+  gap: clamp(0.3rem, 0.6vw, 0.4rem);
+  padding-bottom: clamp(1rem, 1.5vw, 1.2rem);
   min-width: 0;
 }
 
@@ -169,8 +169,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.6rem;
-  padding-bottom: 1.2rem;
+  gap: clamp(0.4rem, 0.8vw, 0.6rem);
+  padding-bottom: clamp(1rem, 1.5vw, 1.2rem);
 }
 
 .media-hero-right .media-cover-meta {
@@ -213,15 +213,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.6rem;
+  gap: clamp(0.4rem, 1vw, 0.6rem);
   flex-shrink: 0;
-  width: 185px;
+  width: clamp(140px, 18vw, 185px);
   z-index: 5;
   position: relative;
 }
 
 .media-cover-meta {
-  font-size: 0.72rem;
+  font-size: clamp(0.65rem, 1vw, 0.72rem);
   font-weight: 700;
   color: var(--text-muted);
   text-align: center;
@@ -233,11 +233,11 @@
   position: relative;
   z-index: 2;
   flex-shrink: 0;
-  width: 185px;
+  width: clamp(140px, 18vw, 185px);
   aspect-ratio: 2/3;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 3px solid var(--bg-primary);
+  border: clamp(2px, 0.3vw, 3px) solid var(--bg-primary);
   background: var(--bg-elevated);
   cursor: pointer;
 }
