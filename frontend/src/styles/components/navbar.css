@@ -60,7 +60,7 @@
 
 .nav-text-link {
   color: color-mix(in srgb, var(--text-main) 75%, var(--text-muted));
-  font-size: 0.85rem;
+  font-size: clamp(0.65rem, 1.5vw, 0.85rem);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -76,8 +76,8 @@
 
 .nav-text-link + .nav-text-link {
   position: relative;
-  margin-left: 0.85rem;
-  padding-left: 0.85rem;
+  margin-left: clamp(0.5rem, 1.2vw, 0.85rem);
+  padding-left: clamp(0.5rem, 1.2vw, 0.85rem);
 }
 
 .nav-text-link + .nav-text-link::before {
