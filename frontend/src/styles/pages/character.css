@@ -39,17 +39,20 @@
   min-width: 0;
 }
 
-#character-content .media-col-synopsis {
+#character-content .media-col-synopsis,
+#author-content .media-col-synopsis {
   grid-column: 1;
   grid-row: 2;
 }
 
-#character-content .media-col-related {
+#character-content .media-col-related,
+#author-content .media-col-related {
   grid-column: 2;
   grid-row: 2;
 }
 
-#character-content .character-hero-stats {
+#character-content .character-hero-stats,
+#author-content .character-hero-stats {
   grid-column: 2;
   grid-row: 1;
 }
@@ -79,8 +82,11 @@
   .character-hero-left-col,
   .character-hero-right-col,
   #character-content .media-col-synopsis,
+  #author-content .media-col-synopsis,
   #character-content .media-col-related,
-  #character-content .character-hero-stats {
+  #author-content .media-col-related,
+  #character-content .character-hero-stats,
+  #author-content .character-hero-stats {
     grid-column: 1;
     grid-row: auto;
   }

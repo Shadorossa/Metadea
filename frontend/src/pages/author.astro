@@ -23,53 +23,49 @@ const t = useTranslations(lang);
 
     <!-- Author Content -->
     <div id="author-content" style="display: none;">
+      <div class="character-grid">
+        <div class="character-main-content">
+          <div class="character-hero-left-col">
+            <div class="character-avatar-frame">
+              <div class="character-avatar-wrap" id="author-avatar-container"></div>
+            </div>
+          </div>
 
-      <!-- Hero -->
-      <div class="character-hero-body">
-        <div class="character-hero-left-col">
-          <div class="character-avatar-frame">
-            <div class="character-avatar-wrap" id="author-avatar-container"></div>
+          <div class="character-hero-right-col">
+            <div class="character-name-row">
+              <h1 class="media-title-main" id="author-name-full"></h1>
+            </div>
+            <p class="media-title-native" id="author-name-native" style="display: none; margin-top: 0.25rem;"></p>
+
+            <div class="character-alt-names-wrap" id="author-alt-names-wrap" style="display: none;">
+              <div class="character-alt-names" id="author-alt-names"></div>
+            </div>
+          </div>
+
+          <div class="media-col-synopsis" id="author-bio-section" style="display: none;">
+            <div class="media-section-header-row">
+              <p class="section-label">{t.character.biography}</p>
+              <div class="media-section-header-line"></div>
+            </div>
+            <div class="media-description-text" id="author-description"></div>
+          </div>
+
+          <div class="media-col-related" id="author-works-section" style="display: none;">
+            <div class="media-section-header-row">
+              <p class="section-label">{t.author_page.works}</p>
+              <div class="media-section-header-line"></div>
+            </div>
+            <div class="media-relations-grid" id="author-works-grid"></div>
+
+            <div id="author-works-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+              <button class="btn btn--sm btn--secondary" id="btn-prev-works" style="min-width: 100px;">{t.character.pagination_prev}</button>
+              <span id="txt-works-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{t.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
+              <button class="btn btn--sm btn--secondary" id="btn-next-works" style="min-width: 100px;">{t.character.pagination_next}</button>
+            </div>
           </div>
         </div>
 
-        <div class="character-hero-right-col">
-          <div class="character-name-row">
-            <h1 class="media-title-main" id="author-name-full"></h1>
-          </div>
-          <p class="media-title-native" id="author-name-native" style="display: none; margin-top: 0.25rem;"></p>
-
-          <div class="character-alt-names-wrap" id="author-alt-names-wrap" style="display: none;">
-            <div class="character-alt-names" id="author-alt-names"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Body: Biografía / Obras / Datos — same 3-column layout as the media/character pages -->
-      <div class="media-body" style="padding-top: 2rem;">
-        <div class="media-col-synopsis" id="author-bio-section" style="display: none;">
-          <div class="media-section-header-row">
-            <p class="section-label">{t.character.biography}</p>
-            <div class="media-section-header-line"></div>
-          </div>
-          <div class="media-description-text" id="author-description"></div>
-        </div>
-
-        <div class="media-col-related" id="author-works-section" style="display: none;">
-          <div class="media-section-header-row">
-            <p class="section-label">{t.author_page.works}</p>
-            <div class="media-section-header-line"></div>
-          </div>
-          <div class="media-relations-grid" id="author-works-grid"></div>
-
-          <!-- Paginación — same pattern as character.astro's Apariciones. -->
-          <div id="author-works-pagination" style="display: none; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-            <button class="btn btn--sm btn--secondary" id="btn-prev-works" style="min-width: 100px;">{t.character.pagination_prev}</button>
-            <span id="txt-works-page" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{t.character.pagination_page.replace('{page}', '1').replace('{total}', '1')}</span>
-            <button class="btn btn--sm btn--secondary" id="btn-next-works" style="min-width: 100px;">{t.character.pagination_next}</button>
-          </div>
-        </div>
-
-        <div class="media-col-stats" id="author-stats-card" style="display: none;">
+        <div class="media-col-stats character-hero-stats" id="author-stats-card" style="display: none;">
           <div class="media-section-header-row">
             <p class="section-label">{t.character.details}</p>
             <div class="media-section-header-line"></div>
@@ -77,7 +73,6 @@ const t = useTranslations(lang);
           <div class="media-stats-list" id="author-stats-list"></div>
         </div>
       </div>
-
     </div>
   </div>
 </BaseLayout>
