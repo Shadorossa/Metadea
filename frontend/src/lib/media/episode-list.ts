@@ -77,7 +77,42 @@ async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonC
   }
   if (!seasonCount) return [];
   const episodes = await fetchTmdbEpisodes(numericId, seasonCount);
-  return episodes.map(ep => ({ ...ep, external_id: externalId }));
+
+  // Calculate cumulative episode numbers across seasons (like anime)
+  // instead of resetting to 1 for each season
+  const episodesBySeasonStart = new Map<number, number>();
+  let cumulativeCount = 0;
+
+  // Group episodes by season and track the starting cumulative number
+  for (const ep of episodes) {
+    if (!episodesBySeasonStart.has(ep.season_number)) {
+      episodesBySeasonStart.set(ep.season_number, cumulativeCount);
+    }
+  }
+
+  // Update episode counts for each season
+  const seasonEpisodeCounts = new Map<number, number>();
+  for (const ep of episodes) {
+    seasonEpisodeCounts.set(
+      ep.season_number,
+      Math.max(seasonEpisodeCounts.get(ep.season_number) ?? 0, ep.episode_number)
+    );
+  }
+
+  // Calculate total episodes up to each season
+  const seasonOffsets = new Map<number, number>();
+  let offset = 0;
+  for (const season of Array.from(seasonEpisodeCounts.keys()).sort((a, b) => a - b)) {
+    seasonOffsets.set(season, offset);
+    offset += seasonEpisodeCounts.get(season) ?? 0;
+  }
+
+  return episodes.map(ep => ({
+    ...ep,
+    external_id: externalId,
+    season_number: 0,
+    episode_number: (seasonOffsets.get(ep.season_number) ?? 0) + ep.episode_number,
+  }));
 }
 
 // Cached in media_episode (see save_media_episodes) after the first fetch —
