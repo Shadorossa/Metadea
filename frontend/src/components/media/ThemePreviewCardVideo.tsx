@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { getThemePreviewFrame, saveThemePreviewFrame, cacheThemeVideo, getThemeVideoPath } from '../../lib/tauri/misc-commands';
 import { wrapAssetUrl } from '../../lib/tauri';
+import { getCachedThemeVideo, cacheThemeVideo as cacheThemeVideoBlob } from '../../lib/media/themeVideoCache';
 
 interface Props {
   externalId: string;
@@ -154,11 +155,25 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
   useEffect(() => {
     let cancelled = false;
 
-    getThemeVideoPath(externalId, slug).then(path => {
-      if (!cancelled && path) {
-        setLocalVideoSrc(wrapAssetUrl(path));
+    const loadVideo = async () => {
+      // Try cache first
+      const cacheKey = `${externalId}::${slug}`;
+      const cachedBlob = await getCachedThemeVideo(cacheKey);
+      if (!cancelled && cachedBlob) {
+        const blobUrl = URL.createObjectURL(cachedBlob);
+        setLocalVideoSrc(blobUrl);
+        return;
       }
-    }).catch(() => {});
+
+      // Fall back to Tauri filesystem cache
+      getThemeVideoPath(externalId, slug).then(path => {
+        if (!cancelled && path) {
+          setLocalVideoSrc(wrapAssetUrl(path));
+        }
+      }).catch(() => {});
+    };
+
+    loadVideo();
 
     if (initialPreviewUrl) {
       setLocalFrameUrl(wrapAssetUrl(initialPreviewUrl));
@@ -173,7 +188,14 @@ export function ThemePreviewCardVideo({ externalId, slug, src, initialPreviewUrl
         subscribeToCapture(taskKey, (url, videoUrl) => {
           if (!cancelled) {
             setLocalFrameUrl(url);
-            if (videoUrl) setLocalVideoSrc(videoUrl);
+            if (videoUrl) {
+              setLocalVideoSrc(videoUrl);
+              // Also cache this video blob for future use
+              fetch(videoUrl)
+                .then(r => r.blob())
+                .then(blob => cacheThemeVideoBlob(`${externalId}::${slug}`, blob))
+                .catch(() => {});
+            }
           }
         });
         enqueueCapture({
