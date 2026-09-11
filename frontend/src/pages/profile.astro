@@ -295,26 +295,16 @@ const t    = useTranslations(lang);
       }
     }
 
-    document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab as Tab));
-    });
-
     ({ items: cachedItems, catalog: cachedCatalog } = await getCachedLibraryAndCatalog());
 
-    // Mount every tab's content up front, in parallel, instead of one at a
-    // time as each is first visited — switchTab below then only ever
-    // toggles which already-rendered pane is visible. Set the initial
-    // visibility right away so a slow tab doesn't hold up a fast one being
-    // shown/hidden correctly.
+    // Only render the active tab on initial load; lazy-load others on demand.
+    // Avoids heavy computations (stats, reviews, lists) for tabs user won't visit.
     const panes = getPanes();
     switchTab(activeTab);
 
-    // Each pane fades in on its own the moment ITS render resolves, not
-    // once every tab is ready — a fast tab (Library/Favorites, already-
-    // cached data) shouldn't sit invisible waiting on a slower one
-    // (Overview, several IPC round trips deep) just because they share one
-    // wrapper. Never re-triggered afterwards, so switching tabs (a plain
-    // visibility toggle between already-rendered panes) never replays it.
+    // Track which tabs have been rendered to avoid re-rendering
+    const renderedTabs = new Set<Tab>([activeTab]);
+
     function fadeInWhenReady(pane: HTMLElement | null, render: () => Promise<void>): Promise<void> {
       if (!pane) return Promise.resolve();
       return render().then(() => {
@@ -326,14 +316,33 @@ const t    = useTranslations(lang);
       });
     }
 
-    await Promise.all([
-      fadeInWhenReady(panes.overview,  () => renderOverview(panes.overview!, cachedItems, cachedCatalog)),
-      fadeInWhenReady(panes.library,   () => renderLibrary(panes.library!)),
-      fadeInWhenReady(panes.favorites, () => renderFavorites(panes.favorites!)),
-      fadeInWhenReady(panes.stats,     () => renderStats(panes.stats!)),
-      fadeInWhenReady(panes.reviews,   () => renderReviews(panes.reviews!)),
-      fadeInWhenReady(panes.lists,     () => renderLists(panes.lists!)),
-    ]);
+    // Render only active tab initially
+    const renderMap = {
+      overview:  () => renderOverview(panes.overview!, cachedItems, cachedCatalog),
+      library:   () => renderLibrary(panes.library!),
+      favorites: () => renderFavorites(panes.favorites!),
+      stats:     () => renderStats(panes.stats!),
+      reviews:   () => renderReviews(panes.reviews!),
+      lists:     () => renderLists(panes.lists!),
+    };
+
+    await fadeInWhenReady(
+      panes[activeTab],
+      renderMap[activeTab]
+    );
+
+    // Lazy-load other tabs when clicked
+    document.querySelectorAll<HTMLButtonElement>('.profile-tab').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const tab = btn.dataset.tab as Tab;
+        switchTab(tab);
+        // Render tab if not already rendered
+        if (!renderedTabs.has(tab) && panes[tab]) {
+          renderedTabs.add(tab);
+          await fadeInWhenReady(panes[tab], renderMap[tab]);
+        }
+      });
+    });
 
     // Delegate clicks: card body → open editor in modal, cover <a> handles its own navigation
     document.getElementById('profile-tab-content')?.addEventListener('click', async (e) => {
