@@ -78,17 +78,20 @@ async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonC
   if (!seasonCount) return [];
   const episodes = await fetchTmdbEpisodes(numericId, seasonCount);
 
-  // Calculate cumulative episode numbers across seasons (like anime)
-  // instead of resetting to 1 for each season
+  // Separate specials (season 0) from regular episodes
+  const regularEpisodes = episodes.filter(ep => ep.season_number !== 0);
+  const specialEpisodes = episodes.filter(ep => ep.season_number === 0);
+
+  // Calculate cumulative episode numbers for regular episodes
   const seasonEpisodeCounts = new Map<number, number>();
-  for (const ep of episodes) {
+  for (const ep of regularEpisodes) {
     seasonEpisodeCounts.set(
       ep.season_number,
       Math.max(seasonEpisodeCounts.get(ep.season_number) ?? 0, ep.episode_number)
     );
   }
 
-  // Calculate total episodes up to each season
+  // Calculate total episodes up to each season (excluding specials)
   const seasonOffsets = new Map<number, number>();
   let offset = 0;
   for (const season of Array.from(seasonEpisodeCounts.keys()).sort((a, b) => a - b)) {
@@ -96,12 +99,24 @@ async function fetchFromTmdb(numericId: number, externalId: string, knownSeasonC
     offset += seasonEpisodeCounts.get(season) ?? 0;
   }
 
-  return episodes.map(ep => ({
+  // Map regular episodes with cumulative numbering
+  const mappedRegular = regularEpisodes.map(ep => ({
     ...ep,
     external_id: externalId,
     season_number: 0,
     episode_number: (seasonOffsets.get(ep.season_number) ?? 0) + ep.episode_number,
   }));
+
+  // Map specials with Sp1, Sp2, etc. notation (negative episode numbers for sorting)
+  const mappedSpecials = specialEpisodes.map((ep, i) => ({
+    ...ep,
+    external_id: externalId,
+    season_number: 0,
+    episode_number: -(i + 1), // Negative numbers for sorting (Sp1 = -1, Sp2 = -2, etc.)
+    name: ep.name ? `[Sp${i + 1}] ${ep.name}` : null,
+  }));
+
+  return [...mappedRegular, ...mappedSpecials];
 }
 
 // Cached in media_episode (see save_media_episodes) after the first fetch —

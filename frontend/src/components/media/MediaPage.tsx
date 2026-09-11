@@ -37,6 +37,13 @@ function splitTitleAfterColon(title: string): ReactNode {
   return <>{title.slice(0, colonIdx + 1)}<br />{title.slice(colonIdx + 1).trim()}</>;
 }
 
+function formatEpisodeNumber(episodeNumber: number): string {
+  if (episodeNumber < 0) {
+    return `Sp${-episodeNumber}`;
+  }
+  return String(episodeNumber);
+}
+
 function formatThemeEpisodes(rawEpisodes: string | null | undefined, episodeOffset: number): string | null {
   if (!rawEpisodes) return null;
   const trimmed = rawEpisodes.trim();
@@ -1401,10 +1408,10 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
                           {ep.cover_url && <img src={ep.cover_url} alt="" loading="lazy" />}
                         </div>
                         <div className="media-relation-card-overlay" />
-                        <span className="media-relation-type">{`#${ep.episode_number}`}</span>
+                        <span className="media-relation-type">{`#${formatEpisodeNumber(ep.episode_number)}`}</span>
                         <div className="media-relation-card-content">
                           <div className="media-relation-info">
-                            <span className="media-relation-title">{ep.name ?? `#${ep.episode_number}`}</span>
+                            <span className="media-relation-title">{ep.name ?? `#${formatEpisodeNumber(ep.episode_number)}`}</span>
                           </div>
                         </div>
                       </div>
