@@ -356,9 +356,29 @@ function mapAniListMediaToResult(media: AniListMedia, mediaType: MediaType): Sea
 // Shared by searchAniList and topRatedAniList — both hit the same Page.media
 // shape, just with a different sort/no search term.
 function toSearchPage(ok: boolean, result: GraphQLResult<AniListResponse['data']> | null, mediaType: MediaType): SearchPage {
-  if (!ok) return { results: [], hasMore: false };
+  if (!ok) {
+    // Check for token expiration errors
+    if (result?.errors?.some(e =>
+      e.message?.includes('Unauthorized') ||
+      e.message?.includes('expired') ||
+      e.message?.includes('invalid')
+    )) {
+      throw new Error('AniList token has expired or is invalid. Please reconnect in Settings.');
+    }
+    // Check for other GraphQL errors
+    if (result?.errors?.[0]) {
+      throw new Error(`AniList search failed: ${result.errors[0].message}`);
+    }
+    throw new Error('Failed to reach AniList. Check your internet connection.');
+  }
   const pageData = result?.data?.Page;
-  if (!pageData) return { results: [], hasMore: false };
+  if (!pageData) {
+    // Check if there were errors even though ok was true (edge case)
+    if (result?.errors?.length) {
+      throw new Error(`AniList search error: ${result.errors[0].message}`);
+    }
+    return { results: [], hasMore: false };
+  }
 
   // AniList's MANGA type covers both manga and light novels — the 'lnovel'
   // caller filters to format: NOVEL explicitly, but the plain 'manga' caller
