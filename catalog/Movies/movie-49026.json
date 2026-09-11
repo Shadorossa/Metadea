@@ -1,0 +1,374 @@
+{
+  "media_catalog": {
+    "id": "8addfc067b2da5978addfc067b2da597",
+    "external_id": "movie:49026",
+    "type": "movie",
+    "title_main": "The Dark Knight Rises",
+    "source": "tmdb",
+    "created_at": "",
+    "updated_at": "",
+    "blocked_at": null
+  },
+  "media_relations": [
+    {
+      "related_media_external_id": "movie:155",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Dark Knight",
+      "cover": "https://image.tmdb.org/t/p/w300/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:268",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman",
+      "cover": "https://image.tmdb.org/t/p/w300/cij4dd21v2Rk2YtUQbV5kW69WB2.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:272",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman Begins",
+      "cover": "https://image.tmdb.org/t/p/w300/sPX89Td70IDDjVr85jdSBb4rWGr.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:414906",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Batman",
+      "cover": "https://image.tmdb.org/t/p/w300/74xTEgt7R36Fpooo50r9T25onhq.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:242643",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman: Assault on Arkham",
+      "cover": "https://image.tmdb.org/t/p/w300/b9KxvIAZkl2f57kjObj8Z9z9LhL.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:2503",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Bourne Ultimatum",
+      "cover": "https://image.tmdb.org/t/p/w300/15rMz5MRXFp7CP4VxhjYw4y0FUn.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:232842",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Flash",
+      "cover": "https://image.tmdb.org/t/p/w300/v0c45VGHU5qxcfveQIjzL8nJBUR.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:13387",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Transporter 3",
+      "cover": "https://image.tmdb.org/t/p/w300/o4w9VF3GRZuXe9NHHvZ07pJespl.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:667",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "You Only Live Twice",
+      "cover": "https://image.tmdb.org/t/p/w300/gIhS0VC7YzI8pj6zfS3KxsxV0dS.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:681",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Diamonds Are Forever",
+      "cover": "https://image.tmdb.org/t/p/w300/ooDT0eKrWCxJCsn9JehPkD0QYNj.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:56292",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Mission: Impossible - Ghost Protocol",
+      "cover": "https://image.tmdb.org/t/p/w300/eRZTGx7GsiKqPch96k27LK005ZL.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:682",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Man with the Golden Gun",
+      "cover": "https://image.tmdb.org/t/p/w300/xVkbKwGnBVNQ122GN5bCTMyPbWz.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:253",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Live and Let Die",
+      "cover": "https://image.tmdb.org/t/p/w300/39qkrjqMZs6utwNmihVImC3ghas.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:28932",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "F.I.S.T.",
+      "cover": "https://image.tmdb.org/t/p/w300/yiqQHB0vZg9O6z7VvAefV3fSPqX.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:13291",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Traitor",
+      "cover": "https://image.tmdb.org/t/p/w300/va4Uo7L2b4d96JTdRMclO9L2hY0.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:1846",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Marlowe",
+      "cover": "https://image.tmdb.org/t/p/w300/CI9vFcMRcZNX9IJsUHmFOIV8jr.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:16164",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Killshot",
+      "cover": "https://image.tmdb.org/t/p/w300/ckUhio8KhGDcvFV7g34kYjVLEEW.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:823625",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Blacklight",
+      "cover": "https://image.tmdb.org/t/p/w300/bv9dy8mnwftdY2j6gG39gCfSFpV.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:21683",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "Batman: Mystery of the Batwoman",
+      "cover": "https://image.tmdb.org/t/p/w300/mlmhpUArJdpRPO211v3lETe3uzg.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "related_media_external_id": "movie:8850",
+      "relation_type": "RECOMMENDATION",
+      "type_label": "Recommended",
+      "title": "The Shadow",
+      "cover": "https://image.tmdb.org/t/p/w300/xAbFJH3vQYZvUyzzGAtG4OLy492.jpg",
+      "media_external_id": "movie:49026"
+    },
+    {
+      "media_external_id": "movie:49026",
+      "related_media_external_id": "movie:155",
+      "relation_type": "PREQUEL",
+      "type_label": "Prequel",
+      "title": "The Dark Knight",
+      "cover": "https://image.tmdb.org/t/p/w300/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+    }
+  ],
+  "characters": [
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139869",
+      "name": "Bruce Wayne",
+      "image_url": "https://image.tmdb.org/t/p/w185/7Pxez9J8fuPd2Mn9kex13YALrCQ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139875",
+      "name": "Commissioner Gordon",
+      "image_url": "https://image.tmdb.org/t/p/w185/yhaSM5habNNI1Tf4ALRwRk3VvSZ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139871",
+      "name": "Bane",
+      "image_url": "https://image.tmdb.org/t/p/w185/d81K0RH8UX7tZj49tZaQhZ9ewH.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139879",
+      "name": "Blake",
+      "image_url": "https://image.tmdb.org/t/p/w185/z2FA8js799xqtfiFjBTicFYdfk.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f813986d",
+      "name": "Selina",
+      "image_url": "https://image.tmdb.org/t/p/w185/nbccV2pMoyLTCeg5DQip24Eq0Jp.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f813988d",
+      "name": "Miranda",
+      "image_url": "https://image.tmdb.org/t/p/w185/biitzOF0GffIqFYLyOPkoiaOngQ.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f813987d",
+      "name": "Fox",
+      "image_url": "https://image.tmdb.org/t/p/w185/905k0RFzH0Kd6gx8oSxRdnr6FL.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139881",
+      "name": "Alfred",
+      "image_url": "https://image.tmdb.org/t/p/w185/bVZRMlpjTAO2pJK6v90buFgVbSW.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f813992d",
+      "name": "Foley",
+      "image_url": "https://image.tmdb.org/t/p/w185/z974QEHL12qUvLyk6hlWGAmDgom.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139935",
+      "name": "Dr. Pavel",
+      "image_url": "https://image.tmdb.org/t/p/w185/ja0vix3b43U5whDTYZascbeXlQo.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4782c3a36847f8139945",
+      "name": "Daggett",
+      "image_url": "https://image.tmdb.org/t/p/w185/pA9mu9D2IolVA0v2Yo0tJm6uUyI.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5621963e92514171d4009562",
+      "name": "Stryver",
+      "image_url": "https://image.tmdb.org/t/p/w185/udgACYWqCSuu6nvtrSjmyU28B0V.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4782c3a36847f8139949",
+      "name": "Captain Jones",
+      "image_url": "https://image.tmdb.org/t/p/w185/w3Wa0d7j2auA2R8FQvjrgfB3ozo.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:53e761100e0a266f9d00176c",
+      "name": "CIA Op",
+      "image_url": "https://image.tmdb.org/t/p/w185/fWWRgyJEGjOPcx43CaFiUCWMBLo.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4782c3a36847f8139951",
+      "name": "Special Ops Sergeant",
+      "image_url": null,
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:657702cc20ecaf00ad85f3d4",
+      "name": "Hooded Man #2",
+      "image_url": "https://image.tmdb.org/t/p/w185/mJNmpAcrya4h4qNykscehIqjird.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:52fe4781c3a36847f8139889",
+      "name": "Mayor",
+      "image_url": "https://image.tmdb.org/t/p/w185/4Xn03t2qDEMR2ecM7BtLwpvs3J0.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:5621969dc3a3680e0e009e97",
+      "name": "Congressman",
+      "image_url": "https://image.tmdb.org/t/p/w185/4P6TsRcnr9MRbXlCdHitulGM5LT.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:53ab59d40e0a267622000761",
+      "name": "Caterer",
+      "image_url": null,
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:53ab5ba70e0a26761f000715",
+      "name": "Maid #2",
+      "image_url": "https://image.tmdb.org/t/p/w185/xzQJpQicKgeFtCqZ1xwr0Rhdf5t.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:562196c8c3a3680e190096a0",
+      "name": "Maid #3",
+      "image_url": "https://image.tmdb.org/t/p/w185/fL1jtgckBL2r0B8ZgOgZG3UWR3D.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:56219708c3a3680e190096a9",
+      "name": "Ross",
+      "image_url": "https://image.tmdb.org/t/p/w185/93my9HnsFT5DFq9oY1nCJ8Ttv22.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:56219739c3a3680e1d009ba6",
+      "name": "DWP Man",
+      "image_url": "https://image.tmdb.org/t/p/w185/8uhyLsXh8EbJutuG6G9QPs6zFWl.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:56219752c3a3680e10009290",
+      "name": "Fr. Reilly",
+      "image_url": "https://image.tmdb.org/t/p/w185/zSoBhmD7KtHi9YrBVrHK9QSl8DU.jpg",
+      "relation_type": null,
+      "character_name": null
+    },
+    {
+      "external_id": "character:ms:562198cd92514171cd009658",
+      "name": "Mark",
+      "image_url": "https://image.tmdb.org/t/p/w185/jewJi0MSWhlikln3hx7mKGGYmoW.jpg",
+      "relation_type": null,
+      "character_name": null
+    }
+  ],
+  "media_authors": [
+    {
+      "external_id": "person:t525",
+      "name": "Christopher Nolan",
+      "image": "https://image.tmdb.org/t/p/w185/xuAIuYSmsUzKlUMBFGVZaWsY3DZ.jpg",
+      "role": "Director",
+      "url": null,
+      "name_native": null,
+      "aliases_csv": null,
+      "biography": null,
+      "birth_date": null,
+      "death_date": null
+    }
+  ],
+  "story_arcs": []
+}
