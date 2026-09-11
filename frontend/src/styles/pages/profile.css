@@ -2478,30 +2478,31 @@
   flex-direction: column;
   gap: clamp(0.8rem, 2vw, 1.25rem);
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0.25rem clamp(1.5rem, 3vw, 3rem) clamp(1.2rem, 2.5vw, 2rem);
+  padding-left: clamp(1.5rem, 3vw, 3rem);
+  padding-right: clamp(1.5rem, 3vw, 3rem);
+  padding-top: 0.25rem;
+  padding-bottom: clamp(1.2rem, 2.5vw, 2rem);
   box-sizing: border-box;
 }
 
 @media (max-width: 1200px) {
   .stats-layout {
-    max-width: 100%;
-    padding: 0.25rem clamp(1rem, 3vw, 2.5rem) clamp(1.2rem, 2.5vw, 2rem);
+    padding-left: clamp(1rem, 3vw, 2.5rem);
+    padding-right: clamp(1rem, 3vw, 2.5rem);
   }
 }
 
 @media (max-width: 1024px) {
   .stats-layout {
-    max-width: 100%;
-    padding: 0.25rem clamp(1rem, 3vw, 2rem) clamp(1.2rem, 2.5vw, 2rem);
+    padding-left: clamp(1rem, 3vw, 2rem);
+    padding-right: clamp(1rem, 3vw, 2rem);
   }
 }
 
 @media (max-width: 768px) {
   .stats-layout {
-    max-width: 100%;
-    padding: 0.25rem clamp(0.75rem, 2vw, 1.25rem) clamp(1.2rem, 2.5vw, 2rem);
+    padding-left: clamp(0.75rem, 2vw, 1.25rem);
+    padding-right: clamp(0.75rem, 2vw, 1.25rem);
   }
 }
 
