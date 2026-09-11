@@ -40,7 +40,7 @@
 .nav-center-text {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   pointer-events: auto;
   /* On a narrow window there just isn't room for every type shortcut on
      one line — scrolls instead of overflowing into (visually overlapping)
