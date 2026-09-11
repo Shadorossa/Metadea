@@ -7,6 +7,10 @@ import {
 } from '../../lib/tauri/catalog';
 import { getAllCharacters, deleteCharacter, getCommunityCharacters, type CharacterEntry } from '../../lib/tauri/characters';
 import {
+  getAllMediaEpisodesGrouped, getMediaEpisodes, deleteAllMediaEpisodes, deleteMediaEpisode,
+  type MediaEpisodeGroup, type MediaEpisode,
+} from '../../lib/tauri/misc-commands';
+import {
   listDatabaseFiles, getFileAtRef, deleteFileFromMain, externalIdFromDatabaseFilename,
   type GitHubDirEntry,
 } from '../../lib/github/api';
@@ -19,6 +23,9 @@ import { generateCustomCharacterId } from '../../lib/character/customCharacter';
 import { AdminAddSearch } from './AdminAddSearch';
 import { CatalogEntryCard } from './CatalogEntryCard';
 import { IconTrash } from '../local/ui/icons';
+import { search, type SearchResult as ApiSearchResult } from '../../lib/search';
+import { fetchMediaEpisodes } from '../../lib/media/episode-list';
+import { useDebouncedSearch, dedupeByKey } from '../../lib/shared/useDebouncedSearch';
 import { backfillMissingCatalogFields, type BackfillEntryResult, type BackfillProgress } from '../../lib/settings/catalog-backfill';
 import { DIFF_FIELDS } from '../../lib/media/constants';
 import { getT } from '../../i18n/client';
@@ -28,13 +35,7 @@ interface Props {
 }
 
 type Source = 'local' | 'github' | 'add';
-// Sagas have no per-file GitHub representation of their own (they're derived
-// from media_relations edges, not a standalone entity). Characters do have
-// their own file now (catalog/Characters/*.json), but this panel has no
-// dedicated per-file browse/edit view for them yet — 'github' for both reads
-// a one-shot download of the community database.db instead (get_community_
-// characters/get_community_sagas), read-only, never merged into local.
-type Entity = 'media' | 'saga' | 'character';
+type Entity = 'media' | 'saga' | 'character' | 'episodes';
 
 export function CatalogAdminPanel({ i18n }: Props) {
   const gate = useOwnerGate();
@@ -93,6 +94,17 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
   // "Add work" state
   const [addBusy, setAddBusy] = useState(false);
+
+  // Episodes state
+  const [episodeQuery, setEpisodeQuery] = useState('');
+  const [episodeMediaTypeFilter, setEpisodeMediaTypeFilter] = useState<'all' | 'anime' | 'series'>('all');
+  const [episodeSelectedShow, setEpisodeSelectedShow] = useState<{ externalId: string; titleMain: string; coverUrl?: string | null; type?: string } | null>(null);
+  const [episodeGroups, setEpisodeGroups] = useState<MediaEpisodeGroup[]>([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [groupEpisodes, setGroupEpisodes] = useState<MediaEpisode[]>([]);
+  const [loadingGroupEpisodes, setLoadingGroupEpisodes] = useState(false);
+  const [episodesDeleteTarget, setEpisodesDeleteTarget] = useState<MediaEpisodeGroup | null>(null);
+  const [episodeSingleDeleteTarget, setEpisodeSingleDeleteTarget] = useState<MediaEpisode | null>(null);
 
   // One-off backfill sweep (see catalog-backfill.ts) for rows missing the
   // fields added this session (country_code, release_end_*, title_english).
@@ -186,6 +198,77 @@ export function CatalogAdminPanel({ i18n }: Props) {
     }
   };
 
+  const loadEpisodeGroups = async () => {
+    setEpisodesLoading(true);
+    try {
+      setEpisodeGroups(await getAllMediaEpisodesGrouped());
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to load episode groups:', err);
+      setEpisodeGroups([]);
+    } finally {
+      setEpisodesLoading(false);
+    }
+  };
+
+  const openEpisodeDetails = async (show: { externalId: string; titleMain: string; coverUrl?: string | null; type?: string }) => {
+    setEpisodeSelectedShow(show);
+    setLoadingGroupEpisodes(true);
+    try {
+      // First check local DB cached episodes
+      let eps = await getMediaEpisodes(show.externalId);
+      if (!eps || eps.length === 0) {
+        // If not cached yet, fetch from provider (AniList/TMDB)
+        eps = await fetchMediaEpisodes(show.externalId, false);
+      }
+      setGroupEpisodes(eps);
+      await loadEpisodeGroups();
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to load media episodes:', err);
+      setGroupEpisodes([]);
+    } finally {
+      setLoadingGroupEpisodes(false);
+    }
+  };
+
+  const confirmDeleteAllEpisodes = async () => {
+    if (!episodesDeleteTarget) return;
+    try {
+      await deleteAllMediaEpisodes(episodesDeleteTarget.external_id);
+      setEpisodeGroups(prev => prev.filter(g => g.external_id !== episodesDeleteTarget.external_id));
+      if (episodeSelectedShow?.externalId === episodesDeleteTarget.external_id) {
+        setGroupEpisodes([]);
+      }
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to delete all episodes:', err);
+    } finally {
+      setEpisodesDeleteTarget(null);
+    }
+  };
+
+  const confirmDeleteSingleEpisode = async () => {
+    if (!episodeSingleDeleteTarget || !episodeSelectedShow) return;
+    try {
+      await deleteMediaEpisode(
+        episodeSingleDeleteTarget.external_id,
+        episodeSingleDeleteTarget.season_number,
+        episodeSingleDeleteTarget.episode_number
+      );
+      setGroupEpisodes(prev => prev.filter(ep =>
+        !(ep.season_number === episodeSingleDeleteTarget.season_number && ep.episode_number === episodeSingleDeleteTarget.episode_number)
+      ));
+      setEpisodeGroups(prev => prev.map(g => {
+        if (g.external_id === episodeSelectedShow.externalId) {
+          return { ...g, episode_count: Math.max(0, g.episode_count - 1) };
+        }
+        return g;
+      }));
+    } catch (err) {
+      console.error('[CatalogAdminPanel] Failed to delete episode:', err);
+    } finally {
+      setEpisodeSingleDeleteTarget(null);
+    }
+  };
+
   // Local catalog data loads for everyone — only the GitHub tab (direct
   // repo file browsing/deletion, not the fork+PR flow every edit already
   // goes through) needs real write access to the repo.
@@ -193,6 +276,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
     loadEntries();
     loadSagas();
     loadCharacters();
+    loadEpisodeGroups();
     getAllCatalogEntries().then(all => {
       const map: Record<string, { title?: string; cover?: string }> = {};
       for (const e of all) {
@@ -260,6 +344,7 @@ export function CatalogAdminPanel({ i18n }: Props) {
   const deferredGithubQuery = useDeferredValue(githubQuery);
   const deferredSagaQuery = useDeferredValue(sagaQuery);
   const deferredCharacterQuery = useDeferredValue(characterQuery);
+  const deferredEpisodeQuery = useDeferredValue(episodeQuery);
 
   // Mirrors search_catalog's own match (Rust, media_catalog.rs): case-
   // insensitive substring match against title_main/title_romaji/title_native.
@@ -287,6 +372,38 @@ export function CatalogAdminPanel({ i18n }: Props) {
     const q = deferredCharacterQuery.trim().toLowerCase();
     if (!q) return list;
     return list.filter(c => c.name.toLowerCase().includes(q));
+  })();
+
+  const { results: rawEpisodeShowResults, isLoading: isSearchingEpisodeShows } = useDebouncedSearch<ApiSearchResult>(
+    episodeQuery,
+    async (q, signal) => {
+      if (entity !== 'episodes') return [];
+      if (episodeMediaTypeFilter === 'anime') {
+        const res = await search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
+        return res.slice(0, 60);
+      }
+      if (episodeMediaTypeFilter === 'series') {
+        const res = await search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]);
+        return res.slice(0, 60);
+      }
+      const [animeRes, seriesRes] = await Promise.all([
+        search(q, 'anime', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
+        search(q, 'series', signal).then(page => page.results).catch(() => [] as ApiSearchResult[]),
+      ]);
+      return [...seriesRes, ...animeRes].slice(0, 60);
+    },
+    [entity, episodeMediaTypeFilter],
+  );
+
+  const deduplicatedEpisodeShows = dedupeByKey(rawEpisodeShowResults, r => r.externalId);
+
+  const visibleEpisodeGroups = (() => {
+    const q = deferredEpisodeQuery.trim().toLowerCase();
+    if (!q) return episodeGroups;
+    return episodeGroups.filter(g => {
+      const title = catalogInfoMap[g.external_id]?.title || g.sample_name || '';
+      return g.external_id.toLowerCase().includes(q) || title.toLowerCase().includes(q);
+    });
   })();
 
   if (gate.state === 'loading') return null;
@@ -406,69 +523,280 @@ export function CatalogAdminPanel({ i18n }: Props) {
     <div className="catalog-admin-panel">
       <h1 className="catalog-admin-title">{t.title}</h1>
 
-      <div className="catalog-admin-source-toggle">
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${source === 'local' ? ' active' : ''}`}
-          onClick={() => setSource('local')}
-        >
-          {t.source_local}
-        </button>
-        {isOwner && (
-          <>
+      <div className="catalog-admin-top-bar">
+        <div className="catalog-admin-source-toggle">
+          <button
+            type="button"
+            className={`catalog-admin-source-btn${source === 'local' ? ' active' : ''}`}
+            onClick={() => setSource('local')}
+          >
+            {t.source_local}
+          </button>
+          {isOwner && (
+            <>
+              <button
+                type="button"
+                className={`catalog-admin-source-btn${source === 'github' ? ' active' : ''}`}
+                onClick={() => setSource('github')}
+              >
+                {t.source_github}
+              </button>
+              <button
+                type="button"
+                className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
+                onClick={() => setSource('add')}
+              >
+                {t.source_add}
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="catalog-admin-source-toggle">
+          <button
+            type="button"
+            className={`catalog-admin-source-btn${entity === 'media' ? ' active' : ''}`}
+            onClick={() => setEntity('media')}
+          >
+            {t.entity_media}
+          </button>
+          <button
+            type="button"
+            className={`catalog-admin-source-btn${entity === 'saga' ? ' active' : ''}`}
+            onClick={() => setEntity('saga')}
+          >
+            {t.entity_saga}
+          </button>
+          <button
+            type="button"
+            className={`catalog-admin-source-btn${entity === 'character' ? ' active' : ''}`}
+            onClick={() => setEntity('character')}
+          >
+            {t.entity_character}
+          </button>
+          {source === 'local' && (
             <button
               type="button"
-              className={`catalog-admin-source-btn${source === 'github' ? ' active' : ''}`}
-              onClick={() => setSource('github')}
+              className={`catalog-admin-source-btn${entity === 'episodes' ? ' active' : ''}`}
+              onClick={() => setEntity('episodes')}
             >
-              {t.source_github}
+              {t.entity_episodes}
             </button>
-            <button
-              type="button"
-              className={`catalog-admin-source-btn${source === 'add' ? ' active' : ''}`}
-              onClick={() => setSource('add')}
-            >
-              {t.source_add}
-            </button>
-          </>
-        )}
+          )}
+        </div>
+
+        <div className="catalog-admin-search-wrapper">
+          {entity === 'episodes' && source === 'local' && !episodeSelectedShow && (
+            <>
+              <input
+                type="text"
+                className="catalog-admin-search"
+                placeholder={t.search_placeholder}
+                value={episodeQuery}
+                onChange={e => setEpisodeQuery(e.target.value)}
+              />
+              <select
+                className="catalog-admin-type-select"
+                value={episodeMediaTypeFilter}
+                onChange={e => setEpisodeMediaTypeFilter(e.target.value as 'all' | 'anime' | 'series')}
+              >
+                <option value="all">Todos (Anime / Series)</option>
+                <option value="anime">Anime</option>
+                <option value="series">Series</option>
+              </select>
+            </>
+          )}
+
+          {entity === 'saga' && (
+            <input
+              type="text"
+              className="catalog-admin-search"
+              placeholder={t.search_placeholder}
+              value={sagaQuery}
+              onChange={e => setSagaQuery(e.target.value)}
+            />
+          )}
+
+          {entity === 'character' && source !== 'add' && (
+            <input
+              type="text"
+              className="catalog-admin-search"
+              placeholder={t.search_placeholder}
+              value={characterQuery}
+              onChange={e => setCharacterQuery(e.target.value)}
+            />
+          )}
+
+          {entity === 'media' && source === 'local' && (
+            <input
+              type="text"
+              className="catalog-admin-search"
+              placeholder={t.search_placeholder}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+          )}
+
+          {entity === 'media' && source === 'github' && isOwner && (
+            <input
+              type="text"
+              className="catalog-admin-search"
+              placeholder={t.search_placeholder}
+              value={githubQuery}
+              onChange={e => setGithubQuery(e.target.value)}
+            />
+          )}
+        </div>
       </div>
 
-      <div className="catalog-admin-source-toggle">
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${entity === 'media' ? ' active' : ''}`}
-          onClick={() => setEntity('media')}
-        >
-          {t.entity_media}
-        </button>
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${entity === 'saga' ? ' active' : ''}`}
-          onClick={() => setEntity('saga')}
-        >
-          {t.entity_saga}
-        </button>
-        <button
-          type="button"
-          className={`catalog-admin-source-btn${entity === 'character' ? ' active' : ''}`}
-          onClick={() => setEntity('character')}
-        >
-          {t.entity_character}
-        </button>
-      </div>
+      {entity === 'episodes' && source === 'local' && (
+        <>
+          {episodeSelectedShow ? (
+            <div>
+              <button
+                type="button"
+                className="catalog-admin-episode-back"
+                onClick={() => setEpisodeSelectedShow(null)}
+              >
+                ← {t.back_to_shows}
+              </button>
+
+              <div className="catalog-admin-selected-show-banner">
+                {episodeSelectedShow.coverUrl && (
+                  <img src={episodeSelectedShow.coverUrl} alt="" className="catalog-admin-selected-show-cover" />
+                )}
+                <div className="catalog-admin-selected-show-meta">
+                  <span className="catalog-admin-selected-show-title">{episodeSelectedShow.titleMain}</span>
+                  <span className="catalog-admin-selected-show-sub">{episodeSelectedShow.externalId} · {groupEpisodes.length} eps</span>
+                </div>
+                {groupEpisodes.length > 0 && (
+                  <button
+                    type="button"
+                    className="catalog-admin-source-btn"
+                    style={{ marginLeft: 'auto' }}
+                    onClick={() => setEpisodesDeleteTarget({
+                      external_id: episodeSelectedShow.externalId,
+                      episode_count: groupEpisodes.length,
+                      sample_name: episodeSelectedShow.titleMain,
+                      sample_cover: episodeSelectedShow.coverUrl ?? null,
+                    })}
+                  >
+                    {t.delete_all_episodes}
+                  </button>
+                )}
+              </div>
+
+              {loadingGroupEpisodes && <p className="catalog-admin-status">{t.loading}</p>}
+              {!loadingGroupEpisodes && groupEpisodes.length === 0 && (
+                <p className="catalog-admin-status">{t.no_episodes_for_show}</p>
+              )}
+
+              {!loadingGroupEpisodes && groupEpisodes.length > 0 && (
+                <div className="catalog-admin-episodes-list" style={{ padding: 0 }}>
+                  {groupEpisodes.map(ep => (
+                    <div key={`${ep.season_number}-${ep.episode_number}`} className="catalog-admin-episode-row">
+                      <div className="catalog-admin-episode-info">
+                        {ep.cover_url ? (
+                          <img src={ep.cover_url} alt="" className="catalog-admin-episode-thumb" loading="lazy" />
+                        ) : (
+                          <div className="catalog-admin-episode-thumb" />
+                        )}
+                        <span className="catalog-admin-episode-badge">
+                          {ep.season_number > 1 ? `T${ep.season_number} E${ep.episode_number}` : `Ep. ${ep.episode_number}`}
+                        </span>
+                        <span className="catalog-admin-episode-name">
+                          {ep.name || `Episodio ${ep.episode_number}`}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="catalog-admin-icon-btn catalog-admin-icon-btn--delete"
+                        onClick={() => setEpisodeSingleDeleteTarget(ep)}
+                        title={t.delete_button}
+                      >
+                        <IconTrash size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+
+              {/* If user typed a query, show API search results (like the lists episode search) */}
+              {episodeQuery.trim() ? (
+                <>
+                  {isSearchingEpisodeShows && <p className="catalog-admin-status">{t.loading}</p>}
+                  {!isSearchingEpisodeShows && deduplicatedEpisodeShows.length === 0 && (
+                    <p className="catalog-admin-status">{t.no_entries}</p>
+                  )}
+                  {!isSearchingEpisodeShows && deduplicatedEpisodeShows.length > 0 && (
+                    <div className="pr-editor-search-grid">
+                      {deduplicatedEpisodeShows.map(show => (
+                        <CatalogEntryCard
+                          key={show.externalId}
+                          id={show.externalId}
+                          title={show.titleMain || '—'}
+                          cover={show.coverUrl}
+                          editLabel={t.edit_button}
+                          deleteLabel={t.delete_button}
+                          onEdit={() => openEpisodeDetails(show)}
+                          onDelete={() => setEpisodesDeleteTarget({
+                            external_id: show.externalId,
+                            episode_count: 0,
+                            sample_name: show.titleMain,
+                            sample_cover: show.coverUrl ?? null,
+                          })}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* When query is empty, show titles that already have cached episodes in local DB */
+                <>
+                  {episodesLoading && <p className="catalog-admin-status">{t.loading}</p>}
+                  {!episodesLoading && visibleEpisodeGroups.length === 0 && (
+                    <p className="catalog-admin-status">{t.no_episodes}</p>
+                  )}
+
+                  {!episodesLoading && visibleEpisodeGroups.length > 0 && (
+                    <div className="pr-editor-search-grid">
+                      {visibleEpisodeGroups.map(group => {
+                        const info = catalogInfoMap[group.external_id];
+                        const title = info?.title || group.sample_name || group.external_id;
+                        const cover = info?.cover || group.sample_cover;
+                        const countText = `${group.episode_count} eps`;
+                        return (
+                          <CatalogEntryCard
+                            key={group.external_id}
+                            id={`${group.external_id} (${countText})`}
+                            title={title}
+                            cover={cover}
+                            editLabel={t.edit_button}
+                            deleteLabel={t.delete_button}
+                            onEdit={() => openEpisodeDetails({
+                              externalId: group.external_id,
+                              titleMain: title,
+                              coverUrl: cover,
+                            })}
+                            onDelete={() => setEpisodesDeleteTarget(group)}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
 
       {entity === 'saga' && (
         <>
           {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
-
-          <input
-            type="text"
-            className="catalog-admin-search"
-            placeholder={t.search_placeholder}
-            value={sagaQuery}
-            onChange={e => setSagaQuery(e.target.value)}
-          />
 
           {(source === 'github' ? githubSagasLoading : sagaLoading) && <p className="catalog-admin-status">{t.loading}</p>}
           {source === 'github' && githubSagasError && <p className="catalog-admin-status">{t.github_open_error}</p>}
@@ -536,14 +864,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
         <>
           {source === 'github' && <p className="catalog-admin-hint">{t.github_hint}</p>}
 
-          <input
-            type="text"
-            className="catalog-admin-search"
-            placeholder={t.search_placeholder}
-            value={characterQuery}
-            onChange={e => setCharacterQuery(e.target.value)}
-          />
-
           {(source === 'github' ? githubCharactersLoading : characterLoading) && <p className="catalog-admin-status">{t.loading}</p>}
           {source === 'github' && githubCharactersError && <p className="catalog-admin-status">{t.github_open_error}</p>}
           {!(source === 'github' ? githubCharactersLoading : characterLoading) && visibleCharacters.length === 0 && (
@@ -587,14 +907,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
 
       {entity === 'media' && source === 'local' && (
         <>
-          <input
-            type="text"
-            className="catalog-admin-search"
-            placeholder={t.search_placeholder}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-
           {loading && <p className="catalog-admin-status">{t.loading}</p>}
           {!loading && visibleEntries.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
 
@@ -659,14 +971,6 @@ export function CatalogAdminPanel({ i18n }: Props) {
               </div>
             )}
           </div>
-
-          <input
-            type="text"
-            className="catalog-admin-search"
-            placeholder={t.search_placeholder}
-            value={githubQuery}
-            onChange={e => setGithubQuery(e.target.value)}
-          />
 
           {githubLoading && <p className="catalog-admin-status">{t.loading}</p>}
           {!githubLoading && visibleGithubFiles.length === 0 && <p className="catalog-admin-status">{t.no_entries}</p>}
@@ -816,6 +1120,47 @@ export function CatalogAdminPanel({ i18n }: Props) {
                 {t.cancel_button}
               </button>
               <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteCharacter}>
+                {t.delete_button}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {episodesDeleteTarget && (
+        <div className="me-overlay" onClick={() => setEpisodesDeleteTarget(null)}>
+          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
+            <p>
+              {t.delete_all_episodes_confirm
+                .replace('{title}', catalogInfoMap[episodesDeleteTarget.external_id]?.title || episodesDeleteTarget.sample_name || episodesDeleteTarget.external_id)
+                .replace('{count}', String(episodesDeleteTarget.episode_count))}
+            </p>
+            <div className="catalog-admin-confirm-actions">
+              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setEpisodesDeleteTarget(null)}>
+                {t.cancel_button}
+              </button>
+              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteAllEpisodes}>
+                {t.delete_button}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {episodeSingleDeleteTarget && episodeSelectedShow && (
+        <div className="me-overlay" onClick={() => setEpisodeSingleDeleteTarget(null)}>
+          <div className="catalog-admin-confirm" onClick={e => e.stopPropagation()}>
+            <p>
+              {t.delete_episode_confirm
+                .replace('{num}', String(episodeSingleDeleteTarget.episode_number))
+                .replace('{name}', episodeSingleDeleteTarget.name || `Episodio ${episodeSingleDeleteTarget.episode_number}`)
+                .replace('{title}', episodeSelectedShow.titleMain || episodeSelectedShow.externalId)}
+            </p>
+            <div className="catalog-admin-confirm-actions">
+              <button type="button" className="catalog-admin-confirm-cancel" onClick={() => setEpisodeSingleDeleteTarget(null)}>
+                {t.cancel_button}
+              </button>
+              <button type="button" className="catalog-admin-confirm-delete" onClick={confirmDeleteSingleEpisode}>
                 {t.delete_button}
               </button>
             </div>

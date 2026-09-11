@@ -77,14 +77,31 @@ export interface MediaEpisode {
   cover_url:      string | null;
 }
 
+export interface MediaEpisodeGroup {
+  external_id:   string;
+  episode_count: number;
+  sample_name:   string | null;
+  sample_cover:  string | null;
+}
+
 export async function getMediaEpisodes(externalId: string): Promise<MediaEpisode[]> {
   return tauriCmd<MediaEpisode[]>('get_media_episodes', [], { externalId });
 }
 
-// Always the whole list for externalId, never a partial update — see the
-// Rust command's own comment for why.
+export async function getAllMediaEpisodesGrouped(): Promise<MediaEpisodeGroup[]> {
+  return tauriCmd<MediaEpisodeGroup[]>('get_all_media_episodes_grouped', []);
+}
+
 export async function saveMediaEpisodes(externalId: string, episodes: MediaEpisode[]): Promise<void> {
   return tauriRun('save_media_episodes', { externalId, episodes });
+}
+
+export async function deleteAllMediaEpisodes(externalId: string): Promise<void> {
+  return tauriRun('delete_all_media_episodes', { externalId });
+}
+
+export async function deleteMediaEpisode(externalId: string, seasonNumber: number, episodeNumber: number): Promise<void> {
+  return tauriRun('delete_media_episode', { externalId, seasonNumber, episodeNumber });
 }
 
 // ── Staff (crew) ─────────────────────────────────────────────────────────────
