@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { search, topRated, type MediaType, type SearchResult, type SeasonId, type SearchFilters, MissingApiKeyError } from '../../lib/search/index';
 import { getCachedBrowsePage, setCachedBrowsePage } from '../../lib/search/browse-cache';
@@ -523,44 +523,55 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
     executeSearch(query, mediaType, 1);
   };
 
-  const toggleGenreFilter = (genre: string) => {
-    const next = genreFilters.includes(genre) ? genreFilters.filter(g => g !== genre) : [...genreFilters, genre];
-    setGenreFilters(next);
-    runFilterSearch({ genres: next });
-  };
+  const toggleGenreFilter = useCallback((genre: string) => {
+    setGenreFilters(prev => {
+      const next = prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre];
+      runFilterSearch({ genres: next });
+      return next;
+    });
+  }, []);
 
-  // Función para ordenar los resultados en base a los estados
-  const sortedResults = [...results].sort((a, b) => {
-    if (sortField === 'releaseDate') {
-      // A missing release date always sorts last, in EITHER direction — a
-      // result with no year on file isn't "older than everything" (asc)
-      // any more than it's "newer than everything" (desc), it's just not
-      // comparable, so it shouldn't outrank a real date either way. The
-      // old `?? 0` fallback treated an unknown year as year 0: harmless in
-      // desc (0 is already the lowest number, so it naturally fell last),
-      // but in asc it put unknown-date results ahead of every real date —
-      // e.g. an uncatalogued entry would sort before a genuine 1980 movie.
-      // compareByReleaseDate/Desc (mapper-utils.ts) already encode "unknown
-      // sorts last regardless of direction" via an Infinity sentinel
-      // instead of 0 — same helper every other release-date sort in the
-      // app already uses, just adapted here for SearchResult's camelCase
-      // field names instead of media_catalog's snake_case ones.
-      const key = (r: SearchResult) => ({
-        release_year: r.releaseYear, release_month: r.releaseMonth, release_day: r.releaseDay, id: r.externalId,
-      });
-      return sortDirection === 'desc'
-        ? compareByReleaseDateDesc(key(a), key(b))
-        : compareByReleaseDate(key(a), key(b));
-    } else {
-      const aScore = a.scoreGlobal ?? -1;
-      const bScore = b.scoreGlobal ?? -1;
-      return sortDirection === 'desc' ? bScore - aScore : aScore - bScore;
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      if (sortField === 'releaseDate') {
+        const key = (r: SearchResult) => ({
+          release_year: r.releaseYear, release_month: r.releaseMonth, release_day: r.releaseDay, id: r.externalId,
+        });
+        return sortDirection === 'desc'
+          ? compareByReleaseDateDesc(key(a), key(b))
+          : compareByReleaseDate(key(a), key(b));
+      } else {
+        const aScore = a.scoreGlobal ?? -1;
+        const bScore = b.scoreGlobal ?? -1;
+        return sortDirection === 'desc' ? bScore - aScore : aScore - bScore;
+      }
+    });
+  }, [results, sortField, sortDirection]);
+
+  const availableGenres = useMemo(() => GENRE_OPTIONS[mediaType] ?? [], [mediaType]);
+
+  const activeMediaTypeLabel = useMemo(() => i18n.types[mediaType].toLowerCase(), [i18n, mediaType]);
+
+  const deduped = useMemo(() => {
+    const seen = new Set<string>();
+    return sortedResults.filter(result => {
+      if (seen.has(result.externalId)) return false;
+      seen.add(result.externalId);
+      return true;
+    });
+  }, [sortedResults]);
+
+  const byType = useMemo(() => {
+    const map = new Map<string, SearchResult[]>();
+    for (const result of deduped) {
+      const list = map.get(result.type) ?? [];
+      list.push(result);
+      map.set(result.type, list);
     }
-  });
+    return map;
+  }, [deduped]);
 
-  const availableGenres = GENRE_OPTIONS[mediaType] ?? [];
-
-  const activeMediaTypeLabel = i18n.types[mediaType].toLowerCase();
+  const typeOrder = useMemo(() => (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character' && t !== 'staff'), []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -833,35 +844,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
           </div>
         )}
 
-        {sortedResults.length > 0 && (() => {
-          const seen = new Set<string>();
-          const deduped = sortedResults.filter(result => {
-            if (seen.has(result.externalId)) return false;
-            seen.add(result.externalId);
-            return true;
-          });
-
-          // Todos mixes every type into the same relevance-agnostic sort,
-          // which read as one undifferentiated pile — grouped by type
-          // instead (each group keeping the same date/score sort), same
-          // as a single-type tab shows on its own.
-          if (mediaType !== 'all') {
-            return (
-              <div className="results-grid animate-fade-in">
-                {deduped.map(result => <MediaCard key={result.externalId} result={result} />)}
-              </div>
-            );
-          }
-
-          const byType = new Map<string, SearchResult[]>();
-          for (const result of deduped) {
-            const list = byType.get(result.type) ?? [];
-            list.push(result);
-            byType.set(result.type, list);
-          }
-          const typeOrder = (SEARCH_TAB_TYPES as readonly string[]).filter(t => t !== 'all' && t !== 'character' && t !== 'staff');
-
-          return (
+        {deduped.length > 0 && (
+          mediaType !== 'all' ? (
+            <div className="results-grid animate-fade-in">
+              {deduped.map(result => <MemoizedMediaCard key={result.externalId} result={result} />)}
+            </div>
+          ) : (
             <div className="results-by-type animate-fade-in">
               {typeOrder.filter(t => byType.has(t)).map(t => (
                 <div className="results-type-section" key={t}>
@@ -876,13 +864,13 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                     </button>
                   </h3>
                   <div className="results-grid">
-                    {byType.get(t)!.slice(0, gridColumns).map(result => <MediaCard key={result.externalId} result={result} />)}
+                    {byType.get(t)!.slice(0, gridColumns).map(result => <MemoizedMediaCard key={result.externalId} result={result} />)}
                   </div>
                 </div>
               ))}
             </div>
-          );
-        })()}
+          )
+        )}
 
         {/* Providers cap a page at ~50 results and only ever report hasMore
             when a full page came back — but the handoff from quick search's
@@ -908,21 +896,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   );
 }
 
-function MediaCard({ result }: { result: SearchResult }) {
+const MemoizedMediaCard = memo(function MediaCard({ result }: { result: SearchResult }) {
   const hasDetail = (DETAIL_SUPPORTED_TYPES as readonly string[]).includes(result.type);
-  // Landscape "covers" (rare provider mixups — a banner/splash image
-  // instead of a real poster) look bad even center-cropped, so those fall
-  // back to the placeholder instead. This used to be checked via a
-  // separate, invisible new Image() probe fired eagerly (not lazily) for
-  // every single result on mount — meaning every cover was fetched twice
-  // (once by the probe, once by the real <img>), and the whole card
-  // returned null while its own probe was pending, unmounting/remounting
-  // grid items as each of up to 50 probes resolved at its own pace. That's
-  // what made the grid look like it kept reflowing into different sizes.
-  // Checking the real (already lazy-loaded) <img>'s own onLoad instead
-  // needs no extra request and never removes the card itself from the
-  // grid — only its cover swaps to the placeholder, and only once actually
-  // known to be landscape.
   const [isLandscape, setIsLandscape] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -931,10 +906,6 @@ function MediaCard({ result }: { result: SearchResult }) {
     if (img.naturalWidth > img.naturalHeight) setIsLandscape(true);
   }
 
-  // prefetchMediaData (mediaService.ts) is local-only now — reads the entry
-  // from media_catalog if it's already there, never calls out to AniList/
-  // IGDB/TMDB/OpenLibrary/ComicVine, so firing it on every hover has no
-  // external-request cost to worry about.
   function handleMouseEnter() {
     if (hasDetail && result.type !== 'character' && result.type !== 'staff') prefetchMediaData(result.externalId);
   }
@@ -948,9 +919,6 @@ function MediaCard({ result }: { result: SearchResult }) {
         return;
       }
       if (result.type === 'staff') {
-        // externalId is already "person:a<id>" (see searchStaff, lib/search/index.ts) —
-        // the same id scheme quick search's staff results use, resolved by
-        // the existing /author page (fetchLiveAniListStaff).
         navigate(`/author?id=${result.externalId}`);
         return;
       }
@@ -993,4 +961,4 @@ function MediaCard({ result }: { result: SearchResult }) {
       )}
     </div>
   );
-}
+});
