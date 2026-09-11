@@ -130,7 +130,7 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
     if (grouped.length === 0) return;
     setIsClosing(true);
     clearTimeout(closingTimeoutRef.current);
-    closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 350);
+    closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 500);
   };
   const handleMouseEnter = () => {
     clearTimeout(closingTimeoutRef.current);
