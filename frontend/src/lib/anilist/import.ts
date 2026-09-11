@@ -139,7 +139,7 @@ async function fetchAllPages(
   userId: number,
   anilistType: AniListMediaType,
   onProg: (p: ImportProgress) => void
-): Promise<AniListImportMediaItem[]> {
+): Promise<{ data: AniListImportMediaItem[] } | { error: AniListError }> {
   const result: AniListImportMediaItem[] = [];
   let page = 1;
   let hasNextPage = true;
@@ -149,14 +149,47 @@ async function fetchAllPages(
     const { ok, status, result: pageResult } = await graphqlPost<AniListImportPage>(
       API_ENDPOINTS.ANILIST, IMPORT_QUERY, { userId, type: anilistType, page }, { token },
     );
-    if (!ok) throw new Error(pageResult?.errors?.[0]?.message || `HTTP ${status}`);
-    if (pageResult?.errors) throw new Error(pageResult.errors[0]?.message || 'Unknown GraphQL error');
+
+    // Check for token expiration errors
+    if (pageResult?.errors?.some(e =>
+      e.message?.includes('Unauthorized') ||
+      e.message?.includes('expired') ||
+      e.message?.includes('invalid')
+    )) {
+      return {
+        error: {
+          type: 'token_expired',
+          message: pageResult.errors[0]?.message || 'Token is invalid or expired'
+        }
+      };
+    }
+
+    // Check for network errors
+    if (!ok && status === 0) {
+      return {
+        error: {
+          type: 'network_error',
+          message: 'Failed to connect to AniList'
+        }
+      };
+    }
+
+    // Check for other errors
+    if (!ok || pageResult?.errors) {
+      return {
+        error: {
+          type: 'unknown',
+          message: pageResult?.errors?.[0]?.message || `HTTP ${status}` || 'Unknown error'
+        }
+      };
+    }
+
     result.push(...(pageResult?.data?.Page?.mediaList ?? []));
     hasNextPage = pageResult?.data?.Page?.pageInfo?.hasNextPage ?? false;
     page++;
     if (hasNextPage) await delay(2000);
   }
-  return result;
+  return { data: result };
 }
 
 async function fetchAniListItems(
@@ -179,8 +212,22 @@ async function fetchAniListItems(
   const needManga = selectedFormats.some(f => MANGA_FORMAT_SET.has(f));
 
   const allItems: AniListImportMediaItem[] = [];
-  if (needAnime) allItems.push(...await fetchAllPages(token, userId, 'ANIME', onProg));
-  if (needManga) allItems.push(...await fetchAllPages(token, userId, 'MANGA', onProg));
+
+  if (needAnime) {
+    const animeResult = await fetchAllPages(token, userId, 'ANIME', onProg);
+    if ('error' in animeResult) {
+      return { ok: false, error: animeResult.error.message };
+    }
+    allItems.push(...animeResult.data);
+  }
+
+  if (needManga) {
+    const mangaResult = await fetchAllPages(token, userId, 'MANGA', onProg);
+    if ('error' in mangaResult) {
+      return { ok: false, error: mangaResult.error.message };
+    }
+    allItems.push(...mangaResult.data);
+  }
 
   const filteredList = allItems.filter(item => {
     const fmt = item.media?.format;
