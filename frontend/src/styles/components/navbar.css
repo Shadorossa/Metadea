@@ -131,6 +131,21 @@
   white-space: nowrap;
   transition: color var(--anim-fast) var(--anim-ease);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-text-link svg {
+  width: clamp(12px, 1.43vw, 15px);
+  height: clamp(12px, 1.43vw, 15px);
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity var(--anim-fast) var(--anim-ease);
+}
+
+.nav-text-link:hover svg {
+  opacity: 1;
 }
 
 .nav-text-link:hover {
