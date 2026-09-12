@@ -129,14 +129,14 @@ pub fn restore_missing_seen_games(
 // GOG/EA library doesn't wipe out its links just because one scan missed it.
 const GAME_LINK_GRACE_DAYS: i64 = 14;
 
-// Lets the user manually drop a scanned/ghost game off the grid for good —
-// local_games_seen's own doc comment above anticipated this ("staying
-// listed doesn't hurt anything ... until the user removes it") but nothing
-// ever actually called it. Removes both the seen-bookkeeping row (so
-// restore_missing_seen_games stops resurrecting it) and any manual catalog
-// link under the same key — a genuinely-installed game reappears on the
-// next scan regardless (this can't un-scan a real install), so this is
-// really only durable for ghosts (installed: false) or a bad scan match.
+// Lets the user manually drop a game off the grid for good — local_games_seen's
+// own doc comment above anticipated this for ghosts ("staying listed doesn't
+// hurt anything ... until the user removes it"), but a game a live source
+// (a ROM file still on disk, a real install) keeps reporting every scan
+// would just come right back if this only cleared seen/links. Recorded in
+// local_hidden_games instead, which scan_all_games filters its whole output
+// against unconditionally — durable regardless of whether the source is a
+// ghost or something still genuinely there.
 #[tauri::command]
 pub async fn remove_local_game(
     state: tauri::State<'_, crate::db::MetadeaDb>,
@@ -144,6 +144,11 @@ pub async fn remove_local_game(
     link_key: String,
 ) -> Result<(), String> {
     let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "INSERT OR IGNORE INTO local_hidden_games (launcher, link_key) VALUES (?1, ?2)",
+        rusqlite::params![launcher, link_key],
+    )
+    .str_err()?;
     conn.execute(
         "DELETE FROM local_games_seen WHERE launcher = ?1 AND link_key = ?2",
         rusqlite::params![launcher, link_key],
@@ -155,6 +160,19 @@ pub async fn remove_local_game(
     )
     .str_err()?;
     Ok(())
+}
+
+pub fn lookup_hidden_games(conn: &rusqlite::Connection) -> std::collections::HashSet<(String, String)> {
+    let mut set = std::collections::HashSet::new();
+    if let Ok(mut stmt) = conn.prepare("SELECT launcher, link_key FROM local_hidden_games") {
+        let _ = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+            .map(|rows| {
+                for row in rows.flatten() {
+                    set.insert(row);
+                }
+            });
+    }
+    set
 }
 
 pub fn prune_stale_game_links(conn: &rusqlite::Connection) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { LocalGame } from '../../lib/tauri';
+import type { LocalGame, MediaCatalogEntry } from '../../lib/tauri';
 import { removeLocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
@@ -54,6 +54,12 @@ interface VideojuegosGridProps {
   // itself only ever holds untracked-or-completed installs, but the badge
   // needs to tell those two apart (see getStatusBadge/GameCard).
   gameStatusMatch: Map<LocalGame, string | undefined>;
+  // Keyed by external_id — once a game has been linked to a catalog entry
+  // (a Steam-ID guess, or a manual "editar metadatos" pick via
+  // IgdbPickerModal), its card should show that entry's own title_main
+  // instead of the raw scanned name, which for a ROM is often a messy dump
+  // filename (region tags, language codes, ...) rather than the real title.
+  catalogMapById: Map<string, MediaCatalogEntry>;
 }
 
 // The Videojuegos-only grid — status-grouped sections (En progreso/
@@ -66,9 +72,11 @@ export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
-  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch,
+  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch, catalogMapById,
 }: VideojuegosGridProps) {
   const t = getT();
+  const displayNameFor = (g: LocalGame): string | undefined =>
+    g.external_id ? catalogMapById.get(g.external_id)?.title_main ?? undefined : undefined;
 
   // Right-click "Eliminar de la lista" on a cover-less game card (see
   // GameCard's own onRequestDelete — a real install just re-scans back, so
@@ -127,6 +135,7 @@ export function VideojuegosGrid({
                 onClick={onSelectGame}
                 status={sec.sectionStatus}
                 onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+                displayName={displayNameFor(entry.game)}
               />
             ) : (
               <LocalMediaCard
@@ -209,6 +218,7 @@ export function VideojuegosGrid({
                     coverCache={coverCache}
                     onClick={onSelectGame}
                     onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+                    displayName={displayNameFor(entry.game)}
                   />
                 ) : (
                   <LocalMediaCard
@@ -226,6 +236,7 @@ export function VideojuegosGrid({
                     onClick={onSelectGame}
                     status={gameStatusMatch.get(g)}
                     onRequestDelete={(gg, x, y) => setDeleteMenu({ game: gg, x, y })}
+                    displayName={displayNameFor(g)}
                   />
                 ))}
               </div>

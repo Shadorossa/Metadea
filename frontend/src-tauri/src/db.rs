@@ -1151,6 +1151,23 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         );
         mark_migration(conn, 59)?;
     }
+    if v < 60 {
+        // A game the user manually removed from Local's grid (see
+        // remove_local_game) — unlike local_games_seen, this must survive
+        // even a source that keeps reporting the game every scan (a ROM
+        // file still sitting on disk, an install scan_all_games re-finds
+        // every time), so scan_all_games filters its output against this
+        // table instead of relying on the seen/links delete alone.
+        let _ = conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS local_hidden_games (
+                launcher TEXT NOT NULL,
+                link_key TEXT NOT NULL,
+                hidden_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (launcher, link_key)
+             );"
+        );
+        mark_migration(conn, 60)?;
+    }
 
     Ok(())
 }

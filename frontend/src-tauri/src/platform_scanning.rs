@@ -805,6 +805,13 @@ pub async fn scan_all_games(
     }
     all.extend(restored);
 
+    // Anything the user explicitly removed (see remove_local_game) stays
+    // gone even though its own live source (a ROM file still on disk, an
+    // actual install) keeps reporting it every single scan — checked last,
+    // against every game regardless of where it came from above.
+    let hidden = crate::game_links::lookup_hidden_games(&conn);
+    all.retain(|g| !hidden.contains(&(g.launcher.clone(), game_link_key(g))));
+
     Ok(all)
 }
 

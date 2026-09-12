@@ -318,7 +318,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
         <div className="local-game-detail-sticky-bar">
         <div className="local-game-detail-title-block">
           <div className="local-media-detail-top-row">
-            <p className="local-game-detail-title">{game.name}</p>
+            <p className="local-game-detail-title">{catalogEntry?.title_main || gameInfo?.name || game.name}</p>
           </div>
         </div>
 
