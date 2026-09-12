@@ -1,5 +1,4 @@
 import { pickFolder, pickFile } from '../tauri/local-library';
-import { readStoredJson, writeStoredJson } from '../tauri/core';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 interface EmulatorConfig {
@@ -16,8 +15,10 @@ interface EmulatorsData {
 let emulatorsData: EmulatorsData = {};
 
 export async function initEmulators(showToast: (msg?: string) => void) {
+  // Load from localStorage
   try {
-    emulatorsData = await loadEmulators();
+    const stored = localStorage.getItem(STORAGE_KEYS.emulatorsConfig);
+    emulatorsData = stored ? JSON.parse(stored) : {};
   } catch {
     emulatorsData = {};
   }
@@ -38,7 +39,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       }
       emulatorsData[platformId].executable_path = chosen;
 
-      await saveEmulators();
+      saveEmulators();
       showToast('Ejecutable guardado');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -62,7 +63,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       }
       emulatorsData[platformId].rom_folder = chosen;
 
-      await saveEmulators();
+      saveEmulators();
       showToast('Carpeta de ROMs guardada');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -71,12 +72,8 @@ export async function initEmulators(showToast: (msg?: string) => void) {
   });
 }
 
-async function loadEmulators(): Promise<EmulatorsData> {
-  return readStoredJson<EmulatorsData>('read_emulators_config', STORAGE_KEYS.emulatorsConfig, {});
-}
-
-async function saveEmulators(): Promise<void> {
-  return writeStoredJson('write_emulators_config', STORAGE_KEYS.emulatorsConfig, emulatorsData, emulatorsData);
+function saveEmulators(): void {
+  localStorage.setItem(STORAGE_KEYS.emulatorsConfig, JSON.stringify(emulatorsData));
 }
 
 export { emulatorsData };
