@@ -585,7 +585,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     const groupsMap: Record<string, { externalId: string; label: string; cover?: string }[]> = {};
 
     if (data.parentGame) {
-      groupsMap['Base Game'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title, cover: data.parentGame.cover }];
+      groupsMap['Original'] = [{ externalId: data.parentGame.externalId, label: data.parentGame.title, cover: data.parentGame.cover }];
     }
 
     // Every "full edition" relation type (see IS_FULL_EDITION_TYPE in
@@ -613,11 +613,12 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   }, [data.type, data.parentGame, data.relations]);
 
   const allAvailableEditions = useMemo(() => {
-    const list: { externalId: string; label: string; cover?: string }[] = [];
-    for (const group of editionGroups) {
-      for (const opt of group.options) {
-        if (opt.externalId !== baseId && !list.some(item => item.externalId === opt.externalId)) {
-          list.push(opt);
+    const list: { externalId: string; label: string; cover?: string; relationType?: string }[] = [];
+    for (const rel of (data.relations || [])) {
+      if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK'].includes(rel.relationType)) {
+        const relExternalId = extractExternalIdFromRelationUrl(rel.url);
+        if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
+          list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType });
         }
       }
     }
@@ -628,7 +629,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
       list.push({ externalId, label: data.titleMain, cover: data.cover });
     }
     return list;
-  }, [editionGroups, baseId, data.parentGame, externalId, data.titleMain, data.cover]);
+  }, [baseId, data.parentGame, externalId, data.titleMain, data.cover, data.relations]);
 
   // Every id that represents "this same game" for monthly-history purposes —
   // the base game, whichever edition's page is currently open, and every
@@ -856,11 +857,21 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
               className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
               onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
             >
-              Base Game
+              Original
             </button>
             {allAvailableEditions.map(ed => {
               const isActive = entry.activeLogId === ed.externalId;
-              const cleanLabel = editionTabLabel(ed.label);
+              let tabLabel = editionTabLabel(ed.label);
+
+              // If it's a REMAKE with the same suffix as the original, label it "Remake"
+              if (ed.relationType === 'REMAKE' && data.parentGame) {
+                const originalSuffix = data.parentGame.title.substring(data.parentGame.title.indexOf(':'));
+                const editionSuffix = ed.label.substring(ed.label.indexOf(':'));
+                if (originalSuffix === editionSuffix) {
+                  tabLabel = 'Remake';
+                }
+              }
+
               return (
                 <button
                   key={ed.externalId}
