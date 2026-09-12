@@ -66,6 +66,23 @@
   flex-shrink: 0 !important;
   opacity: 0.7 !important;
 }
+
+.search-tab-icon {
+  display: none;
+}
+
+.search-tab-label {
+  display: inline;
+}
+
+@media (max-width: 1800px) {
+  .search-tab-icon {
+    display: inline !important;
+  }
+  .search-tab-label {
+    display: none !important;
+  }
+}
 .search-tab:hover {
   color: var(--text-main) !important;
 }

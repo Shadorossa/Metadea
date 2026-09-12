@@ -595,8 +595,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
                   onClick={() => handleMediaTypeChange(typeId)}
                   className={`search-tab${mediaType === typeId ? ' active' : ''}`}
                 >
-                  {TAB_ICONS[typeId]}
-                  {getT().search?.types?.[typeId] || i18n.types[typeId]}
+                  <span className="search-tab-icon">{TAB_ICONS[typeId]}</span>
+                  <span className="search-tab-label">{getT().search?.types?.[typeId] || i18n.types[typeId]}</span>
                 </button>
               ))}
             </div>,
