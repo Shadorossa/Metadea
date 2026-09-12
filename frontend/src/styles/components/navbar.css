@@ -119,11 +119,13 @@
 }
 
 .nav-group--left {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .nav-group--right {
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .nav-icon-btn {
