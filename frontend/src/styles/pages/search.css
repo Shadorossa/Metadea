@@ -59,7 +59,7 @@
   background: none !important;
   border: none !important;
   outline: none !important;
-  transition: color var(--anim-fast) var(--anim-ease) !important;
+  transition: color var(--anim-fast) var(--anim-ease), gap 200ms cubic-bezier(0.4, 0, 0.2, 1), width 200ms cubic-bezier(0.4, 0, 0.2, 1), padding 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .search-tab svg {
   width: clamp(12px, 1.43vw, 15px) !important;
