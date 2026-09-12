@@ -1,5 +1,5 @@
 import { pickFolder, pickFile } from '../tauri/local-library';
-import { STORAGE_KEYS } from '../shared/storage-keys';
+import { invoke, tauriCmd } from '../tauri/core';
 
 interface EmulatorConfig {
   emulator_name: string;
@@ -18,10 +18,10 @@ let pendingChanges: EmulatorsData = {};
 let hasChanges = false;
 
 export async function initEmulators(showToast: (msg?: string) => void) {
-  // Load from localStorage
+  // Load from database via Tauri, with fallback to empty object
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.emulatorsConfig);
-    emulatorsData = stored ? JSON.parse(stored) : {};
+    const stored = await tauriCmd<Record<string, EmulatorConfig>>('read_emulators_config', {});
+    emulatorsData = stored || {};
     pendingChanges = JSON.parse(JSON.stringify(emulatorsData));
     console.log('[Init] Loaded emulators data:', emulatorsData);
   } catch (err) {
@@ -193,9 +193,9 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       saveBtn.style.opacity = '1';
       saveBtn.style.transform = 'scale(1)';
     });
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
       emulatorsData = JSON.parse(JSON.stringify(pendingChanges));
-      saveEmulators();
+      await saveEmulators();
       hasChanges = false;
       notification.style.opacity = '0';
       setTimeout(() => notification?.remove(), 300);
@@ -287,8 +287,14 @@ export async function initEmulators(showToast: (msg?: string) => void) {
   }
 }
 
-function saveEmulators(): void {
-  localStorage.setItem(STORAGE_KEYS.emulatorsConfig, JSON.stringify(emulatorsData));
+async function saveEmulators(): Promise<void> {
+  try {
+    await invoke('write_emulators_config', { configs: emulatorsData });
+    console.log('[Save] Emulators config saved to database');
+  } catch (err) {
+    console.error('[Save] Error saving emulators:', err);
+    throw err;
+  }
 }
 
 export { emulatorsData };

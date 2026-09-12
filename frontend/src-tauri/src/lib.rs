@@ -6,6 +6,7 @@ mod staff;
 mod comicvine;
 mod comic_reader;
 mod db;
+mod emulators;
 mod episode_history;
 mod favorite_images;
 mod folders;
@@ -273,6 +274,8 @@ pub fn run() {
             sync_state::mark_synced,
             sync_state::mark_sync_failed,
             sync_state::set_sync_state,
+            emulators::read_emulators_config,
+            emulators::write_emulators_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

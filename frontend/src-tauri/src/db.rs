@@ -1133,6 +1133,24 @@ fn run_migrations(conn: &Connection) -> SqlResult<()> {
         let _ = conn.execute("ALTER TABLE media_theme ADD COLUMN preview_url TEXT", []);
         mark_migration(conn, 58)?;
     }
+    if v < 59 {
+        let _ = conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS emulator_configs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform_id TEXT NOT NULL UNIQUE,
+                emulator_name TEXT NOT NULL,
+                executable_path TEXT,
+                launch_args TEXT,
+                rom_folder TEXT,
+                tracking_mode TEXT DEFAULT 'process',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+             );
+             CREATE INDEX IF NOT EXISTS idx_emulator_configs_platform
+                ON emulator_configs(platform_id);"
+        );
+        mark_migration(conn, 59)?;
+    }
 
     Ok(())
 }
