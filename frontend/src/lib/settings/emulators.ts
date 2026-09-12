@@ -90,12 +90,16 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
     }
 
-    if (input.id.includes('emulator-select')) {
+    // Check by class and ID patterns
+    if (input.classList.contains('emulator-select')) {
       pendingChanges[platformId].emulator_name = input.value;
+      console.log(`[Emulator] ${platformId}: ${input.value}`);
     } else if (input.id.includes('launch-args')) {
       pendingChanges[platformId].launch_args = input.value;
+      console.log(`[Launch Args] ${platformId}: ${input.value}`);
     } else if (input.id.includes('tracking-mode')) {
       pendingChanges[platformId].tracking_mode = input.value;
+      console.log(`[Tracking Mode] ${platformId}: ${input.value}`);
     }
 
     if (!hasChanges) {
