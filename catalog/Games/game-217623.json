@@ -11,31 +11,28 @@
   },
   "media_relations": [
     {
-      "media_external_id": "game:217623",
       "related_media_external_id": "game:288217",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Like a Dragon: Infinite Wealth - Master Vacation Bundle",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co9s3j.jpg",
-      "format": null
+      "media_external_id": "game:217623"
     },
     {
-      "media_external_id": "game:217623",
       "related_media_external_id": "game:288219",
       "relation_type": "DLC",
       "type_label": "DLC",
       "title": "Like a Dragon: Infinite Wealth - Special Job Set",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co87z3.jpg",
-      "format": null
+      "media_external_id": "game:217623"
     },
     {
-      "media_external_id": "game:217623",
       "related_media_external_id": "game:319033",
       "relation_type": "STANDALONE",
-      "type_label": "Standalone Expansion",
+      "type_label": "Standalone",
       "title": "Like a Dragon: Infinite Wealth Special Trial",
       "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/coadu9.jpg",
-      "format": null
+      "media_external_id": "game:217623"
     },
     {
       "media_external_id": "game:217623",
@@ -43,7 +40,7 @@
       "relation_type": "PREQUEL",
       "type_label": "Prequel",
       "title": "Like a Dragon Gaiden: The Man Who Erased His Name",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co6ln4.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co6ln4.jpg"
     },
     {
       "media_external_id": "game:217623",
@@ -51,10 +48,19 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Like a Dragon: Pirate Yakuza in Hawaii",
-      "cover": "https://images.igdb.com/igdb/image/upload/t_1080p/co8u8o.jpg"
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8u8o.jpg"
     }
   ],
-  "characters": [],
+  "characters": [
+    {
+      "external_id": "character:cs:343110",
+      "name": "Ichiban Kasuga",
+      "image_url": "https://i.redd.it/ef840md7iulb1.jpg",
+      "relation_type": "MAIN",
+      "character_name": null
+    }
+  ],
   "media_authors": [],
-  "saga_name": "Yakuza / Like a Dragon"
+  "saga_name": "Yakuza / Like a Dragon",
+  "story_arcs": []
 }
