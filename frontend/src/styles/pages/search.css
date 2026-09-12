@@ -81,8 +81,11 @@
 }
 
 @media (max-width: 1799px) {
+  .search-tabs-inner {
+    gap: 0.1rem !important;
+  }
   .search-tab {
-    padding: 0 clamp(0.2rem, 0.5vw, 0.35rem) !important;
+    padding: 0 0.3rem !important;
   }
   .search-tab-icon {
     opacity: 1 !important;
