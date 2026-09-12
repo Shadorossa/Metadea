@@ -188,8 +188,8 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   </svg>
                 </button>
 
-                <div class="emulator-config-middle" id={`supported-container-${platform.id}`}>
-                  <label class="form-label-small">Supported</label>
+                <div class="emulator-config-middle hidden" id={`supported-container-${platform.id}`}>
+                  <span class="form-label-small">Supported:</span>
                   <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
                 </div>
 
@@ -407,11 +407,11 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
         const emulator = emulators.find(em => em.name === selectedEmulator);
 
         if (emulator) {
-          extensionsDisplay.innerHTML = `<span class="extensions-tag">${emulator.extensions.join(', ')}</span>`;
-          supportedContainer.style.display = 'flex';
+          extensionsDisplay.textContent = emulator.extensions.join(', ');
+          supportedContainer.classList.remove('hidden');
         } else {
-          extensionsDisplay.innerHTML = '';
-          supportedContainer.style.display = 'none';
+          extensionsDisplay.textContent = '';
+          supportedContainer.classList.add('hidden');
         }
       }
     });
@@ -670,27 +670,26 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-row {
     display: grid;
-    grid-template-columns: 180px 40px 1fr 1fr 40px;
+    grid-template-columns: 180px 40px auto 1fr 40px;
     gap: 0.75rem;
-    align-items: flex-end;
+    align-items: center;
   }
 
   .emulator-config-left {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    height: 100%;
   }
 
   .emulator-config-left .form-select {
     width: 100%;
-    flex: 1;
   }
 
   .form-select.compact {
-    padding: 0.5rem 0.7rem;
+    padding: 0.6rem 0.7rem;
     font-size: 0.8rem;
-    min-height: 36px;
+    height: 40px;
+    box-sizing: border-box;
   }
 
   .exe-picker-btn,
@@ -719,26 +718,21 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-middle {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    min-height: 40px;
-    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    white-space: nowrap;
   }
 
-  .emulator-config-middle:not(:has(*)) {
+  .emulator-config-middle.hidden {
     display: none;
   }
 
   .form-label-small {
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-main);
     margin: 0;
   }
 
@@ -746,7 +740,6 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     font-size: 0.75rem;
     color: var(--text-dim);
     line-height: 1.4;
-    word-break: break-word;
     margin: 0;
   }
 
@@ -758,7 +751,8 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-right .form-input {
     width: 100%;
-    min-height: 36px;
+    height: 40px;
+    box-sizing: border-box;
   }
 
   .form-label {
