@@ -172,36 +172,37 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
             </div>
 
             <div class="platform-form-fields">
-              <div class="form-field emulator-field">
-                <label class="form-label" for={`emulator-select-${platform.id}`} data-i18n="settings.emulators_choose">{t.settings.emulators_choose}</label>
-                <div class="emulator-row">
-                  <select class="form-select emulator-select" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
+              <div class="emulator-config-row">
+                <div class="emulator-config-left">
+                  <label class="form-label" for={`emulator-select-${platform.id}`} data-i18n="settings.emulators_choose">{t.settings.emulators_choose}</label>
+                  <select class="form-select emulator-select compact" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
                     <option value="" data-i18n="settings.emulators_no_selection">{t.settings.emulators_no_selection}</option>
                   </select>
-                  <div class="emulator-extensions" id={`extensions-display-${platform.id}`}></div>
                 </div>
-              </div>
 
-              <div class="form-field">
-                <label class="form-label" for={`executable-path-${platform.id}`}>Executable path</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  id={`executable-path-${platform.id}`}
-                  placeholder="Path to emulator executable"
-                  data-platform={platform.id}
-                />
-              </div>
+                <button type="button" class="exe-picker-btn" data-platform={platform.id} title="Select emulator executable">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
+                    <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                  </svg>
+                </button>
 
-              <div class="form-field">
-                <label class="form-label" for={`launch-args-${platform.id}`} data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  id={`launch-args-${platform.id}`}
-                  placeholder="{ROM} or --exec='{ROM}' --batch"
-                  data-platform={platform.id}
-                />
+                <div class="emulator-config-middle">
+                  <label class="form-label-small">Supported</label>
+                  <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
+                </div>
+
+                <div class="emulator-config-right">
+                  <label class="form-label" for={`launch-args-${platform.id}`} data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
+                  <input
+                    class="form-input"
+                    type="text"
+                    id={`launch-args-${platform.id}`}
+                    placeholder="{ROM}"
+                    data-platform={platform.id}
+                  />
+                </div>
               </div>
 
               <div class="form-field">
@@ -665,36 +666,78 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     gap: 0.5rem;
   }
 
-  .emulator-field .form-label {
-    margin-bottom: 0.25rem;
-  }
-
-  .emulator-row {
-    display: flex;
+  .emulator-config-row {
+    display: grid;
+    grid-template-columns: 180px 40px 1fr 1fr;
     gap: 0.75rem;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
-  .emulator-row .form-select {
-    flex: 1;
+  .emulator-config-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  .emulator-extensions {
-    flex: 1;
-    padding: 0.6rem 0.875rem;
+  .emulator-config-left .form-select {
+    width: 100%;
+  }
+
+  .form-select.compact {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .exe-picker-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    font-size: 0.75rem;
-    color: var(--text-dim);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
   }
 
-  .extensions-tag {
-    display: block;
-    word-break: break-word;
+  .exe-picker-btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .emulator-config-middle {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-label-small {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-main);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .supported-types {
+    font-size: 0.75rem;
+    color: var(--text-dim);
     line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .emulator-config-right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .emulator-config-right .form-input {
+    width: 100%;
   }
 
   .form-label {
