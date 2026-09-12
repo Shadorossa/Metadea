@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { debugScanInfo, type LocalGame } from '../../../lib/tauri';
 import { scanGamesWithSteam } from '../../../lib/local/steam-merge';
 
@@ -43,7 +44,23 @@ export function useLocalGames() {
   // scan_all_games' own game_link_key derives from, so it matches exactly
   // the one row that was actually deleted.
   const removeGame = useCallback((launcher: string, linkKey: string) => {
-    setGames(prev => prev.filter(g => !(g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey)));
+    // The page's own scroll (there's no inner overflow:auto container here —
+    // .local-main-content grows to its natural height) visibly jumped
+    // whenever the removed card sat above the fold: the document got
+    // shorter, and if the user was scrolled far enough down, the browser
+    // clamps scrollY to the new (smaller) max the instant this commits.
+    // flushSync forces that DOM update — and whatever auto-clamp comes with
+    // it — to happen synchronously right here, so the explicit scrollTo
+    // right after runs before the browser ever paints the jumped frame,
+    // restoring the exact pre-removal scroll position in the same tick
+    // (or, if the content really did shrink past it, re-clamping to
+    // whatever the new legitimate max is — same outcome as before, just
+    // without the visible flash in between).
+    const scrollY = window.scrollY;
+    flushSync(() => {
+      setGames(prev => prev.filter(g => !(g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey)));
+    });
+    window.scrollTo(0, scrollY);
   }, []);
 
   return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame };
