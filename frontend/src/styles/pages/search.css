@@ -89,7 +89,7 @@
     gap: 0.08rem !important;
   }
   .search-tab {
-    padding: 0 0.15rem !important;
+    padding: 0 !important;
     width: clamp(1.8rem, 2.2vw, 2.2rem) !important;
     gap: 0.05rem !important;
   }
