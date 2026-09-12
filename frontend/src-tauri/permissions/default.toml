@@ -189,6 +189,8 @@ commands.allow = [
   "toggle_comic_bookmark",
   "extract_comic_archive",
   "read_comic_binary_file",
-  "save_comic_page_as_png"
+  "save_comic_page_as_png",
+  "read_emulators_config",
+  "write_emulators_config"
 ]
 
