@@ -1047,7 +1047,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   // Only certain edition types get redirected to their base game and blocked
   // from being logged separately. Expansions are allowed as independent entries
   // since they're typically sold and played separately (e.g., RE4 Separate Ways).
-  const isBlockedEdition = !!data.parentGame && data.format !== 'EXPANSION' && data.format !== 'EXPANDED_GAME';
+  const isBlockedEdition = !!data.parentGame && data.format !== 'EXPANSION';
   // A bundle (e.g. "The Great Ace Attorney Chronicles") isn't a playable
   // title on its own — its contained works are — so it gets the same
   // "can't be logged/edited here" treatment as a blocked edition, just with
