@@ -85,7 +85,13 @@ const PLATFORMS = [
               data-i18n-title={`settings.platform_${platform.id}`}
               title={platform.name}
             >
-              <img class="platform-logo" src={platform.logo} alt={platform.name} />
+              <img class="platform-logo" src={platform.logo} alt={platform.name} onerror="this.style.display='none'; this.parentElement.classList.add('has-error')" />
+              <svg class="platform-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                <line x1="7" y1="2" x2="17" y2="2"/>
+                <line x1="17" y1="20" x2="7" y2="20"/>
+                <line x1="6" y1="14" x2="18" y2="14"/>
+              </svg>
             </button>
             <span class="platform-label">{platform.name}</span>
           </div>
@@ -304,6 +310,20 @@ const PLATFORMS = [
   .platform-tab-btn:hover .platform-logo,
   .platform-tab-btn.active .platform-logo {
     filter: brightness(1) opacity(1);
+  }
+
+  .platform-placeholder {
+    width: 50%;
+    height: 50%;
+    color: var(--text-dim);
+  }
+
+  .platform-tab-btn.has-error .platform-placeholder {
+    display: block !important;
+  }
+
+  .platform-tab-btn.has-error:hover .platform-placeholder {
+    color: var(--text-muted);
   }
 
   .platform-label {
