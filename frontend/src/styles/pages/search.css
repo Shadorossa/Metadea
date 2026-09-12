@@ -119,8 +119,9 @@
   content: '';
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: clamp(0.6rem, 50%, 3rem);
   height: 2px;
   background: var(--accent);
