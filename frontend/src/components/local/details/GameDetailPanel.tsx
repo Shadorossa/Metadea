@@ -296,7 +296,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
           )}
         </div>
         <div className="local-game-detail-backdrop" />
-        {launchTarget.launcher === 'steam' && launchTarget.app_id && (
+        {(launchTarget.launcher === 'steam' || !!launchTarget.rom_platform) && launchTarget.app_id && (
           <button className="local-game-detail-edit" onClick={() => setShowPicker(true)} title={t.local.change_igdb_game}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -337,7 +337,7 @@ export function GameDetailPanel({ game, coverCache, onCloseClick, onMetaRefresh,
                   if (effectiveStoreLink) openExternalUrl(effectiveStoreLink.url).catch(console.error);
                   return;
                 }
-                launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path)
+                launchGame(launchTarget.launcher, launchTarget.app_id, launchTarget.install_path, launchTarget.rom_platform)
                   .then(() => {
                     setHasLaunched(true);
                     const startTime = Math.floor(Date.now() / 1000);

@@ -115,7 +115,7 @@ pub fn restore_missing_seen_games(
             crate::platform_scanning::LocalGame {
                 name, launcher, app_id, external_id: None,
                 install_path: None, playtime_minutes: None, last_played: None,
-                installed: Some(false),
+                installed: Some(false), rom_platform: None,
             }
         })
         .collect()

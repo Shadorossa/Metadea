@@ -158,14 +158,80 @@ pub async fn open_external_url(app_handle: tauri::AppHandle, url: String) -> Res
     app_handle.opener().open_url(url, None::<String>).str_err()
 }
 
+// Splits an emulator's launch_args string into process args, substituting
+// the `{ROM}` placeholder (see EmulatorsTab.astro's own field, which shows
+// that exact token as its placeholder text) with the actual ROM path
+// wherever it appears; falls back to just appending the ROM path as the
+// final argument when the user never typed `{ROM}` at all. Quote-aware
+// (double quotes only) so a path with spaces can still be grouped into one
+// argument the same way a shell would.
+fn build_emulator_args(launch_args: &str, rom_path: &str) -> Vec<String> {
+    let substituted = if launch_args.contains("{ROM}") {
+        launch_args.replace("{ROM}", rom_path)
+    } else if launch_args.trim().is_empty() {
+        rom_path.to_string()
+    } else {
+        format!("{} \"{}\"", launch_args, rom_path)
+    };
+
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    for c in substituted.chars() {
+        match c {
+            '"' => in_quotes = !in_quotes,
+            c if c.is_whitespace() && !in_quotes => {
+                if !current.is_empty() {
+                    args.push(std::mem::take(&mut current));
+                }
+            }
+            c => current.push(c),
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+    args
+}
+
 #[tauri::command]
 pub async fn launch_game(
     app_handle: tauri::AppHandle,
     launcher: String,
     app_id: Option<String>,
     install_path: Option<String>,
+    rom_platform: Option<String>,
 ) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
+    // A ROM scanned from a configured emulator's rom_folder (see
+    // platform_scanning::scan_emulator_roms) — `launcher` here is only ever
+    // the company-level grouping ("nintendo"/"playstation"/"xbox"), so the
+    // actual emulator to launch it with is looked up by rom_platform (the
+    // specific console, e.g. "3ds") instead of matching on launcher below.
+    if let Some(platform_id) = rom_platform {
+        use tauri::Manager;
+        let rom_path = install_path.ok_or("No ROM path for emulator game")?;
+        let db = app_handle.state::<crate::db::MetadeaDb>();
+        let (executable_path, launch_args) = {
+            let conn = db.conn.lock().str_err()?;
+            conn.query_row(
+                "SELECT executable_path, launch_args FROM emulator_configs WHERE platform_id = ?1",
+                [&platform_id],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+            )
+            .map_err(|_| format!("No emulator configured for {}", platform_id))?
+        };
+        if executable_path.is_empty() {
+            return Err(format!("No emulator executable configured for {}", platform_id));
+        }
+        let args = build_emulator_args(&launch_args, &rom_path);
+        std::process::Command::new(&executable_path)
+            .args(&args)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("Failed to launch emulator: {}", e))?;
+        return Ok(());
+    }
     match launcher.as_str() {
         "steam" => {
             let id = app_id.ok_or("No app_id for Steam game")?;

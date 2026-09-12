@@ -2,13 +2,19 @@ import { tauriCmd, tauriRun } from './core';
 
 export interface LocalGame {
   name:              string;
-  launcher:          'steam' | 'epic' | 'xbox' | 'gog' | 'ea' | 'local';
+  launcher:          'steam' | 'epic' | 'xbox' | 'gog' | 'ea' | 'nintendo' | 'playstation' | 'local';
   app_id?:           string;
   external_id?:      string;
   install_path?:     string;
   playtime_minutes?: number;
   last_played?:      number;
   installed?:        boolean;
+  // The specific emulator_configs platform_id (e.g. "3ds", "ps4") this ROM
+  // was scanned under, when this entry came from scan_emulator_roms instead
+  // of an actual Steam/Epic/... install — `launcher` above only ever holds
+  // the company-level grouping ("nintendo"/"playstation"/"xbox"), so this is
+  // what launchGame needs to find the right EmulatorConfig to run it with.
+  rom_platform?:     string;
 }
 
 export interface SteamOwnedGame {
