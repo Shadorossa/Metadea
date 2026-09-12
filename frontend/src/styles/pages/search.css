@@ -82,10 +82,12 @@
 
 @media (max-width: 1799px) {
   .search-tabs-inner {
-    gap: 0.1rem !important;
+    gap: 0.08rem !important;
   }
   .search-tab {
-    padding: 0 0.3rem !important;
+    padding: 0 !important;
+    width: fit-content !important;
+    min-width: auto !important;
   }
   .search-tab-icon {
     opacity: 1 !important;
