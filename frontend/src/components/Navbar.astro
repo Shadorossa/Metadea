@@ -57,6 +57,11 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
 
     <!-- Centro: biblioteca + tipos / portal #nav-center-slot -->
     <div class="nav-center-wrap">
+      <button type="button" id="nav-center-scroll-left" class="nav-center-scroll-btn nav-center-scroll-btn--left nav-center-scroll-btn--hidden" aria-label="Scroll left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
       <div id="nav-center-default" class={`nav-center-text${activePage === 'local' || activePage === 'search' ? ' nav-hidden' : ''}`}>
         {LIBRARY_TYPES.map(type => (
           <a href={`/profile?libtype=${type}#library`} class="nav-text-link">
@@ -65,6 +70,11 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
         ))}
       </div>
       <div id="nav-center-slot" class="nav-center-slot"></div>
+      <button type="button" id="nav-center-scroll-right" class="nav-center-scroll-btn nav-center-scroll-btn--right nav-center-scroll-btn--hidden" aria-label="Scroll right">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
     </div>
 
     <!-- Derecha: buscar + notificaciones + avatar + ajustes -->
@@ -230,4 +240,38 @@ const LIBRARY_TYPES = ALL_MEDIA_TYPES.filter(t => t !== 'character');
   updateHistoryArrows();
   document.addEventListener('astro:page-load', updateHistoryArrows);
   (window as any).navigation?.addEventListener('currententrychange', updateHistoryArrows);
+
+  // Media scroll navigation — show/hide arrows when content overflows
+  function setupMediaScroll() {
+    const centerText = document.getElementById('nav-center-default') as HTMLElement | null;
+    const scrollLeft = document.getElementById('nav-center-scroll-left') as HTMLButtonElement | null;
+    const scrollRight = document.getElementById('nav-center-scroll-right') as HTMLButtonElement | null;
+
+    if (!centerText || !scrollLeft || !scrollRight) return;
+
+    const scrollAmount = 120;
+
+    function updateScrollState() {
+      const hasOverflow = centerText.scrollWidth > centerText.clientWidth;
+      scrollLeft.classList.toggle('nav-center-scroll-btn--hidden', !hasOverflow || centerText.scrollLeft === 0);
+      scrollRight.classList.toggle('nav-center-scroll-btn--hidden', !hasOverflow || centerText.scrollLeft >= centerText.scrollWidth - centerText.clientWidth - 5);
+    }
+
+    scrollLeft.addEventListener('click', () => {
+      centerText.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      setTimeout(updateScrollState, 350);
+    });
+
+    scrollRight.addEventListener('click', () => {
+      centerText.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      setTimeout(updateScrollState, 350);
+    });
+
+    centerText.addEventListener('scroll', updateScrollState);
+    window.addEventListener('resize', updateScrollState);
+    updateScrollState();
+  }
+
+  document.addEventListener('astro:page-load', setupMediaScroll);
+  setupMediaScroll();
 </script>
