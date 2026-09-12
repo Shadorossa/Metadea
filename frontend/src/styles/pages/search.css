@@ -81,6 +81,9 @@
 }
 
 @media (max-width: 1799px) {
+  .search-tab {
+    padding: 0 clamp(0.2rem, 0.5vw, 0.35rem) !important;
+  }
   .search-tab-icon {
     opacity: 1 !important;
     pointer-events: auto !important;
