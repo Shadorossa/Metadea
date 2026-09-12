@@ -1,0 +1,14 @@
+
+> frontend@0.3.120 tauri:dev
+> tauri dev
+
+     Running BeforeDevCommand (`npm run dev`)
+     Running DevCommand (`cargo  run --no-default-features --color always --`)
+        Info Watching C:\Users\Nacho\Metadea\frontend\src-tauri for changes...
+
+> frontend@0.3.120 dev
+> astro dev
+
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1.00s
+[1m[92m     Running[0m `target\debug\app.exe`
+{"message":"Dev server already running at http://localhost:4321 (pid 28196)\n  Stop:   astro dev stop\n  Status: astro dev status\n  Logs:   astro dev logs","label":"SKIP_FORMAT","level":"info"}
