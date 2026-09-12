@@ -714,12 +714,12 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .exe-picker-btn {
     grid-column: 2;
-    grid-row: 1 / 3;
+    grid-row: 2;
   }
 
   .rom-folder-btn {
     grid-column: 5;
-    grid-row: 1 / 3;
+    grid-row: 2;
   }
 
   .exe-picker-btn:hover,
@@ -741,12 +741,13 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     height: 40px;
-    grid-column: 3 / 5;
-    grid-row: 1;
+    grid-column: 3;
+    grid-row: 2;
+    visibility: visible;
   }
 
   .emulator-config-middle.hidden {
-    display: none;
+    visibility: hidden;
   }
 
   .form-label-small {
@@ -764,21 +765,20 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   }
 
   .emulator-config-right {
-    display: contents;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    grid-column: 4;
+    grid-row: 1 / 3;
   }
 
   .emulator-config-right .form-label {
-    grid-column: 3 / 5;
-    grid-row: 1;
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--text-main);
-    display: none;
   }
 
   .emulator-config-right .form-input {
-    grid-column: 3 / 5;
-    grid-row: 2;
     width: 100%;
     height: 40px;
     box-sizing: border-box;
