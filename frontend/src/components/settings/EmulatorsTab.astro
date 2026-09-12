@@ -299,7 +299,11 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     ],
   };
 
+  let emulatorsInitialized = false;
   const initEmulatorsTab = () => {
+    if (emulatorsInitialized) return;
+    emulatorsInitialized = true;
+
     const companySelectorData = {
       nintendo: {
         name: 'Nintendo',
