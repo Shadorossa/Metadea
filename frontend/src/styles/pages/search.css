@@ -78,8 +78,10 @@
 .search-tab-label {
   opacity: 1;
   max-width: 100%;
-  will-change: opacity, max-width;
-  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), max-width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 0;
+  margin-right: 0;
+  will-change: opacity, margin-left, margin-right;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), margin-left 200ms cubic-bezier(0.4, 0, 0.2, 1), margin-right 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (max-width: 1799px) {
@@ -98,8 +100,8 @@
   .search-tab-label {
     opacity: 0 !important;
     pointer-events: none !important;
-    max-width: 0 !important;
-    overflow: hidden !important;
+    margin-left: -100% !important;
+    margin-right: -100% !important;
   }
 }
 .search-tab:hover {
