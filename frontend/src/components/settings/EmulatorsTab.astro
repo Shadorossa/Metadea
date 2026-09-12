@@ -124,7 +124,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   class="form-input"
                   type="text"
                   id={`launch-args-${platform.id}`}
-                  placeholder="%ROM% (optional)"
+                  placeholder="{ROM} or --exec=\"{ROM}\" --batch"
                   data-platform={platform.id}
                 />
               </div>
@@ -142,6 +142,37 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   />
                   <button type="button" class="folder-browse-btn" data-platform={platform.id} data-i18n="settings.emulators_browse">{t.settings.emulators_browse}</button>
                 </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for={`extensions-${platform.id}`} data-i18n="settings.emulators_extensions">{t.settings.emulators_extensions}</label>
+                <input
+                  class="form-input"
+                  type="text"
+                  id={`extensions-${platform.id}`}
+                  placeholder=".iso, .cue, .bin, .img"
+                  data-platform={platform.id}
+                />
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for={`working-dir-${platform.id}`} data-i18n="settings.emulators_working_dir">{t.settings.emulators_working_dir}</label>
+                <input
+                  class="form-input"
+                  type="text"
+                  id={`working-dir-${platform.id}`}
+                  placeholder="(optional - leave blank for default)"
+                  data-platform={platform.id}
+                />
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for={`tracking-mode-${platform.id}`} data-i18n="settings.emulators_tracking">{t.settings.emulators_tracking}</label>
+                <select class="form-select" id={`tracking-mode-${platform.id}`} data-platform={platform.id}>
+                  <option value="process">Process (Monitor process)</option>
+                  <option value="directory">Directory (Monitor folder)</option>
+                  <option value="name">Process Name (By name)</option>
+                </select>
               </div>
             </div>
           </div>
