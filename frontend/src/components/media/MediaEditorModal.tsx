@@ -596,7 +596,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
     // (sortRelationsForDisplay), so a hardcoded English label like "Expanded
     // Edition" only ever matched by coincidence, and never at all once the
     // UI language wasn't English (e.g. Spanish's "Edición expandida").
-    const EDITION_RELATION_TYPES = new Set(['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK']);
+    const EDITION_RELATION_TYPES = new Set(['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT']);
     for (const rel of (data.relations || [])) {
       if (!rel.relationType || !EDITION_RELATION_TYPES.has(rel.relationType)) continue;
       const relExternalId = extractExternalIdFromRelationUrl(rel.url);
@@ -615,7 +615,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
   const allAvailableEditions = useMemo(() => {
     const list: { externalId: string; label: string; cover?: string; relationType?: string }[] = [];
     for (const rel of (data.relations || [])) {
-      if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK'].includes(rel.relationType)) {
+      if (rel.relationType && ['EXPANDED_GAME', 'REMASTER', 'REMAKE', 'FORK', 'PORT'].includes(rel.relationType)) {
         const relExternalId = extractExternalIdFromRelationUrl(rel.url);
         if (relExternalId && relExternalId !== baseId && !list.some(item => item.externalId === relExternalId)) {
           list.push({ externalId: relExternalId, label: rel.title, cover: rel.cover, relationType: rel.relationType });
