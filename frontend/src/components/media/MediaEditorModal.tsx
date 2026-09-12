@@ -96,8 +96,8 @@ function extractExternalIdFromRelationUrl(url: string | null | undefined): strin
 // Log tab labels show only what's after the title's colon (e.g. "Trails in
 // the Sky: 2nd Chapter" → "2nd Chapter") — titles rarely share a common
 // prefix with the base game, so diffing against it wasn't reliable.
-function editionTabLabel(editionTitle: string): string {
-  if (!editionTitle) return 'Edition';
+function editionTabLabel(editionTitle: string, defaultLabel: string = 'Edition'): string {
+  if (!editionTitle) return defaultLabel;
   const idx = editionTitle.indexOf(':');
   return idx === -1 ? editionTitle : editionTitle.slice(idx + 1).trim();
 }
@@ -857,18 +857,18 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
               className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
               onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
             >
-              Original
+              {te.original}
             </button>
             {allAvailableEditions.map(ed => {
               const isActive = entry.activeLogId === ed.externalId;
-              let tabLabel = editionTabLabel(ed.label);
+              let tabLabel = editionTabLabel(ed.label, te.edition_default);
 
               // If it's a REMAKE with the same suffix as the original, label it "Remake"
               if (ed.relationType === 'REMAKE' && data.parentGame) {
                 const originalSuffix = data.parentGame.title.substring(data.parentGame.title.indexOf(':'));
                 const editionSuffix = ed.label.substring(ed.label.indexOf(':'));
                 if (originalSuffix === editionSuffix) {
-                  tabLabel = 'Remake';
+                  tabLabel = te.remake;
                 }
               }
 
@@ -893,7 +893,7 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                     dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
                   }}
                 >
-                  {cleanLabel}
+                  {tabLabel}
                 </button>
               );
             })}
