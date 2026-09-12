@@ -865,9 +865,13 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
 
               // If it's a REMAKE with the same suffix as the original, label it "Remake"
               if (ed.relationType === 'REMAKE' && data.parentGame) {
-                const originalSuffix = data.parentGame.title.substring(data.parentGame.title.indexOf(':'));
-                const editionSuffix = ed.label.substring(ed.label.indexOf(':'));
-                if (originalSuffix === editionSuffix) {
+                const getLastPart = (title: string) => {
+                  const idx = title.lastIndexOf(':');
+                  return idx === -1 ? '' : title.substring(idx);
+                };
+                const originalLast = getLastPart(data.parentGame.title);
+                const editionLast = getLastPart(ed.label);
+                if (originalLast && editionLast && originalLast === editionLast) {
                   tabLabel = te.remake;
                 }
               }
