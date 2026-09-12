@@ -11,6 +11,14 @@
   },
   "media_relations": [
     {
+      "related_media_external_id": "game:8499",
+      "relation_type": "REL_SOURCE",
+      "type_label": "Source Material",
+      "title": "Five Nights at Freddy's",
+      "cover": "https://images.igdb.com/igdb/image/upload/t_cover_big/co8efb.jpg",
+      "media_external_id": "movie:507089"
+    },
+    {
       "related_media_external_id": "movie:28355",
       "relation_type": "RECOMMENDATION",
       "type_label": "Recommended",
