@@ -382,8 +382,9 @@
 }
 
 .local-tab {
-  display: inline-flex;
-  align-items: center;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.875rem;
   border-radius: var(--radius-sm);
@@ -393,13 +394,31 @@
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--anim-base) var(--anim-ease);
+  transition: all var(--anim-base) var(--anim-ease), gap 200ms cubic-bezier(0.4, 0, 0.2, 1), padding 200ms cubic-bezier(0.4, 0, 0.2, 1), width 200ms cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  /* A <button>, unlike the navbar's own category links (plain <a> tags),
-     doesn't inherit the page's font-family from a browser UA stylesheet by
-     default — left it on the system font even under newspaper-dark's
-     Georgia body rule, unlike everything else on the page. */
   font-family: inherit;
+}
+
+.local-tab-icon {
+  opacity: 1;
+  pointer-events: auto;
+  will-change: opacity;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.local-tab-icon svg {
+  width: clamp(12px, 1.43vw, 15px);
+  height: clamp(12px, 1.43vw, 15px);
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity var(--anim-fast) var(--anim-ease);
+}
+
+.local-tab-label {
+  opacity: 1;
+  max-width: 100%;
+  will-change: opacity, max-width;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), max-width 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .local-tab:hover {
@@ -408,10 +427,53 @@
   background: var(--bg-elevated);
 }
 
+.local-tab:hover .local-tab-icon svg {
+  opacity: 1;
+}
+
 .local-tab.active {
   border-color: var(--accent-border);
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.local-tab.active .local-tab-icon svg {
+  opacity: 1;
+}
+
+.local-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: clamp(0.6rem, 50%, 3rem);
+  height: 2px;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 1799px) {
+  .local-tab {
+    padding: 0 !important;
+    width: clamp(1.8rem, 2.2vw, 2.2rem) !important;
+    gap: 0.05rem !important;
+  }
+  .local-tab-icon {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .local-tab-label {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    max-width: 0 !important;
+    flex-shrink: 0 !important;
+  }
+  .local-tab.active::after {
+    width: clamp(1rem, 80%, 1.2rem) !important;
+  }
 }
 
 /* Same convention as the navbar's own plain-text category links in this

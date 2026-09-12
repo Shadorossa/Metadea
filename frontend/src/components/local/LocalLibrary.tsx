@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from
 import { createPortal } from 'react-dom';
 import { igdbGetCoverBySteamId, steamAchievementsDownload, listenGameSessionEnded, addPlaytimeHours, type LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
+import { IconGame, IconVNovel, IconAnime, IconManga, IconNovel, IconBook, IconComic, IconSeries, IconMovie } from '../local/ui/icons';
 
 import { CATEGORIES, LAUNCHER_ORDER, type CategoryId, type PlatformId } from './utils/constants';
 import { useLocalGames }        from './hooks/useLocalGames';
@@ -409,6 +410,18 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
   'movies':       'movie',
 };
 
+  const CATEGORY_ICONS: Record<CategoryId, JSX.Element> = {
+    'videojuegos': <IconGame />,
+    'visual-novel': <IconVNovel />,
+    'anime': <IconAnime />,
+    'manga': <IconManga />,
+    'light-novel': <IconNovel />,
+    'books': <IconBook />,
+    'comics': <IconComic />,
+    'series': <IconSeries />,
+    'movies': <IconMovie />,
+  };
+
   const tabBar = (
     <div className="local-tab-bar">
       <div className="local-tab-buttons">
@@ -419,7 +432,8 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
             className={`local-tab${activeCategory === cat.id ? ' active' : ''}`}
             onClick={() => setActiveCategory(cat.id)}
           >
-            {isMounted ? (t.search?.types?.[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]] || cat.label) : cat.label}
+            <span className="local-tab-icon">{CATEGORY_ICONS[cat.id]}</span>
+            <span className="local-tab-label">{isMounted ? (t.search?.types?.[LOCAL_CATEGORY_TO_SEARCH_TYPE[cat.id]] || cat.label) : cat.label}</span>
           </button>
         ))}
       </div>
