@@ -11,14 +11,6 @@
   },
   "media_relations": [
     {
-      "related_media_external_id": "movie:1228246",
-      "relation_type": "RECOMMENDATION",
-      "type_label": "Recommended",
-      "title": "Five Nights at Freddy's 2",
-      "cover": "https://image.tmdb.org/t/p/w780/udAxQEORq2I5wxI97N2TEqdhzBE.jpg",
-      "media_external_id": "movie:507089"
-    },
-    {
       "related_media_external_id": "movie:28355",
       "relation_type": "RECOMMENDATION",
       "type_label": "Recommended",
@@ -176,7 +168,7 @@
       "relation_type": "SEQUEL",
       "type_label": "Sequel",
       "title": "Five Nights at Freddy's 2",
-      "cover": "https://image.tmdb.org/t/p/w300/udAxQEORq2I5wxI97N2TEqdhzBE.jpg"
+      "cover": "https://image.tmdb.org/t/p/w780/udAxQEORq2I5wxI97N2TEqdhzBE.jpg"
     }
   ],
   "characters": [
@@ -370,5 +362,6 @@
       "death_date": null
     }
   ],
+  "saga_name": "Five Nights at Freddy's",
   "story_arcs": []
 }
