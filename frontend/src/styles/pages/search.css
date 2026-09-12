@@ -60,8 +60,8 @@
   transition: color var(--anim-fast) var(--anim-ease) !important;
 }
 .search-tab svg {
-  width: clamp(11px, 1.3vw, 14px) !important;
-  height: clamp(11px, 1.3vw, 14px) !important;
+  width: clamp(12px, 1.43vw, 15px) !important;
+  height: clamp(12px, 1.43vw, 15px) !important;
   flex-shrink: 0 !important;
   opacity: 0.7 !important;
 }
