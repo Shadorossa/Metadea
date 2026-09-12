@@ -2863,37 +2863,46 @@
 /* Versions tabs at top of editor */
 .me-versions-tabs {
   display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
-  background: var(--bg-secondary, #1a1a1a);
+  gap: 0;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 20%, transparent);
+  background: color-mix(in srgb, var(--bg-base, #0f0f1a) 92%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 35%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 35%, transparent);
   overflow-x: auto;
+  overflow-y: hidden;
+  align-items: stretch;
+  height: 2.5rem;
 }
 
 .me-version-tab-btn {
   background: transparent;
   border: none;
   color: var(--text-muted, #a0a0b8);
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0 0.9rem;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: 0;
   transition: all var(--anim-fast, 120ms);
   white-space: nowrap;
   min-width: auto;
   border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
 }
 
 .me-version-tab-btn:hover {
   color: var(--text-main, #fff);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .me-version-tab-btn.active {
   color: var(--accent, #7c6af7);
   border-bottom-color: var(--accent, #7c6af7);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* ── Saga viewer ─────────────────────────────────────────────────────────── */
