@@ -299,7 +299,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     ],
   };
 
-  document.addEventListener('astro:page-load', () => {
+  const initEmulatorsTab = () => {
     const companySelectorData = {
       nintendo: {
         name: 'Nintendo',
@@ -338,31 +338,32 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
       },
     };
 
-    const companyBtns = document.querySelectorAll('.company-tab-btn');
     const platformsContainer = document.getElementById('platforms-selector-container');
     const platformsSelector = document.getElementById('platforms-selector');
     const platformsTitle = document.getElementById('platforms-selector-title');
     const platformsEmpty = document.getElementById('platforms-empty');
 
-    companyBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const company = btn.dataset.company;
-        const data = companySelectorData[company];
-        const color = btn.dataset.color;
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.company-tab-btn');
+      if (!btn) return;
 
-        const wasActive = btn.classList.contains('active');
-        companyBtns.forEach(b => b.classList.remove('active'));
+      const company = btn.dataset.company;
+      const data = companySelectorData[company];
+      const color = btn.dataset.color;
 
-        if (wasActive) {
-          platformsContainer.classList.add('hidden');
-          platformsEmpty.style.display = 'flex';
-        } else {
-          btn.classList.add('active');
-          platformsContainer.classList.remove('hidden');
-          platformsEmpty.style.display = 'none';
+      const wasActive = btn.classList.contains('active');
+      document.querySelectorAll('.company-tab-btn').forEach(b => b.classList.remove('active'));
 
-          platformsTitle.textContent = data.name;
-          platformsTitle.style.setProperty('--company-color', color);
+      if (wasActive) {
+        platformsContainer.classList.add('hidden');
+        platformsEmpty.style.display = 'flex';
+      } else {
+        btn.classList.add('active');
+        platformsContainer.classList.remove('hidden');
+        platformsEmpty.style.display = 'none';
+
+        platformsTitle.textContent = data.name;
+        platformsTitle.style.setProperty('--company-color', color);
 
           platformsSelector.innerHTML = data.platforms.map(platform => `
             <div class="platform-item">
@@ -393,8 +394,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
               }
             });
           });
-        }
-      });
+      }
     });
 
     // Handle emulator selection - show extensions
@@ -420,15 +420,23 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
     // Handle ROM folder selection
     document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
       if (target.closest('.rom-folder-btn')) {
-        const btn = target.closest('.rom-folder-btn') as HTMLElement;
+        const btn = target.closest('.rom-folder-btn');
         const platformId = btn.getAttribute('data-platform');
         // TODO: Open file picker for ROM folder
         console.log('ROM folder picker for platform:', platformId);
       }
     });
-  });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEmulatorsTab);
+  } else {
+    initEmulatorsTab();
+  }
+
+  document.addEventListener('astro:page-load', initEmulatorsTab);
 </script>
 
 <style is:global>
@@ -568,6 +576,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
+    justify-items: center;
   }
 
   .platform-item {
