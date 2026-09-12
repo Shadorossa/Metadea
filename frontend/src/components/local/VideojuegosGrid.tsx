@@ -11,7 +11,11 @@ import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
 import { IconMonitor, IconFolder, IconRefresh } from './ui/icons';
 
-interface StatusSection { key: string; title: string; entries: StatusEntry[] }
+// sectionStatus is the badge shown on any kind:'game' entry in this section
+// (kind:'catalog' entries carry their own item.status instead) — safe to
+// hardcode per section since each one is built from an already-homogeneous
+// status bucket (see LocalLibrary's statusBuckets/buildCatalogStatusEntries).
+interface StatusSection { key: string; title: string; entries: StatusEntry[]; sectionStatus: string }
 
 interface VideojuegosGridProps {
   gridRef:       React.RefObject<HTMLDivElement>;
@@ -44,6 +48,10 @@ interface VideojuegosGridProps {
   // games (no scanned install at all) still lights up in both places.
   pendingByLauncher:      Map<string, StatusEntry[]>;
   pendingWithLauncherIds: Set<string>;
+  // Real library status (if any) for each installed game — groupedGames
+  // itself only ever holds untracked-or-completed installs, but the badge
+  // needs to tell those two apart (see getStatusBadge/GameCard).
+  gameStatusMatch: Map<LocalGame, string | undefined>;
 }
 
 // The Videojuegos-only grid — status-grouped sections (En progreso/
@@ -56,7 +64,7 @@ export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
-  pendingByLauncher, pendingWithLauncherIds,
+  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch,
 }: VideojuegosGridProps) {
   const t = getT();
 
@@ -69,10 +77,10 @@ export function VideojuegosGrid({
   // .map() pattern LocalMediaSection already uses for its own sections,
   // instead of four hand-rolled, near-identical JSX blocks.
   const statusSections: StatusSection[] = [
-    ...(statusEntriesCurrently.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: statusEntriesCurrently }] : []),
-    ...(statusEntriesPlanning.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: statusEntriesPlanning }] : []),
-    ...(pausedGames.length > 0 ? [{ key: 'paused', title: 'Pausado', entries: pausedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
-    ...(droppedGames.length > 0 ? [{ key: 'dropped', title: 'Abandonado', entries: droppedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
+    ...(statusEntriesCurrently.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: statusEntriesCurrently, sectionStatus: 'playing' }] : []),
+    ...(statusEntriesPlanning.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: statusEntriesPlanning, sectionStatus: 'planning' }] : []),
+    ...(pausedGames.length > 0 ? [{ key: 'paused', title: 'Pausado', entries: pausedGames.map((game): StatusEntry => ({ kind: 'game', game })), sectionStatus: 'paused' }] : []),
+    ...(droppedGames.length > 0 ? [{ key: 'dropped', title: 'Abandonado', entries: droppedGames.map((game): StatusEntry => ({ kind: 'game', game })), sectionStatus: 'dropped' }] : []),
   ];
 
   return (
@@ -94,7 +102,7 @@ export function VideojuegosGrid({
           <h3 className="library-section-title">{sec.title}</h3>
           <div className="local-games-grid">
             {sec.entries.map((entry, i) => entry.kind === 'game' ? (
-              <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={onSelectGame} />
+              <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={onSelectGame} status={sec.sectionStatus} />
             ) : (
               <LocalMediaCard
                 key={entry.item.externalId}
@@ -180,7 +188,7 @@ export function VideojuegosGrid({
                   />
                 ))}
                 {list.map((g, i) => (
-                  <GameCard key={i} game={g} coverCache={coverCache} onClick={onSelectGame} />
+                  <GameCard key={i} game={g} coverCache={coverCache} onClick={onSelectGame} status={gameStatusMatch.get(g)} />
                 ))}
               </div>
             </section>

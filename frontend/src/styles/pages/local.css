@@ -772,6 +772,22 @@
   background: color-mix(in srgb, var(--color-planning) 85%, black 15%);
 }
 
+.local-media-status-badge--completed {
+  background: color-mix(in srgb, var(--color-completed) 85%, black 15%);
+}
+
+.local-media-status-badge--paused {
+  background: color-mix(in srgb, var(--color-paused) 85%, black 15%);
+}
+
+.local-media-status-badge--dropped {
+  background: color-mix(in srgb, var(--color-dropped) 85%, black 15%);
+}
+
+.local-media-status-badge--progress {
+  background: color-mix(in srgb, var(--color-watching) 85%, black 15%);
+}
+
 /* ── Local media detail panel — actions + folder/episode match row ───────────── */
 
 .local-media-detail-top-row {

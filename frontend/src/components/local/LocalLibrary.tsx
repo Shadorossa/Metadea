@@ -542,6 +542,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 sectionRefs={sectionRefs}
                 pendingByLauncher={pendingByLauncher}
                 pendingWithLauncherIds={pendingWithLauncherIds}
+                gameStatusMatch={gameStatusMatch}
               />
             )}
           </div>
