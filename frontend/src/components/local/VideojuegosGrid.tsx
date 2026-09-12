@@ -60,6 +60,11 @@ interface VideojuegosGridProps {
   // instead of the raw scanned name, which for a ROM is often a messy dump
   // filename (region tags, language codes, ...) rather than the real title.
   catalogMapById: Map<string, MediaCatalogEntry>;
+  // Drops a game from useLocalGames' own state immediately (see its own
+  // doc comment) — used instead of onRefreshScan for "Eliminar de la
+  // lista" so removing one cover-less card doesn't re-run the whole scan
+  // and flash the scanning placeholder over the entire grid.
+  onRemoveGame: (launcher: string, linkKey: string) => void;
 }
 
 // The Videojuegos-only grid — status-grouped sections (En progreso/
@@ -72,7 +77,7 @@ export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
-  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch, catalogMapById,
+  pendingByLauncher, pendingWithLauncherIds, gameStatusMatch, catalogMapById, onRemoveGame,
 }: VideojuegosGridProps) {
   const t = getT();
   const displayNameFor = (g: LocalGame): string | undefined =>
@@ -90,7 +95,8 @@ export function VideojuegosGrid({
   }, [deleteMenu]);
   const handleDeleteGame = (game: LocalGame) => {
     const linkKey = game.app_id ?? game.install_path ?? game.name;
-    removeLocalGame(game.launcher, linkKey).then(onRefreshScan).catch(console.error);
+    onRemoveGame(game.launcher, linkKey);
+    removeLocalGame(game.launcher, linkKey).catch(console.error);
     setDeleteMenu(null);
   };
 

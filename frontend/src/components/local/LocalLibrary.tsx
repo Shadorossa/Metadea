@@ -106,7 +106,7 @@ export default function LocalLibrary() {
   // selectedPendingItem (needed for its disabled flag) are resolved.
   const videojuegosGridRef = useRef<HTMLDivElement>(null);
 
-  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames } = useLocalGames();
+  const { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame } = useLocalGames();
   const { pathCache, coverCache, refresh: refreshMeta }                       = useMetadataCache();
   const { routes, folderFiles, folderLoading, setRoute, clearRoute, refetchFolder } = useCategoryRoutes(activeCategory);
   const { activePlatform, sectionRefs, scrollTo }                             = useActivePlatform(games, activeCategory, gamesState);
@@ -544,6 +544,7 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 pendingWithLauncherIds={pendingWithLauncherIds}
                 gameStatusMatch={gameStatusMatch}
                 catalogMapById={catalogMapById}
+                onRemoveGame={removeGame}
               />
             )}
           </div>

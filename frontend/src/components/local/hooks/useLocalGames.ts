@@ -33,5 +33,18 @@ export function useLocalGames() {
     debugScanInfo().then(setDebugInfo).catch((e: unknown) => setDebugInfo(String(e)));
   }, []);
 
-  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames };
+  // Optimistic client-side removal for VideojuegosGrid's "Eliminar de la
+  // lista" — the backend call (removeLocalGame) is what actually makes the
+  // removal durable (see remove_local_game), this just drops it from local
+  // state immediately instead of running loadGames()'s full re-scan (which
+  // flips gamesState back to 'loading' and, worse, momentarily replaces the
+  // ENTIRE grid with the scanning placeholder just to reflect one card
+  // disappearing). Same (launcher, app_id ?? install_path ?? name) identity
+  // scan_all_games' own game_link_key derives from, so it matches exactly
+  // the one row that was actually deleted.
+  const removeGame = useCallback((launcher: string, linkKey: string) => {
+    setGames(prev => prev.filter(g => !(g.launcher === launcher && (g.app_id ?? g.install_path ?? g.name) === linkKey)));
+  }, []);
+
+  return { games, gamesState, scanError, debugInfo, runDiagnostics, loadGames, removeGame };
 }

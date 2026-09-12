@@ -191,6 +191,7 @@ commands.allow = [
   "read_comic_binary_file",
   "save_comic_page_as_png",
   "read_emulators_config",
-  "write_emulators_config"
+  "write_emulators_config",
+  "remove_local_game"
 ]
 
