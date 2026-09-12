@@ -37,16 +37,18 @@
 }
 
 .nav-center-wrap {
-  position: relative;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  height: 100%;
-  overflow: hidden;
+  height: 48px;
+  overflow: visible;
   pointer-events: none;
   z-index: 1;
-  min-width: 0;
+  width: auto;
 }
 
 .nav-center-slot {
