@@ -24,8 +24,10 @@ pub struct DbMediaRelation {
     /// media_catalog row this same command creates for a not-yet-cataloged
     /// related title a real format, instead of leaving that column blank.
     pub format: Option<String>,
-    /// Release year of the related media — used for sorting relations by
+    /// Release date of the related media — used for sorting relations by
     /// release date within each relation type category.
+    pub release_day: Option<i32>,
+    pub release_month: Option<i32>,
     pub release_year: Option<i32>,
 }
 
@@ -140,8 +142,8 @@ pub async fn save_media_relations(
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
                 "INSERT OR IGNORE INTO media_catalog (
-                    id, external_id, type, source, format, title_main, cover_url, release_year, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    id, external_id, type, source, format, title_main, cover_url, release_day, release_month, release_year, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &rel.related_media_external_id,
@@ -150,6 +152,8 @@ pub async fn save_media_relations(
                     &rel.format,
                     &rel.title,
                     &rel.cover,
+                    &rel.release_day,
+                    &rel.release_month,
                     &rel.release_year,
                     &now,
                     &now,
@@ -187,7 +191,7 @@ pub async fn get_media_relations(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
-            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_year
+            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
              FROM media_relations mr
              JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
              WHERE mr.media_external_id = ?1
@@ -205,7 +209,9 @@ pub async fn get_media_relations(
                 title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
                 cover: row.get(4)?,
                 format: None,
-                release_year: row.get(5)?,
+                release_day: row.get(5)?,
+                release_month: row.get(6)?,
+                release_year: row.get(7)?,
             })
         })
         .str_err()?
@@ -229,7 +235,7 @@ pub async fn get_media_relations_for_editor(
     let conn = state.conn.lock().str_err()?;
     let mut stmt = conn
         .prepare(
-            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_year
+            "SELECT mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
              FROM media_relations mr
              JOIN media_catalog mc ON mc.external_id = mr.related_media_external_id
              WHERE mr.media_external_id = ?1
@@ -247,7 +253,9 @@ pub async fn get_media_relations_for_editor(
                 title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
                 cover: row.get(4)?,
                 format: None,
-                release_year: row.get(5)?,
+                release_day: row.get(5)?,
+                release_month: row.get(6)?,
+                release_year: row.get(7)?,
             })
         })
         .str_err()?
@@ -276,7 +284,7 @@ pub async fn get_all_media_relations(
             // this bulk query — showed a bundle's "Contains" children in
             // whatever order SQLite's query planner happened to return them,
             // not the order curated in the editor.
-            "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_year
+            "SELECT mr.media_external_id, mr.related_media_external_id, mr.relation_type, mr.type_label, mc.title_main, mc.cover_url, mc.release_day, mc.release_month, mc.release_year
              FROM media_relations mr
              JOIN visible_media_catalog mc ON mc.external_id = mr.related_media_external_id
              ORDER BY mr.rowid",
@@ -293,7 +301,9 @@ pub async fn get_all_media_relations(
                 title: row.get::<_, Option<String>>(4)?.unwrap_or_default(),
                 cover: row.get(5)?,
                 format: None,
-                release_year: row.get(6)?,
+                release_day: row.get(6)?,
+                release_month: row.get(7)?,
+                release_year: row.get(8)?,
             })
         })
         .str_err()?

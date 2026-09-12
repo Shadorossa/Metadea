@@ -69,10 +69,10 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
-    // Within same relation type, sort by release year (ascending: older first)
-    const yearA = a.release_year ?? 9999;
-    const yearB = b.release_year ?? 9999;
-    if (yearA !== yearB) return yearA - yearB;
+    // Within same relation type, sort by full release date (ascending: older first)
+    const dateA = (a.release_year ?? 9999) * 10000 + (a.release_month ?? 12) * 100 + (a.release_day ?? 31);
+    const dateB = (b.release_year ?? 9999) * 10000 + (b.release_month ?? 12) * 100 + (b.release_day ?? 31);
+    if (dateA !== dateB) return dateA - dateB;
     return 0;
   });
   // relation_type is the only source of truth for the label — r.type_label
@@ -100,10 +100,10 @@ function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
     const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
-    // Within same relation type, sort by release year (ascending: older first)
-    const yearA = a.releaseYear ?? 9999;
-    const yearB = b.releaseYear ?? 9999;
-    if (yearA !== yearB) return yearA - yearB;
+    // Within same relation type, sort by full release date (ascending: older first)
+    const dateA = (a.releaseYear ?? 9999) * 10000 + (a.releaseMonth ?? 12) * 100 + (a.releaseDay ?? 31);
+    const dateB = (b.releaseYear ?? 9999) * 10000 + (b.releaseMonth ?? 12) * 100 + (b.releaseDay ?? 31);
+    if (dateA !== dateB) return dateA - dateB;
     return 0;
   });
 }
