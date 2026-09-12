@@ -10,6 +10,7 @@ import { useMetadataCache }     from './hooks/useMetadataCache';
 import { useCoverCacheBatch }   from './hooks/useCoverCacheBatch';
 import { useCategoryRoutes }    from './hooks/useCategoryRoutes';
 import { useActivePlatform }    from './hooks/useActivePlatform';
+import { usePendingLaunchers }  from './hooks/usePendingLaunchers';
 import { LOCAL_MEDIA_TYPE_BY_CATEGORY, useLocalMediaItems, useLocalMediaItemsByType, useLocalMediaData, type LocalMediaItem } from './hooks/useLocalMediaEntries';
 import { isInProgressStatus } from '../../lib/constants/media';
 import { buildLibraryStatusEntries, candidateExternalIdsForGame, type StatusEntry } from './utils/catalogGameLinking';
@@ -309,7 +310,7 @@ export default function LocalLibrary() {
   const pausedGames  = filterGames(statusBuckets.paused);
   const droppedGames = filterGames(statusBuckets.dropped);
 
-  const availablePlatforms = new Set(safeGames.map(g => g.launcher));
+  const installedPlatforms = new Set(safeGames.map(g => g.launcher));
 
   // Videojuegos' own status sections mix in catalog-tracked 'game' entries
   // too — an entry the scanner never found installed anywhere (candidate
@@ -387,6 +388,16 @@ export default function LocalLibrary() {
   // mid-view. Holding both halves back until BOTH sources are ready makes
   // every card in these mixed sections appear in one pass instead of two.
   const sectionsReady = gamesState !== 'idle' && gamesState !== 'loading' && !mediaLoading;
+  // Which pending ("Pendiente") entries actually belong to a launcher
+  // section (Steam/Nintendo/...) instead of just the general status
+  // sections — shared with availablePlatforms below so a platform's sidebar
+  // icon lights up even with zero scanned installs (e.g. Nintendo with only
+  // a Bayonetta 3 pendiente).
+  const { pendingByLauncher, pendingWithLauncherIds } = usePendingLaunchers(
+    sectionsReady ? currentlyEntries : [],
+    sectionsReady ? planningEntries : [],
+  );
+  const availablePlatforms = new Set([...installedPlatforms, ...pendingByLauncher.keys()]);
   // One bulk exists-check for every pending-item cover these two sections
   // are about to render, instead of each LocalMediaCard racing its own
   // get_cached_cover call at mount (see useCoverCacheBatch).
@@ -529,6 +540,8 @@ const LOCAL_CATEGORY_TO_SEARCH_TYPE: Record<CategoryId, keyof typeof t.search.ty
                 onRunDiagnostics={runDiagnostics}
                 groupedGames={groupedGames}
                 sectionRefs={sectionRefs}
+                pendingByLauncher={pendingByLauncher}
+                pendingWithLauncherIds={pendingWithLauncherIds}
               />
             )}
           </div>

@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React from 'react';
 import type { LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
-import { getMediaCompanies } from '../../lib/tauri';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
@@ -40,6 +39,11 @@ interface VideojuegosGridProps {
   onRunDiagnostics: () => void;
   groupedGames: Map<PlatformId, LocalGame[]>;
   sectionRefs:  React.MutableRefObject<Map<string, HTMLElement>>;
+  // Computed by LocalLibrary via usePendingLaunchers, shared with
+  // PlatformSidebar's availablePlatforms so a platform with only pending
+  // games (no scanned install at all) still lights up in both places.
+  pendingByLauncher:      Map<string, StatusEntry[]>;
+  pendingWithLauncherIds: Set<string>;
 }
 
 // The Videojuegos-only grid — status-grouped sections (En progreso/
@@ -52,114 +56,9 @@ export function VideojuegosGrid({
   gridRef, gamesState, gamesCount, rootFolder, onSetRoute, onClearRoute, onRefreshScan, isMounted,
   currentlyEntries, planningEntries, pausedGames, droppedGames, coverCache, coverCacheHits,
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
+  pendingByLauncher, pendingWithLauncherIds,
 }: VideojuegosGridProps) {
   const t = getT();
-  const [companiesByExternalId, setCompaniesByExternalId] = useState<Record<string, string[]>>({});
-
-  // Memoize external IDs to check, keyed by sorted list to avoid re-renders
-  const externalIdsToCheck = useMemo(() => {
-    const ids = new Set<string>();
-    for (const entry of currentlyEntries) {
-      if (entry.kind === 'catalog' && entry.item.catalogEntry) ids.add(entry.item.externalId);
-    }
-    for (const entry of planningEntries) {
-      if (entry.kind === 'catalog' && entry.item.catalogEntry) ids.add(entry.item.externalId);
-    }
-    return Array.from(ids).sort().join(',');
-  }, [currentlyEntries, planningEntries]);
-
-  // Load companies for pending games to detect Nintendo/PlayStation as publisher/developer
-  useEffect(() => {
-    if (!externalIdsToCheck) return;
-    const ids = externalIdsToCheck.split(',');
-    const promises = ids.map(id =>
-      getMediaCompanies(id)
-        .then(companies => ({
-          id,
-          platforms: companies
-            .filter(c => (c.role === 'developer' || c.role === 'publisher') && (
-              c.name.toLowerCase().includes('nintendo') ||
-              c.name.toLowerCase().includes('playstation') ||
-              c.name.toLowerCase().includes('sony')
-            ))
-            .map(c => c.name.toLowerCase().includes('nintendo') ? 'nintendo' : 'playstation')
-        }))
-        .catch(() => ({ id, platforms: [] }))
-    );
-
-    Promise.all(promises).then(results => {
-      const map: Record<string, string[]> = {};
-      for (const { id, platforms } of results) {
-        if (platforms.length > 0) map[id] = platforms;
-      }
-      setCompaniesByExternalId(map);
-    });
-  }, [externalIdsToCheck]);
-
-  // Extract launcher from shop_links_csv (e.g. "steam|url,epic|url" → "steam")
-  const getLauncherFromShopLinks = (shopLinksCsv?: string | null): string | undefined => {
-    if (!shopLinksCsv) return undefined;
-    const platforms = shopLinksCsv.split(',').map(p => p.split('|')[0]?.trim().toLowerCase());
-    // Map IGDB platform names to our launcher names
-    const platformMap: Record<string, string> = {
-      'steam': 'steam',
-      'epic games store': 'epic',
-      'epic': 'epic',
-      'gog': 'gog',
-      'xbox': 'xbox',
-      'xbox game pass': 'xbox',
-      'ea': 'ea',
-      'ea app': 'ea',
-      'origin': 'ea',
-      'nintendo': 'nintendo',
-      'nintendo eshop': 'nintendo',
-      'playstation': 'playstation',
-      'playstation store': 'playstation',
-    };
-    // Find first known platform, prefer steam
-    for (const p of platforms) {
-      if (p === 'steam') return 'steam';
-    }
-    for (const p of platforms) {
-      const mapped = platformMap[p];
-      if (mapped) return mapped;
-    }
-    return undefined;
-  };
-
-  // Group pending entries that have a launcher by that launcher
-  const groupPendingByLauncher = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
-    const grouped = new Map<string, StatusEntry[]>();
-    for (const entry of entries) {
-      if (entry.kind === 'catalog') {
-        // Try matched launchGame first, then extract from catalog's shop_links, then check companies
-        let launcher = entry.launchGame?.launcher ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv);
-        if (!launcher && companiesByExternalId[entry.item.externalId]) {
-          launcher = companiesByExternalId[entry.item.externalId][0];
-        }
-        if (launcher) {
-          if (!grouped.has(launcher)) grouped.set(launcher, []);
-          grouped.get(launcher)!.push(entry);
-        }
-      }
-    }
-    return grouped;
-  };
-
-  const pendingByLauncher = new Map<string, StatusEntry[]>();
-
-  // Build a set of pending entries that have a launcher (will be excluded from status sections)
-  const pendingWithLauncherIds = new Set<string>();
-  for (const [launcher, entries] of groupPendingByLauncher(currentlyEntries).entries()) {
-    if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
-    pendingByLauncher.get(launcher)!.push(...entries);
-    for (const entry of entries) pendingWithLauncherIds.add(entry.item.externalId);
-  }
-  for (const [launcher, entries] of groupPendingByLauncher(planningEntries).entries()) {
-    if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
-    pendingByLauncher.get(launcher)!.push(...entries);
-    for (const entry of entries) pendingWithLauncherIds.add(entry.item.externalId);
-  }
 
   // Filter out catalog entries that have a launcher — they go ONLY to their launcher section
   const statusEntriesCurrently = currentlyEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
