@@ -188,7 +188,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   </svg>
                 </button>
 
-                <div class="emulator-config-middle">
+                <div class="emulator-config-middle" id={`supported-container-${platform.id}`}>
                   <label class="form-label-small">Supported</label>
                   <div class="supported-types" id={`extensions-display-${platform.id}`}></div>
                 </div>
@@ -203,30 +203,18 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                     data-platform={platform.id}
                   />
                 </div>
-              </div>
 
-              <div class="form-field">
-                <label class="form-label" for={`rom-folder-${platform.id}`} data-i18n="settings.emulators_rom_folder">{t.settings.emulators_rom_folder}</label>
-                <div class="folder-input-group">
-                  <input
-                    class="form-input"
-                    type="text"
-                    id={`rom-folder-${platform.id}`}
-                    placeholder="Select ROM folder"
-                    readonly
-                    data-platform={platform.id}
-                  />
-                  <button type="button" class="folder-browse-btn" data-platform={platform.id} data-i18n="settings.emulators_browse">{t.settings.emulators_browse}</button>
-                </div>
-              </div>
+                <button type="button" class="rom-folder-btn" data-platform={platform.id} title="Select ROMs folder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
+                    <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
+                    <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
+                  </svg>
+                </button>
 
-              <div class="form-field">
-                <label class="form-label" for={`working-dir-${platform.id}`} data-i18n="settings.emulators_working_dir">{t.settings.emulators_working_dir}</label>
                 <input
-                  class="form-input"
-                  type="text"
-                  id={`working-dir-${platform.id}`}
-                  placeholder="(optional - leave blank for default)"
+                  type="hidden"
+                  id={`rom-folder-${platform.id}`}
                   data-platform={platform.id}
                 />
               </div>
@@ -413,15 +401,29 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
         const platformId = e.target.dataset.platform;
         const selectedEmulator = e.target.value;
         const extensionsDisplay = document.getElementById(`extensions-display-${platformId}`);
+        const supportedContainer = document.getElementById(`supported-container-${platformId}`);
 
         const emulators = emulatorsDB[platformId] || [];
         const emulator = emulators.find(em => em.name === selectedEmulator);
 
         if (emulator) {
           extensionsDisplay.innerHTML = `<span class="extensions-tag">${emulator.extensions.join(', ')}</span>`;
+          supportedContainer.style.display = 'flex';
         } else {
           extensionsDisplay.innerHTML = '';
+          supportedContainer.style.display = 'none';
         }
+      }
+    });
+
+    // Handle ROM folder selection
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.rom-folder-btn')) {
+        const btn = target.closest('.rom-folder-btn') as HTMLElement;
+        const platformId = btn.getAttribute('data-platform');
+        // TODO: Open file picker for ROM folder
+        console.log('ROM folder picker for platform:', platformId);
       }
     });
   });
@@ -668,7 +670,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-row {
     display: grid;
-    grid-template-columns: 180px 40px 1fr 1fr;
+    grid-template-columns: 180px 40px 1fr 1fr 40px;
     gap: 0.75rem;
     align-items: flex-end;
   }
@@ -677,18 +679,22 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    height: 100%;
   }
 
   .emulator-config-left .form-select {
     width: 100%;
+    flex: 1;
   }
 
   .form-select.compact {
     padding: 0.5rem 0.7rem;
     font-size: 0.8rem;
+    min-height: 36px;
   }
 
-  .exe-picker-btn {
+  .exe-picker-btn,
+  .rom-folder-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -701,9 +707,11 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     color: var(--text-main);
     cursor: pointer;
     transition: all var(--anim-base) var(--anim-ease);
+    flex-shrink: 0;
   }
 
-  .exe-picker-btn:hover {
+  .exe-picker-btn:hover,
+  .rom-folder-btn:hover {
     background: var(--bg-elevated);
     border-color: var(--accent);
     color: var(--accent);
@@ -713,14 +721,25 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    min-height: 40px;
+    justify-content: center;
+  }
+
+  .emulator-config-middle:not(:has(*)) {
+    display: none;
   }
 
   .form-label-small {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 500;
-    color: var(--text-main);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    margin: 0;
   }
 
   .supported-types {
@@ -728,6 +747,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     color: var(--text-dim);
     line-height: 1.4;
     word-break: break-word;
+    margin: 0;
   }
 
   .emulator-config-right {
@@ -738,6 +758,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-right .form-input {
     width: 100%;
+    min-height: 36px;
   }
 
   .form-label {
