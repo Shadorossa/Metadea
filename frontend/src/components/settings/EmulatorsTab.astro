@@ -50,6 +50,67 @@ const COMPANIES = [
   },
 ];
 
+// Emulators database from Playnite (92 emulators)
+const EMULATORS_DB = {
+  gamecube: [
+    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+  ],
+  ds: [
+    { name: 'melonDS', extensions: ['.nds', '.zip'] },
+    { name: 'DeSmuME', extensions: ['.nds', '.zip', '.7z', '.rar', '.gz'] },
+  ],
+  wii: [
+    { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+  ],
+  '3ds': [
+    { name: 'Citra', extensions: ['.3ds', '.3dsx', '.cci', '.zcci', '.cxi', '.elf', '.cia'] },
+    { name: 'Lime3DS', extensions: ['.3ds', '.3dsx', '.cci', '.cxi', '.elf', '.cia'] },
+  ],
+  wiiu: [
+    { name: 'Cemu', extensions: ['.wud', '.wux', '.rpx', '.wua'] },
+  ],
+  switch: [
+    { name: 'Ryujinx', extensions: ['.nsp', '.xci'] },
+    { name: 'Yuzu', extensions: ['.nso', '.nro', '.nca', '.xci', '.nsp'] },
+    { name: 'Suyu', extensions: ['.nso', '.nro', '.nca', '.xci', '.nsp'] },
+  ],
+  ps1: [
+    { name: 'DuckStation', extensions: ['.bin', '.img', '.exe', '.chd', '.psexe', '.m3u', '.cue', '.pbp', '.iso'] },
+    { name: 'ePSXe', extensions: ['.bin', '.iso', '.img', '.pbp', '.zip', '.cue'] },
+    { name: 'PCSXR-PGXP', extensions: ['.bin', '.cue', '.img', '.iso'] },
+  ],
+  ps2: [
+    { name: 'PCSX2', extensions: ['.bin', '.chd', '.cso', '.gz', '.img', '.iso', '.m3u', '.mdf', '.nrg'] },
+  ],
+  psp: [
+    { name: 'PPSSPP', extensions: ['.chd', '.cso', '.iso', '.pbp'] },
+  ],
+  ps3: [
+    { name: 'RPCS3', extensions: ['.bin', '.iso'] },
+  ],
+  psvita: [
+    { name: 'Vita3K', extensions: ['.vpk'] },
+  ],
+  ps4: [
+    { name: 'shadPS4', extensions: ['.bin', '.iso'] },
+  ],
+  ps5: [
+    { name: 'shadPS4', extensions: ['.bin', '.iso'] },
+  ],
+  xbox: [
+    { name: 'Xemu', extensions: ['.iso', '.xiso'] },
+  ],
+  xbox360: [
+    { name: 'Xenia', extensions: ['.iso', '.xex', '.cci', '.cxi', '.elf', '.zar'] },
+  ],
+  xboxone: [
+    { name: 'Xenia Edge', extensions: ['.iso', '.xex'] },
+  ],
+  xboxseriesx: [
+    { name: 'Xenia Edge', extensions: ['.iso', '.xex'] },
+  ],
+};
+
 // Flat list of all platforms for forms
 const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   c.platforms.map(p => ({ ...p, company: c.id, color: c.color }))
@@ -111,11 +172,25 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
             </div>
 
             <div class="platform-form-fields">
-              <div class="form-field">
+              <div class="form-field emulator-field">
                 <label class="form-label" for={`emulator-select-${platform.id}`} data-i18n="settings.emulators_choose">{t.settings.emulators_choose}</label>
-                <select class="form-select emulator-select" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
-                  <option value="" data-i18n="settings.emulators_no_selection">{t.settings.emulators_no_selection}</option>
-                </select>
+                <div class="emulator-row">
+                  <select class="form-select emulator-select" id={`emulator-select-${platform.id}`} data-platform={platform.id}>
+                    <option value="" data-i18n="settings.emulators_no_selection">{t.settings.emulators_no_selection}</option>
+                  </select>
+                  <div class="emulator-extensions" id={`extensions-display-${platform.id}`}></div>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label class="form-label" for={`executable-path-${platform.id}`}>Executable path</label>
+                <input
+                  class="form-input"
+                  type="text"
+                  id={`executable-path-${platform.id}`}
+                  placeholder="Path to emulator executable"
+                  data-platform={platform.id}
+                />
               </div>
 
               <div class="form-field">
@@ -142,17 +217,6 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   />
                   <button type="button" class="folder-browse-btn" data-platform={platform.id} data-i18n="settings.emulators_browse">{t.settings.emulators_browse}</button>
                 </div>
-              </div>
-
-              <div class="form-field">
-                <label class="form-label" for={`extensions-${platform.id}`} data-i18n="settings.emulators_extensions">{t.settings.emulators_extensions}</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  id={`extensions-${platform.id}`}
-                  placeholder=".iso, .cue, .bin, .img"
-                  data-platform={platform.id}
-                />
               </div>
 
               <div class="form-field">
@@ -183,6 +247,67 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 </div>
 
 <script>
+  // Emulators database
+  const emulatorsDB = {
+    gamecube: [
+      { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+    ],
+    ds: [
+      { name: 'melonDS', extensions: ['.nds', '.zip'] },
+      { name: 'DeSmuME', extensions: ['.nds', '.zip', '.7z', '.rar', '.gz'] },
+    ],
+    wii: [
+      { name: 'Dolphin', extensions: ['.elf', '.dol', '.gcm', '.tgc', '.ciso', '.gcz', '.iso', '.wad', '.dff', '.rvz', '.m3u'] },
+    ],
+    '3ds': [
+      { name: 'Citra', extensions: ['.3ds', '.3dsx', '.cci', '.zcci', '.cxi', '.elf', '.cia'] },
+      { name: 'Lime3DS', extensions: ['.3ds', '.3dsx', '.cci', '.cxi', '.elf', '.cia'] },
+    ],
+    wiiu: [
+      { name: 'Cemu', extensions: ['.wud', '.wux', '.rpx', '.wua'] },
+    ],
+    switch: [
+      { name: 'Ryujinx', extensions: ['.nsp', '.xci'] },
+      { name: 'Yuzu', extensions: ['.nso', '.nro', '.nca', '.xci', '.nsp'] },
+      { name: 'Suyu', extensions: ['.nso', '.nro', '.nca', '.xci', '.nsp'] },
+    ],
+    ps1: [
+      { name: 'DuckStation', extensions: ['.bin', '.img', '.exe', '.chd', '.psexe', '.m3u', '.cue', '.pbp', '.iso'] },
+      { name: 'ePSXe', extensions: ['.bin', '.iso', '.img', '.pbp', '.zip', '.cue'] },
+      { name: 'PCSXR-PGXP', extensions: ['.bin', '.cue', '.img', '.iso'] },
+    ],
+    ps2: [
+      { name: 'PCSX2', extensions: ['.bin', '.chd', '.cso', '.gz', '.img', '.iso', '.m3u', '.mdf', '.nrg'] },
+    ],
+    psp: [
+      { name: 'PPSSPP', extensions: ['.chd', '.cso', '.iso', '.pbp'] },
+    ],
+    ps3: [
+      { name: 'RPCS3', extensions: ['.bin', '.iso'] },
+    ],
+    psvita: [
+      { name: 'Vita3K', extensions: ['.vpk'] },
+    ],
+    ps4: [
+      { name: 'shadPS4', extensions: ['.bin', '.iso'] },
+    ],
+    ps5: [
+      { name: 'shadPS4', extensions: ['.bin', '.iso'] },
+    ],
+    xbox: [
+      { name: 'Xemu', extensions: ['.iso', '.xiso'] },
+    ],
+    xbox360: [
+      { name: 'Xenia', extensions: ['.iso', '.xex', '.cci', '.cxi', '.elf', '.zar'] },
+    ],
+    xboxone: [
+      { name: 'Xenia Edge', extensions: ['.iso', '.xex'] },
+    ],
+    xboxseriesx: [
+      { name: 'Xenia Edge', extensions: ['.iso', '.xex'] },
+    ],
+  };
+
   document.addEventListener('astro:page-load', () => {
     const companySelectorData = {
       nintendo: {
@@ -234,7 +359,6 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
         const data = companySelectorData[company];
         const color = btn.dataset.color;
 
-        // Toggle active state
         const wasActive = btn.classList.contains('active');
         companyBtns.forEach(b => b.classList.remove('active'));
 
@@ -246,11 +370,9 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
           platformsContainer.classList.remove('hidden');
           platformsEmpty.style.display = 'none';
 
-          // Update title
           platformsTitle.textContent = data.name;
           platformsTitle.style.setProperty('--company-color', color);
 
-          // Render platforms
           platformsSelector.innerHTML = data.platforms.map(platform => `
             <div class="platform-item">
               <button class="platform-selector-btn" data-platform="${platform.id}" style="--platform-color: ${color}" title="${platform.name}">
@@ -265,16 +387,41 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
             </div>
           `).join('');
 
-          // Add click handlers to platform buttons
           platformsSelector.querySelectorAll('.platform-selector-btn').forEach(pBtn => {
             pBtn.addEventListener('click', () => {
               const platformId = pBtn.dataset.platform;
               document.querySelectorAll('.platform-form-block').forEach(f => f.classList.add('hidden'));
-              document.getElementById(`platform-form-${platformId}`)?.classList.remove('hidden');
+              const formBlock = document.getElementById(`platform-form-${platformId}`);
+              if (formBlock) {
+                formBlock.classList.remove('hidden');
+                // Populate emulator select
+                const select = document.getElementById(`emulator-select-${platformId}`);
+                const emulators = emulatorsDB[platformId] || [];
+                select.innerHTML = '<option value="">None</option>' +
+                  emulators.map(e => `<option value="${e.name}">${e.name}</option>`).join('');
+              }
             });
           });
         }
       });
+    });
+
+    // Handle emulator selection - show extensions
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('emulator-select')) {
+        const platformId = e.target.dataset.platform;
+        const selectedEmulator = e.target.value;
+        const extensionsDisplay = document.getElementById(`extensions-display-${platformId}`);
+
+        const emulators = emulatorsDB[platformId] || [];
+        const emulator = emulators.find(em => em.name === selectedEmulator);
+
+        if (emulator) {
+          extensionsDisplay.innerHTML = `<span class="extensions-tag">${emulator.extensions.join(', ')}</span>`;
+        } else {
+          extensionsDisplay.innerHTML = '';
+        }
+      }
     });
   });
 </script>
@@ -516,6 +663,38 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .emulator-field .form-label {
+    margin-bottom: 0.25rem;
+  }
+
+  .emulator-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .emulator-row .form-select {
+    flex: 1;
+  }
+
+  .emulator-extensions {
+    flex: 1;
+    padding: 0.6rem 0.875rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .extensions-tag {
+    display: block;
+    word-break: break-word;
+    line-height: 1.4;
   }
 
   .form-label {
