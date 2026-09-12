@@ -28,6 +28,9 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     pendingChanges = {};
   }
 
+  // Load saved values into inputs on page load
+  loadEmulatorInputs();
+
   // File pickers
   document.addEventListener('click', async (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.exe-picker-btn');
@@ -40,13 +43,23 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       const chosen = await pickFile().catch(() => null);
       if (!chosen) return;
 
-      if (!emulatorsData[platformId]) {
-        emulatorsData[platformId] = { executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+      // Filter for .exe files only
+      if (!chosen.toLowerCase().endsWith('.exe')) {
+        showToast('Solo se permiten archivos .exe');
+        return;
       }
-      emulatorsData[platformId].executable_path = chosen;
 
-      saveEmulators();
-      showToast('Ejecutable guardado');
+      if (!pendingChanges[platformId]) {
+        pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+      }
+      pendingChanges[platformId].executable_path = chosen;
+
+      if (!hasChanges) {
+        hasChanges = true;
+        showChangeNotification();
+      }
+
+      console.log(`[Executable] ${platformId}: ${chosen}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       showToast('Error: ' + message.slice(0, 50));
@@ -64,13 +77,24 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       const chosen = await pickFolder().catch(() => null);
       if (!chosen) return;
 
-      if (!emulatorsData[platformId]) {
-        emulatorsData[platformId] = { executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+      if (!pendingChanges[platformId]) {
+        pendingChanges[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
       }
-      emulatorsData[platformId].rom_folder = chosen;
+      pendingChanges[platformId].rom_folder = chosen;
 
-      saveEmulators();
-      showToast('Carpeta de ROMs guardada');
+      // Update display immediately
+      const display = document.getElementById(`rom-folder-display-${platformId}`);
+      if (display) {
+        display.textContent = chosen;
+        display.style.display = 'block';
+      }
+
+      if (!hasChanges) {
+        hasChanges = true;
+        showChangeNotification();
+      }
+
+      console.log(`[ROM Folder] ${platformId}: ${chosen}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       showToast('Error: ' + message.slice(0, 50));
@@ -200,7 +224,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       notification.style.opacity = '0';
       setTimeout(() => {
         notification?.remove();
-        reloadEmulatorInputs();
+        loadEmulatorInputs();
       }, 300);
       showToast('Cambios descartados');
     });
@@ -216,19 +240,36 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     });
   }
 
-  function reloadEmulatorInputs() {
-    document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input[id*="launch-args"], select[id*="tracking-mode"], select[id*="emulator-select"]').forEach(input => {
+  function loadEmulatorInputs() {
+    document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select').forEach(input => {
       const platformId = input.dataset.platform;
       if (!platformId || !emulatorsData[platformId]) return;
 
-      if (input.id.includes('emulator-select')) {
+      if (input.classList.contains('emulator-select')) {
         input.value = emulatorsData[platformId].emulator_name || '';
       } else if (input.id.includes('launch-args')) {
         input.value = emulatorsData[platformId].launch_args || '';
       } else if (input.id.includes('tracking-mode')) {
         input.value = emulatorsData[platformId].tracking_mode || 'process';
+      } else if (input.id.includes('rom-folder')) {
+        input.value = emulatorsData[platformId].rom_folder || '';
+        // Update ROM folder display
+        updateRomFolderDisplay(platformId);
       }
     });
+  }
+
+  function updateRomFolderDisplay(platformId: string) {
+    const display = document.getElementById(`rom-folder-display-${platformId}`);
+    if (!display) return;
+
+    const romFolder = emulatorsData[platformId]?.rom_folder;
+    if (romFolder) {
+      display.textContent = romFolder;
+      display.style.display = 'block';
+    } else {
+      display.style.display = 'none';
+    }
   }
 }
 

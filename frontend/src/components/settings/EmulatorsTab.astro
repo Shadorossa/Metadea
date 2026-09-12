@@ -212,6 +212,8 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                   </svg>
                 </button>
 
+                <div class="rom-folder-display" id={`rom-folder-display-${platform.id}`} style="display: none;"></div>
+
                 <input
                   type="hidden"
                   id={`rom-folder-${platform.id}`}
@@ -865,6 +867,23 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     background: var(--bg-elevated);
     border-color: var(--platform-color, var(--accent));
     color: var(--platform-color, var(--accent));
+  }
+
+  .rom-folder-display {
+    grid-column: 4;
+    grid-row: 2;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
   }
 
   .hidden {
