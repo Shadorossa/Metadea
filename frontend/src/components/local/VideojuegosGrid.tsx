@@ -79,22 +79,31 @@ export function VideojuegosGrid({
   };
 
   const pendingByLauncher = new Map<string, StatusEntry[]>();
+
+  // Build a set of pending entries that have a launcher (will be excluded from status sections)
+  const pendingWithLauncherIds = new Set<string>();
   for (const [launcher, entries] of groupPendingByLauncher(currentlyEntries).entries()) {
     if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
     pendingByLauncher.get(launcher)!.push(...entries);
+    for (const entry of entries) pendingWithLauncherIds.add(entry.item.externalId);
   }
   for (const [launcher, entries] of groupPendingByLauncher(planningEntries).entries()) {
     if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
     pendingByLauncher.get(launcher)!.push(...entries);
+    for (const entry of entries) pendingWithLauncherIds.add(entry.item.externalId);
   }
+
+  // Filter out catalog entries that have a launcher — they go ONLY to their launcher section
+  const statusEntriesCurrently = currentlyEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
+  const statusEntriesPlanning = planningEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
 
   // The four status buckets share one section shell (title + grid, mixing
   // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
   // .map() pattern LocalMediaSection already uses for its own sections,
   // instead of four hand-rolled, near-identical JSX blocks.
   const statusSections: StatusSection[] = [
-    ...(currentlyEntries.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: currentlyEntries }] : []),
-    ...(planningEntries.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: planningEntries }] : []),
+    ...(statusEntriesCurrently.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: statusEntriesCurrently }] : []),
+    ...(statusEntriesPlanning.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: statusEntriesPlanning }] : []),
     ...(pausedGames.length > 0 ? [{ key: 'paused', title: 'Pausado', entries: pausedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
     ...(droppedGames.length > 0 ? [{ key: 'dropped', title: 'Abandonado', entries: droppedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
   ];
