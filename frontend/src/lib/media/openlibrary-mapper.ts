@@ -17,12 +17,15 @@ export function mapOpenLibToMedia(
   authors: MediaAuthor[],
   externalId: string,
   mediaType: 'book' | 'comic' = 'book',
+  firstEditionCover?: number,
 ): MediaPageData {
   const tm = getT().media;
 
   const cover = work.covers?.[0] != null
     ? openLibCoverUrl(work.covers[0], 'L')
-    : undefined;
+    : firstEditionCover != null
+      ? openLibCoverUrl(firstEditionCover, 'L')
+      : undefined;
 
   const genres    = (work.subjects ?? []).slice(0, 6);
   const genreDots = genres.join(' · ') || undefined;

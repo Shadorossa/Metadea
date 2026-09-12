@@ -123,7 +123,15 @@ export async function fetchMediaDataInternal(rawId: string): Promise<MediaPageDa
     if (richAuthors.length === 0 && preloadNames) {
       richAuthors = preloadNames.map(name => ({ external_id: `author:${name}`, name }));
     }
-    return mapOpenLibToMedia(work, richAuthors, rawId, type);
+
+    let firstEditionCover: number | undefined;
+    if (!work.covers?.[0]) {
+      const { fetchOpenLibEditions } = await import('../search/providers/openlibrary');
+      const editions = await fetchOpenLibEditions(idStr);
+      firstEditionCover = editions[0]?.covers?.[0];
+    }
+
+    return mapOpenLibToMedia(work, richAuthors, rawId, type, firstEditionCover);
   }
 
   return null;
