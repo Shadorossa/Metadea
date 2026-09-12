@@ -119,12 +119,12 @@
 }
 
 .nav-group--left {
-  flex: 0 1 auto;
+  flex: 0 2 auto;
   min-width: 0;
 }
 
 .nav-group--right {
-  flex: 0 1 auto;
+  flex: 0 2 auto;
   min-width: 0;
 }
 
