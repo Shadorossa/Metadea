@@ -296,10 +296,18 @@ export default function LocalLibrary() {
       // reasoning as usePendingLaunchers keeping a launcher-matched catalog
       // "Pendiente" out of the general status sections: once you know WHERE
       // it lives (Nintendo, PlayStation, ...), that's a more useful spot for
-      // it than the generic bucket, even if it also happens to match a
-      // "planning"/"currently"/... library entry (e.g. linking a scanned ROM
-      // to the same IGDB id as an existing catalog-only Pendiente row).
-      if (g.rom_platform) { rest.push(g); continue; }
+      // it than the generic bucket. The one exception is "En progreso" —
+      // that status only ever gets set by actually editing THIS entry in
+      // the media editor (marking it as currently playing), which is a
+      // deliberate, meaningful signal worth surfacing across every
+      // platform — unlike "planning", which the ROM can pick up merely by
+      // incidentally sharing its external_id with some unrelated
+      // catalog-only Pendiente row it was never actually about.
+      if (g.rom_platform) {
+        if (status && isInProgressStatus(status)) { buckets.currently.push(g); continue; }
+        rest.push(g);
+        continue;
+      }
       if (!status || status === 'completed') { rest.push(g); continue; }
       if (isInProgressStatus(status)) buckets.currently.push(g);
       else if (status === 'planning') buckets.planning.push(g);
