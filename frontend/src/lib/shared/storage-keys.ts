@@ -42,4 +42,5 @@ export const STORAGE_KEYS = {
   rating2Min: 'metadea_rating_2_min',
   rating2Max: 'metadea_rating_2_max',
   libraryActiveRatingSlot: 'metadea_library_active_rating_slot',
+  emulatorsConfig: 'emulators_config',
 } as const;
