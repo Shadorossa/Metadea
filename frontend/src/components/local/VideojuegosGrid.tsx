@@ -54,6 +54,29 @@ export function VideojuegosGrid({
 }: VideojuegosGridProps) {
   const t = getT();
 
+  // Group pending entries by platform extracted from catalog metadata
+  const groupPendingByPlatform = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
+    const grouped = new Map<string, StatusEntry[]>();
+    for (const entry of entries) {
+      if (entry.kind === 'catalog') {
+        // Extract platform from item metadata (anime→manga→comics have no platform; games do via catalog)
+        const platformId = entry.item.type === 'game' ? entry.item.type : 'other';
+        if (!grouped.has(platformId)) grouped.set(platformId, []);
+        grouped.get(platformId)!.push(entry);
+      } else {
+        // Local games go to 'local'
+        if (!grouped.has('local')) grouped.set('local', []);
+        grouped.get('local')!.push(entry);
+      }
+    }
+    return grouped;
+  };
+
+  const groupedPending = {
+    currently: groupPendingByPlatform(currentlyEntries),
+    planning: groupPendingByPlatform(planningEntries),
+  };
+
   // The four status buckets share one section shell (title + grid, mixing
   // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
   // .map() pattern LocalMediaSection already uses for its own sections,
