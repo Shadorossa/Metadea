@@ -849,6 +849,46 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
           </div>
         </div>
 
+        {(data.parentGame || allAvailableEditions.length > 0) && (
+          <div className="me-versions-tabs">
+            <button
+              type="button"
+              className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+              onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+            >
+              Base Game
+            </button>
+            {allAvailableEditions.map(ed => {
+              const isActive = entry.activeLogId === ed.externalId;
+              const cleanLabel = editionTabLabel(ed.label);
+              return (
+                <button
+                  key={ed.externalId}
+                  type="button"
+                  className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                  title={ed.label}
+                  onClick={() => {
+                    const baseLogVal = entry.logs[baseId] || createDefaultLog();
+                    const currentVersions = baseLogVal.selectedVersion
+                      ? baseLogVal.selectedVersion.split(',')
+                      : [];
+                    if (!currentVersions.includes(ed.externalId)) {
+                      const nextVersions = [...currentVersions, ed.externalId].join(',');
+                      dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                    }
+                    if (!entry.logs[ed.externalId]) {
+                      dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
+                    }
+                    dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
+                  }}
+                >
+                  {cleanLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {ui.loading ? (
           <div className="me-loading"><div className="spinner" /></div>
         ) : (
@@ -879,62 +919,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
                         )}
                       </div>
                     </div>
-
-                    {/* Show the log switcher whenever there's a base to link to (we're
-                        viewing a version) or other editions were found via IGDB relations
-                        (we're viewing the base) — the base game itself never shows up in
-                        allAvailableEditions since it already has its own fixed tab below. */}
-                    {(data.parentGame || allAvailableEditions.length > 0) && (
-                      <div className="me-section">
-                        <span className="me-label">Log</span>
-                        <div className="me-log-tabs">
-                          <button
-                            type="button"
-                            className={`me-log-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-                            onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-                          >
-                            Base Game
-                          </button>
-                          {allAvailableEditions.map(ed => {
-                            const isActive = entry.activeLogId === ed.externalId;
-                            const cleanLabel = editionTabLabel(ed.label);
-                            return (
-                              <button
-                                key={ed.externalId}
-                                type="button"
-                                className={`me-log-tab-btn${isActive ? ' active' : ''}`}
-                                title={ed.label}
-                                onClick={() => {
-                                  const baseLogVal = entry.logs[baseId] || createDefaultLog();
-                                  const currentVersions = baseLogVal.selectedVersion
-                                    ? baseLogVal.selectedVersion.split(',')
-                                    : [];
-                                  if (!currentVersions.includes(ed.externalId)) {
-                                    const nextVersions = [...currentVersions, ed.externalId].join(',');
-                                    dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
-                                  }
-                                  // Seed an empty log synchronously so the tab's
-                                  // first render already matches whatever the
-                                  // async fetch below will settle on (real saved
-                                  // entry or the same empty shape) — without
-                                  // this, activeLog falls back to
-                                  // createDefaultLog() for one render, then gets
-                                  // swapped for libraryEntryToLog(createEmptyVersionEntry(...))
-                                  // once the effect resolves, and those two
-                                  // "empty" shapes differ enough to flash visibly.
-                                  if (!entry.logs[ed.externalId]) {
-                                    dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
-                                  }
-                                  dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
-                                }}
-                              >
-                                {cleanLabel}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

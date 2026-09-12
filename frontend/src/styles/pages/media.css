@@ -2860,6 +2860,42 @@
   box-shadow: 0 2px 8px rgba(var(--accent-rgb, 124, 106, 247), 0.35);
 }
 
+/* Versions tabs at top of editor */
+.me-versions-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  background: var(--bg-secondary, #1a1a1a);
+  overflow-x: auto;
+}
+
+.me-version-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #a0a0b8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all var(--anim-fast, 120ms);
+  white-space: nowrap;
+  min-width: auto;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.me-version-tab-btn:hover {
+  color: var(--text-main, #fff);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.me-version-tab-btn.active {
+  color: var(--accent, #7c6af7);
+  border-bottom-color: var(--accent, #7c6af7);
+}
+
 /* ── Saga viewer ─────────────────────────────────────────────────────────── */
 
 .media-saga-btn {
