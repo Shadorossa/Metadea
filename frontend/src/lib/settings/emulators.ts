@@ -23,13 +23,18 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     const stored = localStorage.getItem(STORAGE_KEYS.emulatorsConfig);
     emulatorsData = stored ? JSON.parse(stored) : {};
     pendingChanges = JSON.parse(JSON.stringify(emulatorsData));
-  } catch {
+    console.log('[Init] Loaded emulators data:', emulatorsData);
+  } catch (err) {
+    console.error('[Init] Error loading data:', err);
     emulatorsData = {};
     pendingChanges = {};
   }
 
-  // Load saved values into inputs on page load
-  loadEmulatorInputs();
+  // Load saved values into inputs after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    loadEmulatorInputs();
+    console.log('[Init] Loaded values into inputs');
+  }, 100);
 
   // File pickers
   document.addEventListener('click', async (e) => {
@@ -243,18 +248,27 @@ export async function initEmulators(showToast: (msg?: string) => void) {
   function loadEmulatorInputs() {
     document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input, select').forEach(input => {
       const platformId = input.dataset.platform;
-      if (!platformId || !emulatorsData[platformId]) return;
+      if (!platformId) return;
 
       if (input.classList.contains('emulator-select')) {
-        input.value = emulatorsData[platformId].emulator_name || '';
+        const savedValue = emulatorsData[platformId]?.emulator_name || '';
+        input.value = savedValue;
+        if (savedValue) {
+          console.log(`[Load] ${platformId} emulator: ${savedValue}`);
+        }
       } else if (input.id.includes('launch-args')) {
-        input.value = emulatorsData[platformId].launch_args || '';
+        const savedValue = emulatorsData[platformId]?.launch_args || '';
+        input.value = savedValue;
       } else if (input.id.includes('tracking-mode')) {
-        input.value = emulatorsData[platformId].tracking_mode || 'process';
+        const savedValue = emulatorsData[platformId]?.tracking_mode || 'process';
+        input.value = savedValue;
       } else if (input.id.includes('rom-folder')) {
-        input.value = emulatorsData[platformId].rom_folder || '';
+        const savedValue = emulatorsData[platformId]?.rom_folder || '';
+        input.value = savedValue;
         // Update ROM folder display
-        updateRomFolderDisplay(platformId);
+        if (savedValue) {
+          updateRomFolderDisplay(platformId);
+        }
       }
     });
   }
