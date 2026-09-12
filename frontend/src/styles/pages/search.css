@@ -86,8 +86,7 @@
   }
   .search-tab {
     padding: 0 !important;
-    width: fit-content !important;
-    min-width: auto !important;
+    width: clamp(1.8rem, 2.2vw, 2.2rem) !important;
   }
   .search-tab-icon {
     opacity: 1 !important;
