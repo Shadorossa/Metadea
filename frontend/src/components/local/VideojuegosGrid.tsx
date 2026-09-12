@@ -54,36 +54,30 @@ export function VideojuegosGrid({
 }: VideojuegosGridProps) {
   const t = getT();
 
-  // Group pending entries by platform extracted from catalog metadata
-  const groupPendingByPlatform = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
+  // Group pending entries by platform (extracted from launchGame.launcher)
+  const groupPendingByPlatform = (entries: StatusEntry[], statusTitle: string): StatusSection[] => {
     const grouped = new Map<string, StatusEntry[]>();
     for (const entry of entries) {
-      if (entry.kind === 'catalog') {
-        // Extract platform from item metadata (anime→manga→comics have no platform; games do via catalog)
-        const platformId = entry.item.type === 'game' ? entry.item.type : 'other';
-        if (!grouped.has(platformId)) grouped.set(platformId, []);
-        grouped.get(platformId)!.push(entry);
-      } else {
-        // Local games go to 'local'
-        if (!grouped.has('local')) grouped.set('local', []);
-        grouped.get('local')!.push(entry);
-      }
+      const platformId = entry.kind === 'catalog' && entry.launchGame
+        ? entry.launchGame.launcher
+        : 'ungrouped';
+      if (!grouped.has(platformId)) grouped.set(platformId, []);
+      grouped.get(platformId)!.push(entry);
     }
-    return grouped;
+
+    return Array.from(grouped.entries()).map(([platformId, platformEntries]) => ({
+      key: `${statusTitle}-${platformId}`,
+      title: platformId === 'ungrouped'
+        ? statusTitle
+        : `${statusTitle} • ${PLATFORM_LABEL[platformId as PlatformId] || platformId}`,
+      entries: platformEntries,
+    }));
   };
 
-  const groupedPending = {
-    currently: groupPendingByPlatform(currentlyEntries),
-    planning: groupPendingByPlatform(planningEntries),
-  };
-
-  // The four status buckets share one section shell (title + grid, mixing
-  // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
-  // .map() pattern LocalMediaSection already uses for its own sections,
-  // instead of four hand-rolled, near-identical JSX blocks.
+  // The four status buckets grouped by platform
   const statusSections: StatusSection[] = [
-    ...(currentlyEntries.length > 0 ? [{ key: 'currently', title: t.profile.section_in_progress, entries: currentlyEntries }] : []),
-    ...(planningEntries.length > 0 ? [{ key: 'planning', title: t.profile.section_planning, entries: planningEntries }] : []),
+    ...groupPendingByPlatform(currentlyEntries, t.profile.section_in_progress),
+    ...groupPendingByPlatform(planningEntries, t.profile.section_planning),
     ...(pausedGames.length > 0 ? [{ key: 'paused', title: 'Pausado', entries: pausedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
     ...(droppedGames.length > 0 ? [{ key: 'dropped', title: 'Abandonado', entries: droppedGames.map((game): StatusEntry => ({ kind: 'game', game })) }] : []),
   ];
