@@ -681,45 +681,6 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             {activeLogDisplay.cover && <img src={activeLogDisplay.cover} alt="" className="me-header-cover" />}
             <div className="me-header-col">
               <span className="me-header-title">{activeLogDisplay.title}</span>
-              {(data.parentGame || allAvailableEditions.length > 0) && (
-                <div className="me-versions-tabs">
-                  <button
-                    type="button"
-                    className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
-                    onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
-                  >
-                    Base Game
-                  </button>
-                  {allAvailableEditions.map(ed => {
-                    const isActive = entry.activeLogId === ed.externalId;
-                    const cleanLabel = editionTabLabel(ed.label);
-                    return (
-                      <button
-                        key={ed.externalId}
-                        type="button"
-                        className={`me-version-tab-btn${isActive ? ' active' : ''}`}
-                        title={ed.label}
-                        onClick={() => {
-                          const baseLogVal = entry.logs[baseId] || createDefaultLog();
-                          const currentVersions = baseLogVal.selectedVersion
-                            ? baseLogVal.selectedVersion.split(',')
-                            : [];
-                          if (!currentVersions.includes(ed.externalId)) {
-                            const nextVersions = [...currentVersions, ed.externalId].join(',');
-                            dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
-                          }
-                          if (!entry.logs[ed.externalId]) {
-                            dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
-                          }
-                          dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
-                        }}
-                      >
-                        {cleanLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
               <div className="me-header-bottom-row">
                 <div className="me-header-status-row">
                   {statusButtons.map(({ value, label, Icon }) => (
@@ -887,6 +848,46 @@ export function MediaEditorModal({ externalId, data, i18n, onClose, onSaved, onD
             )}
           </div>
         </div>
+
+        {(data.parentGame || allAvailableEditions.length > 0) && (
+          <div className="me-versions-tabs">
+            <button
+              type="button"
+              className={`me-version-tab-btn${entry.activeLogId === baseId ? ' active' : ''}`}
+              onClick={() => dispatchEntry({ type: 'SWITCH_LOG', id: baseId })}
+            >
+              Base Game
+            </button>
+            {allAvailableEditions.map(ed => {
+              const isActive = entry.activeLogId === ed.externalId;
+              const cleanLabel = editionTabLabel(ed.label);
+              return (
+                <button
+                  key={ed.externalId}
+                  type="button"
+                  className={`me-version-tab-btn${isActive ? ' active' : ''}`}
+                  title={ed.label}
+                  onClick={() => {
+                    const baseLogVal = entry.logs[baseId] || createDefaultLog();
+                    const currentVersions = baseLogVal.selectedVersion
+                      ? baseLogVal.selectedVersion.split(',')
+                      : [];
+                    if (!currentVersions.includes(ed.externalId)) {
+                      const nextVersions = [...currentVersions, ed.externalId].join(',');
+                      dispatchEntry({ type: 'SET_VERSION', value: nextVersions, baseId });
+                    }
+                    if (!entry.logs[ed.externalId]) {
+                      dispatchEntry({ type: 'LOAD_LOG', id: ed.externalId, entry: createEmptyVersionEntry(ed.externalId) });
+                    }
+                    dispatchEntry({ type: 'SWITCH_LOG', id: ed.externalId });
+                  }}
+                >
+                  {cleanLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {ui.loading ? (
           <div className="me-loading"><div className="spinner" /></div>
