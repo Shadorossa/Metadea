@@ -490,11 +490,29 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     height: 100%;
     object-fit: contain;
     object-position: center;
+    filter: brightness(1) contrast(1.1) saturate(1.1);
   }
 
-  .company-tab-btn:hover .company-logo,
+  .company-tab-btn:hover .company-logo {
+    filter: brightness(1.15) contrast(1.2) saturate(1.2);
+  }
+
   .company-tab-btn.active .company-logo {
-    filter: brightness(1);
+    filter: brightness(1.1) contrast(1.25) saturate(1.15);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .company-logo {
+      filter: brightness(1.05) contrast(1.2) saturate(1.15);
+    }
+
+    .company-tab-btn:hover .company-logo {
+      filter: brightness(1.2) contrast(1.3) saturate(1.25);
+    }
+
+    .company-tab-btn.active .company-logo {
+      filter: brightness(1.15) contrast(1.35) saturate(1.2);
+    }
   }
 
   .company-placeholder {
@@ -581,6 +599,21 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     height: 100%;
     object-fit: contain;
     object-position: center;
+    filter: brightness(1) contrast(1.1) saturate(1.1);
+  }
+
+  .platform-selector-btn:hover .platform-selector-logo {
+    filter: brightness(1.15) contrast(1.2) saturate(1.2);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .platform-selector-logo {
+      filter: brightness(1.05) contrast(1.2) saturate(1.15);
+    }
+
+    .platform-selector-btn:hover .platform-selector-logo {
+      filter: brightness(1.2) contrast(1.3) saturate(1.25);
+    }
   }
 
   .platform-selector-placeholder {
