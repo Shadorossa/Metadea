@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { LocalGame } from '../../lib/tauri';
+import { removeLocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
@@ -68,6 +70,22 @@ export function VideojuegosGrid({
 }: VideojuegosGridProps) {
   const t = getT();
 
+  // Right-click "Eliminar de la lista" on a cover-less game card (see
+  // GameCard's own onRequestDelete — a real install just re-scans back, so
+  // this is really only durable for ghost/stale entries and bad matches).
+  const [deleteMenu, setDeleteMenu] = useState<{ x: number; y: number; game: LocalGame } | null>(null);
+  useEffect(() => {
+    if (!deleteMenu) return;
+    const close = () => setDeleteMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [deleteMenu]);
+  const handleDeleteGame = (game: LocalGame) => {
+    const linkKey = game.app_id ?? game.install_path ?? game.name;
+    removeLocalGame(game.launcher, linkKey).then(onRefreshScan).catch(console.error);
+    setDeleteMenu(null);
+  };
+
   // Filter out catalog entries that have a launcher — they go ONLY to their launcher section
   const statusEntriesCurrently = currentlyEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
   const statusEntriesPlanning = planningEntries.filter(e => !(e.kind === 'catalog' && pendingWithLauncherIds.has(e.item.externalId)));
@@ -102,7 +120,14 @@ export function VideojuegosGrid({
           <h3 className="library-section-title">{sec.title}</h3>
           <div className="local-games-grid">
             {sec.entries.map((entry, i) => entry.kind === 'game' ? (
-              <GameCard key={entry.game.app_id ?? `g${i}`} game={entry.game} coverCache={coverCache} onClick={onSelectGame} status={sec.sectionStatus} />
+              <GameCard
+                key={entry.game.app_id ?? `g${i}`}
+                game={entry.game}
+                coverCache={coverCache}
+                onClick={onSelectGame}
+                status={sec.sectionStatus}
+                onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+              />
             ) : (
               <LocalMediaCard
                 key={entry.item.externalId}
@@ -178,7 +203,13 @@ export function VideojuegosGrid({
               </h2>
               <div className="local-games-grid">
                 {pendingForLauncher.map((entry, i) => entry.kind === 'game' ? (
-                  <GameCard key={`pending-${i}`} game={entry.game} coverCache={coverCache} onClick={onSelectGame} />
+                  <GameCard
+                    key={`pending-${i}`}
+                    game={entry.game}
+                    coverCache={coverCache}
+                    onClick={onSelectGame}
+                    onRequestDelete={(g, x, y) => setDeleteMenu({ game: g, x, y })}
+                  />
                 ) : (
                   <LocalMediaCard
                     key={`pending-catalog-${entry.item.externalId}`}
@@ -188,12 +219,32 @@ export function VideojuegosGrid({
                   />
                 ))}
                 {list.map((g, i) => (
-                  <GameCard key={i} game={g} coverCache={coverCache} onClick={onSelectGame} status={gameStatusMatch.get(g)} />
+                  <GameCard
+                    key={i}
+                    game={g}
+                    coverCache={coverCache}
+                    onClick={onSelectGame}
+                    status={gameStatusMatch.get(g)}
+                    onRequestDelete={(gg, x, y) => setDeleteMenu({ game: gg, x, y })}
+                  />
                 ))}
               </div>
             </section>
           );
         })
+      )}
+
+      {deleteMenu && createPortal(
+        <div className="local-context-menu" style={{ top: deleteMenu.y, left: deleteMenu.x }} onClick={e => e.stopPropagation()}>
+          <button type="button" className="local-context-menu-item delete" onClick={() => handleDeleteGame(deleteMenu.game)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            Eliminar de la lista
+          </button>
+        </div>,
+        document.body,
       )}
     </div>
   );

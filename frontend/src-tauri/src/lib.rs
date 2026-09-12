@@ -100,6 +100,7 @@ pub fn run() {
             folders::write_routes,
             folders::open_env_folder,
             game_links::save_game_link,
+            game_links::remove_local_game,
             folders::launch_game,
             folders::start_playtime_session,
             folders::open_external_url,

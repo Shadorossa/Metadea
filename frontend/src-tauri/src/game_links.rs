@@ -129,6 +129,34 @@ pub fn restore_missing_seen_games(
 // GOG/EA library doesn't wipe out its links just because one scan missed it.
 const GAME_LINK_GRACE_DAYS: i64 = 14;
 
+// Lets the user manually drop a scanned/ghost game off the grid for good —
+// local_games_seen's own doc comment above anticipated this ("staying
+// listed doesn't hurt anything ... until the user removes it") but nothing
+// ever actually called it. Removes both the seen-bookkeeping row (so
+// restore_missing_seen_games stops resurrecting it) and any manual catalog
+// link under the same key — a genuinely-installed game reappears on the
+// next scan regardless (this can't un-scan a real install), so this is
+// really only durable for ghosts (installed: false) or a bad scan match.
+#[tauri::command]
+pub async fn remove_local_game(
+    state: tauri::State<'_, crate::db::MetadeaDb>,
+    launcher: String,
+    link_key: String,
+) -> Result<(), String> {
+    let conn = state.conn.lock().str_err()?;
+    conn.execute(
+        "DELETE FROM local_games_seen WHERE launcher = ?1 AND link_key = ?2",
+        rusqlite::params![launcher, link_key],
+    )
+    .str_err()?;
+    conn.execute(
+        "DELETE FROM local_game_links WHERE launcher = ?1 AND link_key = ?2",
+        rusqlite::params![launcher, link_key],
+    )
+    .str_err()?;
+    Ok(())
+}
+
 pub fn prune_stale_game_links(conn: &rusqlite::Connection) {
     let cutoff = (chrono::Utc::now() - chrono::Duration::days(GAME_LINK_GRACE_DAYS)).to_rfc3339();
     let _ = conn.execute(

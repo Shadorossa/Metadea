@@ -788,6 +788,45 @@
   background: color-mix(in srgb, var(--color-watching) 85%, black 15%);
 }
 
+/* ── Local game card right-click context menu (delete cover-less entry) ──────── */
+
+.local-context-menu {
+  position: absolute;
+  z-index: 9999;
+  background: var(--bg-primary, #0c0820);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.25rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
+  min-width: 170px;
+}
+
+.local-context-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.local-context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
+.local-context-menu-item.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
 /* ── Local media detail panel — actions + folder/episode match row ───────────── */
 
 .local-media-detail-top-row {

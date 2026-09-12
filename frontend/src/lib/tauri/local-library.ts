@@ -65,3 +65,11 @@ export async function saveGameLink(launcher: string, linkKey: string, externalId
   return tauriRun('save_game_link', { launcher, linkKey, externalId });
 }
 
+// Manually drops a scanned/ghost game off the grid for good — see
+// remove_local_game's own doc comment (game_links.rs) for why this can't
+// un-scan a genuinely-installed game (it just reappears on the next scan),
+// only ghosts/stale-restored entries and bad matches.
+export async function removeLocalGame(launcher: string, linkKey: string): Promise<void> {
+  return tauriRun('remove_local_game', { launcher, linkKey });
+}
+

@@ -9,6 +9,7 @@ interface MediaCardShellProps {
   // Videojuegos' own status badge (LocalMediaCard only) — GameCard has none.
   badge?:  React.ReactNode;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   // GameCard's cover is already known synchronously from coverCache (no
   // deferred fetch), so its <img> can use native lazy-loading. LocalMediaCard
   // defers src itself instead (see its own effect) — stacking native lazy
@@ -26,12 +27,13 @@ interface MediaCardShellProps {
 // badge is shown. This is the one shared version; cover resolution and
 // click/selection behavior still live entirely in each caller.
 export const MediaCardShell = React.forwardRef<HTMLDivElement, MediaCardShellProps>(
-  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, lazyImage }, ref) {
+  function MediaCardShell({ title, cover, placeholderIcon, badge, onClick, onContextMenu, lazyImage }, ref) {
     return (
       <div
         ref={ref}
         className="local-game-card"
         onClick={onClick}
+        onContextMenu={onContextMenu}
         role="button"
         tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onClick()}

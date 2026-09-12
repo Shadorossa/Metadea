@@ -15,9 +15,14 @@ interface GameCardProps {
   // sitting in its own status section or mixed into a launcher section
   // (Steam/Nintendo/...) alongside untracked and pending games.
   status?:    string | null;
+  // Right-click "Eliminar de la lista" — only offered when this card has no
+  // cover (a real install always re-scans back anyway; this is meant for
+  // ghost/stale entries and bad matches, which is exactly what shows up
+  // cover-less — see remove_local_game's own doc comment for why).
+  onRequestDelete?: (game: LocalGame, x: number, y: number) => void;
 }
 
-export function GameCard({ game, coverCache, onClick, status }: GameCardProps) {
+export function GameCard({ game, coverCache, onClick, status, onRequestDelete }: GameCardProps) {
   const cover = (game.app_id ? coverCache[game.app_id]?.cover : undefined) ?? null;
   const badgeInfo = getStatusBadge(status);
 
@@ -32,6 +37,10 @@ export function GameCard({ game, coverCache, onClick, status }: GameCardProps) {
         </span>
       )}
       onClick={() => onClick(game)}
+      onContextMenu={!cover && onRequestDelete ? e => {
+        e.preventDefault();
+        onRequestDelete(game, e.pageX, e.pageY);
+      } : undefined}
       lazyImage
     />
   );
