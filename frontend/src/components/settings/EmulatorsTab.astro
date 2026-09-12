@@ -29,7 +29,9 @@ const COMPANIES = [
     platforms: [
       { id: 'ps1', name: 'PlayStation 1', logo: '/platforms/Emu/PS1_logo.png' },
       { id: 'ps2', name: 'PlayStation 2', logo: '/platforms/Emu/PS2_logo.png' },
+      { id: 'psp', name: 'PlayStation Portable', logo: '/platforms/Emu/PSP_logo.png' },
       { id: 'ps3', name: 'PlayStation 3', logo: '/platforms/Emu/PS3_logo.png' },
+      { id: 'psvita', name: 'PlayStation Vita', logo: '/platforms/Emu/PSVita_logo.png' },
       { id: 'ps4', name: 'PlayStation 4', logo: '/platforms/Emu/PS4_logo.png' },
       { id: 'ps5', name: 'PlayStation 5', logo: '/platforms/Emu/PS5_logo.png' },
     ]
@@ -170,7 +172,9 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
         platforms: [
           { id: 'ps1', name: 'PlayStation 1', logo: '/platforms/Emu/PS1_logo.png' },
           { id: 'ps2', name: 'PlayStation 2', logo: '/platforms/Emu/PS2_logo.png' },
+          { id: 'psp', name: 'PlayStation Portable', logo: '/platforms/Emu/PSP_logo.png' },
           { id: 'ps3', name: 'PlayStation 3', logo: '/platforms/Emu/PS3_logo.png' },
+          { id: 'psvita', name: 'PlayStation Vita', logo: '/platforms/Emu/PSVita_logo.png' },
           { id: 'ps4', name: 'PlayStation 4', logo: '/platforms/Emu/PS4_logo.png' },
           { id: 'ps5', name: 'PlayStation 5', logo: '/platforms/Emu/PS5_logo.png' },
         ]
@@ -305,6 +309,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     width: 100%;
     height: 100%;
     object-fit: contain;
+    object-position: center;
   }
 
   .company-tab-btn:hover .company-logo,
@@ -395,6 +400,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     width: 100%;
     height: 100%;
     object-fit: contain;
+    object-position: center;
   }
 
   .platform-selector-placeholder {
