@@ -140,8 +140,8 @@ pub async fn save_media_relations(
             let rel_type = infer_type_from_id(&rel.related_media_external_id);
             tx.execute(
                 "INSERT OR IGNORE INTO media_catalog (
-                    id, external_id, type, source, format, title_main, cover_url, created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    id, external_id, type, source, format, title_main, cover_url, release_year, created_at, updated_at
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 rusqlite::params![
                     crate::db::generate_id(),
                     &rel.related_media_external_id,
@@ -150,6 +150,7 @@ pub async fn save_media_relations(
                     &rel.format,
                     &rel.title,
                     &rel.cover,
+                    &rel.release_year,
                     &now,
                     &now,
                 ],
