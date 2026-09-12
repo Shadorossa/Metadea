@@ -2864,24 +2864,23 @@
 .me-versions-tabs {
   display: flex;
   gap: 0;
-  padding: 0 1.25rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 20%, transparent);
-  background: color-mix(in srgb, var(--bg-base, #0f0f1a) 92%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 35%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 35%, transparent);
+  padding: 0.5rem 0;
+  margin: 0.5rem 0 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 15%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent, #7c6af7) 15%, transparent);
   overflow-x: auto;
   overflow-y: hidden;
   align-items: stretch;
-  height: 2.5rem;
+  min-height: 2.2rem;
 }
 
 .me-version-tab-btn {
   background: transparent;
   border: none;
   color: var(--text-muted, #a0a0b8);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  padding: 0 0.9rem;
+  padding: 0.4rem 0.85rem;
   cursor: pointer;
   border-radius: 0;
   transition: all var(--anim-fast, 120ms);
@@ -2892,6 +2891,7 @@
   align-items: center;
   flex-shrink: 0;
   position: relative;
+  margin-bottom: -1px;
 }
 
 .me-version-tab-btn:hover {
