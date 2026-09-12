@@ -292,6 +292,14 @@ export default function LocalLibrary() {
     const rest: typeof safeGames = [];
     for (const g of safeGames) {
       const status = gameStatusMatch.get(g);
+      // A ROM always has a determinable platform (rom_platform) — same
+      // reasoning as usePendingLaunchers keeping a launcher-matched catalog
+      // "Pendiente" out of the general status sections: once you know WHERE
+      // it lives (Nintendo, PlayStation, ...), that's a more useful spot for
+      // it than the generic bucket, even if it also happens to match a
+      // "planning"/"currently"/... library entry (e.g. linking a scanned ROM
+      // to the same IGDB id as an existing catalog-only Pendiente row).
+      if (g.rom_platform) { rest.push(g); continue; }
       if (!status || status === 'completed') { rest.push(g); continue; }
       if (isInProgressStatus(status)) buckets.currently.push(g);
       else if (status === 'planning') buckets.planning.push(g);
