@@ -130,7 +130,7 @@
 
 @media (max-width: 1799px) {
   .search-tab.active::after {
-    width: clamp(0.4rem, 30%, 0.8rem) !important;
+    width: clamp(1rem, 80%, 1.2rem) !important;
   }
 }
 
