@@ -6,7 +6,7 @@ import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
 import { type StatusEntry } from './utils/catalogGameLinking';
-import { PLATFORM_LABEL, PLATFORM_LOGO, type PlatformId } from './utils/constants';
+import { PLATFORM_LABEL, PLATFORM_LOGO, LAUNCHER_ORDER, type PlatformId } from './utils/constants';
 import { GameCard } from './cards/GameCard';
 import { LocalMediaCard } from './cards/LocalMediaCard';
 import { FolderRouteControls } from './FolderRouteControls';
@@ -237,7 +237,13 @@ export function VideojuegosGrid({
           )}
         </div>
       ) : (
-        Array.from(groupedGames.entries()).map(([launcher, list], idx) => {
+        // Union of platforms with installed games AND platforms with only
+        // pending games (e.g. Nintendo with zero scanned installs but a
+        // Bayonetta 3 pendiente) — iterating groupedGames alone would skip
+        // any launcher section that has no installed games at all.
+        LAUNCHER_ORDER.filter(launcher => (groupedGames.get(launcher)?.length ?? 0) > 0 || (pendingByLauncher.get(launcher)?.length ?? 0) > 0)
+          .map((launcher, idx) => {
+          const list = groupedGames.get(launcher) || [];
           const pendingForLauncher = pendingByLauncher.get(launcher) || [];
           const totalCount = list.length + pendingForLauncher.length;
           return (
