@@ -69,6 +69,10 @@ export function sortRelationsForDisplay(rels: DbMediaRelation[]): { relations: M
     const priorityA = RELATION_SORT_PRIORITY[a.relation_type] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[b.relation_type] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
+    // Within same relation type, sort by release year (ascending: older first)
+    const yearA = a.release_year ?? 9999;
+    const yearB = b.release_year ?? 9999;
+    if (yearA !== yearB) return yearA - yearB;
     return 0;
   });
   // relation_type is the only source of truth for the label — r.type_label
@@ -96,6 +100,10 @@ function sortMediaRelations(relations: MediaRelation[]): MediaRelation[] {
     const priorityA = RELATION_SORT_PRIORITY[rTypeA] ?? 99;
     const priorityB = RELATION_SORT_PRIORITY[rTypeB] ?? 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
+    // Within same relation type, sort by release year (ascending: older first)
+    const yearA = a.releaseYear ?? 9999;
+    const yearB = b.releaseYear ?? 9999;
+    if (yearA !== yearB) return yearA - yearB;
     return 0;
   });
 }

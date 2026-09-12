@@ -247,6 +247,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
         url: `/media?${queryParams.toString()}`,
         relatedExternalId,
         format: sg.game_type != null ? GAME_TYPE_FORMAT[sg.game_type] : undefined,
+        releaseYear: sg.first_release_date ? new Date(sg.first_release_date * 1000).getFullYear() : null,
       });
     }
   };
@@ -299,6 +300,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
         url: `/media?id=${relatedExternalId}`,
         relatedExternalId,
         format: parentSub.game_type != null ? GAME_TYPE_FORMAT[parentSub.game_type] : undefined,
+        releaseYear: parentSub.first_release_date ? new Date(parentSub.first_release_date * 1000).getFullYear() : null,
       });
     }
   }

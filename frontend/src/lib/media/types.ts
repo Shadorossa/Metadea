@@ -48,6 +48,10 @@ export interface MediaRelation {
    *  directly. Set by the mapper that produced this relation so that
    *  skeleton row can carry format too. */
   format?: string;
+  /** Release year for sorting within relation type — allows relations to be
+   *  sorted by release date within each relation category (adaptations,
+   *  spin-offs, etc.). */
+  releaseYear?: number | null;
 }
 
 export interface MediaAuthor {

@@ -205,6 +205,9 @@ export interface DbMediaRelation {
    *  cataloged related title a real format, instead of leaving that column
    *  blank until (if ever) someone visits it directly. */
   format?: string | null;
+  /** Release year of the related media — used for sorting relations by
+   *  release date within each relation type category. */
+  release_year?: number | null;
 }
 
 export async function saveMediaRelations(mediaExternalId: string, relations: DbMediaRelation[]): Promise<void> {

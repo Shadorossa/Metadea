@@ -175,6 +175,7 @@ export function mapAniListToMedia(raw: AniListMediaDetail, mediaType: string): M
         url:   `/media?id=${relatedExternalId}`,
         relatedExternalId,
         format: e.node.format ?? undefined,
+        releaseYear: e.node.startDate?.year ?? null,
       };
     });
 
