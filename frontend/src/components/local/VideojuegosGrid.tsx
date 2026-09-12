@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import type { LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
 import { getMediaCompanies } from '../../lib/tauri';
@@ -56,17 +56,23 @@ export function VideojuegosGrid({
   const t = getT();
   const [companiesByExternalId, setCompaniesByExternalId] = useState<Record<string, string[]>>({});
 
+  // Memoize external IDs to check, keyed by sorted list to avoid re-renders
+  const externalIdsToCheck = useMemo(() => {
+    const ids = new Set<string>();
+    for (const entry of currentlyEntries) {
+      if (entry.kind === 'catalog' && entry.item.catalogEntry) ids.add(entry.item.externalId);
+    }
+    for (const entry of planningEntries) {
+      if (entry.kind === 'catalog' && entry.item.catalogEntry) ids.add(entry.item.externalId);
+    }
+    return Array.from(ids).sort().join(',');
+  }, [currentlyEntries, planningEntries]);
+
   // Load companies for pending games to detect Nintendo/PlayStation as publisher/developer
   useEffect(() => {
-    const externalIds = new Set<string>();
-    for (const entry of [...currentlyEntries, ...planningEntries]) {
-      if (entry.kind === 'catalog' && entry.item.catalogEntry) {
-        externalIds.add(entry.item.externalId);
-      }
-    }
-    if (externalIds.size === 0) return;
-
-    const promises = Array.from(externalIds).map(id =>
+    if (!externalIdsToCheck) return;
+    const ids = externalIdsToCheck.split(',');
+    const promises = ids.map(id =>
       getMediaCompanies(id)
         .then(companies => ({
           id,
@@ -88,7 +94,7 @@ export function VideojuegosGrid({
       }
       setCompaniesByExternalId(map);
     });
-  }, [currentlyEntries, planningEntries]);
+  }, [externalIdsToCheck]);
 
   // Extract launcher from shop_links_csv (e.g. "steam|url,epic|url" → "steam")
   const getLauncherFromShopLinks = (shopLinksCsv?: string | null): string | undefined => {
