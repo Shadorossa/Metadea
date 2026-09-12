@@ -129,6 +129,29 @@
   white-space: nowrap;
   transition: color var(--anim-fast) var(--anim-ease);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-link-icon {
+  display: none;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nav-link-text {
+  display: inline;
+}
+
+@media (max-width: 1799px) {
+  .nav-link-icon {
+    display: inline;
+  }
+  .nav-link-text {
+    display: none;
+  }
 }
 
 .nav-text-link:hover {
