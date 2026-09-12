@@ -670,9 +670,10 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .emulator-config-row {
     display: grid;
-    grid-template-columns: 180px 40px 1fr 40px;
+    grid-template-columns: auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
     gap: 0.75rem;
-    align-items: flex-end;
+    align-items: center;
   }
 
   .emulator-config-left {
@@ -684,7 +685,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   }
 
   .emulator-config-left .form-select {
-    width: 100%;
+    width: 180px;
   }
 
   .form-select.compact {
@@ -717,7 +718,7 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   }
 
   .rom-folder-btn {
-    grid-column: 4;
+    grid-column: 5;
     grid-row: 1 / 3;
   }
 
@@ -735,14 +736,13 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     font-size: 0.75rem;
     color: var(--text-dim);
     white-space: nowrap;
-    grid-column: 3;
-    grid-row: 1;
     padding: 0.5rem 0.75rem;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    min-height: 40px;
-    align-content: center;
+    height: 40px;
+    grid-column: 3 / 5;
+    grid-row: 1;
   }
 
   .emulator-config-middle.hidden {
@@ -764,14 +764,21 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   }
 
   .emulator-config-right {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    grid-column: 3;
-    grid-row: 2;
+    display: contents;
+  }
+
+  .emulator-config-right .form-label {
+    grid-column: 3 / 5;
+    grid-row: 1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+    display: none;
   }
 
   .emulator-config-right .form-input {
+    grid-column: 3 / 5;
+    grid-row: 2;
     width: 100%;
     height: 40px;
     box-sizing: border-box;
