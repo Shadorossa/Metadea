@@ -58,8 +58,31 @@ export function VideojuegosGrid({
   const getLauncherFromShopLinks = (shopLinksCsv?: string | null): string | undefined => {
     if (!shopLinksCsv) return undefined;
     const platforms = shopLinksCsv.split(',').map(p => p.split('|')[0]?.trim().toLowerCase());
-    // Prefer steam if available, otherwise first platform
-    return platforms.includes('steam') ? 'steam' : platforms[0];
+    // Map IGDB platform names to our launcher names
+    const platformMap: Record<string, string> = {
+      'steam': 'steam',
+      'epic games store': 'epic',
+      'epic': 'epic',
+      'gog': 'gog',
+      'xbox': 'xbox',
+      'xbox game pass': 'xbox',
+      'ea': 'ea',
+      'ea app': 'ea',
+      'origin': 'ea',
+      'nintendo': 'nintendo',
+      'nintendo eshop': 'nintendo',
+      'playstation': 'playstation',
+      'playstation store': 'playstation',
+    };
+    // Find first known platform, prefer steam
+    for (const p of platforms) {
+      if (p === 'steam') return 'steam';
+    }
+    for (const p of platforms) {
+      const mapped = platformMap[p];
+      if (mapped) return mapped;
+    }
+    return undefined;
   };
 
   // Group pending entries that have a launcher by that launcher
