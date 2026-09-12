@@ -54,14 +54,25 @@ export function VideojuegosGrid({
 }: VideojuegosGridProps) {
   const t = getT();
 
+  // Extract launcher from shop_links_csv (e.g. "steam|url,epic|url" → "steam")
+  const getLauncherFromShopLinks = (shopLinksCsv?: string | null): string | undefined => {
+    if (!shopLinksCsv) return undefined;
+    const platforms = shopLinksCsv.split(',').map(p => p.split('|')[0]?.trim().toLowerCase());
+    // Prefer steam if available, otherwise first platform
+    return platforms.includes('steam') ? 'steam' : platforms[0];
+  };
+
   // Group pending entries that have a launcher by that launcher
   const groupPendingByLauncher = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
     const grouped = new Map<string, StatusEntry[]>();
     for (const entry of entries) {
-      if (entry.kind === 'catalog' && entry.launchGame) {
-        const launcher = entry.launchGame.launcher;
-        if (!grouped.has(launcher)) grouped.set(launcher, []);
-        grouped.get(launcher)!.push(entry);
+      if (entry.kind === 'catalog') {
+        // Try matched launchGame first, then extract from catalog's shop_links
+        const launcher = entry.launchGame?.launcher ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv);
+        if (launcher) {
+          if (!grouped.has(launcher)) grouped.set(launcher, []);
+          grouped.get(launcher)!.push(entry);
+        }
       }
     }
     return grouped;
