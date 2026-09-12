@@ -194,35 +194,33 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
                 </div>
               </div>
 
-              <div class="form-field">
-                <label class="form-label" for={`launch-args-${platform.id}`} data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
-                <input
-                  class="form-input"
-                  type="text"
-                  id={`launch-args-${platform.id}`}
-                  placeholder="{ROM}"
-                  data-platform={platform.id}
-                />
-              </div>
-
               <div class="emulator-config-row">
                 <div class="emulator-config-left">
-                  <button type="button" class="rom-folder-btn" data-platform={platform.id} title="Select ROMs folder">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
-                      <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
-                      <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
-                    </svg>
-                  </button>
-
-                  <div class="rom-folder-display" id={`rom-folder-display-${platform.id}`} style="display: none;"></div>
-
+                  <label class="form-label" for={`launch-args-${platform.id}`} data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
                   <input
-                    type="hidden"
-                    id={`rom-folder-${platform.id}`}
+                    class="form-input"
+                    type="text"
+                    id={`launch-args-${platform.id}`}
+                    placeholder="{ROM}"
                     data-platform={platform.id}
                   />
                 </div>
+
+                <button type="button" class="rom-folder-btn" data-platform={platform.id} title="Select ROMs folder">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2.41 1.97l-5.77-1.72"/>
+                    <path d="M2 12a10 10 0 0 1 19.55-3.5"/>
+                    <path d="M2 11h20v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
+                  </svg>
+                </button>
+
+                <div class="rom-folder-display" id={`rom-folder-display-${platform.id}`} style="display: none;"></div>
+
+                <input
+                  type="hidden"
+                  id={`rom-folder-${platform.id}`}
+                  data-platform={platform.id}
+                />
               </div>
 
               <div class="form-field">
