@@ -302,9 +302,21 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   };
 
   let emulatorsInitialized = false;
-  const initEmulatorsTab = () => {
+  let emulatorsData: Record<string, any> = {};
+
+  const initEmulatorsTab = async () => {
     if (emulatorsInitialized) return;
     emulatorsInitialized = true;
+
+    // Load emulators data from database
+    try {
+      const { readEmulatorsConfig } = await import('../../lib/tauri');
+      emulatorsData = await readEmulatorsConfig();
+      console.log('[Init] Loaded emulators data:', emulatorsData);
+    } catch (error) {
+      console.error('[Init] Failed to load emulators data:', error);
+      emulatorsData = {};
+    }
 
     const companySelectorData = {
       nintendo: {
