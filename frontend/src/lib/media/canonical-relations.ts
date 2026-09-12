@@ -60,6 +60,6 @@ export const RELATION_TYPE_RECIPROCAL: Record<string, string> = {
   // Bundled In/Contains pair (PART_OF) instead of BASE_EDITION — it isn't a
   // separate purchasable product the way a remaster/DLC/expansion is.
   REL_UPDATE: 'PART_OF', SEASON: 'PART_OF',
-  REMASTER: 'BASE_EDITION', REMAKE: 'BASE_EDITION', EXPANDED_GAME: 'BASE_EDITION',
+  REMASTER: 'BASE_EDITION', REMAKE: 'REMAKE', EXPANDED_GAME: 'BASE_EDITION',
   DLC: 'BASE_EDITION', EXPANSION: 'BASE_EDITION', STANDALONE: 'BASE_EDITION',
 };
