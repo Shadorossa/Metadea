@@ -1066,14 +1066,11 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
   const isComicOrHasIssues = data.type === 'comic' || (Array.isArray(data.relations) && data.relations.some(r => r.relationType === 'ISSUE'));
   const editionsLabel = isComicOrHasIssues ? tm.relations.ISSUE : tm.relations.EDITIONS;
   const editionsRelationType = isComicOrHasIssues ? 'ISSUE' : 'EDITIONS';
-  const normalizedRelations = data.relations.map(r =>
-    r.relationType === 'EXPANDED_GAME' ? { ...r, relationType: 'BASE_EDITION' } : r
-  );
   const {
     related: relatedRelations,
     recommended: recommendedRelations,
     editions: editionRelations,
-  } = bucketRelations(normalizedRelations, data.format, editionsRelationType);
+  } = bucketRelations(data.relations, data.format, editionsRelationType);
   const hasRecommendedRelations = recommendedRelations.length > 0;
   const hasEditionRelations     = editionRelations.length > 0;
   const hasEpisodes             = episodes.length > 0;
