@@ -54,28 +54,28 @@ export function VideojuegosGrid({
 }: VideojuegosGridProps) {
   const t = getT();
 
-  // Group pending entries by platform extracted from catalog metadata
-  const groupPendingByPlatform = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
+  // Group pending entries that have a launcher by that launcher
+  const groupPendingByLauncher = (entries: StatusEntry[]): Map<string, StatusEntry[]> => {
     const grouped = new Map<string, StatusEntry[]>();
     for (const entry of entries) {
-      if (entry.kind === 'catalog') {
-        // Extract platform from item metadata (anime→manga→comics have no platform; games do via catalog)
-        const platformId = entry.item.type === 'game' ? entry.item.type : 'other';
-        if (!grouped.has(platformId)) grouped.set(platformId, []);
-        grouped.get(platformId)!.push(entry);
-      } else {
-        // Local games go to 'local'
-        if (!grouped.has('local')) grouped.set('local', []);
-        grouped.get('local')!.push(entry);
+      if (entry.kind === 'catalog' && entry.launchGame) {
+        const launcher = entry.launchGame.launcher;
+        if (!grouped.has(launcher)) grouped.set(launcher, []);
+        grouped.get(launcher)!.push(entry);
       }
     }
     return grouped;
   };
 
-  const groupedPending = {
-    currently: groupPendingByPlatform(currentlyEntries),
-    planning: groupPendingByPlatform(planningEntries),
-  };
+  const pendingByLauncher = new Map<string, StatusEntry[]>();
+  for (const [launcher, entries] of groupPendingByLauncher(currentlyEntries).entries()) {
+    if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
+    pendingByLauncher.get(launcher)!.push(...entries);
+  }
+  for (const [launcher, entries] of groupPendingByLauncher(planningEntries).entries()) {
+    if (!pendingByLauncher.has(launcher)) pendingByLauncher.set(launcher, []);
+    pendingByLauncher.get(launcher)!.push(...entries);
+  }
 
   // The four status buckets share one section shell (title + grid, mixing
   // GameCard/LocalMediaCard by entry.kind) — same {title,entries}[] + one
@@ -149,36 +149,50 @@ export function VideojuegosGrid({
           )}
         </div>
       ) : (
-        Array.from(groupedGames.entries()).map(([launcher, list], idx) => (
-          <section
-            key={launcher}
-            id={`launcher-${launcher}`}
-            ref={el => { if (el) sectionRefs.current.set(launcher, el); }}
-            className="local-launcher-section"
-          >
-            <h2 className="local-launcher-title">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <span className="local-launcher-icon">
-                  {PLATFORM_LOGO[launcher]
-                    ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
-                    : <IconFolder />}
-                </span>
-                {PLATFORM_LABEL[launcher]}
-                <span className="local-launcher-count">{list.length} juego{list.length !== 1 ? 's' : ''}</span>
+        Array.from(groupedGames.entries()).map(([launcher, list], idx) => {
+          const pendingForLauncher = pendingByLauncher.get(launcher) || [];
+          const totalCount = list.length + pendingForLauncher.length;
+          return (
+            <section
+              key={launcher}
+              id={`launcher-${launcher}`}
+              ref={el => { if (el) sectionRefs.current.set(launcher, el); }}
+              className="local-launcher-section"
+            >
+              <h2 className="local-launcher-title">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                  <span className="local-launcher-icon">
+                    {PLATFORM_LOGO[launcher]
+                      ? <img src={PLATFORM_LOGO[launcher]} alt={PLATFORM_LABEL[launcher]} draggable={false} />
+                      : <IconFolder />}
+                  </span>
+                  {PLATFORM_LABEL[launcher]}
+                  <span className="local-launcher-count">{totalCount} juego{totalCount !== 1 ? 's' : ''}</span>
+                </div>
+                {idx === 0 && (
+                  <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>
+                    <IconRefresh />
+                  </button>
+                )}
+              </h2>
+              <div className="local-games-grid">
+                {pendingForLauncher.map((entry, i) => entry.kind === 'game' ? (
+                  <GameCard key={`pending-${i}`} game={entry.game} coverCache={coverCache} onClick={onSelectGame} />
+                ) : (
+                  <LocalMediaCard
+                    key={`pending-catalog-${entry.item.externalId}`}
+                    item={entry.item}
+                    cachedPath={coverCacheHits[entry.item.externalId]}
+                    onClick={pendingItem => onSelectPending(pendingItem, entry.launchGame)}
+                  />
+                ))}
+                {list.map((g, i) => (
+                  <GameCard key={i} game={g} coverCache={coverCache} onClick={onSelectGame} />
+                ))}
               </div>
-              {idx === 0 && (
-                <button type="button" className="local-refresh-btn local-launcher-refresh-btn" onClick={onRefreshScan} disabled={gamesState === 'loading'}>
-                  <IconRefresh />
-                </button>
-              )}
-            </h2>
-            <div className="local-games-grid">
-              {list.map((g, i) => (
-                <GameCard key={i} game={g} coverCache={coverCache} onClick={onSelectGame} />
-              ))}
-            </div>
-          </section>
-        ))
+            </section>
+          );
+        })
       )}
     </div>
   );
