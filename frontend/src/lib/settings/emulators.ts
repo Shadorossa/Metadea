@@ -2,6 +2,7 @@ import { pickFolder, pickFile } from '../tauri/local-library';
 import { STORAGE_KEYS } from '../shared/storage-keys';
 
 interface EmulatorConfig {
+  emulator_name: string;
   executable_path: string;
   launch_args: string;
   rom_folder: string;
@@ -72,19 +73,22 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     }
   });
 
-  // Launch args input
+  // Form inputs auto-save
   document.addEventListener('change', (e) => {
-    const input = (e.target as HTMLElement).closest<HTMLInputElement>('.emulator-select, input[id*="launch-args"], select[id*="tracking-mode"]');
+    const target = e.target as HTMLElement;
+    const input = target.closest<HTMLInputElement | HTMLSelectElement>('input, select');
     if (!input) return;
 
     const platformId = input.dataset.platform;
     if (!platformId) return;
 
     if (!emulatorsData[platformId]) {
-      emulatorsData[platformId] = { executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+      emulatorsData[platformId] = { emulator_name: '', executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
     }
 
-    if (input.id.includes('launch-args')) {
+    if (input.id.includes('emulator-select')) {
+      emulatorsData[platformId].emulator_name = input.value;
+    } else if (input.id.includes('launch-args')) {
       emulatorsData[platformId].launch_args = input.value;
     } else if (input.id.includes('tracking-mode')) {
       emulatorsData[platformId].tracking_mode = input.value;
