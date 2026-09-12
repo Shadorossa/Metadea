@@ -279,7 +279,7 @@ export function mapIgdbToMedia(game: IgdbDetailGame, rawId: string): MediaPageDa
   if (!IS_FULL_EDITION_TYPE.has(gameType)) {
     addRelations(game.remakes, 'REMAKE');
     addRelations(game.remasters, 'REMASTER');
-    addRelations(game.expanded_games, 'EXPANDED_GAME');
+    addRelations(game.expanded_games, 'BASE_EDITION');
     addRelations(game.forks, 'FORK');
   }
   addRelations(game.expansions, 'EXPANSION');
@@ -394,7 +394,7 @@ const VIA_TO_RELATION_TYPE: Record<string, string> = {
   remasters: 'REMASTER',
   expansions: 'EXPANSION',
   standalone_expansions: 'STANDALONE',
-  expanded_games: 'EXPANDED_GAME',
+  expanded_games: 'BASE_EDITION',
   forks: 'FORK',
   parent_game: 'BASE_EDITION',
 };
