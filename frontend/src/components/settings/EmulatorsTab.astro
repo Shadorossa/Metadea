@@ -13,12 +13,12 @@ const COMPANIES = [
     logo: '/platforms/nintendo_logo.png',
     color: '#e60012',
     platforms: [
-      { id: 'gamecube', name: 'GameCube' },
-      { id: 'ds', name: 'Nintendo DS' },
-      { id: 'wii', name: 'Nintendo Wii' },
-      { id: '3ds', name: 'Nintendo 3DS' },
-      { id: 'wiiu', name: 'Wii U' },
-      { id: 'switch', name: 'Nintendo Switch' },
+      { id: 'gamecube', name: 'GameCube', logo: '/platforms/Emu/GameCube_logo.png' },
+      { id: 'ds', name: 'Nintendo DS', logo: '/platforms/Emu/DS_logo.png' },
+      { id: 'wii', name: 'Nintendo Wii', logo: '/platforms/Emu/Wii_logo.png' },
+      { id: '3ds', name: 'Nintendo 3DS', logo: '/platforms/Emu/3DS_logo.png' },
+      { id: 'wiiu', name: 'Wii U', logo: '/platforms/Emu/WiiU_logo.png' },
+      { id: 'switch', name: 'Nintendo Switch', logo: '/platforms/Emu/Switch_logo.png' },
     ]
   },
   {
@@ -27,11 +27,11 @@ const COMPANIES = [
     logo: '/platforms/playstation_logo.png',
     color: '#003087',
     platforms: [
-      { id: 'ps1', name: 'PlayStation 1' },
-      { id: 'ps2', name: 'PlayStation 2' },
-      { id: 'ps3', name: 'PlayStation 3' },
-      { id: 'ps4', name: 'PlayStation 4' },
-      { id: 'ps5', name: 'PlayStation 5' },
+      { id: 'ps1', name: 'PlayStation 1', logo: '/platforms/Emu/PS1_logo.png' },
+      { id: 'ps2', name: 'PlayStation 2', logo: '/platforms/Emu/PS2_logo.png' },
+      { id: 'ps3', name: 'PlayStation 3', logo: '/platforms/Emu/PS3_logo.png' },
+      { id: 'ps4', name: 'PlayStation 4', logo: '/platforms/Emu/PS4_logo.png' },
+      { id: 'ps5', name: 'PlayStation 5', logo: '/platforms/Emu/PS5_logo.png' },
     ]
   },
   {
@@ -40,10 +40,10 @@ const COMPANIES = [
     logo: '/platforms/xbox_logo.png',
     color: '#107c10',
     platforms: [
-      { id: 'xbox', name: 'Xbox' },
-      { id: 'xbox360', name: 'Xbox 360' },
-      { id: 'xboxone', name: 'Xbox One' },
-      { id: 'xboxseriesx', name: 'Xbox Series X/S' },
+      { id: 'xbox', name: 'Xbox', logo: '/platforms/Emu/Xbox_logo.png' },
+      { id: 'xbox360', name: 'Xbox 360', logo: '/platforms/Emu/Xbox360_logo.png' },
+      { id: 'xboxone', name: 'Xbox One', logo: '/platforms/Emu/XboxOne_logo.png' },
+      { id: 'xboxseriesx', name: 'Xbox Series X/S', logo: '/platforms/Emu/XboxSeriesXS_logo.png' },
     ]
   },
 ];
@@ -218,8 +218,14 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
           // Render platforms
           platformsSelector.innerHTML = data.platforms.map(platform => `
             <div class="platform-item">
-              <button class="platform-selector-btn" data-platform="${platform.id}" style="--platform-color: ${color}">
-                ${platform.name}
+              <button class="platform-selector-btn" data-platform="${platform.id}" style="--platform-color: ${color}" title="${platform.name}">
+                <img class="platform-selector-logo" src="${platform.logo}" alt="${platform.name}" onerror="this.style.display='none'; this.parentElement.classList.add('has-error')" />
+                <svg class="platform-selector-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                  <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                  <line x1="7" y1="2" x2="17" y2="2"/>
+                  <line x1="17" y1="20" x2="7" y2="20"/>
+                  <line x1="6" y1="14" x2="18" y2="14"/>
+                </svg>
               </button>
             </div>
           `).join('');
@@ -299,12 +305,11 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: brightness(0.9) drop-shadow(0 0 4px rgba(0, 0, 0, 0.2));
   }
 
   .company-tab-btn:hover .company-logo,
   .company-tab-btn.active .company-logo {
-    filter: brightness(1) drop-shadow(0 2px 8px var(--company-color));
+    filter: brightness(1);
   }
 
   .company-placeholder {
@@ -365,21 +370,45 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
   }
 
   .platform-selector-btn {
-    width: 100%;
-    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    padding: 0.5rem;
     background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    border: 2px solid transparent;
     border-radius: var(--radius-sm);
-    color: var(--text-main);
-    font-size: 0.85rem;
-    font-weight: 500;
     cursor: pointer;
     transition: all var(--anim-base) var(--anim-ease);
+    position: relative;
+    overflow: hidden;
   }
 
   .platform-selector-btn:hover {
     background: var(--bg-elevated);
     border-color: var(--platform-color, var(--accent));
+    transform: translateY(-1px);
+  }
+
+  .platform-selector-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .platform-selector-placeholder {
+    width: 60%;
+    height: 60%;
+    color: var(--text-dim);
+  }
+
+  .platform-selector-btn.has-error .platform-selector-placeholder {
+    display: block !important;
+    color: var(--text-muted);
+  }
+
+  .platform-selector-btn.has-error:hover .platform-selector-placeholder {
     color: var(--platform-color, var(--accent));
   }
 
