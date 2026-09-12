@@ -92,46 +92,32 @@ export const LibraryCard = memo(({ item, grouped, bundleMeta, titleOverride, agg
       : [startDateStr, endDateStr].filter(Boolean).join(' → ');
   }, [aggregateMembers]);
 
-  // A wide stack-extra flyout (see below) normally opens to the right of the
-  // card — for a card sitting near the right edge of the grid, that runs it
-  // off-screen with no way to reach the later covers. Measured on hover
-  // (not e.g. once on mount) since the grid can reflow — window resize,
-  // sidebar toggling, filters changing the column count — and a stale
-  // measurement would flip the wrong cards.
   const cellRef = useRef<HTMLDivElement>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const [flyoutOnLeft, setFlyoutOnLeft] = useState(false);
+
   const checkFlyoutDirection = () => {
-    if (!cellRef.current || !flyoutRef.current) return;
+    if (!cellRef.current) return;
     const cellRect = cellRef.current.getBoundingClientRect();
-    // scrollWidth reads the flyout's real content width regardless of its
-    // own collapsed max-width (0 at rest) — every item inside has a fixed
-    // 75px width, so this doesn't depend on the slide-open transition
-    // having played out at all.
-    const flyoutWidth = flyoutRef.current.scrollWidth;
-    setFlyoutOnLeft(cellRect.right + flyoutWidth > window.innerWidth);
+    const count = orderedGrouped.length || 1;
+    const flyoutWidth = count * 82 + 24;
+    const spaceOnRight = window.innerWidth - cellRect.right;
+    const spaceOnLeft = cellRect.left;
+    setFlyoutOnLeft(spaceOnRight < flyoutWidth && spaceOnLeft > spaceOnRight);
   };
 
-  // Keeps this cell's z-index elevated for the same 0.35s the flyout takes
-  // to slide shut after the cursor leaves — otherwise, moving straight from
-  // this card onto a neighbor it visually overlaps (its own flyout, whether
-  // sliding right or left) would raise that neighbor to the *same* z-index
-  // this one already has, and the closing flyout (mid-animation, still very
-  // visible) could end up rendered behind the freshly-hovered neighbor
-  // instead of on top of it for that last stretch. A plain CSS
-  // transition-delay can't win that tie (the held value is identical to the
-  // hover value, 10, same as the neighbor's) — this deliberately holds a
-  // *higher* one instead, so it always wins regardless of what any neighbor
-  // is doing.
   const [isClosing, setIsClosing] = useState(false);
   const closingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   useEffect(() => () => clearTimeout(closingTimeoutRef.current), []);
+
   const handleMouseLeave = () => {
     if (grouped.length === 0) return;
     setIsClosing(true);
     clearTimeout(closingTimeoutRef.current);
-    closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 500);
+    closingTimeoutRef.current = setTimeout(() => setIsClosing(false), 350);
   };
+
   const handleMouseEnter = () => {
     clearTimeout(closingTimeoutRef.current);
     setIsClosing(false);
