@@ -471,7 +471,7 @@ export default function MediaPage({ i18n, previewData, previewMode = false }: Pr
       // roughly fixed height) — cardWidth from the grid's own box width is
       // all that's needed, no child measurement required.
       const cardWidth = (gridEl.clientWidth - gap * (PER_ROW - 1)) / PER_ROW;
-      const nameLineHeight = 34; // approx height of the star-rating line under each avatar
+      const nameLineHeight = 40; // height of the star-rating line under each avatar
       const rowHeight = cardWidth + nameLineHeight;
       scrollEl.style.maxHeight = `${paddingTop + ROWS_VISIBLE * rowHeight + (ROWS_VISIBLE - 1) * gap}px`;
       updateFade();

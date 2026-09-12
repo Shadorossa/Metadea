@@ -1482,9 +1482,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
-  --uf-fade: 20px;
-  mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent);
-  -webkit-mask-image: linear-gradient(to bottom, transparent, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent);
+  --uf-fade: 30px;
+  mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black var(--uf-fade), black calc(100% - var(--uf-fade)), transparent 100%);
 }
 
 .media-users-grid-scroll::-webkit-scrollbar {
