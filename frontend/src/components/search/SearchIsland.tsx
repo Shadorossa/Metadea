@@ -199,6 +199,7 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
   // paint, avoiding a hydration mismatch) and corrects to the real value
   // right after mount.
   const [gridColumns, setGridColumns] = useState(5);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   useEffect(() => {
     const onResize = () => setGridColumns(getResultsGridColumns());
     onResize();
@@ -255,8 +256,12 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
       return;
     }
 
-    if (pageNum === 1) setStatus('loading');
-    else setIsLoadingMore(true);
+    if (pageNum === 1) {
+      setStatus('loading');
+      setErrorMessage(null);
+    } else {
+      setIsLoadingMore(true);
+    }
 
     // If the exact same type+query+page+filters is already in flight (e.g.
     // debounce and Enter racing each other), ride that request instead of
@@ -321,6 +326,8 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         setMissingProviders(error.providers);
         setStatus('missing-keys');
       } else {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        setErrorMessage(errorMsg || null);
         setStatus('error');
       }
     } finally {
@@ -821,7 +828,10 @@ export default function SearchIsland({ initialQuery = '', initialType = 'all', i
         )}
 
         {status === 'error' && (
-          <div className="results-empty results-error">{i18n.error}</div>
+          <div className="results-empty results-error">
+            <p>{i18n.error}</p>
+            {errorMessage && <p className="results-error-reason">{errorMessage}</p>}
+          </div>
         )}
 
         {status === 'missing-keys' && (
