@@ -116,9 +116,9 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     notification.id = 'emulator-changes-notification';
     notification.style.cssText = `
       position: fixed;
-      top: 50%;
+      bottom: 2rem;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       background: var(--bg-elevated);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
