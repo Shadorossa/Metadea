@@ -43,9 +43,8 @@
 
 .search-tab {
   position: relative;
-  display: flex !important;
-  align-items: center !important;
-  gap: clamp(0.2rem, 0.5vw, 0.35rem) !important;
+  display: grid !important;
+  place-items: center !important;
   padding: 0 clamp(0.4rem, 1vw, 0.6rem) !important;
   height: 48px !important;
   font-size: clamp(0.65rem, 1vw, 0.75rem) !important;
@@ -68,27 +67,25 @@
 }
 
 .search-tab-icon {
+  position: absolute;
   opacity: 0;
-  max-width: 0;
-  overflow: hidden;
-  transition: opacity var(--anim-fast) var(--anim-ease), max-width var(--anim-fast) var(--anim-ease);
+  pointer-events: none;
+  transition: opacity var(--anim-fast) var(--anim-ease);
 }
 
 .search-tab-label {
   opacity: 1;
-  max-width: 100%;
-  overflow: hidden;
-  transition: opacity var(--anim-fast) var(--anim-ease), max-width var(--anim-fast) var(--anim-ease);
+  transition: opacity var(--anim-fast) var(--anim-ease);
 }
 
 @media (max-width: 1800px) {
   .search-tab-icon {
     opacity: 1 !important;
-    max-width: 100% !important;
+    pointer-events: auto !important;
   }
   .search-tab-label {
     opacity: 0 !important;
-    max-width: 0 !important;
+    pointer-events: none !important;
   }
 }
 .search-tab:hover {
