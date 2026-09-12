@@ -1,0 +1,43 @@
+{
+  "character": {
+    "external_id": "character:cs:343110",
+    "name": "Ichiban Kasuga",
+    "aliases_csv": "Hero of Yokohama,Mr. Unemployed",
+    "biography": "<b>Date of Birth:</b> 01/01/1997<br><br>\n<b>Nationality:</b> Japanese<br>\n<b>Height:</b> 185 cm<br>\n<b>Blood Type:</b> B<br>\n<br>\n<div>Ichiban Kasuga (春日 一番, Kasuga Ichiban) is the protagonist of the Yakuza/Like a Dragon series from Yakuza: Like a Dragon onward, as well as the protagonist of The Legend of Ichiban Kasuga: Part 1 in Ryu Ga Gotoku Online. He is a former member of the Arakawa Family, a Tojo Clan subsidiary and a former employee at Hello Work. He was instrumental in the Great Dissolution of the Tojo Clan and the Omi Alliance. Due to his heroic exploits, he is also known as the \"Hero of Yokohama\" (ハマの英雄, Hama no Eiyū).</div>",
+    "image_url": "https://i.redd.it/ef840md7iulb1.jpg"
+  },
+  "appearances": [
+    {
+      "media_external_id": "game:36550",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:217624",
+      "relation_type": "BACKGROUND"
+    },
+    {
+      "media_external_id": "game:319033",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:217623",
+      "relation_type": "MAIN"
+    },
+    {
+      "media_external_id": "game:317317",
+      "relation_type": "CAMEO"
+    }
+  ],
+  "actors": [
+    {
+      "external_id": "person:a112627",
+      "role": "voice",
+      "language": "Japanese"
+    },
+    {
+      "external_id": "person:a103491",
+      "role": "voice",
+      "language": "English"
+    }
+  ]
+}
