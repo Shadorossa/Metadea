@@ -23,6 +23,7 @@ export async function initEmulators(showToast: (msg?: string) => void) {
     emulatorsData = {};
   }
 
+  // File pickers
   document.addEventListener('click', async (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.exe-picker-btn');
     if (!btn) return;
@@ -69,6 +70,27 @@ export async function initEmulators(showToast: (msg?: string) => void) {
       const message = err instanceof Error ? err.message : String(err);
       showToast('Error: ' + message.slice(0, 50));
     }
+  });
+
+  // Launch args input
+  document.addEventListener('change', (e) => {
+    const input = (e.target as HTMLElement).closest<HTMLInputElement>('.emulator-select, input[id*="launch-args"], select[id*="tracking-mode"]');
+    if (!input) return;
+
+    const platformId = input.dataset.platform;
+    if (!platformId) return;
+
+    if (!emulatorsData[platformId]) {
+      emulatorsData[platformId] = { executable_path: '', launch_args: '', rom_folder: '', tracking_mode: 'process' };
+    }
+
+    if (input.id.includes('launch-args')) {
+      emulatorsData[platformId].launch_args = input.value;
+    } else if (input.id.includes('tracking-mode')) {
+      emulatorsData[platformId].tracking_mode = input.value;
+    }
+
+    saveEmulators();
   });
 }
 
