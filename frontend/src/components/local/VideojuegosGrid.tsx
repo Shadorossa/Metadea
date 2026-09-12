@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { LocalGame } from '../../lib/tauri';
 import { getT } from '../../i18n/client';
+import { getMediaCompanies } from '../../lib/tauri';
 import type { LocalMediaItem } from './hooks/useLocalMediaEntries';
 import type { GamesState } from './hooks/useLocalGames';
 import type { CoverCache } from './details/GameDetailPanel';
@@ -53,6 +54,41 @@ export function VideojuegosGrid({
   onSelectGame, onSelectPending, scanError, debugInfo, onRunDiagnostics, groupedGames, sectionRefs,
 }: VideojuegosGridProps) {
   const t = getT();
+  const [companiesByExternalId, setCompaniesByExternalId] = useState<Record<string, string[]>>({});
+
+  // Load companies for pending games to detect Nintendo/PlayStation as publisher/developer
+  useEffect(() => {
+    const externalIds = new Set<string>();
+    for (const entry of [...currentlyEntries, ...planningEntries]) {
+      if (entry.kind === 'catalog' && entry.item.catalogEntry) {
+        externalIds.add(entry.item.externalId);
+      }
+    }
+    if (externalIds.size === 0) return;
+
+    const promises = Array.from(externalIds).map(id =>
+      getMediaCompanies(id)
+        .then(companies => ({
+          id,
+          platforms: companies
+            .filter(c => (c.role === 'developer' || c.role === 'publisher') && (
+              c.name.toLowerCase().includes('nintendo') ||
+              c.name.toLowerCase().includes('playstation') ||
+              c.name.toLowerCase().includes('sony')
+            ))
+            .map(c => c.name.toLowerCase().includes('nintendo') ? 'nintendo' : 'playstation')
+        }))
+        .catch(() => ({ id, platforms: [] }))
+    );
+
+    Promise.all(promises).then(results => {
+      const map: Record<string, string[]> = {};
+      for (const { id, platforms } of results) {
+        if (platforms.length > 0) map[id] = platforms;
+      }
+      setCompaniesByExternalId(map);
+    });
+  }, [currentlyEntries, planningEntries]);
 
   // Extract launcher from shop_links_csv (e.g. "steam|url,epic|url" → "steam")
   const getLauncherFromShopLinks = (shopLinksCsv?: string | null): string | undefined => {
@@ -90,8 +126,11 @@ export function VideojuegosGrid({
     const grouped = new Map<string, StatusEntry[]>();
     for (const entry of entries) {
       if (entry.kind === 'catalog') {
-        // Try matched launchGame first, then extract from catalog's shop_links
-        const launcher = entry.launchGame?.launcher ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv);
+        // Try matched launchGame first, then extract from catalog's shop_links, then check companies
+        let launcher = entry.launchGame?.launcher ?? getLauncherFromShopLinks(entry.item.catalogEntry?.shop_links_csv);
+        if (!launcher && companiesByExternalId[entry.item.externalId]) {
+          launcher = companiesByExternalId[entry.item.externalId][0];
+        }
         if (launcher) {
           if (!grouped.has(launcher)) grouped.set(launcher, []);
           grouped.get(launcher)!.push(entry);
