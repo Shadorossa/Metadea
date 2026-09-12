@@ -16,6 +16,7 @@ import PreferencesTab from "../components/settings/PreferencesTab.astro";
 import EnvironmentTab from "../components/settings/EnvironmentTab.astro";
 import ConnectionsTab from "../components/settings/ConnectionsTab.astro";
 import NovedadesTab from "../components/settings/NovedadesTab.astro";
+import EmulatorsTab from "../components/settings/EmulatorsTab.astro";
 import HelpModals from "../components/settings/HelpModals.astro";
 
 const lang = getLang(Astro.url);
@@ -54,6 +55,16 @@ const version = pkg.version;
           <Fragment set:html={ICON_SETTINGS_ENVIRONMENT} />
           <span data-i18n="settings.tab_environment">{t.settings.tab_environment}</span>
         </button>
+        <button class="settings-tab" data-tab="emulators">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="17 16.1 13.6 18.9 13.6 22.6 22.1 22.6 22.1 18.9"/>
+            <polyline points="6.4 2.4 2.9 5.2 2.9 12.8 13.6 12.8 13.6 5.2"/>
+            <line x1="2.9" y1="19" x2="13.6" y2="19"/>
+            <line x1="6.4" y1="18.9" x2="6.4" y2="22.6"/>
+            <line x1="10.1" y1="18.9" x2="10.1" y2="22.6"/>
+          </svg>
+          <span data-i18n="settings.tab_emulators">{t.settings.tab_emulators}</span>
+        </button>
         <button class="settings-tab" data-tab="novedades">
           <Fragment set:html={ICON_SETTINGS_NOVEDADES} />
           <span data-i18n="settings.tab_novedades">{t.settings.tab_novedades}</span>
@@ -77,6 +88,7 @@ const version = pkg.version;
         <ProfileTab t={t} />
         <PreferencesTab t={t} />
         <EnvironmentTab t={t} />
+        <EmulatorsTab t={t} />
         <ConnectionsTab t={t} />
         <NovedadesTab t={t} version={version} />
       </div>

@@ -1,0 +1,366 @@
+---
+import { ICON_HELP_CIRCLE } from "../../lib/shared/icon-strings";
+import type { Translations } from "../../i18n/index";
+
+interface Props {
+  t: Translations;
+}
+const { t } = Astro.props;
+---
+
+<!-- Tab: Emuladores -->
+<div class="settings-panel hidden" id="panel-emulators">
+  <div class="settings-section">
+    <h3 class="settings-section-title" data-i18n="settings.emulators_title">{t.settings.emulators_title}</h3>
+
+    <!-- Agregar nuevo emulador -->
+    <div class="emulators-add-section">
+      <h4 class="settings-subsection-title" data-i18n="settings.emulators_add_new">{t.settings.emulators_add_new}</h4>
+
+      <div class="emulators-form">
+        <div class="emulator-field">
+          <label class="emulator-label" for="emulator-name" data-i18n="settings.emulators_name">{t.settings.emulators_name}</label>
+          <input
+            class="emulator-input"
+            type="text"
+            id="emulator-name"
+            placeholder="RetroArch, PCSX2, Dolphin..."
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="emulator-field">
+          <label class="emulator-label" for="emulator-path" data-i18n="settings.emulators_path">{t.settings.emulators_path}</label>
+          <div class="emulator-path-group">
+            <input
+              class="emulator-input"
+              type="text"
+              id="emulator-path"
+              placeholder="C:\Program Files\emulator.exe"
+              readonly
+            />
+            <button type="button" class="emulator-browse-btn" id="emulator-browse-btn" data-i18n="settings.emulators_browse">{t.settings.emulators_browse}</button>
+          </div>
+        </div>
+
+        <div class="emulator-field">
+          <label class="emulator-label" for="emulator-args" data-i18n="settings.emulators_args">{t.settings.emulators_args}</label>
+          <input
+            class="emulator-input"
+            type="text"
+            id="emulator-args"
+            placeholder="%ROM% (opcional)"
+            autocomplete="off"
+          />
+        </div>
+
+        <button type="button" class="emulator-add-btn" id="emulator-add-btn" data-i18n="settings.emulators_add_btn">{t.settings.emulators_add_btn}</button>
+      </div>
+    </div>
+
+    <!-- Lista de emuladores configurados -->
+    <div class="emulators-list-section">
+      <h4 class="settings-subsection-title" data-i18n="settings.emulators_configured">{t.settings.emulators_configured}</h4>
+
+      <div class="emulators-list" id="emulators-list">
+        <div class="emulators-empty" id="emulators-empty" data-i18n="settings.emulators_empty">{t.settings.emulators_empty}</div>
+      </div>
+    </div>
+
+    <!-- Configurar plataformas por emulador -->
+    <div class="emulators-platforms-section">
+      <h4 class="settings-subsection-title" data-i18n="settings.emulators_platforms">{t.settings.emulators_platforms}</h4>
+
+      <div class="platforms-config" id="platforms-config">
+        <div class="platforms-empty" id="platforms-empty" data-i18n="settings.emulators_no_emulators">{t.settings.emulators_no_emulators}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  .emulators-add-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
+
+  .settings-subsection-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+    margin-top: 0;
+  }
+
+  .emulators-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .emulator-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .emulator-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+  }
+
+  .emulator-input {
+    padding: 0.6rem 0.875rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: border-color var(--anim-base) var(--anim-ease);
+  }
+
+  .emulator-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .emulator-path-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .emulator-path-group .emulator-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .emulator-browse-btn {
+    padding: 0.6rem 1rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+    white-space: nowrap;
+  }
+
+  .emulator-browse-btn:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .emulator-add-btn {
+    align-self: flex-start;
+    padding: 0.6rem 1.25rem;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--bg-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+  }
+
+  .emulator-add-btn:hover {
+    opacity: 0.9;
+  }
+
+  .emulator-add-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .emulators-list-section,
+  .emulators-platforms-section {
+    margin-bottom: 2rem;
+  }
+
+  .emulators-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .emulators-empty,
+  .platforms-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    background: var(--bg-elevated);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-sm);
+  }
+
+  .emulator-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--anim-base) var(--anim-ease);
+  }
+
+  .emulator-item:hover {
+    border-color: var(--accent);
+  }
+
+  .emulator-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .emulator-item-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+  }
+
+  .emulator-item-path {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .emulator-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    flex-shrink: 0;
+  }
+
+  .emulator-delete-btn {
+    padding: 0.4rem 0.75rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+  }
+
+  .emulator-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  .platforms-config {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .platform-group {
+    padding: 1.5rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+  }
+
+  .platform-group-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .platform-group-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .platform-version-item {
+    display: grid;
+    grid-template-columns: 1fr 200px 200px auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .platform-version-item:last-child {
+    border-bottom: none;
+  }
+
+  .platform-version-name {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    font-weight: 500;
+  }
+
+  .platform-version-select {
+    padding: 0.4rem 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .platform-version-folder {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .platform-version-folder input {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.8rem;
+    font-family: 'Courier New', monospace;
+  }
+
+  .platform-version-folder button {
+    padding: 0.4rem 0.6rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all var(--anim-base) var(--anim-ease);
+  }
+
+  .platform-version-folder button:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .platform-version-status {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+</style>
