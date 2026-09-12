@@ -493,8 +493,9 @@
      the rest with nothing to indicate more existed (a saga/bundle with 8+
      members, not even unusual, just showed a cut-off 8th cover). Comfortably
      covers realistic group sizes; overflow-x above is the fallback for
-     anything bigger instead of silently clipping again. */
-  max-width: min(90vw, 2400px);
+     anything bigger instead of silently clipping again. Use 85vw to leave
+     margin and prevent extending beyond viewport on cards near right edge. */
+  max-width: min(85vw, 2400px);
   pointer-events: auto;
 }
 
