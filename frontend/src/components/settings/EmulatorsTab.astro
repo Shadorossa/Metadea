@@ -747,12 +747,24 @@ const ALL_PLATFORMS = COMPANIES.flatMap(c =>
 
   .form-group-inline {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.5rem;
+    align-items: center;
+  }
+
+  .emulator-config-row.launch-row .form-group-inline {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .form-group-inline .form-label {
+    white-space: nowrap;
+    margin: 0;
+    font-size: 0.85rem;
   }
 
   .form-group-inline .form-input {
-    width: 100%;
+    flex: 1;
   }
 
   .emulator-config-left .form-select {
